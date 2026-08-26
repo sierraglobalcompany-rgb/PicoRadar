@@ -1,3 +1,7 @@
 # GitHub
 
-CI workflows are intentionally out of scope for C00 and begin in C02.
+CI workflows begin in C02:
+
+- `mobile.yml`: Flutter format, analyze, tests and dev debug APK build.
+- `server.yml`: Composer install, Pint, migration pretend check and Laravel tests.
+- `dependabot.yml`: weekly dependency PRs with no auto-merge.

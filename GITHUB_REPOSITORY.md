@@ -1,8 +1,8 @@
 # GitHub Repository — PicoRadar
 
-**Canonical remote:** `https://github.com/sierraglobalcompany-rgb/PicoRadar.git`  
-**Repository:** `sierraglobalcompany-rgb/PicoRadar`  
-**Visibility:** private  
+**Canonical remote:** `https://github.com/sierraglobalcompany-rgb/PicoRadar.git`
+**Repository:** `sierraglobalcompany-rgb/PicoRadar`
+**Visibility:** private
 **Expected default branch:** `main`
 
 ## Approved C00 baseline
