@@ -1,0 +1,15 @@
+{
+  "package": "PicoRadar Codex One-Click C00",
+  "version": 1,
+  "required_files": 13,
+  "required_files_missing": [],
+  "naming_checks": {
+    "00_CODEX_ONECLICK_EXECUTE_C00.md": true,
+    "C00_EXACT_PROMPT_PICORADAR_FOR_CODEX.md": true,
+    "00_NOMBRE_OFICIAL_PICORADAR.md": true
+  },
+  "total_files": 72,
+  "entrypoint": "00_CODEX_ONECLICK_EXECUTE_C00.md",
+  "next_lot": "C00",
+  "do_not_advance_to": "C01"
+}
