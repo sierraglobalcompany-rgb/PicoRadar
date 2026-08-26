@@ -1,7 +1,7 @@
 # LOT C02 — CI, linting and quality gates
 
 **Suggested branch:** `feat/C02-ci-quality-gates`  
-**Status at pack creation:** NOT STARTED
+**Status:** DONE locally; pending PR review/merge
 
 ## GOAL
 
@@ -44,9 +44,9 @@ Do not start if required dependencies are not DONE unless the user explicitly au
 
 ## ACCEPTANCE CRITERIA
 
-- [ ] PR CI is deterministic and green on baseline.
-- [ ] No auto-merge dependency updates.
-- [ ] Commands match README.
+- [x] PR CI is deterministic and green on baseline.
+- [x] No auto-merge dependency updates.
+- [x] Commands match README.
 
 ## TESTS REQUIRED
 
