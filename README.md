@@ -34,6 +34,10 @@ flutter build apk --debug --flavor dev
 flutter run --flavor dev --dart-define=APP_ENV=dev
 ```
 
+## C01 App shell
+
+Mobile now has the approved C01 shell only: `Inicio`, `Garaje`, `Apps`, `Viaje`, `Conducir`. The tabs are implemented with `go_router` branch navigation so each root preserves its local state. The temporary immersive preview route lives outside the tab shell and is opened with stack navigation, so Android back returns to the invoking tab.
+
 Configured Android flavors:
 
 | Flavor | Application ID | Label |
@@ -63,6 +67,6 @@ Use `server/.env.example` as the local template. Do not commit `server/.env`, re
 
 GitHub Actions runs separate mobile and server gates on pull requests and matching pushes. Mobile pins Flutter `3.47.1`, Java 17 and Android API 36, then runs pub get, format, analyze, optional build_runner, tests with coverage and the dev debug APK build. Server pins PHP `8.5` to match the current Composer lock while staying inside the PHP `8.3+` baseline, installs dependencies with `pdo_sqlite`, runs Pint, checks migrations in pretend mode and runs Laravel tests. Dependabot opens weekly PRs for GitHub Actions, Flutter pub and Composer updates; no auto-merge is configured.
 
-## C00 Scope
+## Current Scope
 
-C00 only creates repository foundation, Flutter/Laravel scaffolds, Android flavors and smoke tests. Product navigation, Drift, Riverpod, go_router, Firebase, GPS, routes, datasets and feature screens start in later lots.
+C00 creates repository foundation, Flutter/Laravel scaffolds, Android flavors and smoke tests. C01 adds design tokens, Riverpod/go_router bootstrap, the five-tab app shell, root placeholders and shell/router tests. C02 adds CI quality gates and Dependabot. Drift, Firebase, GPS, account/cloud, the Apps 3x3 launcher and product feature screens remain out of scope until their approved lots.

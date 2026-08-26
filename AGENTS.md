@@ -151,3 +151,13 @@ Completar `codex/templates/HANDOFF_TEMPLATE.md` con:
 - `git status`.
 
 No decir solo “todo funciona”.
+
+## 12. GitHub canonical repository
+
+- Remote: `https://github.com/sierraglobalcompany-rgb/PicoRadar.git`
+- Canonical repository: `sierraglobalcompany-rgb/PicoRadar`
+- Default branch: `main`
+- Push feature branches and open PRs when the active lot requires it.
+- Never merge a PR without explicit human approval.
+- Never force-push `main`.
+- Do not rewrite approved C00 SHA `14f7b1ae1ffa8a4d9b79a8a5f9a1093b7984185b`.

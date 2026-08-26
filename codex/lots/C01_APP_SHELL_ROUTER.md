@@ -1,7 +1,7 @@
 # LOT C01 — Design tokens + AppShell + five permanent tabs
 
 **Suggested branch:** `feat/C01-app-shell-router`  
-**Status at pack creation:** NOT STARTED
+**Status:** DONE locally; pending PR review/merge
 
 ## GOAL
 
@@ -50,12 +50,12 @@ Do not start if required dependencies are not DONE unless the user explicitly au
 
 ## ACCEPTANCE CRITERIA
 
-- [ ] Exactly five visible destinations in correct order.
-- [ ] Apps is always central.
-- [ ] Second tab label is Garaje, never Vehículo.
-- [ ] Switching tabs does not create duplicate navigation stacks.
-- [ ] Back behavior is predictable.
-- [ ] Design tokens are centralized.
+- [x] Exactly five visible destinations in correct order.
+- [x] Apps is always central.
+- [x] Second tab label is Garaje, never Vehículo.
+- [x] Switching tabs does not create duplicate navigation stacks.
+- [x] Back behavior is predictable.
+- [x] Design tokens are centralized.
 
 ## TESTS REQUIRED
 
@@ -93,3 +93,9 @@ Plus all global Stop Conditions in `AGENTS.md`.
 
 Complete `codex/templates/HANDOFF_TEMPLATE.md`.  
 Do **not** merge without explicit human approval.
+
+## GITHUB ADDENDUM
+
+Canonical remote: `https://github.com/sierraglobalcompany-rgb/PicoRadar.git`
+
+Before coding C01, bootstrap remote `main` at approved C00 SHA exactly as described in `GITHUB_REPOSITORY.md`. After C01, push branch and open PR to `main`; do not merge.
