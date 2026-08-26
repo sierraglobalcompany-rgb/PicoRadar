@@ -61,7 +61,7 @@ Use `server/.env.example` as the local template. Do not commit `server/.env`, re
 
 ## CI
 
-GitHub Actions runs separate mobile and server gates on pull requests and matching pushes. Mobile pins Flutter `3.47.1`, Java 17 and Android API 36, then runs pub get, format, analyze, optional build_runner, tests with coverage and the dev debug APK build. Server pins PHP `8.3`, installs Composer dependencies with `pdo_sqlite`, runs Pint, checks migrations in pretend mode and runs Laravel tests. Dependabot opens weekly PRs for GitHub Actions, Flutter pub and Composer updates; no auto-merge is configured.
+GitHub Actions runs separate mobile and server gates on pull requests and matching pushes. Mobile pins Flutter `3.47.1`, Java 17 and Android API 36, then runs pub get, format, analyze, optional build_runner, tests with coverage and the dev debug APK build. Server pins PHP `8.5` to match the current Composer lock while staying inside the PHP `8.3+` baseline, installs dependencies with `pdo_sqlite`, runs Pint, checks migrations in pretend mode and runs Laravel tests. Dependabot opens weekly PRs for GitHub Actions, Flutter pub and Composer updates; no auto-merge is configured.
 
 ## C00 Scope
 

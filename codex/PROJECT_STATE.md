@@ -35,7 +35,7 @@ At the end of every lot update:
 
 - Branch: `feat/C02-ci-quality-gates`
 - Lot status: C02 DONE locally; pending PR review/merge.
-- Test summary: GitHub Actions YAML validated locally; Flutter pub get/format/analyze/test/dev debug APK passed; Laravel install/Pint/test passed. Local PHP lacks `pdo_sqlite`, so migration pretend is pinned in CI instead of the Windows local runtime.
+- Test summary: GitHub Actions YAML validated locally; Flutter pub get/format/analyze/test/dev debug APK passed; Laravel install/Pint/test passed. Server CI pins PHP 8.5 because the current Composer lock requires PHP >=8.4.1 transitive Symfony packages; local PHP lacks `pdo_sqlite`, so migration pretend is pinned in CI instead of the Windows local runtime.
 - Physical QA status: Not required for C02.
 - Blockers: None.
 - Next lots unblocked: C03 after human kickoff/review. C01 remains independent and pending review.
