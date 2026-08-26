@@ -27,6 +27,7 @@ $env:JAVA_HOME='C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot'
 $env:Path='C:\Users\felip\.codex\tooling\flutter_3.47.1\flutter\bin;' + $env:JAVA_HOME + '\bin;' + $env:Path
 cd mobile
 flutter pub get
+dart run build_runner build
 dart format --output=none --set-exit-if-changed .
 flutter analyze
 flutter test
@@ -45,6 +46,10 @@ Configured Android flavors:
 | `prod` | `co.picoradar.app` | `PicoRadar: Pico y Placa` |
 | `staging` | `co.picoradar.app.staging` | `PicoRadar Staging` |
 | `dev` | `co.picoradar.app.dev` | `PicoRadar Dev` |
+
+## C03 Local Database
+
+The local Drift database lives in `mobile/lib/core/database/` with `schemaVersion = 1`. The initial schema is intentionally small: `vehicles`, `vehicle_obligations`, `notification_preferences` and `dataset_versions`, with indexes for vehicle plates, obligation lookups/due dates and dataset keys. GPS history, trip history, dataset imports, UI repositories and SQLCipher remain out of scope.
 
 ## Server
 
@@ -69,4 +74,4 @@ GitHub Actions runs separate mobile and server gates on pull requests and matchi
 
 ## Current Scope
 
-C00 creates repository foundation, Flutter/Laravel scaffolds, Android flavors and smoke tests. C01 adds design tokens, Riverpod/go_router bootstrap, the five-tab app shell, root placeholders and shell/router tests. C02 adds CI quality gates and Dependabot. Drift, Firebase, GPS, account/cloud, the Apps 3x3 launcher and product feature screens remain out of scope until their approved lots.
+C00 creates repository foundation, Flutter/Laravel scaffolds, Android flavors and smoke tests. C01 adds design tokens, Riverpod/go_router bootstrap, the five-tab app shell, root placeholders and shell/router tests. C02 adds CI quality gates and Dependabot. C03 adds the Drift/SQLite schema skeleton and migration harness only. Firebase, GPS, account/cloud, the Apps 3x3 launcher and product feature screens remain out of scope until their approved lots.
