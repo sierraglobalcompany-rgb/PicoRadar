@@ -33,6 +33,10 @@ flutter build apk --debug --flavor dev
 flutter run --flavor dev --dart-define=APP_ENV=dev
 ```
 
+## C01 App shell
+
+Mobile now has the approved C01 shell only: `Inicio`, `Garaje`, `Apps`, `Viaje`, `Conducir`. The tabs are implemented with `go_router` branch navigation so each root preserves its local state. The temporary immersive preview route lives outside the tab shell and is opened with stack navigation, so Android back returns to the invoking tab.
+
 Configured Android flavors:
 
 | Flavor | Application ID | Label |
@@ -53,6 +57,6 @@ php artisan test
 
 Use `server/.env.example` as the local template. Do not commit `server/.env`, real API keys, signing keys, database passwords, or provider credentials.
 
-## C00 Scope
+## Current Scope
 
-C00 only creates repository foundation, Flutter/Laravel scaffolds, Android flavors and smoke tests. Product navigation, Drift, Riverpod, go_router, Firebase, GPS, routes, datasets and feature screens start in later lots.
+C01 only adds design tokens, Riverpod/go_router bootstrap, the five-tab app shell, root placeholders and shell/router tests. It does not add C02+ CI, Drift, Firebase, GPS, account/cloud, the Apps 3x3 launcher, or product feature screens.
