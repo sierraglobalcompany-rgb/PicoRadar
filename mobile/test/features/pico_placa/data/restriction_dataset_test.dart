@@ -160,6 +160,7 @@ void main() {
 
     expect(loaded.coverageKnown, isTrue);
     expect(loaded.dataIsStale, isTrue);
+    expect(loaded.staleAfter?.toUtc(), DateTime.utc(2026, 8, 1));
   });
 
   test('staleAfter boundary is inclusive', () async {
@@ -180,6 +181,22 @@ void main() {
 
     expect(fresh.dataIsStale, isFalse);
     expect(stale.dataIsStale, isTrue);
+  });
+
+  test('staleAfter compares real instants independent of device wall clock', () async {
+    await importRestrictionsDataset(
+      db,
+      _dataset(coveragePatch: {'staleAfter': '2026-09-01T05:00:00Z'}),
+    );
+
+    final loaded = await RestrictionStore(db).loadCoverage(
+      'synthetic_test_jurisdiction',
+      VehicleKind.car,
+      VehicleServiceType.private,
+      DateTime.parse('2026-08-31T20:30:00-10:00'),
+    );
+
+    expect(loaded.dataIsStale, isTrue);
   });
 
   test('source metadata reaches engine evaluation', () async {
@@ -334,6 +351,32 @@ void main() {
 
     final rows = await db.select(db.restrictionCoverages).get();
     expect(rows, hasLength(4));
+  });
+
+  test('bundled staleAfter values represent Colombia midnight', () async {
+    await importRestrictionsDataset(db, await _assetDataset());
+
+    final rows = await db.select(db.restrictionCoverages).get();
+    final staleAfterById = {
+      for (final row in rows) row.id: row.staleAfter.toUtc(),
+    };
+
+    expect(
+      staleAfterById['co-ant-medellin:car:private'],
+      DateTime.utc(2027, 1, 1, 5),
+    );
+    expect(
+      staleAfterById['co-ant-medellin:motorcycle:private'],
+      DateTime.utc(2027, 1, 1, 5),
+    );
+    expect(
+      staleAfterById['co-dc-bogota:car:private'],
+      DateTime.utc(2026, 9, 1, 5),
+    );
+    expect(
+      staleAfterById['co-dc-bogota:car:taxi'],
+      DateTime.utc(2026, 9, 1, 5),
+    );
   });
 }
 

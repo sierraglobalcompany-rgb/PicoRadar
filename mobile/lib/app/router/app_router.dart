@@ -6,6 +6,7 @@ import '../../features/garage/presentation/garage_screen.dart';
 import '../../features/garage/presentation/vehicle_detail_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/onboarding/presentation/onboarding_vehicle_screen.dart';
+import '../../features/pico_placa/presentation/pico_detail_screen.dart';
 import 'app_routes.dart';
 import 'immersive_placeholder_screen.dart';
 import 'root_placeholder_screen.dart';
@@ -25,6 +26,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           _rootBranch(AppTab.trip),
           _rootBranch(AppTab.drive),
         ],
+      ),
+      GoRoute(
+        path: AppRoute.pico.path,
+        builder: (context, state) => const PicoDetailScreen(),
       ),
       GoRoute(
         path: AppRoute.vehicleOnboarding.path,

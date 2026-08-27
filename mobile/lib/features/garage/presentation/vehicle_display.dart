@@ -11,6 +11,14 @@ String vehicleTypeLabel(VehicleProfile vehicle) {
   };
 }
 
+String shortVehicleTypeLabel(VehicleProfile vehicle) {
+  return switch ((vehicle.kind, vehicle.serviceType)) {
+    (VehicleKind.car, VehicleServiceType.taxi) => 'Taxi',
+    (VehicleKind.motorcycle, _) => 'Moto',
+    _ => 'Particular',
+  };
+}
+
 IconData vehicleIcon(VehicleProfile vehicle) {
   return switch ((vehicle.kind, vehicle.serviceType)) {
     (VehicleKind.car, VehicleServiceType.taxi) => Icons.local_taxi,

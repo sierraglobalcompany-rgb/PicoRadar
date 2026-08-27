@@ -12,7 +12,7 @@
           "vehicleKind": "car",
           "serviceType": "private",
           "verifiedAt": "2026-08-27T00:00:00Z",
-          "staleAfter": "2027-01-01T00:00:00Z",
+          "staleAfter": "2027-01-01T05:00:00Z",
           "sourceUrls": [
             "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
             "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/"
@@ -144,7 +144,7 @@
           "vehicleKind": "motorcycle",
           "serviceType": "private",
           "verifiedAt": "2026-08-27T00:00:00Z",
-          "staleAfter": "2027-01-01T00:00:00Z",
+          "staleAfter": "2027-01-01T05:00:00Z",
           "sourceUrls": [
             "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
             "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/"
@@ -282,7 +282,7 @@
           "vehicleKind": "car",
           "serviceType": "private",
           "verifiedAt": "2026-08-27T00:00:00Z",
-          "staleAfter": "2026-09-01T00:00:00Z",
+          "staleAfter": "2026-09-01T05:00:00Z",
           "sourceUrls": [
             "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-bogota-vehiculos-particulares-1-31-de-agosto-de-2026",
             "https://www.movilidadbogota.gov.co/pico-y-placa"
@@ -358,7 +358,7 @@
           "vehicleKind": "car",
           "serviceType": "taxi",
           "verifiedAt": "2026-08-27T00:00:00Z",
-          "staleAfter": "2026-09-01T00:00:00Z",
+          "staleAfter": "2026-09-01T05:00:00Z",
           "sourceUrls": [
             "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-bogota-servicio-transporte-especial-1-31-agosto-de-2026",
             "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-en-bogota-de-particulares-y-taxis-lunes-24-agosto-2026",

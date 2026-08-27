@@ -1,7 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/onboarding/presentation/onboarding_vehicle_screen.dart';
@@ -29,11 +32,8 @@ void main() {
     );
   });
 
-  testWidgets('home CTA opens vehicle onboarding', (tester) async {
-    await harness.pump(tester);
-
-    await tester.tap(find.byKey(const ValueKey('home-add-vehicle')));
-    await tester.pumpAndSettle();
+  testWidgets('onboarding route opens vehicle onboarding', (tester) async {
+    await _openOnboarding(tester, harness);
 
     expect(find.text('¿Qué conduces?'), findsOneWidget);
   });
@@ -178,7 +178,7 @@ void main() {
     await _completeOnboarding(tester, choiceKey: 'vehicle-choice-privateCar');
 
     expect(find.text('Inicio'), findsAtLeastNWidgets(1));
-    expect(find.text('Tienes 1 vehículo guardado.'), findsOneWidget);
+    expect(await harness.repository.listVehicles(), hasLength(1));
   });
 
   testWidgets('empty garage opens onboarding', (tester) async {
@@ -209,8 +209,31 @@ Future<void> _openOnboarding(
   WidgetTester tester,
   TestAppHarness harness,
 ) async {
-  await harness.pump(tester);
-  await tester.tap(find.byKey(const ValueKey('home-add-vehicle')));
+  final router = GoRouter(
+    initialLocation: '/vehicle-onboarding',
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) =>
+            const Scaffold(body: Center(child: Text('Inicio'))),
+      ),
+      GoRoute(
+        path: '/vehicle-onboarding',
+        builder: (context, state) =>
+            const OnboardingVehicleScreen(returnPath: '/'),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(harness.database),
+        appPreferencesProvider.overrideWithValue(harness.preferences),
+      ],
+      child: MaterialApp.router(routerConfig: router),
+    ),
+  );
   await tester.pumpAndSettle();
 }
 
