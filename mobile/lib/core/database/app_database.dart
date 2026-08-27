@@ -69,19 +69,41 @@ class DatasetVersions extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@TableIndex(
+  name: 'restriction_coverages_lookup_idx',
+  columns: {#jurisdictionId, #vehicleKind, #serviceType},
+  unique: true,
+)
+class RestrictionCoverages extends Table {
+  TextColumn get id => text()();
+  TextColumn get jurisdictionId => text().withLength(min: 1, max: 64)();
+  TextColumn get jurisdictionName => text().withLength(min: 1, max: 128)();
+  TextColumn get vehicleKind => text().withLength(min: 1, max: 32)();
+  TextColumn get serviceType => text().withLength(min: 1, max: 32)();
+  TextColumn get rulesJson => text()();
+  DateTimeColumn get verifiedAt => dateTime()();
+  DateTimeColumn get staleAfter => dateTime()();
+  TextColumn get sourceUrlsJson => text()();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Vehicles,
     VehicleObligations,
     NotificationPreferences,
     DatasetVersions,
+    RestrictionCoverages,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'picoradar'));
 
-  static const currentSchemaVersion = 2;
+  static const currentSchemaVersion = 3;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -110,6 +132,11 @@ class AppDatabase extends _$AppDatabase {
       await migrator.addColumn(vehicles, vehicles.color);
       await migrator.addColumn(vehicles, vehicles.fuel);
       from = 2;
+    }
+
+    if (from == 2) {
+      await migrator.createTable(restrictionCoverages);
+      from = 3;
     }
 
     if (from == to) {

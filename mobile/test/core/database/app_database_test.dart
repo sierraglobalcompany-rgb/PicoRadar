@@ -23,7 +23,7 @@ void main() {
       await db.close();
     });
 
-    test('creates schema version 2 with the C06 tables', () async {
+    test('creates schema version 3 with restriction coverages', () async {
       expect(db.schemaVersion, AppDatabase.currentSchemaVersion);
 
       await db
@@ -70,6 +70,7 @@ void main() {
       expect(await db.select(db.notificationPreferences).get(), hasLength(1));
       expect(await db.select(db.datasetVersions).get(), hasLength(1));
       expect(await db.select(db.vehicleObligations).get(), hasLength(1));
+      expect(await db.select(db.restrictionCoverages).get(), isEmpty);
     });
 
     test('migrates schema v1 to v2 preserving existing vehicles', () async {
@@ -88,7 +89,7 @@ void main() {
             .get();
         await migrated.close();
 
-        expect(version.single.data['user_version'], 2);
+        expect(version.single.data['user_version'], 3);
         expect(vehicles, hasLength(1));
         expect(vehicles.single.id, 'vehicle-1');
         expect(vehicles.single.plate, 'ABC123');
@@ -104,6 +105,38 @@ void main() {
         await _deleteTempDir(tempDir);
       }
     });
+
+    test(
+      'migrates schema v2 to v3 preserving vehicles and adding coverages',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'picoradar_migration_v2_',
+        );
+        final dbPath = '${tempDir.path}${Platform.pathSeparator}app.sqlite';
+
+        try {
+          _createLegacyV2Database(dbPath);
+
+          final migrated = AppDatabase(NativeDatabase(File(dbPath)));
+          final vehicles = await migrated.select(migrated.vehicles).get();
+          final coverages = await migrated
+              .select(migrated.restrictionCoverages)
+              .get();
+          final version = await migrated
+              .customSelect('PRAGMA user_version')
+              .get();
+          await migrated.close();
+
+          expect(version.single.data['user_version'], 3);
+          expect(vehicles, hasLength(1));
+          expect(vehicles.single.id, 'vehicle-1');
+          expect(vehicles.single.plate, 'ABC123');
+          expect(coverages, isEmpty);
+        } finally {
+          await _deleteTempDir(tempDir);
+        }
+      },
+    );
 
     test('enforces local identity constraints and vehicle relation', () async {
       await db
@@ -132,7 +165,7 @@ void main() {
       );
     });
 
-    test('reopens schema 2 without destroying existing local data', () async {
+    test('reopens schema 3 without destroying existing local data', () async {
       final tempDir = await Directory.systemTemp.createTemp('picoradar_db_');
       final dbPath = '${tempDir.path}${Platform.pathSeparator}app.sqlite';
 
@@ -154,6 +187,29 @@ void main() {
       }
     });
   });
+}
+
+void _createLegacyV2Database(String path) {
+  _createLegacyV1Database(path);
+  final sqlite = sqlite3.open(path);
+
+  try {
+    sqlite.execute(
+      "ALTER TABLE vehicles ADD COLUMN service_type TEXT NOT NULL DEFAULT 'private'",
+    );
+    sqlite.execute('ALTER TABLE vehicles ADD COLUMN subtype TEXT NULL');
+    sqlite.execute(
+      'ALTER TABLE vehicles ADD COLUMN registration_city TEXT NULL',
+    );
+    sqlite.execute('ALTER TABLE vehicles ADD COLUMN brand TEXT NULL');
+    sqlite.execute('ALTER TABLE vehicles ADD COLUMN model TEXT NULL');
+    sqlite.execute('ALTER TABLE vehicles ADD COLUMN year INTEGER NULL');
+    sqlite.execute('ALTER TABLE vehicles ADD COLUMN color TEXT NULL');
+    sqlite.execute('ALTER TABLE vehicles ADD COLUMN fuel TEXT NULL');
+    sqlite.execute('PRAGMA user_version = 2');
+  } finally {
+    sqlite.close();
+  }
 }
 
 void _createLegacyV1Database(String path) {
