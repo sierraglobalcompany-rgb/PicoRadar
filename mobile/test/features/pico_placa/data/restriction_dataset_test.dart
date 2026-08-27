@@ -183,24 +183,21 @@ void main() {
     expect(stale.dataIsStale, isTrue);
   });
 
-  test(
-    'staleAfter compares real instants independent of device wall clock',
-    () async {
-      await importRestrictionsDataset(
-        db,
-        _dataset(coveragePatch: {'staleAfter': '2026-09-01T05:00:00Z'}),
-      );
+  test('staleAfter compares real instants independent of device wall clock', () async {
+    await importRestrictionsDataset(
+      db,
+      _dataset(coveragePatch: {'staleAfter': '2026-09-01T05:00:00Z'}),
+    );
 
-      final loaded = await RestrictionStore(db).loadCoverage(
-        'synthetic_test_jurisdiction',
-        VehicleKind.car,
-        VehicleServiceType.private,
-        DateTime.parse('2026-08-31T20:30:00-10:00'),
-      );
+    final loaded = await RestrictionStore(db).loadCoverage(
+      'synthetic_test_jurisdiction',
+      VehicleKind.car,
+      VehicleServiceType.private,
+      DateTime.parse('2026-08-31T20:30:00-10:00'),
+    );
 
-      expect(loaded.dataIsStale, isTrue);
-    },
-  );
+    expect(loaded.dataIsStale, isTrue);
+  });
 
   test('source metadata reaches engine evaluation', () async {
     await importRestrictionsDataset(db, _dataset());
