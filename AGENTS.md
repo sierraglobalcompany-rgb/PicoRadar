@@ -161,3 +161,10 @@ No decir solo “todo funciona”.
 - Never merge a PR without explicit human approval.
 - Never force-push `main`.
 - Do not rewrite approved C00 SHA `14f7b1ae1ffa8a4d9b79a8a5f9a1093b7984185b`.
+
+## 13. Canonical evidence
+
+- Git commit SHA, pull request and GitHub Actions are the canonical evidence for each lot.
+- Do not generate ChatGPT ZIP packages for every lot.
+- Do not regenerate `SHA256SUMS.txt` or `manifest_sha256.txt` for every lot.
+- Generate hashes or ZIP packages only when the user explicitly requests an export package.
