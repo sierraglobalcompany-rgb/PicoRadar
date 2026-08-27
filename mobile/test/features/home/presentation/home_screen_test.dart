@@ -155,6 +155,99 @@ void main() {
     expect(find.text('Tienes Pico y Placa'), findsOneWidget);
   });
 
+  testWidgets('notification card starts with explicit activation CTA', (
+    tester,
+  ) async {
+    await _readyHome(harness, plate: 'ABC123', jurisdictionId: 'co-ant-medellin');
+
+    await _pumpHome(tester, harness);
+
+    expect(find.byKey(const ValueKey('home-enable-notifications')), findsOneWidget);
+    expect(find.byKey(const ValueKey('pico-alerts-enabled')), findsNothing);
+  });
+
+  testWidgets('denied notification permission does not show prompt button again', (
+    tester,
+  ) async {
+    await _readyHome(harness, plate: 'ABC123', jurisdictionId: 'co-ant-medellin');
+    await savePicoAlertPreferences(
+      harness.preferences,
+      const PicoAlertPreferences(
+        enabled: true,
+        dayBeforeEnabled: true,
+        sameDayEnabled: true,
+        dayBeforeMinute: 19 * 60,
+        sameDayMinute: 5 * 60,
+        permissionRequested: true,
+        permissionGranted: false,
+      ),
+    );
+
+    await _pumpHome(tester, harness);
+
+    expect(find.byKey(const ValueKey('home-enable-notifications')), findsNothing);
+    expect(
+      find.textContaining('Permiso de notificaciones desactivado'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('granted notification permission shows alert settings', (
+    tester,
+  ) async {
+    await _readyHome(harness, plate: 'ABC123', jurisdictionId: 'co-ant-medellin');
+    await savePicoAlertPreferences(
+      harness.preferences,
+      const PicoAlertPreferences(
+        enabled: true,
+        dayBeforeEnabled: true,
+        sameDayEnabled: true,
+        dayBeforeMinute: 19 * 60,
+        sameDayMinute: 5 * 60,
+        permissionRequested: true,
+        permissionGranted: true,
+      ),
+    );
+
+    await _pumpHome(tester, harness);
+
+    expect(find.text('Recordatorios habilitados'), findsOneWidget);
+    expect(find.text('Día anterior'), findsOneWidget);
+    expect(find.text('Hora día anterior'), findsOneWidget);
+    expect(find.text('19:00'), findsOneWidget);
+    expect(find.text('Mismo día'), findsOneWidget);
+    expect(find.text('Hora mismo día'), findsOneWidget);
+    expect(find.text('05:00'), findsOneWidget);
+  });
+
+  testWidgets('alert preference toggle is saved without requesting permission again', (
+    tester,
+  ) async {
+    await _readyHome(harness, plate: 'ABC123', jurisdictionId: 'co-ant-medellin');
+    await savePicoAlertPreferences(
+      harness.preferences,
+      const PicoAlertPreferences(
+        enabled: true,
+        dayBeforeEnabled: true,
+        sameDayEnabled: true,
+        dayBeforeMinute: 19 * 60,
+        sameDayMinute: 5 * 60,
+        permissionRequested: true,
+        permissionGranted: true,
+      ),
+    );
+
+    await _pumpHome(tester, harness);
+    await tester.ensureVisible(find.byKey(const ValueKey('pico-alerts-enabled')));
+    await tester.tap(find.byKey(const ValueKey('pico-alerts-enabled')));
+    await tester.pump();
+
+    final loaded = await loadPicoAlertPreferences(harness.preferences);
+    expect(loaded.enabled, isFalse);
+    expect(loaded.permissionRequested, isTrue);
+    expect(loaded.permissionGranted, isTrue);
+  });
+
   testWidgets('pico detail shows próximos 7 días', (tester) async {
     await _readyHome(
       harness,
@@ -167,6 +260,18 @@ void main() {
 
     expect(find.text('Próximos 7 días'), findsOneWidget);
     expect(find.text('Fuente oficial: bogota.gov.co'), findsOneWidget);
+  });
+
+  testWidgets('pico detail does not show allowed after staleAfter', (
+    tester,
+  ) async {
+    harness.now = DateTime(2026, 8, 31, 7);
+    await _readyHome(harness, plate: 'ABC123', jurisdictionId: 'co-dc-bogota');
+
+    await _pumpDetail(tester, harness);
+
+    expect(find.text('Datos desactualizados'), findsWidgets);
+    expect(find.text('Puedes circular'), findsNothing);
   });
 
   testWidgets('festivo Bogotá no aplica cuando la regla lo define', (
@@ -299,11 +404,17 @@ class _FakeRestrictionStore extends RestrictionStore {
       );
     }
 
-    final stale = this.now.isAfter(DateTime(2026, 8, 31, 23, 59));
+    final staleAfter = jurisdictionId == 'co-ant-medellin'
+        ? DateTime.utc(2027, 1, 1, 5)
+        : DateTime.utc(2026, 9, 1, 5);
+    final stale = jurisdictionId == 'co-ant-medellin'
+        ? this.now.isAfter(DateTime(2026, 12, 31, 23, 59))
+        : this.now.isAfter(DateTime(2026, 8, 31, 23, 59));
     if (jurisdictionId == 'co-ant-medellin') {
       return RestrictionRuleSet(
         coverageKnown: true,
         dataIsStale: stale,
+        staleAfter: staleAfter,
         rules: [
           _rule(
             id: 'medellin-particular-thursday',
@@ -325,7 +436,17 @@ class _FakeRestrictionStore extends RestrictionStore {
     return RestrictionRuleSet(
       coverageKnown: true,
       dataIsStale: stale,
+      staleAfter: staleAfter,
       rules: [
+        _rule(
+          id: 'bogota-private-monday',
+          jurisdictionId: jurisdictionId,
+          vehicleKinds: {VehicleKind.car},
+          serviceTypes: {VehicleServiceType.private},
+          weekdays: {DateTime.monday},
+          digits: {3},
+          appliesOnHolidays: false,
+        ),
         _rule(
           id: 'bogota-private-thursday',
           jurisdictionId: jurisdictionId,
@@ -376,6 +497,7 @@ RestrictionRule _rule({
     RestrictionTimeWindow(startMinute: 360, endMinute: 1260),
   ],
   bool appliesOnHolidays = true,
+  DateTime? validUntil,
 }) {
   return RestrictionRule(
     id: id,
@@ -383,7 +505,7 @@ RestrictionRule _rule({
     priority: 100,
     effect: RestrictionEffect.restrict,
     validFrom: DateTime(2026, 8),
-    validUntil: DateTime(2026, 8, 31),
+    validUntil: validUntil ?? DateTime(2026, 8, 31, 23, 59, 59),
     vehicleKinds: vehicleKinds,
     serviceTypes: serviceTypes,
     weekdays: weekdays,

@@ -11,7 +11,6 @@ import '../../garage/presentation/vehicle_display.dart';
 import '../../pico_placa/data/pico_preferences.dart';
 import '../../pico_placa/data/restriction_store.dart';
 import '../../pico_placa/domain/restriction_day_evaluation.dart';
-import '../../pico_placa/platform/pico_notifications.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -30,7 +29,6 @@ class HomeScreen extends ConsumerWidget {
         data: (_) => vehicles.when(
           data: (items) {
             if (items.isEmpty) {
-              _updateWidgetNoVehicle(ref);
               return const _HomeWelcome();
             }
             return active.when(
@@ -86,16 +84,6 @@ class HomeScreen extends ConsumerWidget {
     });
   }
 
-  void _updateWidgetNoVehicle(WidgetRef ref) {
-    final bridge = ref.read(picoWidgetBridgeProvider);
-    Future<void>.microtask(() async {
-      try {
-        await bridge.updateNoVehicle();
-      } on MissingPluginException {
-        return;
-      }
-    });
-  }
 }
 
 class _HomeReady extends ConsumerWidget {
@@ -117,7 +105,6 @@ class _HomeReady extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final jurisdiction = _selectedJurisdiction;
     if (jurisdiction == null) {
-      _updateWidgetMissingJurisdiction(ref);
       return _HomeScaffold(
         children: [
           _ActiveVehicleCard(
@@ -140,7 +127,7 @@ class _HomeReady extends ConsumerWidget {
             jurisdiction.id,
             activeVehicle.kind,
             activeVehicle.serviceType,
-            ref.read(bogotaNowProvider),
+            ref.read(currentInstantProvider),
           ),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
@@ -153,8 +140,6 @@ class _HomeReady extends ConsumerWidget {
           jurisdiction,
           DateTime(now.year, now.month, now.day + 1),
         );
-        _updateWidgetConfigured(ref, jurisdiction.name);
-        _rescheduleIfAllowed(ref, jurisdiction, alertPreferences);
         return _HomeScaffold(
           children: [
             Text(
@@ -263,106 +248,6 @@ class _HomeReady extends ConsumerWidget {
       ),
     );
   }
-
-  void _updateWidgetMissingJurisdiction(WidgetRef ref) {
-    final bridge = ref.read(picoWidgetBridgeProvider);
-    Future<void>.microtask(() async {
-      try {
-        await bridge.updateMissingJurisdiction(activeVehicle);
-      } on MissingPluginException {
-        return;
-      }
-    });
-  }
-
-  void _updateWidgetConfigured(WidgetRef ref, String jurisdictionName) {
-    final bridge = ref.read(picoWidgetBridgeProvider);
-    Future<void>.microtask(() async {
-      try {
-        await bridge.updateConfigured(
-          vehicle: activeVehicle,
-          jurisdictionName: jurisdictionName,
-        );
-      } on MissingPluginException {
-        return;
-      }
-    });
-  }
-
-  void _rescheduleIfAllowed(
-    WidgetRef ref,
-    RestrictionJurisdiction jurisdiction,
-    PicoAlertPreferences alertPreferences,
-  ) {
-    if (!alertPreferences.permissionRequested) {
-      return;
-    }
-    final store = ref.read(restrictionStoreProvider);
-    final now = ref.read(bogotaNowProvider);
-    final scheduler = ref.read(picoNotificationSchedulerProvider);
-    Future<void>.microtask(() async {
-      final plans = await buildPicoNotificationPlans(
-        store: store,
-        now: now,
-        vehicles: vehicles,
-        jurisdiction: jurisdiction,
-        alertPreferences: alertPreferences,
-      );
-      try {
-        await scheduler.initialize();
-        await scheduler.reschedule(plans);
-      } on MissingPluginException {
-        return;
-      }
-    });
-  }
-}
-
-Future<List<PicoNotificationPlan>> buildPicoNotificationPlans({
-  required RestrictionStore store,
-  required DateTime now,
-  required List<VehicleProfile> vehicles,
-  required RestrictionJurisdiction jurisdiction,
-  required PicoAlertPreferences alertPreferences,
-}) async {
-  final days = <PicoVehicleRestrictionDay>[];
-  for (final vehicle in vehicles) {
-    final ruleSet = await store.loadCoverage(
-      jurisdiction.id,
-      vehicle.kind,
-      vehicle.serviceType,
-      now,
-    );
-    for (var offset = 0; offset < 14; offset += 1) {
-      final date = DateTime(now.year, now.month, now.day + offset);
-      days.add(
-        PicoVehicleRestrictionDay(
-          vehicle: vehicle,
-          jurisdictionName: jurisdiction.name,
-          date: date,
-          evaluation: evaluateRestrictionDay(
-            ruleSet: ruleSet,
-            jurisdictionId: jurisdiction.id,
-            plate: vehicle.plate,
-            vehicleKind: vehicle.kind,
-            serviceType: vehicle.serviceType,
-            date: date,
-          ),
-        ),
-      );
-    }
-  }
-  return planPicoNotifications(
-    days: days,
-    settings: PicoNotificationSettings(
-      enabled: alertPreferences.enabled,
-      dayBeforeEnabled: alertPreferences.dayBeforeEnabled,
-      sameDayEnabled: alertPreferences.sameDayEnabled,
-      dayBeforeMinute: alertPreferences.dayBeforeMinute,
-      sameDayMinute: alertPreferences.sameDayMinute,
-    ),
-    nowBogota: now,
-  );
 }
 
 class _HomeScaffold extends StatelessWidget {
@@ -554,36 +439,139 @@ class _NotificationCard extends ConsumerWidget {
             const SizedBox(height: AppSpacing.s),
             const Text('Recordatorios locales, sin cuenta ni servidor.'),
             const SizedBox(height: AppSpacing.m),
-            FilledButton.icon(
-              key: const ValueKey('home-enable-notifications'),
-              onPressed: () async {
-                await ref
-                    .read(appPreferencesProvider)
-                    .setBool(picoNotificationPermissionRequestedKey, true);
-                var granted = false;
-                try {
-                  final scheduler = ref.read(picoNotificationSchedulerProvider);
-                  await scheduler.initialize();
-                  granted = await scheduler.requestPermission();
-                } on MissingPluginException {
-                  granted = true;
-                }
-                if (!granted && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Permiso de notificaciones denegado.'),
-                    ),
-                  );
-                }
-                ref.invalidate(picoAlertPreferencesProvider);
-              },
-              icon: const Icon(Icons.notifications_active_outlined),
-              label: const Text('Activar notificaciones'),
-            ),
+            if (!alertPreferences.permissionRequested)
+              FilledButton.icon(
+                key: const ValueKey('home-enable-notifications'),
+                onPressed: () => _requestPermission(context, ref),
+                icon: const Icon(Icons.notifications_active_outlined),
+                label: const Text('Activar notificaciones'),
+              )
+            else if (!alertPreferences.permissionGranted)
+              const Text(
+                'Permiso de notificaciones desactivado. Puedes habilitarlo desde los ajustes del sistema.',
+              )
+            else ...[
+              SwitchListTile(
+                key: const ValueKey('pico-alerts-enabled'),
+                value: alertPreferences.enabled,
+                onChanged: (value) => _save(
+                  ref,
+                  alertPreferences.copyWith(enabled: value),
+                ),
+                title: const Text('Recordatorios habilitados'),
+                contentPadding: EdgeInsets.zero,
+              ),
+              SwitchListTile(
+                key: const ValueKey('pico-day-before-enabled'),
+                value: alertPreferences.dayBeforeEnabled,
+                onChanged: alertPreferences.enabled
+                    ? (value) => _save(
+                        ref,
+                        alertPreferences.copyWith(dayBeforeEnabled: value),
+                      )
+                    : null,
+                title: const Text('Día anterior'),
+                contentPadding: EdgeInsets.zero,
+              ),
+              ListTile(
+                key: const ValueKey('pico-day-before-time'),
+                enabled:
+                    alertPreferences.enabled &&
+                    alertPreferences.dayBeforeEnabled,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.schedule),
+                title: const Text('Hora día anterior'),
+                trailing: Text(_formatAlertTime(alertPreferences.dayBeforeMinute)),
+                onTap: () => _pickTime(
+                  context,
+                  ref,
+                  initialMinute: alertPreferences.dayBeforeMinute,
+                  onSelected: (minute) => alertPreferences.copyWith(
+                    dayBeforeMinute: minute,
+                  ),
+                ),
+              ),
+              SwitchListTile(
+                key: const ValueKey('pico-same-day-enabled'),
+                value: alertPreferences.sameDayEnabled,
+                onChanged: alertPreferences.enabled
+                    ? (value) => _save(
+                        ref,
+                        alertPreferences.copyWith(sameDayEnabled: value),
+                      )
+                    : null,
+                title: const Text('Mismo día'),
+                contentPadding: EdgeInsets.zero,
+              ),
+              ListTile(
+                key: const ValueKey('pico-same-day-time'),
+                enabled:
+                    alertPreferences.enabled && alertPreferences.sameDayEnabled,
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.alarm),
+                title: const Text('Hora mismo día'),
+                trailing: Text(_formatAlertTime(alertPreferences.sameDayMinute)),
+                onTap: () => _pickTime(
+                  context,
+                  ref,
+                  initialMinute: alertPreferences.sameDayMinute,
+                  onSelected: (minute) => alertPreferences.copyWith(
+                    sameDayMinute: minute,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _requestPermission(BuildContext context, WidgetRef ref) async {
+    var granted = false;
+    try {
+      final scheduler = ref.read(picoNotificationSchedulerProvider);
+      await scheduler.initialize();
+      granted = await scheduler.requestPermission();
+    } on MissingPluginException {
+      granted = true;
+    }
+    await _save(
+      ref,
+      alertPreferences.copyWith(
+        permissionRequested: true,
+        permissionGranted: granted,
+      ),
+    );
+    if (!granted && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Permiso de notificaciones denegado.')),
+      );
+    }
+  }
+
+  Future<void> _pickTime(
+    BuildContext context,
+    WidgetRef ref, {
+    required int initialMinute,
+    required PicoAlertPreferences Function(int minute) onSelected,
+  }) async {
+    final selected = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: initialMinute ~/ 60,
+        minute: initialMinute % 60,
+      ),
+    );
+    if (selected == null) {
+      return;
+    }
+    await _save(ref, onSelected((selected.hour * 60) + selected.minute));
+  }
+
+  Future<void> _save(WidgetRef ref, PicoAlertPreferences value) async {
+    await savePicoAlertPreferences(ref.read(appPreferencesProvider), value);
+    ref.invalidate(picoAlertPreferencesProvider);
   }
 }
 
@@ -706,3 +694,5 @@ String _formatMinute(int minute) {
   return '${hour.toString().padLeft(2, '0')}:'
       '${minutes.toString().padLeft(2, '0')}';
 }
+
+String _formatAlertTime(int minute) => _formatMinute(minute);

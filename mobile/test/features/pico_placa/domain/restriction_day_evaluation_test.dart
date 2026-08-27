@@ -104,6 +104,60 @@ void main() {
     expect(result.status, RestrictionDayStatus.stale);
   });
 
+  test('Bogota coverage includes 31 August but not 1 September', () {
+    final ruleSet = _ruleSet(
+      staleAfter: DateTime.utc(2026, 9, 1, 5),
+      rules: [_rule(weekdays: {DateTime.monday})],
+    );
+
+    final covered = evaluateRestrictionDay(
+      ruleSet: ruleSet,
+      jurisdictionId: 'test',
+      plate: 'ABC123',
+      vehicleKind: VehicleKind.car,
+      serviceType: VehicleServiceType.private,
+      date: DateTime(2026, 8, 31),
+    );
+    final stale = evaluateRestrictionDay(
+      ruleSet: ruleSet,
+      jurisdictionId: 'test',
+      plate: 'ABC123',
+      vehicleKind: VehicleKind.car,
+      serviceType: VehicleServiceType.private,
+      date: DateTime(2026, 9, 1),
+    );
+
+    expect(covered.status, RestrictionDayStatus.restricted);
+    expect(stale.status, RestrictionDayStatus.stale);
+  });
+
+  test('Medellin coverage includes 31 December but not 1 January 2027', () {
+    final ruleSet = _ruleSet(
+      staleAfter: DateTime.utc(2027, 1, 1, 5),
+      rules: [_rule(weekdays: {DateTime.thursday})],
+    );
+
+    final covered = evaluateRestrictionDay(
+      ruleSet: ruleSet,
+      jurisdictionId: 'test',
+      plate: 'ABC123',
+      vehicleKind: VehicleKind.car,
+      serviceType: VehicleServiceType.private,
+      date: DateTime(2026, 12, 31),
+    );
+    final stale = evaluateRestrictionDay(
+      ruleSet: ruleSet,
+      jurisdictionId: 'test',
+      plate: 'ABC123',
+      vehicleKind: VehicleKind.car,
+      serviceType: VehicleServiceType.private,
+      date: DateTime(2027, 1, 1),
+    );
+
+    expect(covered.status, RestrictionDayStatus.restricted);
+    expect(stale.status, RestrictionDayStatus.stale);
+  });
+
   test('day without matching restriction is allowed', () {
     final result = _evaluate([
       _rule(weekdays: {DateTime.monday}),
@@ -115,18 +169,26 @@ void main() {
 
 RestrictionDayEvaluation _evaluate(List<RestrictionRule> rules) {
   return evaluateRestrictionDay(
-    ruleSet: RestrictionRuleSet(
-      coverageKnown: true,
-      dataIsStale: false,
-      rules: rules,
-      verifiedAt: DateTime(2026, 8, 27),
-      sourceUrls: const ['https://example.test/source'],
-    ),
+    ruleSet: _ruleSet(rules: rules),
     jurisdictionId: 'test',
     plate: 'ABC123',
     vehicleKind: VehicleKind.car,
     serviceType: VehicleServiceType.private,
     date: DateTime(2026, 8, 27),
+  );
+}
+
+RestrictionRuleSet _ruleSet({
+  required List<RestrictionRule> rules,
+  DateTime? staleAfter,
+}) {
+  return RestrictionRuleSet(
+    coverageKnown: true,
+    dataIsStale: false,
+    rules: rules,
+    verifiedAt: DateTime(2026, 8, 27),
+    staleAfter: staleAfter,
+    sourceUrls: const ['https://example.test/source'],
   );
 }
 

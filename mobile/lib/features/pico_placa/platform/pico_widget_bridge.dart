@@ -39,3 +39,37 @@ class PicoWidgetBridge {
     });
   }
 }
+
+class PicoWidgetSnapshotSync {
+  PicoWidgetSnapshotSync(this._bridge);
+
+  final PicoWidgetBridge _bridge;
+  String? _lastSnapshot;
+
+  Future<void> sync({
+    required VehicleProfile? vehicle,
+    required String? jurisdictionName,
+  }) async {
+    final snapshot = [
+      vehicle?.id ?? 'none',
+      vehicle?.plate ?? '',
+      vehicle == null ? '' : shortVehicleTypeLabel(vehicle),
+      jurisdictionName ?? '',
+    ].join('|');
+    if (_lastSnapshot == snapshot) {
+      return;
+    }
+
+    if (vehicle == null) {
+      await _bridge.updateNoVehicle();
+    } else if (jurisdictionName == null) {
+      await _bridge.updateMissingJurisdiction(vehicle);
+    } else {
+      await _bridge.updateConfigured(
+        vehicle: vehicle,
+        jurisdictionName: jurisdictionName,
+      );
+    }
+    _lastSnapshot = snapshot;
+  }
+}

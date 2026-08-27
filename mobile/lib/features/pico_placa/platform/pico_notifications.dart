@@ -3,6 +3,8 @@ import 'package:timezone/timezone.dart' as timezone;
 
 import '../../garage/data/vehicle_profile.dart';
 import '../../garage/presentation/vehicle_display.dart';
+import '../data/pico_preferences.dart';
+import '../data/restriction_store.dart';
 import '../domain/bogota_time.dart';
 import '../domain/restriction_day_evaluation.dart';
 
@@ -120,10 +122,16 @@ class PicoNotificationScheduler {
     : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   static const _channelId = 'pico_restriction_alerts';
+  static const picoPayload = '/pico';
 
   final FlutterLocalNotificationsPlugin _plugin;
+  bool _initialized = false;
+  String? _lastPlanSignature;
 
-  Future<void> initialize() async {
+  Future<void> initialize({void Function(String route)? onRoute}) async {
+    if (_initialized) {
+      return;
+    }
     await _plugin.initialize(
       settings: const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
@@ -133,7 +141,23 @@ class PicoNotificationScheduler {
           requestSoundPermission: false,
         ),
       ),
+      onDidReceiveNotificationResponse: (response) {
+        final route = picoRouteFromNotificationPayload(response.payload);
+        if (route != null) {
+          onRoute?.call(route);
+        }
+      },
     );
+    _initialized = true;
+
+    final launchDetails = await _plugin.getNotificationAppLaunchDetails();
+    final launchPayload = launchDetails?.didNotificationLaunchApp == true
+        ? launchDetails?.notificationResponse?.payload
+        : null;
+    final route = picoRouteFromNotificationPayload(launchPayload);
+    if (route != null) {
+      onRoute?.call(route);
+    }
   }
 
   Future<bool> requestPermission() async {
@@ -150,8 +174,24 @@ class PicoNotificationScheduler {
     return androidGranted ?? iosGranted ?? true;
   }
 
+  Future<bool?> areNotificationsEnabled() async {
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    final androidEnabled = await android?.areNotificationsEnabled();
+    if (androidEnabled != null) {
+      return androidEnabled;
+    }
+    return null;
+  }
+
   Future<void> reschedule(List<PicoNotificationPlan> plans) async {
-    await _plugin.cancelAll();
+    final signature = _planSignature(plans);
+    if (_lastPlanSignature == signature) {
+      return;
+    }
+    await cancelPicoNotifications();
     for (final plan in plans) {
       await _plugin.zonedSchedule(
         id: plan.id,
@@ -172,7 +212,84 @@ class PicoNotificationScheduler {
         payload: plan.payload,
       );
     }
+    _lastPlanSignature = signature;
   }
+
+  Future<void> cancelPicoNotifications() async {
+    final pending = await _plugin.pendingNotificationRequests();
+    final ids = picoPendingNotificationIdsToCancel(pending);
+    for (final id in ids) {
+      await _plugin.cancel(id: id);
+    }
+    _lastPlanSignature = null;
+  }
+}
+
+String? picoRouteFromNotificationPayload(String? payload) {
+  return payload == PicoNotificationScheduler.picoPayload ? payload : null;
+}
+
+List<int> picoPendingNotificationIdsToCancel(
+  Iterable<PendingNotificationRequest> pending,
+) {
+  return pending
+      .where((request) => request.payload == PicoNotificationScheduler.picoPayload)
+      .map((request) => request.id)
+      .toList(growable: false);
+}
+
+Future<List<PicoNotificationPlan>> buildPicoNotificationPlans({
+  required RestrictionStore store,
+  required DateTime currentInstant,
+  required DateTime nowBogota,
+  required List<VehicleProfile> vehicles,
+  required RestrictionJurisdiction jurisdiction,
+  required PicoAlertPreferences alertPreferences,
+}) async {
+  final days = <PicoVehicleRestrictionDay>[];
+  for (final vehicle in vehicles) {
+    final ruleSet = await store.loadCoverage(
+      jurisdiction.id,
+      vehicle.kind,
+      vehicle.serviceType,
+      currentInstant,
+    );
+    for (var offset = 0; offset < 14; offset += 1) {
+      final date = DateTime(nowBogota.year, nowBogota.month, nowBogota.day + offset);
+      days.add(
+        PicoVehicleRestrictionDay(
+          vehicle: vehicle,
+          jurisdictionName: jurisdiction.name,
+          date: date,
+          evaluation: evaluateRestrictionDay(
+            ruleSet: ruleSet,
+            jurisdictionId: jurisdiction.id,
+            plate: vehicle.plate,
+            vehicleKind: vehicle.kind,
+            serviceType: vehicle.serviceType,
+            date: date,
+          ),
+        ),
+      );
+    }
+  }
+  return planPicoNotifications(
+    days: days,
+    settings: PicoNotificationSettings(
+      enabled: alertPreferences.enabled,
+      dayBeforeEnabled: alertPreferences.dayBeforeEnabled,
+      sameDayEnabled: alertPreferences.sameDayEnabled,
+      dayBeforeMinute: alertPreferences.dayBeforeMinute,
+      sameDayMinute: alertPreferences.sameDayMinute,
+    ),
+    nowBogota: nowBogota,
+  );
+}
+
+String _planSignature(List<PicoNotificationPlan> plans) {
+  return plans
+      .map((plan) => '${plan.id}:${plan.scheduledAt.toIso8601String()}')
+      .join('|');
 }
 
 void _addPlan(
@@ -217,7 +334,7 @@ void _addPlan(
       body:
           '${day.vehicle.plate} · ${shortVehicleTypeLabel(day.vehicle)} · '
           '${day.jurisdictionName}',
-      payload: '/pico',
+      payload: PicoNotificationScheduler.picoPayload,
     ),
   );
 }

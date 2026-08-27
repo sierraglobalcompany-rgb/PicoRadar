@@ -1,6 +1,7 @@
 import '../../garage/data/vehicle_profile.dart';
 import '../data/restriction_store.dart';
 import 'colombia_holiday_calendar.dart';
+import 'bogota_time.dart';
 import 'restriction_engine.dart';
 import 'restriction_rule.dart';
 
@@ -56,6 +57,16 @@ RestrictionDayEvaluation evaluateRestrictionDay({
   }
 
   final day = DateTime(date.year, date.month, date.day);
+  final staleAfter = ruleSet.staleAfter;
+  if (staleAfter != null && !staleAfterCoversBogotaDate(staleAfter, day)) {
+    return RestrictionDayEvaluation(
+      status: RestrictionDayStatus.stale,
+      effectiveWindows: const [],
+      sourceUrl: _firstOrNull(ruleSet.sourceUrls),
+      verifiedAt: ruleSet.verifiedAt,
+    );
+  }
+
   final boundaries = <int>{0, 1440};
   for (final rule in ruleSet.rules) {
     if (rule.jurisdictionId != jurisdictionId ||

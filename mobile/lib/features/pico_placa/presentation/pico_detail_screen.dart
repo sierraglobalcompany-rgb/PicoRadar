@@ -45,7 +45,7 @@ class PicoDetailScreen extends ConsumerWidget {
                           jurisdiction.id,
                           vehicle.kind,
                           vehicle.serviceType,
-                          ref.read(bogotaNowProvider),
+                          ref.read(currentInstantProvider),
                         ),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {

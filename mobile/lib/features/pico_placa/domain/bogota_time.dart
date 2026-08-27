@@ -34,6 +34,14 @@ timezone.TZDateTime bogotaScheduledTime({
   );
 }
 
+bool staleAfterCoversBogotaDate(DateTime staleAfter, DateTime date) {
+  final nextDayStart = bogotaScheduledTime(
+    date: DateTime(date.year, date.month, date.day + 1),
+    minuteOfDay: 0,
+  );
+  return !staleAfter.toUtc().isBefore(nextDayStart.toUtc());
+}
+
 void _ensureInitialized() {
   if (_initialized) {
     return;

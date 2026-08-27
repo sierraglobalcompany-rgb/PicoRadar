@@ -8,6 +8,8 @@ const picoDayBeforeMinuteKey = 'pico_day_before_minute_v1';
 const picoSameDayMinuteKey = 'pico_same_day_minute_v1';
 const picoNotificationPermissionRequestedKey =
     'pico_notification_permission_requested_v1';
+const picoNotificationPermissionGrantedKey =
+    'pico_notification_permission_granted_v1';
 
 class PicoAlertPreferences {
   const PicoAlertPreferences({
@@ -17,6 +19,7 @@ class PicoAlertPreferences {
     required this.dayBeforeMinute,
     required this.sameDayMinute,
     required this.permissionRequested,
+    required this.permissionGranted,
   });
 
   final bool enabled;
@@ -25,6 +28,27 @@ class PicoAlertPreferences {
   final int dayBeforeMinute;
   final int sameDayMinute;
   final bool permissionRequested;
+  final bool permissionGranted;
+
+  PicoAlertPreferences copyWith({
+    bool? enabled,
+    bool? dayBeforeEnabled,
+    bool? sameDayEnabled,
+    int? dayBeforeMinute,
+    int? sameDayMinute,
+    bool? permissionRequested,
+    bool? permissionGranted,
+  }) {
+    return PicoAlertPreferences(
+      enabled: enabled ?? this.enabled,
+      dayBeforeEnabled: dayBeforeEnabled ?? this.dayBeforeEnabled,
+      sameDayEnabled: sameDayEnabled ?? this.sameDayEnabled,
+      dayBeforeMinute: dayBeforeMinute ?? this.dayBeforeMinute,
+      sameDayMinute: sameDayMinute ?? this.sameDayMinute,
+      permissionRequested: permissionRequested ?? this.permissionRequested,
+      permissionGranted: permissionGranted ?? this.permissionGranted,
+    );
+  }
 }
 
 Future<PicoAlertPreferences> loadPicoAlertPreferences(
@@ -41,6 +65,9 @@ Future<PicoAlertPreferences> loadPicoAlertPreferences(
     sameDayMinute: await preferences.getInt(picoSameDayMinuteKey) ?? 5 * 60,
     permissionRequested:
         await preferences.getBool(picoNotificationPermissionRequestedKey) ??
+        false,
+    permissionGranted:
+        await preferences.getBool(picoNotificationPermissionGrantedKey) ??
         false,
   );
 }
@@ -60,5 +87,9 @@ Future<void> savePicoAlertPreferences(
   await preferences.setBool(
     picoNotificationPermissionRequestedKey,
     value.permissionRequested,
+  );
+  await preferences.setBool(
+    picoNotificationPermissionGrantedKey,
+    value.permissionGranted,
   );
 }

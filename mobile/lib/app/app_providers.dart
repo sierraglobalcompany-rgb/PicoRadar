@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/database/app_database.dart';
@@ -74,6 +75,112 @@ final picoWidgetBridgeProvider = Provider<PicoWidgetBridge>((ref) {
   return const PicoWidgetBridge();
 });
 
+final picoWidgetSnapshotSyncProvider = Provider<PicoWidgetSnapshotSync>((ref) {
+  return PicoWidgetSnapshotSync(ref.watch(picoWidgetBridgeProvider));
+});
+
+final picoWidgetSyncProvider = FutureProvider<void>((ref) async {
+  final vehicles = await ref.watch(vehicleListProvider.future);
+  final activeVehicle = await ref.watch(activeVehicleProvider.future);
+  final selectedJurisdictionId = await ref.watch(
+    selectedPicoJurisdictionIdProvider.future,
+  );
+  final jurisdictions = await ref.watch(restrictionJurisdictionsProvider.future);
+  final vehicle = activeVehicle ?? (vehicles.isEmpty ? null : vehicles.first);
+  final jurisdictionName = _jurisdictionName(
+    jurisdictions,
+    selectedJurisdictionId,
+  );
+  try {
+    await ref
+        .watch(picoWidgetSnapshotSyncProvider)
+        .sync(vehicle: vehicle, jurisdictionName: jurisdictionName);
+  } on MissingPluginException {
+    return;
+  }
+});
+
+final picoNotificationSyncProvider = FutureProvider<void>((ref) async {
+  await ref.watch(bundledRestrictionsProvider.future);
+  final vehicles = await ref.watch(vehicleListProvider.future);
+  if (vehicles.isEmpty) {
+    return;
+  }
+
+  final alertPreferences = await ref.watch(picoAlertPreferencesProvider.future);
+  if (!alertPreferences.permissionGranted) {
+    if (alertPreferences.permissionRequested) {
+      await _tryCancelPicoNotifications(ref);
+    }
+    return;
+  }
+
+  final selectedJurisdictionId = await ref.watch(
+    selectedPicoJurisdictionIdProvider.future,
+  );
+  final jurisdictions = await ref.watch(restrictionJurisdictionsProvider.future);
+  final jurisdiction = _jurisdiction(jurisdictions, selectedJurisdictionId);
+  if (jurisdiction == null) {
+    return;
+  }
+
+  final scheduler = ref.watch(picoNotificationSchedulerProvider);
+  try {
+    await scheduler.initialize();
+    if (!alertPreferences.enabled) {
+      await scheduler.cancelPicoNotifications();
+      return;
+    }
+    final plans = await buildPicoNotificationPlans(
+      store: ref.watch(restrictionStoreProvider),
+      currentInstant: ref.watch(currentInstantProvider),
+      nowBogota: ref.watch(bogotaNowProvider),
+      vehicles: vehicles,
+      jurisdiction: jurisdiction,
+      alertPreferences: alertPreferences,
+    );
+    await scheduler.reschedule(plans);
+  } on MissingPluginException {
+    return;
+  }
+});
+
+final currentInstantProvider = Provider<DateTime>((ref) {
+  return DateTime.now().toUtc();
+});
+
 final bogotaNowProvider = Provider<DateTime>((ref) {
   return bogotaWallClock(DateTime.now());
 });
+
+RestrictionJurisdiction? _jurisdiction(
+  List<RestrictionJurisdiction> jurisdictions,
+  String? selectedJurisdictionId,
+) {
+  if (selectedJurisdictionId == null) {
+    return null;
+  }
+  for (final jurisdiction in jurisdictions) {
+    if (jurisdiction.id == selectedJurisdictionId) {
+      return jurisdiction;
+    }
+  }
+  return null;
+}
+
+String? _jurisdictionName(
+  List<RestrictionJurisdiction> jurisdictions,
+  String? selectedJurisdictionId,
+) {
+  return _jurisdiction(jurisdictions, selectedJurisdictionId)?.name;
+}
+
+Future<void> _tryCancelPicoNotifications(Ref ref) async {
+  try {
+    final scheduler = ref.watch(picoNotificationSchedulerProvider);
+    await scheduler.initialize();
+    await scheduler.cancelPicoNotifications();
+  } on MissingPluginException {
+    return;
+  }
+}

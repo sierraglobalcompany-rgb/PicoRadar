@@ -12,6 +12,7 @@ class RestrictionRuleSet {
     required this.rules,
     this.jurisdictionName,
     this.verifiedAt,
+    this.staleAfter,
     this.sourceUrls = const [],
   });
 
@@ -20,6 +21,7 @@ class RestrictionRuleSet {
   final List<RestrictionRule> rules;
   final String? jurisdictionName;
   final DateTime? verifiedAt;
+  final DateTime? staleAfter;
   final List<String> sourceUrls;
 }
 
@@ -77,6 +79,7 @@ class RestrictionStore {
       ),
       jurisdictionName: row.jurisdictionName,
       verifiedAt: row.verifiedAt,
+      staleAfter: row.staleAfter,
       sourceUrls: restrictionSourceUrlsFromJson(row.sourceUrlsJson),
     );
   }
