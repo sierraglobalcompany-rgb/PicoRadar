@@ -66,7 +66,10 @@ enum OnboardingVehicleChoice {
 }
 
 class OnboardingVehicleScreen extends ConsumerStatefulWidget {
-  const OnboardingVehicleScreen({super.key});
+  const OnboardingVehicleScreen({this.vehicleId, this.returnPath, super.key});
+
+  final String? vehicleId;
+  final String? returnPath;
 
   @override
   ConsumerState<OnboardingVehicleScreen> createState() {
@@ -87,9 +90,12 @@ class _OnboardingVehicleScreenState
   OnboardingVehicleChoice? _choice;
   String? _subtype;
   bool _alertsEnabled = true;
-  bool _loadedDraft = false;
+  bool _loadedInitialState = false;
+  bool _writeDraft = false;
   bool _saving = false;
   String? _error;
+
+  bool get _isEditing => widget.vehicleId != null;
 
   @override
   void initState() {
@@ -97,6 +103,7 @@ class _OnboardingVehicleScreenState
     for (final controller in _controllers) {
       controller.addListener(_saveDraft);
     }
+    Future<void>.microtask(_loadInitialState);
   }
 
   Iterable<TextEditingController> get _controllers sync* {
@@ -107,15 +114,6 @@ class _OnboardingVehicleScreenState
     yield _modelController;
     yield _yearController;
     yield _colorController;
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_loadedDraft) {
-      _loadedDraft = true;
-      Future<void>.microtask(_restoreDraft);
-    }
   }
 
   @override
@@ -133,31 +131,43 @@ class _OnboardingVehicleScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Agregar vehículo'),
+        title: Text(_isEditing ? 'Editar vehículo' : 'Agregar vehículo'),
         leading: IconButton(
           key: const ValueKey('onboarding-back'),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(widget.returnPath ?? AppRoute.home.path);
+            }
+          },
           icon: const Icon(Icons.arrow_back),
           tooltip: 'Volver',
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Paso $step de 2'),
-                  const SizedBox(height: AppSpacing.s),
-                  if (_choice == null) _buildChoiceStep(context),
-                  if (_choice != null) _buildFormStep(context),
-                ],
-              ),
-            ),
+        child: !_loadedInitialState
+            ? const Center(child: CircularProgressIndicator())
+            : _buildBody(context, step),
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, int step) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Paso $step de 2'),
+              const SizedBox(height: AppSpacing.s),
+              if (_choice == null) _buildChoiceStep(context),
+              if (_choice != null) _buildFormStep(context),
+            ],
           ),
         ),
       ),
@@ -340,16 +350,61 @@ class _OnboardingVehicleScreenState
     );
   }
 
+  Future<void> _loadInitialState() async {
+    if (_isEditing) {
+      await _loadVehicleForEdit();
+    } else {
+      await _restoreDraft();
+    }
+  }
+
+  Future<void> _loadVehicleForEdit() async {
+    final vehicle = await ref
+        .read(vehicleRepositoryProvider)
+        .getVehicle(widget.vehicleId!);
+    if (!mounted) {
+      return;
+    }
+    if (vehicle == null) {
+      setState(() {
+        _error = 'Vehículo no encontrado.';
+        _loadedInitialState = true;
+      });
+      return;
+    }
+
+    setState(() {
+      _choice = _choiceFromVehicle(vehicle);
+      _subtype = vehicle.subtype;
+      _plateController.text = vehicle.plate;
+      _cityController.text = vehicle.registrationCity ?? '';
+      _nicknameController.text = vehicle.nickname ?? '';
+      _brandController.text = vehicle.brand ?? '';
+      _modelController.text = vehicle.model ?? '';
+      _yearController.text = vehicle.year == null ? '' : '${vehicle.year}';
+      _colorController.text = vehicle.color ?? '';
+      _loadedInitialState = true;
+    });
+  }
+
   Future<void> _restoreDraft() async {
     final raw = await ref
         .read(appPreferencesProvider)
         .getString(onboardingVehicleDraftKey);
     if (raw == null || raw.isEmpty || !mounted) {
+      setState(() {
+        _loadedInitialState = true;
+        _writeDraft = true;
+      });
       return;
     }
 
     final decoded = jsonDecode(raw);
     if (decoded is! Map<String, Object?> || !mounted) {
+      setState(() {
+        _loadedInitialState = true;
+        _writeDraft = true;
+      });
       return;
     }
 
@@ -364,11 +419,13 @@ class _OnboardingVehicleScreenState
       _modelController.text = decoded['model'] as String? ?? '';
       _yearController.text = decoded['year'] as String? ?? '';
       _colorController.text = decoded['color'] as String? ?? '';
+      _loadedInitialState = true;
+      _writeDraft = true;
     });
   }
 
   Future<void> _saveDraft() async {
-    if (!_loadedDraft) {
+    if (_isEditing || !_writeDraft) {
       return;
     }
 
@@ -413,32 +470,55 @@ class _OnboardingVehicleScreenState
 
     try {
       final repository = ref.read(vehicleRepositoryProvider);
-      final vehicle = await repository.createVehicle(
-        plate: _plateController.text,
-        kind: choice.kind,
-        serviceType: choice.serviceType,
-        subtype: _subtype,
-        nickname: _nicknameController.text,
-        registrationCity: city,
-        brand: _brandController.text,
-        model: _modelController.text,
-        year: _yearController.text.trim().isEmpty
-            ? null
-            : int.parse(_yearController.text.trim()),
-        color: _colorController.text,
-      );
-
-      await repository.setActiveVehicle(vehicle.id);
+      final year = _yearController.text.trim().isEmpty
+          ? null
+          : int.parse(_yearController.text.trim());
+      final targetId = widget.vehicleId;
+      if (targetId == null) {
+        final existingVehicles = await repository.listVehicles();
+        final vehicle = await repository.createVehicle(
+          plate: _plateController.text,
+          kind: choice.kind,
+          serviceType: choice.serviceType,
+          subtype: _subtype,
+          nickname: _nicknameController.text,
+          registrationCity: city,
+          brand: _brandController.text,
+          model: _modelController.text,
+          year: year,
+          color: _colorController.text,
+        );
+        if (existingVehicles.isEmpty) {
+          await repository.setActiveVehicle(vehicle.id);
+        }
+      } else {
+        await repository.updateVehicle(
+          id: targetId,
+          plate: _plateController.text,
+          kind: choice.kind,
+          serviceType: choice.serviceType,
+          subtype: _subtype,
+          nickname: _nicknameController.text,
+          registrationCity: city,
+          brand: _brandController.text,
+          model: _modelController.text,
+          year: year,
+          color: _colorController.text,
+        );
+      }
       final preferences = ref.read(appPreferencesProvider);
       await preferences.setBool(
         picoRestrictionAlertsPreferenceKey,
         _alertsEnabled,
       );
-      await preferences.remove(onboardingVehicleDraftKey);
+      if (!_isEditing) {
+        await preferences.remove(onboardingVehicleDraftKey);
+      }
+      ref.invalidate(activeVehicleProvider);
       ref.invalidate(vehicleListProvider);
 
       if (mounted) {
-        context.go(AppRoute.home.path);
+        context.go(widget.returnPath ?? AppRoute.home.path);
       }
     } on VehicleRepositoryException catch (error) {
       if (mounted) {
@@ -462,6 +542,16 @@ class _OnboardingVehicleScreenState
       }
     }
     return null;
+  }
+
+  OnboardingVehicleChoice _choiceFromVehicle(VehicleProfile vehicle) {
+    if (vehicle.kind == VehicleKind.motorcycle) {
+      return OnboardingVehicleChoice.motorcycle;
+    }
+    if (vehicle.serviceType == VehicleServiceType.taxi) {
+      return OnboardingVehicleChoice.taxi;
+    }
+    return OnboardingVehicleChoice.privateCar;
   }
 }
 
