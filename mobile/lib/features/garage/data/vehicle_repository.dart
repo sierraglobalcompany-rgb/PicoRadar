@@ -223,10 +223,7 @@ class VehicleRepository {
     }
   }
 
-  void _validateServiceType(
-    VehicleKind kind,
-    VehicleServiceType serviceType,
-  ) {
+  void _validateServiceType(VehicleKind kind, VehicleServiceType serviceType) {
     if (kind == VehicleKind.motorcycle &&
         serviceType != VehicleServiceType.private) {
       throw const VehicleRepositoryException(
