@@ -55,6 +55,10 @@ The local Drift database lives in `mobile/lib/core/database/` with `schemaVersio
 
 Local storage foundations live in `mobile/lib/core/storage/`. `shared_preferences` is used only through `SharedPreferencesAsync` for non-sensitive settings, `flutter_secure_storage` stores small secrets and the 32-byte file master key, and `cryptography` provides AES-256-GCM for private file bytes. These dependencies match the approved technical baseline, keep Android/iOS support in the Flutter plugin ecosystem, and avoid custom crypto or extra repository layers.
 
+## C05 Manifest Sync Engine
+
+Dataset sync foundations live in `mobile/lib/core/sync/`. `dio` is pinned at `5.11.0` for HTTP requests, ETag headers and byte downloads; Flutter/Dart standard libraries still handle JSON, gzip, temporary files and SHA-256 uses the existing `cryptography` dependency. The engine parses manifest schema V1, accepts only CDN-origin dataset URLs, verifies downloaded bytes before import, and updates `dataset_versions` inside the same Drift transaction as the dataset importer. Concrete restriction/camera import schemas, background work and UI wiring remain out of scope.
+
 ## Server
 
 ```powershell
@@ -78,4 +82,4 @@ GitHub Actions runs separate mobile and server gates on pull requests and matchi
 
 ## Current Scope
 
-C00 creates repository foundation, Flutter/Laravel scaffolds, Android flavors and smoke tests. C01 adds design tokens, Riverpod/go_router bootstrap, the five-tab app shell, root placeholders and shell/router tests. C02 adds CI quality gates and Dependabot. C03 adds the Drift/SQLite schema skeleton and migration harness only. C04 adds non-sensitive preferences, secure storage and AES-GCM file crypto foundations only. Firebase, GPS, account/cloud, the Apps 3x3 launcher and product feature screens remain out of scope until their approved lots.
+C00 creates repository foundation, Flutter/Laravel scaffolds, Android flavors and smoke tests. C01 adds design tokens, Riverpod/go_router bootstrap, the five-tab app shell, root placeholders and shell/router tests. C02 adds CI quality gates and Dependabot. C03 adds the Drift/SQLite schema skeleton and migration harness only. C04 adds non-sensitive preferences, secure storage and AES-GCM file crypto foundations only. C05 adds HTTP manifest sync foundations only. Firebase, GPS, account/cloud, the Apps 3x3 launcher and product feature screens remain out of scope until their approved lots.
