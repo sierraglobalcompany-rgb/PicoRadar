@@ -51,6 +51,73 @@ class $VehiclesTable extends Vehicles with TableInfo<$VehiclesTable, Vehicle> {
     requiredDuringInsert: false,
     defaultValue: const Constant('car'),
   );
+  static const VerificationMeta _subtypeMeta = const VerificationMeta(
+    'subtype',
+  );
+  @override
+  late final GeneratedColumn<String> subtype = GeneratedColumn<String>(
+    'subtype',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _registrationCityMeta = const VerificationMeta(
+    'registrationCity',
+  );
+  @override
+  late final GeneratedColumn<String> registrationCity = GeneratedColumn<String>(
+    'registration_city',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _brandMeta = const VerificationMeta('brand');
+  @override
+  late final GeneratedColumn<String> brand = GeneratedColumn<String>(
+    'brand',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _modelMeta = const VerificationMeta('model');
+  @override
+  late final GeneratedColumn<String> model = GeneratedColumn<String>(
+    'model',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _yearMeta = const VerificationMeta('year');
+  @override
+  late final GeneratedColumn<int> year = GeneratedColumn<int>(
+    'year',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _colorMeta = const VerificationMeta('color');
+  @override
+  late final GeneratedColumn<String> color = GeneratedColumn<String>(
+    'color',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fuelMeta = const VerificationMeta('fuel');
+  @override
+  late final GeneratedColumn<String> fuel = GeneratedColumn<String>(
+    'fuel',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -81,6 +148,13 @@ class $VehiclesTable extends Vehicles with TableInfo<$VehiclesTable, Vehicle> {
     plate,
     nickname,
     kind,
+    subtype,
+    registrationCity,
+    brand,
+    model,
+    year,
+    color,
+    fuel,
     createdAt,
     updatedAt,
   ];
@@ -121,6 +195,51 @@ class $VehiclesTable extends Vehicles with TableInfo<$VehiclesTable, Vehicle> {
         kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
       );
     }
+    if (data.containsKey('subtype')) {
+      context.handle(
+        _subtypeMeta,
+        subtype.isAcceptableOrUnknown(data['subtype']!, _subtypeMeta),
+      );
+    }
+    if (data.containsKey('registration_city')) {
+      context.handle(
+        _registrationCityMeta,
+        registrationCity.isAcceptableOrUnknown(
+          data['registration_city']!,
+          _registrationCityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('brand')) {
+      context.handle(
+        _brandMeta,
+        brand.isAcceptableOrUnknown(data['brand']!, _brandMeta),
+      );
+    }
+    if (data.containsKey('model')) {
+      context.handle(
+        _modelMeta,
+        model.isAcceptableOrUnknown(data['model']!, _modelMeta),
+      );
+    }
+    if (data.containsKey('year')) {
+      context.handle(
+        _yearMeta,
+        year.isAcceptableOrUnknown(data['year']!, _yearMeta),
+      );
+    }
+    if (data.containsKey('color')) {
+      context.handle(
+        _colorMeta,
+        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
+      );
+    }
+    if (data.containsKey('fuel')) {
+      context.handle(
+        _fuelMeta,
+        fuel.isAcceptableOrUnknown(data['fuel']!, _fuelMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -158,6 +277,34 @@ class $VehiclesTable extends Vehicles with TableInfo<$VehiclesTable, Vehicle> {
         DriftSqlType.string,
         data['${effectivePrefix}kind'],
       )!,
+      subtype: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subtype'],
+      ),
+      registrationCity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}registration_city'],
+      ),
+      brand: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}brand'],
+      ),
+      model: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}model'],
+      ),
+      year: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}year'],
+      ),
+      color: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}color'],
+      ),
+      fuel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}fuel'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -180,6 +327,13 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
   final String plate;
   final String? nickname;
   final String kind;
+  final String? subtype;
+  final String? registrationCity;
+  final String? brand;
+  final String? model;
+  final int? year;
+  final String? color;
+  final String? fuel;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Vehicle({
@@ -187,6 +341,13 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
     required this.plate,
     this.nickname,
     required this.kind,
+    this.subtype,
+    this.registrationCity,
+    this.brand,
+    this.model,
+    this.year,
+    this.color,
+    this.fuel,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -199,6 +360,27 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
       map['nickname'] = Variable<String>(nickname);
     }
     map['kind'] = Variable<String>(kind);
+    if (!nullToAbsent || subtype != null) {
+      map['subtype'] = Variable<String>(subtype);
+    }
+    if (!nullToAbsent || registrationCity != null) {
+      map['registration_city'] = Variable<String>(registrationCity);
+    }
+    if (!nullToAbsent || brand != null) {
+      map['brand'] = Variable<String>(brand);
+    }
+    if (!nullToAbsent || model != null) {
+      map['model'] = Variable<String>(model);
+    }
+    if (!nullToAbsent || year != null) {
+      map['year'] = Variable<int>(year);
+    }
+    if (!nullToAbsent || color != null) {
+      map['color'] = Variable<String>(color);
+    }
+    if (!nullToAbsent || fuel != null) {
+      map['fuel'] = Variable<String>(fuel);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -212,6 +394,23 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
           ? const Value.absent()
           : Value(nickname),
       kind: Value(kind),
+      subtype: subtype == null && nullToAbsent
+          ? const Value.absent()
+          : Value(subtype),
+      registrationCity: registrationCity == null && nullToAbsent
+          ? const Value.absent()
+          : Value(registrationCity),
+      brand: brand == null && nullToAbsent
+          ? const Value.absent()
+          : Value(brand),
+      model: model == null && nullToAbsent
+          ? const Value.absent()
+          : Value(model),
+      year: year == null && nullToAbsent ? const Value.absent() : Value(year),
+      color: color == null && nullToAbsent
+          ? const Value.absent()
+          : Value(color),
+      fuel: fuel == null && nullToAbsent ? const Value.absent() : Value(fuel),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -227,6 +426,13 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
       plate: serializer.fromJson<String>(json['plate']),
       nickname: serializer.fromJson<String?>(json['nickname']),
       kind: serializer.fromJson<String>(json['kind']),
+      subtype: serializer.fromJson<String?>(json['subtype']),
+      registrationCity: serializer.fromJson<String?>(json['registrationCity']),
+      brand: serializer.fromJson<String?>(json['brand']),
+      model: serializer.fromJson<String?>(json['model']),
+      year: serializer.fromJson<int?>(json['year']),
+      color: serializer.fromJson<String?>(json['color']),
+      fuel: serializer.fromJson<String?>(json['fuel']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -239,6 +445,13 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
       'plate': serializer.toJson<String>(plate),
       'nickname': serializer.toJson<String?>(nickname),
       'kind': serializer.toJson<String>(kind),
+      'subtype': serializer.toJson<String?>(subtype),
+      'registrationCity': serializer.toJson<String?>(registrationCity),
+      'brand': serializer.toJson<String?>(brand),
+      'model': serializer.toJson<String?>(model),
+      'year': serializer.toJson<int?>(year),
+      'color': serializer.toJson<String?>(color),
+      'fuel': serializer.toJson<String?>(fuel),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -249,6 +462,13 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
     String? plate,
     Value<String?> nickname = const Value.absent(),
     String? kind,
+    Value<String?> subtype = const Value.absent(),
+    Value<String?> registrationCity = const Value.absent(),
+    Value<String?> brand = const Value.absent(),
+    Value<String?> model = const Value.absent(),
+    Value<int?> year = const Value.absent(),
+    Value<String?> color = const Value.absent(),
+    Value<String?> fuel = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Vehicle(
@@ -256,6 +476,15 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
     plate: plate ?? this.plate,
     nickname: nickname.present ? nickname.value : this.nickname,
     kind: kind ?? this.kind,
+    subtype: subtype.present ? subtype.value : this.subtype,
+    registrationCity: registrationCity.present
+        ? registrationCity.value
+        : this.registrationCity,
+    brand: brand.present ? brand.value : this.brand,
+    model: model.present ? model.value : this.model,
+    year: year.present ? year.value : this.year,
+    color: color.present ? color.value : this.color,
+    fuel: fuel.present ? fuel.value : this.fuel,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -265,6 +494,15 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
       plate: data.plate.present ? data.plate.value : this.plate,
       nickname: data.nickname.present ? data.nickname.value : this.nickname,
       kind: data.kind.present ? data.kind.value : this.kind,
+      subtype: data.subtype.present ? data.subtype.value : this.subtype,
+      registrationCity: data.registrationCity.present
+          ? data.registrationCity.value
+          : this.registrationCity,
+      brand: data.brand.present ? data.brand.value : this.brand,
+      model: data.model.present ? data.model.value : this.model,
+      year: data.year.present ? data.year.value : this.year,
+      color: data.color.present ? data.color.value : this.color,
+      fuel: data.fuel.present ? data.fuel.value : this.fuel,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -277,6 +515,13 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
           ..write('plate: $plate, ')
           ..write('nickname: $nickname, ')
           ..write('kind: $kind, ')
+          ..write('subtype: $subtype, ')
+          ..write('registrationCity: $registrationCity, ')
+          ..write('brand: $brand, ')
+          ..write('model: $model, ')
+          ..write('year: $year, ')
+          ..write('color: $color, ')
+          ..write('fuel: $fuel, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -284,8 +529,21 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, plate, nickname, kind, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    plate,
+    nickname,
+    kind,
+    subtype,
+    registrationCity,
+    brand,
+    model,
+    year,
+    color,
+    fuel,
+    createdAt,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -294,6 +552,13 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
           other.plate == this.plate &&
           other.nickname == this.nickname &&
           other.kind == this.kind &&
+          other.subtype == this.subtype &&
+          other.registrationCity == this.registrationCity &&
+          other.brand == this.brand &&
+          other.model == this.model &&
+          other.year == this.year &&
+          other.color == this.color &&
+          other.fuel == this.fuel &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -303,6 +568,13 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
   final Value<String> plate;
   final Value<String?> nickname;
   final Value<String> kind;
+  final Value<String?> subtype;
+  final Value<String?> registrationCity;
+  final Value<String?> brand;
+  final Value<String?> model;
+  final Value<int?> year;
+  final Value<String?> color;
+  final Value<String?> fuel;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -311,6 +583,13 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
     this.plate = const Value.absent(),
     this.nickname = const Value.absent(),
     this.kind = const Value.absent(),
+    this.subtype = const Value.absent(),
+    this.registrationCity = const Value.absent(),
+    this.brand = const Value.absent(),
+    this.model = const Value.absent(),
+    this.year = const Value.absent(),
+    this.color = const Value.absent(),
+    this.fuel = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -320,6 +599,13 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
     required String plate,
     this.nickname = const Value.absent(),
     this.kind = const Value.absent(),
+    this.subtype = const Value.absent(),
+    this.registrationCity = const Value.absent(),
+    this.brand = const Value.absent(),
+    this.model = const Value.absent(),
+    this.year = const Value.absent(),
+    this.color = const Value.absent(),
+    this.fuel = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -330,6 +616,13 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
     Expression<String>? plate,
     Expression<String>? nickname,
     Expression<String>? kind,
+    Expression<String>? subtype,
+    Expression<String>? registrationCity,
+    Expression<String>? brand,
+    Expression<String>? model,
+    Expression<int>? year,
+    Expression<String>? color,
+    Expression<String>? fuel,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -339,6 +632,13 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
       if (plate != null) 'plate': plate,
       if (nickname != null) 'nickname': nickname,
       if (kind != null) 'kind': kind,
+      if (subtype != null) 'subtype': subtype,
+      if (registrationCity != null) 'registration_city': registrationCity,
+      if (brand != null) 'brand': brand,
+      if (model != null) 'model': model,
+      if (year != null) 'year': year,
+      if (color != null) 'color': color,
+      if (fuel != null) 'fuel': fuel,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -350,6 +650,13 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
     Value<String>? plate,
     Value<String?>? nickname,
     Value<String>? kind,
+    Value<String?>? subtype,
+    Value<String?>? registrationCity,
+    Value<String?>? brand,
+    Value<String?>? model,
+    Value<int?>? year,
+    Value<String?>? color,
+    Value<String?>? fuel,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -359,6 +666,13 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
       plate: plate ?? this.plate,
       nickname: nickname ?? this.nickname,
       kind: kind ?? this.kind,
+      subtype: subtype ?? this.subtype,
+      registrationCity: registrationCity ?? this.registrationCity,
+      brand: brand ?? this.brand,
+      model: model ?? this.model,
+      year: year ?? this.year,
+      color: color ?? this.color,
+      fuel: fuel ?? this.fuel,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -380,6 +694,27 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
     if (kind.present) {
       map['kind'] = Variable<String>(kind.value);
     }
+    if (subtype.present) {
+      map['subtype'] = Variable<String>(subtype.value);
+    }
+    if (registrationCity.present) {
+      map['registration_city'] = Variable<String>(registrationCity.value);
+    }
+    if (brand.present) {
+      map['brand'] = Variable<String>(brand.value);
+    }
+    if (model.present) {
+      map['model'] = Variable<String>(model.value);
+    }
+    if (year.present) {
+      map['year'] = Variable<int>(year.value);
+    }
+    if (color.present) {
+      map['color'] = Variable<String>(color.value);
+    }
+    if (fuel.present) {
+      map['fuel'] = Variable<String>(fuel.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -399,6 +734,13 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
           ..write('plate: $plate, ')
           ..write('nickname: $nickname, ')
           ..write('kind: $kind, ')
+          ..write('subtype: $subtype, ')
+          ..write('registrationCity: $registrationCity, ')
+          ..write('brand: $brand, ')
+          ..write('model: $model, ')
+          ..write('year: $year, ')
+          ..write('color: $color, ')
+          ..write('fuel: $fuel, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -1702,6 +2044,13 @@ typedef $$VehiclesTableCreateCompanionBuilder = VehiclesCompanion Function({
   required String plate,
   Value<String?> nickname,
   Value<String> kind,
+  Value<String?> subtype,
+  Value<String?> registrationCity,
+  Value<String?> brand,
+  Value<String?> model,
+  Value<int?> year,
+  Value<String?> color,
+  Value<String?> fuel,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -1711,6 +2060,13 @@ typedef $$VehiclesTableUpdateCompanionBuilder = VehiclesCompanion Function({
   Value<String> plate,
   Value<String?> nickname,
   Value<String> kind,
+  Value<String?> subtype,
+  Value<String?> registrationCity,
+  Value<String?> brand,
+  Value<String?> model,
+  Value<int?> year,
+  Value<String?> color,
+  Value<String?> fuel,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -1768,6 +2124,41 @@ class $$VehiclesTableFilterComposer
 
   ColumnFilters<String> get kind => $composableBuilder(
     column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subtype => $composableBuilder(
+    column: $table.subtype,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get registrationCity => $composableBuilder(
+    column: $table.registrationCity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get brand => $composableBuilder(
+    column: $table.brand,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get model => $composableBuilder(
+    column: $table.model,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fuel => $composableBuilder(
+    column: $table.fuel,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1836,6 +2227,41 @@ class $$VehiclesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get subtype => $composableBuilder(
+    column: $table.subtype,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get registrationCity => $composableBuilder(
+    column: $table.registrationCity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get brand => $composableBuilder(
+    column: $table.brand,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get model => $composableBuilder(
+    column: $table.model,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fuel => $composableBuilder(
+    column: $table.fuel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -1867,6 +2293,29 @@ class $$VehiclesTableAnnotationComposer
 
   GeneratedColumn<String> get kind =>
       $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get subtype =>
+      $composableBuilder(column: $table.subtype, builder: (column) => column);
+
+  GeneratedColumn<String> get registrationCity => $composableBuilder(
+    column: $table.registrationCity,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get brand =>
+      $composableBuilder(column: $table.brand, builder: (column) => column);
+
+  GeneratedColumn<String> get model =>
+      $composableBuilder(column: $table.model, builder: (column) => column);
+
+  GeneratedColumn<int> get year =>
+      $composableBuilder(column: $table.year, builder: (column) => column);
+
+  GeneratedColumn<String> get color =>
+      $composableBuilder(column: $table.color, builder: (column) => column);
+
+  GeneratedColumn<String> get fuel =>
+      $composableBuilder(column: $table.fuel, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -1933,6 +2382,13 @@ class $$VehiclesTableTableManager
                 Value<String> plate = const Value.absent(),
                 Value<String?> nickname = const Value.absent(),
                 Value<String> kind = const Value.absent(),
+                Value<String?> subtype = const Value.absent(),
+                Value<String?> registrationCity = const Value.absent(),
+                Value<String?> brand = const Value.absent(),
+                Value<String?> model = const Value.absent(),
+                Value<int?> year = const Value.absent(),
+                Value<String?> color = const Value.absent(),
+                Value<String?> fuel = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -1941,6 +2397,13 @@ class $$VehiclesTableTableManager
                 plate: plate,
                 nickname: nickname,
                 kind: kind,
+                subtype: subtype,
+                registrationCity: registrationCity,
+                brand: brand,
+                model: model,
+                year: year,
+                color: color,
+                fuel: fuel,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -1951,6 +2414,13 @@ class $$VehiclesTableTableManager
                 required String plate,
                 Value<String?> nickname = const Value.absent(),
                 Value<String> kind = const Value.absent(),
+                Value<String?> subtype = const Value.absent(),
+                Value<String?> registrationCity = const Value.absent(),
+                Value<String?> brand = const Value.absent(),
+                Value<String?> model = const Value.absent(),
+                Value<int?> year = const Value.absent(),
+                Value<String?> color = const Value.absent(),
+                Value<String?> fuel = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -1959,6 +2429,13 @@ class $$VehiclesTableTableManager
                 plate: plate,
                 nickname: nickname,
                 kind: kind,
+                subtype: subtype,
+                registrationCity: registrationCity,
+                brand: brand,
+                model: model,
+                year: year,
+                color: color,
+                fuel: fuel,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
