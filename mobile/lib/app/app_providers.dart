@@ -85,7 +85,9 @@ final picoWidgetSyncProvider = FutureProvider<void>((ref) async {
   final selectedJurisdictionId = await ref.watch(
     selectedPicoJurisdictionIdProvider.future,
   );
-  final jurisdictions = await ref.watch(restrictionJurisdictionsProvider.future);
+  final jurisdictions = await ref.watch(
+    restrictionJurisdictionsProvider.future,
+  );
   final vehicle = activeVehicle ?? (vehicles.isEmpty ? null : vehicles.first);
   final jurisdictionName = _jurisdictionName(
     jurisdictions,
@@ -118,7 +120,9 @@ final picoNotificationSyncProvider = FutureProvider<void>((ref) async {
   final selectedJurisdictionId = await ref.watch(
     selectedPicoJurisdictionIdProvider.future,
   );
-  final jurisdictions = await ref.watch(restrictionJurisdictionsProvider.future);
+  final jurisdictions = await ref.watch(
+    restrictionJurisdictionsProvider.future,
+  );
   final jurisdiction = _jurisdiction(jurisdictions, selectedJurisdictionId);
   if (jurisdiction == null) {
     return;

@@ -55,10 +55,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('tab-apps')));
     await tester.pumpAndSettle();
-    expect(
-      find.text('Launcher central de modulos secundarios.'),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('apps-primary-grid')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('tab-trip')));
     await tester.pumpAndSettle();
@@ -75,17 +72,17 @@ void main() {
   testWidgets('indexed stack preserves branch state', (tester) async {
     await harness.pump(tester);
 
-    await tester.tap(find.byKey(const ValueKey('tab-apps')));
+    await tester.tap(find.byKey(const ValueKey('tab-trip')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('state-button-apps')));
+    await tester.tap(find.byKey(const ValueKey('state-button-trip')));
     await tester.pumpAndSettle();
     expect(find.text('Estado local 1'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('tab-trip')));
-    await tester.pumpAndSettle();
-    expect(find.text('Estado local 0'), findsOneWidget);
-
     await tester.tap(find.byKey(const ValueKey('tab-apps')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('apps-primary-grid')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('tab-trip')));
     await tester.pumpAndSettle();
     expect(find.text('Estado local 1'), findsOneWidget);
   });

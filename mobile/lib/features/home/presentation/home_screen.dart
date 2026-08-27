@@ -83,7 +83,6 @@ class HomeScreen extends ConsumerWidget {
       ref.invalidate(activeVehicleProvider);
     });
   }
-
 }
 
 class _HomeReady extends ConsumerWidget {
@@ -454,10 +453,8 @@ class _NotificationCard extends ConsumerWidget {
               SwitchListTile(
                 key: const ValueKey('pico-alerts-enabled'),
                 value: alertPreferences.enabled,
-                onChanged: (value) => _save(
-                  ref,
-                  alertPreferences.copyWith(enabled: value),
-                ),
+                onChanged: (value) =>
+                    _save(ref, alertPreferences.copyWith(enabled: value)),
                 title: const Text('Recordatorios habilitados'),
                 contentPadding: EdgeInsets.zero,
               ),
@@ -481,14 +478,15 @@ class _NotificationCard extends ConsumerWidget {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.schedule),
                 title: const Text('Hora día anterior'),
-                trailing: Text(_formatAlertTime(alertPreferences.dayBeforeMinute)),
+                trailing: Text(
+                  _formatAlertTime(alertPreferences.dayBeforeMinute),
+                ),
                 onTap: () => _pickTime(
                   context,
                   ref,
                   initialMinute: alertPreferences.dayBeforeMinute,
-                  onSelected: (minute) => alertPreferences.copyWith(
-                    dayBeforeMinute: minute,
-                  ),
+                  onSelected: (minute) =>
+                      alertPreferences.copyWith(dayBeforeMinute: minute),
                 ),
               ),
               SwitchListTile(
@@ -510,14 +508,15 @@ class _NotificationCard extends ConsumerWidget {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.alarm),
                 title: const Text('Hora mismo día'),
-                trailing: Text(_formatAlertTime(alertPreferences.sameDayMinute)),
+                trailing: Text(
+                  _formatAlertTime(alertPreferences.sameDayMinute),
+                ),
                 onTap: () => _pickTime(
                   context,
                   ref,
                   initialMinute: alertPreferences.sameDayMinute,
-                  onSelected: (minute) => alertPreferences.copyWith(
-                    sameDayMinute: minute,
-                  ),
+                  onSelected: (minute) =>
+                      alertPreferences.copyWith(sameDayMinute: minute),
                 ),
               ),
             ],

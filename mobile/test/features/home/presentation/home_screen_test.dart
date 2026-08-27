@@ -158,44 +158,63 @@ void main() {
   testWidgets('notification card starts with explicit activation CTA', (
     tester,
   ) async {
-    await _readyHome(harness, plate: 'ABC123', jurisdictionId: 'co-ant-medellin');
+    await _readyHome(
+      harness,
+      plate: 'ABC123',
+      jurisdictionId: 'co-ant-medellin',
+    );
 
     await _pumpHome(tester, harness);
 
-    expect(find.byKey(const ValueKey('home-enable-notifications')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('home-enable-notifications')),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('pico-alerts-enabled')), findsNothing);
   });
 
-  testWidgets('denied notification permission does not show prompt button again', (
-    tester,
-  ) async {
-    await _readyHome(harness, plate: 'ABC123', jurisdictionId: 'co-ant-medellin');
-    await savePicoAlertPreferences(
-      harness.preferences,
-      const PicoAlertPreferences(
-        enabled: true,
-        dayBeforeEnabled: true,
-        sameDayEnabled: true,
-        dayBeforeMinute: 19 * 60,
-        sameDayMinute: 5 * 60,
-        permissionRequested: true,
-        permissionGranted: false,
-      ),
-    );
+  testWidgets(
+    'denied notification permission does not show prompt button again',
+    (tester) async {
+      await _readyHome(
+        harness,
+        plate: 'ABC123',
+        jurisdictionId: 'co-ant-medellin',
+      );
+      await savePicoAlertPreferences(
+        harness.preferences,
+        const PicoAlertPreferences(
+          enabled: true,
+          dayBeforeEnabled: true,
+          sameDayEnabled: true,
+          dayBeforeMinute: 19 * 60,
+          sameDayMinute: 5 * 60,
+          permissionRequested: true,
+          permissionGranted: false,
+        ),
+      );
 
-    await _pumpHome(tester, harness);
+      await _pumpHome(tester, harness);
 
-    expect(find.byKey(const ValueKey('home-enable-notifications')), findsNothing);
-    expect(
-      find.textContaining('Permiso de notificaciones desactivado'),
-      findsOneWidget,
-    );
-  });
+      expect(
+        find.byKey(const ValueKey('home-enable-notifications')),
+        findsNothing,
+      );
+      expect(
+        find.textContaining('Permiso de notificaciones desactivado'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('granted notification permission shows alert settings', (
     tester,
   ) async {
-    await _readyHome(harness, plate: 'ABC123', jurisdictionId: 'co-ant-medellin');
+    await _readyHome(
+      harness,
+      plate: 'ABC123',
+      jurisdictionId: 'co-ant-medellin',
+    );
     await savePicoAlertPreferences(
       harness.preferences,
       const PicoAlertPreferences(
@@ -220,33 +239,40 @@ void main() {
     expect(find.text('05:00'), findsOneWidget);
   });
 
-  testWidgets('alert preference toggle is saved without requesting permission again', (
-    tester,
-  ) async {
-    await _readyHome(harness, plate: 'ABC123', jurisdictionId: 'co-ant-medellin');
-    await savePicoAlertPreferences(
-      harness.preferences,
-      const PicoAlertPreferences(
-        enabled: true,
-        dayBeforeEnabled: true,
-        sameDayEnabled: true,
-        dayBeforeMinute: 19 * 60,
-        sameDayMinute: 5 * 60,
-        permissionRequested: true,
-        permissionGranted: true,
-      ),
-    );
+  testWidgets(
+    'alert preference toggle is saved without requesting permission again',
+    (tester) async {
+      await _readyHome(
+        harness,
+        plate: 'ABC123',
+        jurisdictionId: 'co-ant-medellin',
+      );
+      await savePicoAlertPreferences(
+        harness.preferences,
+        const PicoAlertPreferences(
+          enabled: true,
+          dayBeforeEnabled: true,
+          sameDayEnabled: true,
+          dayBeforeMinute: 19 * 60,
+          sameDayMinute: 5 * 60,
+          permissionRequested: true,
+          permissionGranted: true,
+        ),
+      );
 
-    await _pumpHome(tester, harness);
-    await tester.ensureVisible(find.byKey(const ValueKey('pico-alerts-enabled')));
-    await tester.tap(find.byKey(const ValueKey('pico-alerts-enabled')));
-    await tester.pump();
+      await _pumpHome(tester, harness);
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('pico-alerts-enabled')),
+      );
+      await tester.tap(find.byKey(const ValueKey('pico-alerts-enabled')));
+      await tester.pump();
 
-    final loaded = await loadPicoAlertPreferences(harness.preferences);
-    expect(loaded.enabled, isFalse);
-    expect(loaded.permissionRequested, isTrue);
-    expect(loaded.permissionGranted, isTrue);
-  });
+      final loaded = await loadPicoAlertPreferences(harness.preferences);
+      expect(loaded.enabled, isFalse);
+      expect(loaded.permissionRequested, isTrue);
+      expect(loaded.permissionGranted, isTrue);
+    },
+  );
 
   testWidgets('pico detail shows próximos 7 días', (tester) async {
     await _readyHome(

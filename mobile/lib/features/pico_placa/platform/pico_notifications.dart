@@ -233,7 +233,9 @@ List<int> picoPendingNotificationIdsToCancel(
   Iterable<PendingNotificationRequest> pending,
 ) {
   return pending
-      .where((request) => request.payload == PicoNotificationScheduler.picoPayload)
+      .where(
+        (request) => request.payload == PicoNotificationScheduler.picoPayload,
+      )
       .map((request) => request.id)
       .toList(growable: false);
 }
@@ -255,7 +257,11 @@ Future<List<PicoNotificationPlan>> buildPicoNotificationPlans({
       currentInstant,
     );
     for (var offset = 0; offset < 14; offset += 1) {
-      final date = DateTime(nowBogota.year, nowBogota.month, nowBogota.day + offset);
+      final date = DateTime(
+        nowBogota.year,
+        nowBogota.month,
+        nowBogota.day + offset,
+      );
       days.add(
         PicoVehicleRestrictionDay(
           vehicle: vehicle,

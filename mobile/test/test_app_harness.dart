@@ -8,6 +8,7 @@ import 'package:picoradar/app/app.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/core/storage/app_preferences.dart';
+import 'package:picoradar/features/apps_launcher/data/module_registry.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
 
@@ -39,7 +40,11 @@ class TestAppHarness {
     return _vehicleIdSequence.toString().padLeft(32, '0');
   }
 
-  Future<void> pump(WidgetTester tester) async {
+  Future<void> pump(
+    WidgetTester tester, {
+    Map<String, bool> moduleFeatureFlags = const {},
+    Widget Function(Widget child)? wrap,
+  }) async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
           const MethodChannel('co.picoradar.app/widget'),
@@ -56,19 +61,20 @@ class TestAppHarness {
     });
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(database),
-          appPreferencesProvider.overrideWithValue(preferences),
-          picoNotificationSchedulerProvider.overrideWithValue(
-            _FakePicoNotificationScheduler(),
-          ),
-          bogotaNowProvider.overrideWithValue(now),
-        ],
-        child: const PicoRadarApp(),
-      ),
+    final app = ProviderScope(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(database),
+        appPreferencesProvider.overrideWithValue(preferences),
+        picoNotificationSchedulerProvider.overrideWithValue(
+          _FakePicoNotificationScheduler(),
+        ),
+        bogotaNowProvider.overrideWithValue(now),
+        if (moduleFeatureFlags.isNotEmpty)
+          moduleFeatureFlagsProvider.overrideWithValue(moduleFeatureFlags),
+      ],
+      child: const PicoRadarApp(),
     );
+    await tester.pumpWidget(wrap == null ? app : wrap(app));
     await tester.pump();
     for (var i = 0; i < 5; i += 1) {
       await tester.pump(const Duration(seconds: 1));

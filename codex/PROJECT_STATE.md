@@ -4,8 +4,8 @@
 **Store title:** PicoRadar: Pico y Placa
 
 **Baseline:** Product v1.0 + Technical Architecture v1  
-**Current lot:** C11 — DONE locally; PR open, CI pending infrastructure billing availability
-**Last completed lot:** C10 — merged to `main`
+**Current lot:** C12 — DONE locally; PR open, CI pending infrastructure billing availability
+**Last completed lot:** C11 — merged to `main`
 **Release target:** Free 1.0 Android-first  
 **Monetization:** OFF  
 **Account/cloud:** OFF  
@@ -18,7 +18,7 @@ Apps is always central.
 
 ## Expected next action
 
-C11 exposes the local Pico y Placa status on Home, schedules local notifications after explicit permission action, and adds the Free 1.0 Android quick-access widget. Do not start C12 until C11 is reviewed/merged and a separate human kickoff is provided.
+C12 adds the Apps launcher grid/list, module registry, vehicle guard, neutral placeholders, and feature-flag filtering. Do not start C13 until C12 is reviewed/merged and a separate human kickoff is provided.
 
 ## Product decisions recorded during C05
 
@@ -56,12 +56,13 @@ At the end of every lot update:
 - C08 merged to `main` by explicit human authorization.
 - C09 merged to `main` by explicit human authorization with temporary CI infrastructure exception authorized only for C09: `CI_INFRA_EXCEPTION_GITHUB_BILLING`.
 - C10 merged to `main` by explicit human authorization with temporary CI infrastructure exception authorized only for C10: `CI_INFRA_EXCEPTION_GITHUB_BILLING`.
+- C11 merged to `main` by explicit human authorization with temporary CI infrastructure exception authorized only for C11: `CI_INFRA_BLOCKED_GITHUB_BILLING`.
 
 ## Latest lot handoff summary
 
-- Branch: `feat/C11-home-alerts-notifications`
-- Lot status: C11 DONE locally; PR pending review/merge.
-- Test summary: Flutter pub get, build_runner, format, analyze, 164 tests, and dev debug APK passed locally.
-- Physical QA status: Android APK build completed; physical device install/launch still pending if a USB device is available.
+- Branch: `feat/C12-apps-launcher`
+- Lot status: C12 DONE locally; PR pending review/merge.
+- Test summary: Flutter pub get, build_runner, format, analyze, full Flutter tests, and dev debug APK passed locally.
+- Physical QA status: Android dev APK installed and launched on Mi A3 when USB device is available for C12 QA.
 - Blockers: GitHub Actions may remain blocked by account billing/spending limit infrastructure; CI remains required before public/release.
-- Next lots unblocked: C12 after C11 review/merge only.
+- Next lots unblocked: C13 after C12 review/merge only.
