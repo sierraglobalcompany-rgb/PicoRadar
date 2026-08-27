@@ -48,7 +48,7 @@ class RestrictionStore {
     final row = rows.single;
     return RestrictionRuleSet(
       coverageKnown: true,
-      dataIsStale: now.toUtc().isAfter(row.staleAfter.toUtc()),
+      dataIsStale: !now.toUtc().isBefore(row.staleAfter.toUtc()),
       rules: restrictionRulesFromJson(
         row.rulesJson,
         jurisdictionId: row.jurisdictionId,

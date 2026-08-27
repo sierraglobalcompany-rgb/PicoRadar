@@ -162,6 +162,26 @@ void main() {
     expect(loaded.dataIsStale, isTrue);
   });
 
+  test('staleAfter boundary is inclusive', () async {
+    await importRestrictionsDataset(db, _dataset());
+
+    final fresh = await RestrictionStore(db).loadCoverage(
+      'synthetic_test_jurisdiction',
+      VehicleKind.car,
+      VehicleServiceType.private,
+      DateTime.utc(2026, 8, 31, 23, 59),
+    );
+    final stale = await RestrictionStore(db).loadCoverage(
+      'synthetic_test_jurisdiction',
+      VehicleKind.car,
+      VehicleServiceType.private,
+      DateTime.utc(2026, 9),
+    );
+
+    expect(fresh.dataIsStale, isFalse);
+    expect(stale.dataIsStale, isTrue);
+  });
+
   test('source metadata reaches engine evaluation', () async {
     await importRestrictionsDataset(db, _dataset());
     final loaded = await RestrictionStore(db).loadCoverage(
@@ -266,7 +286,7 @@ void main() {
     expect(oddDay.status, RestrictionStatus.restricted);
   });
 
-  test('Bogota taxi pilot asset evaluates daily rule', () async {
+  test('Bogota taxi asset keeps 24 to 31 August coverage', () async {
     await importRestrictionsDataset(db, await _assetDataset());
     final loaded = await RestrictionStore(db).loadCoverage(
       'co-dc-bogota',
@@ -275,19 +295,38 @@ void main() {
       DateTime.utc(2026, 8, 27),
     );
 
-    final result = const RestrictionEngine().evaluate(
-      _context(
-        loaded,
-        jurisdictionId: 'co-dc-bogota',
-        serviceType: VehicleServiceType.taxi,
-        plate: 'TXI034',
-        localDateTime: DateTime(2026, 8, 26, 6),
-      ),
-      loaded.rules,
+    expect(
+      _taxiStatus(loaded, day: 24, plate: 'TXI090'),
+      RestrictionStatus.restricted,
     );
-
-    expect(result.status, RestrictionStatus.restricted);
-    expect(result.matchedRuleId, 'bogota-taxi-2026-08-26');
+    expect(
+      _taxiStatus(loaded, day: 25, plate: 'TXI001'),
+      RestrictionStatus.restricted,
+    );
+    expect(
+      _taxiStatus(loaded, day: 26, plate: 'TXI034'),
+      RestrictionStatus.restricted,
+    );
+    expect(
+      _taxiStatus(loaded, day: 27, plate: 'TXI056'),
+      RestrictionStatus.restricted,
+    );
+    expect(
+      _taxiStatus(loaded, day: 28, plate: 'TXI078'),
+      RestrictionStatus.restricted,
+    );
+    expect(
+      _taxiStatus(loaded, day: 29, plate: 'TXI090'),
+      RestrictionStatus.restricted,
+    );
+    expect(
+      _taxiStatus(loaded, day: 30, plate: 'TXI090'),
+      RestrictionStatus.allowed,
+    );
+    expect(
+      _taxiStatus(loaded, day: 31, plate: 'TXI001'),
+      RestrictionStatus.restricted,
+    );
   });
 
   test('bundled asset parses correctly', () async {
@@ -296,6 +335,25 @@ void main() {
     final rows = await db.select(db.restrictionCoverages).get();
     expect(rows, hasLength(4));
   });
+}
+
+RestrictionStatus _taxiStatus(
+  RestrictionRuleSet loaded, {
+  required int day,
+  required String plate,
+}) {
+  return const RestrictionEngine()
+      .evaluate(
+        _context(
+          loaded,
+          jurisdictionId: 'co-dc-bogota',
+          serviceType: VehicleServiceType.taxi,
+          plate: plate,
+          localDateTime: DateTime(2026, 8, day, 6),
+        ),
+        loaded.rules,
+      )
+      .status;
 }
 
 RestrictionContext _context(

@@ -21,15 +21,18 @@ Consulted on 2026-08-27. Only official Alcaldia/Secretaria sources were used.
 - Coverage included:
   - `co-dc-bogota` + `car/private`: odd days allow 1-5, so 0,6,7,8,9 are restricted; even days allow 6-0, so 1,2,3,4,5 are restricted. Monday-Friday, 06:00-21:00, excluding holidays. validFrom 2026-08-01; validUntil 2026-08-31; staleAfter 2026-09-01.
 
-- Taxi pilot sources:
-  - 2026-08-24: https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-en-bogota-de-particulares-y-taxis-lunes-24-agosto-2026
-  - 2026-08-25: https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-bogota-martes-25-de-agosto-de-2026-particulares-y-taxis
-  - 2026-08-26: https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-en-bogota-26-de-agosto-de-2026-particulares-y-taxis
-  - 2026-08-27: https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-en-bogota-jueves-27-de-agosto-de-2026-particulares-y-taxi
+- Taxi source:
+  - Source: Bogota.gov.co / Secretaria Distrital de Movilidad, "Pico y placa Bogota servicio transporte especial 1 a 31 agosto de 2026".
+  - URL: https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-bogota-servicio-transporte-especial-1-31-agosto-de-2026
+  - Daily cross-checks for 2026-08-24 through 2026-08-27:
+    - https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-en-bogota-de-particulares-y-taxis-lunes-24-agosto-2026
+    - https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-bogota-martes-25-de-agosto-de-2026-particulares-y-taxis
+    - https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-en-bogota-26-de-agosto-de-2026-particulares-y-taxis
+    - https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-en-bogota-jueves-27-de-agosto-de-2026-particulares-y-taxi
 - Coverage included:
-  - `co-dc-bogota` + `car/taxi`: pilot daily restriction rules only for 2026-08-24 through 2026-08-27, 05:30-21:00, last numeric digit. staleAfter 2026-09-01.
+  - `co-dc-bogota` + `car/taxi`: daily restriction rules for 2026-08-01 through 2026-08-31, 05:30-21:00, last numeric digit, Monday-Saturday, with Sundays and holidays excluded by omission of rules for those dates. The dataset stores restricted digits as the complement of the official "pueden circular" digits within 0-9. staleAfter 2026-09-01.
 - Limitation:
-  - The taxi coverage is intentionally a bounded pilot, not a full-month claim.
+  - The complete official page labels the vehicle class as service transporte especial. The 2026-08-24 through 2026-08-27 daily Bogota.gov.co taxi pages match the same daily digit sequence and taxi hours. No non-official source was used.
 
 ## Non-production fixtures
 
