@@ -6,14 +6,20 @@ import '../../../core/database/app_database.dart';
 import '../../../core/storage/app_preferences.dart';
 import 'vehicle_profile.dart';
 
+typedef VehicleIdGenerator = String Function();
+
 class VehicleRepository {
-  VehicleRepository({required this.database, required this.preferences});
+  VehicleRepository({
+    required this.database,
+    required this.preferences,
+    VehicleIdGenerator? idGenerator,
+  }) : _idGenerator = idGenerator ?? _secureId;
 
   static const activeVehiclePreferenceKey = 'active_vehicle_id_v1';
 
   final AppDatabase database;
   final AppPreferences preferences;
-  final Random _random = Random.secure();
+  final VehicleIdGenerator _idGenerator;
 
   Future<List<VehicleProfile>> listVehicles() async {
     final rows =
@@ -48,7 +54,7 @@ class VehicleRepository {
     final now = DateTime.now().toUtc();
     _validateYear(year, now);
     _validateServiceType(kind, serviceType);
-    final id = _newId();
+    final id = _idGenerator();
     final normalizedPlate = normalizePlate(plate);
 
     await database
@@ -204,8 +210,9 @@ class VehicleRepository {
     );
   }
 
-  String _newId() {
-    final bytes = List<int>.generate(16, (_) => _random.nextInt(256));
+  static String _secureId() {
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
     return bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
   }
 

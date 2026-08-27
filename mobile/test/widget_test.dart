@@ -90,26 +90,14 @@ void main() {
     expect(find.text('Estado local 1'), findsOneWidget);
   });
 
-  testWidgets('immersive route is outside the shell and returns with back', (
+  testWidgets('home does not show the scaffold immersive action', (
     tester,
   ) async {
     await harness.pump(tester);
 
-    await tester.tap(find.byKey(const ValueKey('open-immersive-route')));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Ruta inmersiva'), findsOneWidget);
-    expect(find.text('Fuera del shell'), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('app-bottom-navigation')).hitTestable(),
-      findsNothing,
-    );
-
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-
     expect(find.byKey(const ValueKey('app-bottom-navigation')), findsOneWidget);
     expect(find.text('PicoRadar'), findsOneWidget);
+    expect(find.text('Probar ruta inmersiva'), findsNothing);
   });
 
   testWidgets('home skips welcome when a vehicle already exists', (

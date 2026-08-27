@@ -15,9 +15,19 @@ class TestAppHarness {
 
   final AppDatabase database;
   final MemoryPreferences preferences;
+  int _vehicleIdSequence = 0;
 
   VehicleRepository get repository {
-    return VehicleRepository(database: database, preferences: preferences);
+    return VehicleRepository(
+      database: database,
+      preferences: preferences,
+      idGenerator: _nextVehicleId,
+    );
+  }
+
+  String _nextVehicleId() {
+    _vehicleIdSequence += 1;
+    return _vehicleIdSequence.toString().padLeft(32, '0');
   }
 
   Future<void> pump(WidgetTester tester) async {

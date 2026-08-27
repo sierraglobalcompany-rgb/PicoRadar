@@ -65,12 +65,6 @@ class _HomeWelcome extends StatelessWidget {
                 icon: const Icon(Icons.add),
                 label: const Text('Agregar mi vehículo'),
               ),
-              const SizedBox(height: AppSpacing.xl),
-              TextButton(
-                key: const ValueKey('open-immersive-route'),
-                onPressed: () => context.push(AppRoute.immersivePreview.path),
-                child: const Text('Probar ruta inmersiva'),
-              ),
             ],
           ),
         ),
@@ -97,12 +91,6 @@ class _HomeReady extends StatelessWidget {
             vehicleCount == 1
                 ? 'Tienes 1 vehículo guardado.'
                 : 'Tienes $vehicleCount vehículos guardados.',
-          ),
-          const SizedBox(height: AppSpacing.l),
-          TextButton(
-            key: const ValueKey('open-immersive-route'),
-            onPressed: () => context.push(AppRoute.immersivePreview.path),
-            child: const Text('Probar ruta inmersiva'),
           ),
         ],
       ),

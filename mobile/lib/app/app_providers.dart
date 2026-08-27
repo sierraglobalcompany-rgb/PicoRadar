@@ -25,3 +25,7 @@ final vehicleRepositoryProvider = Provider<VehicleRepository>((ref) {
 final vehicleListProvider = FutureProvider<List<VehicleProfile>>((ref) {
   return ref.watch(vehicleRepositoryProvider).listVehicles();
 });
+
+final activeVehicleProvider = FutureProvider<VehicleProfile?>((ref) {
+  return ref.watch(vehicleRepositoryProvider).getActiveVehicle();
+});

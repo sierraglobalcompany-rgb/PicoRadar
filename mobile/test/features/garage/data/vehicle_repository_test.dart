@@ -15,11 +15,20 @@ void main() {
     late AppDatabase db;
     late _MemoryPreferences preferences;
     late VehicleRepository repository;
+    var vehicleIdSequence = 0;
 
     setUp(() {
       db = AppDatabase(NativeDatabase.memory());
       preferences = _MemoryPreferences();
-      repository = VehicleRepository(database: db, preferences: preferences);
+      vehicleIdSequence = 0;
+      repository = VehicleRepository(
+        database: db,
+        preferences: preferences,
+        idGenerator: () {
+          vehicleIdSequence += 1;
+          return vehicleIdSequence.toString().padLeft(32, '0');
+        },
+      );
     });
 
     tearDown(() async {
