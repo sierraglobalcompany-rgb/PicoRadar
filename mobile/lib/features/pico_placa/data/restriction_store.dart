@@ -1,3 +1,5 @@
+import 'package:drift/drift.dart';
+
 import '../../../core/database/app_database.dart';
 import '../../garage/data/vehicle_profile.dart';
 import '../domain/restriction_rule.dart';
@@ -25,6 +27,24 @@ class RestrictionStore {
   const RestrictionStore(this.database);
 
   final AppDatabase database;
+
+  Future<List<RestrictionJurisdiction>> listJurisdictions() async {
+    return (database.selectOnly(database.restrictionCoverages, distinct: true)
+          ..addColumns([
+            database.restrictionCoverages.jurisdictionId,
+            database.restrictionCoverages.jurisdictionName,
+          ])
+          ..orderBy([
+            OrderingTerm.asc(database.restrictionCoverages.jurisdictionName),
+          ]))
+        .map(
+          (row) => RestrictionJurisdiction(
+            id: row.read(database.restrictionCoverages.jurisdictionId)!,
+            name: row.read(database.restrictionCoverages.jurisdictionName)!,
+          ),
+        )
+        .get();
+  }
 
   Future<RestrictionRuleSet> loadCoverage(
     String jurisdictionId,
@@ -60,4 +80,11 @@ class RestrictionStore {
       sourceUrls: restrictionSourceUrlsFromJson(row.sourceUrlsJson),
     );
   }
+}
+
+class RestrictionJurisdiction {
+  const RestrictionJurisdiction({required this.id, required this.name});
+
+  final String id;
+  final String name;
 }

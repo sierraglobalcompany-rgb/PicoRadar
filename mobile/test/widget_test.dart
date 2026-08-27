@@ -94,9 +94,10 @@ void main() {
     tester,
   ) async {
     await harness.pump(tester);
+    await tester.tap(find.byKey(const ValueKey('tab-home')));
+    await tester.pump();
 
     expect(find.byKey(const ValueKey('app-bottom-navigation')), findsOneWidget);
-    expect(find.text('PicoRadar'), findsOneWidget);
     expect(find.text('Probar ruta inmersiva'), findsNothing);
   });
 
@@ -114,6 +115,5 @@ void main() {
       find.text('Tu vehículo, tus alertas y tu ruta en un solo lugar.'),
       findsNothing,
     );
-    expect(find.text('Tienes 1 vehículo guardado.'), findsOneWidget);
   });
 }

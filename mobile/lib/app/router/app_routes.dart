@@ -4,6 +4,7 @@ enum AppRoute {
   apps('/apps'),
   trip('/trip'),
   drive('/drive'),
+  pico('/pico'),
   vehicleOnboarding('/onboarding/vehicle'),
   immersivePreview('/immersive-preview');
 
