@@ -11,6 +11,8 @@ import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/features/apps_launcher/data/module_registry.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
+import 'package:picoradar/features/vehicle_status/platform/obligation_notifications.dart';
+import 'package:picoradar/features/vehicle_status/presentation/vehicle_status_screen.dart';
 
 class TestAppHarness {
   TestAppHarness()
@@ -43,6 +45,7 @@ class TestAppHarness {
   Future<void> pump(
     WidgetTester tester, {
     Map<String, bool> moduleFeatureFlags = const {},
+    ExternalLauncher? externalLauncher,
     Widget Function(Widget child)? wrap,
   }) async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -67,6 +70,9 @@ class TestAppHarness {
         appPreferencesProvider.overrideWithValue(preferences),
         picoNotificationSchedulerProvider.overrideWithValue(
           _FakePicoNotificationScheduler(),
+        ),
+        externalLauncherProvider.overrideWithValue(
+          externalLauncher ?? _FakeExternalLauncher(),
         ),
         bogotaNowProvider.overrideWithValue(now),
         if (moduleFeatureFlags.isNotEmpty)
@@ -102,6 +108,22 @@ class _FakePicoNotificationScheduler extends PicoNotificationScheduler {
 
   @override
   Future<void> cancelPicoNotifications() async {}
+
+  @override
+  Future<void> rescheduleObligationNotifications(
+    List<ObligationNotificationPlan> plans,
+  ) async {}
+
+  @override
+  Future<void> cancelObligationNotifications() async {}
+}
+
+class _FakeExternalLauncher implements ExternalLauncher {
+  @override
+  Future<bool> callPhone(String phone) async => true;
+
+  @override
+  Future<bool> openExternal(String uri) async => true;
 }
 
 class MemoryPreferences implements AppPreferences {

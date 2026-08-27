@@ -3,6 +3,7 @@ import 'package:timezone/timezone.dart' as timezone;
 
 import '../../garage/data/vehicle_profile.dart';
 import '../../garage/presentation/vehicle_display.dart';
+import '../../vehicle_status/platform/obligation_notifications.dart';
 import '../data/pico_preferences.dart';
 import '../data/restriction_store.dart';
 import '../domain/bogota_time.dart';
@@ -126,9 +127,14 @@ class PicoNotificationScheduler {
 
   final FlutterLocalNotificationsPlugin _plugin;
   bool _initialized = false;
+  void Function(String route)? _onRoute;
   String? _lastPlanSignature;
+  String? _lastObligationPlanSignature;
 
   Future<void> initialize({void Function(String route)? onRoute}) async {
+    if (onRoute != null) {
+      _onRoute = onRoute;
+    }
     if (_initialized) {
       return;
     }
@@ -142,9 +148,9 @@ class PicoNotificationScheduler {
         ),
       ),
       onDidReceiveNotificationResponse: (response) {
-        final route = picoRouteFromNotificationPayload(response.payload);
+        final route = notificationRouteFromPayload(response.payload);
         if (route != null) {
-          onRoute?.call(route);
+          _onRoute?.call(route);
         }
       },
     );
@@ -154,9 +160,9 @@ class PicoNotificationScheduler {
     final launchPayload = launchDetails?.didNotificationLaunchApp == true
         ? launchDetails?.notificationResponse?.payload
         : null;
-    final route = picoRouteFromNotificationPayload(launchPayload);
+    final route = notificationRouteFromPayload(launchPayload);
     if (route != null) {
-      onRoute?.call(route);
+      _onRoute?.call(route);
     }
   }
 
@@ -223,6 +229,54 @@ class PicoNotificationScheduler {
     }
     _lastPlanSignature = null;
   }
+
+  Future<void> rescheduleObligationNotifications(
+    List<ObligationNotificationPlan> plans,
+  ) async {
+    final signature = _obligationPlanSignature(plans);
+    if (_lastObligationPlanSignature == signature) {
+      return;
+    }
+    await cancelObligationNotifications();
+    for (final plan in plans) {
+      await _plugin.zonedSchedule(
+        id: plan.id,
+        title: plan.title,
+        body: plan.body,
+        scheduledDate: plan.scheduledAt,
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'vehicle_obligation_reminders',
+            'Vencimientos del vehículo',
+            channelDescription:
+                'Recordatorios locales de SOAT, tecnomecánica y seguro.',
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: plan.payload,
+      );
+    }
+    _lastObligationPlanSignature = signature;
+  }
+
+  Future<void> cancelObligationNotifications() async {
+    final pending = await _plugin.pendingNotificationRequests();
+    final ids = obligationPendingNotificationIdsToCancel(pending);
+    for (final id in ids) {
+      await _plugin.cancel(id: id);
+    }
+    _lastObligationPlanSignature = null;
+  }
+}
+
+String? notificationRouteFromPayload(String? payload) {
+  if (payload == PicoNotificationScheduler.picoPayload) {
+    return payload;
+  }
+  return obligationRouteFromPayload(payload);
 }
 
 String? picoRouteFromNotificationPayload(String? payload) {
@@ -233,7 +287,9 @@ List<int> picoPendingNotificationIdsToCancel(
   Iterable<PendingNotificationRequest> pending,
 ) {
   return pending
-      .where((request) => request.payload == PicoNotificationScheduler.picoPayload)
+      .where(
+        (request) => request.payload == PicoNotificationScheduler.picoPayload,
+      )
       .map((request) => request.id)
       .toList(growable: false);
 }
@@ -255,7 +311,11 @@ Future<List<PicoNotificationPlan>> buildPicoNotificationPlans({
       currentInstant,
     );
     for (var offset = 0; offset < 14; offset += 1) {
-      final date = DateTime(nowBogota.year, nowBogota.month, nowBogota.day + offset);
+      final date = DateTime(
+        nowBogota.year,
+        nowBogota.month,
+        nowBogota.day + offset,
+      );
       days.add(
         PicoVehicleRestrictionDay(
           vehicle: vehicle,
@@ -287,6 +347,12 @@ Future<List<PicoNotificationPlan>> buildPicoNotificationPlans({
 }
 
 String _planSignature(List<PicoNotificationPlan> plans) {
+  return plans
+      .map((plan) => '${plan.id}:${plan.scheduledAt.toIso8601String()}')
+      .join('|');
+}
+
+String _obligationPlanSignature(List<ObligationNotificationPlan> plans) {
   return plans
       .map((plan) => '${plan.id}:${plan.scheduledAt.toIso8601String()}')
       .join('|');

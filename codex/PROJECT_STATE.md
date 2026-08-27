@@ -4,8 +4,8 @@
 **Store title:** PicoRadar: Pico y Placa
 
 **Baseline:** Product v1.0 + Technical Architecture v1  
-**Current lot:** C12 — DONE locally; PR open, CI pending infrastructure billing availability
-**Last completed lot:** C11 — merged to `main`
+**Current lot:** C13 — DONE locally; PR open, CI pending infrastructure billing availability
+**Last completed lot:** C12 — merged to `main`
 **Release target:** Free 1.0 Android-first  
 **Monetization:** OFF  
 **Account/cloud:** OFF  
@@ -18,7 +18,7 @@ Apps is always central.
 
 ## Expected next action
 
-C12 adds the Apps launcher grid/list, module registry, vehicle guard, neutral placeholders, and feature-flag filtering. Do not start C13 until C12 is reviewed/merged and a separate human kickoff is provided.
+C13 adds local user-managed SOAT/RTM/insurance dates, official vehicle-status/tax links, and obligation reminders. Do not start C14 until C13 is reviewed/merged and a separate human kickoff is provided.
 
 ## Product decisions recorded during C05
 
@@ -57,12 +57,20 @@ At the end of every lot update:
 - C09 merged to `main` by explicit human authorization with temporary CI infrastructure exception authorized only for C09: `CI_INFRA_EXCEPTION_GITHUB_BILLING`.
 - C10 merged to `main` by explicit human authorization with temporary CI infrastructure exception authorized only for C10: `CI_INFRA_EXCEPTION_GITHUB_BILLING`.
 - C11 merged to `main` by explicit human authorization with temporary CI infrastructure exception authorized only for C11: `CI_INFRA_BLOCKED_GITHUB_BILLING`.
+- C12 merged to `main` by explicit human authorization with temporary CI infrastructure exception authorized only for C12: `CI_INFRA_BLOCKED_GITHUB_BILLING`.
 
 ## Latest lot handoff summary
 
-- Branch: `feat/C12-apps-launcher`
-- Lot status: C12 DONE locally; PR pending review/merge.
-- Test summary: Flutter pub get, build_runner, format, analyze, full Flutter tests, and dev debug APK passed locally.
-- Physical QA status: Android dev APK installed and launched on Mi A3 when USB device is available for C12 QA.
-- Blockers: GitHub Actions may remain blocked by account billing/spending limit infrastructure; CI remains required before public/release.
-- Next lots unblocked: C13 after C12 review/merge only.
+- Branch: `feat/C13-vehicle-status-modules`
+- Lot status: C13 DONE locally; PR pending review/merge.
+- Test summary: Flutter pub get, build_runner, C13-scoped format, analyze, full Flutter tests, and dev debug APK passed locally.
+- Physical QA status: Mi A3/USB device not available; ADB listed no connected device after server restart. C13 physical QA is optional.
+- Blockers: GitHub Actions may remain blocked by account billing/spending limit infrastructure; local gates are green.
+- Next lots unblocked: C14 after C13 review/merge only.
+
+## C13 product state
+
+- SOAT and RTM status is derived from locally saved dates and must be presented as "segun la fecha guardada".
+- RUNT remains the external verification authority for SOAT/RTM; PicoRadar does not scrape RUNT or store document IDs.
+- Insurance is voluntary coverage only; assistance availability depends on the user's policy and phone numbers are user-entered.
+- Tax module provides verified pilot links/calendars for Bogota and Antioquia 2026 only; PicoRadar does not estimate tax values, rates, sanctions, or debts.

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
+import 'package:picoradar/features/vehicle_status/data/vehicle_obligation_store.dart';
+import 'package:picoradar/features/vehicle_status/domain/vehicle_obligation.dart';
 
 import '../../../test_app_harness.dart';
 
@@ -127,6 +129,32 @@ void main() {
     expect(find.text('2021'), findsOneWidget);
     expect(find.text('Rojo'), findsOneWidget);
     expect(find.text('Activo'), findsOneWidget);
+    expect(find.text('SOAT'), findsOneWidget);
+    expect(find.text('Tecnomecánica'), findsOneWidget);
+    expect(find.text('Seguro'), findsOneWidget);
+    expect(find.text('Impuestos'), findsOneWidget);
+  });
+
+  testWidgets('garage status cards open modules for the tapped vehicle', (
+    tester,
+  ) async {
+    final active = await _createVehicle(harness, plate: 'AAA111');
+    final other = await _createVehicle(harness, plate: 'BBB222');
+    await harness.repository.setActiveVehicle(active.id);
+    await VehicleObligationStore(harness.database).upsert(
+      vehicleId: other.id,
+      type: VehicleObligationType.soat,
+      dueDate: DateTime(2026, 12, 31),
+    );
+
+    await _openDetail(tester, harness, other.id);
+    await tester.tap(find.byKey(const ValueKey('detail-status-soat')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('BBB222'), findsOneWidget);
+    expect(find.text('AAA111'), findsNothing);
+    expect((await harness.repository.getActiveVehicle())?.id, active.id);
+    expect(find.text('Vigente según la fecha guardada'), findsOneWidget);
   });
 
   testWidgets('edit reuses the form and updates the vehicle', (tester) async {

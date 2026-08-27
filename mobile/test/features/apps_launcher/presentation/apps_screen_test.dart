@@ -102,7 +102,7 @@ void main() {
     await _createVehicle(harness, plate: 'AAA111');
     await _openApps(tester, harness);
 
-    await tester.tap(find.byKey(const ValueKey('app-module-soat')));
+    await tester.tap(find.byKey(const ValueKey('app-module-comparendos')));
     await _pumpRoute(tester);
 
     expect(find.byType(ModulePlaceholderScreen), findsOneWidget);
@@ -111,6 +111,80 @@ void main() {
       find.text('Este módulo estará disponible en una próxima etapa.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('Documentos and Defensa remain placeholders', (tester) async {
+    await _createVehicle(harness, plate: 'AAA111');
+
+    await _openModuleFromApps(tester, harness, 'documentos');
+    expect(find.byType(ModulePlaceholderScreen), findsOneWidget);
+    expect(find.text('Documentos'), findsWidgets);
+
+    await _openModuleFromApps(tester, harness, 'defensa');
+    expect(find.byType(ModulePlaceholderScreen), findsOneWidget);
+    expect(find.text('Defensa'), findsWidgets);
+  });
+
+  testWidgets('C13 vehicle status modules open real screens', (tester) async {
+    await _createVehicle(harness, plate: 'AAA111');
+
+    await _openModuleFromApps(tester, harness, 'soat');
+    expect(find.text('SOAT'), findsWidgets);
+    expect(
+      find.text(
+        'La fecha mostrada fue guardada en este dispositivo. Verifica la vigencia oficial en RUNT.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+
+    await _openModuleFromApps(tester, harness, 'tecnomecanica');
+    expect(find.text('Tecnomecánica / RTM'), findsOneWidget);
+    expect(find.byKey(const ValueKey('rtm-find-cda')), findsOneWidget);
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+
+    await _openModuleFromApps(tester, harness, 'seguro_asistencia');
+    expect(find.text('Seguro y asistencia'), findsWidgets);
+    expect(
+      find.text('Disponible según las coberturas y condiciones de tu póliza.'),
+      findsOneWidget,
+    );
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+
+    await _openModuleFromApps(tester, harness, 'impuestos');
+    expect(find.text('Impuestos'), findsWidgets);
+    expect(
+      find.text('No calculamos ni estimamos el impuesto.'),
+      findsOneWidget,
+    );
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+  });
+
+  testWidgets('vehicle status modules work for taxi and motorcycle', (
+    tester,
+  ) async {
+    await _createVehicle(
+      harness,
+      plate: 'TAX123',
+      serviceType: VehicleServiceType.taxi,
+    );
+    await _openModuleFromApps(tester, harness, 'soat');
+    expect(find.text('TAX123'), findsOneWidget);
+    expect(find.text('SOAT'), findsWidgets);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+
+    final motorcycleHarness = TestAppHarness();
+    addTearDown(motorcycleHarness.dispose);
+    await _createVehicle(
+      motorcycleHarness,
+      plate: 'MOT123',
+      kind: VehicleKind.motorcycle,
+    );
+    await _openModuleFromApps(tester, motorcycleHarness, 'tecnomecanica');
+    expect(find.text('MOT123'), findsOneWidget);
+    expect(find.text('Tecnomecánica / RTM'), findsOneWidget);
   });
 
   testWidgets('taxi appears in active vehicle chip', (tester) async {
@@ -242,6 +316,18 @@ Future<void> _openApps(
 Future<void> _pumpRoute(WidgetTester tester) async {
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 350));
+}
+
+Future<void> _openModuleFromApps(
+  WidgetTester tester,
+  TestAppHarness harness,
+  String moduleId,
+) async {
+  await _openApps(tester, harness);
+  final module = find.byKey(ValueKey('app-module-$moduleId'));
+  await tester.ensureVisible(module);
+  await tester.tap(module);
+  await tester.pumpAndSettle();
 }
 
 Future<VehicleProfile> _createVehicle(
