@@ -4,6 +4,7 @@ enum AppRoute {
   apps('/apps'),
   trip('/trip'),
   drive('/drive'),
+  vehicleOnboarding('/onboarding/vehicle'),
   immersivePreview('/immersive-preview');
 
   const AppRoute(this.path);

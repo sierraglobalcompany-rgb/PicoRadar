@@ -2,6 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../shell/app_shell.dart';
+import '../../features/garage/presentation/garage_screen.dart';
+import '../../features/home/presentation/home_screen.dart';
+import '../../features/onboarding/presentation/onboarding_vehicle_screen.dart';
 import 'app_routes.dart';
 import 'immersive_placeholder_screen.dart';
 import 'root_placeholder_screen.dart';
@@ -23,6 +26,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
+        path: AppRoute.vehicleOnboarding.path,
+        builder: (context, state) => const OnboardingVehicleScreen(),
+      ),
+      GoRoute(
         path: AppRoute.immersivePreview.path,
         builder: (context, state) => const ImmersivePlaceholderScreen(),
       ),
@@ -35,7 +42,13 @@ StatefulShellBranch _rootBranch(AppTab tab) {
     routes: [
       GoRoute(
         path: tab.route.path,
-        builder: (context, state) => RootPlaceholderScreen(tab: tab),
+        builder: (context, state) {
+          return switch (tab) {
+            AppTab.home => const HomeScreen(),
+            AppTab.garage => const GarageScreen(),
+            _ => RootPlaceholderScreen(tab: tab),
+          };
+        },
       ),
     ],
   );
