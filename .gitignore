@@ -1,0 +1,7 @@
+# Agent/code-graph generated output
+# Regenerate locally; durable findings belong in canonical docs.
+graphify-out/
+
+# Local agent scratch/review output
+.frontend-design/
+.playwright-cli/
