@@ -206,6 +206,46 @@ void main() {
     expect(result.status, RestrictionStatus.restricted);
   });
 
+  test('unknown origin with local-only rule returns unknown', () {
+    final result = engine.evaluate(
+      _context(registrationOrigin: RegistrationOrigin.unknown),
+      [
+        _rule(registrationOrigins: {RegistrationOrigin.local}),
+      ],
+    );
+
+    expect(result.status, RestrictionStatus.unknown);
+    expect(result.reasonCode, RestrictionReasonCode.unknownRegistrationOrigin);
+  });
+
+  test('unknown origin with foreign-only rule returns unknown', () {
+    final result = engine.evaluate(
+      _context(registrationOrigin: RegistrationOrigin.unknown),
+      [
+        _rule(registrationOrigins: {RegistrationOrigin.foreign}),
+      ],
+    );
+
+    expect(result.status, RestrictionStatus.unknown);
+    expect(result.reasonCode, RestrictionReasonCode.unknownRegistrationOrigin);
+  });
+
+  test('unknown origin with local and foreign rule evaluates normally', () {
+    final result = engine.evaluate(
+      _context(registrationOrigin: RegistrationOrigin.unknown),
+      [
+        _rule(
+          registrationOrigins: {
+            RegistrationOrigin.local,
+            RegistrationOrigin.foreign,
+          },
+        ),
+      ],
+    );
+
+    expect(result.status, RestrictionStatus.restricted);
+  });
+
   test('rule outside validFrom and validUntil does not apply', () {
     final beforeStart = engine.evaluate(_context(), [
       _rule(validFrom: DateTime(2026, 2), validUntil: DateTime(2026, 3)),
@@ -242,6 +282,53 @@ void main() {
     expect(result.matchedRuleId, 'emergency');
   });
 
+  test('higher priority uncertain digit blocks lower known rule', () {
+    final result = engine.evaluate(_context(plate: 'ABCXYZ'), [
+      _rule(id: 'known', priority: 100),
+      _rule(
+        id: 'unknown-digit',
+        priority: 1000,
+        digitPosition: RestrictionDigitPosition.lastNumeric,
+        digits: {3},
+      ),
+    ]);
+
+    expect(result.status, RestrictionStatus.unknown);
+    expect(result.reasonCode, RestrictionReasonCode.unknownRequiredPlateDigit);
+  });
+
+  test('lower priority uncertain digit does not block higher known rule', () {
+    final result = engine.evaluate(_context(plate: 'ABCXYZ'), [
+      _rule(
+        id: 'unknown-digit',
+        priority: 100,
+        digitPosition: RestrictionDigitPosition.lastNumeric,
+        digits: {3},
+      ),
+      _rule(id: 'known', priority: 1000),
+    ]);
+
+    expect(result.status, RestrictionStatus.restricted);
+    expect(result.matchedRuleId, 'known');
+  });
+
+  test('higher priority uncertain origin blocks lower known rule', () {
+    final result = engine.evaluate(
+      _context(registrationOrigin: RegistrationOrigin.unknown),
+      [
+        _rule(id: 'known', priority: 100),
+        _rule(
+          id: 'unknown-origin',
+          priority: 1000,
+          registrationOrigins: {RegistrationOrigin.local},
+        ),
+      ],
+    );
+
+    expect(result.status, RestrictionStatus.unknown);
+    expect(result.reasonCode, RestrictionReasonCode.unknownRegistrationOrigin);
+  });
+
   test(
     'allow and restrict with same max priority returns unknown conflict',
     () {
@@ -265,6 +352,57 @@ void main() {
     expect(result.sourceUrl, 'https://example.test/rules');
     expect(result.verifiedAt, verifiedAt);
   });
+
+  test('cross-midnight weekday uses the window start date after midnight', () {
+    final result = engine.evaluate(
+      _context(localDateTime: DateTime(2026, 1, 6, 1)),
+      [
+        _rule(
+          weekdays: {DateTime.monday},
+          timeWindows: [
+            const RestrictionTimeWindow(startMinute: 1320, endMinute: 120),
+          ],
+        ),
+      ],
+    );
+
+    expect(result.status, RestrictionStatus.restricted);
+  });
+
+  test('cross-midnight weekday does not drift to unrelated next day', () {
+    final result = engine.evaluate(
+      _context(localDateTime: DateTime(2026, 1, 7, 1)),
+      [
+        _rule(
+          weekdays: {DateTime.monday},
+          timeWindows: [
+            const RestrictionTimeWindow(startMinute: 1320, endMinute: 120),
+          ],
+        ),
+      ],
+    );
+
+    expect(result.status, RestrictionStatus.allowed);
+  });
+
+  test(
+    'cross-midnight date parity uses the window start date after midnight',
+    () {
+      final result = engine.evaluate(
+        _context(localDateTime: DateTime(2026, 1, 6, 1)),
+        [
+          _rule(
+            dateParity: RestrictionDateParity.odd,
+            timeWindows: [
+              const RestrictionTimeWindow(startMinute: 1320, endMinute: 120),
+            ],
+          ),
+        ],
+      );
+
+      expect(result.status, RestrictionStatus.restricted);
+    },
+  );
 }
 
 RestrictionContext _context({
