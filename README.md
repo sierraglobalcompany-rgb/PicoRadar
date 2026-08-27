@@ -15,7 +15,7 @@ Monorepo KISS para PicoRadar Free 1.0, Android-first con Flutter multiplataforma
 ## Tooling baseline C00
 
 - Flutter 3.47.x stable / Dart 3.13.x.
-- Android `compileSdk 36`, `targetSdk 36`, `minSdk 24`.
+- Android `compileSdk 37`, `targetSdk 36`, `minSdk 24`.
 - Java 17.
 - PHP 8.3+.
 - Laravel 13.
@@ -51,6 +51,10 @@ Configured Android flavors:
 
 The local Drift database lives in `mobile/lib/core/database/` with `schemaVersion = 1`. The initial schema is intentionally small: `vehicles`, `vehicle_obligations`, `notification_preferences` and `dataset_versions`, with indexes for vehicle plates, obligation lookups/due dates and dataset keys. GPS history, trip history, dataset imports, UI repositories and SQLCipher remain out of scope.
 
+## C04 Local Storage And Crypto
+
+Local storage foundations live in `mobile/lib/core/storage/`. `shared_preferences` is used only through `SharedPreferencesAsync` for non-sensitive settings, `flutter_secure_storage` stores small secrets and the 32-byte file master key, and `cryptography` provides AES-256-GCM for private file bytes. These dependencies match the approved technical baseline, keep Android/iOS support in the Flutter plugin ecosystem, and avoid custom crypto or extra repository layers.
+
 ## Server
 
 ```powershell
@@ -74,4 +78,4 @@ GitHub Actions runs separate mobile and server gates on pull requests and matchi
 
 ## Current Scope
 
-C00 creates repository foundation, Flutter/Laravel scaffolds, Android flavors and smoke tests. C01 adds design tokens, Riverpod/go_router bootstrap, the five-tab app shell, root placeholders and shell/router tests. C02 adds CI quality gates and Dependabot. C03 adds the Drift/SQLite schema skeleton and migration harness only. Firebase, GPS, account/cloud, the Apps 3x3 launcher and product feature screens remain out of scope until their approved lots.
+C00 creates repository foundation, Flutter/Laravel scaffolds, Android flavors and smoke tests. C01 adds design tokens, Riverpod/go_router bootstrap, the five-tab app shell, root placeholders and shell/router tests. C02 adds CI quality gates and Dependabot. C03 adds the Drift/SQLite schema skeleton and migration harness only. C04 adds non-sensitive preferences, secure storage and AES-GCM file crypto foundations only. Firebase, GPS, account/cloud, the Apps 3x3 launcher and product feature screens remain out of scope until their approved lots.
