@@ -4,8 +4,8 @@
 **Store title:** PicoRadar: Pico y Placa
 
 **Baseline:** Product v1.0 + Technical Architecture v1  
-**Current lot:** C06 — DONE locally; pending PR review/merge
-**Last completed lot:** C05 — merged to `main`
+**Current lot:** C07 — DONE locally; pending PR review/merge
+**Last completed lot:** C06 — merged to `main`
 **Release target:** Free 1.0 Android-first  
 **Monetization:** OFF  
 **Account/cloud:** OFF  
@@ -18,7 +18,7 @@ Apps is always central.
 
 ## Expected next action
 
-C06 adds local vehicle models, migration and repository only. Do not start C07 until C06 is reviewed/merged and a separate human kickoff is provided.
+C07 adds first-run vehicle onboarding using the local VehicleRepository. Do not start C08 until C07 is reviewed/merged and a separate human kickoff is provided.
 
 ## Product decisions recorded during C05
 
@@ -40,12 +40,12 @@ At the end of every lot update:
 
 ## Latest lot handoff summary
 
-- Branch: `feat/C06-vehicle-domain`
-- Lot status: C06 DONE locally; pending PR review/merge.
-- Test summary: Vehicle repository tests, migration v1 to v2 test, Flutter analyze/test and dev debug APK passed locally.
-- Physical QA status: Not required for C06.
+- Branch: `feat/C07-onboarding-ui`
+- Lot status: C07 DONE locally; pending PR review/merge.
+- Test summary: Onboarding widget tests, Flutter analyze/test and dev debug APK passed locally.
+- Physical QA status: Mi A3 dev APK smoke completed.
 - Blockers: None.
-- Next lots unblocked: None until C06 review/merge.
+- Next lots unblocked: None until C07 review/merge.
 
 ## GitHub state
 
@@ -58,3 +58,4 @@ At the end of every lot update:
 - C03 merged to `main` by explicit human authorization.
 - C04 merged to `main` by explicit human authorization.
 - C05 merged to `main` by explicit human authorization.
+- C06 merged to `main` by explicit human authorization.
