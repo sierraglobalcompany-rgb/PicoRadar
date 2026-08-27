@@ -51,6 +51,18 @@ class $VehiclesTable extends Vehicles with TableInfo<$VehiclesTable, Vehicle> {
     requiredDuringInsert: false,
     defaultValue: const Constant('car'),
   );
+  static const VerificationMeta _serviceTypeMeta = const VerificationMeta(
+    'serviceType',
+  );
+  @override
+  late final GeneratedColumn<String> serviceType = GeneratedColumn<String>(
+    'service_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('private'),
+  );
   static const VerificationMeta _subtypeMeta = const VerificationMeta(
     'subtype',
   );
@@ -148,6 +160,7 @@ class $VehiclesTable extends Vehicles with TableInfo<$VehiclesTable, Vehicle> {
     plate,
     nickname,
     kind,
+    serviceType,
     subtype,
     registrationCity,
     brand,
@@ -193,6 +206,15 @@ class $VehiclesTable extends Vehicles with TableInfo<$VehiclesTable, Vehicle> {
       context.handle(
         _kindMeta,
         kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    }
+    if (data.containsKey('service_type')) {
+      context.handle(
+        _serviceTypeMeta,
+        serviceType.isAcceptableOrUnknown(
+          data['service_type']!,
+          _serviceTypeMeta,
+        ),
       );
     }
     if (data.containsKey('subtype')) {
@@ -277,6 +299,10 @@ class $VehiclesTable extends Vehicles with TableInfo<$VehiclesTable, Vehicle> {
         DriftSqlType.string,
         data['${effectivePrefix}kind'],
       )!,
+      serviceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}service_type'],
+      )!,
       subtype: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}subtype'],
@@ -327,6 +353,7 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
   final String plate;
   final String? nickname;
   final String kind;
+  final String serviceType;
   final String? subtype;
   final String? registrationCity;
   final String? brand;
@@ -341,6 +368,7 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
     required this.plate,
     this.nickname,
     required this.kind,
+    required this.serviceType,
     this.subtype,
     this.registrationCity,
     this.brand,
@@ -360,6 +388,7 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
       map['nickname'] = Variable<String>(nickname);
     }
     map['kind'] = Variable<String>(kind);
+    map['service_type'] = Variable<String>(serviceType);
     if (!nullToAbsent || subtype != null) {
       map['subtype'] = Variable<String>(subtype);
     }
@@ -394,6 +423,7 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
           ? const Value.absent()
           : Value(nickname),
       kind: Value(kind),
+      serviceType: Value(serviceType),
       subtype: subtype == null && nullToAbsent
           ? const Value.absent()
           : Value(subtype),
@@ -426,6 +456,7 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
       plate: serializer.fromJson<String>(json['plate']),
       nickname: serializer.fromJson<String?>(json['nickname']),
       kind: serializer.fromJson<String>(json['kind']),
+      serviceType: serializer.fromJson<String>(json['serviceType']),
       subtype: serializer.fromJson<String?>(json['subtype']),
       registrationCity: serializer.fromJson<String?>(json['registrationCity']),
       brand: serializer.fromJson<String?>(json['brand']),
@@ -445,6 +476,7 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
       'plate': serializer.toJson<String>(plate),
       'nickname': serializer.toJson<String?>(nickname),
       'kind': serializer.toJson<String>(kind),
+      'serviceType': serializer.toJson<String>(serviceType),
       'subtype': serializer.toJson<String?>(subtype),
       'registrationCity': serializer.toJson<String?>(registrationCity),
       'brand': serializer.toJson<String?>(brand),
@@ -462,6 +494,7 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
     String? plate,
     Value<String?> nickname = const Value.absent(),
     String? kind,
+    String? serviceType,
     Value<String?> subtype = const Value.absent(),
     Value<String?> registrationCity = const Value.absent(),
     Value<String?> brand = const Value.absent(),
@@ -476,6 +509,7 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
     plate: plate ?? this.plate,
     nickname: nickname.present ? nickname.value : this.nickname,
     kind: kind ?? this.kind,
+    serviceType: serviceType ?? this.serviceType,
     subtype: subtype.present ? subtype.value : this.subtype,
     registrationCity: registrationCity.present
         ? registrationCity.value
@@ -494,6 +528,9 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
       plate: data.plate.present ? data.plate.value : this.plate,
       nickname: data.nickname.present ? data.nickname.value : this.nickname,
       kind: data.kind.present ? data.kind.value : this.kind,
+      serviceType: data.serviceType.present
+          ? data.serviceType.value
+          : this.serviceType,
       subtype: data.subtype.present ? data.subtype.value : this.subtype,
       registrationCity: data.registrationCity.present
           ? data.registrationCity.value
@@ -515,6 +552,7 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
           ..write('plate: $plate, ')
           ..write('nickname: $nickname, ')
           ..write('kind: $kind, ')
+          ..write('serviceType: $serviceType, ')
           ..write('subtype: $subtype, ')
           ..write('registrationCity: $registrationCity, ')
           ..write('brand: $brand, ')
@@ -534,6 +572,7 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
     plate,
     nickname,
     kind,
+    serviceType,
     subtype,
     registrationCity,
     brand,
@@ -552,6 +591,7 @@ class Vehicle extends DataClass implements Insertable<Vehicle> {
           other.plate == this.plate &&
           other.nickname == this.nickname &&
           other.kind == this.kind &&
+          other.serviceType == this.serviceType &&
           other.subtype == this.subtype &&
           other.registrationCity == this.registrationCity &&
           other.brand == this.brand &&
@@ -568,6 +608,7 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
   final Value<String> plate;
   final Value<String?> nickname;
   final Value<String> kind;
+  final Value<String> serviceType;
   final Value<String?> subtype;
   final Value<String?> registrationCity;
   final Value<String?> brand;
@@ -583,6 +624,7 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
     this.plate = const Value.absent(),
     this.nickname = const Value.absent(),
     this.kind = const Value.absent(),
+    this.serviceType = const Value.absent(),
     this.subtype = const Value.absent(),
     this.registrationCity = const Value.absent(),
     this.brand = const Value.absent(),
@@ -599,6 +641,7 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
     required String plate,
     this.nickname = const Value.absent(),
     this.kind = const Value.absent(),
+    this.serviceType = const Value.absent(),
     this.subtype = const Value.absent(),
     this.registrationCity = const Value.absent(),
     this.brand = const Value.absent(),
@@ -616,6 +659,7 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
     Expression<String>? plate,
     Expression<String>? nickname,
     Expression<String>? kind,
+    Expression<String>? serviceType,
     Expression<String>? subtype,
     Expression<String>? registrationCity,
     Expression<String>? brand,
@@ -632,6 +676,7 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
       if (plate != null) 'plate': plate,
       if (nickname != null) 'nickname': nickname,
       if (kind != null) 'kind': kind,
+      if (serviceType != null) 'service_type': serviceType,
       if (subtype != null) 'subtype': subtype,
       if (registrationCity != null) 'registration_city': registrationCity,
       if (brand != null) 'brand': brand,
@@ -650,6 +695,7 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
     Value<String>? plate,
     Value<String?>? nickname,
     Value<String>? kind,
+    Value<String>? serviceType,
     Value<String?>? subtype,
     Value<String?>? registrationCity,
     Value<String?>? brand,
@@ -666,6 +712,7 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
       plate: plate ?? this.plate,
       nickname: nickname ?? this.nickname,
       kind: kind ?? this.kind,
+      serviceType: serviceType ?? this.serviceType,
       subtype: subtype ?? this.subtype,
       registrationCity: registrationCity ?? this.registrationCity,
       brand: brand ?? this.brand,
@@ -693,6 +740,9 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
     }
     if (kind.present) {
       map['kind'] = Variable<String>(kind.value);
+    }
+    if (serviceType.present) {
+      map['service_type'] = Variable<String>(serviceType.value);
     }
     if (subtype.present) {
       map['subtype'] = Variable<String>(subtype.value);
@@ -734,6 +784,7 @@ class VehiclesCompanion extends UpdateCompanion<Vehicle> {
           ..write('plate: $plate, ')
           ..write('nickname: $nickname, ')
           ..write('kind: $kind, ')
+          ..write('serviceType: $serviceType, ')
           ..write('subtype: $subtype, ')
           ..write('registrationCity: $registrationCity, ')
           ..write('brand: $brand, ')
@@ -2044,6 +2095,7 @@ typedef $$VehiclesTableCreateCompanionBuilder = VehiclesCompanion Function({
   required String plate,
   Value<String?> nickname,
   Value<String> kind,
+  Value<String> serviceType,
   Value<String?> subtype,
   Value<String?> registrationCity,
   Value<String?> brand,
@@ -2060,6 +2112,7 @@ typedef $$VehiclesTableUpdateCompanionBuilder = VehiclesCompanion Function({
   Value<String> plate,
   Value<String?> nickname,
   Value<String> kind,
+  Value<String> serviceType,
   Value<String?> subtype,
   Value<String?> registrationCity,
   Value<String?> brand,
@@ -2124,6 +2177,11 @@ class $$VehiclesTableFilterComposer
 
   ColumnFilters<String> get kind => $composableBuilder(
     column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serviceType => $composableBuilder(
+    column: $table.serviceType,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2227,6 +2285,11 @@ class $$VehiclesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get serviceType => $composableBuilder(
+    column: $table.serviceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get subtype => $composableBuilder(
     column: $table.subtype,
     builder: (column) => ColumnOrderings(column),
@@ -2293,6 +2356,11 @@ class $$VehiclesTableAnnotationComposer
 
   GeneratedColumn<String> get kind =>
       $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get serviceType => $composableBuilder(
+    column: $table.serviceType,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get subtype =>
       $composableBuilder(column: $table.subtype, builder: (column) => column);
@@ -2382,6 +2450,7 @@ class $$VehiclesTableTableManager
                 Value<String> plate = const Value.absent(),
                 Value<String?> nickname = const Value.absent(),
                 Value<String> kind = const Value.absent(),
+                Value<String> serviceType = const Value.absent(),
                 Value<String?> subtype = const Value.absent(),
                 Value<String?> registrationCity = const Value.absent(),
                 Value<String?> brand = const Value.absent(),
@@ -2397,6 +2466,7 @@ class $$VehiclesTableTableManager
                 plate: plate,
                 nickname: nickname,
                 kind: kind,
+                serviceType: serviceType,
                 subtype: subtype,
                 registrationCity: registrationCity,
                 brand: brand,
@@ -2414,6 +2484,7 @@ class $$VehiclesTableTableManager
                 required String plate,
                 Value<String?> nickname = const Value.absent(),
                 Value<String> kind = const Value.absent(),
+                Value<String> serviceType = const Value.absent(),
                 Value<String?> subtype = const Value.absent(),
                 Value<String?> registrationCity = const Value.absent(),
                 Value<String?> brand = const Value.absent(),
@@ -2429,6 +2500,7 @@ class $$VehiclesTableTableManager
                 plate: plate,
                 nickname: nickname,
                 kind: kind,
+                serviceType: serviceType,
                 subtype: subtype,
                 registrationCity: registrationCity,
                 brand: brand,

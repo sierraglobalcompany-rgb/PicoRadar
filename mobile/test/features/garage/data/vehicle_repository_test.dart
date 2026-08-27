@@ -26,10 +26,11 @@ void main() {
       await db.close();
     });
 
-    test('creates a car', () async {
+    test('creates a private car', () async {
       final vehicle = await repository.createVehicle(
         plate: 'abc 123',
         kind: VehicleKind.car,
+        serviceType: VehicleServiceType.private,
         subtype: ' car_sedan ',
         registrationCity: ' Bogota ',
         brand: ' Mazda ',
@@ -41,6 +42,7 @@ void main() {
 
       expect(vehicle.plate, 'ABC123');
       expect(vehicle.kind, VehicleKind.car);
+      expect(vehicle.serviceType, VehicleServiceType.private);
       expect(vehicle.subtype, 'car_sedan');
       expect(vehicle.registrationCity, 'Bogota');
       expect(vehicle.brand, 'Mazda');
@@ -50,16 +52,43 @@ void main() {
       expect(vehicle.fuel, 'Gasolina');
     });
 
+    test('creates a taxi as car with taxi service type', () async {
+      final vehicle = await repository.createVehicle(
+        plate: 'tax 123',
+        kind: VehicleKind.car,
+        serviceType: VehicleServiceType.taxi,
+        subtype: 'taxi',
+      );
+
+      expect(vehicle.plate, 'TAX123');
+      expect(vehicle.kind, VehicleKind.car);
+      expect(vehicle.serviceType, VehicleServiceType.taxi);
+      expect(vehicle.subtype, 'taxi');
+    });
+
     test('creates a motorcycle', () async {
       final vehicle = await repository.createVehicle(
         plate: 'moto-01',
         kind: VehicleKind.motorcycle,
+        serviceType: VehicleServiceType.private,
         subtype: 'moto_scooter',
       );
 
       expect(vehicle.plate, 'MOTO01');
       expect(vehicle.kind, VehicleKind.motorcycle);
+      expect(vehicle.serviceType, VehicleServiceType.private);
       expect(vehicle.subtype, 'moto_scooter');
+    });
+
+    test('rejects motorcycle with taxi service type', () async {
+      await expectLater(
+        repository.createVehicle(
+          plate: 'MOT123',
+          kind: VehicleKind.motorcycle,
+          serviceType: VehicleServiceType.taxi,
+        ),
+        throwsA(isA<VehicleRepositoryException>()),
+      );
     });
 
     test('normalizes plates without over-restricting formats', () {
@@ -110,16 +139,49 @@ void main() {
         id: created.id,
         plate: 'bbb 222',
         kind: VehicleKind.motorcycle,
+        serviceType: VehicleServiceType.private,
         nickname: 'Actualizado',
         registrationCity: 'Medellin',
       );
 
       expect(updated.plate, 'BBB222');
       expect(updated.kind, VehicleKind.motorcycle);
+      expect(updated.serviceType, VehicleServiceType.private);
       expect(updated.nickname, 'Actualizado');
       expect(updated.registrationCity, 'Medellin');
       expect(updated.createdAt, created.createdAt);
       expect(updated.updatedAt.isAfter(created.updatedAt), isTrue);
+    });
+
+    test('updates a private car to taxi when kind is car', () async {
+      final created = await repository.createVehicle(
+        plate: 'AAA111',
+        kind: VehicleKind.car,
+      );
+
+      final updated = await repository.updateVehicle(
+        id: created.id,
+        plate: 'AAA111',
+        kind: VehicleKind.car,
+        serviceType: VehicleServiceType.taxi,
+      );
+
+      expect(updated.kind, VehicleKind.car);
+      expect(updated.serviceType, VehicleServiceType.taxi);
+    });
+
+    test('conserves service type when reading and listing vehicles', () async {
+      final taxi = await repository.createVehicle(
+        plate: 'TAX123',
+        kind: VehicleKind.car,
+        serviceType: VehicleServiceType.taxi,
+      );
+
+      final read = await repository.getVehicle(taxi.id);
+      final listed = await repository.listVehicles();
+
+      expect(read?.serviceType, VehicleServiceType.taxi);
+      expect(listed.single.serviceType, VehicleServiceType.taxi);
     });
 
     test('deletes a vehicle', () async {

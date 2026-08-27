@@ -35,6 +35,7 @@ class VehicleRepository {
   Future<VehicleProfile> createVehicle({
     required String plate,
     required VehicleKind kind,
+    VehicleServiceType serviceType = VehicleServiceType.private,
     String? subtype,
     String? nickname,
     String? registrationCity,
@@ -46,6 +47,7 @@ class VehicleRepository {
   }) async {
     final now = DateTime.now().toUtc();
     _validateYear(year, now);
+    _validateServiceType(kind, serviceType);
     final id = _newId();
     final normalizedPlate = normalizePlate(plate);
 
@@ -56,6 +58,7 @@ class VehicleRepository {
             id: id,
             plate: normalizedPlate,
             kind: Value(kind.value),
+            serviceType: Value(serviceType.value),
             subtype: Value(_optionalText(subtype)),
             nickname: Value(_optionalText(nickname)),
             registrationCity: Value(_optionalText(registrationCity)),
@@ -76,6 +79,7 @@ class VehicleRepository {
     required String id,
     required String plate,
     required VehicleKind kind,
+    VehicleServiceType serviceType = VehicleServiceType.private,
     String? subtype,
     String? nickname,
     String? registrationCity,
@@ -96,12 +100,14 @@ class VehicleRepository {
         ? timestamp
         : minimumUpdatedAt;
     _validateYear(year, now);
+    _validateServiceType(kind, serviceType);
     await (database.update(
       database.vehicles,
     )..where((row) => row.id.equals(id))).write(
       VehiclesCompanion(
         plate: Value(normalizePlate(plate)),
         kind: Value(kind.value),
+        serviceType: Value(serviceType.value),
         subtype: Value(_optionalText(subtype)),
         nickname: Value(_optionalText(nickname)),
         registrationCity: Value(_optionalText(registrationCity)),
@@ -184,6 +190,7 @@ class VehicleRepository {
       id: row.id,
       plate: row.plate,
       kind: VehicleKind.fromValue(row.kind),
+      serviceType: VehicleServiceType.fromValue(row.serviceType),
       subtype: row.subtype,
       nickname: row.nickname,
       registrationCity: row.registrationCity,
@@ -213,6 +220,18 @@ class VehicleRepository {
     }
     if (year < 1900 || year > now.year + 1) {
       throw VehicleRepositoryException('Vehicle year is out of range: $year.');
+    }
+  }
+
+  void _validateServiceType(
+    VehicleKind kind,
+    VehicleServiceType serviceType,
+  ) {
+    if (kind == VehicleKind.motorcycle &&
+        serviceType != VehicleServiceType.private) {
+      throw const VehicleRepositoryException(
+        'Motorcycles can only use private service type.',
+      );
     }
   }
 }

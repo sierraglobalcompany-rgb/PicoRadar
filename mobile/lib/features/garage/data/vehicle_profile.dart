@@ -19,11 +19,33 @@ enum VehicleKind {
   }
 }
 
+enum VehicleServiceType {
+  private('private'),
+  taxi('taxi');
+
+  const VehicleServiceType(this.value);
+
+  final String value;
+
+  static VehicleServiceType fromValue(String value) {
+    return switch (value) {
+      'private' => VehicleServiceType.private,
+      'taxi' => VehicleServiceType.taxi,
+      _ => throw ArgumentError.value(
+        value,
+        'serviceType',
+        'Unsupported vehicle service type.',
+      ),
+    };
+  }
+}
+
 class VehicleProfile {
   const VehicleProfile({
     required this.id,
     required this.plate,
     required this.kind,
+    required this.serviceType,
     required this.createdAt,
     required this.updatedAt,
     this.subtype,
@@ -39,6 +61,7 @@ class VehicleProfile {
   final String id;
   final String plate;
   final VehicleKind kind;
+  final VehicleServiceType serviceType;
   final String? subtype;
   final String? nickname;
   final String? registrationCity;

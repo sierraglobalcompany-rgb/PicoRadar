@@ -32,6 +32,7 @@ void main() {
             VehiclesCompanion.insert(
               id: 'vehicle-1',
               plate: 'ABC123',
+              serviceType: const Value('taxi'),
               subtype: const Value('car_sedan'),
               registrationCity: const Value('Bogota'),
               brand: const Value('Mazda'),
@@ -91,6 +92,7 @@ void main() {
         expect(vehicles, hasLength(1));
         expect(vehicles.single.id, 'vehicle-1');
         expect(vehicles.single.plate, 'ABC123');
+        expect(vehicles.single.serviceType, 'private');
         expect(vehicles.single.subtype, isNull);
         expect(vehicles.single.registrationCity, isNull);
         expect(vehicles.single.brand, isNull);

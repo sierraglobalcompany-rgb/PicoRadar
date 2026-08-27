@@ -9,6 +9,7 @@ class Vehicles extends Table {
   TextColumn get plate => text().withLength(min: 1, max: 12)();
   TextColumn get nickname => text().nullable()();
   TextColumn get kind => text().withDefault(const Constant('car'))();
+  TextColumn get serviceType => text().withDefault(const Constant('private'))();
   TextColumn get subtype => text().nullable()();
   TextColumn get registrationCity => text().nullable()();
   TextColumn get brand => text().nullable()();
@@ -100,6 +101,7 @@ class AppDatabase extends _$AppDatabase {
     }
 
     if (from == 1) {
+      await migrator.addColumn(vehicles, vehicles.serviceType);
       await migrator.addColumn(vehicles, vehicles.subtype);
       await migrator.addColumn(vehicles, vehicles.registrationCity);
       await migrator.addColumn(vehicles, vehicles.brand);
