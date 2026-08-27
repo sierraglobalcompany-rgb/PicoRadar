@@ -4,8 +4,8 @@
 **Store title:** PicoRadar: Pico y Placa
 
 **Baseline:** Product v1.0 + Technical Architecture v1  
-**Current lot:** C08 — DONE locally; pending PR review/merge
-**Last completed lot:** C07 — merged to `main`
+**Current lot:** C09 — DONE locally; pending PR merge under temporary CI infrastructure exception
+**Last completed lot:** C08 — merged to `main`
 **Release target:** Free 1.0 Android-first  
 **Monetization:** OFF  
 **Account/cloud:** OFF  
@@ -18,7 +18,7 @@ Apps is always central.
 
 ## Expected next action
 
-C08 adds the Garaje root/detail management surface for local vehicles. Do not start C09 until C08 is reviewed/merged and a separate human kickoff is provided.
+C09 adds the pure local Pico y Placa rule engine. C10 may start only after C09 is merged by explicit human authorization.
 
 ## Product decisions recorded during C05
 
@@ -40,12 +40,12 @@ At the end of every lot update:
 
 ## Latest lot handoff summary
 
-- Branch: `feat/C08-garage-root-detail`
-- Lot status: C08 DONE locally; pending PR review/merge.
-- Test summary: Garaje/root/detail widget tests, Flutter analyze/test and dev debug APK passed locally.
-- Physical QA status: Mi A3 dev APK smoke completed.
-- Blockers: None.
-- Next lots unblocked: None until C08 review/merge.
+- Branch: `feat/C09-pico-rule-engine`
+- Lot status: C09 DONE locally; PR #12 pending merge.
+- Test summary: Pico y Placa rule engine unit tests, Flutter analyze/test and dev debug APK passed locally after edge-case fixes.
+- Physical QA status: Not required for C09.
+- Blockers: `CI_INFRA_EXCEPTION_GITHUB_BILLING` — GitHub Actions job did not start because recent account payments failed or the spending limit needs to be increased. Local gates passed; CI remains required before public/release.
+- Next lots unblocked: C10 after C09 merge.
 
 ## GitHub state
 
@@ -60,3 +60,5 @@ At the end of every lot update:
 - C05 merged to `main` by explicit human authorization.
 - C06 merged to `main` by explicit human authorization.
 - C07 merged to `main` by explicit human authorization.
+- C08 merged to `main` by explicit human authorization.
+- C09 PR #12 has a temporary CI infrastructure exception authorized only for C09: `CI_INFRA_EXCEPTION_GITHUB_BILLING`.
