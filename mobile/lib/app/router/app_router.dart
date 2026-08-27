@@ -14,7 +14,6 @@ import 'root_placeholder_screen.dart';
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoute.home.path,
-    overridePlatformDefaultLocation: true,
     routes: [
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
