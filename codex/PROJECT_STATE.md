@@ -4,8 +4,8 @@
 **Store title:** PicoRadar: Pico y Placa
 
 **Baseline:** Product v1.0 + Technical Architecture v1  
-**Current lot:** C09 — DONE locally; pending PR merge under temporary CI infrastructure exception
-**Last completed lot:** C08 — merged to `main`
+**Current lot:** C10 — DONE locally; PR open, CI pending infrastructure billing availability
+**Last completed lot:** C09 — merged to `main`
 **Release target:** Free 1.0 Android-first  
 **Monetization:** OFF  
 **Account/cloud:** OFF  
@@ -18,7 +18,7 @@ Apps is always central.
 
 ## Expected next action
 
-C09 adds the pure local Pico y Placa rule engine. C10 may start only after C09 is merged by explicit human authorization.
+C10 connects verified pilot restriction datasets to Drift and the local Pico y Placa rule engine. Do not start C11 until C10 is reviewed/merged and a separate human kickoff is provided.
 
 ## Product decisions recorded during C05
 
@@ -40,12 +40,12 @@ At the end of every lot update:
 
 ## Latest lot handoff summary
 
-- Branch: `feat/C09-pico-rule-engine`
-- Lot status: C09 DONE locally; PR #12 pending merge.
-- Test summary: Pico y Placa rule engine unit tests, Flutter analyze/test and dev debug APK passed locally after edge-case fixes.
-- Physical QA status: Not required for C09.
-- Blockers: `CI_INFRA_EXCEPTION_GITHUB_BILLING` — GitHub Actions job did not start because recent account payments failed or the spending limit needs to be increased. Local gates passed; CI remains required before public/release.
-- Next lots unblocked: C10 after C09 merge.
+- Branch: `feat/C10-restrictions-import-sync`
+- Lot status: C10 DONE locally; PR pending review/merge.
+- Test summary: Restriction dataset importer/store tests, Drift v2-to-v3 migration test, rollback test, Flutter analyze/test and dev debug APK passed locally.
+- Physical QA status: Not required for C10.
+- Blockers: GitHub Actions may remain blocked by account billing/spending limit infrastructure; CI remains required before public/release.
+- Next lots unblocked: None until C10 review/merge.
 
 ## GitHub state
 
@@ -61,4 +61,4 @@ At the end of every lot update:
 - C06 merged to `main` by explicit human authorization.
 - C07 merged to `main` by explicit human authorization.
 - C08 merged to `main` by explicit human authorization.
-- C09 PR #12 has a temporary CI infrastructure exception authorized only for C09: `CI_INFRA_EXCEPTION_GITHUB_BILLING`.
+- C09 merged to `main` by explicit human authorization with temporary CI infrastructure exception authorized only for C09: `CI_INFRA_EXCEPTION_GITHUB_BILLING`.

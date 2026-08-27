@@ -2037,6 +2037,659 @@ class DatasetVersionsCompanion extends UpdateCompanion<DatasetVersion> {
   }
 }
 
+class $RestrictionCoveragesTable extends RestrictionCoverages
+    with TableInfo<$RestrictionCoveragesTable, RestrictionCoverage> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RestrictionCoveragesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _jurisdictionIdMeta = const VerificationMeta(
+    'jurisdictionId',
+  );
+  @override
+  late final GeneratedColumn<String> jurisdictionId = GeneratedColumn<String>(
+    'jurisdiction_id',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 64,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _jurisdictionNameMeta = const VerificationMeta(
+    'jurisdictionName',
+  );
+  @override
+  late final GeneratedColumn<String> jurisdictionName = GeneratedColumn<String>(
+    'jurisdiction_name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 128,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _vehicleKindMeta = const VerificationMeta(
+    'vehicleKind',
+  );
+  @override
+  late final GeneratedColumn<String> vehicleKind = GeneratedColumn<String>(
+    'vehicle_kind',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 32,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _serviceTypeMeta = const VerificationMeta(
+    'serviceType',
+  );
+  @override
+  late final GeneratedColumn<String> serviceType = GeneratedColumn<String>(
+    'service_type',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 32,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rulesJsonMeta = const VerificationMeta(
+    'rulesJson',
+  );
+  @override
+  late final GeneratedColumn<String> rulesJson = GeneratedColumn<String>(
+    'rules_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _verifiedAtMeta = const VerificationMeta(
+    'verifiedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> verifiedAt = GeneratedColumn<DateTime>(
+    'verified_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _staleAfterMeta = const VerificationMeta(
+    'staleAfter',
+  );
+  @override
+  late final GeneratedColumn<DateTime> staleAfter = GeneratedColumn<DateTime>(
+    'stale_after',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceUrlsJsonMeta = const VerificationMeta(
+    'sourceUrlsJson',
+  );
+  @override
+  late final GeneratedColumn<String> sourceUrlsJson = GeneratedColumn<String>(
+    'source_urls_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    jurisdictionId,
+    jurisdictionName,
+    vehicleKind,
+    serviceType,
+    rulesJson,
+    verifiedAt,
+    staleAfter,
+    sourceUrlsJson,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'restriction_coverages';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RestrictionCoverage> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('jurisdiction_id')) {
+      context.handle(
+        _jurisdictionIdMeta,
+        jurisdictionId.isAcceptableOrUnknown(
+          data['jurisdiction_id']!,
+          _jurisdictionIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_jurisdictionIdMeta);
+    }
+    if (data.containsKey('jurisdiction_name')) {
+      context.handle(
+        _jurisdictionNameMeta,
+        jurisdictionName.isAcceptableOrUnknown(
+          data['jurisdiction_name']!,
+          _jurisdictionNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_jurisdictionNameMeta);
+    }
+    if (data.containsKey('vehicle_kind')) {
+      context.handle(
+        _vehicleKindMeta,
+        vehicleKind.isAcceptableOrUnknown(
+          data['vehicle_kind']!,
+          _vehicleKindMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_vehicleKindMeta);
+    }
+    if (data.containsKey('service_type')) {
+      context.handle(
+        _serviceTypeMeta,
+        serviceType.isAcceptableOrUnknown(
+          data['service_type']!,
+          _serviceTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_serviceTypeMeta);
+    }
+    if (data.containsKey('rules_json')) {
+      context.handle(
+        _rulesJsonMeta,
+        rulesJson.isAcceptableOrUnknown(data['rules_json']!, _rulesJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_rulesJsonMeta);
+    }
+    if (data.containsKey('verified_at')) {
+      context.handle(
+        _verifiedAtMeta,
+        verifiedAt.isAcceptableOrUnknown(data['verified_at']!, _verifiedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_verifiedAtMeta);
+    }
+    if (data.containsKey('stale_after')) {
+      context.handle(
+        _staleAfterMeta,
+        staleAfter.isAcceptableOrUnknown(data['stale_after']!, _staleAfterMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_staleAfterMeta);
+    }
+    if (data.containsKey('source_urls_json')) {
+      context.handle(
+        _sourceUrlsJsonMeta,
+        sourceUrlsJson.isAcceptableOrUnknown(
+          data['source_urls_json']!,
+          _sourceUrlsJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceUrlsJsonMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RestrictionCoverage map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RestrictionCoverage(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      jurisdictionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}jurisdiction_id'],
+      )!,
+      jurisdictionName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}jurisdiction_name'],
+      )!,
+      vehicleKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vehicle_kind'],
+      )!,
+      serviceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}service_type'],
+      )!,
+      rulesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rules_json'],
+      )!,
+      verifiedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}verified_at'],
+      )!,
+      staleAfter: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}stale_after'],
+      )!,
+      sourceUrlsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_urls_json'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RestrictionCoveragesTable createAlias(String alias) {
+    return $RestrictionCoveragesTable(attachedDatabase, alias);
+  }
+}
+
+class RestrictionCoverage extends DataClass
+    implements Insertable<RestrictionCoverage> {
+  final String id;
+  final String jurisdictionId;
+  final String jurisdictionName;
+  final String vehicleKind;
+  final String serviceType;
+  final String rulesJson;
+  final DateTime verifiedAt;
+  final DateTime staleAfter;
+  final String sourceUrlsJson;
+  final DateTime updatedAt;
+  const RestrictionCoverage({
+    required this.id,
+    required this.jurisdictionId,
+    required this.jurisdictionName,
+    required this.vehicleKind,
+    required this.serviceType,
+    required this.rulesJson,
+    required this.verifiedAt,
+    required this.staleAfter,
+    required this.sourceUrlsJson,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['jurisdiction_id'] = Variable<String>(jurisdictionId);
+    map['jurisdiction_name'] = Variable<String>(jurisdictionName);
+    map['vehicle_kind'] = Variable<String>(vehicleKind);
+    map['service_type'] = Variable<String>(serviceType);
+    map['rules_json'] = Variable<String>(rulesJson);
+    map['verified_at'] = Variable<DateTime>(verifiedAt);
+    map['stale_after'] = Variable<DateTime>(staleAfter);
+    map['source_urls_json'] = Variable<String>(sourceUrlsJson);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  RestrictionCoveragesCompanion toCompanion(bool nullToAbsent) {
+    return RestrictionCoveragesCompanion(
+      id: Value(id),
+      jurisdictionId: Value(jurisdictionId),
+      jurisdictionName: Value(jurisdictionName),
+      vehicleKind: Value(vehicleKind),
+      serviceType: Value(serviceType),
+      rulesJson: Value(rulesJson),
+      verifiedAt: Value(verifiedAt),
+      staleAfter: Value(staleAfter),
+      sourceUrlsJson: Value(sourceUrlsJson),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory RestrictionCoverage.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RestrictionCoverage(
+      id: serializer.fromJson<String>(json['id']),
+      jurisdictionId: serializer.fromJson<String>(json['jurisdictionId']),
+      jurisdictionName: serializer.fromJson<String>(json['jurisdictionName']),
+      vehicleKind: serializer.fromJson<String>(json['vehicleKind']),
+      serviceType: serializer.fromJson<String>(json['serviceType']),
+      rulesJson: serializer.fromJson<String>(json['rulesJson']),
+      verifiedAt: serializer.fromJson<DateTime>(json['verifiedAt']),
+      staleAfter: serializer.fromJson<DateTime>(json['staleAfter']),
+      sourceUrlsJson: serializer.fromJson<String>(json['sourceUrlsJson']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'jurisdictionId': serializer.toJson<String>(jurisdictionId),
+      'jurisdictionName': serializer.toJson<String>(jurisdictionName),
+      'vehicleKind': serializer.toJson<String>(vehicleKind),
+      'serviceType': serializer.toJson<String>(serviceType),
+      'rulesJson': serializer.toJson<String>(rulesJson),
+      'verifiedAt': serializer.toJson<DateTime>(verifiedAt),
+      'staleAfter': serializer.toJson<DateTime>(staleAfter),
+      'sourceUrlsJson': serializer.toJson<String>(sourceUrlsJson),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  RestrictionCoverage copyWith({
+    String? id,
+    String? jurisdictionId,
+    String? jurisdictionName,
+    String? vehicleKind,
+    String? serviceType,
+    String? rulesJson,
+    DateTime? verifiedAt,
+    DateTime? staleAfter,
+    String? sourceUrlsJson,
+    DateTime? updatedAt,
+  }) => RestrictionCoverage(
+    id: id ?? this.id,
+    jurisdictionId: jurisdictionId ?? this.jurisdictionId,
+    jurisdictionName: jurisdictionName ?? this.jurisdictionName,
+    vehicleKind: vehicleKind ?? this.vehicleKind,
+    serviceType: serviceType ?? this.serviceType,
+    rulesJson: rulesJson ?? this.rulesJson,
+    verifiedAt: verifiedAt ?? this.verifiedAt,
+    staleAfter: staleAfter ?? this.staleAfter,
+    sourceUrlsJson: sourceUrlsJson ?? this.sourceUrlsJson,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  RestrictionCoverage copyWithCompanion(RestrictionCoveragesCompanion data) {
+    return RestrictionCoverage(
+      id: data.id.present ? data.id.value : this.id,
+      jurisdictionId: data.jurisdictionId.present
+          ? data.jurisdictionId.value
+          : this.jurisdictionId,
+      jurisdictionName: data.jurisdictionName.present
+          ? data.jurisdictionName.value
+          : this.jurisdictionName,
+      vehicleKind: data.vehicleKind.present
+          ? data.vehicleKind.value
+          : this.vehicleKind,
+      serviceType: data.serviceType.present
+          ? data.serviceType.value
+          : this.serviceType,
+      rulesJson: data.rulesJson.present ? data.rulesJson.value : this.rulesJson,
+      verifiedAt: data.verifiedAt.present
+          ? data.verifiedAt.value
+          : this.verifiedAt,
+      staleAfter: data.staleAfter.present
+          ? data.staleAfter.value
+          : this.staleAfter,
+      sourceUrlsJson: data.sourceUrlsJson.present
+          ? data.sourceUrlsJson.value
+          : this.sourceUrlsJson,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RestrictionCoverage(')
+          ..write('id: $id, ')
+          ..write('jurisdictionId: $jurisdictionId, ')
+          ..write('jurisdictionName: $jurisdictionName, ')
+          ..write('vehicleKind: $vehicleKind, ')
+          ..write('serviceType: $serviceType, ')
+          ..write('rulesJson: $rulesJson, ')
+          ..write('verifiedAt: $verifiedAt, ')
+          ..write('staleAfter: $staleAfter, ')
+          ..write('sourceUrlsJson: $sourceUrlsJson, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    jurisdictionId,
+    jurisdictionName,
+    vehicleKind,
+    serviceType,
+    rulesJson,
+    verifiedAt,
+    staleAfter,
+    sourceUrlsJson,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RestrictionCoverage &&
+          other.id == this.id &&
+          other.jurisdictionId == this.jurisdictionId &&
+          other.jurisdictionName == this.jurisdictionName &&
+          other.vehicleKind == this.vehicleKind &&
+          other.serviceType == this.serviceType &&
+          other.rulesJson == this.rulesJson &&
+          other.verifiedAt == this.verifiedAt &&
+          other.staleAfter == this.staleAfter &&
+          other.sourceUrlsJson == this.sourceUrlsJson &&
+          other.updatedAt == this.updatedAt);
+}
+
+class RestrictionCoveragesCompanion
+    extends UpdateCompanion<RestrictionCoverage> {
+  final Value<String> id;
+  final Value<String> jurisdictionId;
+  final Value<String> jurisdictionName;
+  final Value<String> vehicleKind;
+  final Value<String> serviceType;
+  final Value<String> rulesJson;
+  final Value<DateTime> verifiedAt;
+  final Value<DateTime> staleAfter;
+  final Value<String> sourceUrlsJson;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const RestrictionCoveragesCompanion({
+    this.id = const Value.absent(),
+    this.jurisdictionId = const Value.absent(),
+    this.jurisdictionName = const Value.absent(),
+    this.vehicleKind = const Value.absent(),
+    this.serviceType = const Value.absent(),
+    this.rulesJson = const Value.absent(),
+    this.verifiedAt = const Value.absent(),
+    this.staleAfter = const Value.absent(),
+    this.sourceUrlsJson = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RestrictionCoveragesCompanion.insert({
+    required String id,
+    required String jurisdictionId,
+    required String jurisdictionName,
+    required String vehicleKind,
+    required String serviceType,
+    required String rulesJson,
+    required DateTime verifiedAt,
+    required DateTime staleAfter,
+    required String sourceUrlsJson,
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       jurisdictionId = Value(jurisdictionId),
+       jurisdictionName = Value(jurisdictionName),
+       vehicleKind = Value(vehicleKind),
+       serviceType = Value(serviceType),
+       rulesJson = Value(rulesJson),
+       verifiedAt = Value(verifiedAt),
+       staleAfter = Value(staleAfter),
+       sourceUrlsJson = Value(sourceUrlsJson);
+  static Insertable<RestrictionCoverage> custom({
+    Expression<String>? id,
+    Expression<String>? jurisdictionId,
+    Expression<String>? jurisdictionName,
+    Expression<String>? vehicleKind,
+    Expression<String>? serviceType,
+    Expression<String>? rulesJson,
+    Expression<DateTime>? verifiedAt,
+    Expression<DateTime>? staleAfter,
+    Expression<String>? sourceUrlsJson,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (jurisdictionId != null) 'jurisdiction_id': jurisdictionId,
+      if (jurisdictionName != null) 'jurisdiction_name': jurisdictionName,
+      if (vehicleKind != null) 'vehicle_kind': vehicleKind,
+      if (serviceType != null) 'service_type': serviceType,
+      if (rulesJson != null) 'rules_json': rulesJson,
+      if (verifiedAt != null) 'verified_at': verifiedAt,
+      if (staleAfter != null) 'stale_after': staleAfter,
+      if (sourceUrlsJson != null) 'source_urls_json': sourceUrlsJson,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RestrictionCoveragesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? jurisdictionId,
+    Value<String>? jurisdictionName,
+    Value<String>? vehicleKind,
+    Value<String>? serviceType,
+    Value<String>? rulesJson,
+    Value<DateTime>? verifiedAt,
+    Value<DateTime>? staleAfter,
+    Value<String>? sourceUrlsJson,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return RestrictionCoveragesCompanion(
+      id: id ?? this.id,
+      jurisdictionId: jurisdictionId ?? this.jurisdictionId,
+      jurisdictionName: jurisdictionName ?? this.jurisdictionName,
+      vehicleKind: vehicleKind ?? this.vehicleKind,
+      serviceType: serviceType ?? this.serviceType,
+      rulesJson: rulesJson ?? this.rulesJson,
+      verifiedAt: verifiedAt ?? this.verifiedAt,
+      staleAfter: staleAfter ?? this.staleAfter,
+      sourceUrlsJson: sourceUrlsJson ?? this.sourceUrlsJson,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (jurisdictionId.present) {
+      map['jurisdiction_id'] = Variable<String>(jurisdictionId.value);
+    }
+    if (jurisdictionName.present) {
+      map['jurisdiction_name'] = Variable<String>(jurisdictionName.value);
+    }
+    if (vehicleKind.present) {
+      map['vehicle_kind'] = Variable<String>(vehicleKind.value);
+    }
+    if (serviceType.present) {
+      map['service_type'] = Variable<String>(serviceType.value);
+    }
+    if (rulesJson.present) {
+      map['rules_json'] = Variable<String>(rulesJson.value);
+    }
+    if (verifiedAt.present) {
+      map['verified_at'] = Variable<DateTime>(verifiedAt.value);
+    }
+    if (staleAfter.present) {
+      map['stale_after'] = Variable<DateTime>(staleAfter.value);
+    }
+    if (sourceUrlsJson.present) {
+      map['source_urls_json'] = Variable<String>(sourceUrlsJson.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RestrictionCoveragesCompanion(')
+          ..write('id: $id, ')
+          ..write('jurisdictionId: $jurisdictionId, ')
+          ..write('jurisdictionName: $jurisdictionName, ')
+          ..write('vehicleKind: $vehicleKind, ')
+          ..write('serviceType: $serviceType, ')
+          ..write('rulesJson: $rulesJson, ')
+          ..write('verifiedAt: $verifiedAt, ')
+          ..write('staleAfter: $staleAfter, ')
+          ..write('sourceUrlsJson: $sourceUrlsJson, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2048,6 +2701,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $DatasetVersionsTable datasetVersions = $DatasetVersionsTable(
     this,
   );
+  late final $RestrictionCoveragesTable restrictionCoverages =
+      $RestrictionCoveragesTable(this);
   late final Index vehiclesPlateIdx = Index(
     'vehicles_plate_idx',
     'CREATE UNIQUE INDEX vehicles_plate_idx ON vehicles (plate)',
@@ -2064,6 +2719,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'dataset_versions_dataset_key_idx',
     'CREATE UNIQUE INDEX dataset_versions_dataset_key_idx ON dataset_versions (dataset_key)',
   );
+  late final Index restrictionCoveragesLookupIdx = Index(
+    'restriction_coverages_lookup_idx',
+    'CREATE UNIQUE INDEX restriction_coverages_lookup_idx ON restriction_coverages (jurisdiction_id, vehicle_kind, service_type)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2073,10 +2732,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     vehicleObligations,
     notificationPreferences,
     datasetVersions,
+    restrictionCoverages,
     vehiclesPlateIdx,
     vehicleObligationsVehicleIdIdx,
     vehicleObligationsDueDateIdx,
     datasetVersionsDatasetKeyIdx,
+    restrictionCoveragesLookupIdx,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -3367,6 +4028,331 @@ typedef $$DatasetVersionsTableProcessedTableManager =
       DatasetVersion,
       PrefetchHooks Function()
     >;
+typedef $$RestrictionCoveragesTableCreateCompanionBuilder =
+    RestrictionCoveragesCompanion Function({
+      required String id,
+      required String jurisdictionId,
+      required String jurisdictionName,
+      required String vehicleKind,
+      required String serviceType,
+      required String rulesJson,
+      required DateTime verifiedAt,
+      required DateTime staleAfter,
+      required String sourceUrlsJson,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$RestrictionCoveragesTableUpdateCompanionBuilder =
+    RestrictionCoveragesCompanion Function({
+      Value<String> id,
+      Value<String> jurisdictionId,
+      Value<String> jurisdictionName,
+      Value<String> vehicleKind,
+      Value<String> serviceType,
+      Value<String> rulesJson,
+      Value<DateTime> verifiedAt,
+      Value<DateTime> staleAfter,
+      Value<String> sourceUrlsJson,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$RestrictionCoveragesTableFilterComposer
+    extends Composer<_$AppDatabase, $RestrictionCoveragesTable> {
+  $$RestrictionCoveragesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get jurisdictionId => $composableBuilder(
+    column: $table.jurisdictionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get jurisdictionName => $composableBuilder(
+    column: $table.jurisdictionName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get vehicleKind => $composableBuilder(
+    column: $table.vehicleKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serviceType => $composableBuilder(
+    column: $table.serviceType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rulesJson => $composableBuilder(
+    column: $table.rulesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get verifiedAt => $composableBuilder(
+    column: $table.verifiedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get staleAfter => $composableBuilder(
+    column: $table.staleAfter,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceUrlsJson => $composableBuilder(
+    column: $table.sourceUrlsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RestrictionCoveragesTableOrderingComposer
+    extends Composer<_$AppDatabase, $RestrictionCoveragesTable> {
+  $$RestrictionCoveragesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get jurisdictionId => $composableBuilder(
+    column: $table.jurisdictionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get jurisdictionName => $composableBuilder(
+    column: $table.jurisdictionName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get vehicleKind => $composableBuilder(
+    column: $table.vehicleKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serviceType => $composableBuilder(
+    column: $table.serviceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rulesJson => $composableBuilder(
+    column: $table.rulesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get verifiedAt => $composableBuilder(
+    column: $table.verifiedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get staleAfter => $composableBuilder(
+    column: $table.staleAfter,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceUrlsJson => $composableBuilder(
+    column: $table.sourceUrlsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RestrictionCoveragesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RestrictionCoveragesTable> {
+  $$RestrictionCoveragesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get jurisdictionId => $composableBuilder(
+    column: $table.jurisdictionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get jurisdictionName => $composableBuilder(
+    column: $table.jurisdictionName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get vehicleKind => $composableBuilder(
+    column: $table.vehicleKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get serviceType => $composableBuilder(
+    column: $table.serviceType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get rulesJson =>
+      $composableBuilder(column: $table.rulesJson, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get verifiedAt => $composableBuilder(
+    column: $table.verifiedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get staleAfter => $composableBuilder(
+    column: $table.staleAfter,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceUrlsJson => $composableBuilder(
+    column: $table.sourceUrlsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$RestrictionCoveragesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RestrictionCoveragesTable,
+          RestrictionCoverage,
+          $$RestrictionCoveragesTableFilterComposer,
+          $$RestrictionCoveragesTableOrderingComposer,
+          $$RestrictionCoveragesTableAnnotationComposer,
+          $$RestrictionCoveragesTableCreateCompanionBuilder,
+          $$RestrictionCoveragesTableUpdateCompanionBuilder,
+          (
+            RestrictionCoverage,
+            BaseReferences<
+              _$AppDatabase,
+              $RestrictionCoveragesTable,
+              RestrictionCoverage
+            >,
+          ),
+          RestrictionCoverage,
+          PrefetchHooks Function()
+        > {
+  $$RestrictionCoveragesTableTableManager(
+    _$AppDatabase db,
+    $RestrictionCoveragesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RestrictionCoveragesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RestrictionCoveragesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$RestrictionCoveragesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> jurisdictionId = const Value.absent(),
+                Value<String> jurisdictionName = const Value.absent(),
+                Value<String> vehicleKind = const Value.absent(),
+                Value<String> serviceType = const Value.absent(),
+                Value<String> rulesJson = const Value.absent(),
+                Value<DateTime> verifiedAt = const Value.absent(),
+                Value<DateTime> staleAfter = const Value.absent(),
+                Value<String> sourceUrlsJson = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RestrictionCoveragesCompanion(
+                id: id,
+                jurisdictionId: jurisdictionId,
+                jurisdictionName: jurisdictionName,
+                vehicleKind: vehicleKind,
+                serviceType: serviceType,
+                rulesJson: rulesJson,
+                verifiedAt: verifiedAt,
+                staleAfter: staleAfter,
+                sourceUrlsJson: sourceUrlsJson,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String jurisdictionId,
+                required String jurisdictionName,
+                required String vehicleKind,
+                required String serviceType,
+                required String rulesJson,
+                required DateTime verifiedAt,
+                required DateTime staleAfter,
+                required String sourceUrlsJson,
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RestrictionCoveragesCompanion.insert(
+                id: id,
+                jurisdictionId: jurisdictionId,
+                jurisdictionName: jurisdictionName,
+                vehicleKind: vehicleKind,
+                serviceType: serviceType,
+                rulesJson: rulesJson,
+                verifiedAt: verifiedAt,
+                staleAfter: staleAfter,
+                sourceUrlsJson: sourceUrlsJson,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RestrictionCoveragesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RestrictionCoveragesTable,
+      RestrictionCoverage,
+      $$RestrictionCoveragesTableFilterComposer,
+      $$RestrictionCoveragesTableOrderingComposer,
+      $$RestrictionCoveragesTableAnnotationComposer,
+      $$RestrictionCoveragesTableCreateCompanionBuilder,
+      $$RestrictionCoveragesTableUpdateCompanionBuilder,
+      (
+        RestrictionCoverage,
+        BaseReferences<
+          _$AppDatabase,
+          $RestrictionCoveragesTable,
+          RestrictionCoverage
+        >,
+      ),
+      RestrictionCoverage,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3382,4 +4368,6 @@ class $AppDatabaseManager {
       );
   $$DatasetVersionsTableTableManager get datasetVersions =>
       $$DatasetVersionsTableTableManager(_db, _db.datasetVersions);
+  $$RestrictionCoveragesTableTableManager get restrictionCoverages =>
+      $$RestrictionCoveragesTableTableManager(_db, _db.restrictionCoverages);
 }

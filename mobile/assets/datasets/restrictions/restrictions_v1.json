@@ -1,0 +1,292 @@
+{
+  "schemaVersion": 1,
+  "datasetKey": "restrictions",
+  "version": "2026.08.27-pilot",
+  "generatedAt": "2026-08-27T00:00:00Z",
+  "jurisdictions": [
+    {
+      "id": "co-ant-medellin",
+      "name": "Medellin",
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "verifiedAt": "2026-08-27T00:00:00Z",
+          "staleAfter": "2027-01-01T00:00:00Z",
+          "sourceUrls": [
+            "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+            "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/"
+          ],
+          "rules": [
+            {
+              "id": "medellin-car-private-2026h2-mon",
+              "priority": 1000,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00",
+              "validUntil": "2026-12-31T23:59:59",
+              "weekdays": [1],
+              "digitPosition": "lastNumeric",
+              "digits": [5, 8],
+              "timeWindows": [{"startMinute": 300, "endMinute": 1200}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-08-27T00:00:00Z"
+            },
+            {
+              "id": "medellin-car-private-2026h2-tue",
+              "priority": 1000,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00",
+              "validUntil": "2026-12-31T23:59:59",
+              "weekdays": [2],
+              "digitPosition": "lastNumeric",
+              "digits": [1, 4],
+              "timeWindows": [{"startMinute": 300, "endMinute": 1200}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-08-27T00:00:00Z"
+            },
+            {
+              "id": "medellin-car-private-2026h2-wed",
+              "priority": 1000,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00",
+              "validUntil": "2026-12-31T23:59:59",
+              "weekdays": [3],
+              "digitPosition": "lastNumeric",
+              "digits": [0, 2],
+              "timeWindows": [{"startMinute": 300, "endMinute": 1200}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-08-27T00:00:00Z"
+            },
+            {
+              "id": "medellin-car-private-2026h2-thu",
+              "priority": 1000,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00",
+              "validUntil": "2026-12-31T23:59:59",
+              "weekdays": [4],
+              "digitPosition": "lastNumeric",
+              "digits": [3, 6],
+              "timeWindows": [{"startMinute": 300, "endMinute": 1200}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-08-27T00:00:00Z"
+            },
+            {
+              "id": "medellin-car-private-2026h2-fri",
+              "priority": 1000,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00",
+              "validUntil": "2026-12-31T23:59:59",
+              "weekdays": [5],
+              "digitPosition": "lastNumeric",
+              "digits": [7, 9],
+              "timeWindows": [{"startMinute": 300, "endMinute": 1200}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-08-27T00:00:00Z"
+            }
+          ]
+        },
+        {
+          "vehicleKind": "motorcycle",
+          "serviceType": "private",
+          "verifiedAt": "2026-08-27T00:00:00Z",
+          "staleAfter": "2027-01-01T00:00:00Z",
+          "sourceUrls": [
+            "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+            "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/"
+          ],
+          "rules": [
+            {
+              "id": "medellin-moto-private-2026h2-mon",
+              "priority": 1000,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00",
+              "validUntil": "2026-12-31T23:59:59",
+              "weekdays": [1],
+              "digitPosition": "firstNumeric",
+              "digits": [5, 8],
+              "timeWindows": [{"startMinute": 300, "endMinute": 1200}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-08-27T00:00:00Z"
+            },
+            {
+              "id": "medellin-moto-private-2026h2-tue",
+              "priority": 1000,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00",
+              "validUntil": "2026-12-31T23:59:59",
+              "weekdays": [2],
+              "digitPosition": "firstNumeric",
+              "digits": [1, 4],
+              "timeWindows": [{"startMinute": 300, "endMinute": 1200}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-08-27T00:00:00Z"
+            },
+            {
+              "id": "medellin-moto-private-2026h2-wed",
+              "priority": 1000,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00",
+              "validUntil": "2026-12-31T23:59:59",
+              "weekdays": [3],
+              "digitPosition": "firstNumeric",
+              "digits": [0, 2],
+              "timeWindows": [{"startMinute": 300, "endMinute": 1200}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-08-27T00:00:00Z"
+            },
+            {
+              "id": "medellin-moto-private-2026h2-thu",
+              "priority": 1000,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00",
+              "validUntil": "2026-12-31T23:59:59",
+              "weekdays": [4],
+              "digitPosition": "firstNumeric",
+              "digits": [3, 6],
+              "timeWindows": [{"startMinute": 300, "endMinute": 1200}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-08-27T00:00:00Z"
+            },
+            {
+              "id": "medellin-moto-private-2026h2-fri",
+              "priority": 1000,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00",
+              "validUntil": "2026-12-31T23:59:59",
+              "weekdays": [5],
+              "digitPosition": "firstNumeric",
+              "digits": [7, 9],
+              "timeWindows": [{"startMinute": 300, "endMinute": 1200}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-08-27T00:00:00Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "co-dc-bogota",
+      "name": "Bogota",
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "verifiedAt": "2026-08-27T00:00:00Z",
+          "staleAfter": "2026-09-01T00:00:00Z",
+          "sourceUrls": [
+            "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-bogota-vehiculos-particulares-1-31-de-agosto-de-2026",
+            "https://www.movilidadbogota.gov.co/pico-y-placa"
+          ],
+          "rules": [
+            {
+              "id": "bogota-car-private-2026-aug-even-day",
+              "priority": 1000,
+              "effect": "restrict",
+              "validFrom": "2026-08-01T00:00:00",
+              "validUntil": "2026-08-31T23:59:59",
+              "weekdays": [1, 2, 3, 4, 5],
+              "dateParity": "even",
+              "digitPosition": "lastNumeric",
+              "digits": [1, 2, 3, 4, 5],
+              "timeWindows": [{"startMinute": 360, "endMinute": 1260}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-bogota-vehiculos-particulares-1-31-de-agosto-de-2026",
+              "verifiedAt": "2026-08-27T00:00:00Z"
+            },
+            {
+              "id": "bogota-car-private-2026-aug-odd-day",
+              "priority": 1000,
+              "effect": "restrict",
+              "validFrom": "2026-08-01T00:00:00",
+              "validUntil": "2026-08-31T23:59:59",
+              "weekdays": [1, 2, 3, 4, 5],
+              "dateParity": "odd",
+              "digitPosition": "lastNumeric",
+              "digits": [0, 6, 7, 8, 9],
+              "timeWindows": [{"startMinute": 360, "endMinute": 1260}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-bogota-vehiculos-particulares-1-31-de-agosto-de-2026",
+              "verifiedAt": "2026-08-27T00:00:00Z"
+            }
+          ]
+        },
+        {
+          "vehicleKind": "car",
+          "serviceType": "taxi",
+          "verifiedAt": "2026-08-27T00:00:00Z",
+          "staleAfter": "2026-09-01T00:00:00Z",
+          "sourceUrls": [
+            "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-en-bogota-de-particulares-y-taxis-lunes-24-agosto-2026",
+            "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-bogota-martes-25-de-agosto-de-2026-particulares-y-taxis",
+            "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-en-bogota-26-de-agosto-de-2026-particulares-y-taxis",
+            "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-en-bogota-jueves-27-de-agosto-de-2026-particulares-y-taxi"
+          ],
+          "rules": [
+            {
+              "id": "bogota-taxi-2026-08-24",
+              "priority": 1000,
+              "effect": "restrict",
+              "validFrom": "2026-08-24T00:00:00",
+              "validUntil": "2026-08-24T23:59:59",
+              "digitPosition": "lastNumeric",
+              "digits": [9, 0],
+              "timeWindows": [{"startMinute": 330, "endMinute": 1260}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-en-bogota-de-particulares-y-taxis-lunes-24-agosto-2026",
+              "verifiedAt": "2026-08-27T00:00:00Z"
+            },
+            {
+              "id": "bogota-taxi-2026-08-25",
+              "priority": 1000,
+              "effect": "restrict",
+              "validFrom": "2026-08-25T00:00:00",
+              "validUntil": "2026-08-25T23:59:59",
+              "digitPosition": "lastNumeric",
+              "digits": [1, 2],
+              "timeWindows": [{"startMinute": 330, "endMinute": 1260}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-bogota-martes-25-de-agosto-de-2026-particulares-y-taxis",
+              "verifiedAt": "2026-08-27T00:00:00Z"
+            },
+            {
+              "id": "bogota-taxi-2026-08-26",
+              "priority": 1000,
+              "effect": "restrict",
+              "validFrom": "2026-08-26T00:00:00",
+              "validUntil": "2026-08-26T23:59:59",
+              "digitPosition": "lastNumeric",
+              "digits": [3, 4],
+              "timeWindows": [{"startMinute": 330, "endMinute": 1260}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-en-bogota-26-de-agosto-de-2026-particulares-y-taxis",
+              "verifiedAt": "2026-08-27T00:00:00Z"
+            },
+            {
+              "id": "bogota-taxi-2026-08-27",
+              "priority": 1000,
+              "effect": "restrict",
+              "validFrom": "2026-08-27T00:00:00",
+              "validUntil": "2026-08-27T23:59:59",
+              "digitPosition": "lastNumeric",
+              "digits": [5, 6],
+              "timeWindows": [{"startMinute": 330, "endMinute": 1260}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-en-bogota-jueves-27-de-agosto-de-2026-particulares-y-taxi",
+              "verifiedAt": "2026-08-27T00:00:00Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
