@@ -4,8 +4,8 @@
 **Store title:** PicoRadar: Pico y Placa
 
 **Baseline:** Product v1.0 + Technical Architecture v1  
-**Current lot:** C05 — DONE locally; pending PR review/merge
-**Last completed lot:** C04 — merged to `main`
+**Current lot:** C06 — DONE locally; pending PR review/merge
+**Last completed lot:** C05 — merged to `main`
 **Release target:** Free 1.0 Android-first  
 **Monetization:** OFF  
 **Account/cloud:** OFF  
@@ -18,11 +18,13 @@ Apps is always central.
 
 ## Expected next action
 
-C05 adds the manifest sync engine foundation only. Do not start C06 until C05 is reviewed/merged and a separate human kickoff is provided.
+C06 adds local vehicle models, migration and repository only. Do not start C07 until C06 is reviewed/merged and a separate human kickoff is provided.
 
 ## Product decisions recorded during C05
 
-- Free 1.0 widget: Android and iPhone widgets will show active vehicle, city, today circulation/restricted state, schedule, tomorrow status and stale-data state. No ads. Tapping opens the Pico y Placa flow. Implementation is deferred to the approved Home/Pico/notifications lots.
+- Taxi in Free 1.0: Taxi is included from Free 1.0 using the same app and VehicleRepository. Future Pico y Placa evaluation must use jurisdiction + kind + serviceType + date/time because taxis may have different rules than private cars.
+- Free 1.0 widget: Android and iPhone widgets exist as quick access only. They must not directly reveal today's Pico y Placa state, exact schedule or tomorrow status. They present PicoRadar with copy such as "Consulta tu Pico y Placa de hoy"; tapping opens Pico y Placa directly. No ads inside the widget and no mandatory interstitial before showing the result; a normal in-app banner remains allowed.
+- Premium future widget: may show vehicle, plate, city, exact state ("HOY PUEDES CIRCULAR" or "HOY TIENES PICO Y PLACA"), schedule and tomorrow state, with no ads.
 - Car screen mode: PicoRadar remains one APK that adapts to full Android radios; no separate APK. The future horizontal/large `Conducir` UI will prioritize speed, limit, next camera, alerts and pico status. No ads during driving. Official Android Auto/Automotive support remains deferred to a later approved lot.
 
 ## State update rule
@@ -38,12 +40,12 @@ At the end of every lot update:
 
 ## Latest lot handoff summary
 
-- Branch: `feat/C05-manifest-sync`
-- Lot status: C05 DONE locally; pending PR review/merge.
-- Test summary: Manifest sync parser/service tests, Flutter analyze/test and dev debug APK passed locally.
-- Physical QA status: Not required for C05.
+- Branch: `feat/C06-vehicle-domain`
+- Lot status: C06 DONE locally; pending PR review/merge.
+- Test summary: Vehicle repository tests, migration v1 to v2 test, Flutter analyze/test and dev debug APK passed locally.
+- Physical QA status: Not required for C06.
 - Blockers: None.
-- Next lots unblocked: None until C05 review/merge.
+- Next lots unblocked: None until C06 review/merge.
 
 ## GitHub state
 
@@ -55,3 +57,4 @@ At the end of every lot update:
 - C02 merged to `main` by explicit human authorization.
 - C03 merged to `main` by explicit human authorization.
 - C04 merged to `main` by explicit human authorization.
+- C05 merged to `main` by explicit human authorization.

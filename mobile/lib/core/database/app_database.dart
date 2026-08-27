@@ -9,6 +9,14 @@ class Vehicles extends Table {
   TextColumn get plate => text().withLength(min: 1, max: 12)();
   TextColumn get nickname => text().nullable()();
   TextColumn get kind => text().withDefault(const Constant('car'))();
+  TextColumn get serviceType => text().withDefault(const Constant('private'))();
+  TextColumn get subtype => text().nullable()();
+  TextColumn get registrationCity => text().nullable()();
+  TextColumn get brand => text().nullable()();
+  TextColumn get model => text().nullable()();
+  IntColumn get year => integer().nullable()();
+  TextColumn get color => text().nullable()();
+  TextColumn get fuel => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
@@ -73,7 +81,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'picoradar'));
 
-  static const currentSchemaVersion = 1;
+  static const currentSchemaVersion = 2;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -89,6 +97,22 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> _upgrade(Migrator migrator, int from, int to) async {
     if (from >= to) {
+      return;
+    }
+
+    if (from == 1) {
+      await migrator.addColumn(vehicles, vehicles.serviceType);
+      await migrator.addColumn(vehicles, vehicles.subtype);
+      await migrator.addColumn(vehicles, vehicles.registrationCity);
+      await migrator.addColumn(vehicles, vehicles.brand);
+      await migrator.addColumn(vehicles, vehicles.model);
+      await migrator.addColumn(vehicles, vehicles.year);
+      await migrator.addColumn(vehicles, vehicles.color);
+      await migrator.addColumn(vehicles, vehicles.fuel);
+      from = 2;
+    }
+
+    if (from == to) {
       return;
     }
 
