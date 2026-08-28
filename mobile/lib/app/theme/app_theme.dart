@@ -14,28 +14,14 @@ ThemeData buildPicoRadarTheme() {
     colorScheme: colorScheme,
     scaffoldBackgroundColor: AppColors.background,
     useMaterial3: true,
-    navigationBarTheme: NavigationBarThemeData(
-      indicatorColor: AppColors.teal.withValues(alpha: 0.12),
-      labelTextStyle: WidgetStateProperty.resolveWith((states) {
-        final selected = states.contains(WidgetState.selected);
-        return TextStyle(
-          color: selected ? AppColors.teal : AppColors.navy,
-          fontSize: 12,
-          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-        );
-      }),
-    ),
     textTheme: const TextTheme(
-      headlineMedium: TextStyle(
-        color: AppColors.navy,
-        fontSize: 26,
-        fontWeight: FontWeight.w700,
-      ),
-      bodyMedium: TextStyle(
-        color: AppColors.navy,
-        fontSize: 16,
-        fontWeight: FontWeight.w400,
-      ),
+      displayMedium: AppTextStyles.display,
+      headlineLarge: AppTextStyles.h1,
+      headlineMedium: AppTextStyles.h2,
+      bodyLarge: AppTextStyles.body,
+      bodyMedium: AppTextStyles.body,
+      labelLarge: AppTextStyles.bodyStrong,
+      labelMedium: AppTextStyles.caption,
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
