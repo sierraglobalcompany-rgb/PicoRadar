@@ -32,7 +32,11 @@ class VehicleObligations extends Table {
       text().references(Vehicles, #id, onDelete: KeyAction.cascade)();
   TextColumn get type => text().withLength(min: 1, max: 32)();
   TextColumn get status => text().withLength(min: 1, max: 32)();
+  DateTimeColumn get startDate => dateTime().nullable()();
   DateTimeColumn get dueDate => dateTime().nullable()();
+  TextColumn get detailsJson => text().nullable()();
+  BoolColumn get reminderEnabled =>
+      boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
@@ -103,7 +107,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'picoradar'));
 
-  static const currentSchemaVersion = 3;
+  static const currentSchemaVersion = 4;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -137,6 +141,22 @@ class AppDatabase extends _$AppDatabase {
     if (from == 2) {
       await migrator.createTable(restrictionCoverages);
       from = 3;
+    }
+
+    if (from == 3) {
+      await migrator.addColumn(
+        vehicleObligations,
+        vehicleObligations.startDate,
+      );
+      await migrator.addColumn(
+        vehicleObligations,
+        vehicleObligations.detailsJson,
+      );
+      await migrator.addColumn(
+        vehicleObligations,
+        vehicleObligations.reminderEnabled,
+      );
+      from = 4;
     }
 
     if (from == to) {

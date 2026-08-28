@@ -1,10 +1,13 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/database/app_database.dart';
+import '../core/database/app_database.dart' hide VehicleObligation;
 import '../core/storage/app_preferences.dart';
 import '../features/garage/data/vehicle_profile.dart';
 import '../features/garage/data/vehicle_repository.dart';
+import '../features/vehicle_status/data/vehicle_obligation_store.dart';
+import '../features/vehicle_status/domain/vehicle_obligation.dart';
+import '../features/vehicle_status/platform/obligation_notifications.dart';
 import '../features/pico_placa/data/bundled_restrictions.dart';
 import '../features/pico_placa/data/pico_preferences.dart';
 import '../features/pico_placa/data/restriction_store.dart';
@@ -71,6 +74,25 @@ final picoNotificationSchedulerProvider = Provider<PicoNotificationScheduler>((
   return scheduler;
 });
 
+final vehicleObligationStoreProvider = Provider<VehicleObligationStore>((ref) {
+  return VehicleObligationStore(ref.watch(appDatabaseProvider));
+});
+
+final vehicleObligationsProvider =
+    FutureProvider.family<List<VehicleObligation>, String>((ref, vehicleId) {
+      return ref
+          .watch(vehicleObligationStoreProvider)
+          .listForVehicle(vehicleId);
+    });
+
+final vehicleObligationProvider =
+    FutureProvider.family<VehicleObligation?, (String, VehicleObligationType)>((
+      ref,
+      key,
+    ) {
+      return ref.watch(vehicleObligationStoreProvider).get(key.$1, key.$2);
+    });
+
 final picoWidgetBridgeProvider = Provider<PicoWidgetBridge>((ref) {
   return const PicoWidgetBridge();
 });
@@ -85,7 +107,9 @@ final picoWidgetSyncProvider = FutureProvider<void>((ref) async {
   final selectedJurisdictionId = await ref.watch(
     selectedPicoJurisdictionIdProvider.future,
   );
-  final jurisdictions = await ref.watch(restrictionJurisdictionsProvider.future);
+  final jurisdictions = await ref.watch(
+    restrictionJurisdictionsProvider.future,
+  );
   final vehicle = activeVehicle ?? (vehicles.isEmpty ? null : vehicles.first);
   final jurisdictionName = _jurisdictionName(
     jurisdictions,
@@ -118,7 +142,9 @@ final picoNotificationSyncProvider = FutureProvider<void>((ref) async {
   final selectedJurisdictionId = await ref.watch(
     selectedPicoJurisdictionIdProvider.future,
   );
-  final jurisdictions = await ref.watch(restrictionJurisdictionsProvider.future);
+  final jurisdictions = await ref.watch(
+    restrictionJurisdictionsProvider.future,
+  );
   final jurisdiction = _jurisdiction(jurisdictions, selectedJurisdictionId);
   if (jurisdiction == null) {
     return;
@@ -140,6 +166,30 @@ final picoNotificationSyncProvider = FutureProvider<void>((ref) async {
       alertPreferences: alertPreferences,
     );
     await scheduler.reschedule(plans);
+  } on MissingPluginException {
+    return;
+  }
+});
+
+final obligationNotificationSyncProvider = FutureProvider<void>((ref) async {
+  final alertPreferences = await ref.watch(picoAlertPreferencesProvider.future);
+  final scheduler = ref.watch(picoNotificationSchedulerProvider);
+  final vehicles = await ref.watch(vehicleListProvider.future);
+  final vehiclesById = {for (final vehicle in vehicles) vehicle.id: vehicle};
+  final obligations = await ref.watch(vehicleObligationStoreProvider).listAll();
+  try {
+    await scheduler.initialize();
+    final plans = planObligationNotifications(
+      obligations: obligations,
+      vehiclesById: vehiclesById,
+      nowBogota: ref.watch(bogotaNowProvider),
+      permissionGranted: alertPreferences.permissionGranted,
+    );
+    if (plans.isEmpty) {
+      await scheduler.cancelObligationNotifications();
+      return;
+    }
+    await scheduler.rescheduleObligationNotifications(plans);
   } on MissingPluginException {
     return;
   }

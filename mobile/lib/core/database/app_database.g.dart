@@ -855,6 +855,17 @@ class $VehicleObligationsTable extends VehicleObligations
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _startDateMeta = const VerificationMeta(
+    'startDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+    'start_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _dueDateMeta = const VerificationMeta(
     'dueDate',
   );
@@ -865,6 +876,32 @@ class $VehicleObligationsTable extends VehicleObligations
     true,
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
+  );
+  static const VerificationMeta _detailsJsonMeta = const VerificationMeta(
+    'detailsJson',
+  );
+  @override
+  late final GeneratedColumn<String> detailsJson = GeneratedColumn<String>(
+    'details_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _reminderEnabledMeta = const VerificationMeta(
+    'reminderEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> reminderEnabled = GeneratedColumn<bool>(
+    'reminder_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("reminder_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
@@ -896,7 +933,10 @@ class $VehicleObligationsTable extends VehicleObligations
     vehicleId,
     type,
     status,
+    startDate,
     dueDate,
+    detailsJson,
+    reminderEnabled,
     createdAt,
     updatedAt,
   ];
@@ -941,10 +981,34 @@ class $VehicleObligationsTable extends VehicleObligations
     } else if (isInserting) {
       context.missing(_statusMeta);
     }
+    if (data.containsKey('start_date')) {
+      context.handle(
+        _startDateMeta,
+        startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
+      );
+    }
     if (data.containsKey('due_date')) {
       context.handle(
         _dueDateMeta,
         dueDate.isAcceptableOrUnknown(data['due_date']!, _dueDateMeta),
+      );
+    }
+    if (data.containsKey('details_json')) {
+      context.handle(
+        _detailsJsonMeta,
+        detailsJson.isAcceptableOrUnknown(
+          data['details_json']!,
+          _detailsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('reminder_enabled')) {
+      context.handle(
+        _reminderEnabledMeta,
+        reminderEnabled.isAcceptableOrUnknown(
+          data['reminder_enabled']!,
+          _reminderEnabledMeta,
+        ),
       );
     }
     if (data.containsKey('created_at')) {
@@ -984,10 +1048,22 @@ class $VehicleObligationsTable extends VehicleObligations
         DriftSqlType.string,
         data['${effectivePrefix}status'],
       )!,
+      startDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_date'],
+      ),
       dueDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}due_date'],
       ),
+      detailsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}details_json'],
+      ),
+      reminderEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}reminder_enabled'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1011,7 +1087,10 @@ class VehicleObligation extends DataClass
   final String vehicleId;
   final String type;
   final String status;
+  final DateTime? startDate;
   final DateTime? dueDate;
+  final String? detailsJson;
+  final bool reminderEnabled;
   final DateTime createdAt;
   final DateTime updatedAt;
   const VehicleObligation({
@@ -1019,7 +1098,10 @@ class VehicleObligation extends DataClass
     required this.vehicleId,
     required this.type,
     required this.status,
+    this.startDate,
     this.dueDate,
+    this.detailsJson,
+    required this.reminderEnabled,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1030,9 +1112,16 @@ class VehicleObligation extends DataClass
     map['vehicle_id'] = Variable<String>(vehicleId);
     map['type'] = Variable<String>(type);
     map['status'] = Variable<String>(status);
+    if (!nullToAbsent || startDate != null) {
+      map['start_date'] = Variable<DateTime>(startDate);
+    }
     if (!nullToAbsent || dueDate != null) {
       map['due_date'] = Variable<DateTime>(dueDate);
     }
+    if (!nullToAbsent || detailsJson != null) {
+      map['details_json'] = Variable<String>(detailsJson);
+    }
+    map['reminder_enabled'] = Variable<bool>(reminderEnabled);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1044,9 +1133,16 @@ class VehicleObligation extends DataClass
       vehicleId: Value(vehicleId),
       type: Value(type),
       status: Value(status),
+      startDate: startDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startDate),
       dueDate: dueDate == null && nullToAbsent
           ? const Value.absent()
           : Value(dueDate),
+      detailsJson: detailsJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(detailsJson),
+      reminderEnabled: Value(reminderEnabled),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1062,7 +1158,10 @@ class VehicleObligation extends DataClass
       vehicleId: serializer.fromJson<String>(json['vehicleId']),
       type: serializer.fromJson<String>(json['type']),
       status: serializer.fromJson<String>(json['status']),
+      startDate: serializer.fromJson<DateTime?>(json['startDate']),
       dueDate: serializer.fromJson<DateTime?>(json['dueDate']),
+      detailsJson: serializer.fromJson<String?>(json['detailsJson']),
+      reminderEnabled: serializer.fromJson<bool>(json['reminderEnabled']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1075,7 +1174,10 @@ class VehicleObligation extends DataClass
       'vehicleId': serializer.toJson<String>(vehicleId),
       'type': serializer.toJson<String>(type),
       'status': serializer.toJson<String>(status),
+      'startDate': serializer.toJson<DateTime?>(startDate),
       'dueDate': serializer.toJson<DateTime?>(dueDate),
+      'detailsJson': serializer.toJson<String?>(detailsJson),
+      'reminderEnabled': serializer.toJson<bool>(reminderEnabled),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1086,7 +1188,10 @@ class VehicleObligation extends DataClass
     String? vehicleId,
     String? type,
     String? status,
+    Value<DateTime?> startDate = const Value.absent(),
     Value<DateTime?> dueDate = const Value.absent(),
+    Value<String?> detailsJson = const Value.absent(),
+    bool? reminderEnabled,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => VehicleObligation(
@@ -1094,7 +1199,10 @@ class VehicleObligation extends DataClass
     vehicleId: vehicleId ?? this.vehicleId,
     type: type ?? this.type,
     status: status ?? this.status,
+    startDate: startDate.present ? startDate.value : this.startDate,
     dueDate: dueDate.present ? dueDate.value : this.dueDate,
+    detailsJson: detailsJson.present ? detailsJson.value : this.detailsJson,
+    reminderEnabled: reminderEnabled ?? this.reminderEnabled,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1104,7 +1212,14 @@ class VehicleObligation extends DataClass
       vehicleId: data.vehicleId.present ? data.vehicleId.value : this.vehicleId,
       type: data.type.present ? data.type.value : this.type,
       status: data.status.present ? data.status.value : this.status,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
       dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
+      detailsJson: data.detailsJson.present
+          ? data.detailsJson.value
+          : this.detailsJson,
+      reminderEnabled: data.reminderEnabled.present
+          ? data.reminderEnabled.value
+          : this.reminderEnabled,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1117,7 +1232,10 @@ class VehicleObligation extends DataClass
           ..write('vehicleId: $vehicleId, ')
           ..write('type: $type, ')
           ..write('status: $status, ')
+          ..write('startDate: $startDate, ')
           ..write('dueDate: $dueDate, ')
+          ..write('detailsJson: $detailsJson, ')
+          ..write('reminderEnabled: $reminderEnabled, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1125,8 +1243,18 @@ class VehicleObligation extends DataClass
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, vehicleId, type, status, dueDate, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    vehicleId,
+    type,
+    status,
+    startDate,
+    dueDate,
+    detailsJson,
+    reminderEnabled,
+    createdAt,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1135,7 +1263,10 @@ class VehicleObligation extends DataClass
           other.vehicleId == this.vehicleId &&
           other.type == this.type &&
           other.status == this.status &&
+          other.startDate == this.startDate &&
           other.dueDate == this.dueDate &&
+          other.detailsJson == this.detailsJson &&
+          other.reminderEnabled == this.reminderEnabled &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1145,7 +1276,10 @@ class VehicleObligationsCompanion extends UpdateCompanion<VehicleObligation> {
   final Value<String> vehicleId;
   final Value<String> type;
   final Value<String> status;
+  final Value<DateTime?> startDate;
   final Value<DateTime?> dueDate;
+  final Value<String?> detailsJson;
+  final Value<bool> reminderEnabled;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -1154,7 +1288,10 @@ class VehicleObligationsCompanion extends UpdateCompanion<VehicleObligation> {
     this.vehicleId = const Value.absent(),
     this.type = const Value.absent(),
     this.status = const Value.absent(),
+    this.startDate = const Value.absent(),
     this.dueDate = const Value.absent(),
+    this.detailsJson = const Value.absent(),
+    this.reminderEnabled = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1164,7 +1301,10 @@ class VehicleObligationsCompanion extends UpdateCompanion<VehicleObligation> {
     required String vehicleId,
     required String type,
     required String status,
+    this.startDate = const Value.absent(),
     this.dueDate = const Value.absent(),
+    this.detailsJson = const Value.absent(),
+    this.reminderEnabled = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1177,7 +1317,10 @@ class VehicleObligationsCompanion extends UpdateCompanion<VehicleObligation> {
     Expression<String>? vehicleId,
     Expression<String>? type,
     Expression<String>? status,
+    Expression<DateTime>? startDate,
     Expression<DateTime>? dueDate,
+    Expression<String>? detailsJson,
+    Expression<bool>? reminderEnabled,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -1187,7 +1330,10 @@ class VehicleObligationsCompanion extends UpdateCompanion<VehicleObligation> {
       if (vehicleId != null) 'vehicle_id': vehicleId,
       if (type != null) 'type': type,
       if (status != null) 'status': status,
+      if (startDate != null) 'start_date': startDate,
       if (dueDate != null) 'due_date': dueDate,
+      if (detailsJson != null) 'details_json': detailsJson,
+      if (reminderEnabled != null) 'reminder_enabled': reminderEnabled,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1199,7 +1345,10 @@ class VehicleObligationsCompanion extends UpdateCompanion<VehicleObligation> {
     Value<String>? vehicleId,
     Value<String>? type,
     Value<String>? status,
+    Value<DateTime?>? startDate,
     Value<DateTime?>? dueDate,
+    Value<String?>? detailsJson,
+    Value<bool>? reminderEnabled,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -1209,7 +1358,10 @@ class VehicleObligationsCompanion extends UpdateCompanion<VehicleObligation> {
       vehicleId: vehicleId ?? this.vehicleId,
       type: type ?? this.type,
       status: status ?? this.status,
+      startDate: startDate ?? this.startDate,
       dueDate: dueDate ?? this.dueDate,
+      detailsJson: detailsJson ?? this.detailsJson,
+      reminderEnabled: reminderEnabled ?? this.reminderEnabled,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -1231,8 +1383,17 @@ class VehicleObligationsCompanion extends UpdateCompanion<VehicleObligation> {
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
     if (dueDate.present) {
       map['due_date'] = Variable<DateTime>(dueDate.value);
+    }
+    if (detailsJson.present) {
+      map['details_json'] = Variable<String>(detailsJson.value);
+    }
+    if (reminderEnabled.present) {
+      map['reminder_enabled'] = Variable<bool>(reminderEnabled.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -1253,7 +1414,10 @@ class VehicleObligationsCompanion extends UpdateCompanion<VehicleObligation> {
           ..write('vehicleId: $vehicleId, ')
           ..write('type: $type, ')
           ..write('status: $status, ')
+          ..write('startDate: $startDate, ')
           ..write('dueDate: $dueDate, ')
+          ..write('detailsJson: $detailsJson, ')
+          ..write('reminderEnabled: $reminderEnabled, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -3236,7 +3400,10 @@ typedef $$VehicleObligationsTableCreateCompanionBuilder =
       required String vehicleId,
       required String type,
       required String status,
+      Value<DateTime?> startDate,
       Value<DateTime?> dueDate,
+      Value<String?> detailsJson,
+      Value<bool> reminderEnabled,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -3247,7 +3414,10 @@ typedef $$VehicleObligationsTableUpdateCompanionBuilder =
       Value<String> vehicleId,
       Value<String> type,
       Value<String> status,
+      Value<DateTime?> startDate,
       Value<DateTime?> dueDate,
+      Value<String?> detailsJson,
+      Value<bool> reminderEnabled,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -3308,8 +3478,23 @@ class $$VehicleObligationsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get dueDate => $composableBuilder(
     column: $table.dueDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get detailsJson => $composableBuilder(
+    column: $table.detailsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get reminderEnabled => $composableBuilder(
+    column: $table.reminderEnabled,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3371,8 +3556,23 @@ class $$VehicleObligationsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get dueDate => $composableBuilder(
     column: $table.dueDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get detailsJson => $composableBuilder(
+    column: $table.detailsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get reminderEnabled => $composableBuilder(
+    column: $table.reminderEnabled,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3428,8 +3628,21 @@ class $$VehicleObligationsTableAnnotationComposer
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
 
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
   GeneratedColumn<DateTime> get dueDate =>
       $composableBuilder(column: $table.dueDate, builder: (column) => column);
+
+  GeneratedColumn<String> get detailsJson => $composableBuilder(
+    column: $table.detailsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get reminderEnabled => $composableBuilder(
+    column: $table.reminderEnabled,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -3498,7 +3711,10 @@ class $$VehicleObligationsTableTableManager
                 Value<String> vehicleId = const Value.absent(),
                 Value<String> type = const Value.absent(),
                 Value<String> status = const Value.absent(),
+                Value<DateTime?> startDate = const Value.absent(),
                 Value<DateTime?> dueDate = const Value.absent(),
+                Value<String?> detailsJson = const Value.absent(),
+                Value<bool> reminderEnabled = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -3507,7 +3723,10 @@ class $$VehicleObligationsTableTableManager
                 vehicleId: vehicleId,
                 type: type,
                 status: status,
+                startDate: startDate,
                 dueDate: dueDate,
+                detailsJson: detailsJson,
+                reminderEnabled: reminderEnabled,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -3518,7 +3737,10 @@ class $$VehicleObligationsTableTableManager
                 required String vehicleId,
                 required String type,
                 required String status,
+                Value<DateTime?> startDate = const Value.absent(),
                 Value<DateTime?> dueDate = const Value.absent(),
+                Value<String?> detailsJson = const Value.absent(),
+                Value<bool> reminderEnabled = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -3527,7 +3749,10 @@ class $$VehicleObligationsTableTableManager
                 vehicleId: vehicleId,
                 type: type,
                 status: status,
+                startDate: startDate,
                 dueDate: dueDate,
+                detailsJson: detailsJson,
+                reminderEnabled: reminderEnabled,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

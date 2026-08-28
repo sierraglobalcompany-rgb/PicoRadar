@@ -23,7 +23,7 @@ void main() {
       await db.close();
     });
 
-    test('creates schema version 3 with restriction coverages', () async {
+    test('creates schema version 4 with vehicle status fields', () async {
       expect(db.schemaVersion, AppDatabase.currentSchemaVersion);
 
       await db
@@ -63,6 +63,10 @@ void main() {
               vehicleId: 'vehicle-1',
               type: 'soat',
               status: 'pending',
+              startDate: Value(DateTime(2026, 1, 1)),
+              dueDate: Value(DateTime(2026, 12, 31)),
+              detailsJson: const Value('{"insurerName":"ACME"}'),
+              reminderEnabled: const Value(true),
             ),
           );
 
@@ -89,7 +93,7 @@ void main() {
             .get();
         await migrated.close();
 
-        expect(version.single.data['user_version'], 3);
+        expect(version.single.data['user_version'], 4);
         expect(vehicles, hasLength(1));
         expect(vehicles.single.id, 'vehicle-1');
         expect(vehicles.single.plate, 'ABC123');
@@ -127,11 +131,52 @@ void main() {
               .get();
           await migrated.close();
 
-          expect(version.single.data['user_version'], 3);
+          expect(version.single.data['user_version'], 4);
           expect(vehicles, hasLength(1));
           expect(vehicles.single.id, 'vehicle-1');
           expect(vehicles.single.plate, 'ABC123');
           expect(coverages, isEmpty);
+        } finally {
+          await _deleteTempDir(tempDir);
+        }
+      },
+    );
+
+    test(
+      'migrates schema v3 to v4 preserving local data and defaults',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'picoradar_migration_v3_',
+        );
+        final dbPath = '${tempDir.path}${Platform.pathSeparator}app.sqlite';
+
+        try {
+          _createLegacyV3Database(dbPath);
+
+          final migrated = AppDatabase(NativeDatabase(File(dbPath)));
+          final vehicles = await migrated.select(migrated.vehicles).get();
+          final coverages = await migrated
+              .select(migrated.restrictionCoverages)
+              .get();
+          final obligations = await migrated
+              .select(migrated.vehicleObligations)
+              .get();
+          final version = await migrated
+              .customSelect('PRAGMA user_version')
+              .get();
+          await migrated.close();
+
+          expect(version.single.data['user_version'], 4);
+          expect(vehicles, hasLength(1));
+          expect(vehicles.single.plate, 'ABC123');
+          expect(coverages, hasLength(1));
+          expect(coverages.single.jurisdictionId, 'co-dc-bogota');
+          expect(obligations, hasLength(1));
+          expect(obligations.single.id, 'vehicle-1:soat');
+          expect(obligations.single.dueDate, DateTime(2026, 12, 31));
+          expect(obligations.single.startDate, isNull);
+          expect(obligations.single.detailsJson, isNull);
+          expect(obligations.single.reminderEnabled, isTrue);
         } finally {
           await _deleteTempDir(tempDir);
         }
@@ -165,7 +210,7 @@ void main() {
       );
     });
 
-    test('reopens schema 3 without destroying existing local data', () async {
+    test('reopens schema 4 without destroying existing local data', () async {
       final tempDir = await Directory.systemTemp.createTemp('picoradar_db_');
       final dbPath = '${tempDir.path}${Platform.pathSeparator}app.sqlite';
 
@@ -207,6 +252,79 @@ void _createLegacyV2Database(String path) {
     sqlite.execute('ALTER TABLE vehicles ADD COLUMN color TEXT NULL');
     sqlite.execute('ALTER TABLE vehicles ADD COLUMN fuel TEXT NULL');
     sqlite.execute('PRAGMA user_version = 2');
+  } finally {
+    sqlite.close();
+  }
+}
+
+void _createLegacyV3Database(String path) {
+  _createLegacyV2Database(path);
+  final sqlite = sqlite3.open(path);
+  final now = DateTime.utc(2026).millisecondsSinceEpoch;
+  final due = DateTime(2026, 12, 31).millisecondsSinceEpoch ~/ 1000;
+
+  try {
+    sqlite.execute('''
+CREATE TABLE restriction_coverages (
+  id TEXT NOT NULL PRIMARY KEY,
+  jurisdiction_id TEXT NOT NULL,
+  jurisdiction_name TEXT NOT NULL,
+  vehicle_kind TEXT NOT NULL,
+  service_type TEXT NOT NULL,
+  rules_json TEXT NOT NULL,
+  verified_at INTEGER NOT NULL,
+  stale_after INTEGER NOT NULL,
+  source_urls_json TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+)
+''');
+    sqlite.execute(
+      'CREATE UNIQUE INDEX restriction_coverages_lookup_idx '
+      'ON restriction_coverages (jurisdiction_id, vehicle_kind, service_type)',
+    );
+    sqlite.execute(
+      '''
+INSERT INTO restriction_coverages (
+  id,
+  jurisdiction_id,
+  jurisdiction_name,
+  vehicle_kind,
+  service_type,
+  rules_json,
+  verified_at,
+  stale_after,
+  source_urls_json,
+  updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+''',
+      [
+        'coverage-1',
+        'co-dc-bogota',
+        'Bogota',
+        'car',
+        'private',
+        '[]',
+        now,
+        now,
+        '[]',
+        now,
+      ],
+    );
+    sqlite.execute(
+      '''
+INSERT INTO vehicle_obligations (
+  id,
+  vehicle_id,
+  type,
+  status,
+  due_date,
+  created_at,
+  updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?)
+''',
+      ['vehicle-1:soat', 'vehicle-1', 'soat', 'configured', due, now, now],
+    );
+    sqlite.execute('PRAGMA user_version = 3');
   } finally {
     sqlite.close();
   }

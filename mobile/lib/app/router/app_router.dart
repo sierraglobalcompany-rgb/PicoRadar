@@ -9,6 +9,7 @@ import '../../features/garage/presentation/vehicle_detail_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/onboarding/presentation/onboarding_vehicle_screen.dart';
 import '../../features/pico_placa/presentation/pico_detail_screen.dart';
+import '../../features/vehicle_status/presentation/vehicle_status_screen.dart';
 import 'app_routes.dart';
 import 'immersive_placeholder_screen.dart';
 import 'root_placeholder_screen.dart';
@@ -99,10 +100,24 @@ List<RouteBase> _tabRoutes(AppTab tab) {
       GoRoute(
         path: 'module/:id',
         builder: (context, state) {
-          return ModulePlaceholderScreen(moduleId: state.pathParameters['id']!);
+          final moduleId = state.pathParameters['id']!;
+          if (_vehicleStatusModules.contains(moduleId)) {
+            return VehicleStatusScreen(
+              moduleId: moduleId,
+              vehicleId: state.uri.queryParameters['vehicleId'],
+            );
+          }
+          return ModulePlaceholderScreen(moduleId: moduleId);
         },
       ),
     ],
     _ => const [],
   };
 }
+
+const _vehicleStatusModules = {
+  'soat',
+  'tecnomecanica',
+  'seguro_asistencia',
+  'impuestos',
+};

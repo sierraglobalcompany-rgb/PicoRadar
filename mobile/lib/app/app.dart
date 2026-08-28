@@ -23,6 +23,7 @@ class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
     final router = ref.watch(appRouterProvider);
     ref.watch(picoWidgetSyncProvider);
     ref.watch(picoNotificationSyncProvider);
+    ref.watch(obligationNotificationSyncProvider);
     _startNotifications(router);
 
     return MaterialApp.router(

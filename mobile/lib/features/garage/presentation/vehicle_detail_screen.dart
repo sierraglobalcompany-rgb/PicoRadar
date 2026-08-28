@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/theme/app_tokens.dart';
+import '../../vehicle_status/data/vehicle_status_catalog.dart';
+import '../../vehicle_status/domain/vehicle_obligation.dart';
+import '../../vehicle_status/platform/obligation_notifications.dart';
 import '../data/vehicle_profile.dart';
 import 'vehicle_display.dart';
 
@@ -156,23 +159,7 @@ class _VehicleDetail extends ConsumerWidget {
                     icon: Icons.traffic,
                   ),
                   const SizedBox(height: AppSpacing.m),
-                  const _StatusCard(
-                    title: 'SOAT',
-                    status: 'Sin configurar',
-                    icon: Icons.assignment_outlined,
-                  ),
-                  const SizedBox(height: AppSpacing.m),
-                  const _StatusCard(
-                    title: 'Tecnomecánica',
-                    status: 'Sin configurar',
-                    icon: Icons.build_outlined,
-                  ),
-                  const SizedBox(height: AppSpacing.m),
-                  const _StatusCard(
-                    title: 'Seguro',
-                    status: 'Sin configurar',
-                    icon: Icons.health_and_safety_outlined,
-                  ),
+                  _VehicleStatusSummaryCards(vehicle: vehicle),
                 ],
               ),
             ),
@@ -224,9 +211,106 @@ class _VehicleDetail extends ConsumerWidget {
 
     ref.invalidate(activeVehicleProvider);
     ref.invalidate(vehicleListProvider);
+    ref.invalidate(obligationNotificationSyncProvider);
     if (context.mounted) {
       context.go('/garage');
     }
+  }
+}
+
+class _VehicleStatusSummaryCards extends ConsumerWidget {
+  const _VehicleStatusSummaryCards({required this.vehicle});
+
+  final VehicleProfile vehicle;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final obligations = ref.watch(vehicleObligationsProvider(vehicle.id));
+    final nowBogota = ref.watch(bogotaNowProvider);
+    return obligations.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stackTrace) => Text(error.toString()),
+      data: (items) {
+        final byType = {for (final item in items) item.type: item};
+        return Column(
+          children: [
+            _StatusCard(
+              key: const ValueKey('detail-status-soat'),
+              title: 'SOAT',
+              status: _summary(
+                VehicleObligationType.soat,
+                byType[VehicleObligationType.soat],
+                nowBogota,
+              ),
+              icon: Icons.assignment_outlined,
+              onTap: () => _open(context, VehicleObligationType.soat),
+            ),
+            const SizedBox(height: AppSpacing.m),
+            _StatusCard(
+              key: const ValueKey('detail-status-rtm'),
+              title: 'Tecnomecánica',
+              status: _summary(
+                VehicleObligationType.rtm,
+                byType[VehicleObligationType.rtm],
+                nowBogota,
+              ),
+              icon: Icons.build_outlined,
+              onTap: () => _open(context, VehicleObligationType.rtm),
+            ),
+            const SizedBox(height: AppSpacing.m),
+            _StatusCard(
+              key: const ValueKey('detail-status-insurance'),
+              title: 'Seguro',
+              status: _summary(
+                VehicleObligationType.insurance,
+                byType[VehicleObligationType.insurance],
+                nowBogota,
+              ),
+              icon: Icons.health_and_safety_outlined,
+              onTap: () => _open(context, VehicleObligationType.insurance),
+            ),
+            const SizedBox(height: AppSpacing.m),
+            _StatusCard(
+              key: const ValueKey('detail-status-tax'),
+              title: 'Impuestos',
+              status: _taxSummary(byType[VehicleObligationType.tax]),
+              icon: Icons.account_balance_outlined,
+              onTap: () => _open(context, VehicleObligationType.tax),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _open(BuildContext context, VehicleObligationType type) {
+    context.push('${obligationRouteForType(type)}?vehicleId=${vehicle.id}');
+  }
+
+  String _summary(
+    VehicleObligationType type,
+    VehicleObligation? obligation,
+    DateTime nowBogota,
+  ) {
+    final state = evaluateVehicleObligationState(
+      dueDate: obligation?.dueDate,
+      nowBogota: nowBogota,
+    );
+    if (obligation?.dueDate != null &&
+        (state == VehicleObligationState.valid ||
+            state == VehicleObligationState.dueSoon)) {
+      return 'Vence ${formatShortDate(obligation!.dueDate!)} · según fecha guardada';
+    }
+    return obligationStatusText(type, state);
+  }
+
+  String _taxSummary(VehicleObligation? obligation) {
+    final calendar =
+        taxCalendarByAuthority(obligation?.details['authorityId']) ??
+        suggestTaxCalendar(vehicle.registrationCity);
+    return calendar == null
+        ? 'Calendario pendiente de actualización'
+        : 'Consulta calendario oficial';
   }
 }
 
@@ -257,42 +341,57 @@ class _DetailField extends StatelessWidget {
 
 class _StatusCard extends StatelessWidget {
   const _StatusCard({
+    super.key,
     required this.title,
     required this.status,
     required this.icon,
+    this.onTap,
   });
 
   final String title;
   final String status;
   final IconData icon;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.l),
-        child: Row(
-          children: [
-            Icon(icon, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: AppSpacing.m),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+    final radius = BorderRadius.circular(AppRadius.card);
+    return Material(
+      color: Colors.white,
+      borderRadius: radius,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: radius,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.l),
+            child: Row(
+              children: [
+                Icon(icon, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: AppSpacing.m),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      Text(status),
+                    ],
                   ),
-                  Text(status),
+                ),
+                if (onTap != null) ...[
+                  const SizedBox(width: AppSpacing.s),
+                  const Icon(Icons.chevron_right),
                 ],
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
