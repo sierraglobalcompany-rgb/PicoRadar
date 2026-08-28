@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme/app_tokens.dart';
 import 'actions_and_badges.dart';
+import 'branding.dart';
 import 'surfaces.dart';
 
 enum StatusTone { success, warning, danger, neutral }
@@ -107,7 +108,7 @@ class VehicleCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(plate, style: AppTextStyles.h2),
+                ColombianPlateBadge(plate: plate, compact: true),
                 const SizedBox(height: AppSpacing.xs),
                 Text(kindLabel, style: AppTextStyles.caption),
               ],

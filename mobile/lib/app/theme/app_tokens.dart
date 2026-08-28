@@ -7,6 +7,7 @@ abstract final class AppColors {
   static const green = Color(0xFF1B8A5A);
   static const orange = Color(0xFFD97706);
   static const red = Color(0xFFC2413B);
+  static const plateYellow = Color(0xFFF6C515);
   static const surface = Color(0xFFFFFFFF);
   static const background = Color(0xFFF6F8FA);
   static const border = Color(0xFFD9E2EA);
@@ -33,6 +34,17 @@ abstract final class AppRadius {
 abstract final class AppIconSize {
   static const m = 24.0;
   static const l = 32.0;
+}
+
+abstract final class AppMotion {
+  static const microPress = Duration(milliseconds: 110);
+  static const fade = Duration(milliseconds: 180);
+  static const navBounce = Duration(milliseconds: 220);
+  static const carouselSnap = Duration(milliseconds: 300);
+  static const restrictedPulse = Duration(milliseconds: 1700);
+
+  static const standardCurve = Curves.easeOutCubic;
+  static const springCurve = Curves.easeOutBack;
 }
 
 abstract final class AppTextStyles {

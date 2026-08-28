@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/shell/app_shell.dart';
@@ -25,6 +27,16 @@ void main() {
     expect(AppTextStyles.h2.fontSize, inInclusiveRange(18, 22));
     expect(AppTextStyles.body.fontSize, inInclusiveRange(15, 17));
     expect(AppTextStyles.caption.fontSize, inInclusiveRange(12, 14));
+  });
+
+  test('R01-FIX motion tokens match the approved baseline', () {
+    expect(AppMotion.microPress, const Duration(milliseconds: 110));
+    expect(AppMotion.fade, const Duration(milliseconds: 180));
+    expect(AppMotion.navBounce, const Duration(milliseconds: 220));
+    expect(AppMotion.carouselSnap, const Duration(milliseconds: 300));
+    expect(AppMotion.restrictedPulse, const Duration(milliseconds: 1700));
+    expect(AppMotion.standardCurve, Curves.easeOutCubic);
+    expect(AppMotion.springCurve, Curves.easeOutBack);
   });
 
   test('R01 keeps the approved route order unchanged', () {
@@ -55,6 +67,37 @@ void main() {
     expect(find.text('Viaje'), findsOneWidget);
     expect(find.text('Conducir'), findsOneWidget);
     expect(_destinations[2].label, 'Apps');
+    expect(
+      find.byKey(const ValueKey('app-bottom-nav-apps-center')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('AppBottomNav Apps uses the elevated center affordance', (
+    tester,
+  ) async {
+    await _pumpComponent(
+      tester,
+      AppBottomNav(
+        destinations: _destinations,
+        currentIndex: 2,
+        onSelect: (_) {},
+      ),
+    );
+
+    final center = tester.widget<AnimatedContainer>(
+      find.byKey(const ValueKey('app-bottom-nav-apps-center')),
+    );
+    final centerBox = tester.renderObject<RenderBox>(
+      find.byKey(const ValueKey('app-bottom-nav-apps-center')),
+    );
+    final decoration = center.decoration! as BoxDecoration;
+
+    expect(centerBox.size.width, greaterThanOrEqualTo(56));
+    expect(centerBox.size.height, greaterThanOrEqualTo(56));
+    expect(decoration.shape, BoxShape.circle);
+    expect(decoration.color, AppColors.teal);
+    expect(decoration.boxShadow, isNotEmpty);
   });
 
   testWidgets('AppBottomNav exposes selected and unselected semantics', (
@@ -85,6 +128,77 @@ void main() {
     expect(unselected.properties.selected, isFalse);
   });
 
+  testWidgets('AppBottomNav press calls onSelect and settles animation', (
+    tester,
+  ) async {
+    var selectedIndex = 0;
+    await _pumpComponent(
+      tester,
+      AppBottomNav(
+        destinations: _destinations,
+        currentIndex: 0,
+        onSelect: (index) => selectedIndex = index,
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('tab-apps')));
+    await tester.pump(AppMotion.navBounce);
+    await tester.pumpAndSettle();
+
+    expect(selectedIndex, 2);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('AppBottomNav updates selected state after tab change', (
+    tester,
+  ) async {
+    var selectedIndex = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildPicoRadarTheme(),
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            return Scaffold(
+              bottomNavigationBar: AppBottomNav(
+                destinations: _destinations,
+                currentIndex: selectedIndex,
+                onSelect: (index) => setState(() => selectedIndex = index),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('tab-garage')));
+    await tester.pumpAndSettle();
+
+    final semantics = tester.widgetList<Semantics>(find.byType(Semantics));
+    final garage = semantics.singleWhere(
+      (widget) => widget.properties.label == 'Garaje',
+    );
+    expect(garage.properties.selected, isTrue);
+  });
+
+  testWidgets('AppBottomNav disables bounce transforms for reduced motion', (
+    tester,
+  ) async {
+    await _pumpComponent(
+      tester,
+      AppBottomNav(
+        destinations: _destinations,
+        currentIndex: 2,
+        onSelect: (_) {},
+      ),
+      disableAnimations: true,
+    );
+
+    expect(
+      find.byKey(const ValueKey('app-bottom-nav-motion-transform')),
+      findsNothing,
+    );
+  });
+
   testWidgets('AppBottomNav touch targets are at least 48 dp tall', (
     tester,
   ) async {
@@ -104,6 +218,97 @@ void main() {
 
     expect(itemBox.size.height, greaterThan(0));
     expect(navBox.size.height, greaterThanOrEqualTo(48));
+  });
+
+  testWidgets('AppBottomNav remains stable at 360dp and text scale 2', (
+    tester,
+  ) async {
+    await _pumpComponent(
+      tester,
+      AppBottomNav(
+        destinations: _destinations,
+        currentIndex: 2,
+        onSelect: (_) {},
+      ),
+      size: const Size(360, 800),
+      textScale: 2,
+    );
+
+    expect(find.byKey(const ValueKey('app-bottom-navigation')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('PicoRadar brand lockup is local and keeps brand text', (
+    tester,
+  ) async {
+    await _pumpComponent(tester, const PicoRadarBrandLockup());
+
+    expect(find.text('PicoRadar'), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
+    expect(
+      File('lib/app/app.dart').readAsStringSync(),
+      contains("title: 'PicoRadar'"),
+    );
+  });
+
+  testWidgets('ColombianPlateBadge renders common plate formats', (
+    tester,
+  ) async {
+    await _pumpComponent(
+      tester,
+      const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ColombianPlateBadge(plate: 'ABC123'),
+          ColombianPlateBadge(plate: 'XYZ789'),
+          ColombianPlateBadge(plate: 'ABC12D'),
+        ],
+      ),
+    );
+
+    expect(find.text('ABC123'), findsOneWidget);
+    expect(find.text('XYZ789'), findsOneWidget);
+    expect(find.text('ABC12D'), findsOneWidget);
+  });
+
+  testWidgets('ColombianPlateBadge handles larger text scales', (tester) async {
+    for (final textScale in [1.5, 2.0]) {
+      await _pumpComponent(
+        tester,
+        const ColombianPlateBadge(plate: 'ABC1234', compact: true),
+        textScale: textScale,
+      );
+      expect(find.text('ABC1234'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  test('R01-FIX Android launcher resources exist', () {
+    final expectedPaths = [
+      'android/app/src/main/res/mipmap-mdpi/ic_launcher.png',
+      'android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png',
+      'android/app/src/main/res/mipmap-hdpi/ic_launcher.png',
+      'android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png',
+      'android/app/src/main/res/mipmap-xhdpi/ic_launcher.png',
+      'android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png',
+      'android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png',
+      'android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png',
+      'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',
+      'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png',
+      'android/app/src/main/res/drawable/ic_launcher_foreground.png',
+      'android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml',
+      'android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml',
+      'android/app/src/main/res/values/colors.xml',
+    ];
+
+    for (final path in expectedPaths) {
+      expect(File(path).existsSync(), isTrue, reason: path);
+    }
+
+    final manifest = File('android/app/src/main/AndroidManifest.xml')
+        .readAsStringSync();
+    expect(manifest, contains('android:icon="@mipmap/ic_launcher"'));
+    expect(manifest, contains('android:roundIcon="@mipmap/ic_launcher_round"'));
   });
 
   testWidgets(
@@ -281,15 +486,34 @@ void main() {
   });
 }
 
-Future<void> _pumpComponent(WidgetTester tester, Widget child) async {
+Future<void> _pumpComponent(
+  WidgetTester tester,
+  Widget child, {
+  Size size = const Size(390, 844),
+  double textScale = 1,
+  bool disableAnimations = false,
+}) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = size;
+  addTearDown(tester.view.resetDevicePixelRatio);
+  addTearDown(tester.view.resetPhysicalSize);
+
   await tester.pumpWidget(
     MaterialApp(
       theme: buildPicoRadarTheme(),
-      home: Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.l),
-            child: child,
+      home: MediaQuery(
+        data: MediaQueryData(
+          size: size,
+          textScaler: TextScaler.linear(textScale),
+          disableAnimations: disableAnimations,
+          accessibleNavigation: disableAnimations,
+        ),
+        child: Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.l),
+              child: child,
+            ),
           ),
         ),
       ),
