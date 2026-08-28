@@ -89,15 +89,23 @@ class AppBottomNav extends StatelessWidget {
       top: false,
       child: DecoratedBox(
         key: const ValueKey('app-bottom-navigation'),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppColors.surface,
-          border: Border(top: BorderSide(color: AppColors.border)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.navy.withValues(alpha: 0.08),
+              offset: const Offset(0, -4),
+              blurRadius: 18,
+            ),
+          ],
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
-            AppSpacing.s,
-            AppSpacing.s,
-            AppSpacing.s,
+            AppSpacing.m,
+            AppSpacing.xs,
+            AppSpacing.m,
             0,
           ),
           child: Row(
@@ -166,8 +174,8 @@ class _BottomNavItemState extends State<_BottomNavItem>
     _scale =
         TweenSequence<double>([
           TweenSequenceItem(tween: Tween(begin: 1, end: 0.86), weight: 36),
-          TweenSequenceItem(tween: Tween(begin: 0.86, end: 1.10), weight: 38),
-          TweenSequenceItem(tween: Tween(begin: 1.10, end: 1), weight: 26),
+          TweenSequenceItem(tween: Tween(begin: 0.86, end: 1.06), weight: 38),
+          TweenSequenceItem(tween: Tween(begin: 1.06, end: 1), weight: 26),
         ]).animate(
           CurvedAnimation(parent: _controller, curve: AppMotion.standardCurve),
         );
@@ -256,7 +264,7 @@ class _SideNavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 64),
+      constraints: const BoxConstraints(minHeight: 52),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -265,7 +273,7 @@ class _SideNavItem extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: 2,
-              vertical: AppSpacing.s,
+              vertical: AppSpacing.xs,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -280,17 +288,29 @@ class _SideNavItem extends StatelessWidget {
                     borderRadius: BorderRadius.circular(AppRadius.chip),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.s),
-                Icon(icon, color: color, size: AppIconSize.m),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  destination.label,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption.copyWith(
-                    color: color,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                const SizedBox(height: 5),
+                _NavGlyph(
+                  icon: icon,
+                  color: color,
+                  drive: destination.keyName == 'drive',
+                ),
+                const SizedBox(height: 2),
+                SizedBox(
+                  height: 16,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      destination.label,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      style: AppTextStyles.caption.copyWith(
+                        color: color,
+                        fontSize: 12,
+                        fontWeight: selected
+                            ? FontWeight.w800
+                            : FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -318,7 +338,7 @@ class _CenterAppsItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 72),
+      constraints: const BoxConstraints(minHeight: 66),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -337,41 +357,54 @@ class _CenterAppsItem extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadius.chip),
                 ),
               ),
-              const SizedBox(height: AppSpacing.xs),
-              AnimatedContainer(
-                key: const ValueKey('app-bottom-nav-apps-center'),
-                duration: AppMotion.fade,
-                curve: AppMotion.standardCurve,
-                width: 56,
-                height: 56,
+              const SizedBox(height: 2),
+              Container(
+                key: const ValueKey('app-bottom-nav-apps-halo'),
+                width: 54,
+                height: 54,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.teal,
+                  color: AppColors.surface,
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.teal.withValues(
-                        alpha: selected ? 0.34 : 0.22,
+                        alpha: selected ? 0.22 : 0.14,
                       ),
-                      offset: const Offset(0, 8),
-                      blurRadius: selected ? 18 : 12,
+                      offset: const Offset(0, 5),
+                      blurRadius: selected ? 12 : 9,
                     ),
                   ],
                 ),
-                child: Icon(
-                  icon,
-                  color: AppColors.surface,
-                  size: AppIconSize.m,
+                child: Center(
+                  child: AnimatedContainer(
+                    key: const ValueKey('app-bottom-nav-apps-center'),
+                    duration: AppMotion.fade,
+                    curve: AppMotion.standardCurve,
+                    width: 46,
+                    height: 46,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.teal,
+                    ),
+                    child: Icon(icon, color: AppColors.surface, size: 22),
+                  ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                destination.label,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.caption.copyWith(
-                  color: AppColors.teal,
-                  fontWeight: FontWeight.w800,
+              const SizedBox(height: 2),
+              SizedBox(
+                height: 16,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    destination.label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.teal,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -379,5 +412,77 @@ class _CenterAppsItem extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _NavGlyph extends StatelessWidget {
+  const _NavGlyph({
+    required this.icon,
+    required this.color,
+    required this.drive,
+  });
+
+  final IconData icon;
+  final Color color;
+  final bool drive;
+
+  @override
+  Widget build(BuildContext context) {
+    if (drive) {
+      return CustomPaint(
+        key: const ValueKey('app-bottom-nav-drive-wheel'),
+        size: const Size.square(23),
+        painter: _SteeringWheelPainter(color),
+      );
+    }
+    return Icon(icon, color: color, size: 22);
+  }
+}
+
+class _SteeringWheelPainter extends CustomPainter {
+  const _SteeringWheelPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroke = size.shortestSide * 0.12;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.shortestSide * 0.42;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = color;
+
+    canvas.drawCircle(center, radius, paint);
+    canvas.drawLine(
+      center,
+      Offset(center.dx, center.dy + radius * 0.78),
+      paint,
+    );
+    canvas.drawLine(
+      center,
+      Offset(center.dx - radius * 0.76, center.dy + radius * 0.12),
+      paint,
+    );
+    canvas.drawLine(
+      center,
+      Offset(center.dx + radius * 0.76, center.dy + radius * 0.12),
+      paint,
+    );
+    canvas.drawCircle(
+      center,
+      stroke * 0.56,
+      Paint()
+        ..style = PaintingStyle.fill
+        ..color = color,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _SteeringWheelPainter oldDelegate) {
+    return oldDelegate.color != color;
   }
 }

@@ -49,6 +49,12 @@ void main() {
     ]);
   });
 
+  test('R01-FIX2 keeps approved bottom nav icon semantics', () {
+    expect(AppTab.trip.icon, Icons.location_on_outlined);
+    expect(AppTab.trip.selectedIcon, Icons.location_on);
+    expect(AppTab.drive.label, 'Conducir');
+  });
+
   testWidgets('AppBottomNav has five tabs with Apps in the center', (
     tester,
   ) async {
@@ -85,6 +91,9 @@ void main() {
       ),
     );
 
+    final haloBox = tester.renderObject<RenderBox>(
+      find.byKey(const ValueKey('app-bottom-nav-apps-halo')),
+    );
     final center = tester.widget<AnimatedContainer>(
       find.byKey(const ValueKey('app-bottom-nav-apps-center')),
     );
@@ -93,11 +102,16 @@ void main() {
     );
     final decoration = center.decoration! as BoxDecoration;
 
-    expect(centerBox.size.width, greaterThanOrEqualTo(56));
-    expect(centerBox.size.height, greaterThanOrEqualTo(56));
+    expect(haloBox.size.width, greaterThanOrEqualTo(52));
+    expect(haloBox.size.height, greaterThanOrEqualTo(52));
+    expect(centerBox.size.width, inInclusiveRange(44, 48));
+    expect(centerBox.size.height, inInclusiveRange(44, 48));
     expect(decoration.shape, BoxShape.circle);
     expect(decoration.color, AppColors.teal);
-    expect(decoration.boxShadow, isNotEmpty);
+    expect(
+      find.byKey(const ValueKey('app-bottom-nav-drive-wheel')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('AppBottomNav exposes selected and unselected semantics', (
@@ -223,19 +237,37 @@ void main() {
   testWidgets('AppBottomNav remains stable at 360dp and text scale 2', (
     tester,
   ) async {
-    await _pumpComponent(
-      tester,
-      AppBottomNav(
-        destinations: _destinations,
-        currentIndex: 2,
-        onSelect: (_) {},
-      ),
-      size: const Size(360, 800),
-      textScale: 2,
-    );
+    final sizes = [
+      const Size(360, 800),
+      const Size(390, 844),
+      const Size(412, 915),
+    ];
 
-    expect(find.byKey(const ValueKey('app-bottom-navigation')), findsOneWidget);
-    expect(tester.takeException(), isNull);
+    for (final size in sizes) {
+      for (final textScale in [1.0, 1.5, 2.0]) {
+        await _pumpComponent(
+          tester,
+          AppBottomNav(
+            destinations: _destinations,
+            currentIndex: 2,
+            onSelect: (_) {},
+          ),
+          size: size,
+          textScale: textScale,
+        );
+
+        expect(
+          find.byKey(const ValueKey('app-bottom-navigation')),
+          findsOneWidget,
+        );
+        expect(find.text('Inicio'), findsOneWidget);
+        expect(find.text('Garaje'), findsOneWidget);
+        expect(find.text('Apps'), findsOneWidget);
+        expect(find.text('Viaje'), findsOneWidget);
+        expect(find.text('Conducir'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+    }
   });
 
   testWidgets('PicoRadar brand lockup is local and keeps brand text', (
@@ -571,8 +603,8 @@ const _destinations = [
   ),
   AppBottomNavDestination(
     label: 'Viaje',
-    icon: Icons.route_outlined,
-    selectedIcon: Icons.route,
+    icon: Icons.location_on_outlined,
+    selectedIcon: Icons.location_on,
     color: AppColors.orange,
     keyName: 'trip',
   ),

@@ -33,8 +33,8 @@ enum AppTab {
   trip(
     label: 'Viaje',
     route: AppRoute.trip,
-    icon: Icons.route_outlined,
-    selectedIcon: Icons.route,
+    icon: Icons.location_on_outlined,
+    selectedIcon: Icons.location_on,
     color: AppColors.orange,
     placeholderText: 'Planeacion de ruta sin mapa propio.',
   ),
