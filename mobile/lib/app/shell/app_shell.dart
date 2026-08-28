@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/design_system/app_components.dart';
 import '../router/app_routes.dart';
 import '../theme/app_tokens.dart';
 
@@ -32,8 +33,8 @@ enum AppTab {
   trip(
     label: 'Viaje',
     route: AppRoute.trip,
-    icon: Icons.route_outlined,
-    selectedIcon: Icons.route,
+    icon: Icons.location_on_outlined,
+    selectedIcon: Icons.location_on,
     color: AppColors.orange,
     placeholderText: 'Planeacion de ruta sin mapa propio.',
   ),
@@ -72,24 +73,24 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: NavigationBar(
-        key: const ValueKey('app-bottom-navigation'),
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) {
+      bottomNavigationBar: AppBottomNav(
+        destinations: [
+          for (final tab in AppTab.values)
+            AppBottomNavDestination(
+              label: tab.label,
+              icon: tab.icon,
+              selectedIcon: tab.selectedIcon,
+              color: tab.color,
+              keyName: tab.name,
+            ),
+        ],
+        currentIndex: navigationShell.currentIndex,
+        onSelect: (index) {
           navigationShell.goBranch(
             index,
             initialLocation: index == navigationShell.currentIndex,
           );
         },
-        destinations: [
-          for (final tab in AppTab.values)
-            NavigationDestination(
-              key: ValueKey('tab-${tab.name}'),
-              icon: Icon(tab.icon, size: AppIconSize.m),
-              selectedIcon: Icon(tab.selectedIcon, size: AppIconSize.m),
-              label: tab.label,
-            ),
-        ],
       ),
     );
   }

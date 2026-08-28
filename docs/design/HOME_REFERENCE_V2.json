@@ -1,0 +1,280 @@
+{
+  "schema_version": "2.0",
+  "status": "OWNER_APPROVED_VISUAL_DIRECTION",
+  "project": "PicoRadar",
+  "store_title": "PicoRadar: Pico y Placa",
+  "authority": {
+    "decision": "This JSON and its two visual references supersede prior Home composition experiments where they conflict, but do not supersede security/privacy/store/Cierre Global/Technical Architecture.",
+    "home_reference": "picoradar_home_reference_v2.png",
+    "app_icon_reference": "picoradar_app_icon_reference_v1.png",
+    "app_icon_master": "picoradar_app_icon_master_1024.png"
+  },
+  "brand": {
+    "palette": {
+      "navy": "#17324D",
+      "teal": "#0B7A75",
+      "blue": "#2F6FED",
+      "green": "#1B8A5A",
+      "orange": "#D97706",
+      "red": "#C2413B",
+      "plate_yellow": "#F6C515",
+      "surface": "#FFFFFF",
+      "background": "#F6F8FA",
+      "border": "#D9E2EA"
+    },
+    "app_icon": {
+      "concept": "Colombian yellow license-plate field with navy PR monogram and teal radar integrated inside the P.",
+      "text_inside_icon": false,
+      "preserve_pr_monogram": true,
+      "preserve_radar_in_p": true,
+      "do_not_add_official_logos": true,
+      "android": {
+        "legacy_master_px": 1024,
+        "adaptive_icon_required": true,
+        "new_runtime_dependency": false,
+        "note": "Create Android launcher/adaptive resources from the approved master/reference without adding a launcher-icon package dependency. Verify masks on circle/squircle/rounded-square."
+      },
+      "ios": {
+        "future": true,
+        "master_px": 1024
+      }
+    }
+  },
+  "motion": {
+    "principle": "alive_not_busy",
+    "reduced_motion_respected": true,
+    "durations_ms": {
+      "micro_press": 110,
+      "nav_bounce_total": 220,
+      "carousel_snap": 300,
+      "status_pulse_cycle": 1700,
+      "fade": 180
+    },
+    "curves": {
+      "standard": "easeOutCubic",
+      "spring_like": "easeOutBack_or_small_spring_simulation_without_new_package"
+    },
+    "haptics": {
+      "nav_selection": "selectionClick",
+      "carousel_snap": "lightImpact_optional"
+    }
+  },
+  "home": {
+    "route": "/home",
+    "visual_reference": "picoradar_home_reference_v2.png",
+    "background": "light/off-white",
+    "header": {
+      "brand_lockup": "PicoRadar mark + wordmark centered/top",
+      "notification_button": true,
+      "greeting": {
+        "preferred": "¡Hola, {firstName}!",
+        "fallback": "¡Hola!",
+        "rule": "Do not add account/cloud/name persistence solely to personalize the greeting. Use local name only if already legitimately available; otherwise fallback."
+      },
+      "subtitle": "Así están tus vehículos hoy"
+    },
+    "vehicle_carousel": {
+      "widget_strategy": "PageView/PageController, no carousel dependency",
+      "swipe_horizontal": true,
+      "page_snapping": true,
+      "viewport_fraction_mobile": 0.78,
+      "center_card_scale": 1.0,
+      "side_card_scale": 0.88,
+      "side_card_opacity": 0.82,
+      "center_elevation": "subtle",
+      "show_adjacent_cards": true,
+      "indicator": {
+        "dots": true,
+        "counter": true,
+        "example": "2 de 3"
+      },
+      "auto_advance": false,
+      "initial_focus_algorithm": [
+        "If one or more vehicles are RESTRICTED today with verified/current data, focus the restricted vehicle first.",
+        "If several are restricted, prefer the globally active vehicle when it is among them; otherwise deterministic order by vehicle list.",
+        "If none is restricted, focus current active vehicle; fallback first vehicle."
+      ],
+      "persistence_rule": "Automatic priority focus must NOT silently overwrite the globally active vehicle. Keep a session Home-focused vehicle id. A deliberate user action such as Start Driving may explicitly promote the focused vehicle if required by existing architecture.",
+      "on_page_changed": "Update Home-focused vehicle; lower status cards follow focused vehicle.",
+      "on_card_tap": "/garage/vehicle/{vehicleId}",
+      "vehicle_card": {
+        "content": [
+          "restriction chip",
+          "generic vehicle illustration",
+          "nickname/body style",
+          "make/model if available",
+          "year if available",
+          "ColombianPlateBadge",
+          "today circulation status"
+        ],
+        "no_manufacturer_logo_assets": true,
+        "image_rule": "Use generic local illustrations/silhouettes by body style; never depend on branded manufacturer photography.",
+        "plate": {
+          "component": "ColombianPlateBadge",
+          "background": "plate_yellow",
+          "foreground": "near black/navy",
+          "format": "actual user plate text; visual proportions evoke Colombian plate",
+          "footer": "COLOMBIA optional if legible",
+          "2d_rendered_style": true
+        }
+      },
+      "restricted_animation": {
+        "enabled": true,
+        "style": "soft alternating danger-blue border/glow; siren-inspired but elegant",
+        "colors": [
+          "#C2413B",
+          "#2F6FED"
+        ],
+        "cycle_ms": 1700,
+        "intensity": "low",
+        "no_strobe": true,
+        "no_sound": true,
+        "stop_when_offscreen": true,
+        "reduced_motion": "static red border + warning icon"
+      }
+    },
+    "status_grid": {
+      "layout": "2 columns on normal mobile width, responsive stack if text scale/width requires",
+      "cards": [
+        {
+          "id": "tomorrow",
+          "tone": "orange",
+          "title": "MAÑANA",
+          "data": "next restriction for focused vehicle"
+        },
+        {
+          "id": "soat",
+          "tone": "green",
+          "title": "SOAT",
+          "data": "real local obligation when available; otherwise Sin configurar"
+        },
+        {
+          "id": "rtm",
+          "tone": "blue",
+          "title": "Tecnomecánica",
+          "data": "real local obligation when available; otherwise Sin configurar"
+        },
+        {
+          "id": "comparendos",
+          "tone": "navy",
+          "title": "Comparendos",
+          "data_rule": "Never display 0 pendientes unless real verified data exists. Before C14 use Consultar/Próximamente/placeholder state allowed by feature flag."
+        }
+      ]
+    },
+    "primary_cta": {
+      "label_current": "Iniciar conducción",
+      "subtitle_optional": "Todo listo para tu viaje",
+      "route": "/drive",
+      "copy_is_configurable": true,
+      "visual": "full-width teal/navy premium button",
+      "press_motion": "scale 1.00 -> 0.985 -> 1.00, 140-180ms",
+      "future_rename_allowed_without_layout_refactor": true
+    },
+    "promo_banner": {
+      "visual_style_approved": true,
+      "position": "below primary CTA and above bottom nav",
+      "height": "larger than previous tiny placeholder, approximately 96-132dp depending width",
+      "production_visibility_free_1_0": "feature-flagged/off until truthful approved content exists",
+      "rule": "Do not advertise PicoRadar Protect or real-time monitoring as live functionality before it exists.",
+      "allowed_current_copy": "Más control, más tranquilidad. Próximamente nuevas funciones para ayudarte cada día."
+    }
+  },
+  "bottom_navigation": {
+    "tabs": [
+      "Inicio",
+      "Garaje",
+      "Apps",
+      "Viaje",
+      "Conducir"
+    ],
+    "apps_center_index": 2,
+    "apps_is_emphasized": true,
+    "apps_style": "raised circular teal button / central launch affordance as in approved Home reference",
+    "selected_indicator": "small top line/pill + selected color",
+    "press_motion": {
+      "normal_tabs": "icon scale 1.0 -> 0.86 -> 1.10 -> 1.0 in ~220ms; label/color transition",
+      "apps": "raised button moves up 3-5dp and scales ~1.06 then settles; subtle shadow/glow",
+      "no_new_animation_package": true,
+      "reduced_motion": "color/indicator only"
+    },
+    "stateful_shell_route_preserved": true,
+    "touch_target_min_dp": 48
+  },
+  "responsive_and_accessibility": {
+    "viewports": [
+      "360x800",
+      "390x844",
+      "412x915"
+    ],
+    "text_scales": [
+      1.0,
+      1.5,
+      2.0
+    ],
+    "landscape_smoke": true,
+    "zero_overflow": true,
+    "zero_clipping": true,
+    "no_state_by_color_only": true,
+    "semantics_required": true,
+    "reduced_motion_required": true
+  },
+  "implementation_scope": {
+    "r01_fix": [
+      "motion tokens",
+      "animated AppBottomNav incl. raised Apps center action",
+      "ColombianPlateBadge reusable primitive",
+      "brand/app icon resources",
+      "tests for motion/reduced-motion/no-route-regression",
+      "commit this JSON as current design contract if requested"
+    ],
+    "r02a": [
+      "Home header",
+      "priority vehicle carousel",
+      "focused vehicle state",
+      "restricted soft pulse",
+      "status grid",
+      "primary driving CTA",
+      "truthful feature-flagged promo banner",
+      "responsive/physical visual QA"
+    ],
+    "not_now": [
+      "C14 Comparendos implementation",
+      "C13 schema merge unless separately approved",
+      "Driving engine",
+      "new backend",
+      "ads/payments",
+      "new animation/carousel dependencies"
+    ]
+  },
+  "acceptance": {
+    "visual_fidelity": "0 Critical, 0 High mismatches against approved reference after documented intentional deviations",
+    "carousel": [
+      "fluid drag",
+      "snap-to-center",
+      "adjacent cards partially visible",
+      "tap opens vehicle detail",
+      "restricted priority verified",
+      "no unexpected global active-vehicle mutation"
+    ],
+    "animation": [
+      "smooth",
+      "no strobe",
+      "reduced motion supported",
+      "no jank in physical smoke"
+    ],
+    "data_integrity": [
+      "no fabricated comparendo count",
+      "no fabricated SOAT/RTM status",
+      "stale/unknown fail closed"
+    ],
+    "tests": [
+      "widget tests",
+      "flutter analyze",
+      "full flutter test",
+      "dev APK",
+      "git diff --check",
+      "physical Android root-surface smoke if available"
+    ]
+  }
+}
