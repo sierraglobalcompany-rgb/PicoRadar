@@ -69,21 +69,60 @@ void main() {
       expect(find.text('Comparendos'), findsOneWidget);
     });
 
-    testWidgets('three vehicles use PageView without auto advance', (
+    testWidgets('standard viewport renders status cards as a 2x2 grid', (
+      tester,
+    ) async {
+      await _readyHome(harness, plate: 'ABC124');
+
+      await _pumpHome(tester, harness, viewportSize: const Size(390, 844));
+
+      final tomorrow = tester.getTopLeft(
+        find.byKey(const ValueKey('home-status-tomorrow')),
+      );
+      final soat = tester.getTopLeft(
+        find.byKey(const ValueKey('home-status-soat')),
+      );
+      final rtm = tester.getTopLeft(
+        find.byKey(const ValueKey('home-status-rtm')),
+      );
+      final comparendos = tester.getTopLeft(
+        find.byKey(const ValueKey('home-status-comparendos')),
+      );
+
+      expect((tomorrow.dy - soat.dy).abs(), lessThan(1));
+      expect((rtm.dy - comparendos.dy).abs(), lessThan(1));
+      expect(rtm.dy, greaterThan(tomorrow.dy));
+      expect(soat.dx, greaterThan(tomorrow.dx));
+      expect(comparendos.dx, greaterThan(rtm.dx));
+    });
+
+    testWidgets('standard viewport keeps driving CTA near the first screen', (
+      tester,
+    ) async {
+      await _readyHome(harness, plate: 'ABC124');
+
+      await _pumpHome(tester, harness, viewportSize: const Size(390, 844));
+
+      final ctaBottom = tester.getBottomLeft(
+        find.byKey(const ValueKey('home-start-driving')),
+      );
+
+      expect(ctaBottom.dy, lessThanOrEqualTo(844));
+    });
+
+    testWidgets('three vehicles center restricted card without auto advance', (
       tester,
     ) async {
       await _createVehicle(harness, plate: 'AAA111');
       await _createVehicle(
         harness,
-        plate: 'ABC124',
+        plate: 'TST453',
         nickname: 'Familiar',
-        brand: 'Marca local',
-        model: 'Modelo QA',
         year: 2026,
       );
       await _createVehicle(
         harness,
-        plate: 'MOT07A',
+        plate: 'MOT789',
         kind: VehicleKind.motorcycle,
         nickname: 'Moto QA',
       );
@@ -97,16 +136,21 @@ void main() {
         find.byKey(const ValueKey('home-vehicle-page-view')),
       );
 
-      expect(pageView.controller?.viewportFraction, closeTo(0.78, 0.001));
+      expect(pageView.controller?.viewportFraction, closeTo(0.64, 0.001));
       expect(pageView.pageSnapping, isTrue);
       expect(
         find.byKey(const ValueKey('home-carousel-counter')),
         findsOneWidget,
       );
-      expect(find.text('1 de 3'), findsOneWidget);
+      expect(find.text('2 de 3'), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-carousel-dot-0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-carousel-dot-1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-carousel-dot-2')), findsOneWidget);
+      expect(find.text('TST453'), findsOneWidget);
+      expect(find.text('Hoy no puedes circular'), findsOneWidget);
 
       await tester.pump(const Duration(seconds: 3));
-      expect(find.text('1 de 3'), findsOneWidget);
+      expect(find.text('2 de 3'), findsOneWidget);
     });
   });
 
