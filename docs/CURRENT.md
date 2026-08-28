@@ -37,11 +37,7 @@ Fecha de recuperacion R00: 2026-08-27. Base auditada: `main` en `0905d394b037966
 | Tests server | Example tests Laravel | SCAFFOLD ONLY |
 | Config/env | `.env.example`, sqlite local/CI | KEEP |
 
-Backend roadmap aprobado:
-- B01 Dataset Publisher / Control Plane.
-- B02 Routes / Places Proxy.
-- B03 Admin Publisher.
-- B04 Leads / Reports.
+Backend/control-plane esta materialmente pendiente. El roadmap C00-C29 original sigue siendo la autoridad para responsabilidades backend: C22 Routes/Places proxy, C25 Reports/Leads, C28 Admin/control plane + dataset publisher y C29 hardening. R00 recomienda adelantar la fundacion publisher/control-plane de C28, pero cualquier numeracion B00/B01 es propuesta hasta aprobacion explicita. No implementar capacidades duplicadas entre Bxx propuesto y Cxx aprobado.
 
 No construir backend para vehiculo activo, garaje, widget, pico de hoy, historial GPS, hot path de camaras, documentos privados, historial de notificaciones ni cuentas obligatorias Free 1.0.
 
@@ -108,10 +104,10 @@ R03 C13 Logic Integration + UI Restyle:
 - integrate schema v4 and obligation/reminder/catalog tests;
 - restyle presentation through recovered shared components.
 
-B01 Minimal Dataset Publisher:
-- build Laravel control plane for validated immutable dataset publishing.
+B00/B01 proposed backend split:
+- bring forward the C28 control-plane/dataset-publisher foundation only if explicitly approved.
 
-C14+ resumes product functionality only after R01/R02/R03/B01 gates are green.
+C14+ resumes product functionality only after the chosen R01/R02/R03/backend authority path is explicitly approved.
 
 Bloques de recuperacion:
 - A: Governance and source of truth.
@@ -125,3 +121,7 @@ Bloques de recuperacion:
 ## Estado de release
 
 No release-ready. Las razones actuales son visuales/gobernanza, no una necesidad de backend runtime: AppBottomNav no esta implementado como componente propio, el theme esta incompleto frente al baseline, Inicio no tiene CTA dominante de conduccion, "Cambiar vehiculo" no abre selector rapido H-005, Apps tiene overflow fisico en Mi A3 y los loaders usan spinners donde el baseline espera skeletons.
+
+## Flow 05 continuity
+
+Existe una variante de soporte mas nueva para Flow 05: Fotomultas / Conducir / Velocimetro / Voz / HUD. Estado: `CANDIDATE_TO_PROMOTE` antes de C16-C20, solo despues de compararla contra Cierre Global y Arquitectura Tecnica. No es canonica automaticamente.

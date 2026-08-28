@@ -12,8 +12,10 @@ Este contrato traduce el baseline visual a reglas operables para Flutter. Autori
 - Riesgo: red `#C2413B`.
 - Background/surface: off-white/white con bordes suaves.
 - Radio de cards principales: 20-24 dp.
+- Padding de cards principales: 20-24 dp.
 - Botones/chips: radio tipo pill solo cuando el componente lo requiere.
-- Spacing base: 4/8/12/16/24/32, aplicado con jerarquia consistente.
+- Spacing base: 4/8/12/16/24/32/48, aplicado con jerarquia consistente.
+- Token 3XL: 48 dp.
 - Tipografia: jerarquia sobria, no Material-default generico; textos compactos en cards y paneles.
 
 ## Componentes compartidos esperados
@@ -69,11 +71,14 @@ Cada cambio visual debe:
 5. ejecutar widget tests;
 6. renderizar viewports 360x800, 390x844 y 412x915;
 7. probar textScale 1.0, 1.5 y 2.0;
-8. probar landscape cuando aplique;
-9. registrar mismatch ledger;
-10. iterar hasta `VISUAL_FIDELITY=PASS`.
+8. ejecutar al menos un smoke visual de superficie raiz en Android fisico cuando haya Mi A3 o dispositivo equivalente disponible;
+9. probar landscape cuando aplique;
+10. registrar mismatch ledger;
+11. iterar hasta `VISUAL_FIDELITY=PASS`.
 
 No se requieren cientos de goldens. El set canonico debe cubrir raiz, densidad, estado semantico y overflow.
+
+`VISUAL_FIDELITY=PASS` exige 0 Critical mismatches, 0 High mismatches, 0 overflow, 0 clipping y 0 labels ilegibles, truncados o cortados.
 
 ## Mismatch ledger R00
 
