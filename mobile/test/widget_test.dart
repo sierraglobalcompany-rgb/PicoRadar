@@ -40,10 +40,8 @@ void main() {
     expect(find.text('Apps'), findsAtLeastNWidgets(1));
     expect(find.text('Viaje'), findsAtLeastNWidgets(1));
     expect(find.text('Conducir'), findsAtLeastNWidgets(1));
-    expect(
-      find.text('Tu vehículo, tus alertas y tu ruta en un solo lugar.'),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('home-empty-state')), findsOneWidget);
+    expect(find.text('No tienes vehículos todavía'), findsOneWidget);
   });
 
   testWidgets('bottom navigation opens each root tab', (tester) async {
@@ -101,16 +99,14 @@ void main() {
   testWidgets('home skips welcome when a vehicle already exists', (
     tester,
   ) async {
-    await harness.repository.createVehicle(
+    final vehicle = await harness.repository.createVehicle(
       plate: 'AAA111',
       kind: VehicleKind.car,
     );
+    await harness.repository.setActiveVehicle(vehicle.id);
 
     await harness.pump(tester);
 
-    expect(
-      find.text('Tu vehículo, tus alertas y tu ruta en un solo lugar.'),
-      findsNothing,
-    );
+    expect(find.byKey(const ValueKey('home-empty-state')), findsNothing);
   });
 }

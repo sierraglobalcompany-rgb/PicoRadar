@@ -107,7 +107,9 @@ void main() {
   test('Bogota coverage includes 31 August but not 1 September', () {
     final ruleSet = _ruleSet(
       staleAfter: DateTime.utc(2026, 9, 1, 5),
-      rules: [_rule(weekdays: {DateTime.monday})],
+      rules: [
+        _rule(weekdays: {DateTime.monday}),
+      ],
     );
 
     final covered = evaluateRestrictionDay(
@@ -134,7 +136,9 @@ void main() {
   test('Medellin coverage includes 31 December but not 1 January 2027', () {
     final ruleSet = _ruleSet(
       staleAfter: DateTime.utc(2027, 1, 1, 5),
-      rules: [_rule(weekdays: {DateTime.thursday})],
+      rules: [
+        _rule(weekdays: {DateTime.thursday}),
+      ],
     );
 
     final covered = evaluateRestrictionDay(

@@ -26,10 +26,8 @@ void main() {
     await harness.pump(tester);
 
     expect(find.text('PicoRadar'), findsOneWidget);
-    expect(
-      find.text('Tu vehículo, tus alertas y tu ruta en un solo lugar.'),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('home-empty-state')), findsOneWidget);
+    expect(find.text('No tienes vehículos todavía'), findsOneWidget);
   });
 
   testWidgets('onboarding route opens vehicle onboarding', (tester) async {
