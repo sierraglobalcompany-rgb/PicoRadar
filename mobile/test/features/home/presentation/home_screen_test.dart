@@ -630,16 +630,195 @@ void main() {
   });
 
   group('Home V2 module tap reliability', () {
+    testWidgets('Tomorrow sends active taxi to Pico without mutating active', (
+      tester,
+    ) async {
+      final activeTaxi = await _createVehicle(
+        harness,
+        plate: 'TAX125',
+        serviceType: VehicleServiceType.taxi,
+        brand: 'Taxi',
+        year: 2022,
+      );
+      final toyota = await _createVehicle(
+        harness,
+        plate: 'ABC124',
+        brand: 'Toyota',
+        year: 2023,
+      );
+      final renault = await _createVehicle(
+        harness,
+        plate: 'REN126',
+        brand: 'Renault',
+        year: 2024,
+      );
+      await _setVehicleCreatedAt(
+        harness,
+        activeTaxi.id,
+        DateTime.utc(2026, 8, 3),
+      );
+      await _setVehicleCreatedAt(harness, toyota.id, DateTime.utc(2026, 8, 2));
+      await _setVehicleCreatedAt(harness, renault.id, DateTime.utc(2026, 8, 1));
+      await harness.repository.setActiveVehicle(activeTaxi.id);
+      await harness.preferences.setString(
+        picoJurisdictionPreferenceKey,
+        'co-dc-bogota',
+      );
+
+      await _pumpHomeApp(tester, harness);
+
+      await _openTomorrowAndExpectPico(tester, activeTaxi);
+      expect((await harness.repository.getActiveVehicle())?.id, activeTaxi.id);
+    });
+
+    testWidgets('Tomorrow, SOAT and RTM use focused non-active vehicle', (
+      tester,
+    ) async {
+      final activeTaxi = await _createVehicle(
+        harness,
+        plate: 'TAX129',
+        serviceType: VehicleServiceType.taxi,
+        brand: 'Taxi',
+        year: 2022,
+      );
+      final toyota = await _createVehicle(
+        harness,
+        plate: 'ABC123',
+        brand: 'Toyota',
+        year: 2023,
+      );
+      await _createVehicle(
+        harness,
+        plate: 'REN126',
+        brand: 'Renault',
+        year: 2024,
+      );
+      await _setVehicleCreatedAt(
+        harness,
+        activeTaxi.id,
+        DateTime.utc(2026, 8, 3),
+      );
+      await _setVehicleCreatedAt(harness, toyota.id, DateTime.utc(2026, 8, 2));
+      await harness.repository.setActiveVehicle(activeTaxi.id);
+      await harness.preferences.setString(
+        picoJurisdictionPreferenceKey,
+        'co-dc-bogota',
+      );
+
+      await _pumpHomeApp(tester, harness);
+
+      await tester.tap(find.byKey(const ValueKey('home-status-soat')));
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+      expect(find.text('module-soat-${toyota.id}'), findsOneWidget);
+      expect((await harness.repository.getActiveVehicle())?.id, activeTaxi.id);
+
+      await _goHome(tester);
+      await tester.tap(find.byKey(const ValueKey('home-status-rtm')));
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+      expect(find.text('module-tecnomecanica-${toyota.id}'), findsOneWidget);
+      expect((await harness.repository.getActiveVehicle())?.id, activeTaxi.id);
+
+      await _goHome(tester);
+      await _openTomorrowAndExpectPico(tester, toyota);
+      expect((await harness.repository.getActiveVehicle())?.id, activeTaxi.id);
+    });
+
+    testWidgets('Tomorrow can target a third focused vehicle', (tester) async {
+      final activeTaxi = await _createVehicle(
+        harness,
+        plate: 'TAX129',
+        serviceType: VehicleServiceType.taxi,
+        brand: 'Taxi',
+      );
+      await _createVehicle(harness, plate: 'ABC124', brand: 'Toyota');
+      final renault = await _createVehicle(
+        harness,
+        plate: 'REN123',
+        brand: 'Renault',
+      );
+      await _setVehicleCreatedAt(harness, renault.id, DateTime.utc(2026, 8, 3));
+      await harness.repository.setActiveVehicle(activeTaxi.id);
+      await harness.preferences.setString(
+        picoJurisdictionPreferenceKey,
+        'co-dc-bogota',
+      );
+
+      await _pumpHomeApp(tester, harness);
+
+      await _openTomorrowAndExpectPico(tester, renault);
+      expect((await harness.repository.getActiveVehicle())?.id, activeTaxi.id);
+    });
+
+    testWidgets('explicit Pico vehicle uses third vehicle directly', (
+      tester,
+    ) async {
+      final activeTaxi = await _createVehicle(
+        harness,
+        plate: 'TAX129',
+        serviceType: VehicleServiceType.taxi,
+      );
+      await _createVehicle(harness, plate: 'ABC124', brand: 'Toyota');
+      final renault = await _createVehicle(
+        harness,
+        plate: 'REN126',
+        brand: 'Renault',
+      );
+      await harness.repository.setActiveVehicle(activeTaxi.id);
+      await harness.preferences.setString(
+        picoJurisdictionPreferenceKey,
+        'co-dc-bogota',
+      );
+
+      await _pumpDetail(tester, harness, vehicleId: renault.id);
+
+      expect(find.text('Próximos 7 días'), findsOneWidget);
+      expect(find.text(renault.plate), findsOneWidget);
+      expect((await harness.repository.getActiveVehicle())?.id, activeTaxi.id);
+    });
+
+    testWidgets(
+      'Home focused vehicle still promotes to active only through Conducir',
+      (tester) async {
+        final activeTaxi = await _createVehicle(
+          harness,
+          plate: 'TAX129',
+          serviceType: VehicleServiceType.taxi,
+        );
+        final focused = await _createVehicle(
+          harness,
+          plate: 'ABC123',
+          brand: 'Toyota',
+        );
+        await harness.repository.setActiveVehicle(activeTaxi.id);
+        await harness.preferences.setString(
+          picoJurisdictionPreferenceKey,
+          'co-dc-bogota',
+        );
+
+        await _pumpFullHomeApp(tester, harness);
+        expect(
+          (await harness.repository.getActiveVehicle())?.id,
+          activeTaxi.id,
+        );
+
+        await tester.tap(find.byKey(const ValueKey('tab-drive')));
+        await tester.pumpAndSettle(const Duration(milliseconds: 100));
+
+        expect((await harness.repository.getActiveVehicle())?.id, focused.id);
+      },
+    );
+
     testWidgets('Tomorrow card routes consistently to Pico detail', (
       tester,
     ) async {
-      await _readyHome(harness, plate: 'ABC124');
+      final vehicle = await _readyHome(harness, plate: 'ABC124');
       await _pumpHomeApp(tester, harness);
 
       for (var i = 0; i < 5; i += 1) {
         await tester.tap(find.byKey(const ValueKey('home-status-tomorrow')));
         await tester.pumpAndSettle(const Duration(milliseconds: 100));
         expect(find.text('Próximos 7 días'), findsOneWidget);
+        expect(find.text(vehicle.plate), findsOneWidget);
 
         final router = GoRouter.of(
           tester.element(find.text('Próximos 7 días')),
@@ -894,6 +1073,22 @@ void main() {
       expect(find.text('Datos desactualizados'), findsWidgets);
       expect(find.text('Puedes circular'), findsNothing);
     });
+
+    testWidgets('invalid explicit vehicle falls back to active without crash', (
+      tester,
+    ) async {
+      final active = await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-dc-bogota',
+      );
+
+      await _pumpDetail(tester, harness, vehicleId: 'missing');
+
+      expect(find.text('Próximos 7 días'), findsOneWidget);
+      expect(find.text(active.plate), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 }
 
@@ -918,8 +1113,12 @@ Future<void> _pumpHome(
   );
 }
 
-Future<void> _pumpDetail(WidgetTester tester, TestAppHarness harness) async {
-  await _pump(tester, harness, const PicoDetailScreen());
+Future<void> _pumpDetail(
+  WidgetTester tester,
+  TestAppHarness harness, {
+  String? vehicleId,
+}) async {
+  await _pump(tester, harness, PicoDetailScreen(vehicleId: vehicleId));
 }
 
 Future<void> _pumpHomeApp(WidgetTester tester, TestAppHarness harness) async {
@@ -930,7 +1129,8 @@ Future<void> _pumpHomeApp(WidgetTester tester, TestAppHarness harness) async {
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
       GoRoute(
         path: '/pico',
-        builder: (context, state) => const PicoDetailScreen(),
+        builder: (context, state) =>
+            PicoDetailScreen(vehicleId: state.uri.queryParameters['vehicleId']),
       ),
       GoRoute(
         path: '/garage/vehicle/:id',
@@ -956,6 +1156,28 @@ Future<void> _pumpHomeApp(WidgetTester tester, TestAppHarness harness) async {
       ),
     ),
   );
+  await _pumpAsyncHome(tester);
+}
+
+Future<void> _openTomorrowAndExpectPico(
+  WidgetTester tester,
+  VehicleProfile vehicle,
+) async {
+  await tester.tap(find.byKey(const ValueKey('home-status-tomorrow')));
+  await tester.pumpAndSettle(const Duration(milliseconds: 100));
+  expect(find.text('Próximos 7 días'), findsOneWidget);
+  expect(find.text(vehicle.plate), findsOneWidget);
+}
+
+Future<void> _goHome(WidgetTester tester) async {
+  final routeContent = [
+    find.text('Próximos 7 días'),
+    find.textContaining('module-'),
+    find.byType(HomeScreen),
+    find.byType(Scaffold),
+  ].firstWhere((finder) => finder.evaluate().isNotEmpty);
+  final router = GoRouter.of(routeContent.evaluate().first);
+  router.go('/home');
   await _pumpAsyncHome(tester);
 }
 

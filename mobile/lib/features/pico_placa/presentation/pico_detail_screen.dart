@@ -11,12 +11,15 @@ import '../data/restriction_store.dart';
 import '../domain/restriction_day_evaluation.dart';
 
 class PicoDetailScreen extends ConsumerWidget {
-  const PicoDetailScreen({super.key});
+  const PicoDetailScreen({this.vehicleId, super.key});
+
+  final String? vehicleId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final seed = ref.watch(bundledRestrictionsProvider);
     final active = ref.watch(activeVehicleProvider);
+    final vehicles = ref.watch(vehicleListProvider);
     final jurisdictions = ref.watch(restrictionJurisdictionsProvider);
     final selected = ref.watch(selectedPicoJurisdictionIdProvider);
 
@@ -26,47 +29,62 @@ class PicoDetailScreen extends ConsumerWidget {
         leading: BackButton(onPressed: () => context.go(AppRoute.home.path)),
       ),
       body: seed.when(
-        data: (_) => active.when(
-          data: (vehicle) {
-            if (vehicle == null) {
-              return const _Message('Agrega tu vehículo para comenzar.');
-            }
-            return jurisdictions.when(
-              data: (items) => selected.when(
-                data: (jurisdictionId) {
-                  final jurisdiction = _findJurisdiction(items, jurisdictionId);
-                  if (jurisdiction == null) {
-                    return const _Message('Selecciona tu ciudad en la app.');
-                  }
-                  return FutureBuilder<RestrictionRuleSet>(
-                    future: ref
-                        .read(restrictionStoreProvider)
-                        .loadCoverage(
-                          jurisdiction.id,
-                          vehicle.kind,
-                          vehicle.serviceType,
-                          ref.read(currentInstantProvider),
-                        ),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      return _PicoDetailContent(
-                        vehicle: vehicle,
-                        jurisdiction: jurisdiction,
-                        ruleSet: snapshot.data!,
-                        now: ref.read(bogotaNowProvider),
-                      );
-                    },
-                  );
-                },
+        data: (_) => vehicles.when(
+          data: (items) => active.when(
+            data: (activeVehicle) {
+              final vehicle = _resolveVehicle(
+                explicitVehicleId: vehicleId,
+                vehicles: items,
+                activeVehicle: activeVehicle,
+              );
+              if (vehicle == null) {
+                return const _Message('Agrega tu vehículo para comenzar.');
+              }
+              return jurisdictions.when(
+                data: (jurisdictionItems) => selected.when(
+                  data: (jurisdictionId) {
+                    final jurisdiction = _findJurisdiction(
+                      jurisdictionItems,
+                      jurisdictionId,
+                    );
+                    if (jurisdiction == null) {
+                      return const _Message('Selecciona tu ciudad en la app.');
+                    }
+                    return FutureBuilder<RestrictionRuleSet>(
+                      future: ref
+                          .read(restrictionStoreProvider)
+                          .loadCoverage(
+                            jurisdiction.id,
+                            vehicle.kind,
+                            vehicle.serviceType,
+                            ref.read(currentInstantProvider),
+                          ),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        return _PicoDetailContent(
+                          vehicle: vehicle,
+                          jurisdiction: jurisdiction,
+                          ruleSet: snapshot.data!,
+                          now: ref.read(bogotaNowProvider),
+                        );
+                      },
+                    );
+                  },
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (error, stackTrace) => _Message(error.toString()),
+                ),
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stackTrace) => _Message(error.toString()),
-              ),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stackTrace) => _Message(error.toString()),
-            );
-          },
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stackTrace) => _Message(error.toString()),
+          ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stackTrace) => _Message(error.toString()),
         ),
@@ -75,6 +93,22 @@ class PicoDetailScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+VehicleProfile? _resolveVehicle({
+  required String? explicitVehicleId,
+  required List<VehicleProfile> vehicles,
+  required VehicleProfile? activeVehicle,
+}) {
+  final id = explicitVehicleId?.trim();
+  if (id != null && id.isNotEmpty) {
+    for (final vehicle in vehicles) {
+      if (vehicle.id == id) {
+        return vehicle;
+      }
+    }
+  }
+  return activeVehicle;
 }
 
 class _PicoDetailContent extends StatelessWidget {

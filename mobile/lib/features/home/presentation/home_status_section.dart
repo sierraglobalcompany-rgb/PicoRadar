@@ -116,7 +116,12 @@ class _TomorrowStatusStrip extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.input),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => context.push(AppRoute.pico.path),
+          onTap: () => context.push(
+            Uri(
+              path: AppRoute.pico.path,
+              queryParameters: {'vehicleId': snapshot.vehicle.id},
+            ).toString(),
+          ),
           child: Container(
             constraints: const BoxConstraints(minHeight: 54),
             padding: const EdgeInsets.symmetric(
