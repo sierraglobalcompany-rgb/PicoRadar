@@ -5,6 +5,7 @@ import '../core/database/app_database.dart' hide VehicleObligation;
 import '../core/storage/app_preferences.dart';
 import '../features/garage/data/vehicle_profile.dart';
 import '../features/garage/data/vehicle_repository.dart';
+import '../features/home/data/home_banner_config.dart';
 import '../features/vehicle_status/data/vehicle_obligation_store.dart';
 import '../features/vehicle_status/domain/vehicle_obligation.dart';
 import '../features/vehicle_status/platform/obligation_notifications.dart';
@@ -35,6 +36,20 @@ final vehicleVisualCatalogProvider = FutureProvider<VehicleVisualCatalog>((
   ref,
 ) {
   return loadVehicleVisualCatalog(rootBundle);
+});
+
+final homeBannerConfigProvider = FutureProvider<HomeBannerConfig>((ref) async {
+  final source = await rootBundle.loadString(homeBannerConfigAssetPath);
+  return HomeBannerConfig.fromJsonString(source);
+});
+
+final homeBannerCampaignProvider = FutureProvider<HomeBannerCampaign?>((
+  ref,
+) async {
+  return selectHomeBannerCampaign(
+    config: await ref.watch(homeBannerConfigProvider.future),
+    preferences: ref.watch(appPreferencesProvider),
+  );
 });
 
 final selectedAvatarIdProvider = FutureProvider<String?>((ref) {

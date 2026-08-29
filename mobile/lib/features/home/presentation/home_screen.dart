@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/router/app_routes.dart';
@@ -13,6 +14,7 @@ import '../../../core/design_system/branding.dart';
 import '../../../core/design_system/surfaces.dart';
 import '../../garage/data/vehicle_profile.dart';
 import '../../garage/presentation/vehicle_display.dart';
+import '../data/home_banner_config.dart';
 import '../../pico_placa/data/pico_preferences.dart';
 import '../../pico_placa/data/restriction_store.dart';
 import '../../pico_placa/domain/restriction_day_evaluation.dart';
@@ -22,6 +24,21 @@ import '../../visual_assets/presentation/visual_asset_widgets.dart';
 part 'home_vehicle_carousel.dart';
 part 'home_status_section.dart';
 part 'home_notification_sheet.dart';
+part 'home_banner_slot.dart';
+
+final homeFocusedVehicleIdProvider =
+    NotifierProvider<HomeFocusedVehicleNotifier, String?>(
+      HomeFocusedVehicleNotifier.new,
+    );
+
+class HomeFocusedVehicleNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void setFocusedVehicleId(String? vehicleId) {
+    state = vehicleId;
+  }
+}
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -253,6 +270,7 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
       snapshots: widget.snapshots,
       activeVehicleId: widget.activeVehicleId,
     );
+    _syncFocusedVehicle();
     _controller = PageController(
       initialPage: _focusedIndex,
       viewportFraction: _homeCarouselViewportFraction,
@@ -267,11 +285,15 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
         snapshots: widget.snapshots,
         activeVehicleId: widget.activeVehicleId,
       );
+      _syncFocusedVehicle();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _controller.hasClients) {
           _controller.jumpToPage(_focusedIndex);
         }
       });
+    } else if (oldWidget.snapshots[_focusedIndex].vehicle.id !=
+        widget.snapshots[_focusedIndex].vehicle.id) {
+      _syncFocusedVehicle();
     }
   }
 
@@ -279,6 +301,23 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  void _syncFocusedVehicle() {
+    final vehicleId = widget.snapshots[_focusedIndex].vehicle.id;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      ref
+          .read(homeFocusedVehicleIdProvider.notifier)
+          .setFocusedVehicleId(vehicleId);
+    });
+  }
+
+  void _setFocusedIndex(int index) {
+    setState(() => _focusedIndex = index);
+    _syncFocusedVehicle();
   }
 
   @override
@@ -310,9 +349,7 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
                     controller: _controller,
                     snapshots: widget.snapshots,
                     focusedIndex: _focusedIndex,
-                    onChanged: (index) {
-                      setState(() => _focusedIndex = index);
-                    },
+                    onChanged: _setFocusedIndex,
                   ),
                   const SizedBox(height: AppSpacing.s),
                   _CarouselIndicator(
@@ -328,11 +365,8 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
                   ],
                   const SizedBox(height: AppSpacing.s),
                   _FocusedStatusGrid(snapshot: focused),
-                  const SizedBox(height: 10),
-                  _StartDrivingCta(
-                    focusedVehicleId: focused.vehicle.id,
-                    activeVehicleId: widget.activeVehicleId,
-                  ),
+                  const SizedBox(height: AppSpacing.s),
+                  const HomeBannerSlot(),
                 ],
               ),
             ),
@@ -343,69 +377,118 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
   }
 }
 
-class _HomeHeader extends ConsumerWidget {
+class _HomeHeader extends StatelessWidget {
   const _HomeHeader({required this.alertPreferences});
 
   final PicoAlertPreferences alertPreferences;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return SizedBox(
       key: const ValueKey('home-compact-top-bar'),
       height: 56,
       child: Row(
         children: [
-          const HomeAvatarButton(),
           const Expanded(
-            child: PicoRadarBrandLockup(
-              key: ValueKey('home-brand-lockup'),
-              markSize: 28,
-            ),
-          ),
-          Semantics(
-            button: true,
-            label: 'Abrir notificaciones',
-            child: Material(
-              color: AppColors.surface,
-              shape: const CircleBorder(),
-              elevation: 3,
-              shadowColor: AppColors.navy.withValues(alpha: 0.14),
-              child: IconButton(
-                key: const ValueKey('home-notification-bell'),
-                onPressed: () => showModalBottomSheet<void>(
-                  context: context,
-                  isScrollControlled: true,
-                  showDragHandle: true,
-                  builder: (context) =>
-                      _NotificationSheet(alertPreferences: alertPreferences),
-                ),
-                icon: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Icon(
-                      Icons.notifications_none_rounded,
-                      color: AppColors.navy,
-                    ),
-                    if (alertPreferences.permissionGranted &&
-                        alertPreferences.enabled)
-                      Positioned(
-                        right: -1,
-                        top: -1,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: AppColors.teal,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
-                  ],
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: PicoRadarBrandLockup(
+                  key: ValueKey('home-brand-lockup'),
+                  markSize: 30,
                 ),
               ),
             ),
           ),
+          const SizedBox(width: AppSpacing.s),
+          _UserControlsCapsule(alertPreferences: alertPreferences),
         ],
+      ),
+    );
+  }
+}
+
+class _UserControlsCapsule extends StatelessWidget {
+  const _UserControlsCapsule({required this.alertPreferences});
+
+  final PicoAlertPreferences alertPreferences;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      key: const ValueKey('home-user-controls-capsule'),
+      color: AppColors.surface,
+      elevation: 3,
+      shadowColor: AppColors.navy.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: 52,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const HomeAvatarButton(embedded: true, visualSize: 40),
+            Container(
+              width: 1,
+              height: 28,
+              color: AppColors.border.withValues(alpha: 0.72),
+            ),
+            _NotificationBellButton(alertPreferences: alertPreferences),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationBellButton extends StatelessWidget {
+  const _NotificationBellButton({required this.alertPreferences});
+
+  final PicoAlertPreferences alertPreferences;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Abrir notificaciones',
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: IconButton(
+          key: const ValueKey('home-notification-bell'),
+          onPressed: () => showModalBottomSheet<void>(
+            context: context,
+            isScrollControlled: true,
+            showDragHandle: true,
+            builder: (context) =>
+                _NotificationSheet(alertPreferences: alertPreferences),
+          ),
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              const Icon(
+                Icons.notifications_none_rounded,
+                color: AppColors.navy,
+              ),
+              if (alertPreferences.permissionGranted &&
+                  alertPreferences.enabled)
+                Positioned(
+                  right: -1,
+                  top: -1,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: AppColors.teal,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

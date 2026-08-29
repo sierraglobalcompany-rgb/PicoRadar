@@ -9,7 +9,14 @@ import '../data/visual_asset_catalogs.dart';
 import '../data/visual_asset_preferences.dart';
 
 class HomeAvatarButton extends ConsumerWidget {
-  const HomeAvatarButton({super.key});
+  const HomeAvatarButton({
+    this.embedded = false,
+    this.visualSize = 40,
+    super.key,
+  });
+
+  final bool embedded;
+  final double visualSize;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -23,10 +30,12 @@ class HomeAvatarButton extends ConsumerWidget {
           button: true,
           label: 'Cambiar avatar',
           child: Material(
-            color: AppColors.surface,
+            color: embedded ? Colors.transparent : AppColors.surface,
             shape: const CircleBorder(),
-            elevation: 3,
-            shadowColor: AppColors.navy.withValues(alpha: 0.14),
+            elevation: embedded ? 0 : 3,
+            shadowColor: embedded
+                ? Colors.transparent
+                : AppColors.navy.withValues(alpha: 0.14),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               key: const ValueKey('home-avatar-button'),
@@ -37,8 +46,8 @@ class HomeAvatarButton extends ConsumerWidget {
                 height: 48,
                 child: Center(
                   child: Container(
-                    width: 40,
-                    height: 40,
+                    width: visualSize,
+                    height: visualSize,
                     decoration: BoxDecoration(
                       color: AppColors.teal.withValues(alpha: 0.08),
                       shape: BoxShape.circle,

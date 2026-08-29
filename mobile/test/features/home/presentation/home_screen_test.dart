@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:go_router/go_router.dart';
+import 'package:picoradar/app/app.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
@@ -122,7 +123,7 @@ void main() {
           of: find.byKey(const ValueKey('home-status-tomorrow')),
           matching: find.byIcon(Icons.chevron_right_rounded),
         ),
-        findsNothing,
+        findsOneWidget,
       );
     });
 
@@ -133,6 +134,10 @@ void main() {
 
       expect(
         find.byKey(const ValueKey('home-compact-top-bar')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('home-user-controls-capsule')),
         findsOneWidget,
       );
       expect(find.byKey(const ValueKey('home-avatar-button')), findsOneWidget);
@@ -187,11 +192,12 @@ void main() {
         ),
       );
 
-      final ctaBottom = tester.getBottomLeft(
-        find.byKey(const ValueKey('home-start-driving')),
+      final bannerBottom = tester.getBottomLeft(
+        find.byKey(const ValueKey('home-bottom-banner-slot')),
       );
 
-      expect(ctaBottom.dy, lessThanOrEqualTo(844 - 96));
+      expect(bannerBottom.dy, lessThanOrEqualTo(844 - 96));
+      expect(find.byKey(const ValueKey('home-start-driving')), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -210,11 +216,12 @@ void main() {
         ),
       );
 
-      final ctaBottom = tester.getBottomLeft(
-        find.byKey(const ValueKey('home-start-driving')),
+      final bannerBottom = tester.getBottomLeft(
+        find.byKey(const ValueKey('home-bottom-banner-slot')),
       );
 
-      expect(ctaBottom.dy, lessThanOrEqualTo(800 - 96));
+      expect(bannerBottom.dy, lessThanOrEqualTo(800 - 96));
+      expect(find.byKey(const ValueKey('home-start-driving')), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -497,7 +504,7 @@ void main() {
       expect((await harness.repository.getActiveVehicle())?.id, active.id);
     });
 
-    testWidgets('start driving promotes focused vehicle only by explicit CTA', (
+    testWidgets('Conducir tab promotes focused vehicle from Home only', (
       tester,
     ) async {
       final active = await _createVehicle(harness, plate: 'AAA111');
@@ -508,19 +515,42 @@ void main() {
         'co-ant-medellin',
       );
 
-      await _pumpHomeApp(tester, harness);
+      await _pumpFullHomeApp(tester, harness);
       expect(find.text('Pico y placa hoy'), findsOneWidget);
       expect((await harness.repository.getActiveVehicle())?.id, active.id);
 
-      await tester.ensureVisible(
-        find.byKey(const ValueKey('home-start-driving')),
-      );
-      await tester.pump();
-      await tester.tap(find.text('Iniciar conducción'));
+      await tester.tap(find.byKey(const ValueKey('tab-drive')));
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
 
-      expect(find.text('drive'), findsOneWidget);
+      expect(
+        find.text('Modo de conduccion de alta concentracion.'),
+        findsOneWidget,
+      );
       expect((await harness.repository.getActiveVehicle())?.id, restricted.id);
+    });
+
+    testWidgets('Conducir from another tab keeps the global active vehicle', (
+      tester,
+    ) async {
+      final active = await _createVehicle(harness, plate: 'AAA111');
+      await _createVehicle(harness, plate: 'ABC123');
+      await harness.repository.setActiveVehicle(active.id);
+      await harness.preferences.setString(
+        picoJurisdictionPreferenceKey,
+        'co-ant-medellin',
+      );
+
+      await _pumpFullHomeApp(tester, harness);
+      await tester.tap(find.byKey(const ValueKey('tab-garage')));
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+      await tester.tap(find.byKey(const ValueKey('tab-drive')));
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+
+      expect(
+        find.text('Modo de conduccion de alta concentracion.'),
+        findsOneWidget,
+      );
+      expect((await harness.repository.getActiveVehicle())?.id, active.id);
     });
   });
 
@@ -595,10 +625,30 @@ void main() {
         findsNothing,
       );
       expect(find.textContaining('PicoRadar Protect'), findsNothing);
+      expect(find.byKey(const ValueKey('home-start-driving')), findsNothing);
     });
   });
 
   group('Home V2 module tap reliability', () {
+    testWidgets('Tomorrow card routes consistently to Pico detail', (
+      tester,
+    ) async {
+      await _readyHome(harness, plate: 'ABC124');
+      await _pumpHomeApp(tester, harness);
+
+      for (var i = 0; i < 5; i += 1) {
+        await tester.tap(find.byKey(const ValueKey('home-status-tomorrow')));
+        await tester.pumpAndSettle(const Duration(milliseconds: 100));
+        expect(find.text('Próximos 7 días'), findsOneWidget);
+
+        final router = GoRouter.of(
+          tester.element(find.text('Próximos 7 días')),
+        );
+        router.go('/home');
+        await _pumpAsyncHome(tester);
+      }
+    });
+
     testWidgets('SOAT card routes consistently', (tester) async {
       final vehicle = await _readyHome(harness, plate: 'ABC124');
       await _pumpHomeApp(tester, harness);
@@ -797,10 +847,18 @@ void main() {
 
         expect(find.byKey(const ValueKey('home-brand-lockup')), findsOneWidget);
         expect(
+          find.byKey(const ValueKey('home-user-controls-capsule')),
+          findsOneWidget,
+        );
+        expect(
           find.byKey(const ValueKey('home-vehicle-carousel')),
           findsOneWidget,
         );
         expect(find.byKey(const ValueKey('home-status-grid')), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('home-bottom-banner-slot')),
+          findsOneWidget,
+        );
         expect(tester.takeException(), isNull);
       });
     }
@@ -871,6 +929,10 @@ Future<void> _pumpHomeApp(WidgetTester tester, TestAppHarness harness) async {
     routes: [
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
       GoRoute(
+        path: '/pico',
+        builder: (context, state) => const PicoDetailScreen(),
+      ),
+      GoRoute(
         path: '/garage/vehicle/:id',
         builder: (context, state) =>
             VehicleDetailScreen(vehicleId: state.pathParameters['id']!),
@@ -894,6 +956,15 @@ Future<void> _pumpHomeApp(WidgetTester tester, TestAppHarness harness) async {
       ),
     ),
   );
+  await _pumpAsyncHome(tester);
+}
+
+Future<void> _pumpFullHomeApp(
+  WidgetTester tester,
+  TestAppHarness harness,
+) async {
+  await _installWidgetChannelMock(tester, harness);
+  await tester.pumpWidget(_providerScope(harness, child: const PicoRadarApp()));
   await _pumpAsyncHome(tester);
 }
 

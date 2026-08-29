@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/home/presentation/home_screen.dart';
+import '../app_providers.dart';
 import '../../core/design_system/app_components.dart';
 import '../router/app_routes.dart';
 import '../theme/app_tokens.dart';
@@ -64,13 +67,13 @@ enum AppTab {
   final String placeholderText;
 }
 
-class AppShell extends StatelessWidget {
+class AppShell extends ConsumerWidget {
   const AppShell({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: AppBottomNav(
@@ -85,7 +88,11 @@ class AppShell extends StatelessWidget {
             ),
         ],
         currentIndex: navigationShell.currentIndex,
-        onSelect: (index) {
+        onSelect: (index) async {
+          if (navigationShell.currentIndex == AppTab.home.index &&
+              index == AppTab.drive.index) {
+            await _promoteHomeFocusedVehicle(ref);
+          }
           navigationShell.goBranch(
             index,
             initialLocation: index == navigationShell.currentIndex,
@@ -93,5 +100,17 @@ class AppShell extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Future<void> _promoteHomeFocusedVehicle(WidgetRef ref) async {
+    final focusedVehicleId = ref.read(homeFocusedVehicleIdProvider);
+    final activeVehicleId = ref.read(activeVehicleProvider).asData?.value?.id;
+    if (focusedVehicleId == null || focusedVehicleId == activeVehicleId) {
+      return;
+    }
+    await ref
+        .read(vehicleRepositoryProvider)
+        .setActiveVehicle(focusedVehicleId);
+    ref.invalidate(activeVehicleProvider);
   }
 }

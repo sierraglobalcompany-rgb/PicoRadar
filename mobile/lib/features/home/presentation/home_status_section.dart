@@ -106,70 +106,93 @@ class _TomorrowStatusStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label:
-          'MAÑANA, ${_tomorrowValue(snapshot.tomorrow)}, ${_tomorrowMessage(snapshot.tomorrow)}',
-      child: Container(
+      button: true,
+      label: 'Ver pico y placa de mañana',
+      value:
+          '${_tomorrowValue(snapshot.tomorrow)}, ${_tomorrowMessage(snapshot.tomorrow)}',
+      child: Material(
         key: const ValueKey('home-status-tomorrow'),
-        constraints: const BoxConstraints(minHeight: 54),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.m,
-          vertical: AppSpacing.s,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.orange.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(AppRadius.input),
-          border: Border.all(color: AppColors.orange.withValues(alpha: 0.2)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.calendar_month_rounded,
-                color: AppColors.orange,
-                size: 20,
+        color: AppColors.orange.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(AppRadius.input),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => context.push(AppRoute.pico.path),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 54),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.m,
+              vertical: AppSpacing.s,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.input),
+              border: Border.all(
+                color: AppColors.orange.withValues(alpha: 0.2),
               ),
             ),
-            const SizedBox(width: AppSpacing.s),
-            Text(
-              'MAÑANA',
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.orange,
-                fontSize: 11.5,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.s),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _ScaleDownText(
-                    _tomorrowValue(snapshot.tomorrow),
-                    style: AppTextStyles.bodyStrong.copyWith(
-                      fontSize: 14.5,
-                      color: AppColors.navy,
-                    ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    shape: BoxShape.circle,
                   ),
-                  Text(
-                    _tomorrowMessage(snapshot.tomorrow),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.caption.copyWith(
-                      fontSize: 12,
-                      color: AppColors.navy.withValues(alpha: 0.72),
-                    ),
+                  child: const Icon(
+                    Icons.calendar_month_rounded,
+                    color: AppColors.orange,
+                    size: 20,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: AppSpacing.s),
+                Text(
+                  'MAÑANA',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.orange,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s),
+                Container(
+                  width: 1,
+                  height: 32,
+                  color: AppColors.orange.withValues(alpha: 0.2),
+                ),
+                const SizedBox(width: AppSpacing.s),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ScaleDownText(
+                        _tomorrowValue(snapshot.tomorrow),
+                        style: AppTextStyles.bodyStrong.copyWith(
+                          fontSize: 14.5,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                      Text(
+                        _tomorrowMessage(snapshot.tomorrow),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption.copyWith(
+                          fontSize: 12,
+                          color: AppColors.navy.withValues(alpha: 0.72),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.orange,
+                  size: 20,
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -281,120 +304,5 @@ class _ScaleDownText extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _StartDrivingCta extends ConsumerStatefulWidget {
-  const _StartDrivingCta({
-    required this.focusedVehicleId,
-    required this.activeVehicleId,
-  });
-
-  final String focusedVehicleId;
-  final String? activeVehicleId;
-
-  @override
-  ConsumerState<_StartDrivingCta> createState() => _StartDrivingCtaState();
-}
-
-class _StartDrivingCtaState extends ConsumerState<_StartDrivingCta> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final reduceMotion = _reduceMotion(context);
-    return GestureDetector(
-      key: const ValueKey('home-start-driving'),
-      behavior: HitTestBehavior.opaque,
-      onTap: _startDriving,
-      onTapDown: (_) {
-        if (!reduceMotion) {
-          setState(() => _pressed = true);
-        }
-      },
-      onTapCancel: () {
-        if (!reduceMotion) {
-          setState(() => _pressed = false);
-        }
-      },
-      onTapUp: (_) {
-        if (!reduceMotion) {
-          setState(() => _pressed = false);
-        }
-      },
-      child: AnimatedScale(
-        key: const ValueKey('home-driving-cta-scale'),
-        scale: _pressed ? 0.985 : 1,
-        duration: AppMotion.fade,
-        curve: AppMotion.standardCurve,
-        child: Semantics(
-          button: true,
-          label: 'Iniciar conducción',
-          child: AppCard(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.m,
-              vertical: 10,
-            ),
-            backgroundColor: AppColors.teal,
-            borderColor: AppColors.teal,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 44),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.14),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.directions_car_filled_outlined,
-                      color: Colors.white,
-                      size: 26,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.m),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Iniciar conducción',
-                          style: AppTextStyles.h2.copyWith(
-                            color: Colors.white,
-                            fontSize: 18,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Todo listo para tu viaje',
-                          style: AppTextStyles.caption.copyWith(
-                            color: Colors.white.withValues(alpha: 0.88),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right_rounded, color: Colors.white),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _startDriving() async {
-    final router = GoRouter.of(context);
-    if (widget.focusedVehicleId != widget.activeVehicleId) {
-      await ref
-          .read(vehicleRepositoryProvider)
-          .setActiveVehicle(widget.focusedVehicleId);
-      ref.invalidate(activeVehicleProvider);
-    }
-    router.go(AppRoute.drive.path);
   }
 }
