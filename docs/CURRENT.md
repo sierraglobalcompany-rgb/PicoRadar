@@ -7,6 +7,7 @@ Fecha de recuperacion R00: 2026-08-27. Base auditada: `main` en `0905d394b037966
 - Marca: **PicoRadar**.
 - Titulo previsto en tiendas: **PicoRadar: Pico y Placa**.
 - Navegacion inferior: **Inicio · Garaje · Apps · Viaje · Conducir**, con **Apps** siempre al centro.
+- Orientacion canonica de telefono: **portrait-only**.
 - Free 1.0 funciona sin cuenta, sin monetizacion y sin cloud obligatorio.
 - Pico y placa se evalua localmente desde datasets versionados.
 - Conducir no envia GPS continuo, no consulta backend por cada posicion y no almacena historial GPS por defecto.
@@ -16,13 +17,13 @@ Fecha de recuperacion R00: 2026-08-27. Base auditada: `main` en `0905d394b037966
 
 - Fundacion monorepo Flutter/Laravel con flavors Android `dev`, `staging`, `prod`.
 - App shell Flutter con Riverpod, go_router y cinco tabs aprobadas.
-- Drift schema v3 con `vehicles`, `vehicle_obligations`, `notification_preferences`, `dataset_versions` y `restriction_coverages`.
+- Drift schema v4 con `vehicles`, `vehicle_obligations`, `notification_preferences`, `dataset_versions` y `restriction_coverages`.
 - Preferencias no sensibles, secure storage y cifrado AES-GCM para archivos privados.
 - Motor local de manifest/dataset sync con verificacion SHA-256 de bytes descargados.
 - Alta local de vehiculo, garaje raiz/detalle y vehiculo activo.
 - Importador/evaluador local de restricciones y cobertura por jurisdiccion.
 - Inicio/Pico con estado local y planificacion inicial de notificaciones.
-- Launcher Apps y widget Android de acceso rapido en estado neutral/local.
+- Launcher Apps en recuperacion R02C como accion central overlay/bottom sheet; widget Android de acceso rapido en estado neutral/local.
 - Laravel 13 scaffold con tests base; sin API de producto implementada.
 
 ## Backend forense
@@ -43,7 +44,7 @@ No construir backend para vehiculo activo, garaje, widget, pico de hoy, historia
 
 ## Drift / datos locales
 
-`main` esta en schema v3. Tablas actuales:
+`main` esta en schema v4. Tablas actuales:
 - `vehicles`: perfil local del vehiculo, placa unica por `vehicles_plate_idx`.
 - `vehicle_obligations`: obligaciones por vehiculo, FK cascade a `vehicles`, indices por vehiculo y fecha.
 - `notification_preferences`: flags locales de notificaciones.
@@ -104,6 +105,17 @@ R02A Home Owner V4:
 - Home keeps brand top-left, avatar + notification inside one top-right capsule, no greeting copy and no Start Driving CTA on Home.
 - Home banner runtime ad network remains `PREPARED_NOT_INTEGRATED`: no Google Ads SDK, no real AdMob and no C25 leads in R02A.
 - Future owner decisions documented but not implemented in R02A: R02C Apps overlay, Maintenance module, Pre-trip checklist and Tips.
+
+R02B Garage Owner V1:
+- `docs/design/reference/garage_owner_v1.png` is the owner-selected visual authority for the future R02B Garage slice.
+- Runtime data in that mockup is illustrative only; do not fake comparendo counts/status before C14.
+- Maintenance-related UI remains disabled/omitted until its own approved lot.
+
+R02C Apps Launcher Owner V1:
+- `docs/design/APPS_LAUNCHER_OWNER_V1.json` and `docs/design/reference/apps_launcher_owner_v1.png` are the current owner-approved Apps visual authority.
+- Bottom nav center **Apps** acts as an overlay launcher; it must not navigate to a full-screen Apps tab from the center action.
+- Principales keeps the 3x3 module order; Mas keeps secondary modules only. Maintenance, Tips and Pre-trip remain out of scope.
+- Phone visual QA for root surfaces is portrait-only unless a future approved lot explicitly adds landscape.
 
 R03 C13 Logic Integration + UI Restyle:
 - recover C13 vehicle status logic from PR #16;

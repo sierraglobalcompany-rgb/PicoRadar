@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "lot": "R02C",
+  "status": "OWNER_SELECTED",
+  "reference": {
+    "path": "docs/design/reference/apps_launcher_owner_v1.png",
+    "sha256": "22ab7d3956ff257e3fbbfb95e99878e378c038b3bc3a60ab125a5c59736c0961"
+  },
+  "contract": {
+    "trigger": "Bottom nav center Apps opens an overlay action, not a full-screen tab.",
+    "surface": "Bottom-anchored launcher over the current screen with soft scrim and bottom navigation visible.",
+    "height": "Phone body uses a compact 55-70% bottom sheet range.",
+    "dismiss": ["Apps button", "scrim tap", "Android Back", "downward drag handle"],
+    "modes": ["Principales", "Más"],
+    "primaryOrder": [
+      "Pico y placa",
+      "Fotomultas",
+      "Comparendos",
+      "SOAT",
+      "Tecnomecánica",
+      "Impuestos",
+      "Documentos",
+      "Seguro y asistencia",
+      "Defensa"
+    ],
+    "secondaryOrder": [
+      "Servicios",
+      "Compra/Venta",
+      "Trámites",
+      "Peritajes",
+      "Talleres",
+      "Peajes y estado vial"
+    ],
+    "orientation": "Portrait-only phone app surface."
+  },
+  "outOfScope": [
+    "R02B Garage implementation",
+    "Maintenance module",
+    "Tips",
+    "Pre-trip checklist",
+    "Backend",
+    "C14 functionality"
+  ]
+}

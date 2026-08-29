@@ -34,6 +34,7 @@ No duplicar widgets privados equivalentes entre Inicio, Garaje, Apps y Pico si p
 Navigation:
 - Tabs exactas: Inicio, Garaje, Apps, Viaje, Conducir.
 - Apps siempre al centro.
+- Apps centro es una accion de launcher overlay; la ruta `/apps` permanece para compatibilidad, pero el boton central no abre una pantalla completa.
 - Estados activo/inactivo accesibles por texto, semantica e iconografia, no solo color.
 
 Inicio/Pico:
@@ -47,7 +48,9 @@ Garaje:
 - Obligaciones/estado integral deben usar componentes compartidos y jerarquia escaneable.
 
 Apps:
-- Grid 3x3 sin overflow en dispositivos pequenos.
+- Launcher inferior overlay sobre la pantalla actual con scrim suave, nav inferior visible y rango compacto 55-70% de altura del cuerpo.
+- Principales usa grid 3x3 sin overflow en dispositivos pequenos.
+- Más concentra los modulos secundarios existentes.
 - Los modulos premium/off deben diferenciar disponibilidad sin parecer errores.
 - No usar texto que se corte dentro de tiles.
 
@@ -60,6 +63,7 @@ Accesibilidad:
 - Soporte `TextScaler`/textScale 1.0, 1.5 y 2.0 sin overflow.
 - Contraste suficiente y estado no dependiente solo de color.
 - Semantics labels en controles iconicos y estados importantes.
+- Superficies raiz de telefono son portrait-only salvo autorizacion explicita por lote.
 
 ## Gate visual R01+
 
@@ -72,7 +76,7 @@ Cada cambio visual debe:
 6. renderizar viewports 360x800, 390x844 y 412x915;
 7. probar textScale 1.0, 1.5 y 2.0;
 8. ejecutar al menos un smoke visual de superficie raiz en Android fisico cuando haya Mi A3 o dispositivo equivalente disponible;
-9. probar landscape cuando aplique;
+9. verificar portrait-only en telefono; landscape solo aplica si un lote futuro lo autoriza explicitamente;
 10. registrar mismatch ledger;
 11. iterar hasta `VISUAL_FIDELITY=PASS`.
 

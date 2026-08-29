@@ -1008,7 +1008,6 @@ void main() {
       (name: '412x915', size: Size(412, 915), textScale: 1),
       (name: '390x844 textScale 1.5', size: Size(390, 844), textScale: 1.5),
       (name: '390x844 textScale 2.0', size: Size(390, 844), textScale: 2),
-      (name: '844x390 landscape', size: Size(844, 390), textScale: 1),
     ];
 
     for (final viewport in cases) {

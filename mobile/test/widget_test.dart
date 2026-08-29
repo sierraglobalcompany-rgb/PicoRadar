@@ -53,7 +53,11 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('tab-apps')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('apps-primary-grid')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('apps-launcher-primary-grid')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('apps-launcher-overlay')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('tab-trip')));
     await tester.pumpAndSettle();
@@ -78,7 +82,10 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('tab-apps')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('apps-primary-grid')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('apps-launcher-primary-grid')),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const ValueKey('tab-trip')));
     await tester.pumpAndSettle();
