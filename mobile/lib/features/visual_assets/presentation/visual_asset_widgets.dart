@@ -23,33 +23,44 @@ class HomeAvatarButton extends ConsumerWidget {
           button: true,
           label: 'Cambiar avatar',
           child: Material(
-            color: Colors.transparent,
+            color: AppColors.surface,
             shape: const CircleBorder(),
+            elevation: 3,
+            shadowColor: AppColors.navy.withValues(alpha: 0.14),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
               key: const ValueKey('home-avatar-button'),
-              borderRadius: BorderRadius.circular(28),
+              customBorder: const CircleBorder(),
               onTap: () => showAvatarPicker(context, ref),
-              child: Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: AppColors.teal.withValues(alpha: 0.08),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppColors.teal.withValues(alpha: 0.42),
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: Center(
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.teal.withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.teal.withValues(alpha: 0.36),
+                      ),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: asset == null
+                        ? const Icon(
+                            Icons.person_rounded,
+                            color: AppColors.teal,
+                          )
+                        : Image.asset(
+                            asset.asset,
+                            key: ValueKey('home-avatar-image-${asset.id}'),
+                            fit: BoxFit.cover,
+                            cacheWidth: 112,
+                            cacheHeight: 112,
+                          ),
                   ),
                 ),
-                clipBehavior: Clip.antiAlias,
-                child: asset == null
-                    ? const Icon(Icons.person_rounded, color: AppColors.teal)
-                    : Image.asset(
-                        asset.asset,
-                        key: ValueKey('home-avatar-image-${asset.id}'),
-                        fit: BoxFit.cover,
-                        cacheWidth: 112,
-                        cacheHeight: 112,
-                      ),
               ),
             ),
           ),
@@ -133,7 +144,7 @@ class _AvatarFallback extends StatelessWidget {
   Widget build(BuildContext context) {
     return const CircleAvatar(
       key: ValueKey('home-avatar-fallback'),
-      radius: 26,
+      radius: 20,
       backgroundColor: Color(0xFFEAF4F3),
       child: Icon(Icons.person_rounded, color: AppColors.teal),
     );

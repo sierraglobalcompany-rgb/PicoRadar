@@ -35,15 +35,7 @@ class _StatusGrid extends ConsumerWidget {
             ? (constraints.maxWidth - AppSpacing.s) / 2
             : constraints.maxWidth;
         final cards = [
-          _HomeStatusCard(
-            key: const ValueKey('home-status-tomorrow'),
-            title: 'MAÑANA',
-            value: _tomorrowValue(snapshot.tomorrow),
-            message: _tomorrowMessage(snapshot.tomorrow),
-            icon: Icons.calendar_month_rounded,
-            color: AppColors.orange,
-          ),
-          _HomeStatusCard(
+          _ObligationStatusCard(
             key: const ValueKey('home-status-soat'),
             title: 'SOAT',
             value: _obligationValue(
@@ -62,7 +54,7 @@ class _StatusGrid extends ConsumerWidget {
               '/apps/module/soat?vehicleId=${snapshot.vehicle.id}',
             ),
           ),
-          _HomeStatusCard(
+          _ObligationStatusCard(
             key: const ValueKey('home-status-rtm'),
             title: 'Tecnomecánica',
             value: _obligationValue(
@@ -81,29 +73,24 @@ class _StatusGrid extends ConsumerWidget {
               '/apps/module/tecnomecanica?vehicleId=${snapshot.vehicle.id}',
             ),
           ),
-          _HomeStatusCard(
-            key: const ValueKey('home-status-comparendos'),
-            title: 'Comparendos',
-            value: 'Consultar',
-            message: 'Verifica en fuente oficial',
-            icon: Icons.fact_check_outlined,
-            color: AppColors.navy,
-            onTap: () => context.push(
-              '/apps/module/comparendos?vehicleId=${snapshot.vehicle.id}',
-            ),
-          ),
         ];
-        return Wrap(
+        return Column(
           key: const ValueKey('home-status-grid'),
-          spacing: AppSpacing.s,
-          runSpacing: AppSpacing.s,
           children: [
-            for (final card in cards)
-              SizedBox(
-                width: width,
-                height: twoColumns ? 92 : null,
-                child: card,
-              ),
+            _TomorrowStatusStrip(snapshot: snapshot),
+            const SizedBox(height: AppSpacing.s),
+            Wrap(
+              spacing: AppSpacing.s,
+              runSpacing: AppSpacing.s,
+              children: [
+                for (final card in cards)
+                  SizedBox(
+                    width: width,
+                    height: twoColumns ? 78 : null,
+                    child: card,
+                  ),
+              ],
+            ),
           ],
         );
       },
@@ -111,8 +98,86 @@ class _StatusGrid extends ConsumerWidget {
   }
 }
 
-class _HomeStatusCard extends StatelessWidget {
-  const _HomeStatusCard({
+class _TomorrowStatusStrip extends StatelessWidget {
+  const _TomorrowStatusStrip({required this.snapshot});
+
+  final HomeVehicleSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label:
+          'MAÑANA, ${_tomorrowValue(snapshot.tomorrow)}, ${_tomorrowMessage(snapshot.tomorrow)}',
+      child: Container(
+        key: const ValueKey('home-status-tomorrow'),
+        constraints: const BoxConstraints(minHeight: 54),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.m,
+          vertical: AppSpacing.s,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.orange.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(AppRadius.input),
+          border: Border.all(color: AppColors.orange.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.calendar_month_rounded,
+                color: AppColors.orange,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.s),
+            Text(
+              'MAÑANA',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.orange,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.s),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _ScaleDownText(
+                    _tomorrowValue(snapshot.tomorrow),
+                    style: AppTextStyles.bodyStrong.copyWith(
+                      fontSize: 14.5,
+                      color: AppColors.navy,
+                    ),
+                  ),
+                  Text(
+                    _tomorrowMessage(snapshot.tomorrow),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption.copyWith(
+                      fontSize: 12,
+                      color: AppColors.navy.withValues(alpha: 0.72),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ObligationStatusCard extends StatelessWidget {
+  const _ObligationStatusCard({
     required this.title,
     required this.value,
     required this.message,
@@ -266,16 +331,19 @@ class _StartDrivingCtaState extends ConsumerState<_StartDrivingCta> {
           button: true,
           label: 'Iniciar conducción',
           child: AppCard(
-            padding: const EdgeInsets.all(AppSpacing.m),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.m,
+              vertical: 10,
+            ),
             backgroundColor: AppColors.teal,
             borderColor: AppColors.teal,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 52),
+              constraints: const BoxConstraints(minHeight: 44),
               child: Row(
                 children: [
                   Container(
-                    width: 46,
-                    height: 46,
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.14),
                       shape: BoxShape.circle,
@@ -296,7 +364,7 @@ class _StartDrivingCtaState extends ConsumerState<_StartDrivingCta> {
                           'Iniciar conducción',
                           style: AppTextStyles.h2.copyWith(
                             color: Colors.white,
-                            fontSize: 19,
+                            fontSize: 18,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -329,129 +397,4 @@ class _StartDrivingCtaState extends ConsumerState<_StartDrivingCta> {
     }
     router.go(AppRoute.drive.path);
   }
-}
-
-class _HomePromoBanner extends StatelessWidget {
-  const _HomePromoBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      key: const ValueKey('home-truthful-banner'),
-      padding: const EdgeInsets.all(AppSpacing.m),
-      backgroundColor: AppColors.navy,
-      borderColor: AppColors.navy,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 84),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Más control, más tranquilidad.',
-                    style: AppTextStyles.h2.copyWith(color: Colors.white),
-                  ),
-                  const SizedBox(height: AppSpacing.s),
-                  Text(
-                    'Próximamente nuevas funciones para ayudarte cada día.',
-                    style: AppTextStyles.caption.copyWith(
-                      color: Colors.white.withValues(alpha: 0.86),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.m),
-            CustomPaint(
-              key: const ValueKey('home-banner-illustration'),
-              size: const Size(72, 70),
-              painter: _BannerIllustrationPainter(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BannerIllustrationPainter extends CustomPainter {
-  const _BannerIllustrationPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final stroke = Paint()
-      ..color = AppColors.surface.withValues(alpha: 0.86)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    final phone = RRect.fromRectAndRadius(
-      Rect.fromLTWH(8, 4, size.width * 0.42, size.height * 0.86),
-      const Radius.circular(14),
-    );
-    canvas.drawRRect(
-      phone,
-      Paint()..color = AppColors.surface.withValues(alpha: 0.16),
-    );
-    canvas.drawRRect(phone, stroke);
-    canvas.drawLine(
-      Offset(size.width * 0.2, size.height * 0.28),
-      Offset(size.width * 0.38, size.height * 0.42),
-      stroke..color = AppColors.blue,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.38, size.height * 0.42),
-      Offset(size.width * 0.3, size.height * 0.64),
-      stroke,
-    );
-    final shield = Path()
-      ..moveTo(size.width * 0.65, size.height * 0.12)
-      ..quadraticBezierTo(
-        size.width * 0.86,
-        size.height * 0.2,
-        size.width * 0.88,
-        size.height * 0.2,
-      )
-      ..lineTo(size.width * 0.84, size.height * 0.56)
-      ..quadraticBezierTo(
-        size.width * 0.76,
-        size.height * 0.76,
-        size.width * 0.64,
-        size.height * 0.86,
-      )
-      ..quadraticBezierTo(
-        size.width * 0.52,
-        size.height * 0.76,
-        size.width * 0.45,
-        size.height * 0.56,
-      )
-      ..lineTo(size.width * 0.42, size.height * 0.2)
-      ..quadraticBezierTo(
-        size.width * 0.52,
-        size.height * 0.18,
-        size.width * 0.65,
-        size.height * 0.12,
-      );
-    canvas.drawPath(
-      shield,
-      Paint()..color = AppColors.teal.withValues(alpha: 0.92),
-    );
-    canvas.drawPath(shield, stroke..color = Colors.white);
-    canvas.drawLine(
-      Offset(size.width * 0.55, size.height * 0.48),
-      Offset(size.width * 0.62, size.height * 0.58),
-      stroke,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.62, size.height * 0.58),
-      Offset(size.width * 0.75, size.height * 0.38),
-      stroke,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _BannerIllustrationPainter oldDelegate) => false;
 }

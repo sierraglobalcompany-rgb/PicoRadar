@@ -295,7 +295,7 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
             horizontalPadding,
             AppSpacing.s,
             horizontalPadding,
-            AppSpacing.m,
+            AppSpacing.s,
           ),
           child: Align(
             alignment: Alignment.topCenter,
@@ -305,7 +305,7 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _HomeHeader(alertPreferences: widget.alertPreferences),
-                  const SizedBox(height: AppSpacing.m),
+                  const SizedBox(height: AppSpacing.s),
                   _VehicleCarousel(
                     controller: _controller,
                     snapshots: widget.snapshots,
@@ -326,15 +326,13 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
                       jurisdictions: widget.jurisdictions,
                     ),
                   ],
-                  const SizedBox(height: AppSpacing.m),
+                  const SizedBox(height: AppSpacing.s),
                   _FocusedStatusGrid(snapshot: focused),
-                  const SizedBox(height: AppSpacing.m),
+                  const SizedBox(height: 10),
                   _StartDrivingCta(
                     focusedVehicleId: focused.vehicle.id,
                     activeVehicleId: widget.activeVehicleId,
                   ),
-                  const SizedBox(height: AppSpacing.m),
-                  const _HomePromoBanner(),
                 ],
               ),
             ),
@@ -352,93 +350,63 @@ class _HomeHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            const Center(
-              child: PicoRadarBrandLockup(
-                key: ValueKey('home-brand-lockup'),
-                markSize: 30,
-              ),
+    return SizedBox(
+      key: const ValueKey('home-compact-top-bar'),
+      height: 56,
+      child: Row(
+        children: [
+          const HomeAvatarButton(),
+          const Expanded(
+            child: PicoRadarBrandLockup(
+              key: ValueKey('home-brand-lockup'),
+              markSize: 28,
             ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Semantics(
-                button: true,
-                label: 'Abrir notificaciones',
-                child: Material(
-                  color: AppColors.surface,
-                  shape: const CircleBorder(),
-                  elevation: 3,
-                  shadowColor: AppColors.navy.withValues(alpha: 0.14),
-                  child: IconButton(
-                    key: const ValueKey('home-notification-bell'),
-                    onPressed: () => showModalBottomSheet<void>(
-                      context: context,
-                      isScrollControlled: true,
-                      showDragHandle: true,
-                      builder: (context) => _NotificationSheet(
-                        alertPreferences: alertPreferences,
-                      ),
+          ),
+          Semantics(
+            button: true,
+            label: 'Abrir notificaciones',
+            child: Material(
+              color: AppColors.surface,
+              shape: const CircleBorder(),
+              elevation: 3,
+              shadowColor: AppColors.navy.withValues(alpha: 0.14),
+              child: IconButton(
+                key: const ValueKey('home-notification-bell'),
+                onPressed: () => showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  showDragHandle: true,
+                  builder: (context) =>
+                      _NotificationSheet(alertPreferences: alertPreferences),
+                ),
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(
+                      Icons.notifications_none_rounded,
+                      color: AppColors.navy,
                     ),
-                    icon: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        const Icon(
-                          Icons.notifications_none_rounded,
-                          color: AppColors.navy,
-                        ),
-                        if (alertPreferences.permissionGranted &&
-                            alertPreferences.enabled)
-                          Positioned(
-                            right: -1,
-                            top: -1,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: AppColors.teal,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
+                    if (alertPreferences.permissionGranted &&
+                        alertPreferences.enabled)
+                      Positioned(
+                        right: -1,
+                        top: -1,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: AppColors.teal,
+                            shape: BoxShape.circle,
                           ),
-                      ],
-                    ),
-                  ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.m),
-        Row(
-          children: [
-            const HomeAvatarButton(),
-            const SizedBox(width: AppSpacing.m),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '¡Hola!',
-                    style: AppTextStyles.h1.copyWith(fontSize: 24),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Así están tus vehículos hoy',
-                    style: AppTextStyles.body.copyWith(
-                      color: AppColors.navy.withValues(alpha: 0.72),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -531,18 +499,17 @@ class _HomeSkeleton extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Center(child: PicoRadarBrandLockup(markSize: 34)),
-          const SizedBox(height: AppSpacing.xl),
-          const AppSkeleton(width: 180, height: 28),
-          const SizedBox(height: AppSpacing.s),
-          const AppSkeleton(width: 230, height: 18),
-          const SizedBox(height: AppSpacing.xl),
+          const SizedBox(
+            height: 56,
+            child: Center(child: PicoRadarBrandLockup(markSize: 28)),
+          ),
+          const SizedBox(height: AppSpacing.l),
           AppSkeleton(
-            height: 300,
+            height: _homeCarouselBaseHeight,
             borderRadius: AppRadius.card,
             width: MediaQuery.sizeOf(context).width,
           ),
-          const SizedBox(height: AppSpacing.l),
+          const SizedBox(height: AppSpacing.m),
           const _StatusGridSkeleton(),
         ],
       ),
@@ -558,18 +525,28 @@ class _StatusGridSkeleton extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth >= 340
-            ? (constraints.maxWidth - AppSpacing.m) / 2
+            ? (constraints.maxWidth - AppSpacing.s) / 2
             : constraints.maxWidth;
-        return Wrap(
-          spacing: AppSpacing.m,
-          runSpacing: AppSpacing.m,
+        return Column(
           children: [
-            for (var i = 0; i < 4; i += 1)
-              AppSkeleton(
-                width: width,
-                height: 96,
-                borderRadius: AppRadius.card,
-              ),
+            AppSkeleton(
+              width: constraints.maxWidth,
+              height: 56,
+              borderRadius: AppRadius.input,
+            ),
+            const SizedBox(height: AppSpacing.s),
+            Wrap(
+              spacing: AppSpacing.s,
+              runSpacing: AppSpacing.s,
+              children: [
+                for (var i = 0; i < 2; i += 1)
+                  AppSkeleton(
+                    width: width,
+                    height: 78,
+                    borderRadius: AppRadius.card,
+                  ),
+              ],
+            ),
           ],
         );
       },
@@ -636,18 +613,12 @@ String _vehiclePrimaryLabel(VehicleProfile vehicle) {
   return shortVehicleTypeLabel(vehicle);
 }
 
-String? _vehicleSecondaryLabel(VehicleProfile vehicle) {
-  final parts = [
-    if (vehicle.brand != null && vehicle.brand!.trim().isNotEmpty)
-      vehicle.brand!.trim(),
-    if (vehicle.model != null && vehicle.model!.trim().isNotEmpty)
-      vehicle.model!.trim(),
-    if (vehicle.year != null) vehicle.year.toString(),
-  ];
-  if (parts.isEmpty) {
-    return null;
+String _vehicleCompactLabel(VehicleProfile vehicle) {
+  final primary = _vehiclePrimaryLabel(vehicle);
+  if (vehicle.year == null) {
+    return primary;
   }
-  return parts.join(' ');
+  return '$primary · ${vehicle.year}';
 }
 
 String _tomorrowValue(RestrictionDayEvaluation evaluation) {

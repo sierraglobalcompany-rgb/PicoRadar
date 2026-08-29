@@ -88,12 +88,10 @@ void main() {
       expect(find.byKey(const ValueKey('home-status-grid')), findsOneWidget);
       expect(find.text('SOAT'), findsOneWidget);
       expect(find.text('Tecnomecánica'), findsOneWidget);
-      expect(find.text('Comparendos'), findsOneWidget);
+      expect(find.text('Comparendos'), findsNothing);
     });
 
-    testWidgets('standard viewport renders status cards as a 2x2 grid', (
-      tester,
-    ) async {
+    testWidgets('standard viewport renders compact status IA', (tester) async {
       await _readyHome(harness, plate: 'ABC124');
 
       await _pumpHome(tester, harness, viewportSize: const Size(390, 844));
@@ -107,15 +105,50 @@ void main() {
       final rtm = tester.getTopLeft(
         find.byKey(const ValueKey('home-status-rtm')),
       );
-      final comparendos = tester.getTopLeft(
-        find.byKey(const ValueKey('home-status-comparendos')),
+      final tomorrowBottom = tester.getBottomLeft(
+        find.byKey(const ValueKey('home-status-tomorrow')),
       );
 
-      expect((tomorrow.dy - soat.dy).abs(), lessThan(1));
-      expect((rtm.dy - comparendos.dy).abs(), lessThan(1));
-      expect(rtm.dy, greaterThan(tomorrow.dy));
-      expect(soat.dx, greaterThan(tomorrow.dx));
-      expect(comparendos.dx, greaterThan(rtm.dx));
+      expect(tomorrow.dx, lessThanOrEqualTo(soat.dx));
+      expect(soat.dy, greaterThan(tomorrowBottom.dy));
+      expect((soat.dy - rtm.dy).abs(), lessThan(1));
+      expect(rtm.dx, greaterThan(soat.dx));
+      expect(
+        find.byKey(const ValueKey('home-status-comparendos')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-status-tomorrow')),
+          matching: find.byIcon(Icons.chevron_right_rounded),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('compact top bar removes greeting copy', (tester) async {
+      await _readyHome(harness, plate: 'ABC124');
+
+      await _pumpHome(tester, harness, viewportSize: const Size(390, 844));
+
+      expect(
+        find.byKey(const ValueKey('home-compact-top-bar')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('home-avatar-button')), findsOneWidget);
+      expect(find.byKey(const ValueKey('home-brand-lockup')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('home-notification-bell')),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('home-compact-top-bar')))
+            .height,
+        56,
+      );
+      expect(find.text('¡Hola!'), findsNothing);
+      expect(find.text('Así están tus vehículos hoy'), findsNothing);
     });
 
     testWidgets('standard viewport does not ellipsize primary status text', (
@@ -137,25 +170,52 @@ void main() {
         'Tecnomecánica',
         'Sin configurar',
       ]);
-      _expectNoEllipsisInCard(
-        tester,
-        const ValueKey('home-status-comparendos'),
-        ['Comparendos', 'Consultar'],
-      );
     });
 
-    testWidgets('standard viewport keeps driving CTA near the first screen', (
+    testWidgets('390x844 keeps essential Home content above bottom nav', (
       tester,
     ) async {
       await _readyHome(harness, plate: 'ABC124');
 
-      await _pumpHome(tester, harness, viewportSize: const Size(390, 844));
+      await _pumpHome(
+        tester,
+        harness,
+        viewportSize: const Size(390, 844),
+        bottomNavigationBar: const SizedBox(
+          key: ValueKey('test-bottom-nav-budget'),
+          height: 96,
+        ),
+      );
 
       final ctaBottom = tester.getBottomLeft(
         find.byKey(const ValueKey('home-start-driving')),
       );
 
-      expect(ctaBottom.dy, lessThanOrEqualTo(844));
+      expect(ctaBottom.dy, lessThanOrEqualTo(844 - 96));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('360x800 keeps essential Home content above bottom nav', (
+      tester,
+    ) async {
+      await _readyHome(harness, plate: 'ABC124');
+
+      await _pumpHome(
+        tester,
+        harness,
+        viewportSize: const Size(360, 800),
+        bottomNavigationBar: const SizedBox(
+          key: ValueKey('test-bottom-nav-budget'),
+          height: 96,
+        ),
+      );
+
+      final ctaBottom = tester.getBottomLeft(
+        find.byKey(const ValueKey('home-start-driving')),
+      );
+
+      expect(ctaBottom.dy, lessThanOrEqualTo(800 - 96));
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('avatar picker selects locally and persists after restart', (
@@ -472,7 +532,7 @@ void main() {
 
       expect(find.text('Sin configurar'), findsAtLeastNWidgets(2));
       expect(find.text('0 pendientes'), findsNothing);
-      expect(find.text('Consultar'), findsOneWidget);
+      expect(find.text('Consultar'), findsNothing);
     });
 
     testWidgets('real SOAT and RTM due dates derive summaries', (tester) async {
@@ -520,19 +580,57 @@ void main() {
       expect(find.text('Puede circular'), findsNothing);
     });
 
-    testWidgets('banner copy is truthful and does not mention Protect', (
-      tester,
-    ) async {
+    testWidgets('promo and C14 card stay out of compact Home', (tester) async {
       await _readyHome(harness, plate: 'ABC124');
 
       await _pumpHome(tester, harness);
 
-      expect(find.text('Más control, más tranquilidad.'), findsOneWidget);
+      expect(find.text('Más control, más tranquilidad.'), findsNothing);
       expect(
         find.textContaining('Próximamente nuevas funciones'),
-        findsOneWidget,
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('home-status-comparendos')),
+        findsNothing,
       );
       expect(find.textContaining('PicoRadar Protect'), findsNothing);
+    });
+  });
+
+  group('Home V2 module tap reliability', () {
+    testWidgets('SOAT card routes consistently', (tester) async {
+      final vehicle = await _readyHome(harness, plate: 'ABC124');
+      await _pumpHomeApp(tester, harness);
+
+      for (var i = 0; i < 10; i += 1) {
+        await tester.tap(find.byKey(const ValueKey('home-status-soat')));
+        await tester.pumpAndSettle(const Duration(milliseconds: 100));
+        expect(find.text('module-soat-${vehicle.id}'), findsOneWidget);
+
+        final router = GoRouter.of(
+          tester.element(find.text('module-soat-${vehicle.id}')),
+        );
+        router.go('/home');
+        await _pumpAsyncHome(tester);
+      }
+    });
+
+    testWidgets('RTM card routes consistently', (tester) async {
+      final vehicle = await _readyHome(harness, plate: 'ABC124');
+      await _pumpHomeApp(tester, harness);
+
+      for (var i = 0; i < 10; i += 1) {
+        await tester.tap(find.byKey(const ValueKey('home-status-rtm')));
+        await tester.pumpAndSettle(const Duration(milliseconds: 100));
+        expect(find.text('module-tecnomecanica-${vehicle.id}'), findsOneWidget);
+
+        final router = GoRouter.of(
+          tester.element(find.text('module-tecnomecanica-${vehicle.id}')),
+        );
+        router.go('/home');
+        await _pumpAsyncHome(tester);
+      }
     });
   });
 
@@ -746,12 +844,16 @@ Future<void> _pumpHome(
   TestAppHarness harness, {
   Size viewportSize = _defaultViewportSize,
   double? textScaleFactor,
+  Widget? bottomNavigationBar,
   Widget Function(Widget child)? wrap,
 }) async {
   await _pump(
     tester,
     harness,
-    const Scaffold(body: HomeScreen()),
+    Scaffold(
+      body: const HomeScreen(),
+      bottomNavigationBar: bottomNavigationBar,
+    ),
     viewportSize: viewportSize,
     textScaleFactor: textScaleFactor,
     wrap: wrap,
