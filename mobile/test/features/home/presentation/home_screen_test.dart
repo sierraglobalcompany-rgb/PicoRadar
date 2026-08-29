@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
+import 'package:picoradar/features/garage/presentation/vehicle_detail_screen.dart';
 import 'package:picoradar/features/home/presentation/home_screen.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_store.dart';
@@ -17,6 +21,8 @@ import 'package:picoradar/features/pico_placa/presentation/pico_detail_screen.da
 import 'package:picoradar/features/vehicle_status/data/vehicle_obligation_store.dart';
 import 'package:picoradar/features/vehicle_status/domain/vehicle_obligation.dart';
 import 'package:picoradar/features/vehicle_status/platform/obligation_notifications.dart';
+import 'package:picoradar/features/visual_assets/data/visual_asset_catalogs.dart';
+import 'package:picoradar/features/visual_assets/data/visual_asset_preferences.dart';
 
 import '../../../test_app_harness.dart';
 
@@ -58,10 +64,26 @@ void main() {
     testWidgets('one vehicle hides the counter and renders the status grid', (
       tester,
     ) async {
-      await _readyHome(harness, plate: 'ABC124');
+      final vehicle = await _readyHome(
+        harness,
+        plate: 'ABC124',
+        brand: 'Toyota',
+      );
+      await harness.preferences.setString(
+        selectedAvatarPreferenceKey,
+        'avatar_003',
+      );
 
       await _pumpHome(tester, harness);
 
+      expect(
+        find.byKey(const ValueKey('home-avatar-image-avatar_003')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(ValueKey('vehicle-visual-image-${vehicle.id}')),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey('home-carousel-counter')), findsNothing);
       expect(find.byKey(const ValueKey('home-status-grid')), findsOneWidget);
       expect(find.text('SOAT'), findsOneWidget);
@@ -96,6 +118,32 @@ void main() {
       expect(comparendos.dx, greaterThan(rtm.dx));
     });
 
+    testWidgets('standard viewport does not ellipsize primary status text', (
+      tester,
+    ) async {
+      await _readyHome(harness, plate: 'ABC126');
+
+      await _pumpHome(tester, harness, viewportSize: const Size(360, 800));
+
+      _expectNoEllipsisInCard(tester, const ValueKey('home-status-tomorrow'), [
+        'MAÑANA',
+        'Puede circular',
+      ]);
+      _expectNoEllipsisInCard(tester, const ValueKey('home-status-soat'), [
+        'SOAT',
+        'Sin configurar',
+      ]);
+      _expectNoEllipsisInCard(tester, const ValueKey('home-status-rtm'), [
+        'Tecnomecánica',
+        'Sin configurar',
+      ]);
+      _expectNoEllipsisInCard(
+        tester,
+        const ValueKey('home-status-comparendos'),
+        ['Comparendos', 'Consultar'],
+      );
+    });
+
     testWidgets('standard viewport keeps driving CTA near the first screen', (
       tester,
     ) async {
@@ -108,6 +156,100 @@ void main() {
       );
 
       expect(ctaBottom.dy, lessThanOrEqualTo(844));
+    });
+
+    testWidgets('avatar picker selects locally and persists after restart', (
+      tester,
+    ) async {
+      await _readyHome(harness, plate: 'ABC124');
+      await _pumpHome(tester, harness);
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('home-avatar-button')),
+      );
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('home-avatar-button')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('avatar-picker-grid')), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('avatar-option-avatar_004')));
+      await tester.pumpAndSettle();
+
+      expect(
+        await harness.preferences.getString(selectedAvatarPreferenceKey),
+        'avatar_004',
+      );
+
+      await _pumpHome(tester, harness);
+      expect(
+        find.byKey(const ValueKey('home-avatar-image-avatar_004')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('vehicle detail picker stores override and auto reset', (
+      tester,
+    ) async {
+      final vehicle = await _readyHome(
+        harness,
+        plate: 'ABC124',
+        brand: 'Toyota',
+      );
+      await _pumpHomeApp(tester, harness);
+
+      await tester.tap(find.byKey(ValueKey('home-vehicle-card-${vehicle.id}')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('detail-change-vehicle-image')),
+      );
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const ValueKey('detail-change-vehicle-image')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('vehicle-visual-picker-grid')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('vehicle-visual-option-veh_car_toyota_01')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('vehicle-visual-option-veh_moto_yamaha_01')),
+        findsNothing,
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('vehicle-visual-option-veh_car_toyota_01')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        await harness.preferences.getString(
+          vehicleVisualPreferenceKey(vehicle.id),
+        ),
+        'veh_car_toyota_01',
+      );
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('detail-change-vehicle-image')),
+      );
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const ValueKey('detail-change-vehicle-image')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('vehicle-visual-auto-option')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        await harness.preferences.getString(
+          vehicleVisualPreferenceKey(vehicle.id),
+        ),
+        isNull,
+      );
     });
 
     testWidgets('three vehicles center restricted card without auto advance', (
@@ -148,6 +290,10 @@ void main() {
       expect(find.byKey(const ValueKey('home-carousel-dot-2')), findsOneWidget);
       expect(find.text('TST453'), findsOneWidget);
       expect(find.text('Hoy no puedes circular'), findsOneWidget);
+      final restrictedSummary = tester.widget<Text>(
+        find.text('Hoy no puedes circular'),
+      );
+      expect(restrictedSummary.overflow, isNot(TextOverflow.ellipsis));
 
       await tester.pump(const Duration(seconds: 3));
       expect(find.text('2 de 3'), findsOneWidget);
@@ -286,7 +432,8 @@ void main() {
       await tester.tap(find.text('ABC123'));
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
 
-      expect(find.text('detail-${restricted.id}'), findsOneWidget);
+      expect(find.text('Detalle del vehículo'), findsOneWidget);
+      expect(find.text(restricted.plate), findsOneWidget);
       expect((await harness.repository.getActiveVehicle())?.id, active.id);
     });
 
@@ -624,7 +771,7 @@ Future<void> _pumpHomeApp(WidgetTester tester, TestAppHarness harness) async {
       GoRoute(
         path: '/garage/vehicle/:id',
         builder: (context, state) =>
-            Text('detail-${state.pathParameters['id']}'),
+            VehicleDetailScreen(vehicleId: state.pathParameters['id']!),
       ),
       GoRoute(path: '/drive', builder: (context, state) => const Text('drive')),
       GoRoute(
@@ -683,9 +830,39 @@ Widget _providerScope(TestAppHarness harness, {required Widget child}) {
       ),
       bogotaNowProvider.overrideWithValue(harness.now),
       currentInstantProvider.overrideWithValue(harness.now.toUtc()),
+      avatarCatalogProvider.overrideWith(
+        (ref) async => AvatarCatalog.fromJson(
+          jsonDecode(File(avatarCatalogAssetPath).readAsStringSync())
+              as Map<String, Object?>,
+        ),
+      ),
+      vehicleVisualCatalogProvider.overrideWith(
+        (ref) async => VehicleVisualCatalog.fromJson(
+          jsonDecode(File(vehicleCatalogAssetPath).readAsStringSync())
+              as Map<String, Object?>,
+        ),
+      ),
     ],
     child: child,
   );
+}
+
+void _expectNoEllipsisInCard(
+  WidgetTester tester,
+  ValueKey<String> cardKey,
+  List<String> labels,
+) {
+  final card = find.byKey(cardKey);
+  for (final label in labels) {
+    final labelFinder = find.descendant(of: card, matching: find.text(label));
+    expect(labelFinder, findsWidgets, reason: label);
+    final widgets = tester.widgetList<Text>(labelFinder);
+    expect(
+      widgets.any((widget) => widget.overflow == TextOverflow.ellipsis),
+      isFalse,
+      reason: label,
+    );
+  }
 }
 
 Future<void> _installWidgetChannelMock(
@@ -734,12 +911,16 @@ Future<VehicleProfile> _readyHome(
   String jurisdictionId = 'co-ant-medellin',
   VehicleKind kind = VehicleKind.car,
   VehicleServiceType serviceType = VehicleServiceType.private,
+  String? brand,
+  String? model,
 }) async {
   final vehicle = await _createVehicle(
     harness,
     plate: plate,
     kind: kind,
     serviceType: serviceType,
+    brand: brand,
+    model: model,
   );
   await harness.repository.setActiveVehicle(vehicle.id);
   await harness.preferences.setString(

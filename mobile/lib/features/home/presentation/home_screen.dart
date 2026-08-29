@@ -17,6 +17,7 @@ import '../../pico_placa/data/pico_preferences.dart';
 import '../../pico_placa/data/restriction_store.dart';
 import '../../pico_placa/domain/restriction_day_evaluation.dart';
 import '../../vehicle_status/domain/vehicle_obligation.dart';
+import '../../visual_assets/presentation/visual_asset_widgets.dart';
 
 part 'home_vehicle_carousel.dart';
 part 'home_status_section.dart';
@@ -412,14 +413,30 @@ class _HomeHeader extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.l),
-        Text('¡Hola!', style: AppTextStyles.h1.copyWith(fontSize: 24)),
-        const SizedBox(height: 2),
-        Text(
-          'Así están tus vehículos hoy',
-          style: AppTextStyles.body.copyWith(
-            color: AppColors.navy.withValues(alpha: 0.72),
-          ),
+        const SizedBox(height: AppSpacing.m),
+        Row(
+          children: [
+            const HomeAvatarButton(),
+            const SizedBox(width: AppSpacing.m),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '¡Hola!',
+                    style: AppTextStyles.h1.copyWith(fontSize: 24),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Así están tus vehículos hoy',
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.navy.withValues(alpha: 0.72),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -684,7 +701,7 @@ String _obligationMessage(
 ) {
   final obligation = _obligationOfType(obligations, type);
   if (obligation == null || obligation.dueDate == null) {
-    return 'Sin fecha guardada';
+    return 'Sin fecha';
   }
   final state = evaluateVehicleObligationState(
     dueDate: obligation.dueDate,

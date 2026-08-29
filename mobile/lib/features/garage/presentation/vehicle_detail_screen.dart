@@ -7,6 +7,7 @@ import '../../../app/theme/app_tokens.dart';
 import '../../vehicle_status/data/vehicle_status_catalog.dart';
 import '../../vehicle_status/domain/vehicle_obligation.dart';
 import '../../vehicle_status/platform/obligation_notifications.dart';
+import '../../visual_assets/presentation/visual_asset_widgets.dart';
 import '../data/vehicle_profile.dart';
 import 'vehicle_display.dart';
 
@@ -86,7 +87,19 @@ class _VehicleDetail extends ConsumerWidget {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(vehicleIcon(vehicle), color: accent, size: 48),
+                      SizedBox(
+                        width: 86,
+                        height: 58,
+                        child: VehicleVisualImage(
+                          vehicle: vehicle,
+                          cacheWidth: 180,
+                          fallbackBuilder: (_) => Icon(
+                            vehicleIcon(vehicle),
+                            color: accent,
+                            size: 48,
+                          ),
+                        ),
+                      ),
                       const SizedBox(width: AppSpacing.l),
                       Expanded(
                         child: Column(
@@ -143,6 +156,13 @@ class _VehicleDetail extends ConsumerWidget {
                             context.push('/garage/vehicle/${vehicle.id}/edit'),
                         icon: const Icon(Icons.edit),
                         label: const Text('Editar'),
+                      ),
+                      OutlinedButton.icon(
+                        key: const ValueKey('detail-change-vehicle-image'),
+                        onPressed: () =>
+                            showVehicleVisualPicker(context, ref, vehicle),
+                        icon: const Icon(Icons.image_outlined),
+                        label: const Text('Cambiar imagen'),
                       ),
                       OutlinedButton.icon(
                         key: const ValueKey('detail-delete-vehicle'),

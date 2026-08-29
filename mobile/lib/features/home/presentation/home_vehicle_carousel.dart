@@ -186,6 +186,7 @@ class _HomeVehicleCardState extends State<_HomeVehicleCard>
                     ),
                     child: _GenericVehicleVisual(
                       vehicle: widget.snapshot.vehicle,
+                      useProductionAsset: true,
                     ),
                   ),
                 ),
@@ -281,12 +282,23 @@ class _TodayChip extends StatelessWidget {
 }
 
 class _GenericVehicleVisual extends StatelessWidget {
-  const _GenericVehicleVisual({required this.vehicle});
+  const _GenericVehicleVisual({
+    required this.vehicle,
+    this.useProductionAsset = false,
+  });
 
   final VehicleProfile vehicle;
+  final bool useProductionAsset;
 
   @override
   Widget build(BuildContext context) {
+    if (useProductionAsset) {
+      return VehicleVisualImage(
+        vehicle: vehicle,
+        cacheWidth: 360,
+        fallbackBuilder: (_) => _GenericVehicleVisual(vehicle: vehicle),
+      );
+    }
     return CustomPaint(
       key: ValueKey('home-generic-vehicle-${vehicle.id}'),
       painter: _VehiclePainter(vehicle, vehicleAccent(vehicle)),
@@ -536,10 +548,8 @@ class _TodaySummary extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                _ScaleDownText(
                   main,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption.copyWith(
                     color: color,
                     fontSize: 12,

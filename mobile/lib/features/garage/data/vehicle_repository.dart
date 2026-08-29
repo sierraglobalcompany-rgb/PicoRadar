@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/storage/app_preferences.dart';
+import '../../visual_assets/data/visual_asset_preferences.dart';
 import 'vehicle_profile.dart';
 
 typedef VehicleIdGenerator = String Function();
@@ -138,6 +139,7 @@ class VehicleRepository {
     if (activeId == id) {
       await preferences.remove(activeVehiclePreferenceKey);
     }
+    await clearVehicleVisualOverride(preferences, id);
   }
 
   Future<VehicleProfile?> getActiveVehicle() async {

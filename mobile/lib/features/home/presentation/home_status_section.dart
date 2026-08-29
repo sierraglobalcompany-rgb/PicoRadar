@@ -101,7 +101,7 @@ class _StatusGrid extends ConsumerWidget {
             for (final card in cards)
               SizedBox(
                 width: width,
-                height: twoColumns ? 88 : null,
+                height: twoColumns ? 92 : null,
                 child: card,
               ),
           ],
@@ -136,42 +136,39 @@ class _HomeStatusCard extends StatelessWidget {
       label: '$title, $value, $message',
       child: AppCard(
         onTap: onTap,
-        padding: const EdgeInsets.all(AppSpacing.s),
+        padding: const EdgeInsets.all(8),
         backgroundColor: color.withValues(alpha: 0.06),
         borderColor: color.withValues(alpha: 0.2),
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(AppRadius.input),
               ),
-              child: Icon(icon, color: color, size: 22),
+              child: Icon(icon, color: color, size: 20),
             ),
-            const SizedBox(width: AppSpacing.s),
+            const SizedBox(width: 6),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  _ScaleDownText(
                     title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.caption.copyWith(
                       color: color,
-                      fontSize: 12,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  Text(
+                  const SizedBox(height: 1),
+                  _ScaleDownText(
                     value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodyStrong.copyWith(
-                      fontSize: 15,
+                      fontSize: 14,
                       color: AppColors.navy,
                     ),
                   ),
@@ -188,10 +185,34 @@ class _HomeStatusCard extends StatelessWidget {
               ),
             ),
             if (onTap != null) ...[
-              const SizedBox(width: AppSpacing.xs),
-              Icon(Icons.chevron_right_rounded, color: color, size: 22),
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right_rounded, color: color, size: 18),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ScaleDownText extends StatelessWidget {
+  const _ScaleDownText(this.text, {required this.style});
+
+  final String text;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.visible,
+          style: style,
         ),
       ),
     );

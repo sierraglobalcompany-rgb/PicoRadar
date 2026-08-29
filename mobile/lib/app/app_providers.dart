@@ -8,6 +8,8 @@ import '../features/garage/data/vehicle_repository.dart';
 import '../features/vehicle_status/data/vehicle_obligation_store.dart';
 import '../features/vehicle_status/domain/vehicle_obligation.dart';
 import '../features/vehicle_status/platform/obligation_notifications.dart';
+import '../features/visual_assets/data/visual_asset_catalogs.dart';
+import '../features/visual_assets/data/visual_asset_preferences.dart';
 import '../features/pico_placa/data/bundled_restrictions.dart';
 import '../features/pico_placa/data/pico_preferences.dart';
 import '../features/pico_placa/data/restriction_store.dart';
@@ -23,6 +25,30 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
 
 final appPreferencesProvider = Provider<AppPreferences>((ref) {
   return AppPreferences();
+});
+
+final avatarCatalogProvider = FutureProvider<AvatarCatalog>((ref) {
+  return loadAvatarCatalog(rootBundle);
+});
+
+final vehicleVisualCatalogProvider = FutureProvider<VehicleVisualCatalog>((
+  ref,
+) {
+  return loadVehicleVisualCatalog(rootBundle);
+});
+
+final selectedAvatarIdProvider = FutureProvider<String?>((ref) {
+  return loadSelectedAvatarId(ref.watch(appPreferencesProvider));
+});
+
+final vehicleVisualOverrideProvider = FutureProvider.family<String?, String>((
+  ref,
+  vehicleId,
+) {
+  return loadVehicleVisualOverride(
+    ref.watch(appPreferencesProvider),
+    vehicleId,
+  );
 });
 
 final vehicleRepositoryProvider = Provider<VehicleRepository>((ref) {
