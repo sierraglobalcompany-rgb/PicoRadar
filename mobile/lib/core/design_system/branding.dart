@@ -32,19 +32,25 @@ class PicoRadarBrandLockup extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       label: 'PicoRadar',
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          PicoRadarBrandMark(size: markSize),
-          const SizedBox(width: AppSpacing.s),
-          Text(
-            'PicoRadar',
-            style: (textStyle ?? AppTextStyles.h2).copyWith(
-              color: AppColors.navy,
-              fontWeight: FontWeight.w800,
+      child: ExcludeSemantics(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            PicoRadarBrandMark(size: markSize),
+            const SizedBox(width: AppSpacing.s),
+            Flexible(
+              child: Text(
+                'PicoRadar',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: (textStyle ?? AppTextStyles.h2).copyWith(
+                  color: AppColors.navy,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

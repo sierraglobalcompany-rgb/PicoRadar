@@ -27,6 +27,7 @@ class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
     _startNotifications(router);
 
     return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
       title: 'PicoRadar',
       theme: buildPicoRadarTheme(),
       routerConfig: router,

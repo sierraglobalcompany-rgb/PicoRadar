@@ -99,6 +99,12 @@ R02 Root UI Fidelity:
 - eliminate overflow and spinner-first loading where skeletons are required;
 - keep runtime behavior unchanged unless a visual defect exposes a real bug.
 
+R02A Home Owner V4:
+- `docs/design/HOME_OWNER_V4.json` and `docs/design/reference/home_owner_v4.png` are the current owner-approved Home visual authority for the R02A Home slice.
+- Home keeps brand top-left, avatar + notification inside one top-right capsule, no greeting copy and no Start Driving CTA on Home.
+- Home banner runtime ad network remains `PREPARED_NOT_INTEGRATED`: no Google Ads SDK, no real AdMob and no C25 leads in R02A.
+- Future owner decisions documented but not implemented in R02A: R02C Apps overlay, Maintenance module, Pre-trip checklist and Tips.
+
 R03 C13 Logic Integration + UI Restyle:
 - recover C13 vehicle status logic from PR #16;
 - integrate schema v4 and obligation/reminder/catalog tests;
@@ -120,7 +126,7 @@ Bloques de recuperacion:
 
 ## Estado de release
 
-No release-ready. Las razones actuales son visuales/gobernanza, no una necesidad de backend runtime: AppBottomNav no esta implementado como componente propio, el theme esta incompleto frente al baseline, Inicio no tiene CTA dominante de conduccion, "Cambiar vehiculo" no abre selector rapido H-005, Apps tiene overflow fisico en Mi A3 y los loaders usan spinners donde el baseline espera skeletons.
+No release-ready. Las razones actuales son visuales/gobernanza, no una necesidad de backend runtime: algunas superficies heredadas siguen en recuperacion visual frente al baseline, "Cambiar vehiculo" no abre selector rapido H-005, Apps tiene deuda visual fisica pendiente y los loaders heredados deben revisarse contra el criterio de skeletons. Home R02A sigue el contrato owner V4, que excluye CTA de conduccion dentro de Inicio.
 
 ## Flow 05 continuity
 

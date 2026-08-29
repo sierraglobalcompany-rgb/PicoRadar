@@ -5,6 +5,7 @@ import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
+import 'package:picoradar/features/visual_assets/data/visual_asset_preferences.dart';
 
 void main() {
   setUpAll(() {
@@ -203,6 +204,22 @@ void main() {
 
       expect(await repository.getVehicle(vehicle.id), isNull);
       expect(await repository.listVehicles(), isEmpty);
+    });
+
+    test('deleting a vehicle clears its visual override preference', () async {
+      final vehicle = await repository.createVehicle(
+        plate: 'AAA111',
+        kind: VehicleKind.car,
+      );
+      await saveVehicleVisualOverride(
+        preferences,
+        vehicle.id,
+        'veh_car_toyota_01',
+      );
+
+      await repository.deleteVehicle(vehicle.id);
+
+      expect(await loadVehicleVisualOverride(preferences, vehicle.id), isNull);
     });
 
     test('sets and gets active vehicle', () async {

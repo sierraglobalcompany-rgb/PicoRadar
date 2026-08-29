@@ -72,3 +72,44 @@ Antes de PR visual o release:
 - verificar CI si GitHub Actions esta disponible.
 
 Si GitHub Actions queda bloqueado por billing, reportar `CI_INFRA_BLOCKED_GITHUB_BILLING` sin editar workflows para evadirlo.
+
+## SOP-07 Fast Visual Development Loop
+
+Usar este flujo para cambios visuales R01+ cuando el alcance permita iterar sin tocar contratos de datos, codegen ni infraestructura.
+
+### Fast Loop Gate
+
+1. confirmar alcance y archivos autorizados;
+2. editar el minimo componente visual necesario;
+3. correr formato solo sobre los archivos Dart modificados;
+4. correr analisis o tests focalizados cuando el cambio pueda romper layout, rutas o taps;
+5. ejecutar `flutter run --flavor dev` en dispositivo/emulador disponible;
+6. iterar con hot reload/hot restart, inspeccion fisica, screenshot y comparacion contra referencia;
+7. repetir hasta que el candidato visual no tenga overflow, clipping, jerarquia rota ni tap targets dudosos.
+
+No correr `flutter test` completo, build APK completo ni `build_runner` en cada microajuste visual.
+
+### Candidate Gate
+
+Cuando el candidato visual ya parece estable:
+
+1. `flutter analyze`;
+2. tests focalizados del lote o pantalla;
+3. `flutter test`;
+4. `flutter build apk --debug --flavor dev` cuando el lote toque Android/Home/recursos/plataforma;
+5. QA visual fisica si el lote lo exige o hay dispositivo disponible;
+6. evidencia ligera con screenshot final y SHA cuando el prompt lo solicite;
+7. `git diff --check`.
+
+### Release Gate
+
+Antes de release o merge aprobado:
+
+1. verificar CI canonico si GitHub Actions esta disponible;
+2. correr gates de seguridad, privacidad, rendimiento, bateria o plataforma que correspondan al lote;
+3. generar AAB/release solo cuando el lote o release manager lo pida;
+4. confirmar que no hay secretos, artefactos pesados ni temporales dentro de Git.
+
+### Codegen Gate
+
+Antes de correr `build_runner`, revisar si cambiaron entradas de generacion: tablas Drift, rutas/anotaciones, modelos generados, assets declarados o configuracion que produzca codigo. Si no cambiaron, reportar `CODEGEN_NOT_REQUIRED` y no ejecutar codegen.

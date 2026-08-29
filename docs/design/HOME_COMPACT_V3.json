@@ -1,0 +1,138 @@
+{
+  "schema_version": "3.0",
+  "status": "R02A_FIX4_IMPLEMENTED_CONTRACT",
+  "project": "PicoRadar",
+  "store_title": "PicoRadar: Pico y Placa",
+  "date": "2026-08-29",
+  "scope": "Home V2 compact information architecture only",
+  "authority": {
+    "based_on": "docs/design/HOME_REFERENCE_V2.json",
+    "supersedes_for_home_layout_only": [
+      "normal Home greeting copy",
+      "4-card Home module grid",
+      "Home promo banner"
+    ],
+    "does_not_supersede": [
+      "security/privacy/store baseline",
+      "Cierre Global baseline",
+      "Technical Architecture baseline",
+      "brand colors",
+      "bottom navigation contract",
+      "R01 app icon contract"
+    ]
+  },
+  "home": {
+    "route": "/home",
+    "intent": "compact daily cockpit, not an Apps launcher",
+    "top_bar": {
+      "key": "home-compact-top-bar",
+      "height_dp": 56,
+      "composition": [
+        "avatar action left",
+        "PicoRadar brand lockup centered",
+        "notification bell action right"
+      ],
+      "removed_text": [
+        "¡Hola!",
+        "Así están tus vehículos hoy"
+      ],
+      "avatar_visual_size_dp": 40,
+      "avatar_tap_target_dp": 48,
+      "avatar_surface": "white circular app-bar control with subtle elevation, matching notification bell treatment",
+      "bell_tap_target_dp": 48
+    },
+    "vehicle_carousel": {
+      "key": "home-vehicle-carousel",
+      "height_dp": 236,
+      "viewport_fraction_mobile": 0.64,
+      "preserved_behavior": [
+        "PageView",
+        "side cards visible",
+        "restricted vehicle priority",
+        "focused vehicle controls lower status",
+        "dots and counter",
+        "generic vehicle assets",
+        "ColombianPlateBadge",
+        "today circulation summary"
+      ],
+      "compact_text": "vehicle primary label plus year on one line when available"
+    },
+    "tomorrow_status": {
+      "key": "home-status-tomorrow",
+      "height_dp": 54,
+      "role": "passive information strip",
+      "tap_action": false,
+      "chevron": false,
+      "ripple": false
+    },
+    "obligation_cards": {
+      "height_dp": 78,
+      "layout": "two columns on standard phone viewports",
+      "items": [
+        {
+          "key": "home-status-soat",
+          "title": "SOAT",
+          "tap_action": "/apps/module/soat?vehicleId={focusedVehicleId}",
+          "whole_card_tappable": true
+        },
+        {
+          "key": "home-status-rtm",
+          "title": "Tecnomecánica",
+          "tap_action": "/apps/module/tecnomecanica?vehicleId={focusedVehicleId}",
+          "whole_card_tappable": true
+        }
+      ],
+      "removed_from_home": [
+        "Comparendos"
+      ],
+      "comparendos_route_preserved_elsewhere": true
+    },
+    "driving_cta": {
+      "key": "home-start-driving",
+      "rendered_target_height_dp": 64,
+      "route": "/drive",
+      "preserves_focused_vehicle_promotion": true
+    },
+    "removed_surfaces": [
+      "home promo banner"
+    ],
+    "no_scroll_targets": [
+      {
+        "viewport": "390x844",
+        "text_scale": 1.0,
+        "required": "top bar, carousel, Tomorrow strip, SOAT, Tecnomecánica, driving CTA, bottom navigation visible without scrolling"
+      },
+      {
+        "viewport": "360x800",
+        "text_scale": 1.0,
+        "required": "top bar, carousel, Tomorrow strip, SOAT, Tecnomecánica, driving CTA, bottom navigation visible without scrolling"
+      }
+    ],
+    "accessibility": {
+      "text_scale_1_5_and_2_0": "scroll allowed; no overflow or clipping allowed",
+      "interactive_semantics": [
+        "avatar button",
+        "notification bell",
+        "SOAT card",
+        "Tecnomecánica card",
+        "driving CTA"
+      ]
+    }
+  },
+  "r03_visual_debt": [
+    "SOAT detail surface visual fidelity",
+    "Tecnomecánica detail surface visual fidelity",
+    "other C13 module surfaces outside Home"
+  ],
+  "out_of_scope": [
+    "R02B",
+    "R02C",
+    "R02D",
+    "R03",
+    "C14",
+    "backend implementation",
+    "Driving engine",
+    "asset processing",
+    "codex/tools/audit_motos_coverage.ps1"
+  ]
+}
