@@ -86,7 +86,7 @@ class _StatusGrid extends ConsumerWidget {
                 for (final card in cards)
                   SizedBox(
                     width: width,
-                    height: twoColumns ? 78 : null,
+                    height: twoColumns ? 72 : null,
                     child: card,
                   ),
               ],
@@ -123,7 +123,7 @@ class _TomorrowStatusStrip extends StatelessWidget {
             ).toString(),
           ),
           child: Container(
-            constraints: const BoxConstraints(minHeight: 54),
+            constraints: const BoxConstraints(minHeight: 50),
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.m,
               vertical: AppSpacing.s,

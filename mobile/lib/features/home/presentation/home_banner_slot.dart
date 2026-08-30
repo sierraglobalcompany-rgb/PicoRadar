@@ -32,7 +32,7 @@ class _HomeBottomBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final target = safeHomeBannerUri(campaign);
     final scale = MediaQuery.textScalerOf(context).scale(1);
-    final minHeight = scale >= 1.8 ? 140.0 : (scale >= 1.4 ? 124.0 : 108.0);
+    final minHeight = scale >= 1.8 ? 140.0 : (scale >= 1.4 ? 124.0 : 96.0);
     return Semantics(
       button: target != null,
       label: '${campaign.label}, ${campaign.title}',

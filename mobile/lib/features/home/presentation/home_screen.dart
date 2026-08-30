@@ -15,6 +15,8 @@ import '../../../core/design_system/branding.dart';
 import '../../../core/design_system/surfaces.dart';
 import '../../garage/data/vehicle_profile.dart';
 import '../../garage/presentation/vehicle_display.dart';
+import '../../location/application/location_controller.dart';
+import '../../location/data/location_preferences.dart';
 import '../data/home_banner_config.dart';
 import '../../pico_placa/data/pico_preferences.dart';
 import '../../pico_placa/data/restriction_store.dart';
@@ -263,10 +265,15 @@ class _HomeReady extends ConsumerStatefulWidget {
 class _HomeReadyState extends ConsumerState<_HomeReady> {
   late int _focusedIndex;
   late PageController _controller;
+  final _lifecycleObserver = _HomeLocationLifecycleObserver();
 
   @override
   void initState() {
     super.initState();
+    _lifecycleObserver.onResume = () {
+      ref.read(locationStateProvider.notifier).refreshGpsIfDue();
+    };
+    WidgetsBinding.instance.addObserver(_lifecycleObserver);
     _focusedIndex = pickInitialHomeVehicleIndex(
       snapshots: widget.snapshots,
       activeVehicleId: widget.activeVehicleId,
@@ -276,6 +283,11 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
       initialPage: _focusedIndex,
       viewportFraction: _homeCarouselViewportFraction,
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(locationStateProvider.notifier).refreshGpsIfDue();
+      }
+    });
   }
 
   @override
@@ -300,6 +312,7 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(_lifecycleObserver);
     _controller.dispose();
     super.dispose();
   }
@@ -333,9 +346,9 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
           key: const ValueKey('home-v2-scroll'),
           padding: EdgeInsets.fromLTRB(
             horizontalPadding,
-            AppSpacing.s,
+            AppSpacing.xs,
             horizontalPadding,
-            AppSpacing.s,
+            0,
           ),
           child: Align(
             alignment: Alignment.topCenter,
@@ -345,14 +358,19 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _HomeHeader(alertPreferences: widget.alertPreferences),
-                  const SizedBox(height: AppSpacing.s),
+                  const SizedBox(height: AppSpacing.xs),
+                  _HomeLocationCard(
+                    jurisdictions: widget.jurisdictions,
+                    selectedJurisdiction: widget.selectedJurisdiction,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
                   _VehicleCarousel(
                     controller: _controller,
                     snapshots: widget.snapshots,
                     focusedIndex: _focusedIndex,
                     onChanged: _setFocusedIndex,
                   ),
-                  const SizedBox(height: AppSpacing.s),
+                  const SizedBox(height: AppSpacing.xs),
                   _CarouselIndicator(
                     count: widget.snapshots.length,
                     index: _focusedIndex,
@@ -364,9 +382,9 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
                       jurisdictions: widget.jurisdictions,
                     ),
                   ],
-                  const SizedBox(height: AppSpacing.s),
+                  const SizedBox(height: AppSpacing.xs),
                   _FocusedStatusGrid(snapshot: focused),
-                  const SizedBox(height: AppSpacing.s),
+                  const SizedBox(height: AppSpacing.xs),
                   const HomeBannerSlot(),
                 ],
               ),
@@ -375,6 +393,17 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
         );
       },
     );
+  }
+}
+
+class _HomeLocationLifecycleObserver extends WidgetsBindingObserver {
+  VoidCallback? onResume;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      onResume?.call();
+    }
   }
 }
 
@@ -441,7 +470,7 @@ class _NoCityCard extends ConsumerWidget {
                   label: 'Seleccionar ciudad',
                   icon: Icons.keyboard_arrow_down_rounded,
                   onPressed: () =>
-                      _showJurisdictionSheet(context, ref, jurisdictions),
+                      _showLocationSettingsSheet(context, jurisdictions),
                 ),
               ],
             ),
@@ -450,6 +479,184 @@ class _NoCityCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _HomeLocationCard extends ConsumerWidget {
+  const _HomeLocationCard({
+    required this.jurisdictions,
+    required this.selectedJurisdiction,
+  });
+
+  final List<RestrictionJurisdiction> jurisdictions;
+  final RestrictionJurisdiction? selectedJurisdiction;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locationState = ref.watch(locationStateProvider);
+    final state = locationState.asData?.value;
+    final city = _locationCityName(
+      jurisdictions,
+      state?.effectiveJurisdictionId,
+      selectedJurisdiction,
+    );
+    final mode = state?.mode ?? LocationMode.manual;
+    final status = state?.refreshStatus ?? LocationRefreshStatus.idle;
+    final refreshing =
+        locationState.isLoading || status == LocationRefreshStatus.refreshing;
+    final rightLabel = _locationActionLabel(mode, status, city);
+    final rightIcon = mode == LocationMode.gpsAuto
+        ? Icons.gps_fixed_rounded
+        : Icons.my_location_rounded;
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final compactText = textScale >= 1.4;
+    final iconSize = compactText ? 22.0 : 24.0;
+    final height = compactText ? 64.0 : 54.0;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = _locationCardWidth(
+          screenWidth: screenWidth,
+          availableWidth: constraints.maxWidth,
+        );
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: ConstrainedBox(
+            constraints: BoxConstraints.tightFor(width: cardWidth),
+            child: Semantics(
+              button: true,
+              label: 'Ubicación ${city ?? 'sin ciudad'}',
+              child: Material(
+                color: AppColors.surface,
+                elevation: 3,
+                shadowColor: AppColors.navy.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppRadius.card),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  key: const ValueKey('home-location-card'),
+                  onTap: () =>
+                      _showLocationSettingsSheet(context, jurisdictions),
+                  child: Container(
+                    height: height,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.m,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(AppRadius.card),
+                      border: Border.all(
+                        color: AppColors.border.withValues(alpha: 0.72),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.location_on_outlined,
+                          color: AppColors.navy,
+                          size: iconSize,
+                        ),
+                        SizedBox(
+                          width: compactText ? AppSpacing.s : AppSpacing.m,
+                        ),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (!compactText) ...[
+                                Text(
+                                  'Ubicación',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: AppColors.navy.withValues(
+                                      alpha: 0.72,
+                                    ),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                              Text(
+                                city ?? 'Sin ciudad',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.bodyStrong.copyWith(
+                                  color: AppColors.navy,
+                                  fontSize: compactText ? 15 : 15.5,
+                                  height: 1.05,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          width: 1,
+                          height: compactText ? 32 : 30,
+                          color: AppColors.border,
+                          margin: EdgeInsets.symmetric(
+                            horizontal: compactText
+                                ? AppSpacing.s
+                                : AppSpacing.m,
+                          ),
+                        ),
+                        if (refreshing)
+                          const SizedBox.square(
+                            dimension: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2.2),
+                          )
+                        else ...[
+                          if (!compactText) ...[
+                            Flexible(
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    rightLabel,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.visible,
+                                    style: AppTextStyles.bodyStrong.copyWith(
+                                      color: mode == LocationMode.gpsAuto
+                                          ? AppColors.teal
+                                          : AppColors.navy,
+                                      fontSize: 13.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.s),
+                          ],
+                          Icon(
+                            rightIcon,
+                            color: mode == LocationMode.gpsAuto
+                                ? AppColors.teal
+                                : AppColors.navy,
+                            size: compactText ? 20 : 21,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+double _locationCardWidth({
+  required double screenWidth,
+  required double availableWidth,
+}) {
+  final targetWidth = switch (screenWidth) {
+    < 380 => 244.0,
+    < 400 => 258.0,
+    _ => 266.0,
+  };
+  return math.min(targetWidth, availableWidth);
 }
 
 class _HomeEmpty extends StatelessWidget {
@@ -684,15 +891,37 @@ VehicleObligation? _obligationOfType(
   return null;
 }
 
-Future<void> _showJurisdictionSheet(
+Future<void> _showLocationSettingsSheet(
   BuildContext context,
-  WidgetRef ref,
   List<RestrictionJurisdiction> jurisdictions,
 ) {
   return showModalBottomSheet<void>(
     context: context,
+    isScrollControlled: true,
     showDragHandle: true,
-    builder: (context) => SafeArea(
+    builder: (context) => _LocationSettingsSheet(jurisdictions: jurisdictions),
+  );
+}
+
+class _LocationSettingsSheet extends ConsumerWidget {
+  const _LocationSettingsSheet({required this.jurisdictions});
+
+  final List<RestrictionJurisdiction> jurisdictions;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locationState = ref.watch(locationStateProvider);
+    final state = locationState.asData?.value;
+    final effectiveJurisdiction = _jurisdictionById(
+      jurisdictions,
+      state?.effectiveJurisdictionId,
+    );
+    final mode = state?.mode ?? LocationMode.manual;
+    final status = state?.refreshStatus ?? LocationRefreshStatus.idle;
+    final isRefreshing =
+        locationState.isLoading || status == LocationRefreshStatus.refreshing;
+
+    return SafeArea(
       top: false,
       child: ListView(
         shrinkWrap: true,
@@ -703,26 +932,345 @@ Future<void> _showJurisdictionSheet(
           AppSpacing.xl,
         ),
         children: [
-          Text('¿Dónde vas a conducir?', style: AppTextStyles.h1),
+          Text('Ubicación', style: AppTextStyles.h1),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Elige cómo PicoRadar determina la ciudad para tus restricciones.',
+            style: AppTextStyles.caption,
+          ),
+          const SizedBox(height: AppSpacing.l),
+          _LocationModeTile(
+            keyName: 'location-gps-auto-option',
+            selected: mode == LocationMode.gpsAuto,
+            title: 'Automática por GPS',
+            description: 'PicoRadar actualizará tu ciudad al abrir la app o cuando lo solicites.',
+            icon: Icons.gps_fixed_rounded,
+            trailing: isRefreshing
+                ? const SizedBox.square(
+                    dimension: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.4),
+                  )
+                : null,
+            onTap: isRefreshing
+                ? null
+                : () async {
+                    final result = await ref
+                        .read(locationStateProvider.notifier)
+                        .enableGpsAuto();
+                    if (context.mounted &&
+                        result == LocationRefreshStatus.detected) {
+                      Navigator.of(context).maybePop();
+                    }
+                  },
+          ),
+          const SizedBox(height: AppSpacing.s),
+          _LocationFeedback(
+            status: status,
+            effectiveJurisdiction: effectiveJurisdiction,
+            lastGpsRefreshAt: state?.lastGpsRefreshAt,
+            onRetry: isRefreshing
+                ? null
+                : () => ref
+                      .read(locationStateProvider.notifier)
+                      .refreshGps(requestPermission: true, force: true),
+            onOpenAppSettings: () =>
+                ref.read(locationStateProvider.notifier).openAppSettings(),
+            onOpenLocationSettings: () =>
+                ref.read(locationStateProvider.notifier).openLocationSettings(),
+          ),
           const SizedBox(height: AppSpacing.m),
-          for (final jurisdiction in jurisdictions)
-            ListTile(
-              key: ValueKey('jurisdiction-${jurisdiction.id}'),
-              title: Text(jurisdiction.name),
+          Text('Manual', style: AppTextStyles.bodyStrong),
+          const SizedBox(height: AppSpacing.s),
+          for (final jurisdiction in [
+            ...jurisdictions,
+          ]..sort((a, b) => a.name.compareTo(b.name)))
+            _ManualJurisdictionTile(
+              jurisdiction: jurisdiction,
+              selected:
+                  mode == LocationMode.manual &&
+                  jurisdiction.id == state?.effectiveJurisdictionId,
               onTap: () async {
                 await ref
-                    .read(appPreferencesProvider)
-                    .setString(picoJurisdictionPreferenceKey, jurisdiction.id);
-                ref.invalidate(selectedPicoJurisdictionIdProvider);
+                    .read(locationStateProvider.notifier)
+                    .selectManual(jurisdiction);
                 if (context.mounted) {
-                  context.pop();
+                  Navigator.of(context).maybePop();
                 }
               },
             ),
         ],
       ),
-    ),
-  );
+    );
+  }
+}
+
+class _LocationModeTile extends StatelessWidget {
+  const _LocationModeTile({
+    required this.keyName,
+    required this.selected,
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.onTap,
+    this.trailing,
+  });
+
+  final String keyName;
+  final bool selected;
+  final String title;
+  final String description;
+  final IconData icon;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected
+          ? AppColors.teal.withValues(alpha: 0.08)
+          : AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: ValueKey(keyName),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.m),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(
+              color: selected ? AppColors.teal : AppColors.border,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: selected ? AppColors.teal : AppColors.navy),
+              const SizedBox(width: AppSpacing.m),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: AppTextStyles.bodyStrong),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(description, style: AppTextStyles.caption),
+                  ],
+                ),
+              ),
+              trailing ??
+                  Icon(
+                    selected
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    color: selected
+                        ? AppColors.teal
+                        : AppColors.navy.withValues(alpha: 0.36),
+                  ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ManualJurisdictionTile extends StatelessWidget {
+  const _ManualJurisdictionTile({
+    required this.jurisdiction,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final RestrictionJurisdiction jurisdiction;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      key: ValueKey('jurisdiction-${jurisdiction.id}'),
+      leading: const Icon(Icons.location_city_outlined),
+      title: Text(_displayJurisdictionName(jurisdiction)),
+      trailing: Icon(
+        selected
+            ? Icons.check_circle_rounded
+            : Icons.radio_button_unchecked_rounded,
+        color: selected
+            ? AppColors.teal
+            : AppColors.navy.withValues(alpha: 0.36),
+      ),
+      onTap: onTap,
+    );
+  }
+}
+
+class _LocationFeedback extends StatelessWidget {
+  const _LocationFeedback({
+    required this.status,
+    required this.effectiveJurisdiction,
+    required this.lastGpsRefreshAt,
+    required this.onRetry,
+    required this.onOpenAppSettings,
+    required this.onOpenLocationSettings,
+  });
+
+  final LocationRefreshStatus status;
+  final RestrictionJurisdiction? effectiveJurisdiction;
+  final DateTime? lastGpsRefreshAt;
+  final VoidCallback? onRetry;
+  final VoidCallback onOpenAppSettings;
+  final VoidCallback onOpenLocationSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final message = _locationFeedbackMessage(
+      status,
+      effectiveJurisdiction,
+      lastGpsRefreshAt,
+    );
+    if (message == null) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      key: const ValueKey('location-feedback'),
+      padding: const EdgeInsets.all(AppSpacing.m),
+      decoration: BoxDecoration(
+        color: _locationFeedbackColor(status).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadius.input),
+        border: Border.all(
+          color: _locationFeedbackColor(status).withValues(alpha: 0.24),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(message, style: AppTextStyles.caption),
+          if (_showsRetry(status) || _showsAppSettings(status)) ...[
+            const SizedBox(height: AppSpacing.s),
+            Wrap(
+              spacing: AppSpacing.s,
+              runSpacing: AppSpacing.s,
+              children: [
+                if (_showsRetry(status))
+                  SecondaryButton(
+                    key: const ValueKey('location-retry-gps'),
+                    label: 'Reintentar',
+                    icon: Icons.refresh_rounded,
+                    onPressed: onRetry,
+                  ),
+                if (status == LocationRefreshStatus.serviceDisabled)
+                  SecondaryButton(
+                    key: const ValueKey('location-open-location-settings'),
+                    label: 'Abrir ajustes',
+                    icon: Icons.settings_outlined,
+                    onPressed: onOpenLocationSettings,
+                  ),
+                if (_showsAppSettings(status))
+                  SecondaryButton(
+                    key: const ValueKey('location-open-app-settings'),
+                    label: 'Abrir configuración',
+                    icon: Icons.settings_outlined,
+                    onPressed: onOpenAppSettings,
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+String? _locationCityName(
+  List<RestrictionJurisdiction> jurisdictions,
+  String? effectiveJurisdictionId,
+  RestrictionJurisdiction? selectedJurisdiction,
+) {
+  final jurisdiction =
+      _jurisdictionById(jurisdictions, effectiveJurisdictionId) ??
+      selectedJurisdiction;
+  return jurisdiction == null ? null : _displayJurisdictionName(jurisdiction);
+}
+
+RestrictionJurisdiction? _jurisdictionById(
+  List<RestrictionJurisdiction> jurisdictions,
+  String? jurisdictionId,
+) {
+  if (jurisdictionId == null) {
+    return null;
+  }
+  for (final jurisdiction in jurisdictions) {
+    if (jurisdiction.id == jurisdictionId) {
+      return jurisdiction;
+    }
+  }
+  return null;
+}
+
+String _displayJurisdictionName(RestrictionJurisdiction jurisdiction) {
+  return switch (jurisdiction.id) {
+    'co-dc-bogota' => 'Bogotá',
+    'co-ant-medellin' => 'Medellín',
+    _ => jurisdiction.name,
+  };
+}
+
+String _locationActionLabel(
+  LocationMode mode,
+  LocationRefreshStatus status,
+  String? city,
+) {
+  if (status == LocationRefreshStatus.refreshing) {
+    return 'Detectando';
+  }
+  if (mode == LocationMode.gpsAuto) {
+    return city == null ? 'Reintentar' : 'GPS activo';
+  }
+  return 'Usar GPS';
+}
+
+String? _locationFeedbackMessage(
+  LocationRefreshStatus status,
+  RestrictionJurisdiction? effectiveJurisdiction,
+  DateTime? lastGpsRefreshAt,
+) {
+  return switch (status) {
+    LocationRefreshStatus.idle => null,
+    LocationRefreshStatus.refreshing => 'Detectando ubicación...',
+    LocationRefreshStatus.detected =>
+      'GPS activo en ${effectiveJurisdiction == null ? 'tu ciudad' : _displayJurisdictionName(effectiveJurisdiction)}.',
+    LocationRefreshStatus.outsideCoverage => 'Ubicación detectada fuera de cobertura. Puedes elegir ciudad manualmente.',
+    LocationRefreshStatus.permissionDenied => 'No hay permiso de ubicación. Puedes reintentar o elegir ciudad manualmente.',
+    LocationRefreshStatus.permissionDeniedForever => 'Ubicación desactivada para PicoRadar. Puedes abrir la configuración del sistema o seleccionar ciudad manualmente.',
+    LocationRefreshStatus.serviceDisabled =>
+      'La ubicación del dispositivo está desactivada.',
+    LocationRefreshStatus.positionUnavailable => 'No se pudo actualizar. Conservamos la última ciudad válida cuando existe.',
+  };
+}
+
+Color _locationFeedbackColor(LocationRefreshStatus status) {
+  return switch (status) {
+    LocationRefreshStatus.detected => AppColors.teal,
+    LocationRefreshStatus.permissionDenied ||
+    LocationRefreshStatus.permissionDeniedForever ||
+    LocationRefreshStatus.serviceDisabled ||
+    LocationRefreshStatus.positionUnavailable ||
+    LocationRefreshStatus.outsideCoverage => AppColors.orange,
+    LocationRefreshStatus.idle ||
+    LocationRefreshStatus.refreshing => AppColors.blue,
+  };
+}
+
+bool _showsRetry(LocationRefreshStatus status) {
+  return switch (status) {
+    LocationRefreshStatus.permissionDenied ||
+    LocationRefreshStatus.outsideCoverage ||
+    LocationRefreshStatus.positionUnavailable => true,
+    _ => false,
+  };
+}
+
+bool _showsAppSettings(LocationRefreshStatus status) {
+  return status == LocationRefreshStatus.permissionDeniedForever;
 }
 
 RestrictionJurisdiction? _suggestedJurisdiction(

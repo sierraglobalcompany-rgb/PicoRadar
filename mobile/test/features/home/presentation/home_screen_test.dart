@@ -13,6 +13,9 @@ import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/presentation/vehicle_detail_screen.dart';
 import 'package:picoradar/features/home/presentation/home_screen.dart';
+import 'package:picoradar/features/location/application/location_controller.dart';
+import 'package:picoradar/features/location/data/location_preferences.dart';
+import 'package:picoradar/features/location/platform/device_location_gateway.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_store.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.dart';
@@ -60,6 +63,154 @@ void main() {
       expect(find.text('Selecciona dónde vas a conducir'), findsOneWidget);
       expect(find.text('Sin confirmar'), findsWidgets);
       expect(find.text('Puede circular'), findsNothing);
+    });
+
+    testWidgets('location card is compact and does not prompt on startup', (
+      tester,
+    ) async {
+      final gateway = _FakeDeviceLocationGateway()
+        ..permission = DeviceLocationPermission.notRequested;
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-dc-bogota',
+      );
+
+      await _pumpHome(tester, harness, deviceLocationGateway: gateway);
+
+      final locationCard = find.byKey(const ValueKey('home-location-card'));
+      expect(locationCard, findsOneWidget);
+      expect(find.text('Ubicación'), findsOneWidget);
+      expect(find.text('Bogotá'), findsOneWidget);
+      final locationSize = tester.getSize(locationCard);
+      expect(locationSize.height, 54);
+      expect(locationSize.width, lessThan(390 * 0.72));
+      expect(locationSize.width, greaterThan(390 * 0.60));
+      expect(
+        tester.getTopLeft(locationCard).dy,
+        lessThan(
+          tester
+              .getTopLeft(find.byKey(const ValueKey('home-vehicle-carousel')))
+              .dy,
+        ),
+      );
+      expect(gateway.checkPermissionCalls, 0);
+      expect(gateway.requestPermissionCalls, 0);
+      expect(gateway.positionCalls, 0);
+    });
+
+    testWidgets('location card stays compact at small phone width', (
+      tester,
+    ) async {
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-dc-bogota',
+      );
+
+      await _pumpHome(tester, harness, viewportSize: const Size(360, 800));
+
+      final locationSize = tester.getSize(
+        find.byKey(const ValueKey('home-location-card')),
+      );
+      expect(locationSize.height, 54);
+      expect(locationSize.width, lessThan(360 * 0.72));
+      expect(locationSize.width, greaterThan(360 * 0.60));
+    });
+
+    testWidgets('location sheet switches manual jurisdiction from Home', (
+      tester,
+    ) async {
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-ant-medellin',
+      );
+      await _pumpHome(tester, harness);
+
+      await tester.tap(find.byKey(const ValueKey('home-location-card')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('jurisdiction-co-dc-bogota')));
+      await tester.pumpAndSettle();
+
+      expect(
+        await harness.preferences.getString(picoJurisdictionPreferenceKey),
+        'co-dc-bogota',
+      );
+      expect(
+        await harness.preferences.getString(locationModePreferenceKey),
+        'manual',
+      );
+    });
+
+    testWidgets('location sheet GPS auto does one-shot foreground detection', (
+      tester,
+    ) async {
+      final gateway = _FakeDeviceLocationGateway()
+        ..permission = DeviceLocationPermission.granted
+        ..point = const DeviceLocationPoint(
+          latitude: 4.7110,
+          longitude: -74.0721,
+          accuracyMeters: 80,
+        );
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-ant-medellin',
+      );
+      await _pumpHome(tester, harness, deviceLocationGateway: gateway);
+
+      await tester.tap(find.byKey(const ValueKey('home-location-card')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('location-gps-auto-option')));
+      await tester.pumpAndSettle();
+
+      expect(gateway.requestPermissionCalls, 0);
+      expect(gateway.positionCalls, 1);
+      expect(
+        await harness.preferences.getString(picoJurisdictionPreferenceKey),
+        'co-dc-bogota',
+      );
+      expect(
+        await harness.preferences.getString(locationModePreferenceKey),
+        'gpsAuto',
+      );
+      final gpsCardSize = tester.getSize(
+        find.byKey(const ValueKey('home-location-card')),
+      );
+      expect(gpsCardSize.height, 54);
+      expect(gpsCardSize.width, lessThan(390 * 0.72));
+      expect(find.text('GPS activo'), findsOneWidget);
+    });
+
+    testWidgets('resume TTL refresh does not request permission implicitly', (
+      tester,
+    ) async {
+      final gateway = _FakeDeviceLocationGateway()
+        ..permission = DeviceLocationPermission.granted
+        ..point = const DeviceLocationPoint(
+          latitude: 4.7110,
+          longitude: -74.0721,
+          accuracyMeters: 80,
+        );
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-ant-medellin',
+      );
+      await harness.preferences.setString(
+        locationModePreferenceKey,
+        LocationMode.gpsAuto.value,
+      );
+
+      await _pumpHome(tester, harness, deviceLocationGateway: gateway);
+
+      expect(gateway.requestPermissionCalls, 0);
+      expect(gateway.positionCalls, 1);
+      expect(
+        await harness.preferences.getString(picoJurisdictionPreferenceKey),
+        'co-dc-bogota',
+      );
     });
 
     testWidgets('one vehicle hides the counter and renders the status grid', (
@@ -1098,6 +1249,7 @@ Future<void> _pumpHome(
   double? textScaleFactor,
   Widget? bottomNavigationBar,
   Widget Function(Widget child)? wrap,
+  DeviceLocationGateway? deviceLocationGateway,
 }) async {
   await _pump(
     tester,
@@ -1109,6 +1261,7 @@ Future<void> _pumpHome(
     viewportSize: viewportSize,
     textScaleFactor: textScaleFactor,
     wrap: wrap,
+    deviceLocationGateway: deviceLocationGateway,
   );
 }
 
@@ -1196,18 +1349,27 @@ Future<void> _pump(
   Size viewportSize = _defaultViewportSize,
   double? textScaleFactor,
   Widget Function(Widget child)? wrap,
+  DeviceLocationGateway? deviceLocationGateway,
 }) async {
   await _installWidgetChannelMock(tester, harness, viewportSize: viewportSize);
   if (textScaleFactor != null) {
     tester.platformDispatcher.textScaleFactorTestValue = textScaleFactor;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
   }
-  final app = _providerScope(harness, child: MaterialApp(home: child));
+  final app = _providerScope(
+    harness,
+    child: MaterialApp(home: child),
+    deviceLocationGateway: deviceLocationGateway,
+  );
   await tester.pumpWidget(wrap == null ? app : wrap(app));
   await _pumpAsyncHome(tester);
 }
 
-Widget _providerScope(TestAppHarness harness, {required Widget child}) {
+Widget _providerScope(
+  TestAppHarness harness, {
+  required Widget child,
+  DeviceLocationGateway? deviceLocationGateway,
+}) {
   return ProviderScope(
     overrides: [
       appDatabaseProvider.overrideWithValue(harness.database),
@@ -1224,6 +1386,9 @@ Widget _providerScope(TestAppHarness harness, {required Widget child}) {
       ),
       bogotaNowProvider.overrideWithValue(harness.now),
       currentInstantProvider.overrideWithValue(harness.now.toUtc()),
+      deviceLocationGatewayProvider.overrideWithValue(
+        deviceLocationGateway ?? _FakeDeviceLocationGateway(),
+      ),
       avatarCatalogProvider.overrideWith(
         (ref) async => AvatarCatalog.fromJson(
           jsonDecode(File(avatarCatalogAssetPath).readAsStringSync())
@@ -1536,4 +1701,55 @@ class _FakePicoNotificationScheduler extends PicoNotificationScheduler {
 
   @override
   Future<void> cancelObligationNotifications() async {}
+}
+
+class _FakeDeviceLocationGateway implements DeviceLocationGateway {
+  bool serviceEnabled = true;
+  DeviceLocationPermission permission = DeviceLocationPermission.granted;
+  DeviceLocationPermission? permissionAfterRequest;
+  DeviceLocationResult? positionResult;
+  DeviceLocationPoint point = const DeviceLocationPoint(
+    latitude: 6.2442,
+    longitude: -75.5812,
+    accuracyMeters: 60,
+  );
+  int checkPermissionCalls = 0;
+  int requestPermissionCalls = 0;
+  int positionCalls = 0;
+  int openAppSettingsCalls = 0;
+  int openLocationSettingsCalls = 0;
+
+  @override
+  Future<bool> isLocationServiceEnabled() async => serviceEnabled;
+
+  @override
+  Future<DeviceLocationPermission> checkPermission() async {
+    checkPermissionCalls += 1;
+    return permission;
+  }
+
+  @override
+  Future<DeviceLocationPermission> requestPermission() async {
+    requestPermissionCalls += 1;
+    permission = permissionAfterRequest ?? permission;
+    return permission;
+  }
+
+  @override
+  Future<DeviceLocationResult> getCurrentPosition() async {
+    positionCalls += 1;
+    return positionResult ?? DeviceLocationSuccess(point);
+  }
+
+  @override
+  Future<bool> openAppSettings() async {
+    openAppSettingsCalls += 1;
+    return true;
+  }
+
+  @override
+  Future<bool> openLocationSettings() async {
+    openLocationSettingsCalls += 1;
+    return true;
+  }
 }
