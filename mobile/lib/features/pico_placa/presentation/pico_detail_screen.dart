@@ -10,8 +10,10 @@ import '../../../core/design_system/branding.dart';
 import '../../../core/design_system/surfaces.dart';
 import '../../garage/data/vehicle_profile.dart';
 import '../../garage/presentation/vehicle_display.dart';
+import '../../home/presentation/pico_notification_sheet.dart';
 import '../../location/application/location_controller.dart';
 import '../../visual_assets/presentation/visual_asset_widgets.dart';
+import '../data/pico_preferences.dart';
 import '../data/restriction_store.dart';
 import '../domain/city_restriction_summary.dart';
 import '../domain/restriction_day_evaluation.dart';
@@ -111,6 +113,12 @@ class _PersonalPicoView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final now = ref.watch(bogotaNowProvider);
+    final alertPreferences = ref
+        .watch(picoAlertPreferencesProvider)
+        .maybeWhen(
+          data: (value) => value,
+          orElse: () => _defaultAlertPreferences,
+        );
     return FutureBuilder<RestrictionRuleSet>(
       future: ref
           .read(restrictionStoreProvider)
@@ -153,71 +161,29 @@ class _PersonalPicoView extends ConsumerWidget {
             AppSpacing.xl,
           ),
           children: [
-            _PicoTopBar(title: 'MI PICO Y PLACA'),
+            _PersonalPicoHeader(alertPreferences: alertPreferences),
             const SizedBox(height: AppSpacing.m),
             _SourceStrip(jurisdiction: jurisdiction, ruleSet: ruleSet),
             const SizedBox(height: AppSpacing.m),
-            _PersonalHero(vehicle: vehicle),
-            const SizedBox(height: AppSpacing.m),
-            _TodayStatusCard(
-              title: 'Pico y placa hoy',
-              status: today.status,
-              main: _statusText(today.status),
-              detail: _windowsOrControlled(today),
-              chips: [
-                _InfoChipData('Ciudad', jurisdiction.name),
-                _InfoChipData('Regla', plateBasisLabel(ruleSet, vehicle)),
-                _InfoChipData('Mañana', _statusText(tomorrow.status)),
-              ],
+            _PersonalHero(
+              vehicle: vehicle,
+              jurisdiction: jurisdiction,
+              ruleSet: ruleSet,
+              today: today,
+              tomorrow: tomorrow,
             ),
             const SizedBox(height: AppSpacing.m),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxWidth < 380;
-                final children = [
-                  _MiniFactCard(
-                    title: 'Estado inmediato',
-                    value: _immediateText(today),
-                    icon: _statusIcon(today.status),
-                    color: _statusColor(today.status),
-                  ),
-                  _MiniFactCard(
-                    title: 'Próxima restricción',
-                    value: nextRestriction == null
-                        ? 'Sin restricción verificada en 30 días'
-                        : '${_weekday(nextRestriction.date)} ${nextRestriction.date.day} · ${_windowsOrControlled(nextRestriction.evaluation)}',
-                    icon: Icons.event_note_rounded,
-                    color: AppColors.blue,
-                  ),
-                ];
-                if (compact) {
-                  return Column(
-                    children: [
-                      children[0],
-                      const SizedBox(height: AppSpacing.s),
-                      children[1],
-                    ],
-                  );
-                }
-                return Row(
-                  children: [
-                    Expanded(child: children[0]),
-                    const SizedBox(width: AppSpacing.s),
-                    Expanded(child: children[1]),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: AppSpacing.m),
-            _PersonalCalendar(
+            _PersonalLowerModule(
+              today: today,
+              nextRestriction: nextRestriction,
+              jurisdiction: jurisdiction,
+              ruleSet: ruleSet,
               days: futureDays,
               evaluations: [
                 for (final day in futureDays)
                   _evaluate(ruleSet, jurisdiction, vehicle, day),
               ],
             ),
-            const SizedBox(height: AppSpacing.m),
-            _SourceCard(ruleSet: ruleSet),
           ],
         );
       },
@@ -288,11 +254,12 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
             AppSpacing.xl,
           ),
           children: [
-            _PicoTopBar(title: 'Pico y placa de la ciudad'),
+            const _CityPicoHeader(),
             const SizedBox(height: AppSpacing.m),
-            _CitySelectorCard(
+            _CityTopControls(
               jurisdiction: jurisdiction,
               isTransient: isTransient,
+              ruleSet: currentCoverage.ruleSet,
               onSelect: () => _showCitySelector(context),
               onAdopt: isTransient ? () => _adoptCity(jurisdiction) : null,
             ),
@@ -309,6 +276,7 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
               jurisdiction: jurisdiction,
               coverage: currentCoverage,
               weekStart: _weekStart(now),
+              currentDate: now,
             ),
             const SizedBox(height: AppSpacing.m),
             FutureBuilder<List<_VehicleShortcutData>>(
@@ -377,51 +345,193 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
   }
 }
 
-class _PicoTopBar extends StatelessWidget {
-  const _PicoTopBar({required this.title});
+class _PersonalPicoHeader extends StatelessWidget {
+  const _PersonalPicoHeader({required this.alertPreferences});
 
-  final String title;
+  final PicoAlertPreferences alertPreferences;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      key: const ValueKey('pico-personal-header'),
       children: [
-        Row(
-          children: [
-            IconButton(
-              tooltip: 'Volver',
-              onPressed: () {
-                if (context.canPop()) {
-                  context.pop();
-                } else {
-                  context.go(AppRoute.home.path);
-                }
-              },
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Expanded(
-              child: PicoRadarBrandLockup(
-                markSize: 30,
-                textStyle: AppTextStyles.bodyStrong,
-              ),
-            ),
-            const HomeAvatarButton(embedded: true, visualSize: 34),
-            IconButton(
-              tooltip: 'Alertas',
-              onPressed: () {},
-              icon: const Icon(Icons.notifications_none_rounded),
-            ),
-          ],
+        _BackIconButton(onPressed: () => _goBack(context)),
+        const SizedBox(width: AppSpacing.s),
+        const Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: PicoRadarBrandLockup(markSize: 32),
+          ),
         ),
-        Padding(
-          padding: const EdgeInsets.only(left: AppSpacing.s),
-          child: Text(title, style: AppTextStyles.h2),
-        ),
+        const SizedBox(width: AppSpacing.s),
+        _PicoUserControls(alertPreferences: alertPreferences),
       ],
     );
   }
+}
+
+class _CityPicoHeader extends StatelessWidget {
+  const _CityPicoHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      key: const ValueKey('pico-city-header'),
+      height: 56,
+      child: Row(
+        children: [
+          _BackIconButton(onPressed: () => _goBack(context)),
+          Expanded(
+            child: Text(
+              'Pico y placa de la ciudad',
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.h2.copyWith(color: AppColors.teal),
+            ),
+          ),
+          IconButton(
+            key: const ValueKey('pico-city-info'),
+            tooltip: 'Información',
+            onPressed: () => _showCityInfo(context),
+            icon: const Icon(Icons.info_outline_rounded, color: AppColors.navy),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BackIconButton extends StatelessWidget {
+  const _BackIconButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      shape: const CircleBorder(),
+      elevation: 1,
+      child: IconButton(
+        tooltip: 'Volver',
+        onPressed: onPressed,
+        icon: const Icon(Icons.arrow_back_rounded, color: AppColors.navy),
+      ),
+    );
+  }
+}
+
+class _PicoUserControls extends StatelessWidget {
+  const _PicoUserControls({required this.alertPreferences});
+
+  final PicoAlertPreferences alertPreferences;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      elevation: 3,
+      shadowColor: AppColors.navy.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: 52,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const HomeAvatarButton(embedded: true, visualSize: 40),
+            Container(
+              width: 1,
+              height: 28,
+              color: AppColors.border.withValues(alpha: 0.72),
+            ),
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: IconButton(
+                key: const ValueKey('pico-notification-bell'),
+                tooltip: 'Alertas',
+                onPressed: () => showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  showDragHandle: true,
+                  builder: (context) =>
+                      PicoNotificationSheet(alertPreferences: alertPreferences),
+                ),
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(
+                      Icons.notifications_none_rounded,
+                      color: AppColors.navy,
+                    ),
+                    if (alertPreferences.permissionGranted &&
+                        alertPreferences.enabled)
+                      Positioned(
+                        right: -1,
+                        top: -1,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: AppColors.teal,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+void _goBack(BuildContext context) {
+  if (context.canPop()) {
+    context.pop();
+  } else {
+    context.go(AppRoute.home.path);
+  }
+}
+
+void _showCityInfo(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.xl,
+          AppSpacing.s,
+          AppSpacing.xl,
+          AppSpacing.xl + MediaQuery.paddingOf(context).bottom,
+        ),
+        child: Column(
+          key: const ValueKey('pico-city-info-sheet'),
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Sobre esta consulta', style: AppTextStyles.h2),
+            const SizedBox(height: AppSpacing.m),
+            const Text('Los datos vienen de fuentes oficiales disponibles.'),
+            const SizedBox(height: AppSpacing.s),
+            const Text(
+              'Puedes consultar otra ciudad sin cambiar tu ubicación.',
+            ),
+            const SizedBox(height: AppSpacing.s),
+            const Text('Usar esta ciudad guarda la selección manualmente.'),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _SourceStrip extends StatelessWidget {
@@ -432,24 +542,83 @@ class _SourceStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
+    return Container(
+      key: const ValueKey('pico-personal-location-source'),
+      constraints: const BoxConstraints(minHeight: 56),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.l,
+        vertical: AppSpacing.s,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.input),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.location_on_outlined, color: AppColors.blue),
+          const SizedBox(width: AppSpacing.m),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${jurisdiction.name}, Colombia',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: AppColors.teal,
+                  ),
+                ),
+                Text(
+                  _sourceLabel(ruleSet),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption,
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.teal),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.label, required this.color, this.icon});
+
+  final String label;
+  final Color color;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.m,
         vertical: AppSpacing.s,
       ),
-      backgroundColor: AppColors.teal.withValues(alpha: 0.08),
-      borderColor: AppColors.teal.withValues(alpha: 0.2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+      ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.location_on_outlined, color: AppColors.teal),
-          const SizedBox(width: AppSpacing.s),
-          Expanded(
+          if (icon != null) ...[
+            Icon(icon, size: 17, color: color),
+            const SizedBox(width: AppSpacing.xs),
+          ],
+          Flexible(
             child: Text(
-              '${jurisdiction.name} · ${_sourceLabel(ruleSet)}',
-              maxLines: 2,
+              label,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.caption.copyWith(
-                fontWeight: FontWeight.w700,
+                color: color,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -460,12 +629,23 @@ class _SourceStrip extends StatelessWidget {
 }
 
 class _PersonalHero extends StatelessWidget {
-  const _PersonalHero({required this.vehicle});
+  const _PersonalHero({
+    required this.vehicle,
+    required this.jurisdiction,
+    required this.ruleSet,
+    required this.today,
+    required this.tomorrow,
+  });
 
   final VehicleProfile vehicle;
+  final RestrictionJurisdiction jurisdiction;
+  final RestrictionRuleSet ruleSet;
+  final RestrictionDayEvaluation today;
+  final RestrictionDayEvaluation tomorrow;
 
   @override
   Widget build(BuildContext context) {
+    final statusColor = _statusColor(today.status);
     final title = vehicle.nickname?.trim().isNotEmpty == true
         ? vehicle.nickname!.trim()
         : vehicleMakeModel(vehicle).isNotEmpty
@@ -474,151 +654,380 @@ class _PersonalHero extends StatelessWidget {
     return AppCard(
       key: const ValueKey('pico-personal-screen'),
       padding: const EdgeInsets.all(AppSpacing.l),
+      borderColor: AppColors.blue.withValues(alpha: 0.36),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'MI VEHÍCULO',
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.teal,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.s),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.m,
+                    vertical: AppSpacing.s,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.navy,
+                    borderRadius: BorderRadius.circular(AppRadius.input),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.person_outline_rounded,
+                        size: 17,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Flexible(
+                        child: Text(
+                          'MI VEHÍCULO',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.caption.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s),
+              Flexible(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'MI PICO Y PLACA',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.teal,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.l),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
+                flex: 54,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: AppTextStyles.h1),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(title, style: AppTextStyles.h1),
+                    ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
                       [
                         vehicle.year?.toString(),
                         shortVehicleTypeLabel(vehicle),
                       ].whereType<String>().join(' · '),
-                      style: AppTextStyles.caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.body.copyWith(
+                        color: AppColors.navy.withValues(alpha: 0.78),
+                      ),
                     ),
                     const SizedBox(height: AppSpacing.m),
-                    ColombianPlateBadge(plate: vehicle.plate),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: _StatusPill(
+                        label: _statusText(today.status),
+                        color: statusColor,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.m),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: ColombianPlateBadge(plate: vehicle.plate),
+                    ),
                   ],
                 ),
               ),
-              SizedBox(
-                width: 132,
-                height: 96,
-                child: VehicleVisualImage(
-                  vehicle: vehicle,
-                  cacheWidth: 260,
-                  fallbackBuilder: (_) => Icon(
-                    vehicleIcon(vehicle),
-                    size: 64,
-                    color: vehicleAccent(vehicle),
+              const SizedBox(width: AppSpacing.s),
+              Expanded(
+                flex: 46,
+                child: SizedBox(
+                  height: 132,
+                  child: VehicleVisualImage(
+                    vehicle: vehicle,
+                    cacheWidth: 360,
+                    fallbackBuilder: (_) => Icon(
+                      vehicleIcon(vehicle),
+                      size: 78,
+                      color: vehicleAccent(vehicle),
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TodayStatusCard extends StatelessWidget {
-  const _TodayStatusCard({
-    required this.title,
-    required this.status,
-    required this.main,
-    required this.detail,
-    required this.chips,
-  });
-
-  final String title;
-  final RestrictionDayStatus status;
-  final String main;
-  final String detail;
-  final List<_InfoChipData> chips;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _statusColor(status);
-    return AppCard(
-      backgroundColor: color.withValues(alpha: 0.08),
-      borderColor: color.withValues(alpha: 0.24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(_statusIcon(status), color: color),
-              const SizedBox(width: AppSpacing.s),
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodyStrong.copyWith(color: color),
+          const SizedBox(height: AppSpacing.l),
+          Container(
+            key: const ValueKey('pico-personal-combined-hero'),
+            padding: const EdgeInsets.all(AppSpacing.m),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.input),
+              border: Border.all(color: AppColors.border),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.navy.withValues(alpha: 0.05),
+                  blurRadius: 14,
+                  offset: const Offset(0, 8),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.s),
-          Text(main, style: AppTextStyles.h1.copyWith(color: color)),
-          const SizedBox(height: AppSpacing.xs),
-          Text(detail, style: AppTextStyles.body),
-          const SizedBox(height: AppSpacing.m),
-          Wrap(
-            spacing: AppSpacing.s,
-            runSpacing: AppSpacing.s,
-            children: [for (final chip in chips) _InfoChip(chip: chip)],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MiniFactCard extends StatelessWidget {
-  const _MiniFactCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(AppSpacing.m),
-      child: Row(
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(width: AppSpacing.s),
-          Expanded(
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: AppTextStyles.caption),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodyStrong.copyWith(fontSize: 14),
+                Row(
+                  children: [
+                    Icon(_statusIcon(today.status), color: statusColor),
+                    const SizedBox(width: AppSpacing.s),
+                    Expanded(
+                      child: Text(
+                        'Pico y placa',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyStrong,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.s),
+                Container(height: 1, color: AppColors.border),
+                const SizedBox(height: AppSpacing.m),
+                _PersonalStatusGrid(
+                  status: today.status,
+                  windows: _windowsOrControlled(today),
+                  rule: plateBasisLabel(ruleSet, vehicle),
+                ),
+                const SizedBox(height: AppSpacing.m),
+                Container(height: 1, color: AppColors.border),
+                const SizedBox(height: AppSpacing.s),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.verified_user_outlined,
+                      color: AppColors.teal,
+                    ),
+                    const SizedBox(width: AppSpacing.s),
+                    Expanded(
+                      child: Text(
+                        '${jurisdiction.name} · ${_sourceLabel(ruleSet)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption,
+                      ),
+                    ),
+                    _StatusPill(
+                      label: 'Mañana: ${_compactStatusText(tomorrow.status)}',
+                      color: _statusColor(tomorrow.status),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PersonalStatusGrid extends StatelessWidget {
+  const _PersonalStatusGrid({
+    required this.status,
+    required this.windows,
+    required this.rule,
+  });
+
+  final RestrictionDayStatus status;
+  final String windows;
+  final String rule;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _statusColor(status);
+    final items = [
+      _StatusMetric(label: 'Estado', value: _statusText(status), color: color),
+      _StatusMetric(label: 'Horario', value: windows, color: AppColors.navy),
+      _StatusMetric(label: 'Regla', value: rule, color: AppColors.navy),
+    ];
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 230) {
+          return Column(
+            children: [
+              for (final item in items) ...[
+                item,
+                if (item != items.last) const SizedBox(height: AppSpacing.s),
+              ],
+            ],
+          );
+        }
+        return Row(
+          key: const ValueKey('pico-personal-status-grid'),
+          children: [
+            for (var i = 0; i < items.length; i += 1) ...[
+              Expanded(child: items[i]),
+              if (i != items.length - 1)
+                Container(width: 1, height: 72, color: AppColors.border),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _StatusMetric extends StatelessWidget {
+  const _StatusMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.caption,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyStrong.copyWith(color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PersonalLowerModule extends StatelessWidget {
+  const _PersonalLowerModule({
+    required this.today,
+    required this.nextRestriction,
+    required this.jurisdiction,
+    required this.ruleSet,
+    required this.days,
+    required this.evaluations,
+  });
+
+  final RestrictionDayEvaluation today;
+  final _NextRestriction? nextRestriction;
+  final RestrictionJurisdiction jurisdiction;
+  final RestrictionRuleSet ruleSet;
+  final List<DateTime> days;
+  final List<RestrictionDayEvaluation> evaluations;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      key: const ValueKey('pico-personal-lower-module'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ImmediateState(evaluation: today, nextRestriction: nextRestriction),
+          const SizedBox(height: AppSpacing.m),
+          Container(height: 1, color: AppColors.border),
+          const SizedBox(height: AppSpacing.m),
+          _PersonalCalendar(days: days, evaluations: evaluations),
+          const SizedBox(height: AppSpacing.s),
+          _InfoFootnote(
+            text: 'La rotación puede cambiar por festivos o medidas especiales. Consulta la fuente oficial.',
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          _InfoFootnote(
+            text: '${jurisdiction.name} · ${_sourceLabel(ruleSet)}',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ImmediateState extends StatelessWidget {
+  const _ImmediateState({
+    required this.evaluation,
+    required this.nextRestriction,
+  });
+
+  final RestrictionDayEvaluation evaluation;
+  final _NextRestriction? nextRestriction;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _statusColor(evaluation.status);
+    return Row(
+      children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(_statusIcon(evaluation.status), color: color, size: 30),
+        ),
+        const SizedBox(width: AppSpacing.m),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Estado inmediato', style: AppTextStyles.bodyStrong),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                _statusText(evaluation.status),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.bodyStrong.copyWith(color: color),
+              ),
+              Text(
+                _windowsOrControlled(evaluation),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption,
+              ),
+            ],
+          ),
+        ),
+        if (nextRestriction != null) ...[
+          const SizedBox(width: AppSpacing.s),
+          _StatusPill(
+            label:
+                '${_weekday(nextRestriction!.date)} ${nextRestriction!.date.day}',
+            color: AppColors.blue,
+            icon: Icons.event_note_rounded,
+          ),
+        ],
+      ],
     );
   }
 }
@@ -631,27 +1040,41 @@ class _PersonalCalendar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Próximos días', style: AppTextStyles.h2),
-          const SizedBox(height: AppSpacing.s),
-          SizedBox(
-            key: const ValueKey('pico-personal-calendar'),
-            height: 136,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: days.length,
-              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.s),
-              itemBuilder: (context, index) => _DayCard(
-                key: ValueKey('pico-calendar-day-${index + 1}'),
-                date: days[index],
-                evaluation: evaluations[index],
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Próximos días', style: AppTextStyles.bodyStrong),
+        const SizedBox(height: AppSpacing.s),
+        SizedBox(
+          key: const ValueKey('pico-personal-calendar'),
+          height: 116,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: days.length,
+            separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.s),
+            itemBuilder: (context, index) => _DayCard(
+              key: ValueKey('pico-calendar-day-${index + 1}'),
+              date: days[index],
+              evaluation: evaluations[index],
             ),
           ),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+class _InfoFootnote extends StatelessWidget {
+  const _InfoFootnote({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: AppTextStyles.caption.copyWith(
+        color: AppColors.navy.withValues(alpha: 0.68),
       ),
     );
   }
@@ -667,7 +1090,7 @@ class _DayCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _statusColor(evaluation.status);
     return Container(
-      width: 116,
+      width: 74,
       padding: const EdgeInsets.all(AppSpacing.s),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
@@ -680,18 +1103,24 @@ class _DayCard extends StatelessWidget {
           Text(_weekday(date), style: AppTextStyles.caption),
           Text(
             date.day.toString(),
-            style: AppTextStyles.h1.copyWith(color: color),
+            style: AppTextStyles.h2.copyWith(color: color),
           ),
+          const SizedBox(height: AppSpacing.xs),
+          Icon(_statusIcon(evaluation.status), size: 16, color: color),
           const Spacer(),
           Text(
-            _statusText(evaluation.status),
-            maxLines: 2,
+            _compactStatusText(evaluation.status),
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w800),
+            style: AppTextStyles.caption.copyWith(
+              fontWeight: FontWeight.w800,
+              fontSize: 11,
+            ),
           ),
-          if (evaluation.effectiveWindows.isNotEmpty)
+          if (evaluation.status == RestrictionDayStatus.restricted &&
+              evaluation.effectiveWindows.isNotEmpty)
             Text(
-              _windows(evaluation.effectiveWindows),
+              _compactWindows(evaluation.effectiveWindows),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.caption.copyWith(fontSize: 11),
@@ -702,60 +1131,165 @@ class _DayCard extends StatelessWidget {
   }
 }
 
-class _CitySelectorCard extends StatelessWidget {
-  const _CitySelectorCard({
+class _CityTopControls extends StatelessWidget {
+  const _CityTopControls({
     required this.jurisdiction,
     required this.isTransient,
+    required this.ruleSet,
     required this.onSelect,
     required this.onAdopt,
   });
 
   final RestrictionJurisdiction jurisdiction;
   final bool isTransient;
+  final RestrictionRuleSet ruleSet;
   final VoidCallback onSelect;
   final VoidCallback? onAdopt;
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        children: [
-          Row(
+    return Column(
+      key: const ValueKey('pico-city-top-controls'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _CitySelectorPill(
+              jurisdiction: jurisdiction,
+              isTransient: isTransient,
+              onSelect: onSelect,
+            ),
+            const SizedBox(width: AppSpacing.m),
+            Expanded(child: _FreshnessPill(ruleSet: ruleSet)),
+          ],
+        ),
+        if (onAdopt != null) ...[
+          const SizedBox(height: AppSpacing.s),
+          OutlinedButton.icon(
+            key: const ValueKey('pico-city-adopt'),
+            onPressed: onAdopt,
+            icon: const Icon(Icons.my_location_rounded),
+            label: const Text('Usar esta ciudad'),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CitySelectorPill extends StatelessWidget {
+  const _CitySelectorPill({
+    required this.jurisdiction,
+    required this.isTransient,
+    required this.onSelect,
+  });
+
+  final RestrictionJurisdiction jurisdiction;
+  final bool isTransient;
+  final VoidCallback onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: const ValueKey('pico-city-change'),
+        onTap: onSelect,
+        borderRadius: BorderRadius.circular(28),
+        child: Container(
+          width: 168,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.m,
+            vertical: AppSpacing.s,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
             children: [
-              const Icon(Icons.location_city_rounded, color: AppColors.teal),
+              const Icon(Icons.location_on_rounded, color: AppColors.teal),
               const SizedBox(width: AppSpacing.s),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(jurisdiction.name, style: AppTextStyles.h2),
                     Text(
-                      isTransient ? 'Consulta temporal' : 'Ciudad configurada',
-                      style: AppTextStyles.caption,
+                      jurisdiction.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodyStrong,
+                    ),
+                    Text(
+                      isTransient ? 'Temporal' : 'Configurada',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.caption.copyWith(fontSize: 11),
                     ),
                   ],
                 ),
               ),
-              IconButton(
-                key: const ValueKey('pico-city-change'),
-                tooltip: 'Cambiar ciudad',
-                onPressed: onSelect,
-                icon: const Icon(Icons.expand_more_rounded),
+              const Icon(Icons.expand_more_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FreshnessPill extends StatelessWidget {
+  const _FreshnessPill({required this.ruleSet});
+
+  final RestrictionRuleSet ruleSet;
+
+  @override
+  Widget build(BuildContext context) {
+    final stale = ruleSet.dataIsStale || !ruleSet.coverageKnown;
+    final color = stale ? AppColors.orange : AppColors.teal;
+    return Container(
+      key: const ValueKey('pico-city-freshness'),
+      constraints: const BoxConstraints(minHeight: 58),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.m,
+        vertical: AppSpacing.s,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.sync_rounded, color: color, size: 20),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  stale ? 'Datos' : 'Verificado',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
             ],
           ),
-          if (onAdopt != null) ...[
-            const SizedBox(height: AppSpacing.s),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                key: const ValueKey('pico-city-adopt'),
-                onPressed: onAdopt,
-                icon: const Icon(Icons.my_location_rounded),
-                label: const Text('Usar esta ciudad como mi ubicación'),
-              ),
-            ),
-          ],
+          Text(
+            ruleSet.verifiedAt == null
+                ? (stale ? 'Sin cobertura' : 'Fuente oficial')
+                : _shortDate(ruleSet.verifiedAt!),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption,
+          ),
         ],
       ),
     );
@@ -775,20 +1309,82 @@ class _CategorySegment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: AppSpacing.s,
-      runSpacing: AppSpacing.s,
-      children: [
-        for (final item in coverages)
-          ChoiceChip(
-            key: ValueKey('pico-city-category-${item.category.name}'),
-            label: Text(item.category.label),
-            selected: item.category == selected,
-            onSelected: item.ruleSet.coverageKnown
-                ? (_) => onChanged(item.category)
-                : null,
+    return Container(
+      key: const ValueKey('pico-city-category-segment'),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.input),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          for (var index = 0; index < coverages.length; index += 1) ...[
+            Expanded(
+              child: _CategorySegmentButton(
+                coverage: coverages[index],
+                selected: coverages[index].category == selected,
+                onPressed: coverages[index].ruleSet.coverageKnown
+                    ? () => onChanged(coverages[index].category)
+                    : null,
+              ),
+            ),
+            if (index != coverages.length - 1) const SizedBox(width: 4),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CategorySegmentButton extends StatelessWidget {
+  const _CategorySegmentButton({
+    required this.coverage,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final _CategoryCoverage coverage;
+  final bool selected;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? AppColors.teal : AppColors.navy;
+    return Material(
+      color: selected
+          ? AppColors.teal.withValues(alpha: 0.14)
+          : Colors.transparent,
+      borderRadius: BorderRadius.circular(AppRadius.chip),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: ValueKey('pico-city-category-${coverage.category.name}'),
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+        child: SizedBox(
+          height: 42,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(_categoryIcon(coverage.category), size: 18, color: color),
+              const SizedBox(width: AppSpacing.xs),
+              Flexible(
+                child: Text(
+                  coverage.category.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(
+                    color: onPressed == null
+                        ? AppColors.navy.withValues(alpha: 0.45)
+                        : color,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
           ),
-      ],
+        ),
+      ),
     );
   }
 }
@@ -803,52 +1399,54 @@ class _CityHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _statusColor(summary.status);
     return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      key: const ValueKey('pico-city-hero'),
+      padding: const EdgeInsets.all(AppSpacing.l),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          SizedBox(
-            height: 112,
-            width: double.infinity,
-            child: CustomPaint(painter: _CityRoadPainter()),
-          ),
-          const SizedBox(height: AppSpacing.s),
-          Text(jurisdiction.name, style: AppTextStyles.caption),
-          const SizedBox(height: AppSpacing.xs),
-          Row(
-            children: [
-              Icon(_statusIcon(summary.status), color: color),
-              const SizedBox(width: AppSpacing.s),
-              Text(
-                'Hoy',
-                style: AppTextStyles.bodyStrong.copyWith(color: color),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.s),
-          Text(
-            _statusText(summary.status),
-            style: AppTextStyles.h1.copyWith(color: color),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(summary.ruleLabel, style: AppTextStyles.body),
-          const SizedBox(height: AppSpacing.m),
-          Wrap(
-            spacing: AppSpacing.s,
-            runSpacing: AppSpacing.s,
-            children: [
-              _InfoChip(
-                chip: _InfoChipData(
-                  'Horario',
+          Expanded(
+            flex: 58,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(jurisdiction.name, style: AppTextStyles.caption),
+                const SizedBox(height: AppSpacing.xs),
+                _StatusPill(
+                  label: 'Hoy · ${_weekday(summary.date)} ${summary.date.day}',
+                  color: color,
+                  icon: _statusIcon(summary.status),
+                ),
+                const SizedBox(height: AppSpacing.m),
+                Text(
+                  _statusText(summary.status),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.h1.copyWith(color: color),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  summary.ruleLabel,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyStrong,
+                ),
+                const SizedBox(height: AppSpacing.s),
+                Text(
                   _windowsOrText(summary.effectiveWindows),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption,
                 ),
-              ),
-              _InfoChip(
-                chip: _InfoChipData(
-                  'Datos',
-                  _dataState(summary.coverageKnown, summary.dataIsStale),
-                ),
-              ),
-            ],
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.m),
+          Expanded(
+            flex: 42,
+            child: SizedBox(
+              height: 132,
+              child: CustomPaint(painter: _CityRoadPainter()),
+            ),
           ),
         ],
       ),
@@ -861,11 +1459,13 @@ class _WeekSchedule extends StatelessWidget {
     required this.jurisdiction,
     required this.coverage,
     required this.weekStart,
+    required this.currentDate,
   });
 
   final RestrictionJurisdiction jurisdiction;
   final _CategoryCoverage coverage;
   final DateTime weekStart;
+  final DateTime currentDate;
 
   @override
   Widget build(BuildContext context) {
@@ -874,57 +1474,97 @@ class _WeekSchedule extends StatelessWidget {
         DateTime(weekStart.year, weekStart.month, weekStart.day + offset),
     ];
     return AppCard(
+      key: const ValueKey('pico-city-week-card'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Semana', style: AppTextStyles.h2),
           const SizedBox(height: AppSpacing.s),
-          for (final day in days)
-            _WeekRow(
-              summary: summarizeCityRestrictionDay(
-                ruleSet: coverage.ruleSet,
-                jurisdictionId: jurisdiction.id,
-                category: coverage.category,
-                date: day,
-              ),
+          SizedBox(
+            key: const ValueKey('pico-city-week-list'),
+            height: 118,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: days.length,
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.s),
+              itemBuilder: (context, index) {
+                final day = days[index];
+                return _WeekDayTile(
+                  index: index,
+                  isToday: _isSameDay(day, currentDate),
+                  summary: summarizeCityRestrictionDay(
+                    ruleSet: coverage.ruleSet,
+                    jurisdictionId: jurisdiction.id,
+                    category: coverage.category,
+                    date: day,
+                  ),
+                );
+              },
             ),
+          ),
+          const SizedBox(height: AppSpacing.s),
+          Text(
+            'Consulta local con fuente oficial versionada.',
+            style: AppTextStyles.caption,
+          ),
         ],
       ),
     );
   }
 }
 
-class _WeekRow extends StatelessWidget {
-  const _WeekRow({required this.summary});
+class _WeekDayTile extends StatelessWidget {
+  const _WeekDayTile({
+    required this.index,
+    required this.isToday,
+    required this.summary,
+  });
 
+  final int index;
+  final bool isToday;
   final CityRestrictionDaySummary summary;
 
   @override
   Widget build(BuildContext context) {
     final color = _statusColor(summary.status);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
+    return Container(
+      key: ValueKey('pico-city-week-day-$index'),
+      width: 78,
+      padding: const EdgeInsets.all(AppSpacing.s),
+      decoration: BoxDecoration(
+        color: isToday
+            ? AppColors.teal.withValues(alpha: 0.1)
+            : color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(AppRadius.input),
+        border: Border.all(
+          color: isToday ? AppColors.teal : color.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 40,
-            child: Text(_weekday(summary.date), style: AppTextStyles.caption),
+          Text(_weekday(summary.date), style: AppTextStyles.caption),
+          Text(
+            summary.date.day.toString(),
+            style: AppTextStyles.h2.copyWith(color: color),
           ),
-          Icon(_statusIcon(summary.status), size: 18, color: color),
-          const SizedBox(width: AppSpacing.s),
-          Expanded(
-            child: Text(
-              summary.ruleLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.caption.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+          const SizedBox(height: AppSpacing.xs),
+          Icon(_statusIcon(summary.status), color: color, size: 18),
+          const Spacer(),
+          Text(
+            _compactStatusText(summary.status),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption.copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
             ),
           ),
           Text(
-            _windowsOrText(summary.effectiveWindows),
-            style: AppTextStyles.caption.copyWith(fontSize: 11),
+            _compactWindows(summary.effectiveWindows),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption.copyWith(fontSize: 10.5),
           ),
         ],
       ),
@@ -944,6 +1584,7 @@ class _VehicleShortcuts extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      key: const ValueKey('pico-city-vehicles-card'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -956,19 +1597,76 @@ class _VehicleShortcuts extends StatelessWidget {
               ),
             ],
           ),
-          if (items.isEmpty)
-            TextButton.icon(
-              onPressed: () => context.go(AppRoute.vehicleOnboarding.path),
-              icon: const Icon(Icons.add_circle_outline_rounded),
-              label: const Text('Agregar vehículo'),
-            )
-          else
-            for (final item in items)
-              _VehicleShortcut(
-                data: item,
-                consultedJurisdictionId: consultedJurisdictionId,
-              ),
+          const SizedBox(height: AppSpacing.s),
+          SizedBox(
+            key: const ValueKey('pico-city-vehicles-list'),
+            height: 160,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: items.length + 1,
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.s),
+              itemBuilder: (context, index) {
+                if (index == items.length) {
+                  return const _AddVehicleShortcut();
+                }
+                return _VehicleShortcut(
+                  data: items[index],
+                  consultedJurisdictionId: consultedJurisdictionId,
+                );
+              },
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _AddVehicleShortcut extends StatelessWidget {
+  const _AddVehicleShortcut();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.input),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: const ValueKey('pico-city-add-vehicle'),
+        onTap: () => context.go(AppRoute.vehicleOnboarding.path),
+        child: Container(
+          width: 132,
+          padding: const EdgeInsets.all(AppSpacing.m),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.input),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.add_circle_outline_rounded,
+                color: AppColors.teal,
+                size: 30,
+              ),
+              const SizedBox(height: AppSpacing.s),
+              Text(
+                'Agregar',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodyStrong.copyWith(color: AppColors.teal),
+              ),
+              Text(
+                'vehículo',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.caption,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -989,26 +1687,67 @@ class _VehicleShortcut extends StatelessWidget {
     if (consultedJurisdictionId != null) {
       params['jurisdictionId'] = consultedJurisdictionId!;
     }
-    return ListTile(
-      key: ValueKey('pico-city-vehicle-${data.vehicle.id}'),
-      contentPadding: EdgeInsets.zero,
-      leading: SizedBox(
-        width: 56,
-        child: VehicleVisualImage(
-          vehicle: data.vehicle,
-          cacheWidth: 128,
-          fallbackBuilder: (_) => Icon(vehicleIcon(data.vehicle)),
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.input),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: ValueKey('pico-city-vehicle-${data.vehicle.id}'),
+        onTap: () => context.go(
+          Uri(path: AppRoute.pico.path, queryParameters: params).toString(),
         ),
-      ),
-      title: ColombianPlateBadge(plate: data.vehicle.plate, compact: true),
-      subtitle: Text(
-        '${shortVehicleTypeLabel(data.vehicle)} · ${_statusText(data.evaluation.status)}',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: const Icon(Icons.chevron_right_rounded),
-      onTap: () => context.go(
-        Uri(path: AppRoute.pico.path, queryParameters: params).toString(),
+        borderRadius: BorderRadius.circular(AppRadius.input),
+        child: Container(
+          width: 142,
+          padding: const EdgeInsets.all(AppSpacing.s),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.input),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Center(
+                  child: VehicleVisualImage(
+                    vehicle: data.vehicle,
+                    cacheWidth: 180,
+                    fallbackBuilder: (_) => Icon(
+                      vehicleIcon(data.vehicle),
+                      color: vehicleAccent(data.vehicle),
+                      size: 46,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: ColombianPlateBadge(
+                  plate: data.vehicle.plate,
+                  compact: true,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                shortVehicleTypeLabel(data.vehicle),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption,
+              ),
+              Text(
+                _compactStatusText(data.evaluation.status),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.caption.copyWith(
+                  color: _statusColor(data.evaluation.status),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1023,12 +1762,24 @@ class _SourceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final source = _httpsSource(ruleSet);
     return AppCard(
+      key: const ValueKey('pico-official-source-block'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Fuente oficial', style: AppTextStyles.h2),
-          const SizedBox(height: AppSpacing.s),
-          Text(_sourceLabel(ruleSet), style: AppTextStyles.body),
+          Row(
+            children: [
+              const Icon(Icons.verified_rounded, color: AppColors.teal),
+              const SizedBox(width: AppSpacing.s),
+              Expanded(child: Text('Fuente oficial', style: AppTextStyles.h2)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            _sourceLabel(ruleSet),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.body,
+          ),
           if (ruleSet.verifiedAt != null)
             Text(
               'Verificado: ${_date(ruleSet.verifiedAt!)}',
@@ -1037,44 +1788,15 @@ class _SourceCard extends StatelessWidget {
           if (source != null) ...[
             const SizedBox(height: AppSpacing.s),
             TextButton.icon(
-              onPressed: () => launchUrl(Uri.parse(source)),
+              key: const ValueKey('pico-source-open'),
+              onPressed: () {
+                launchUrl(Uri.parse(source));
+              },
               icon: const Icon(Icons.open_in_new_rounded),
-              label: Text(Uri.parse(source).host),
+              label: Text('Abrir sitio · ${Uri.parse(source).host}'),
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _InfoChipData {
-  const _InfoChipData(this.label, this.value);
-
-  final String label;
-  final String value;
-}
-
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.chip});
-
-  final _InfoChipData chip;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.s,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.chip),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Text(
-        '${chip.label}: ${chip.value}',
-        style: AppTextStyles.caption.copyWith(fontSize: 11.5),
       ),
     );
   }
@@ -1281,6 +2003,16 @@ RestrictionJurisdiction? _findJurisdiction(
 
 bool _hasQueryValue(String? value) => value != null && value.trim().isNotEmpty;
 
+const _defaultAlertPreferences = PicoAlertPreferences(
+  enabled: true,
+  dayBeforeEnabled: true,
+  sameDayEnabled: true,
+  dayBeforeMinute: 19 * 60,
+  sameDayMinute: 5 * 60,
+  permissionRequested: false,
+  permissionGranted: false,
+);
+
 String _statusText(RestrictionDayStatus status) {
   return switch (status) {
     RestrictionDayStatus.restricted => 'No puedes circular',
@@ -1290,12 +2022,20 @@ String _statusText(RestrictionDayStatus status) {
   };
 }
 
-String _immediateText(RestrictionDayEvaluation evaluation) {
-  return switch (evaluation.status) {
-    RestrictionDayStatus.restricted => 'Revisa la ventana vigente',
-    RestrictionDayStatus.allowed => 'Sin restricción activa',
-    RestrictionDayStatus.unknown => 'Cobertura por confirmar',
-    RestrictionDayStatus.stale => 'Actualiza datos antes de confiar',
+String _compactStatusText(RestrictionDayStatus status) {
+  return switch (status) {
+    RestrictionDayStatus.restricted => 'No circula',
+    RestrictionDayStatus.allowed => 'Libre',
+    RestrictionDayStatus.unknown => 'Revisar',
+    RestrictionDayStatus.stale => 'Actualizar',
+  };
+}
+
+IconData _categoryIcon(PicoVehicleCategory category) {
+  return switch (category) {
+    PicoVehicleCategory.cars => Icons.directions_car_filled_rounded,
+    PicoVehicleCategory.motorcycles => Icons.two_wheeler_rounded,
+    PicoVehicleCategory.taxis => Icons.local_taxi_rounded,
   };
 }
 
@@ -1322,9 +2062,9 @@ String _windowsOrControlled(RestrictionDayEvaluation evaluation) {
     return _windowsOrText(evaluation.effectiveWindows);
   }
   return switch (evaluation.status) {
-    RestrictionDayStatus.allowed => 'Sin ventana de restricción verificada',
-    RestrictionDayStatus.unknown => 'Consulta el calendario y la fuente',
-    RestrictionDayStatus.stale => 'Datos pendientes de actualización',
+    RestrictionDayStatus.allowed => 'Libre',
+    RestrictionDayStatus.unknown => 'Por confirmar',
+    RestrictionDayStatus.stale => 'Actualizar',
     RestrictionDayStatus.restricted => _windowsOrText(
       evaluation.effectiveWindows,
     ),
@@ -1333,6 +2073,16 @@ String _windowsOrControlled(RestrictionDayEvaluation evaluation) {
 
 String _windowsOrText(List<RestrictionDayWindow> windows) {
   return windows.isEmpty ? 'Horario no publicado' : _windows(windows);
+}
+
+String _compactWindows(List<RestrictionDayWindow> windows) {
+  if (windows.isEmpty) {
+    return 'Sin hora';
+  }
+  if (windows.length == 1) {
+    return '${_minute(windows.first.startMinute)}-${_minute(windows.first.endMinute)}';
+  }
+  return '${_minute(windows.first.startMinute)} +${windows.length - 1}';
 }
 
 String _dataState(bool coverageKnown, bool dataIsStale) {
@@ -1384,6 +2134,11 @@ String _date(DateTime date) {
       '${date.day.toString().padLeft(2, '0')}';
 }
 
+String _shortDate(DateTime date) {
+  return '${date.day.toString().padLeft(2, '0')}/'
+      '${date.month.toString().padLeft(2, '0')}/${date.year}';
+}
+
 String _weekday(DateTime date) {
   return switch (date.weekday) {
     DateTime.monday => 'Lun',
@@ -1399,4 +2154,10 @@ String _weekday(DateTime date) {
 DateTime _weekStart(DateTime date) {
   final day = DateTime(date.year, date.month, date.day);
   return day.subtract(Duration(days: day.weekday - DateTime.monday));
+}
+
+bool _isSameDay(DateTime left, DateTime right) {
+  return left.year == right.year &&
+      left.month == right.month &&
+      left.day == right.day;
 }

@@ -1229,6 +1229,14 @@ void main() {
 
       expect(find.text('Pico y placa de la ciudad'), findsOneWidget);
       expect(find.byKey(const ValueKey('pico-city-screen')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('pico-city-top-controls')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('pico-city-category-segment')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('/pico with vehicleId shows personal 14-day calendar', (
@@ -1245,6 +1253,10 @@ void main() {
 
       expect(find.text('MI PICO Y PLACA'), findsOneWidget);
       expect(
+        find.byKey(const ValueKey('pico-personal-combined-hero')),
+        findsOneWidget,
+      );
+      expect(
         find.byKey(const ValueKey('pico-personal-calendar')),
         findsOneWidget,
       );
@@ -1260,23 +1272,135 @@ void main() {
         ),
       );
       expect(calendarList.scrollDirection, Axis.horizontal);
-      await tester.drag(
-        find.byKey(const ValueKey('pico-personal-calendar')),
-        const Offset(-900, 0),
+      final dayOneSize = tester.getSize(
+        find.byKey(const ValueKey('pico-calendar-day-1')),
       );
-      await tester.pumpAndSettle();
+      expect(dayOneSize.width, inInclusiveRange(64, 82));
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('pico-calendar-day-10')),
+        220,
+        scrollable: find.descendant(
+          of: find.byKey(const ValueKey('pico-personal-calendar')),
+          matching: find.byType(Scrollable),
+        ),
+      );
       expect(
         find.byKey(const ValueKey('pico-calendar-day-10')),
         findsOneWidget,
       );
-      await tester.ensureVisible(
-        find.text('Fuente oficial: bogota.gov.co · Vigentes'),
+      expect(
+        find.text('Bogotá · Fuente oficial: bogota.gov.co · Vigentes'),
+        findsAtLeastNWidgets(1),
+      );
+    });
+
+    testWidgets('pico notification bell opens the existing alert sheet', (
+      tester,
+    ) async {
+      final vehicle = await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-dc-bogota',
+      );
+
+      await _pumpDetail(tester, harness, vehicleId: vehicle.id);
+      await tester.tap(find.byKey(const ValueKey('pico-notification-bell')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('home-notification-sheet')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('home-enable-notifications')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('city view keeps week and vehicle shortcuts horizontal', (
+      tester,
+    ) async {
+      final vehicle = await _readyHome(
+        harness,
+        plate: 'ABC123',
+        jurisdictionId: 'co-ant-medellin',
+      );
+
+      await _pumpDetail(tester, harness);
+
+      final weekList = tester.widget<ListView>(
+        find.descendant(
+          of: find.byKey(const ValueKey('pico-city-week-list')),
+          matching: find.byType(ListView),
+        ),
+      );
+      expect(weekList.scrollDirection, Axis.horizontal);
+      expect(
+        find.byKey(const ValueKey('pico-city-week-day-0')),
+        findsOneWidget,
+      );
+      await tester.drag(
+        find.byKey(const ValueKey('pico-city-week-list')),
+        const Offset(-500, 0),
       );
       await tester.pumpAndSettle();
       expect(
-        find.text('Fuente oficial: bogota.gov.co · Vigentes'),
+        find.byKey(const ValueKey('pico-city-week-day-6')),
         findsOneWidget,
       );
+
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('pico-city-vehicles-card')),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      final vehicleList = tester.widget<ListView>(
+        find.descendant(
+          of: find.byKey(const ValueKey('pico-city-vehicles-list')),
+          matching: find.byType(ListView),
+        ),
+      );
+      expect(vehicleList.scrollDirection, Axis.horizontal);
+      final vehicleCard = find.byKey(
+        ValueKey('pico-city-vehicle-${vehicle.id}'),
+      );
+      expect(vehicleCard, findsOneWidget);
+      expect(tester.getSize(vehicleCard).width, inInclusiveRange(120, 150));
+      expect(
+        find.byKey(const ValueKey('pico-city-add-vehicle')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('city info icon and official source CTA are functional', (
+      tester,
+    ) async {
+      await _readyHome(
+        harness,
+        plate: 'ABC123',
+        jurisdictionId: 'co-dc-bogota',
+      );
+
+      await _pumpDetail(tester, harness);
+      await tester.tap(find.byKey(const ValueKey('pico-city-info')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('pico-city-info-sheet')),
+        findsOneWidget,
+      );
+      await tester.tapAt(const Offset(20, 20));
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('pico-official-source-block')),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('pico-source-open')), findsOneWidget);
+      expect(find.textContaining('https://'), findsNothing);
     });
 
     testWidgets(
@@ -1335,6 +1459,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.byKey(ValueKey('pico-city-vehicle-${vehicle.id}')),
         300,
+        scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(ValueKey('pico-city-vehicle-${vehicle.id}')));
@@ -1343,7 +1468,7 @@ void main() {
       expect(find.text('MI PICO Y PLACA'), findsOneWidget);
       expect(
         find.text('Bogotá · Fuente oficial: bogota.gov.co · Vigentes'),
-        findsOneWidget,
+        findsAtLeastNWidgets(1),
       );
       expect(
         await harness.preferences.getString(picoJurisdictionPreferenceKey),
@@ -1354,7 +1479,7 @@ void main() {
     testWidgets('pico detail does not show allowed after staleAfter', (
       tester,
     ) async {
-      harness.now = DateTime(2026, 8, 31, 7);
+      harness.now = DateTime(2026, 9, 1, 7);
       await _readyHome(
         harness,
         plate: 'ABC123',
