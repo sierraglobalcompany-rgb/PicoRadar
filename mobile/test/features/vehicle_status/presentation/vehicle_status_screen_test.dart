@@ -116,6 +116,10 @@ Future<void> _openModule(
   String moduleId, {
   ExternalLauncher? externalLauncher,
 }) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(390, 844);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  addTearDown(tester.view.resetPhysicalSize);
   await harness.pump(tester, externalLauncher: externalLauncher);
   await tester.tap(find.byKey(const ValueKey('tab-apps')));
   await tester.pumpAndSettle();

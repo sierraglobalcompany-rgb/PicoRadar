@@ -49,6 +49,25 @@ void main() {
     ]);
   });
 
+  test('R02C phone orientation is portrait-only', () {
+    final main = File('lib/main.dart').readAsStringSync();
+    final androidManifest = File('android/app/src/main/AndroidManifest.xml')
+        .readAsStringSync();
+    final iosPlist = File('ios/Runner/Info.plist').readAsStringSync();
+
+    expect(main, contains('WidgetsFlutterBinding.ensureInitialized()'));
+    expect(
+      main,
+      contains(
+        'SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp])',
+      ),
+    );
+    expect(androidManifest, contains('android:screenOrientation="portrait"'));
+    expect(iosPlist, contains('UIInterfaceOrientationPortrait'));
+    expect(iosPlist, isNot(contains('UIInterfaceOrientationLandscapeLeft')));
+    expect(iosPlist, isNot(contains('UIInterfaceOrientationLandscapeRight')));
+  });
+
   test('R01-FIX2 keeps approved bottom nav icon semantics', () {
     expect(AppTab.trip.icon, Icons.location_on_outlined);
     expect(AppTab.trip.selectedIcon, Icons.location_on);

@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/design_system/app_components.dart';
+import '../../features/apps_launcher/presentation/apps_launcher_panel.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../app_providers.dart';
-import '../../core/design_system/app_components.dart';
 import '../router/app_routes.dart';
 import '../theme/app_tokens.dart';
 
@@ -67,42 +68,124 @@ enum AppTab {
   final String placeholderText;
 }
 
-class AppShell extends ConsumerWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      body: navigationShell,
-      bottomNavigationBar: AppBottomNav(
-        destinations: [
-          for (final tab in AppTab.values)
-            AppBottomNavDestination(
-              label: tab.label,
-              icon: tab.icon,
-              selectedIcon: tab.selectedIcon,
-              color: tab.color,
-              keyName: tab.name,
-            ),
-        ],
-        currentIndex: navigationShell.currentIndex,
-        onSelect: (index) async {
-          if (navigationShell.currentIndex == AppTab.home.index &&
-              index == AppTab.drive.index) {
-            await _promoteHomeFocusedVehicle(ref);
-          }
-          navigationShell.goBranch(
-            index,
-            initialLocation: index == navigationShell.currentIndex,
-          );
-        },
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<AppShell> {
+  bool _launcherOpen = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_launcherOpen,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _launcherOpen) {
+          _closeLauncher();
+        }
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            widget.navigationShell,
+            if (_launcherOpen) ...[
+              Positioned.fill(
+                child: Semantics(
+                  button: true,
+                  label: 'Cerrar Apps',
+                  child: GestureDetector(
+                    key: const ValueKey('apps-launcher-scrim'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _closeLauncher,
+                    child: ColoredBox(
+                      color: AppColors.navy.withValues(alpha: 0.24),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: AppsLauncherPanel(
+                  key: const ValueKey('apps-launcher-overlay'),
+                  vehicleId: _launcherVehicleId(),
+                  onDismiss: _closeLauncher,
+                  onNavigate: _openLauncherLocation,
+                ),
+              ),
+            ],
+          ],
+        ),
+        bottomNavigationBar: AppBottomNav(
+          destinations: [
+            for (final tab in AppTab.values)
+              AppBottomNavDestination(
+                label: tab.label,
+                icon: tab.icon,
+                selectedIcon: tab.selectedIcon,
+                color: tab.color,
+                keyName: tab.name,
+              ),
+          ],
+          currentIndex: _launcherOpen
+              ? AppTab.apps.index
+              : widget.navigationShell.currentIndex,
+          onSelect: _selectTab,
+        ),
       ),
     );
   }
 
-  Future<void> _promoteHomeFocusedVehicle(WidgetRef ref) async {
+  Future<void> _selectTab(int index) async {
+    if (index == AppTab.apps.index) {
+      setState(() => _launcherOpen = !_launcherOpen);
+      return;
+    }
+
+    final wasLauncherOpen = _launcherOpen;
+    if (wasLauncherOpen) {
+      setState(() => _launcherOpen = false);
+    }
+    if (widget.navigationShell.currentIndex == AppTab.home.index &&
+        index == AppTab.drive.index) {
+      await _promoteHomeFocusedVehicle();
+    }
+    if (!wasLauncherOpen || index != widget.navigationShell.currentIndex) {
+      widget.navigationShell.goBranch(
+        index,
+        initialLocation: index == widget.navigationShell.currentIndex,
+      );
+    }
+  }
+
+  String? _launcherVehicleId() {
+    final activeVehicleId = ref.watch(activeVehicleProvider).asData?.value?.id;
+    final vehicles = ref.watch(vehicleListProvider).asData?.value;
+    return resolveAppsLauncherVehicleId(
+      currentIndex: widget.navigationShell.currentIndex,
+      homeIndex: AppTab.home.index,
+      focusedVehicleId: ref.watch(homeFocusedVehicleIdProvider),
+      activeVehicleId: activeVehicleId,
+      vehicleIds: [for (final vehicle in vehicles ?? const []) vehicle.id],
+    );
+  }
+
+  void _closeLauncher() {
+    if (!_launcherOpen) {
+      return;
+    }
+    setState(() => _launcherOpen = false);
+  }
+
+  void _openLauncherLocation(String location) {
+    _closeLauncher();
+    context.go(location);
+  }
+
+  Future<void> _promoteHomeFocusedVehicle() async {
     final focusedVehicleId = ref.read(homeFocusedVehicleIdProvider);
     final activeVehicleId = ref.read(activeVehicleProvider).asData?.value?.id;
     if (focusedVehicleId == null || focusedVehicleId == activeVehicleId) {
@@ -113,4 +196,21 @@ class AppShell extends ConsumerWidget {
         .setActiveVehicle(focusedVehicleId);
     ref.invalidate(activeVehicleProvider);
   }
+}
+
+String? resolveAppsLauncherVehicleId({
+  required int currentIndex,
+  required int homeIndex,
+  required String? focusedVehicleId,
+  required String? activeVehicleId,
+  required List<String> vehicleIds,
+}) {
+  final firstVehicleId = vehicleIds.isEmpty ? null : vehicleIds.first;
+  if (currentIndex != homeIndex) {
+    return activeVehicleId ?? firstVehicleId;
+  }
+  if (focusedVehicleId != null && vehicleIds.contains(focusedVehicleId)) {
+    return focusedVehicleId;
+  }
+  return activeVehicleId ?? firstVehicleId;
 }

@@ -24,7 +24,7 @@ Proceso obligatorio para R01+:
 4. implementar la pantalla o componente;
 5. ejecutar widget tests;
 6. renderizar viewport 390x844 como minimo;
-7. cubrir 360x800, 412x915, textScale 1.0/1.5/2.0 y landscape cuando aplique;
+7. cubrir 360x800, 412x915 y textScale 1.0/1.5/2.0 en portrait; landscape solo aplica si un lote futuro lo autoriza explicitamente;
 8. ejecutar al menos un smoke visual de superficie raiz en Android fisico cuando haya Mi A3 o dispositivo equivalente disponible;
 9. registrar expected/actual/severity/fix;
 10. iterar hasta declarar `VISUAL_FIDELITY=PASS`.
@@ -67,6 +67,7 @@ Antes de PR visual o release:
 - capturar screenshots/goldens canonicos en 360x800, 390x844 y 412x915 cuando aplique a superficies raiz;
 - comprobar no overflow en dispositivos pequenos;
 - comprobar accesibilidad basica y textScale 1.0, 1.5 y 2.0;
+- verificar orientacion portrait-only en superficies raiz de telefono salvo autorizacion explicita por lote;
 - ejecutar al menos un smoke visual de superficie raiz en Android fisico cuando haya Mi A3 o dispositivo equivalente disponible;
 - probar fisicamente cuando el lote toque camara, GPS, notificaciones OS, foreground/background, TTS/Bluetooth, HUD/brillo, bateria o lifecycle;
 - verificar CI si GitHub Actions esta disponible.
