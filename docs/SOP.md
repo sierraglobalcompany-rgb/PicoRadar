@@ -69,6 +69,7 @@ Antes de PR visual o release:
 - comprobar accesibilidad basica y textScale 1.0, 1.5 y 2.0;
 - verificar orientacion portrait-only en superficies raiz de telefono salvo autorizacion explicita por lote;
 - ejecutar al menos un smoke visual de superficie raiz en Android fisico cuando haya Mi A3 o dispositivo equivalente disponible;
+- para Garaje R02B, comparar contra `docs/design/reference/garage_owner_v1.png` y registrar que los datos de demo no se conviertan en claims runtime;
 - probar fisicamente cuando el lote toque camara, GPS, notificaciones OS, foreground/background, TTS/Bluetooth, HUD/brillo, bateria o lifecycle;
 - verificar CI si GitHub Actions esta disponible.
 

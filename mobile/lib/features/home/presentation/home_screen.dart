@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/router/app_routes.dart';
+import '../../../app/shell/picoradar_app_header.dart';
 import '../../../app/theme/app_tokens.dart';
 import '../../../core/design_system/actions_and_badges.dart';
 import '../../../core/design_system/branding.dart';
@@ -384,112 +385,19 @@ class _HomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      key: const ValueKey('home-compact-top-bar'),
-      height: 56,
-      child: Row(
-        children: [
-          const Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: PicoRadarBrandLockup(
-                  key: ValueKey('home-brand-lockup'),
-                  markSize: 30,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.s),
-          _UserControlsCapsule(alertPreferences: alertPreferences),
-        ],
+    return PicoRadarAppHeader(
+      alertPreferences: alertPreferences,
+      onNotificationsPressed: () => showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (context) =>
+            HomeNotificationSheet(alertPreferences: alertPreferences),
       ),
-    );
-  }
-}
-
-class _UserControlsCapsule extends StatelessWidget {
-  const _UserControlsCapsule({required this.alertPreferences});
-
-  final PicoAlertPreferences alertPreferences;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      key: const ValueKey('home-user-controls-capsule'),
-      color: AppColors.surface,
-      elevation: 3,
-      shadowColor: AppColors.navy.withValues(alpha: 0.14),
-      borderRadius: BorderRadius.circular(28),
-      clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        height: 52,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const HomeAvatarButton(embedded: true, visualSize: 40),
-            Container(
-              width: 1,
-              height: 28,
-              color: AppColors.border.withValues(alpha: 0.72),
-            ),
-            _NotificationBellButton(alertPreferences: alertPreferences),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NotificationBellButton extends StatelessWidget {
-  const _NotificationBellButton({required this.alertPreferences});
-
-  final PicoAlertPreferences alertPreferences;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Abrir notificaciones',
-      child: SizedBox(
-        width: 48,
-        height: 48,
-        child: IconButton(
-          key: const ValueKey('home-notification-bell'),
-          onPressed: () => showModalBottomSheet<void>(
-            context: context,
-            isScrollControlled: true,
-            showDragHandle: true,
-            builder: (context) =>
-                _NotificationSheet(alertPreferences: alertPreferences),
-          ),
-          icon: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              const Icon(
-                Icons.notifications_none_rounded,
-                color: AppColors.navy,
-              ),
-              if (alertPreferences.permissionGranted &&
-                  alertPreferences.enabled)
-                Positioned(
-                  right: -1,
-                  top: -1,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: AppColors.teal,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
+      headerKey: const ValueKey('home-compact-top-bar'),
+      brandKey: const ValueKey('home-brand-lockup'),
+      capsuleKey: const ValueKey('home-user-controls-capsule'),
+      bellKey: const ValueKey('home-notification-bell'),
     );
   }
 }

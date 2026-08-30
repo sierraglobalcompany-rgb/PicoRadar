@@ -1,7 +1,7 @@
 part of 'home_screen.dart';
 
-class _NotificationSheet extends ConsumerWidget {
-  const _NotificationSheet({required this.alertPreferences});
+class HomeNotificationSheet extends ConsumerWidget {
+  const HomeNotificationSheet({required this.alertPreferences, super.key});
 
   final PicoAlertPreferences alertPreferences;
 

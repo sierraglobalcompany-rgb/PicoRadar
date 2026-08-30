@@ -118,6 +118,7 @@ class EmptyState extends StatelessWidget {
     required this.message,
     this.actionLabel,
     this.onActionPressed,
+    this.actionKey,
     super.key,
   });
 
@@ -125,6 +126,7 @@ class EmptyState extends StatelessWidget {
   final String message;
   final String? actionLabel;
   final VoidCallback? onActionPressed;
+  final Key? actionKey;
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +142,11 @@ class EmptyState extends StatelessWidget {
           Text(message, style: AppTextStyles.body),
           if (actionLabel != null && onActionPressed != null) ...[
             const SizedBox(height: AppSpacing.l),
-            PrimaryButton(label: actionLabel!, onPressed: onActionPressed),
+            PrimaryButton(
+              key: actionKey,
+              label: actionLabel!,
+              onPressed: onActionPressed,
+            ),
           ],
         ],
       ),

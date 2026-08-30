@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/database/app_database.dart' hide VehicleObligation;
 import '../core/storage/app_preferences.dart';
+import '../features/garage/data/garage_favorites.dart';
 import '../features/garage/data/vehicle_profile.dart';
 import '../features/garage/data/vehicle_repository.dart';
 import '../features/home/data/home_banner_config.dart';
@@ -64,6 +65,10 @@ final vehicleVisualOverrideProvider = FutureProvider.family<String?, String>((
     ref.watch(appPreferencesProvider),
     vehicleId,
   );
+});
+
+final garageFavoriteVehicleIdsProvider = FutureProvider<Set<String>>((ref) {
+  return loadGarageFavoriteVehicleIds(ref.watch(appPreferencesProvider));
 });
 
 final vehicleRepositoryProvider = Provider<VehicleRepository>((ref) {

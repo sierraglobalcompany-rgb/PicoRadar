@@ -110,6 +110,9 @@ R02B Garage Owner V1:
 - `docs/design/reference/garage_owner_v1.png` is the owner-selected visual authority for the future R02B Garage slice.
 - Runtime data in that mockup is illustrative only; do not fake comparendo counts/status before C14.
 - Maintenance-related UI remains disabled/omitted until its own approved lot.
+- `docs/design/GARAGE_OWNER_V1.json` captures the R02B Garage V2 contract: shared PicoRadar header, Todos/Favoritos/Activos filters, native carousel, AppPreferences favorites, truthful info panel, Add Vehicle card and four quick actions.
+- Garage focus is local to Garage. Swiping the carousel does not mutate the global active vehicle; only the explicit `Hacer activo` action does.
+- Mileage, maintenance records and comparendos claims remain not implemented in R02B.
 
 R02C Apps Launcher Owner V1:
 - `docs/design/APPS_LAUNCHER_OWNER_V1.json` and `docs/design/reference/apps_launcher_owner_v1.png` are the current owner-approved Apps visual authority.
