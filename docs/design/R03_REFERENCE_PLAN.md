@@ -1,26 +1,26 @@
 # R03 Reference Plan
 
-Status: R03A_OWNER_SELECTED
+Status: R03A_MERGED_R03B_REFERENCE_BLOCKED
 Last updated: 2026-08-30
 
-R03 implements Pico y Placa visual recovery only after exact owner-selected reference images are supplied. Codex must not generate, infer, or invent these references.
+R03A Pico y Placa visual recovery is merged and implemented from exact owner-selected reference images. Codex must not generate, infer, or invent SOAT/RTM references for R03B.
 
 ## Route Semantics
 
 - `/pico?vehicleId=<id>` means **Mi Pico y Placa**, the personalized vehicle detail.
 - `/pico` means **Pico y Placa de la ciudad**, the city/regulation overview.
-- R03A implements this route distinction for Pico y Placa only.
+- R03A implements this route distinction for Pico y Placa only and is merged on `main`.
 
 ## Home Card Decision
 
-- The current Home card labeled `MAÑANA` will become `Pico y placa` in R03.
-- Its secondary content may keep contextual information, for example `Mañana · Puede circular` or the next relevant restriction state.
+- The Home card is labeled `Pico y placa`.
+- Its secondary content keeps contextual information, for example `Mañana · Puede circular` or the next relevant restriction state.
 - Tapping this Home card continues to use the focused vehicle.
-- Do not change the current Home UI before the R03 implementation lot.
+- Further Home changes remain out of R03B scope.
 
 ## Personal Vehicle Pico
 
-The future personalized vehicle detail must include:
+The personalized vehicle detail implemented in R03A includes:
 
 - real audited vehicle visual;
 - make/model/nickname where available;
@@ -39,7 +39,7 @@ No fake rules and no hardcoded digit schedule are allowed.
 
 ## City Pico Module
 
-The future Apps Pico experience must include:
+The Apps Pico city experience implemented in R03A includes:
 
 - current consultation city;
 - temporary city selector;
@@ -69,21 +69,23 @@ SOAT and RTM logic remains valid, but the current presentation is owner-rejected
 
 R03 references are split by implementation slice:
 
-- `pico_personal_owner_v1.png`: OWNER_SELECTED for R03A.
-- `pico_city_owner_v1.png`: OWNER_SELECTED for R03A.
-- `soat_owner_v1.png`: pending owner selection.
-- `rtm_owner_v1.png`: pending owner selection.
+- `pico_personal_owner_v1.png`: IMPLEMENTED for R03A.
+- `pico_city_owner_v1.png`: IMPLEMENTED for R03A.
+- `soat_owner_v1.png`: PENDING_OWNER_SELECTION.
+- `rtm_owner_v1.png`: PENDING_OWNER_SELECTION.
 
 ## R03A Scope
 
-- Implement `/pico?vehicleId=<id>` as **Mi Pico y Placa**.
-- Implement `/pico` as **Pico y placa de la ciudad**.
-- Update the Home Pico card copy to `Pico y placa` while keeping truthful contextual secondary content.
-- Copy the exact owner-selected Pico references into `docs/design/reference/`.
-- Keep all runtime values derived from local vehicles, jurisdiction preferences, `RestrictionStore`, `RestrictionRuleSet`, `RestrictionDayEvaluation` and source metadata.
+- R03A_PICO = MERGED / IMPLEMENTED.
+- `/pico?vehicleId=<id>` is **Mi Pico y Placa**.
+- `/pico` is **Pico y placa de la ciudad**.
+- The Home Pico card copy is `Pico y placa` while keeping truthful contextual secondary content.
+- Exact owner-selected Pico references are in `docs/design/reference/`.
+- Runtime values remain derived from local vehicles, jurisdiction preferences, `RestrictionStore`, `RestrictionRuleSet`, `RestrictionDayEvaluation` and source metadata.
 
 ## R03B Pending
 
+- R03B_UI_IMPLEMENTATION = BLOCKED_ON_OWNER_REFERENCES.
 - SOAT visual recovery from owner-selected reference.
 - RTM visual recovery from owner-selected reference.
 
