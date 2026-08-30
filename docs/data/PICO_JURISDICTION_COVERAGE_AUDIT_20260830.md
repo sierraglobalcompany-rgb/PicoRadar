@@ -4,11 +4,17 @@ Scope: research-only artifact for future C10B / NATIONAL_PICO_COVERAGE. This
 does not add runtime jurisdictions, rules, selectors, notifications, widgets or
 datasets.
 
+Audit status: COMPLETE_FOR_RESEARCHED_CITIES. This document covers the defined
+city set below; it is not an exhaustive national municipality audit.
+
 Runtime status after this audit:
 
 - Existing supported jurisdictions preserved: Bogota, Medellin / Valle de Aburra.
 - New Pico jurisdictions implemented in this lot: 0.
 - Registration municipality catalog remains separate from Pico jurisdiction.
+- Registration catalog scope is separate: municipalities represented by
+  currently certified RUNT Organismos de Transito under the applied source
+  filter, not all Colombian municipalities.
 
 | City / jurisdiction | Department | Official source | Source date | Rule status | Vehicle categories | Classification |
 |---|---|---|---|---|---|---|
@@ -17,7 +23,7 @@ Runtime status after this audit:
 | Cali | Valle del Cauca | https://intranet.cali.gov.co/2026/07/01/pico-y-placa-rota-en-cali-para-el-segundo-semestre-de-2026-nueva-medida-rige-desde-el-1-de-julio/ | 2026-07-01 | Second-semester 2026 ordinary rotation found; emergency focused/solidary measures also appeared in August 2026 and require separate temporal modeling. | Private vehicles; verify motorcycles/taxis before implementation. | VERIFIED_CANDIDATE |
 | Cartagena | Bolivar | https://www.cartagena.gov.co/noticias/nuevo-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena | 2026-06-26 | Current 2026 rotations found; separate taxi rotations are published periodically. | Private vehicles, motorcycles, taxis. | VERIFIED_CANDIDATE |
 | Bucaramanga | Santander | https://www.bucaramanga.gov.co/noticias/conozca-la-nueva-rotacion-de-pico-y-placa-para-vehiculos-particulares-que-regira-desde-el-6-de-julio/ | 2026-06-23 | New rotation from 2026-07-06 found in official news. | Private vehicles; verify taxi/motorcycle scope before implementation. | VERIFIED_CANDIDATE |
-| Armenia | Quindio | https://www.armenia.gov.co/ | 2026-08-30 | Official portal searched; no stable current public rule page was found in this pass. SETTA portal references an internal Pico module but not a public validated rule table. | Unknown. | NO_CURRENT_RULE_FOUND |
+| Armenia | Quindio | https://www.armenia.gov.co/se-extiende-por-6-meses-medida-de-pico-y-placa-para-mitigar-impactos-de-obras-y-mejorar-la-movilidad and https://ftp.armenia.gov.co/secretaria-de-transito-anuncia-medidas-para-garantizar-la-movilidad-en-armenia | 2026-05 and 2026-08-11 | Decreto 135 de 2026 extends Pico y Placa for six months in Armenia's urban perimeter; August 2026 official confirmation says the measure remains in force under existing regulation. Exact digit/time/category extraction must still occur before runtime implementation. | Exact categories pending decree extraction. | VERIFIED_CANDIDATE |
 | Ibague | Tolima | https://www.ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague | 2026-06-18 | Second-semester 2026 rotation found in official news. | Private vehicles; taxis have separate 2026 decree updates. | VERIFIED_CANDIDATE |
 | Cucuta / metropolitan area | Norte de Santander | https://cucuta.gov.co/ | 2026-08-30 | Official home publishes "Pico y placa hoy" and current 2026 normative references; older official pages describe pico y placa and placa-dia mechanics. | Private vehicles, motorcycles and metropolitan-area vehicles; verify 2026 decree details before implementation. | VERIFIED_CANDIDATE |
 | Santa Marta | Magdalena | https://www.santamarta.gov.co/documentos/decreto-160-del-07-de-mayo-de-2025 | 2025-05-07 | Decree for restriction of private vehicles found; official home also exposes taxi pico entry. Needs 2026 confirmation before runtime. | Private vehicles, taxis; motorcycles require separate verification. | STALE_SOURCE |
@@ -30,7 +36,7 @@ Runtime status after this audit:
 
 Recommended C10B candidate order:
 
-1. Cali, Cartagena, Bucaramanga, Ibague, Villavicencio and Pasto because current official 2026 sources were found.
+1. Cali, Cartagena, Bucaramanga, Armenia, Ibague, Villavicencio and Pasto because current official 2026 sources were found.
 2. Cucuta after extracting the referenced 2026 decrees from the official portal.
 3. Pereira after verifying source date and decree text.
 4. Santa Marta only after a current 2026 source is found.

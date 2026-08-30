@@ -145,6 +145,40 @@ void main() {
     expect(find.text('Activo'), findsOneWidget);
   });
 
+  testWidgets('P02-FIX1 non-active state keeps actions visible and scoped', (
+    tester,
+  ) async {
+    final seeded = await _seedThreeVehicles(harness);
+
+    await _openGarage(tester, harness);
+    await _focusNewestVehicle(tester);
+
+    _expectGarageInfoPanel(tester, seeded.newest);
+    expect(find.text('No activo'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('garage-action-make-active')),
+      findsOneWidget,
+    );
+    expect((await harness.repository.getActiveVehicle())?.id, seeded.active.id);
+    _expectGarageCoreAboveNav(tester, reason: 'non-active focused');
+
+    await tester.tap(find.byKey(const ValueKey('garage-action-detail')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Detalle del vehículo'), findsOneWidget);
+    expect(find.text(seeded.newest.plate), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Volver'));
+    await tester.pumpAndSettle();
+    await _focusNewestVehicle(tester);
+    await tester.tap(find.byKey(const ValueKey('garage-action-make-active')));
+    await tester.pumpAndSettle();
+
+    expect((await harness.repository.getActiveVehicle())?.id, seeded.newest.id);
+    expect(find.text('Activo'), findsOneWidget);
+    _expectGarageCoreAboveNav(tester, reason: 'after make active');
+  });
+
   testWidgets('favorites filter toggles and persists in AppPreferences', (
     tester,
   ) async {
@@ -375,6 +409,7 @@ void main() {
   ) async {
     for (final viewport in [
       (name: '360x800', size: const Size(360, 800), scale: 1.0),
+      (name: '360x780', size: const Size(360, 780), scale: 1.0),
       (name: '390x844', size: const Size(390, 844), scale: 1.0),
       (name: '412x915', size: const Size(412, 915), scale: 1.0),
       (name: '390x844 textScale 1.5', size: const Size(390, 844), scale: 1.5),
@@ -407,24 +442,21 @@ void main() {
   ) async {
     for (final viewport in [
       (name: '360x800', size: const Size(360, 800)),
+      (name: '360x780', size: const Size(360, 780)),
       (name: '390x844', size: const Size(390, 844)),
       (name: '412x915', size: const Size(412, 915)),
     ]) {
       await _seedThreeVehicles(harness);
       await _openGarage(tester, harness, size: viewport.size);
 
-      final infoPanel = tester.getSize(
-        find.byKey(const ValueKey('garage-info-panel')),
+      _expectGarageCoreAboveNav(tester, reason: '${viewport.name} active');
+      await _focusNewestVehicle(tester);
+      expect(find.text('No activo'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('garage-action-make-active')),
+        findsOneWidget,
       );
-      final actionsBottom = tester
-          .getBottomLeft(find.byKey(const ValueKey('garage-quick-actions')))
-          .dy;
-      final navTop = tester
-          .getTopLeft(find.byKey(const ValueKey('app-bottom-navigation')))
-          .dy;
-
-      expect(infoPanel.height, lessThanOrEqualTo(122), reason: viewport.name);
-      expect(actionsBottom, lessThan(navTop), reason: viewport.name);
+      _expectGarageCoreAboveNav(tester, reason: '${viewport.name} non-active');
       expect(tester.takeException(), isNull, reason: viewport.name);
 
       await tester.pumpWidget(const SizedBox.shrink());
@@ -569,6 +601,32 @@ void _expectGarageInfoPanel(WidgetTester tester, VehicleProfile vehicle) {
     find.descendant(of: panel, matching: find.text('${vehicle.year}')),
     findsOneWidget,
   );
+}
+
+void _expectGarageCoreAboveNav(WidgetTester tester, {required String reason}) {
+  final infoPanel = tester.getSize(
+    find.byKey(const ValueKey('garage-info-panel')),
+  );
+  final addBottom = tester
+      .getBottomLeft(find.byKey(const ValueKey('garage-add-vehicle')))
+      .dy;
+  final actionsBottom = tester
+      .getBottomLeft(find.byKey(const ValueKey('garage-quick-actions')))
+      .dy;
+  final navTop = tester
+      .getTopLeft(find.byKey(const ValueKey('app-bottom-navigation')))
+      .dy;
+
+  expect(infoPanel.height, lessThanOrEqualTo(122), reason: reason);
+  expect(addBottom, lessThan(navTop), reason: reason);
+  expect(actionsBottom, lessThan(navTop), reason: reason);
+  expect(find.byKey(const ValueKey('garage-action-detail')), findsOneWidget);
+  expect(
+    find.byKey(const ValueKey('garage-action-maintenance')),
+    findsOneWidget,
+  );
+  expect(find.byKey(const ValueKey('garage-action-documents')), findsOneWidget);
+  expect(find.byKey(const ValueKey('garage-action-delete')), findsOneWidget);
 }
 
 Future<void> _openDetailAndReturn(
