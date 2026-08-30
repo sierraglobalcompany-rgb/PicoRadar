@@ -1,7 +1,7 @@
 part of 'home_screen.dart';
 
 const _homeCarouselViewportFraction = 0.64;
-const _homeCarouselBaseHeight = 198.0;
+const _homeCarouselBaseHeight = 216.0;
 
 class _VehicleCarousel extends StatelessWidget {
   const _VehicleCarousel({

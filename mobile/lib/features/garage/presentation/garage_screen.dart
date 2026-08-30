@@ -127,13 +127,22 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
   @override
   void didUpdateWidget(covariant _GarageReady oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final oldFiltered = _filteredVehiclesFor(
+      vehicles: oldWidget.vehicles,
+      activeId: oldWidget.activeId,
+      favoriteIds: oldWidget.favoriteIds,
+    );
     final filtered = _filteredVehicles();
     if (filtered.isEmpty) {
       _focusedVehicleId = null;
       return;
     }
+    final focusBefore = _focusedVehicleId;
     if (!filtered.any((vehicle) => vehicle.id == _focusedVehicleId)) {
       _focusedVehicleId = _initialFocusedId(filtered, widget.activeId);
+    }
+    if (focusBefore != _focusedVehicleId ||
+        !_sameVehicleIds(oldFiltered, filtered)) {
       _jumpToFocused(filtered);
     }
   }
@@ -187,6 +196,9 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
                       favoriteIds: widget.favoriteIds,
                       controller: _controller,
                       onChanged: (index) {
+                        if (index < 0 || index >= filtered.length) {
+                          return;
+                        }
                         setState(() {
                           _focusedVehicleId = filtered[index].id;
                         });
@@ -219,15 +231,27 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
   }
 
   List<VehicleProfile> _filteredVehicles() {
+    return _filteredVehiclesFor(
+      vehicles: widget.vehicles,
+      activeId: widget.activeId,
+      favoriteIds: widget.favoriteIds,
+    );
+  }
+
+  List<VehicleProfile> _filteredVehiclesFor({
+    required List<VehicleProfile> vehicles,
+    required String? activeId,
+    required Set<String> favoriteIds,
+  }) {
     return switch (_filter) {
-      GarageFilter.all => widget.vehicles,
+      GarageFilter.all => vehicles,
       GarageFilter.favorites =>
-        widget.vehicles
-            .where((vehicle) => widget.favoriteIds.contains(vehicle.id))
+        vehicles
+            .where((vehicle) => favoriteIds.contains(vehicle.id))
             .toList(growable: false),
       GarageFilter.active =>
-        widget.vehicles
-            .where((vehicle) => vehicle.id == widget.activeId)
+        vehicles
+            .where((vehicle) => vehicle.id == activeId)
             .toList(growable: false),
     };
   }
@@ -270,6 +294,18 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
       (vehicle) => vehicle.id == activeId,
     );
     return vehicles[activeIndex < 0 ? 0 : activeIndex].id;
+  }
+
+  bool _sameVehicleIds(List<VehicleProfile> left, List<VehicleProfile> right) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (var i = 0; i < left.length; i += 1) {
+      if (left[i].id != right[i].id) {
+        return false;
+      }
+    }
+    return true;
   }
 
   Future<void> _toggleFavorite(VehicleProfile vehicle) async {
@@ -813,7 +849,9 @@ class _GarageInfoPanel extends StatelessWidget {
                 ),
               if (!active)
                 SizedBox(
-                  width: columnWidth,
+                  width: columnCount == 3
+                      ? (columnWidth * 2) + spacing
+                      : columnWidth,
                   child: SecondaryButton(
                     key: const ValueKey('garage-action-make-active'),
                     label: 'Hacer activo',

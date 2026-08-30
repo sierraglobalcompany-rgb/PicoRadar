@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/app_providers.dart';
 import '../../../app/router/app_routes.dart';
 import '../../../app/theme/app_tokens.dart';
+import '../data/registration_city_catalog.dart';
 import '../../garage/data/vehicle_profile.dart';
 import '../../garage/data/vehicle_repository.dart';
 
@@ -233,13 +234,9 @@ class _OnboardingVehicleScreenState
           decoration: const InputDecoration(labelText: 'Placa *'),
         ),
         const SizedBox(height: AppSpacing.m),
-        TextField(
-          key: const ValueKey('vehicle-city-field'),
+        _RegistrationCityField(
           controller: _cityController,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            labelText: 'Ciudad de matrícula / registro *',
-          ),
+          onChanged: _saveDraft,
         ),
         const SizedBox(height: AppSpacing.m),
         DropdownButtonFormField<String>(
@@ -552,6 +549,168 @@ class _OnboardingVehicleScreenState
       return OnboardingVehicleChoice.taxi;
     }
     return OnboardingVehicleChoice.privateCar;
+  }
+}
+
+class _RegistrationCityField extends ConsumerWidget {
+  const _RegistrationCityField({
+    required this.controller,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final catalog = ref.watch(registrationCityCatalogProvider);
+    final loading = catalog.isLoading && !catalog.hasValue;
+    return TextField(
+      key: const ValueKey('vehicle-city-field'),
+      controller: controller,
+      readOnly: true,
+      textCapitalization: TextCapitalization.words,
+      decoration: InputDecoration(
+        labelText: 'Ciudad de matrícula / registro *',
+        hintText: loading ? 'Cargando catálogo...' : 'Buscar municipio',
+        suffixIcon: const Icon(Icons.search_rounded),
+      ),
+      onTap: () => _openPicker(context, ref),
+    );
+  }
+
+  Future<void> _openPicker(BuildContext context, WidgetRef ref) async {
+    final catalog = await ref.read(registrationCityCatalogProvider.future);
+    if (!context.mounted) {
+      return;
+    }
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => _RegistrationCityPickerSheet(
+        catalog: catalog,
+        initialValue: controller.text,
+      ),
+    );
+    if (selected == null || !context.mounted) {
+      return;
+    }
+    controller.text = selected;
+    onChanged();
+  }
+}
+
+class _RegistrationCityPickerSheet extends StatefulWidget {
+  const _RegistrationCityPickerSheet({
+    required this.catalog,
+    required this.initialValue,
+  });
+
+  final RegistrationCityCatalog catalog;
+  final String initialValue;
+
+  @override
+  State<_RegistrationCityPickerSheet> createState() {
+    return _RegistrationCityPickerSheetState();
+  }
+}
+
+class _RegistrationCityPickerSheetState
+    extends State<_RegistrationCityPickerSheet> {
+  late final TextEditingController _queryController;
+
+  @override
+  void initState() {
+    super.initState();
+    _queryController = TextEditingController(text: widget.initialValue);
+    _queryController.addListener(_onQueryChanged);
+  }
+
+  @override
+  void dispose() {
+    _queryController.removeListener(_onQueryChanged);
+    _queryController.dispose();
+    super.dispose();
+  }
+
+  void _onQueryChanged() => setState(() {});
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _queryController.text.trim();
+    final results = widget.catalog.search(query);
+    final manualValue = query.isNotEmpty ? query : widget.initialValue.trim();
+    return SafeArea(
+      top: false,
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.78,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.l,
+            0,
+            AppSpacing.l,
+            AppSpacing.s + MediaQuery.paddingOf(context).bottom,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Ciudad de matrícula', style: AppTextStyles.h2),
+              const SizedBox(height: AppSpacing.s),
+              TextField(
+                key: const ValueKey('registration-city-search-field'),
+                controller: _queryController,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  hintText: 'Buscar por municipio o departamento',
+                  prefixIcon: Icon(Icons.search_rounded),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s),
+              Expanded(
+                child: ListView(
+                  key: const ValueKey('registration-city-results'),
+                  children: [
+                    for (final city in results)
+                      ListTile(
+                        key: ValueKey(
+                          'registration-city-${normalizeRegistrationCityText(city.displayName)}',
+                        ),
+                        leading: const Icon(Icons.location_city_outlined),
+                        title: Text(city.displayName),
+                        subtitle: const Text('Organismo de Tránsito RUNT'),
+                        onTap: () =>
+                            Navigator.of(context).pop(city.displayName),
+                      ),
+                    if (results.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: AppSpacing.l),
+                        child: Text('Sin resultados en el catálogo local.'),
+                      ),
+                    const Divider(),
+                    ListTile(
+                      key: const ValueKey('registration-city-manual-option'),
+                      leading: const Icon(Icons.edit_location_alt_outlined),
+                      title: const Text('Otra / escribir manualmente'),
+                      subtitle: Text(
+                        manualValue.isEmpty
+                            ? 'Usar fallback manual'
+                            : 'Guardar "$manualValue"',
+                      ),
+                      enabled: manualValue.isNotEmpty,
+                      onTap: manualValue.isEmpty
+                          ? null
+                          : () => Navigator.of(context).pop(manualValue),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

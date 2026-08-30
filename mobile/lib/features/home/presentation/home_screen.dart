@@ -427,7 +427,7 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _HomeHeader(alertPreferences: widget.alertPreferences),
-                  const SizedBox(height: AppSpacing.xs),
+                  const SizedBox(height: 2),
                   _HomeLocationCard(
                     jurisdictions: widget.jurisdictions,
                     selectedJurisdiction: widget.selectedJurisdiction,

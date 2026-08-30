@@ -292,6 +292,14 @@ void main() {
         find.byKey(const ValueKey('home-user-controls-capsule')),
         findsOneWidget,
       );
+      expect(
+        find.byKey(const ValueKey('picoradar-avatar-control')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('picoradar-bell-control')),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey('home-avatar-button')), findsOneWidget);
       expect(find.byKey(const ValueKey('home-brand-lockup')), findsOneWidget);
       expect(
@@ -303,6 +311,18 @@ void main() {
             .getSize(find.byKey(const ValueKey('home-compact-top-bar')))
             .height,
         56,
+      );
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('picoradar-avatar-control')))
+            .height,
+        52,
+      );
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('picoradar-bell-control')))
+            .width,
+        52,
       );
       expect(find.text('¡Hola!'), findsNothing);
       expect(find.text('Así están tus vehículos hoy'), findsNothing);
@@ -499,6 +519,12 @@ void main() {
 
       expect(pageView.controller?.viewportFraction, closeTo(0.64, 0.001));
       expect(pageView.pageSnapping, isTrue);
+      expect(
+        tester
+            .getSize(find.byKey(const ValueKey('home-vehicle-carousel')))
+            .height,
+        216,
+      );
       expect(
         find.byKey(const ValueKey('home-carousel-counter')),
         findsOneWidget,
@@ -1200,6 +1226,10 @@ void main() {
         expect(find.byKey(const ValueKey('home-brand-lockup')), findsOneWidget);
         expect(
           find.byKey(const ValueKey('home-user-controls-capsule')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('picoradar-avatar-control')),
           findsOneWidget,
         );
         expect(

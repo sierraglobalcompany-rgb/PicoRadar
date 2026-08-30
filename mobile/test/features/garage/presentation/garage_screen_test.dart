@@ -99,6 +99,31 @@ void main() {
     expect(find.text('No activo'), findsOneWidget);
   });
 
+  testWidgets(
+    'P02 focused info panel and detail target follow B and C atomically',
+    (tester) async {
+      final seeded = await _seedThreeVehicles(harness);
+
+      await _openGarage(tester, harness);
+
+      _expectGarageInfoPanel(tester, seeded.active);
+      await _openDetailAndReturn(tester, seeded.active);
+
+      await _focusNewestVehicle(tester);
+      _expectGarageInfoPanel(tester, seeded.newest);
+      await _openDetailAndReturn(tester, seeded.newest);
+
+      await _focusOldestVehicle(tester);
+      _expectGarageInfoPanel(tester, seeded.oldest);
+      await _openDetailAndReturn(tester, seeded.oldest);
+
+      expect(
+        (await harness.repository.getActiveVehicle())?.id,
+        seeded.active.id,
+      );
+    },
+  );
+
   testWidgets('explicit make active changes the active vehicle', (
     tester,
   ) async {
@@ -512,6 +537,51 @@ Future<void> _focusNewestVehicle(WidgetTester tester) async {
   expect(find.text('3 de 3'), findsOneWidget);
 }
 
+Future<void> _focusOldestVehicle(WidgetTester tester) async {
+  await tester.ensureVisible(
+    find.byKey(const ValueKey('garage-vehicle-carousel')),
+  );
+  await tester.pumpAndSettle();
+  for (var attempt = 0; attempt < 3; attempt += 1) {
+    if (find.text('1 de 3').evaluate().isNotEmpty) {
+      break;
+    }
+    await tester.drag(
+      find.byKey(const ValueKey('garage-vehicle-carousel')),
+      const Offset(520, 0),
+    );
+    await tester.pumpAndSettle();
+  }
+  expect(find.text('1 de 3'), findsOneWidget);
+}
+
+void _expectGarageInfoPanel(WidgetTester tester, VehicleProfile vehicle) {
+  final panel = find.byKey(const ValueKey('garage-info-panel'));
+  expect(
+    find.descendant(of: panel, matching: find.text(vehicle.plate)),
+    findsOneWidget,
+  );
+  expect(
+    find.descendant(of: panel, matching: find.text(vehicle.registrationCity!)),
+    findsOneWidget,
+  );
+  expect(
+    find.descendant(of: panel, matching: find.text('${vehicle.year}')),
+    findsOneWidget,
+  );
+}
+
+Future<void> _openDetailAndReturn(
+  WidgetTester tester,
+  VehicleProfile vehicle,
+) async {
+  await _tapVisible(tester, find.byKey(const ValueKey('garage-action-detail')));
+  expect(find.text('Detalle del vehículo'), findsOneWidget);
+  expect(find.text(vehicle.plate), findsOneWidget);
+  await tester.tap(find.byTooltip('Volver'));
+  await tester.pumpAndSettle();
+}
+
 Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
   await tester.ensureVisible(finder);
   await tester.pumpAndSettle();
@@ -528,7 +598,7 @@ Future<void> _completeOnboarding(
   await tester.tap(find.byKey(ValueKey(choiceKey)));
   await tester.pumpAndSettle();
   await _enterText(tester, 'vehicle-plate-field', plate);
-  await _enterText(tester, 'vehicle-city-field', city);
+  await _selectManualCity(tester, city);
   await _tapSave(tester);
 }
 
@@ -538,6 +608,17 @@ Future<void> _enterText(WidgetTester tester, String key, String value) async {
   await tester.tap(finder);
   await tester.enterText(finder, value);
   await tester.pump();
+}
+
+Future<void> _selectManualCity(WidgetTester tester, String value) async {
+  await tester.tap(find.byKey(const ValueKey('vehicle-city-field')));
+  await tester.pumpAndSettle();
+  await _enterText(tester, 'registration-city-search-field', value);
+  await tester.pumpAndSettle();
+  await tester.tap(
+    find.byKey(const ValueKey('registration-city-manual-option')),
+  );
+  await tester.pumpAndSettle();
 }
 
 Future<void> _tapSave(WidgetTester tester) async {
