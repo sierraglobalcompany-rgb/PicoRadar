@@ -241,6 +241,7 @@ class _StartupSurfaceState extends State<_StartupSurface>
                 style: AppTextStyles.h2.copyWith(
                   color: AppColors.navy,
                   fontWeight: FontWeight.w900,
+                  decoration: TextDecoration.none,
                 ),
               ),
               const SizedBox(height: AppSpacing.l),
@@ -250,6 +251,7 @@ class _StartupSurfaceState extends State<_StartupSurface>
                 style: AppTextStyles.caption.copyWith(
                   color: AppColors.navy.withValues(alpha: 0.72),
                   fontWeight: FontWeight.w700,
+                  decoration: TextDecoration.none,
                 ),
               ),
               const SizedBox(height: AppSpacing.m),
@@ -290,7 +292,9 @@ class _StartupError extends StatelessWidget {
                 Text(
                   'No pudimos preparar PicoRadar',
                   textAlign: TextAlign.center,
-                  style: AppTextStyles.h2,
+                  style: AppTextStyles.h2.copyWith(
+                    decoration: TextDecoration.none,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.m),
                 FilledButton.icon(
