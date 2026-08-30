@@ -376,6 +376,38 @@ void main() {
       harness = TestAppHarness();
     }
   });
+
+  testWidgets('Garage V2 standard phones fit owner layout without scrolling', (
+    tester,
+  ) async {
+    for (final viewport in [
+      (name: '360x800', size: const Size(360, 800)),
+      (name: '390x844', size: const Size(390, 844)),
+      (name: '412x915', size: const Size(412, 915)),
+    ]) {
+      await _seedThreeVehicles(harness);
+      await _openGarage(tester, harness, size: viewport.size);
+
+      final infoPanel = tester.getSize(
+        find.byKey(const ValueKey('garage-info-panel')),
+      );
+      final actionsBottom = tester
+          .getBottomLeft(find.byKey(const ValueKey('garage-quick-actions')))
+          .dy;
+      final navTop = tester
+          .getTopLeft(find.byKey(const ValueKey('app-bottom-navigation')))
+          .dy;
+
+      expect(infoPanel.height, lessThanOrEqualTo(122), reason: viewport.name);
+      expect(actionsBottom, lessThan(navTop), reason: viewport.name);
+      expect(tester.takeException(), isNull, reason: viewport.name);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+      await harness.dispose();
+      harness = TestAppHarness();
+    }
+  });
 }
 
 class _SeededVehicles {
@@ -467,11 +499,17 @@ Future<void> _focusNewestVehicle(WidgetTester tester) async {
     find.byKey(const ValueKey('garage-vehicle-carousel')),
   );
   await tester.pumpAndSettle();
-  await tester.drag(
-    find.byKey(const ValueKey('garage-vehicle-carousel')),
-    const Offset(-320, 0),
-  );
-  await tester.pumpAndSettle();
+  for (var attempt = 0; attempt < 3; attempt += 1) {
+    if (find.text('3 de 3').evaluate().isNotEmpty) {
+      break;
+    }
+    await tester.drag(
+      find.byKey(const ValueKey('garage-vehicle-carousel')),
+      const Offset(-520, 0),
+    );
+    await tester.pumpAndSettle();
+  }
+  expect(find.text('3 de 3'), findsOneWidget);
 }
 
 Future<void> _tapVisible(WidgetTester tester, Finder finder) async {

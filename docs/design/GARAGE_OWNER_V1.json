@@ -10,7 +10,18 @@
     "role": "Garage is the local vehicle management home, not a second Home dashboard.",
     "header": "Use the PicoRadar brand header with avatar and notification bell capsule.",
     "filters": ["Todos", "Favoritos", "Activos"],
-    "carousel": "Native PageView carousel with partial side vehicles and active vehicle as the initial focus.",
+    "visualTuning": {
+      "viewportFraction": 0.58,
+      "sideCardScale": 0.91,
+      "carouselHeightStandard": 204,
+      "filterWidthFactorStandard": 0.86,
+      "filterVisualHeight": 46,
+      "infoColumnsStandard": 3,
+      "infoColumnsLargeText": 2,
+      "addVehicleHeightStandard": 76,
+      "quickActionHeightStandard": 64
+    },
+    "carousel": "Native PageView carousel with substantial partial side vehicles and active vehicle as the initial focus.",
     "focusedVehicle": "Swiping changes Garage focus only. It must not silently mutate the global active vehicle.",
     "infoPanel": {
       "realFields": ["Placa", "Tipo", "Estado", "Matrícula", "Servicio", "Año"],
