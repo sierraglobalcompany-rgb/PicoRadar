@@ -111,6 +111,7 @@ R02B Garage Owner V1:
 - Runtime data in that mockup is illustrative only; do not fake comparendo counts/status before C14.
 - Maintenance-related UI remains disabled/omitted until its own approved lot.
 - `docs/design/GARAGE_OWNER_V1.json` captures the R02B Garage V2 contract: shared PicoRadar header, Todos/Favoritos/Activos filters, native carousel, AppPreferences favorites, truthful info panel, Add Vehicle card and four quick actions.
+- P02 post-R03A regression fixes are merged on `main`: Garage focused vehicle/data sync, active/non-active action visibility, Apps launcher runtime reopen, Home geometry regression fixes and registration-city catalog are accepted.
 - Garage focus is local to Garage. Swiping the carousel does not mutate the global active vehicle; only the explicit `Hacer activo` action does.
 - Mileage, maintenance records and comparendos claims remain not implemented in R02B.
 
@@ -121,15 +122,18 @@ R02C Apps Launcher Owner V1:
 - Phone visual QA for root surfaces is portrait-only unless a future approved lot explicitly adds landscape.
 
 R03 C13 Logic Integration + UI Restyle:
-- recover C13 vehicle status logic from PR #16;
-- integrate schema v4 and obligation/reminder/catalog tests;
-- restyle presentation through recovered shared components.
+- R03A Pico visual recovery is implemented and merged.
+- schema v4, obligation/reminder/catalog tests and C13 vehicle status logic remain recovered.
 - R03 route/product contract is frozen in `docs/design/R03_REFERENCE_PLAN.md`.
-- `/pico?vehicleId=<id>` is the future **Mi Pico y Placa** personalized vehicle detail.
-- `/pico` is the future **Pico y Placa de la ciudad** regulation overview.
-- The current Home card labeled `MAÑANA` will become `Pico y placa` in R03 while keeping contextual secondary content such as tomorrow/next restriction state; its tap continues to use the focused vehicle.
-- R03 implementation is blocked until owner-selected references exist for `pico_personal_owner_v1.png`, `pico_city_owner_v1.png`, `soat_owner_v1.png` and `rtm_owner_v1.png`.
-- SOAT and RTM current logic remains valid, but their current presentation is owner-rejected visual debt for R03.
+- `/pico?vehicleId=<id>` is **Mi Pico y Placa** personalized vehicle detail.
+- `/pico` is **Pico y Placa de la ciudad** regulation overview.
+- The Home card is labeled `Pico y placa` while keeping contextual secondary content such as tomorrow/next restriction state; its tap continues to use the focused vehicle.
+- R03B is blocked until owner-selected references exist for `soat_owner_v1.png` and `rtm_owner_v1.png`.
+- SOAT and RTM current logic remains valid, but their current presentation is owner-rejected visual debt for R03B.
+
+C10B National Pico rollout:
+- `docs/data/PICO_JURISDICTION_COVERAGE_AUDIT_20260830.md` is research authority only.
+- Candidate cities from the audit are not runtime jurisdictions until a separate approved C10B lot.
 
 B00/B01 proposed backend split:
 - bring forward the C28 control-plane/dataset-publisher foundation only if explicitly approved.
