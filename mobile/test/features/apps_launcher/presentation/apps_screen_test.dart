@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/shell/app_shell.dart';
 import 'package:picoradar/features/apps_launcher/data/module_registry.dart';
@@ -157,6 +156,55 @@ void main() {
     expect(find.text('Planeacion de ruta sin mapa propio.'), findsOneWidget);
   });
 
+  testWidgets('P02 Apps opens and closes repeatedly from main branches', (
+    tester,
+  ) async {
+    _usePortraitPhone(tester);
+    await harness.pump(tester);
+
+    for (final tabKey in ['tab-home', 'tab-garage', 'tab-trip']) {
+      await tester.tap(find.byKey(ValueKey(tabKey)));
+      await tester.pumpAndSettle();
+      for (var cycle = 0; cycle < 10; cycle += 1) {
+        await tester.tap(find.byKey(const ValueKey('tab-apps')));
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('apps-launcher-overlay')),
+          findsOneWidget,
+        );
+        await tester.tap(find.byKey(const ValueKey('tab-apps')));
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('apps-launcher-overlay')),
+          findsNothing,
+        );
+      }
+    }
+  });
+
+  testWidgets('P02 Apps reopens after navigating to Pico and returning Home', (
+    tester,
+  ) async {
+    await _createVehicle(harness, plate: 'AAA111');
+    await harness.preferences.setString(
+      picoJurisdictionPreferenceKey,
+      'co-dc-bogota',
+    );
+    await _openApps(tester, harness);
+
+    await tester.tap(find.byKey(const ValueKey('app-module-pico')));
+    await _pumpPicoRoute(tester);
+    expect(find.byType(PicoDetailScreen), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tab-apps')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('apps-launcher-overlay')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-empty-state')), findsNothing);
+  });
+
   testWidgets('Pico y placa opens the city overview route', (tester) async {
     await _createVehicle(harness, plate: 'AAA111');
     await harness.preferences.setString(
@@ -169,12 +217,6 @@ void main() {
     await _pumpPicoRoute(tester);
 
     expect(find.byType(PicoDetailScreen), findsOneWidget);
-    expect(
-      GoRouter.of(
-        tester.element(find.byType(PicoDetailScreen)),
-      ).routerDelegate.currentConfiguration.uri.toString(),
-      '/pico',
-    );
   });
 
   testWidgets('Peajes y estado vial opens the Viaje tab', (tester) async {

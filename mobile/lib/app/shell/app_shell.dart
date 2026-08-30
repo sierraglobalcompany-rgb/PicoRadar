@@ -182,7 +182,21 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   void _openLauncherLocation(String location) {
     _closeLauncher();
-    context.go(location);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final branchIndex = _branchIndexForLocation(location);
+      if (branchIndex != null) {
+        widget.navigationShell.goBranch(branchIndex);
+        return;
+      }
+      if (_isTopLevelOverlayLocation(location)) {
+        context.push(location);
+        return;
+      }
+      context.go(location);
+    });
   }
 
   Future<void> _promoteHomeFocusedVehicle() async {
@@ -196,6 +210,24 @@ class _AppShellState extends ConsumerState<AppShell> {
         .setActiveVehicle(focusedVehicleId);
     ref.invalidate(activeVehicleProvider);
   }
+}
+
+int? _branchIndexForLocation(String location) {
+  final path = Uri.parse(location).path;
+  for (final tab in AppTab.values) {
+    if (tab == AppTab.apps) {
+      continue;
+    }
+    if (path == tab.route.path) {
+      return tab.index;
+    }
+  }
+  return null;
+}
+
+bool _isTopLevelOverlayLocation(String location) {
+  final path = Uri.parse(location).path;
+  return path == AppRoute.pico.path;
 }
 
 String? resolveAppsLauncherVehicleId({

@@ -41,7 +41,7 @@ class PicoRadarAppHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.s),
-          _UserControlsCapsule(
+          _UserControls(
             key: capsuleKey,
             alertPreferences: alertPreferences,
             bellKey: bellKey,
@@ -53,8 +53,8 @@ class PicoRadarAppHeader extends StatelessWidget {
   }
 }
 
-class _UserControlsCapsule extends StatelessWidget {
-  const _UserControlsCapsule({
+class _UserControls extends StatelessWidget {
+  const _UserControls({
     required this.alertPreferences,
     required this.bellKey,
     required this.onNotificationsPressed,
@@ -67,31 +67,41 @@ class _UserControlsCapsule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const _CircularHeaderControl(
+          key: ValueKey('picoradar-avatar-control'),
+          child: HomeAvatarButton(embedded: true, visualSize: 40),
+        ),
+        const SizedBox(width: AppSpacing.s),
+        _CircularHeaderControl(
+          key: const ValueKey('picoradar-bell-control'),
+          child: _NotificationBellButton(
+            key: bellKey,
+            alertPreferences: alertPreferences,
+            onPressed: onNotificationsPressed,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CircularHeaderControl extends StatelessWidget {
+  const _CircularHeaderControl({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
     return Material(
       color: AppColors.surface,
       elevation: 3,
       shadowColor: AppColors.navy.withValues(alpha: 0.14),
-      borderRadius: BorderRadius.circular(28),
+      shape: const CircleBorder(),
       clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        height: 52,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const HomeAvatarButton(embedded: true, visualSize: 40),
-            Container(
-              width: 1,
-              height: 28,
-              color: AppColors.border.withValues(alpha: 0.72),
-            ),
-            _NotificationBellButton(
-              key: bellKey,
-              alertPreferences: alertPreferences,
-              onPressed: onNotificationsPressed,
-            ),
-          ],
-        ),
-      ),
+      child: SizedBox.square(dimension: 52, child: Center(child: child)),
     );
   }
 }

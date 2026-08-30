@@ -1805,46 +1805,96 @@ class _SourceCard extends StatelessWidget {
 class _CityRoadPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final sky = Paint()..color = AppColors.teal.withValues(alpha: 0.08);
-    final road = Paint()..color = AppColors.navy;
+    final rect = Offset.zero & size;
+    final sky = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          AppColors.teal.withValues(alpha: 0.12),
+          AppColors.blue.withValues(alpha: 0.08),
+          AppColors.plateYellow.withValues(alpha: 0.08),
+        ],
+      ).createShader(rect);
+    final hill = Paint()..color = AppColors.teal.withValues(alpha: 0.16);
+    final skyline = Paint()..color = AppColors.blue.withValues(alpha: 0.24);
+    final tree = Paint()..color = AppColors.teal.withValues(alpha: 0.5);
+    final trunk = Paint()..color = AppColors.navy.withValues(alpha: 0.28);
+    final road = Paint()..color = AppColors.navy.withValues(alpha: 0.95);
     final stripe = Paint()
       ..color = AppColors.plateYellow
-      ..strokeWidth = 4
+      ..strokeWidth = 3.4
       ..strokeCap = StrokeCap.round;
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(20)),
+      RRect.fromRectAndRadius(rect, const Radius.circular(20)),
       sky,
     );
-    final roadPath = Path()
-      ..moveTo(size.width * 0.14, size.height)
+    final backHill = Path()
+      ..moveTo(0, size.height * 0.58)
       ..quadraticBezierTo(
-        size.width * 0.48,
-        size.height * 0.24,
-        size.width * 0.86,
+        size.width * 0.28,
+        size.height * 0.28,
+        size.width * 0.52,
+        size.height * 0.52,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.78,
+        size.height * 0.78,
+        size.width,
+        size.height * 0.42,
+      )
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(backHill, hill);
+
+    void building(double left, double top, double width, double height) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(
+            size.width * left,
+            size.height * top,
+            size.width * width,
+            size.height * height,
+          ),
+          const Radius.circular(5),
+        ),
+        skyline,
+      );
+    }
+
+    building(0.1, 0.22, 0.14, 0.36);
+    building(0.27, 0.14, 0.12, 0.42);
+    building(0.68, 0.18, 0.16, 0.4);
+    building(0.86, 0.08, 0.13, 0.5);
+
+    final roadPath = Path()
+      ..moveTo(size.width * 0.08, size.height)
+      ..quadraticBezierTo(
+        size.width * 0.42,
+        size.height * 0.32,
+        size.width * 0.92,
         size.height,
       )
       ..close();
     canvas.drawPath(roadPath, road);
     canvas.drawLine(
-      Offset(size.width * 0.5, size.height * 0.62),
-      Offset(size.width * 0.5, size.height * 0.88),
+      Offset(size.width * 0.48, size.height * 0.62),
+      Offset(size.width * 0.5, size.height * 0.9),
       stripe,
     );
-    final building = Paint()..color = AppColors.blue.withValues(alpha: 0.28);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width * 0.12, size.height * 0.2, 42, 54),
-        const Radius.circular(6),
-      ),
-      building,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width * 0.74, size.height * 0.12, 48, 64),
-        const Radius.circular(6),
-      ),
-      building,
-    );
+    for (final x in [0.18, 0.78]) {
+      canvas.drawLine(
+        Offset(size.width * x, size.height * 0.58),
+        Offset(size.width * x, size.height * 0.74),
+        trunk,
+      );
+      canvas.drawCircle(
+        Offset(size.width * x, size.height * 0.54),
+        size.shortestSide * 0.075,
+        tree,
+      );
+    }
   }
 
   @override

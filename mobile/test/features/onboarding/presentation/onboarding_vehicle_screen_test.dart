@@ -7,7 +7,10 @@ import 'package:go_router/go_router.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
+import 'package:picoradar/features/onboarding/data/registration_city_catalog.dart';
 import 'package:picoradar/features/onboarding/presentation/onboarding_vehicle_screen.dart';
+import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
+import 'package:picoradar/features/location/data/location_preferences.dart';
 
 import '../../../test_app_harness.dart';
 
@@ -94,7 +97,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('vehicle-choice-privateCar')));
     await tester.pumpAndSettle();
 
-    await _enterText(tester, 'vehicle-city-field', 'Bogota');
+    await _selectManualCity(tester, 'Bogota');
     await _tapSave(tester);
 
     expect(find.text('La placa es obligatoria.'), findsOneWidget);
@@ -155,6 +158,50 @@ void main() {
       isNull,
     );
   });
+
+  testWidgets('registration city picker selects an official catalog city', (
+    tester,
+  ) async {
+    await _openOnboarding(tester, harness);
+    await tester.tap(find.byKey(const ValueKey('vehicle-choice-privateCar')));
+    await tester.pumpAndSettle();
+
+    await _selectCatalogCity(tester, 'medellin', 'Medellín - Antioquia');
+    await _enterText(tester, 'vehicle-plate-field', 'abc 123');
+    await _tapSave(tester);
+
+    final vehicle = (await harness.repository.listVehicles()).single;
+    expect(vehicle.registrationCity, 'Medellín - Antioquia');
+  });
+
+  testWidgets(
+    'manual registration fallback persists without mutating Pico city',
+    (tester) async {
+      await harness.preferences.setString(
+        picoJurisdictionPreferenceKey,
+        'co-ant-medellin',
+      );
+      await harness.preferences.setString(locationModePreferenceKey, 'manual');
+      await _openOnboarding(tester, harness);
+      await tester.tap(find.byKey(const ValueKey('vehicle-choice-privateCar')));
+      await tester.pumpAndSettle();
+
+      await _selectManualCity(tester, 'Ciudad QA Nueva');
+      await _enterText(tester, 'vehicle-plate-field', 'abc 123');
+      await _tapSave(tester);
+
+      final vehicle = (await harness.repository.listVehicles()).single;
+      expect(vehicle.registrationCity, 'Ciudad QA Nueva');
+      expect(
+        await harness.preferences.getString(picoJurisdictionPreferenceKey),
+        'co-ant-medellin',
+      );
+      expect(
+        await harness.preferences.getString(locationModePreferenceKey),
+        'manual',
+      );
+    },
+  );
 
   testWidgets('first vehicle becomes active', (tester) async {
     await _openOnboarding(tester, harness);
@@ -228,12 +275,38 @@ Future<void> _openOnboarding(
       overrides: [
         appDatabaseProvider.overrideWithValue(harness.database),
         appPreferencesProvider.overrideWithValue(harness.preferences),
+        registrationCityCatalogProvider.overrideWith(
+          (_) async => _testRegistrationCatalog,
+        ),
       ],
       child: MaterialApp.router(routerConfig: router),
     ),
   );
   await tester.pumpAndSettle();
 }
+
+const _testRegistrationCatalog = RegistrationCityCatalog(
+  records: [
+    RegistrationCity(
+      municipality: 'Bogotá',
+      department: 'Bogotá D.C.',
+      displayName: 'Bogotá - Bogotá D.C.',
+      source: 'RUNT2.0 OT',
+    ),
+    RegistrationCity(
+      municipality: 'Medellín',
+      department: 'Antioquia',
+      displayName: 'Medellín - Antioquia',
+      source: 'RUNT2.0 OT',
+    ),
+    RegistrationCity(
+      municipality: 'Bucaramanga',
+      department: 'Santander',
+      displayName: 'Bucaramanga - Santander',
+      source: 'RUNT2.0 OT',
+    ),
+  ],
+);
 
 Future<void> _completeOnboarding(
   WidgetTester tester, {
@@ -244,7 +317,7 @@ Future<void> _completeOnboarding(
   await tester.tap(find.byKey(ValueKey(choiceKey)));
   await tester.pumpAndSettle();
   await _enterText(tester, 'vehicle-plate-field', plate);
-  await _enterText(tester, 'vehicle-city-field', city);
+  await _selectManualCity(tester, city);
   await _tapSave(tester);
 }
 
@@ -254,6 +327,51 @@ Future<void> _enterText(WidgetTester tester, String key, String value) async {
   await tester.tap(finder);
   await tester.enterText(finder, value);
   await tester.pump();
+}
+
+Future<void> _selectCatalogCity(
+  WidgetTester tester,
+  String query,
+  String displayName,
+) async {
+  await _openRegistrationCityPicker(tester);
+  await _enterText(tester, 'registration-city-search-field', query);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text(displayName));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _selectManualCity(WidgetTester tester, String value) async {
+  await _openRegistrationCityPicker(tester);
+  await _enterText(tester, 'registration-city-search-field', value);
+  await tester.pumpAndSettle();
+  await tester.ensureVisible(
+    find.byKey(const ValueKey('registration-city-manual-option')),
+  );
+  await tester.tap(
+    find.byKey(const ValueKey('registration-city-manual-option')),
+  );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openRegistrationCityPicker(WidgetTester tester) async {
+  final cityField = find.byKey(const ValueKey('vehicle-city-field'));
+  await tester.ensureVisible(cityField);
+  await tester.testTextInput.receiveAction(TextInputAction.done);
+  await tester.pump();
+
+  final searchField = find.byKey(
+    const ValueKey('registration-city-search-field'),
+  );
+  for (var attempt = 0; attempt < 3; attempt += 1) {
+    await tester.tap(cityField);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    if (searchField.evaluate().isNotEmpty) {
+      return;
+    }
+  }
+  expect(searchField, findsOneWidget);
 }
 
 Future<void> _tapSave(WidgetTester tester) async {

@@ -20,10 +20,10 @@ enum GarageFilter { all, favorites, active }
 
 const _garageViewportFraction = 0.58;
 const _garageSideCardScale = 0.91;
-const _garageCarouselHeight = 204.0;
+const _garageCarouselHeight = 196.0;
 const _garageFilterVisualHeight = 46.0;
 const _garageFilterWidthFactor = 0.86;
-const _garageAddVehicleHeight = 76.0;
+const _garageAddVehicleHeight = 66.0;
 const _garageActionHeight = 64.0;
 
 class GarageScreen extends ConsumerWidget {
@@ -127,13 +127,22 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
   @override
   void didUpdateWidget(covariant _GarageReady oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final oldFiltered = _filteredVehiclesFor(
+      vehicles: oldWidget.vehicles,
+      activeId: oldWidget.activeId,
+      favoriteIds: oldWidget.favoriteIds,
+    );
     final filtered = _filteredVehicles();
     if (filtered.isEmpty) {
       _focusedVehicleId = null;
       return;
     }
+    final focusBefore = _focusedVehicleId;
     if (!filtered.any((vehicle) => vehicle.id == _focusedVehicleId)) {
       _focusedVehicleId = _initialFocusedId(filtered, widget.activeId);
+    }
+    if (focusBefore != _focusedVehicleId ||
+        !_sameVehicleIds(oldFiltered, filtered)) {
       _jumpToFocused(filtered);
     }
   }
@@ -171,12 +180,12 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _GarageHeader(alertPreferences: widget.alertPreferences),
-                  const SizedBox(height: AppSpacing.m),
+                  const SizedBox(height: AppSpacing.s),
                   _GarageFilterSegment(
                     selected: _filter,
                     onChanged: _selectFilter,
                   ),
-                  const SizedBox(height: AppSpacing.m),
+                  const SizedBox(height: AppSpacing.s),
                   if (focused == null)
                     _FilteredEmpty(filter: _filter, onShowAll: _showAll)
                   else ...[
@@ -187,6 +196,9 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
                       favoriteIds: widget.favoriteIds,
                       controller: _controller,
                       onChanged: (index) {
+                        if (index < 0 || index >= filtered.length) {
+                          return;
+                        }
                         setState(() {
                           _focusedVehicleId = filtered[index].id;
                         });
@@ -219,15 +231,27 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
   }
 
   List<VehicleProfile> _filteredVehicles() {
+    return _filteredVehiclesFor(
+      vehicles: widget.vehicles,
+      activeId: widget.activeId,
+      favoriteIds: widget.favoriteIds,
+    );
+  }
+
+  List<VehicleProfile> _filteredVehiclesFor({
+    required List<VehicleProfile> vehicles,
+    required String? activeId,
+    required Set<String> favoriteIds,
+  }) {
     return switch (_filter) {
-      GarageFilter.all => widget.vehicles,
+      GarageFilter.all => vehicles,
       GarageFilter.favorites =>
-        widget.vehicles
-            .where((vehicle) => widget.favoriteIds.contains(vehicle.id))
+        vehicles
+            .where((vehicle) => favoriteIds.contains(vehicle.id))
             .toList(growable: false),
       GarageFilter.active =>
-        widget.vehicles
-            .where((vehicle) => vehicle.id == widget.activeId)
+        vehicles
+            .where((vehicle) => vehicle.id == activeId)
             .toList(growable: false),
     };
   }
@@ -270,6 +294,18 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
       (vehicle) => vehicle.id == activeId,
     );
     return vehicles[activeIndex < 0 ? 0 : activeIndex].id;
+  }
+
+  bool _sameVehicleIds(List<VehicleProfile> left, List<VehicleProfile> right) {
+    if (left.length != right.length) {
+      return false;
+    }
+    for (var i = 0; i < left.length; i += 1) {
+      if (left[i].id != right[i].id) {
+        return false;
+      }
+    }
+    return true;
   }
 
   Future<void> _toggleFavorite(VehicleProfile vehicle) async {
@@ -775,6 +811,7 @@ class _GarageInfoPanel extends StatelessWidget {
         'Estado',
         active ? 'Activo' : 'No activo',
         highlight: active,
+        action: active ? null : () => onMakeActive(vehicle),
       ),
       if (_hasText(vehicle.registrationCity))
         _InfoField(
@@ -793,7 +830,7 @@ class _GarageInfoPanel extends StatelessWidget {
 
     return AppCard(
       key: const ValueKey('garage-info-panel'),
-      padding: const EdgeInsets.all(AppSpacing.m),
+      padding: const EdgeInsets.all(12),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final textScale = MediaQuery.textScalerOf(context).scale(1);
@@ -804,22 +841,12 @@ class _GarageInfoPanel extends StatelessWidget {
               columnCount;
           return Wrap(
             spacing: spacing,
-            runSpacing: AppSpacing.s,
+            runSpacing: 6,
             children: [
               for (final field in fields)
                 SizedBox(
                   width: columnWidth,
                   child: _InfoCell(field: field),
-                ),
-              if (!active)
-                SizedBox(
-                  width: columnWidth,
-                  child: SecondaryButton(
-                    key: const ValueKey('garage-action-make-active'),
-                    label: 'Hacer activo',
-                    icon: Icons.check_circle_outline,
-                    onPressed: () => onMakeActive(vehicle),
-                  ),
                 ),
             ],
           );
@@ -830,12 +857,19 @@ class _GarageInfoPanel extends StatelessWidget {
 }
 
 class _InfoField {
-  const _InfoField(this.icon, this.label, this.value, {this.highlight = false});
+  const _InfoField(
+    this.icon,
+    this.label,
+    this.value, {
+    this.highlight = false,
+    this.action,
+  });
 
   final IconData icon;
   final String label;
   final String value;
   final bool highlight;
+  final VoidCallback? action;
 }
 
 class _InfoCell extends StatelessWidget {
@@ -845,54 +879,115 @@ class _InfoCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final action = field.action;
+    final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          field.icon,
-          color: AppColors.navy.withValues(alpha: 0.72),
-          size: 18,
-        ),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                field.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.caption.copyWith(
-                  fontSize: 10.5,
-                  height: 1.05,
-                  color: AppColors.navy.withValues(alpha: 0.72),
-                ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              field.icon,
+              color: AppColors.navy.withValues(alpha: 0.72),
+              size: 18,
+            ),
+            const SizedBox(width: 5),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    field.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption.copyWith(
+                      fontSize: 10.5,
+                      height: 1.05,
+                      color: AppColors.navy.withValues(alpha: 0.72),
+                    ),
+                  ),
+                  Container(
+                    padding: field.highlight
+                        ? const EdgeInsets.symmetric(horizontal: 7, vertical: 1)
+                        : EdgeInsets.zero,
+                    decoration: field.highlight
+                        ? BoxDecoration(
+                            color: AppColors.teal.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(AppRadius.chip),
+                          )
+                        : null,
+                    child: Text(
+                      field.value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodyStrong.copyWith(
+                        fontSize: 13.5,
+                        height: 1.05,
+                        color: field.highlight
+                            ? AppColors.teal
+                            : AppColors.navy,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              Container(
-                padding: field.highlight
-                    ? const EdgeInsets.symmetric(horizontal: 7, vertical: 1)
-                    : EdgeInsets.zero,
-                decoration: field.highlight
-                    ? BoxDecoration(
-                        color: AppColors.teal.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(AppRadius.chip),
-                      )
-                    : null,
+            ),
+          ],
+        ),
+        if (action != null) ...[
+          const SizedBox(height: 3),
+          _MakeActivePill(onTap: action),
+        ],
+      ],
+    );
+    if (action == null) {
+      return content;
+    }
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: action,
+      child: content,
+    );
+  }
+}
+
+class _MakeActivePill extends StatelessWidget {
+  const _MakeActivePill({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Hacer activo',
+      child: SizedBox(
+        key: const ValueKey('garage-action-make-active'),
+        height: 32,
+        child: Material(
+          color: AppColors.teal.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(AppRadius.chip),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 7),
+              child: Center(
                 child: Text(
-                  field.value,
+                  'Hacer activo',
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodyStrong.copyWith(
-                    fontSize: 13.5,
-                    height: 1.05,
-                    color: field.highlight ? AppColors.teal : AppColors.navy,
+                  softWrap: false,
+                  overflow: TextOverflow.fade,
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.teal,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
-            ],
+            ),
           ),
         ),
-      ],
+      ),
     );
   }
 }
