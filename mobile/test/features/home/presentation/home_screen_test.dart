@@ -82,7 +82,10 @@ void main() {
       expect(locationCard, findsOneWidget);
       expect(find.text('Ubicación'), findsOneWidget);
       expect(find.text('Bogotá'), findsOneWidget);
-      expect(tester.getSize(locationCard).height, 60);
+      final locationSize = tester.getSize(locationCard);
+      expect(locationSize.height, 54);
+      expect(locationSize.width, lessThan(390 * 0.72));
+      expect(locationSize.width, greaterThan(390 * 0.60));
       expect(
         tester.getTopLeft(locationCard).dy,
         lessThan(
@@ -94,6 +97,25 @@ void main() {
       expect(gateway.checkPermissionCalls, 0);
       expect(gateway.requestPermissionCalls, 0);
       expect(gateway.positionCalls, 0);
+    });
+
+    testWidgets('location card stays compact at small phone width', (
+      tester,
+    ) async {
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-dc-bogota',
+      );
+
+      await _pumpHome(tester, harness, viewportSize: const Size(360, 800));
+
+      final locationSize = tester.getSize(
+        find.byKey(const ValueKey('home-location-card')),
+      );
+      expect(locationSize.height, 54);
+      expect(locationSize.width, lessThan(360 * 0.72));
+      expect(locationSize.width, greaterThan(360 * 0.60));
     });
 
     testWidgets('location sheet switches manual jurisdiction from Home', (
@@ -153,6 +175,12 @@ void main() {
         await harness.preferences.getString(locationModePreferenceKey),
         'gpsAuto',
       );
+      final gpsCardSize = tester.getSize(
+        find.byKey(const ValueKey('home-location-card')),
+      );
+      expect(gpsCardSize.height, 54);
+      expect(gpsCardSize.width, lessThan(390 * 0.72));
+      expect(find.text('GPS activo'), findsOneWidget);
     });
 
     testWidgets('resume TTL refresh does not request permission implicitly', (

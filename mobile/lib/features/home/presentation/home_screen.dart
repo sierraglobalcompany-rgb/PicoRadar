@@ -346,9 +346,9 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
           key: const ValueKey('home-v2-scroll'),
           padding: EdgeInsets.fromLTRB(
             horizontalPadding,
-            AppSpacing.s,
+            AppSpacing.xs,
             horizontalPadding,
-            AppSpacing.s,
+            0,
           ),
           child: Align(
             alignment: Alignment.topCenter,
@@ -358,19 +358,19 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _HomeHeader(alertPreferences: widget.alertPreferences),
-                  const SizedBox(height: AppSpacing.s),
+                  const SizedBox(height: AppSpacing.xs),
                   _HomeLocationCard(
                     jurisdictions: widget.jurisdictions,
                     selectedJurisdiction: widget.selectedJurisdiction,
                   ),
-                  const SizedBox(height: AppSpacing.s),
+                  const SizedBox(height: AppSpacing.xs),
                   _VehicleCarousel(
                     controller: _controller,
                     snapshots: widget.snapshots,
                     focusedIndex: _focusedIndex,
                     onChanged: _setFocusedIndex,
                   ),
-                  const SizedBox(height: AppSpacing.s),
+                  const SizedBox(height: AppSpacing.xs),
                   _CarouselIndicator(
                     count: widget.snapshots.length,
                     index: _focusedIndex,
@@ -382,9 +382,9 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
                       jurisdictions: widget.jurisdictions,
                     ),
                   ],
-                  const SizedBox(height: AppSpacing.s),
+                  const SizedBox(height: AppSpacing.xs),
                   _FocusedStatusGrid(snapshot: focused),
-                  const SizedBox(height: AppSpacing.s),
+                  const SizedBox(height: AppSpacing.xs),
                   const HomeBannerSlot(),
                 ],
               ),
@@ -509,108 +509,154 @@ class _HomeLocationCard extends ConsumerWidget {
         : Icons.my_location_rounded;
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     final compactText = textScale >= 1.4;
-    final iconSize = compactText ? 24.0 : 30.0;
+    final iconSize = compactText ? 22.0 : 24.0;
+    final height = compactText ? 64.0 : 54.0;
+    final screenWidth = MediaQuery.sizeOf(context).width;
 
-    return Semantics(
-      button: true,
-      label: 'Ubicación ${city ?? 'sin ciudad'}',
-      child: Material(
-        color: AppColors.surface,
-        elevation: 3,
-        shadowColor: AppColors.navy.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          key: const ValueKey('home-location-card'),
-          onTap: () => _showLocationSettingsSheet(context, jurisdictions),
-          child: Container(
-            height: compactText ? 64 : 60,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.m),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.72),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.location_on_outlined,
-                  color: AppColors.navy,
-                  size: iconSize,
-                ),
-                SizedBox(width: compactText ? AppSpacing.s : AppSpacing.m),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (!compactText) ...[
-                        Text(
-                          'Ubicación',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.navy.withValues(alpha: 0.72),
-                          ),
-                        ),
-                      ],
-                      Text(
-                        city ?? 'Sin ciudad',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.bodyStrong.copyWith(
-                          color: AppColors.navy,
-                          height: 1.05,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 34,
-                  color: AppColors.border,
-                  margin: EdgeInsets.symmetric(
-                    horizontal: compactText ? AppSpacing.s : AppSpacing.m,
-                  ),
-                ),
-                if (refreshing)
-                  const SizedBox.square(
-                    dimension: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2.4),
-                  )
-                else ...[
-                  if (!compactText) ...[
-                    Flexible(
-                      child: Text(
-                        rightLabel,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.bodyStrong.copyWith(
-                          color: mode == LocationMode.gpsAuto
-                              ? AppColors.teal
-                              : AppColors.navy,
-                        ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = _locationCardWidth(
+          screenWidth: screenWidth,
+          availableWidth: constraints.maxWidth,
+        );
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: ConstrainedBox(
+            constraints: BoxConstraints.tightFor(width: cardWidth),
+            child: Semantics(
+              button: true,
+              label: 'Ubicación ${city ?? 'sin ciudad'}',
+              child: Material(
+                color: AppColors.surface,
+                elevation: 3,
+                shadowColor: AppColors.navy.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppRadius.card),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  key: const ValueKey('home-location-card'),
+                  onTap: () =>
+                      _showLocationSettingsSheet(context, jurisdictions),
+                  child: Container(
+                    height: height,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.m,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(AppRadius.card),
+                      border: Border.all(
+                        color: AppColors.border.withValues(alpha: 0.72),
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.s),
-                  ],
-                  Icon(
-                    rightIcon,
-                    color: mode == LocationMode.gpsAuto
-                        ? AppColors.teal
-                        : AppColors.navy,
-                    size: 24,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.location_on_outlined,
+                          color: AppColors.navy,
+                          size: iconSize,
+                        ),
+                        SizedBox(
+                          width: compactText ? AppSpacing.s : AppSpacing.m,
+                        ),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (!compactText) ...[
+                                Text(
+                                  'Ubicación',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: AppColors.navy.withValues(
+                                      alpha: 0.72,
+                                    ),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                              Text(
+                                city ?? 'Sin ciudad',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.bodyStrong.copyWith(
+                                  color: AppColors.navy,
+                                  fontSize: compactText ? 15 : 15.5,
+                                  height: 1.05,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          width: 1,
+                          height: compactText ? 32 : 30,
+                          color: AppColors.border,
+                          margin: EdgeInsets.symmetric(
+                            horizontal: compactText
+                                ? AppSpacing.s
+                                : AppSpacing.m,
+                          ),
+                        ),
+                        if (refreshing)
+                          const SizedBox.square(
+                            dimension: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2.2),
+                          )
+                        else ...[
+                          if (!compactText) ...[
+                            Flexible(
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    rightLabel,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.visible,
+                                    style: AppTextStyles.bodyStrong.copyWith(
+                                      color: mode == LocationMode.gpsAuto
+                                          ? AppColors.teal
+                                          : AppColors.navy,
+                                      fontSize: 13.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.s),
+                          ],
+                          Icon(
+                            rightIcon,
+                            color: mode == LocationMode.gpsAuto
+                                ? AppColors.teal
+                                : AppColors.navy,
+                            size: compactText ? 20 : 21,
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                ],
-              ],
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
+}
+
+double _locationCardWidth({
+  required double screenWidth,
+  required double availableWidth,
+}) {
+  final targetWidth = switch (screenWidth) {
+    < 380 => 244.0,
+    < 400 => 258.0,
+    _ => 266.0,
+  };
+  return math.min(targetWidth, availableWidth);
 }
 
 class _HomeEmpty extends StatelessWidget {

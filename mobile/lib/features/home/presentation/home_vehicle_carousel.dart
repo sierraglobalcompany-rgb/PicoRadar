@@ -1,7 +1,7 @@
 part of 'home_screen.dart';
 
 const _homeCarouselViewportFraction = 0.64;
-const _homeCarouselBaseHeight = 236.0;
+const _homeCarouselBaseHeight = 198.0;
 
 class _VehicleCarousel extends StatelessWidget {
   const _VehicleCarousel({
@@ -49,7 +49,7 @@ class _VehicleCarousel extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.s,
-                        vertical: AppSpacing.s,
+                        vertical: AppSpacing.xs,
                       ),
                       child: _HomeVehicleCard(
                         snapshot: snapshots[index],
@@ -176,9 +176,9 @@ class _HomeVehicleCardState extends State<_HomeVehicleCard>
           child: Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.m,
-              AppSpacing.s,
+              AppSpacing.xs,
               AppSpacing.m,
-              AppSpacing.s,
+              AppSpacing.xs,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -203,14 +203,14 @@ class _HomeVehicleCardState extends State<_HomeVehicleCard>
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.h2.copyWith(fontSize: 17),
+                  style: AppTextStyles.h2.copyWith(fontSize: 16.5),
                 ),
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(height: 2),
                 ColombianPlateBadge(
                   plate: widget.snapshot.vehicle.plate,
                   compact: true,
                 ),
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(height: 2),
                 _TodaySummary(evaluation: widget.snapshot.today),
               ],
             ),
@@ -242,7 +242,7 @@ class _TodayChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = statusColor(status);
     return Container(
-      constraints: const BoxConstraints(minHeight: 28),
+      constraints: const BoxConstraints(minHeight: 26),
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.s,
         vertical: 3,
@@ -524,7 +524,7 @@ class _TodaySummary extends StatelessWidget {
         : todayStatusText(status);
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 42),
+      constraints: const BoxConstraints(minHeight: 38),
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.s,
         vertical: 3,
@@ -535,7 +535,7 @@ class _TodaySummary extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(statusIcon(status), color: color, size: 18),
+          Icon(statusIcon(status), color: color, size: 16),
           const SizedBox(width: AppSpacing.s),
           Expanded(
             child: Column(
@@ -545,7 +545,7 @@ class _TodaySummary extends StatelessWidget {
                   main,
                   style: AppTextStyles.caption.copyWith(
                     color: color,
-                    fontSize: 11.5,
+                    fontSize: 10.8,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -554,7 +554,7 @@ class _TodaySummary extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption.copyWith(
-                    fontSize: 11.5,
+                    fontSize: 10.8,
                     color: AppColors.navy.withValues(alpha: 0.78),
                   ),
                 ),
