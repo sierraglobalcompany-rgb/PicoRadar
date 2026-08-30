@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "lot": "R02B",
+  "status": "OWNER_SELECTED",
+  "reference": {
+    "path": "docs/design/reference/garage_owner_v1.png",
+    "sha256": "f357671c7c9e45721c789f2c764a88d6ce4b75f77accd809674a2fd6b03b0529"
+  },
+  "contract": {
+    "role": "Garage is the local vehicle management home, not a second Home dashboard.",
+    "header": "Use the PicoRadar brand header with avatar and notification bell capsule.",
+    "filters": ["Todos", "Favoritos", "Activos"],
+    "carousel": "Native PageView carousel with partial side vehicles and active vehicle as the initial focus.",
+    "focusedVehicle": "Swiping changes Garage focus only. It must not silently mutate the global active vehicle.",
+    "infoPanel": {
+      "realFields": ["Placa", "Tipo", "Estado", "Matrícula", "Servicio", "Año"],
+      "missingFields": "Omit optional absent fields cleanly.",
+      "dataTruthExceptions": [
+        "Do not show fake mileage before a Maintenance lot.",
+        "Do not show Sin comparendos or 0 comparendos before C14."
+      ]
+    },
+    "favorites": "Store favorite vehicle ids as local non-sensitive AppPreferences data; no Drift migration.",
+    "addVehicle": "Dashed Add Vehicle card opens the existing vehicle onboarding with return=garage.",
+    "quickActions": {
+      "Detalle": "Open the existing Garage vehicle detail for the focused vehicle.",
+      "Mantenimiento": "Show truthful Próximamente information only.",
+      "Documentos": "Open the existing Documents module route with the focused vehicle id when available.",
+      "Eliminar": "Use confirmed delete semantics with active-vehicle fallback."
+    },
+    "accessibility": "Icon controls have labels/tooltips and touch targets remain at least 48dp on Android.",
+    "orientation": "Portrait-only phone surface inherited from R02C.",
+    "physicalQa": "Mi A3 final render must show header, filters, carousel, info panel, add card, actions and bottom nav without overflow."
+  },
+  "outOfScope": [
+    "Maintenance engine",
+    "Mileage tracking",
+    "Comparendos data or claims",
+    "Wallet implementation",
+    "R02D",
+    "R03",
+    "C14",
+    "Backend",
+    "Database migration",
+    "New runtime dependency"
+  ]
+}
