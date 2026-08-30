@@ -34,6 +34,59 @@ final homeFocusedVehicleIdProvider =
       HomeFocusedVehicleNotifier.new,
     );
 
+final homeVehicleSnapshotsProvider =
+    FutureProvider.family<
+      List<HomeVehicleSnapshot>,
+      HomeVehicleSnapshotsRequest
+    >((ref, request) async {
+      if (request.selectedJurisdiction == null) {
+        return [
+          for (final vehicle in request.vehicles)
+            HomeVehicleSnapshot(
+              vehicle: vehicle,
+              today: _unknownEvaluation,
+              tomorrow: _unknownEvaluation,
+            ),
+        ];
+      }
+
+      final store = ref.watch(restrictionStoreProvider);
+      final currentInstant = ref.watch(currentInstantProvider);
+      final now = ref.watch(bogotaNowProvider);
+      final tomorrow = DateTime(now.year, now.month, now.day + 1);
+      final snapshots = <HomeVehicleSnapshot>[];
+      for (final vehicle in request.vehicles) {
+        final rules = await store.loadCoverage(
+          request.selectedJurisdiction!.id,
+          vehicle.kind,
+          vehicle.serviceType,
+          currentInstant,
+        );
+        snapshots.add(
+          HomeVehicleSnapshot(
+            vehicle: vehicle,
+            today: evaluateRestrictionDay(
+              ruleSet: rules,
+              jurisdictionId: request.selectedJurisdiction!.id,
+              plate: vehicle.plate,
+              vehicleKind: vehicle.kind,
+              serviceType: vehicle.serviceType,
+              date: now,
+            ),
+            tomorrow: evaluateRestrictionDay(
+              ruleSet: rules,
+              jurisdictionId: request.selectedJurisdiction!.id,
+              plate: vehicle.plate,
+              vehicleKind: vehicle.kind,
+              serviceType: vehicle.serviceType,
+              date: tomorrow,
+            ),
+          ),
+        );
+      }
+      return snapshots;
+    });
+
 class HomeFocusedVehicleNotifier extends Notifier<String?> {
   @override
   String? build() => null;
@@ -106,6 +159,73 @@ class HomeVehicleSnapshot {
   final RestrictionDayEvaluation tomorrow;
 }
 
+class HomeVehicleSnapshotsRequest {
+  const HomeVehicleSnapshotsRequest({
+    required this.vehicles,
+    required this.selectedJurisdiction,
+  });
+
+  final List<VehicleProfile> vehicles;
+  final RestrictionJurisdiction? selectedJurisdiction;
+
+  @override
+  bool operator ==(Object other) {
+    return other is HomeVehicleSnapshotsRequest &&
+        other.selectedJurisdiction?.id == selectedJurisdiction?.id &&
+        _sameVehicleInputs(other.vehicles, vehicles);
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(
+      selectedJurisdiction?.id,
+      Object.hashAll(
+        vehicles.map(
+          (vehicle) => Object.hash(
+            vehicle.id,
+            vehicle.plate,
+            vehicle.kind,
+            vehicle.serviceType,
+            vehicle.subtype,
+            vehicle.nickname,
+            vehicle.registrationCity,
+            vehicle.brand,
+            vehicle.model,
+            vehicle.year,
+            vehicle.color,
+            vehicle.fuel,
+            vehicle.updatedAt,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+bool _sameVehicleInputs(List<VehicleProfile> a, List<VehicleProfile> b) {
+  if (a.length != b.length) {
+    return false;
+  }
+  for (var i = 0; i < a.length; i += 1) {
+    if (a[i].id != b[i].id ||
+        a[i].plate != b[i].plate ||
+        a[i].kind != b[i].kind ||
+        a[i].serviceType != b[i].serviceType ||
+        a[i].subtype != b[i].subtype ||
+        a[i].nickname != b[i].nickname ||
+        a[i].registrationCity != b[i].registrationCity ||
+        a[i].brand != b[i].brand ||
+        a[i].model != b[i].model ||
+        a[i].year != b[i].year ||
+        a[i].color != b[i].color ||
+        a[i].fuel != b[i].fuel ||
+        a[i].updatedAt != b[i].updatedAt) {
+      return false;
+    }
+  }
+  return true;
+}
+
 int pickInitialHomeVehicleIndex({
   required List<HomeVehicleSnapshot> snapshots,
   required String? activeVehicleId,
@@ -158,37 +278,27 @@ class _HomeDataGate extends ConsumerWidget {
       return _HomeEmpty(alertPreferences: alertPreferences);
     }
 
-    if (jurisdiction == null) {
-      return _HomeReady(
-        snapshots: [
-          for (final vehicle in vehicles)
-            HomeVehicleSnapshot(
-              vehicle: vehicle,
-              today: _unknownEvaluation,
-              tomorrow: _unknownEvaluation,
-            ),
-        ],
-        activeVehicleId: activeVehicleId,
-        jurisdictions: jurisdictions,
-        selectedJurisdiction: null,
-        alertPreferences: alertPreferences,
-      );
-    }
-
-    return FutureBuilder<List<HomeVehicleSnapshot>>(
-      future: _buildSnapshots(ref, jurisdiction),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const _HomeSkeleton();
-        }
+    final snapshots = ref.watch(
+      homeVehicleSnapshotsProvider(
+        HomeVehicleSnapshotsRequest(
+          vehicles: vehicles,
+          selectedJurisdiction: jurisdiction,
+        ),
+      ),
+    );
+    return snapshots.when(
+      skipLoadingOnRefresh: true,
+      data: (items) {
         return _HomeReady(
-          snapshots: snapshot.data!,
+          snapshots: items,
           activeVehicleId: activeVehicleId,
           jurisdictions: jurisdictions,
           selectedJurisdiction: jurisdiction,
           alertPreferences: alertPreferences,
         );
       },
+      loading: () => const _HomeSkeleton(),
+      error: (error, stackTrace) => _LoadError(message: error.toString()),
     );
   }
 
@@ -199,47 +309,6 @@ class _HomeDataGate extends ConsumerWidget {
       }
     }
     return null;
-  }
-
-  Future<List<HomeVehicleSnapshot>> _buildSnapshots(
-    WidgetRef ref,
-    RestrictionJurisdiction jurisdiction,
-  ) async {
-    final store = ref.read(restrictionStoreProvider);
-    final currentInstant = ref.read(currentInstantProvider);
-    final now = ref.read(bogotaNowProvider);
-    final tomorrow = DateTime(now.year, now.month, now.day + 1);
-    final snapshots = <HomeVehicleSnapshot>[];
-    for (final vehicle in vehicles) {
-      final rules = await store.loadCoverage(
-        jurisdiction.id,
-        vehicle.kind,
-        vehicle.serviceType,
-        currentInstant,
-      );
-      snapshots.add(
-        HomeVehicleSnapshot(
-          vehicle: vehicle,
-          today: evaluateRestrictionDay(
-            ruleSet: rules,
-            jurisdictionId: jurisdiction.id,
-            plate: vehicle.plate,
-            vehicleKind: vehicle.kind,
-            serviceType: vehicle.serviceType,
-            date: now,
-          ),
-          tomorrow: evaluateRestrictionDay(
-            ruleSet: rules,
-            jurisdictionId: jurisdiction.id,
-            plate: vehicle.plate,
-            vehicleKind: vehicle.kind,
-            serviceType: vehicle.serviceType,
-            date: tomorrow,
-          ),
-        ),
-      );
-    }
-    return snapshots;
   }
 }
 

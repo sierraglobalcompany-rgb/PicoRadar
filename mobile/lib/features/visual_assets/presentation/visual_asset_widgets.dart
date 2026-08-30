@@ -115,11 +115,23 @@ class VehicleVisualImage extends ConsumerWidget {
             key: ValueKey('vehicle-visual-image-${vehicle.id}'),
             fit: BoxFit.contain,
             cacheWidth: cacheWidth,
+            gaplessPlayback: true,
           ),
         );
       },
-      loading: () => fallbackBuilder(context),
+      loading: () => const _VehicleVisualLoadingPlaceholder(),
       error: (error, stackTrace) => fallbackBuilder(context),
+    );
+  }
+}
+
+class _VehicleVisualLoadingPlaceholder extends StatelessWidget {
+  const _VehicleVisualLoadingPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox.expand(
+      key: ValueKey('vehicle-visual-loading-placeholder'),
     );
   }
 }

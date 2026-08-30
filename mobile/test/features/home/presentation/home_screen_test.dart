@@ -9,6 +9,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:go_router/go_router.dart';
 import 'package:picoradar/app/app.dart';
 import 'package:picoradar/app/app_providers.dart';
+import 'package:picoradar/app/startup/startup_gate.dart';
 import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/presentation/vehicle_detail_screen.dart';
@@ -632,6 +633,24 @@ void main() {
       expect(find.text('2 de 2'), findsOneWidget);
       expect(find.text('30 días'), findsOneWidget);
       expect((await harness.repository.getActiveVehicle())?.id, active.id);
+    });
+
+    testWidgets('unrelated rebuild keeps Home snapshots visible', (
+      tester,
+    ) async {
+      await _readyHome(harness, plate: 'ABC124');
+
+      await _pumpHome(tester, harness);
+      expect(find.byKey(const ValueKey('home-status-grid')), findsOneWidget);
+
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('home-status-grid')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('home-vehicle-carousel')),
+        findsOneWidget,
+      );
+      expect(find.text('Sin configurar'), findsAtLeastNWidgets(2));
     });
 
     testWidgets('card tap opens that vehicle detail without mutating active', (
@@ -1386,6 +1405,13 @@ Widget _providerScope(
       ),
       bogotaNowProvider.overrideWithValue(harness.now),
       currentInstantProvider.overrideWithValue(harness.now.toUtc()),
+      startupReadinessProvider.overrideWith(
+        (ref) async => const StartupReadiness(
+          imageAssets: [],
+          vehicleCount: 0,
+          selectedJurisdictionId: null,
+        ),
+      ),
       deviceLocationGatewayProvider.overrideWithValue(
         deviceLocationGateway ?? _FakeDeviceLocationGateway(),
       ),
