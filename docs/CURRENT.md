@@ -124,6 +124,12 @@ R03 C13 Logic Integration + UI Restyle:
 - recover C13 vehicle status logic from PR #16;
 - integrate schema v4 and obligation/reminder/catalog tests;
 - restyle presentation through recovered shared components.
+- R03 route/product contract is frozen in `docs/design/R03_REFERENCE_PLAN.md`.
+- `/pico?vehicleId=<id>` is the future **Mi Pico y Placa** personalized vehicle detail.
+- `/pico` is the future **Pico y Placa de la ciudad** regulation overview.
+- The current Home card labeled `MAÑANA` will become `Pico y placa` in R03 while keeping contextual secondary content such as tomorrow/next restriction state; its tap continues to use the focused vehicle.
+- R03 implementation is blocked until owner-selected references exist for `pico_personal_owner_v1.png`, `pico_city_owner_v1.png`, `soat_owner_v1.png` and `rtm_owner_v1.png`.
+- SOAT and RTM current logic remains valid, but their current presentation is owner-rejected visual debt for R03.
 
 B00/B01 proposed backend split:
 - bring forward the C28 control-plane/dataset-publisher foundation only if explicitly approved.
