@@ -32,8 +32,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoute.pico.path,
-        builder: (context, state) =>
-            PicoDetailScreen(vehicleId: state.uri.queryParameters['vehicleId']),
+        builder: (context, state) => PicoDetailScreen(
+          vehicleId: state.uri.queryParameters['vehicleId'],
+          jurisdictionId: state.uri.queryParameters['jurisdictionId'],
+        ),
       ),
       GoRoute(
         path: AppRoute.vehicleOnboarding.path,

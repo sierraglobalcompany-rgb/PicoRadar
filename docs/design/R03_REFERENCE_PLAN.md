@@ -1,15 +1,15 @@
 # R03 Reference Plan
 
-Status: REFERENCE_SELECTION_BLOCKED
+Status: R03A_OWNER_SELECTED
 Last updated: 2026-08-30
 
-R03 will implement Pico y Placa visual recovery only after exact owner-selected reference images are supplied. Codex must not generate, infer, or invent these references.
+R03 implements Pico y Placa visual recovery only after exact owner-selected reference images are supplied. Codex must not generate, infer, or invent these references.
 
 ## Route Semantics
 
 - `/pico?vehicleId=<id>` means **Mi Pico y Placa**, the personalized vehicle detail.
 - `/pico` means **Pico y Placa de la ciudad**, the city/regulation overview.
-- Current code does not implement this route distinction yet.
+- R03A implements this route distinction for Pico y Placa only.
 
 ## Home Card Decision
 
@@ -31,7 +31,7 @@ The future personalized vehicle detail must include:
 - relevant plate digit or rule basis;
 - usual restriction weekday or weekdays;
 - next restriction date and time;
-- compact 7-day calendar;
+- compact 14-day future calendar, horizontally scrollable only inside the calendar module;
 - official source;
 - verified/freshness state.
 
@@ -54,7 +54,7 @@ Temporary city lookup must not mutate Home effective jurisdiction, notifications
 
 ## SOAT / RTM Visual Debt
 
-SOAT and RTM logic remains valid, but the current presentation is owner-rejected visual debt. Future owner references must define:
+SOAT and RTM logic remains valid, but the current presentation is owner-rejected visual debt for R03B. Future owner references must define:
 
 - real vehicle visual;
 - Colombian plate;
@@ -67,17 +67,30 @@ SOAT and RTM logic remains valid, but the current presentation is owner-rejected
 
 ## Required Owner References
 
-R03 implementation remains blocked until all of these exact owner-selected references are supplied:
+R03 references are split by implementation slice:
 
-- `pico_personal_owner_v1.png`: pending owner selection.
-- `pico_city_owner_v1.png`: pending owner selection.
+- `pico_personal_owner_v1.png`: OWNER_SELECTED for R03A.
+- `pico_city_owner_v1.png`: OWNER_SELECTED for R03A.
 - `soat_owner_v1.png`: pending owner selection.
 - `rtm_owner_v1.png`: pending owner selection.
 
+## R03A Scope
+
+- Implement `/pico?vehicleId=<id>` as **Mi Pico y Placa**.
+- Implement `/pico` as **Pico y placa de la ciudad**.
+- Update the Home Pico card copy to `Pico y placa` while keeping truthful contextual secondary content.
+- Copy the exact owner-selected Pico references into `docs/design/reference/`.
+- Keep all runtime values derived from local vehicles, jurisdiction preferences, `RestrictionStore`, `RestrictionRuleSet`, `RestrictionDayEvaluation` and source metadata.
+
+## R03B Pending
+
+- SOAT visual recovery from owner-selected reference.
+- RTM visual recovery from owner-selected reference.
+
 ## Explicit Non-Scope
 
-- No R03 UI implementation in this documentation freeze.
-- No changes to `PicoDetailScreen`, SOAT, RTM, Home, Garage, or Apps launcher in this task.
+- No changes to SOAT, RTM, Garage root visuals, Apps launcher visuals, backend or database schema in R03A.
+- Home changes in R03A are limited to the Pico y placa entry/card copy and route target.
 - No backend.
 - No database migration.
 - No C14, Maintenance, or C17B execution.

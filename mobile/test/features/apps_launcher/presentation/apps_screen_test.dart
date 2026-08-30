@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/shell/app_shell.dart';
 import 'package:picoradar/features/apps_launcher/data/module_registry.dart';
@@ -8,6 +9,8 @@ import 'package:picoradar/features/apps_launcher/presentation/apps_launcher_pane
 import 'package:picoradar/features/apps_launcher/presentation/apps_screen.dart';
 import 'package:picoradar/features/apps_launcher/presentation/module_placeholder_screen.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
+import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
+import 'package:picoradar/features/pico_placa/presentation/pico_detail_screen.dart';
 
 import '../../../test_app_harness.dart';
 
@@ -58,11 +61,8 @@ void main() {
     ]);
   });
 
-  test('vehicle-required launcher destinations append vehicleId', () {
-    expect(
-      appsLauncherLocation(primaryModules.first, 'vehicle-b'),
-      '/pico?vehicleId=vehicle-b',
-    );
+  test('launcher destinations append vehicleId only when required', () {
+    expect(appsLauncherLocation(primaryModules.first, 'vehicle-b'), '/pico');
     expect(
       appsLauncherLocation(
         primaryModules.singleWhere((module) => module.id == 'soat'),
@@ -157,16 +157,24 @@ void main() {
     expect(find.text('Planeacion de ruta sin mapa propio.'), findsOneWidget);
   });
 
-  testWidgets('Pico y placa opens the existing pico detail route', (
-    tester,
-  ) async {
+  testWidgets('Pico y placa opens the city overview route', (tester) async {
     await _createVehicle(harness, plate: 'AAA111');
+    await harness.preferences.setString(
+      picoJurisdictionPreferenceKey,
+      'co-dc-bogota',
+    );
     await _openApps(tester, harness);
 
     await tester.tap(find.byKey(const ValueKey('app-module-pico')));
-    await _pumpRoute(tester);
+    await _pumpPicoRoute(tester);
 
-    expect(find.text('Pico y Placa'), findsOneWidget);
+    expect(find.byType(PicoDetailScreen), findsOneWidget);
+    expect(
+      GoRouter.of(
+        tester.element(find.byType(PicoDetailScreen)),
+      ).routerDelegate.currentConfiguration.uri.toString(),
+      '/pico',
+    );
   });
 
   testWidgets('Peajes y estado vial opens the Viaje tab', (tester) async {
@@ -431,6 +439,15 @@ Future<void> _openApps(
 Future<void> _pumpRoute(WidgetTester tester) async {
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 350));
+}
+
+Future<void> _pumpPicoRoute(WidgetTester tester) async {
+  for (var i = 0; i < 10; i += 1) {
+    await tester.pump(const Duration(milliseconds: 300));
+    if (find.byType(PicoDetailScreen).evaluate().isNotEmpty) {
+      return;
+    }
+  }
 }
 
 Future<void> _openModuleFromApps(
