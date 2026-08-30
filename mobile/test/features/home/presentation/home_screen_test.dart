@@ -1267,6 +1267,14 @@ void main() {
         find.byKey(const ValueKey('pico-city-category-segment')),
         findsOneWidget,
       );
+      final heroArt = tester.widget<Image>(
+        find.byKey(const ValueKey('pico-city-hero-art')),
+      );
+      final heroArtProvider = heroArt.image as ResizeImage;
+      expect(
+        (heroArtProvider.imageProvider as AssetImage).assetName,
+        'assets/pico/pico_city_hero_art_owner_v1.png',
+      );
     });
 
     testWidgets('/pico with vehicleId shows personal 14-day calendar', (
@@ -1573,6 +1581,52 @@ void main() {
 
       expect(find.byKey(const ValueKey('pico-source-open')), findsOneWidget);
       expect(find.textContaining('https://'), findsNothing);
+    });
+
+    testWidgets('city selector searches and shows runtime coverage', (
+      tester,
+    ) async {
+      await _readyHome(
+        harness,
+        plate: 'ABC123',
+        jurisdictionId: 'co-ant-medellin',
+      );
+
+      await _pumpDetail(tester, harness);
+      await tester.tap(find.byKey(const ValueKey('pico-city-change')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('pico-city-search')), findsOneWidget);
+      expect(find.text('Carros, Motos · Cobertura vigente'), findsOneWidget);
+      expect(
+        find.text('Carros, Motos, Taxis · Cobertura vigente'),
+        findsOneWidget,
+      );
+
+      await tester.enterText(
+        find.byKey(const ValueKey('pico-city-search')),
+        'bogota',
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('pico-city-option-co-ant-medellin')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('pico-city-option-co-dc-bogota')),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('pico-city-option-co-dc-bogota')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Bogotá'), findsWidgets);
+      expect(
+        await harness.preferences.getString(picoJurisdictionPreferenceKey),
+        'co-ant-medellin',
+      );
     });
 
     testWidgets(

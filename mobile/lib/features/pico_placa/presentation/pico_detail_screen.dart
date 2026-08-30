@@ -305,33 +305,17 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
   }
 
   Future<void> _showCitySelector(BuildContext context) async {
+    final now = ref.read(currentInstantProvider);
     final selected = await showModalBottomSheet<String>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
       builder: (context) => SafeArea(
-        child: ListView(
-          key: const ValueKey('pico-city-selector'),
-          shrinkWrap: true,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.l,
-                0,
-                AppSpacing.l,
-                AppSpacing.s,
-              ),
-              child: Text('Consultar ciudad', style: AppTextStyles.h2),
-            ),
-            for (final jurisdiction in widget.jurisdictions)
-              ListTile(
-                key: ValueKey('pico-city-option-${jurisdiction.id}'),
-                title: Text(jurisdiction.name),
-                trailing: jurisdiction.id == _consultedJurisdictionId
-                    ? const Icon(Icons.check_rounded)
-                    : null,
-                onTap: () => Navigator.of(context).pop(jurisdiction.id),
-              ),
-          ],
+        child: _CitySelectorSheet(
+          jurisdictions: widget.jurisdictions,
+          selectedJurisdictionId:
+              _consultedJurisdictionId ?? widget.selectedJurisdictionId,
+          now: now,
         ),
       ),
     );
@@ -345,6 +329,171 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
     if (mounted) {
       setState(() => _consultedJurisdictionId = jurisdiction.id);
     }
+  }
+}
+
+class _CitySelectorSheet extends ConsumerStatefulWidget {
+  const _CitySelectorSheet({
+    required this.jurisdictions,
+    required this.selectedJurisdictionId,
+    required this.now,
+  });
+
+  final List<RestrictionJurisdiction> jurisdictions;
+  final String? selectedJurisdictionId;
+  final DateTime now;
+
+  @override
+  ConsumerState<_CitySelectorSheet> createState() => _CitySelectorSheetState();
+}
+
+class _CitySelectorSheetState extends ConsumerState<_CitySelectorSheet> {
+  late final TextEditingController _controller;
+  late final Future<Map<String, _CityCoverageAvailability>> _availability;
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _availability = _loadCityAvailability();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.jurisdictions
+        .where((jurisdiction) {
+          final query = _normalizeSearch(_query);
+          if (query.isEmpty) {
+            return true;
+          }
+          return _normalizeSearch(jurisdiction.name).contains(query);
+        })
+        .toList(growable: false);
+
+    return SizedBox(
+      height: MediaQuery.sizeOf(context).height * 0.72,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.l,
+          0,
+          AppSpacing.l,
+          AppSpacing.l + MediaQuery.paddingOf(context).bottom,
+        ),
+        child: Column(
+          key: const ValueKey('pico-city-selector'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Consultar ciudad', style: AppTextStyles.h2),
+            const SizedBox(height: AppSpacing.s),
+            TextField(
+              key: const ValueKey('pico-city-search'),
+              controller: _controller,
+              textInputAction: TextInputAction.search,
+              decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.search_rounded),
+                hintText: 'Buscar ciudad',
+              ),
+              onChanged: (value) => setState(() => _query = value),
+            ),
+            const SizedBox(height: AppSpacing.s),
+            Expanded(
+              child: FutureBuilder<Map<String, _CityCoverageAvailability>>(
+                future: _availability,
+                builder: (context, snapshot) {
+                  final availability = snapshot.data ?? const {};
+                  if (filtered.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
+                      child: Center(child: Text('Sin resultados')),
+                    );
+                  }
+                  return ListView.separated(
+                    itemCount: filtered.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final jurisdiction = filtered[index];
+                      final item = availability[jurisdiction.id];
+                      final enabled = item == null || item.hasCoverage;
+                      return ListTile(
+                        key: ValueKey('pico-city-option-${jurisdiction.id}'),
+                        enabled: enabled,
+                        minVerticalPadding: AppSpacing.s,
+                        title: Text(jurisdiction.name),
+                        subtitle: Text(
+                          item == null
+                              ? 'Verificando cobertura'
+                              : item.description,
+                        ),
+                        trailing:
+                            jurisdiction.id == widget.selectedJurisdictionId
+                            ? const Icon(Icons.check_rounded)
+                            : null,
+                        onTap: enabled
+                            ? () => Navigator.of(context).pop(jurisdiction.id)
+                            : null,
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<Map<String, _CityCoverageAvailability>> _loadCityAvailability() async {
+    final store = ref.read(restrictionStoreProvider);
+    final values = <String, _CityCoverageAvailability>{};
+    for (final jurisdiction in widget.jurisdictions) {
+      final categories = <String>[];
+      var stale = false;
+      for (final category in PicoVehicleCategory.values) {
+        final ruleSet = await store.loadCoverage(
+          jurisdiction.id,
+          category.kind,
+          category.serviceType,
+          widget.now,
+        );
+        if (ruleSet.coverageKnown) {
+          categories.add(category.label);
+          stale = stale || ruleSet.dataIsStale;
+        }
+      }
+      values[jurisdiction.id] = _CityCoverageAvailability(
+        categories: categories,
+        dataIsStale: stale,
+      );
+    }
+    return values;
+  }
+}
+
+class _CityCoverageAvailability {
+  const _CityCoverageAvailability({
+    required this.categories,
+    required this.dataIsStale,
+  });
+
+  final List<String> categories;
+  final bool dataIsStale;
+
+  bool get hasCoverage => categories.isNotEmpty;
+
+  String get description {
+    if (categories.isEmpty) {
+      return 'Sin cobertura PicoRadar';
+    }
+    final state = dataIsStale ? 'por actualizar' : 'vigente';
+    return '${categories.join(', ')} · Cobertura $state';
   }
 }
 
@@ -1784,8 +1933,20 @@ class _CityHero extends StatelessWidget {
           Expanded(
             flex: 42,
             child: SizedBox(
-              height: 132,
-              child: CustomPaint(painter: _CityRoadPainter()),
+              height: 146,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Semantics(
+                  label: 'Ilustración de pico y placa en ciudad',
+                  child: Image.asset(
+                    _cityHeroArtAsset,
+                    key: const ValueKey('pico-city-hero-art'),
+                    fit: BoxFit.cover,
+                    alignment: Alignment.centerRight,
+                    cacheWidth: 520,
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -2146,105 +2307,6 @@ class _SourceCard extends StatelessWidget {
   }
 }
 
-class _CityRoadPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final sky = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          AppColors.teal.withValues(alpha: 0.12),
-          AppColors.blue.withValues(alpha: 0.08),
-          AppColors.plateYellow.withValues(alpha: 0.08),
-        ],
-      ).createShader(rect);
-    final hill = Paint()..color = AppColors.teal.withValues(alpha: 0.16);
-    final skyline = Paint()..color = AppColors.blue.withValues(alpha: 0.24);
-    final tree = Paint()..color = AppColors.teal.withValues(alpha: 0.5);
-    final trunk = Paint()..color = AppColors.navy.withValues(alpha: 0.28);
-    final road = Paint()..color = AppColors.navy.withValues(alpha: 0.95);
-    final stripe = Paint()
-      ..color = AppColors.plateYellow
-      ..strokeWidth = 3.4
-      ..strokeCap = StrokeCap.round;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(20)),
-      sky,
-    );
-    final backHill = Path()
-      ..moveTo(0, size.height * 0.58)
-      ..quadraticBezierTo(
-        size.width * 0.28,
-        size.height * 0.28,
-        size.width * 0.52,
-        size.height * 0.52,
-      )
-      ..quadraticBezierTo(
-        size.width * 0.78,
-        size.height * 0.78,
-        size.width,
-        size.height * 0.42,
-      )
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-    canvas.drawPath(backHill, hill);
-
-    void building(double left, double top, double width, double height) {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(
-            size.width * left,
-            size.height * top,
-            size.width * width,
-            size.height * height,
-          ),
-          const Radius.circular(5),
-        ),
-        skyline,
-      );
-    }
-
-    building(0.1, 0.22, 0.14, 0.36);
-    building(0.27, 0.14, 0.12, 0.42);
-    building(0.68, 0.18, 0.16, 0.4);
-    building(0.86, 0.08, 0.13, 0.5);
-
-    final roadPath = Path()
-      ..moveTo(size.width * 0.08, size.height)
-      ..quadraticBezierTo(
-        size.width * 0.42,
-        size.height * 0.32,
-        size.width * 0.92,
-        size.height,
-      )
-      ..close();
-    canvas.drawPath(roadPath, road);
-    canvas.drawLine(
-      Offset(size.width * 0.48, size.height * 0.62),
-      Offset(size.width * 0.5, size.height * 0.9),
-      stripe,
-    );
-    for (final x in [0.18, 0.78]) {
-      canvas.drawLine(
-        Offset(size.width * x, size.height * 0.58),
-        Offset(size.width * x, size.height * 0.74),
-        trunk,
-      );
-      canvas.drawCircle(
-        Offset(size.width * x, size.height * 0.54),
-        size.shortestSide * 0.075,
-        tree,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _CityRoadPainter oldDelegate) => false;
-}
-
 class _Loading extends StatelessWidget {
   const _Loading();
 
@@ -2397,6 +2459,18 @@ RestrictionJurisdiction? _findJurisdiction(
 
 bool _hasQueryValue(String? value) => value != null && value.trim().isNotEmpty;
 
+String _normalizeSearch(String value) {
+  final lower = value.trim().toLowerCase();
+  return lower
+      .replaceAll('á', 'a')
+      .replaceAll('é', 'e')
+      .replaceAll('í', 'i')
+      .replaceAll('ó', 'o')
+      .replaceAll('ú', 'u')
+      .replaceAll('ü', 'u')
+      .replaceAll('ñ', 'n');
+}
+
 const _defaultAlertPreferences = PicoAlertPreferences(
   enabled: true,
   dayBeforeEnabled: true,
@@ -2406,6 +2480,8 @@ const _defaultAlertPreferences = PicoAlertPreferences(
   permissionRequested: false,
   permissionGranted: false,
 );
+
+const _cityHeroArtAsset = 'assets/pico/pico_city_hero_art_owner_v1.png';
 
 String _statusText(RestrictionDayStatus status) {
   return switch (status) {
