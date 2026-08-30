@@ -316,7 +316,7 @@ void main() {
       await _pumpHome(tester, harness, viewportSize: const Size(360, 800));
 
       _expectNoEllipsisInCard(tester, const ValueKey('home-status-tomorrow'), [
-        'MAÑANA',
+        'Pico y placa',
         'Puede circular',
       ]);
       _expectNoEllipsisInCard(tester, const ValueKey('home-status-soat'), [
@@ -941,7 +941,11 @@ void main() {
 
       await _pumpDetail(tester, harness, vehicleId: renault.id);
 
-      expect(find.text('Próximos 7 días'), findsOneWidget);
+      expect(find.text('MI PICO Y PLACA'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('pico-personal-calendar')),
+        findsOneWidget,
+      );
       expect(find.text(renault.plate), findsOneWidget);
       expect((await harness.repository.getActiveVehicle())?.id, activeTaxi.id);
     });
@@ -986,12 +990,12 @@ void main() {
 
       for (var i = 0; i < 5; i += 1) {
         await tester.tap(find.byKey(const ValueKey('home-status-tomorrow')));
-        await tester.pumpAndSettle(const Duration(milliseconds: 100));
-        expect(find.text('Próximos 7 días'), findsOneWidget);
+        await tester.pumpAndSettle();
+        expect(find.text('MI PICO Y PLACA'), findsOneWidget);
         expect(find.text(vehicle.plate), findsOneWidget);
 
         final router = GoRouter.of(
-          tester.element(find.text('Próximos 7 días')),
+          tester.element(find.text('MI PICO Y PLACA')),
         );
         router.go('/home');
         await _pumpAsyncHome(tester);
@@ -1213,7 +1217,7 @@ void main() {
   });
 
   group('Pico detail continuity', () {
-    testWidgets('pico detail shows próximos 7 días', (tester) async {
+    testWidgets('/pico shows city overview', (tester) async {
       await _readyHome(
         harness,
         plate: 'TAX078',
@@ -1223,8 +1227,128 @@ void main() {
 
       await _pumpDetail(tester, harness);
 
-      expect(find.text('Próximos 7 días'), findsOneWidget);
-      expect(find.text('Fuente oficial: bogota.gov.co'), findsOneWidget);
+      expect(find.text('Pico y placa de la ciudad'), findsOneWidget);
+      expect(find.byKey(const ValueKey('pico-city-screen')), findsOneWidget);
+    });
+
+    testWidgets('/pico with vehicleId shows personal 14-day calendar', (
+      tester,
+    ) async {
+      final vehicle = await _readyHome(
+        harness,
+        plate: 'TAX078',
+        serviceType: VehicleServiceType.taxi,
+        jurisdictionId: 'co-dc-bogota',
+      );
+
+      await _pumpDetail(tester, harness, vehicleId: vehicle.id);
+
+      expect(find.text('MI PICO Y PLACA'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('pico-personal-calendar')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('pico-calendar-day-1')), findsOneWidget);
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('pico-personal-calendar')),
+      );
+      await tester.pumpAndSettle();
+      final calendarList = tester.widget<ListView>(
+        find.descendant(
+          of: find.byKey(const ValueKey('pico-personal-calendar')),
+          matching: find.byType(ListView),
+        ),
+      );
+      expect(calendarList.scrollDirection, Axis.horizontal);
+      await tester.drag(
+        find.byKey(const ValueKey('pico-personal-calendar')),
+        const Offset(-900, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('pico-calendar-day-10')),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(
+        find.text('Fuente oficial: bogota.gov.co · Vigentes'),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Fuente oficial: bogota.gov.co · Vigentes'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+      'transient jurisdiction does not mutate global city until adopted',
+      (tester) async {
+        await _readyHome(
+          harness,
+          plate: 'ABC123',
+          jurisdictionId: 'co-ant-medellin',
+        );
+
+        await _pumpDetail(tester, harness);
+        await tester.tap(find.byKey(const ValueKey('pico-city-change')));
+        await tester.pumpAndSettle();
+        await tester.tap(
+          find.byKey(const ValueKey('pico-city-option-co-dc-bogota')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Bogotá'), findsWidgets);
+        expect(
+          await harness.preferences.getString(picoJurisdictionPreferenceKey),
+          'co-ant-medellin',
+        );
+
+        await tester.tap(find.byKey(const ValueKey('pico-city-adopt')));
+        await tester.pumpAndSettle();
+
+        expect(
+          await harness.preferences.getString(picoJurisdictionPreferenceKey),
+          'co-dc-bogota',
+        );
+        expect(
+          await harness.preferences.getString(locationModePreferenceKey),
+          'manual',
+        );
+      },
+    );
+
+    testWidgets('vehicle shortcut preserves transient city in personal route', (
+      tester,
+    ) async {
+      final vehicle = await _readyHome(
+        harness,
+        plate: 'ABC123',
+        jurisdictionId: 'co-ant-medellin',
+      );
+
+      await _pumpPicoApp(tester, harness);
+      await tester.tap(find.byKey(const ValueKey('pico-city-change')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('pico-city-option-co-dc-bogota')),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(ValueKey('pico-city-vehicle-${vehicle.id}')),
+        300,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ValueKey('pico-city-vehicle-${vehicle.id}')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('MI PICO Y PLACA'), findsOneWidget);
+      expect(
+        find.text('Bogotá · Fuente oficial: bogota.gov.co · Vigentes'),
+        findsOneWidget,
+      );
+      expect(
+        await harness.preferences.getString(picoJurisdictionPreferenceKey),
+        'co-ant-medellin',
+      );
     });
 
     testWidgets('pico detail does not show allowed after staleAfter', (
@@ -1237,7 +1361,11 @@ void main() {
         jurisdictionId: 'co-dc-bogota',
       );
 
-      await _pumpDetail(tester, harness);
+      await _pumpDetail(
+        tester,
+        harness,
+        vehicleId: (await harness.repository.getActiveVehicle())?.id,
+      );
 
       expect(find.text('Datos desactualizados'), findsWidgets);
       expect(find.text('Puedes circular'), findsNothing);
@@ -1254,7 +1382,7 @@ void main() {
 
       await _pumpDetail(tester, harness, vehicleId: 'missing');
 
-      expect(find.text('Próximos 7 días'), findsOneWidget);
+      expect(find.text('MI PICO Y PLACA'), findsOneWidget);
       expect(find.text(active.plate), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -1288,8 +1416,13 @@ Future<void> _pumpDetail(
   WidgetTester tester,
   TestAppHarness harness, {
   String? vehicleId,
+  String? jurisdictionId,
 }) async {
-  await _pump(tester, harness, PicoDetailScreen(vehicleId: vehicleId));
+  await _pump(
+    tester,
+    harness,
+    PicoDetailScreen(vehicleId: vehicleId, jurisdictionId: jurisdictionId),
+  );
 }
 
 Future<void> _pumpHomeApp(WidgetTester tester, TestAppHarness harness) async {
@@ -1300,8 +1433,10 @@ Future<void> _pumpHomeApp(WidgetTester tester, TestAppHarness harness) async {
       GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
       GoRoute(
         path: '/pico',
-        builder: (context, state) =>
-            PicoDetailScreen(vehicleId: state.uri.queryParameters['vehicleId']),
+        builder: (context, state) => PicoDetailScreen(
+          vehicleId: state.uri.queryParameters['vehicleId'],
+          jurisdictionId: state.uri.queryParameters['jurisdictionId'],
+        ),
       ),
       GoRoute(
         path: '/garage/vehicle/:id',
@@ -1330,19 +1465,56 @@ Future<void> _pumpHomeApp(WidgetTester tester, TestAppHarness harness) async {
   await _pumpAsyncHome(tester);
 }
 
+Future<void> _pumpPicoApp(WidgetTester tester, TestAppHarness harness) async {
+  await _installWidgetChannelMock(tester, harness);
+  final router = GoRouter(
+    initialLocation: '/pico',
+    routes: [
+      GoRoute(path: '/home', builder: (context, state) => const HomeScreen()),
+      GoRoute(
+        path: '/garage',
+        builder: (context, state) => const Text('garage'),
+      ),
+      GoRoute(
+        path: '/onboarding/vehicle',
+        builder: (context, state) => const Text('onboarding'),
+      ),
+      GoRoute(
+        path: '/pico',
+        builder: (context, state) => PicoDetailScreen(
+          vehicleId: state.uri.queryParameters['vehicleId'],
+          jurisdictionId: state.uri.queryParameters['jurisdictionId'],
+        ),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+  await tester.pumpWidget(
+    _providerScope(
+      harness,
+      child: MaterialApp.router(
+        debugShowCheckedModeBanner: false,
+        routerConfig: router,
+      ),
+    ),
+  );
+  await _pumpAsyncHome(tester);
+}
+
 Future<void> _openTomorrowAndExpectPico(
   WidgetTester tester,
   VehicleProfile vehicle,
 ) async {
   await tester.tap(find.byKey(const ValueKey('home-status-tomorrow')));
   await tester.pumpAndSettle(const Duration(milliseconds: 100));
-  expect(find.text('Próximos 7 días'), findsOneWidget);
+  expect(find.text('MI PICO Y PLACA'), findsOneWidget);
   expect(find.text(vehicle.plate), findsOneWidget);
 }
 
 Future<void> _goHome(WidgetTester tester) async {
   final routeContent = [
-    find.text('Próximos 7 días'),
+    find.text('MI PICO Y PLACA'),
+    find.text('Pico y placa de la ciudad'),
     find.textContaining('module-'),
     find.byType(HomeScreen),
     find.byType(Scaffold),

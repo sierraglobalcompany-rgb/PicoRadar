@@ -107,7 +107,7 @@ class _TomorrowStatusStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: 'Ver pico y placa de mañana',
+      label: 'Ver pico y placa',
       value:
           '${_tomorrowValue(snapshot.tomorrow)}, ${_tomorrowMessage(snapshot.tomorrow)}',
       child: Material(
@@ -150,12 +150,15 @@ class _TomorrowStatusStrip extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.s),
-                Text(
-                  'MAÑANA',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.orange,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w900,
+                SizedBox(
+                  width: 72,
+                  child: _ScaleDownText(
+                    'Pico y placa',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.orange,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.s),
@@ -178,7 +181,7 @@ class _TomorrowStatusStrip extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        _tomorrowMessage(snapshot.tomorrow),
+                        'Mañana · ${_tomorrowMessage(snapshot.tomorrow)}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.caption.copyWith(
