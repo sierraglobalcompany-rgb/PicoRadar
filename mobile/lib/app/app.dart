@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../features/pico_placa/data/pico_preferences.dart';
 import 'app_providers.dart';
 import 'router/app_router.dart';
+import 'startup/startup_gate.dart';
 import 'theme/app_theme.dart';
 
 class PicoRadarApp extends ConsumerStatefulWidget {
@@ -31,6 +32,9 @@ class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
       title: 'PicoRadar',
       theme: buildPicoRadarTheme(),
       routerConfig: router,
+      builder: (context, child) {
+        return StartupGate(child: child ?? const SizedBox.shrink());
+      },
     );
   }
 

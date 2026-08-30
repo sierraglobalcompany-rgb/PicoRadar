@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app.dart';
 import 'package:picoradar/app/app_providers.dart';
+import 'package:picoradar/app/startup/startup_gate.dart';
 import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/features/apps_launcher/data/module_registry.dart';
@@ -75,6 +76,13 @@ class TestAppHarness {
           externalLauncher ?? _FakeExternalLauncher(),
         ),
         bogotaNowProvider.overrideWithValue(now),
+        startupReadinessProvider.overrideWith(
+          (ref) async => const StartupReadiness(
+            imageAssets: [],
+            vehicleCount: 0,
+            selectedJurisdictionId: null,
+          ),
+        ),
         if (moduleFeatureFlags.isNotEmpty)
           moduleFeatureFlagsProvider.overrideWithValue(moduleFeatureFlags),
       ],
