@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:picoradar/app/router/app_routes.dart';
 import 'package:picoradar/app/shell/app_shell.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 
@@ -28,6 +29,26 @@ void main() {
     expect(AppTab.values, hasLength(5));
     expect(AppTab.values.indexOf(AppTab.apps), 2);
     expect(AppTab.values[1].label, 'Garaje');
+  });
+
+  test('canonical pico deep links redirect into shell branches', () {
+    expect(picoCompatibilityLocation(Uri.parse('/pico')), '/apps/pico');
+    expect(
+      picoCompatibilityLocation(Uri.parse('/pico?vehicleId=vehicle-b')),
+      '/home/pico?vehicleId=vehicle-b',
+    );
+    expect(
+      picoCompatibilityLocation(
+        Uri.parse('/pico?origin=garage&vehicleId=vehicle-b'),
+      ),
+      '/garage/pico?vehicleId=vehicle-b',
+    );
+    expect(
+      picoCompatibilityLocation(
+        Uri.parse('/pico?origin=apps&vehicleId=vehicle-b&jurisdictionId=city'),
+      ),
+      '/apps/pico?vehicleId=vehicle-b&jurisdictionId=city',
+    );
   });
 
   testWidgets('renders the five-tab shell at the home root', (tester) async {

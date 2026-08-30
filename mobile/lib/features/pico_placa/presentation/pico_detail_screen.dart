@@ -17,6 +17,7 @@ import '../data/pico_preferences.dart';
 import '../data/restriction_store.dart';
 import '../domain/city_restriction_summary.dart';
 import '../domain/restriction_day_evaluation.dart';
+import '../domain/vehicle_month_evaluation.dart';
 
 class PicoDetailScreen extends ConsumerWidget {
   const PicoDetailScreen({this.vehicleId, this.jurisdictionId, super.key});
@@ -178,6 +179,8 @@ class _PersonalPicoView extends ConsumerWidget {
               nextRestriction: nextRestriction,
               jurisdiction: jurisdiction,
               ruleSet: ruleSet,
+              vehicle: vehicle,
+              now: now,
               days: futureDays,
               evaluations: [
                 for (final day in futureDays)
@@ -936,6 +939,8 @@ class _PersonalLowerModule extends StatelessWidget {
     required this.nextRestriction,
     required this.jurisdiction,
     required this.ruleSet,
+    required this.vehicle,
+    required this.now,
     required this.days,
     required this.evaluations,
   });
@@ -944,6 +949,8 @@ class _PersonalLowerModule extends StatelessWidget {
   final _NextRestriction? nextRestriction;
   final RestrictionJurisdiction jurisdiction;
   final RestrictionRuleSet ruleSet;
+  final VehicleProfile vehicle;
+  final DateTime now;
   final List<DateTime> days;
   final List<RestrictionDayEvaluation> evaluations;
 
@@ -958,7 +965,14 @@ class _PersonalLowerModule extends StatelessWidget {
           const SizedBox(height: AppSpacing.m),
           Container(height: 1, color: AppColors.border),
           const SizedBox(height: AppSpacing.m),
-          _PersonalCalendar(days: days, evaluations: evaluations),
+          _PersonalCalendar(
+            days: days,
+            evaluations: evaluations,
+            ruleSet: ruleSet,
+            jurisdiction: jurisdiction,
+            vehicle: vehicle,
+            now: now,
+          ),
           const SizedBox(height: AppSpacing.s),
           _InfoFootnote(
             text: 'La rotación puede cambiar por festivos o medidas especiales. Consulta la fuente oficial.',
@@ -1032,33 +1046,118 @@ class _ImmediateState extends StatelessWidget {
   }
 }
 
-class _PersonalCalendar extends StatelessWidget {
-  const _PersonalCalendar({required this.days, required this.evaluations});
+enum _PersonalCalendarMode { nextDays, month }
+
+class _PersonalCalendar extends StatefulWidget {
+  const _PersonalCalendar({
+    required this.days,
+    required this.evaluations,
+    required this.ruleSet,
+    required this.jurisdiction,
+    required this.vehicle,
+    required this.now,
+  });
 
   final List<DateTime> days;
   final List<RestrictionDayEvaluation> evaluations;
+  final RestrictionRuleSet ruleSet;
+  final RestrictionJurisdiction jurisdiction;
+  final VehicleProfile vehicle;
+  final DateTime now;
+
+  @override
+  State<_PersonalCalendar> createState() => _PersonalCalendarState();
+}
+
+class _PersonalCalendarState extends State<_PersonalCalendar> {
+  _PersonalCalendarMode _mode = _PersonalCalendarMode.nextDays;
+  late DateTime _visibleMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    _visibleMonth = DateTime(widget.now.year, widget.now.month);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Próximos días', style: AppTextStyles.bodyStrong),
-        const SizedBox(height: AppSpacing.s),
-        SizedBox(
-          key: const ValueKey('pico-personal-calendar'),
-          height: 116,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: days.length,
-            separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.s),
-            itemBuilder: (context, index) => _DayCard(
-              key: ValueKey('pico-calendar-day-${index + 1}'),
-              date: days[index],
-              evaluation: evaluations[index],
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Próximos días', style: AppTextStyles.bodyStrong),
+            const SizedBox(height: AppSpacing.s),
+            SegmentedButton<_PersonalCalendarMode>(
+              key: const ValueKey('pico-personal-calendar-mode'),
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(
+                  value: _PersonalCalendarMode.nextDays,
+                  label: Text('Próximos días'),
+                ),
+                ButtonSegment(
+                  value: _PersonalCalendarMode.month,
+                  label: Text('Mes'),
+                ),
+              ],
+              selected: {_mode},
+              onSelectionChanged: (selected) {
+                setState(() => _mode = selected.single);
+              },
+              style: const ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                minimumSize: WidgetStatePropertyAll(Size(0, 40)),
+              ),
             ),
-          ),
+          ],
         ),
+        const SizedBox(height: AppSpacing.s),
+        if (_mode == _PersonalCalendarMode.nextDays)
+          SizedBox(
+            key: const ValueKey('pico-personal-calendar'),
+            height: 116,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: widget.days.length,
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.s),
+              itemBuilder: (context, index) => _DayCard(
+                key: ValueKey('pico-calendar-day-${index + 1}'),
+                date: widget.days[index],
+                evaluation: widget.evaluations[index],
+              ),
+            ),
+          )
+        else
+          _MonthCalendar(
+            visibleMonth: _visibleMonth,
+            now: widget.now,
+            days: evaluateVehicleMonth(
+              ruleSet: widget.ruleSet,
+              jurisdictionId: widget.jurisdiction.id,
+              vehicle: widget.vehicle,
+              year: _visibleMonth.year,
+              month: _visibleMonth.month,
+            ),
+            sourceLabel: _sourceLabel(widget.ruleSet),
+            onPrevious: () {
+              setState(() {
+                _visibleMonth = DateTime(
+                  _visibleMonth.year,
+                  _visibleMonth.month - 1,
+                );
+              });
+            },
+            onNext: () {
+              setState(() {
+                _visibleMonth = DateTime(
+                  _visibleMonth.year,
+                  _visibleMonth.month + 1,
+                );
+              });
+            },
+          ),
       ],
     );
   }
@@ -1129,6 +1228,247 @@ class _DayCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _MonthCalendar extends StatelessWidget {
+  const _MonthCalendar({
+    required this.visibleMonth,
+    required this.now,
+    required this.days,
+    required this.sourceLabel,
+    required this.onPrevious,
+    required this.onNext,
+  });
+
+  final DateTime visibleMonth;
+  final DateTime now;
+  final List<VehicleMonthDayEvaluation> days;
+  final String sourceLabel;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    final leadingEmptyDays =
+        DateTime(visibleMonth.year, visibleMonth.month, 1).weekday -
+        DateTime.monday;
+    final cells = [for (var i = 0; i < leadingEmptyDays; i += 1) null, ...days];
+    while (cells.length % 7 != 0) {
+      cells.add(null);
+    }
+
+    return Column(
+      key: const ValueKey('pico-personal-month-calendar'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            IconButton(
+              key: const ValueKey('pico-month-previous'),
+              onPressed: onPrevious,
+              icon: const Icon(Icons.chevron_left_rounded),
+              tooltip: 'Mes anterior',
+            ),
+            Expanded(
+              child: Text(
+                '${_monthName(visibleMonth.month)} ${visibleMonth.year}',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodyStrong,
+              ),
+            ),
+            IconButton(
+              key: const ValueKey('pico-month-next'),
+              onPressed: onNext,
+              icon: const Icon(Icons.chevron_right_rounded),
+              tooltip: 'Mes siguiente',
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        const _MonthWeekdayHeader(),
+        const SizedBox(height: AppSpacing.xs),
+        GridView.builder(
+          key: const ValueKey('pico-personal-month-grid'),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: cells.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+            mainAxisSpacing: 6,
+            crossAxisSpacing: 6,
+            childAspectRatio: 0.78,
+          ),
+          itemBuilder: (context, index) {
+            final item = cells[index];
+            if (item == null) {
+              return const SizedBox.shrink();
+            }
+            return _MonthDayCell(
+              item: item,
+              isToday: _isSameDay(item.date, now),
+              sourceLabel: sourceLabel,
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _MonthWeekdayHeader extends StatelessWidget {
+  const _MonthWeekdayHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        for (final label in const ['L', 'M', 'X', 'J', 'V', 'S', 'D'])
+          Expanded(
+            child: Center(
+              child: Text(
+                label,
+                style: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.navy.withValues(alpha: 0.62),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _MonthDayCell extends StatelessWidget {
+  const _MonthDayCell({
+    required this.item,
+    required this.isToday,
+    required this.sourceLabel,
+  });
+
+  final VehicleMonthDayEvaluation item;
+  final bool isToday;
+  final String sourceLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = item.evaluation.status;
+    final color = _statusColor(status);
+    final restricted = status == RestrictionDayStatus.restricted;
+    return Semantics(
+      button: true,
+      label: '${_date(item.date)} ${_statusText(status)}',
+      child: Material(
+        color: restricted
+            ? AppColors.red.withValues(alpha: 0.14)
+            : color.withValues(
+                alpha: status == RestrictionDayStatus.allowed ? 0.07 : 0.1,
+              ),
+        borderRadius: BorderRadius.circular(AppRadius.input),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: ValueKey('pico-month-day-${_date(item.date)}'),
+          onTap: () => _showMonthDayDetail(context, item, sourceLabel),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 46),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.input),
+              border: Border.all(
+                color: isToday ? AppColors.navy : color.withValues(alpha: 0.28),
+                width: isToday ? 2 : 1,
+              ),
+            ),
+            child: Stack(
+              children: [
+                Center(
+                  child: Text(
+                    '${item.date.day}',
+                    style: AppTextStyles.bodyStrong.copyWith(
+                      color: restricted ? AppColors.red : AppColors.navy,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 5,
+                  bottom: 5,
+                  child: Container(
+                    key: ValueKey(
+                      'pico-month-status-${_date(item.date)}-${status.name}',
+                    ),
+                    width: restricted ? 9 : 7,
+                    height: restricted ? 9 : 7,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+void _showMonthDayDetail(
+  BuildContext context,
+  VehicleMonthDayEvaluation item,
+  String sourceLabel,
+) {
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) {
+      final evaluation = item.evaluation;
+      final color = _statusColor(evaluation.status);
+      return SafeArea(
+        top: false,
+        child: Padding(
+          key: const ValueKey('pico-month-day-detail-sheet'),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl,
+            AppSpacing.s,
+            AppSpacing.xl,
+            AppSpacing.xl,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_shortDate(item.date), style: AppTextStyles.caption),
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                children: [
+                  Icon(_statusIcon(evaluation.status), color: color),
+                  const SizedBox(width: AppSpacing.s),
+                  Expanded(
+                    child: Text(
+                      _statusText(evaluation.status),
+                      style: AppTextStyles.h2.copyWith(color: color),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.s),
+              Text(
+                _windowsOrControlled(evaluation),
+                style: AppTextStyles.bodyStrong,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                _detailBasis(evaluation.status),
+                style: AppTextStyles.caption,
+              ),
+              const SizedBox(height: AppSpacing.s),
+              Text(sourceLabel, style: AppTextStyles.caption),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
 
 class _CityTopControls extends StatelessWidget {
@@ -1693,8 +2033,12 @@ class _VehicleShortcut extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         key: ValueKey('pico-city-vehicle-${data.vehicle.id}'),
-        onTap: () => context.go(
-          Uri(path: AppRoute.pico.path, queryParameters: params).toString(),
+        onTap: () => context.push(
+          picoShellLocation(
+            origin: PicoRouteOrigin.apps,
+            vehicleId: params['vehicleId'],
+            jurisdictionId: params['jurisdictionId'],
+          ),
         ),
         borderRadius: BorderRadius.circular(AppRadius.input),
         child: Container(
@@ -2081,6 +2425,19 @@ String _compactStatusText(RestrictionDayStatus status) {
   };
 }
 
+String _detailBasis(RestrictionDayStatus status) {
+  return switch (status) {
+    RestrictionDayStatus.restricted =>
+      'Restricción calculada para este vehículo.',
+    RestrictionDayStatus.allowed =>
+      'No hay regla restrictiva aplicable a este vehículo.',
+    RestrictionDayStatus.unknown =>
+      'La cobertura no permite confirmar este día.',
+    RestrictionDayStatus.stale =>
+      'La regla existe, pero la vigencia debe actualizarse.',
+  };
+}
+
 IconData _categoryIcon(PicoVehicleCategory category) {
   return switch (category) {
     PicoVehicleCategory.cars => Icons.directions_car_filled_rounded,
@@ -2198,6 +2555,23 @@ String _weekday(DateTime date) {
     DateTime.friday => 'Vie',
     DateTime.saturday => 'Sáb',
     _ => 'Dom',
+  };
+}
+
+String _monthName(int month) {
+  return switch (month) {
+    1 => 'Enero',
+    2 => 'Febrero',
+    3 => 'Marzo',
+    4 => 'Abril',
+    5 => 'Mayo',
+    6 => 'Junio',
+    7 => 'Julio',
+    8 => 'Agosto',
+    9 => 'Septiembre',
+    10 => 'Octubre',
+    11 => 'Noviembre',
+    _ => 'Diciembre',
   };
 }
 

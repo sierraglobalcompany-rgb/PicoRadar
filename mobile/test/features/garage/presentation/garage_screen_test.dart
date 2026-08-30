@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/features/garage/data/garage_favorites.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
+import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
+import 'package:picoradar/features/pico_placa/presentation/pico_detail_screen.dart';
 import 'package:picoradar/features/visual_assets/presentation/visual_asset_widgets.dart';
 import 'package:picoradar/features/vehicle_status/data/vehicle_obligation_store.dart';
 import 'package:picoradar/features/vehicle_status/domain/vehicle_obligation.dart';
@@ -379,6 +381,53 @@ void main() {
     expect((await harness.repository.getActiveVehicle())?.id, other.id);
   });
 
+  testWidgets(
+    'P03 detail Pico entry opens scoped personal Pico inside Garage shell',
+    (tester) async {
+      await harness.preferences.setString(
+        picoJurisdictionPreferenceKey,
+        'co-dc-bogota',
+      );
+      final seeded = await _seedThreeVehicles(harness);
+
+      await _openGarage(tester, harness);
+      await _focusNewestVehicle(tester);
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('garage-action-detail')),
+      );
+
+      expect(find.text(seeded.newest.plate), findsWidgets);
+      expect(
+        find.text('Pendiente de activar datos de movilidad'),
+        findsNothing,
+      );
+      expect(find.byKey(const ValueKey('detail-status-pico')), findsOneWidget);
+      expect(find.text('Ver estado y calendario'), findsOneWidget);
+
+      final picoEntry = find.byKey(const ValueKey('detail-status-pico'));
+      await tester.ensureVisible(picoEntry);
+      await tester.pump();
+      await tester.tap(picoEntry);
+      await _pumpPicoRoute(tester);
+
+      expect(find.byType(PicoDetailScreen), findsOneWidget);
+      final pico = tester.widget<PicoDetailScreen>(
+        find.byType(PicoDetailScreen),
+      );
+      expect(pico.vehicleId, seeded.newest.id);
+      expect(
+        find.byKey(const ValueKey('app-bottom-navigation')),
+        findsOneWidget,
+      );
+      expect(_selectedBottomNavLabels(tester), contains('Garaje'));
+      expect(
+        (await harness.repository.getActiveVehicle())?.id,
+        seeded.active.id,
+      );
+    },
+  );
+
   testWidgets('Apps overlay opens over Garage and closes back to same focus', (
     tester,
   ) async {
@@ -629,6 +678,15 @@ void _expectGarageCoreAboveNav(WidgetTester tester, {required String reason}) {
   expect(find.byKey(const ValueKey('garage-action-delete')), findsOneWidget);
 }
 
+List<String> _selectedBottomNavLabels(WidgetTester tester) {
+  return tester
+      .widgetList<Semantics>(find.byType(Semantics))
+      .where((widget) => widget.properties.selected == true)
+      .map((widget) => widget.properties.label)
+      .whereType<String>()
+      .toList();
+}
+
 Future<void> _openDetailAndReturn(
   WidgetTester tester,
   VehicleProfile vehicle,
@@ -645,6 +703,15 @@ Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
   await tester.pumpAndSettle();
   await tester.tap(finder);
   await tester.pumpAndSettle();
+}
+
+Future<void> _pumpPicoRoute(WidgetTester tester) async {
+  for (var i = 0; i < 20; i += 1) {
+    await tester.pump(const Duration(milliseconds: 300));
+    if (find.byType(PicoDetailScreen).evaluate().isNotEmpty) {
+      return;
+    }
+  }
 }
 
 Future<void> _completeOnboarding(

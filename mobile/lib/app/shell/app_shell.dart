@@ -149,6 +149,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     if (wasLauncherOpen) {
       setState(() => _launcherOpen = false);
     }
+    final fromPico = _isPicoShellLocation(GoRouterState.of(context).uri.path);
     if (widget.navigationShell.currentIndex == AppTab.home.index &&
         index == AppTab.drive.index) {
       await _promoteHomeFocusedVehicle();
@@ -156,7 +157,8 @@ class _AppShellState extends ConsumerState<AppShell> {
     if (!wasLauncherOpen || index != widget.navigationShell.currentIndex) {
       widget.navigationShell.goBranch(
         index,
-        initialLocation: index == widget.navigationShell.currentIndex,
+        initialLocation:
+            fromPico || index == widget.navigationShell.currentIndex,
       );
     }
   }
@@ -186,15 +188,6 @@ class _AppShellState extends ConsumerState<AppShell> {
       if (!mounted) {
         return;
       }
-      final branchIndex = _branchIndexForLocation(location);
-      if (branchIndex != null) {
-        widget.navigationShell.goBranch(branchIndex);
-        return;
-      }
-      if (_isTopLevelOverlayLocation(location)) {
-        context.push(location);
-        return;
-      }
       context.go(location);
     });
   }
@@ -212,22 +205,10 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
-int? _branchIndexForLocation(String location) {
-  final path = Uri.parse(location).path;
-  for (final tab in AppTab.values) {
-    if (tab == AppTab.apps) {
-      continue;
-    }
-    if (path == tab.route.path) {
-      return tab.index;
-    }
-  }
-  return null;
-}
-
-bool _isTopLevelOverlayLocation(String location) {
-  final path = Uri.parse(location).path;
-  return path == AppRoute.pico.path;
+bool _isPicoShellLocation(String path) {
+  return path == '${AppRoute.home.path}/pico' ||
+      path == '${AppRoute.garage.path}/pico' ||
+      path == '${AppRoute.apps.path}/pico';
 }
 
 String? resolveAppsLauncherVehicleId({

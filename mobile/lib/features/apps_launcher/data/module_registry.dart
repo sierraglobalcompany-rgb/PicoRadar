@@ -13,7 +13,7 @@ const primaryModules = [
     title: 'Pico y placa',
     icon: Icons.event_available_outlined,
     requiresVehicle: false,
-    destination: '/pico',
+    destination: '/apps/pico',
     featureFlagKey: 'module_pico_enabled',
   ),
   AppModule(
