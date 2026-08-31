@@ -184,6 +184,12 @@ class GeographyJurisdictionTest extends TestCase
                 $this->addToAssertionCount(1);
             }
             try {
+                $service->update($jurisdiction, ['primary_geographic_unit_id' => $nonMunicipality->id]);
+                $this->fail('Non-municipality primary update was accepted.');
+            } catch (DomainException) {
+                $this->addToAssertionCount(1);
+            }
+            try {
                 $service->create(['key' => 'co-invalid-'.$nonMunicipality->code, 'name' => 'Invalid', 'kind' => 'city', 'primary_geographic_unit_id' => $nonMunicipality->id, 'enabled' => false, 'timezone' => 'America/Bogota'], [$nonMunicipality->id]);
                 $this->fail('Non-municipality primary was accepted.');
             } catch (DomainException) {
@@ -268,12 +274,22 @@ class GeographyJurisdictionTest extends TestCase
             $this->actingAs($operator)->get(route('admin.geography.index'))->assertOk();
             $this->actingAs($operator)->get(route('admin.jurisdictions.index'))->assertOk();
             $this->actingAs($operator)->get(route('admin.jurisdictions.create'))->assertOk();
+            $key = 'co-ant-'.str_replace('_', '-', $role->value).'-test';
+            $this->actingAs($operator)->post(route('admin.jurisdictions.store'), ['key' => $key, 'name' => "$role->value test", 'kind' => 'city', 'enabled' => '1', 'timezone' => 'America/Bogota', 'primary_geographic_unit_id' => $primary->id])->assertRedirect();
+            $managed = Jurisdiction::query()->where('key', $key)->firstOrFail();
+            $this->actingAs($operator)->put(route('admin.jurisdictions.update', $managed), ['name' => "$role->value updated", 'kind' => 'city', 'enabled' => '1', 'timezone' => 'America/Bogota', 'primary_geographic_unit_id' => $primary->id])->assertRedirect();
+            $this->actingAs($operator)->post(route('admin.jurisdictions.coverage.attach', $managed), ['geographic_unit_id' => $extra->id])->assertRedirect();
+            $this->actingAs($operator)->delete(route('admin.jurisdictions.coverage.detach', [$managed, $extra]))->assertRedirect();
         }
         $this->actingAs($editor)->get(route('admin.geography.index'))->assertOk();
         $this->actingAs($editor)->get(route('admin.jurisdictions.index'))->assertOk();
         $response = $this->actingAs($editor)->post(route('admin.jurisdictions.store'), ['key' => 'co-ant-editor-test', 'name' => 'Editor test', 'kind' => 'city', 'enabled' => '1', 'timezone' => 'America/Bogota', 'primary_geographic_unit_id' => $primary->id]);
         $response->assertRedirect();
         $jurisdiction = Jurisdiction::query()->where('key', 'co-ant-editor-test')->firstOrFail();
+        foreach ([GeographicUnit::query()->where('code', '05')->firstOrFail(), GeographicUnit::query()->where('code', 'CO')->firstOrFail()] as $nonMunicipality) {
+            $this->actingAs($editor)->post(route('admin.jurisdictions.store'), ['key' => 'co-invalid-http-'.strtolower($nonMunicipality->code), 'name' => 'Invalid HTTP', 'kind' => 'city', 'enabled' => '1', 'timezone' => 'America/Bogota', 'primary_geographic_unit_id' => $nonMunicipality->id])->assertStatus(422);
+            $this->actingAs($editor)->put(route('admin.jurisdictions.update', $jurisdiction), ['name' => 'Invalid HTTP', 'kind' => 'city', 'enabled' => '1', 'timezone' => 'America/Bogota', 'primary_geographic_unit_id' => $nonMunicipality->id])->assertStatus(422);
+        }
         $this->actingAs($editor)->put(route('admin.jurisdictions.update', $jurisdiction), ['name' => 'Editor test updated', 'kind' => 'city', 'enabled' => '1', 'timezone' => 'America/Bogota', 'primary_geographic_unit_id' => $primary->id])->assertRedirect();
         $this->actingAs($editor)->post(route('admin.jurisdictions.coverage.attach', $jurisdiction), ['geographic_unit_id' => $extra->id])->assertRedirect();
         $this->actingAs($editor)->delete(route('admin.jurisdictions.coverage.detach', [$jurisdiction, $extra]))->assertRedirect();
