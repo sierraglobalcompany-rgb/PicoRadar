@@ -49,8 +49,8 @@ class CameraPackSource {
 
 enum CameraKind {
   speed('Velocidad'),
-  redLight('Semaforo'),
-  mixed('Fotodeteccion');
+  redLight('Semáforo'),
+  mixed('Fotodetección');
 
   const CameraKind(this.label);
 
@@ -70,6 +70,11 @@ class TrafficCamera {
     required this.technology,
     required this.kind,
     required this.speedLimitKmh,
+    this.operationStatus,
+    this.trafficAuthority,
+    this.installationType,
+    this.equipmentName,
+    this.rawInfractionCodes = const [],
   });
 
   final String id;
@@ -83,6 +88,11 @@ class TrafficCamera {
   final String? technology;
   final CameraKind kind;
   final int? speedLimitKmh;
+  final String? operationStatus;
+  final String? trafficAuthority;
+  final String? installationType;
+  final String? equipmentName;
+  final List<String> rawInfractionCodes;
 
   factory TrafficCamera.fromJson(Map<String, Object?> json) {
     return TrafficCamera(
@@ -101,6 +111,13 @@ class TrafficCamera {
         _ => CameraKind.mixed,
       },
       speedLimitKmh: _int(json['speedLimitKmh']),
+      operationStatus: _nullableString(json['operationStatus']),
+      trafficAuthority: _nullableString(json['trafficAuthority']),
+      installationType: _nullableString(json['installationType']),
+      equipmentName: _nullableString(json['equipmentName']),
+      rawInfractionCodes: _stringList(
+        json['rawInfractionCodes'] ?? json['infractionCodes'],
+      ),
     );
   }
 
@@ -137,4 +154,11 @@ int? _int(Object? value) {
     return value.toInt();
   }
   return int.tryParse(value?.toString() ?? '');
+}
+
+List<String> _stringList(Object? value) {
+  if (value is! List) {
+    return const [];
+  }
+  return [for (final item in value) ?_nullableString(item)];
 }

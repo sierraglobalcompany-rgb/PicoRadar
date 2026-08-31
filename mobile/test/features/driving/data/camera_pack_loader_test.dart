@@ -38,6 +38,30 @@ void main() {
 
     await expectLater(loadCameraPack(bundle), throwsFormatException);
   });
+
+  test('loader accepts optional B05 rich source fields', () async {
+    final bundle = _StringAssetBundle(
+      _packJson(
+        status: 'Aprobada',
+        extraFields: {
+          'operationStatus': 'Operando',
+          'trafficAuthority': 'Secretaría de Movilidad de Medellín',
+          'installationType': 'Fija',
+          'equipmentName': 'Equipo 123',
+          'rawInfractionCodes': ['C29'],
+        },
+      ),
+    );
+
+    final pack = await loadCameraPack(bundle);
+    final camera = pack.cameras.single;
+
+    expect(camera.operationStatus, 'Operando');
+    expect(camera.trafficAuthority, 'Secretaría de Movilidad de Medellín');
+    expect(camera.installationType, 'Fija');
+    expect(camera.equipmentName, 'Equipo 123');
+    expect(camera.rawInfractionCodes, ['C29']);
+  });
 }
 
 Future<void> _expectRejectedStatus(String status) async {
@@ -46,14 +70,16 @@ Future<void> _expectRejectedStatus(String status) async {
   await expectLater(loadCameraPack(bundle), throwsFormatException);
 }
 
-String _packJson({required String status}) {
+String _packJson({
+  required String status,
+  Map<String, Object?> extraFields = const {},
+}) {
   return jsonEncode({
     'schemaVersion': 1,
     'source': {
       'name': 'ANSV',
       'pageUrl': 'https://fotodeteccion.ansv.gov.co/ubicaciones-aprobadas.html',
-      'dataUrl':
-          'https://srvansvargweb.ansv.gov.co/server/rest/services/Equipos_Fotodeteccion/Equipos_Geo/FeatureServer/0/query',
+      'dataUrl': 'https://srvansvargweb.ansv.gov.co/server/rest/services/Equipos_Fotodeteccion/Equipos_Geo/FeatureServer/0/query',
       'fetchedAtUtc': '2026-08-31T00:00:00Z',
     },
     'cameras': [
@@ -70,6 +96,7 @@ String _packJson({required String status}) {
         'technology': 'Camara',
         'kind': 'mixed',
         'speedLimitKmh': 60,
+        ...extraFields,
       },
     ],
   });

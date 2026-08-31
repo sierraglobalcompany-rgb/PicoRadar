@@ -93,7 +93,7 @@ class DrivingAlertEngine {
     episode.lastAlertAt = currentInstant;
     return DrivingAlert(
       cameraId: camera.id,
-      title: overspeed ? 'Reduce la velocidad' : 'Camara cerca',
+      title: overspeed ? 'Reduce la velocidad' : 'Cámara cerca',
       message: _message(match, threshold, speedKmh),
       thresholdMeters: threshold,
       severity: overspeed || threshold <= 100

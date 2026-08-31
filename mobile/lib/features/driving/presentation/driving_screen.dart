@@ -294,7 +294,7 @@ class _DrivingDashboard extends StatelessWidget {
             label: Text(
               state.status == DrivingSessionStatus.starting
                   ? 'Preparando'
-                  : 'Iniciar conduccion',
+                  : 'Iniciar conducción',
             ),
           ),
           if (onDebugRouteKnown != null || onDebugRouteUnknown != null) ...[
@@ -319,7 +319,7 @@ class _DrivingDashboard extends StatelessWidget {
           ],
           const SizedBox(height: AppSpacing.m),
           Text(
-            'GPS foreground. No se guarda recorrido ni se envia ubicacion al servidor.',
+            'GPS foreground. No se guarda recorrido ni se envía ubicación al servidor.',
             style: AppTextStyles.caption.copyWith(
               color: AppColors.navy.withValues(alpha: 0.66),
             ),
@@ -363,7 +363,7 @@ class _ReadySummary extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.m),
             Text(
-              'Camaras ANSV locales: ${state.cameraCount}',
+              'Cámaras ANSV locales: ${state.cameraCount}',
               style: AppTextStyles.caption.copyWith(color: Colors.white70),
             ),
             const SizedBox(height: AppSpacing.xs),
@@ -429,21 +429,29 @@ class _CameraPanel extends StatelessWidget {
                 Expanded(
                   child: Text(
                     weakForAlerts
-                        ? 'GPS debil'
+                        ? 'GPS débil'
                         : hasCamera
-                        ? 'Fotodeteccion autorizada'
-                        : 'Sin camara inmediata',
+                        ? 'Fotodetección autorizada'
+                        : 'Sin cámara inmediata',
                     style: AppTextStyles.h2.copyWith(
                       color: state.isActive ? Colors.white : AppColors.navy,
                     ),
                   ),
                 ),
+                if (hasCamera)
+                  IconButton(
+                    key: const ValueKey('driving-camera-detail-action'),
+                    tooltip: 'Fuente de cámara',
+                    color: state.isActive ? Colors.white70 : AppColors.navy,
+                    onPressed: () => _showCameraDetails(context, match.camera),
+                    icon: const Icon(Icons.info_outline),
+                  ),
               ],
             ),
             const SizedBox(height: AppSpacing.m),
             if (weakForAlerts)
               Text(
-                'Esperando mejor precision para alertas',
+                'Esperando mejor precisión para alertas',
                 key: const ValueKey('driving-camera-message'),
                 style: _panelTextStyle(state),
               )
@@ -451,17 +459,84 @@ class _CameraPanel extends StatelessWidget {
               _CameraFacts(state: state, match: match)
             else
               Text(
-                'PicoRadar revisa rumbo, distancia y aproximacion desde el pack local.',
+                'PicoRadar revisa rumbo, distancia y aproximación desde el pack local.',
                 key: const ValueKey('driving-camera-message'),
                 style: _panelTextStyle(state),
               ),
-            if (alert != null) ...[
-              const SizedBox(height: AppSpacing.s),
-              Text(alert.message, style: _panelCaptionStyle(state)),
-            ],
           ],
         ),
       ),
+    );
+  }
+
+  void _showCameraDetails(BuildContext context, TrafficCamera camera) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              key: const ValueKey('driving-camera-detail-sheet'),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.l,
+                0,
+                AppSpacing.l,
+                AppSpacing.xl,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Fuente de cámara', style: AppTextStyles.h2),
+                  const SizedBox(height: AppSpacing.m),
+                  _CameraDetailLine(label: 'Ubicación', value: camera.locality),
+                  _CameraDetailLine(
+                    label: 'Dirección',
+                    value: camera.address ?? 'No publicada',
+                  ),
+                  _CameraDetailLine(
+                    label: 'Autoridad de tránsito',
+                    value: camera.trafficAuthority ?? 'No publicada',
+                  ),
+                  _CameraDetailLine(
+                    label: 'Jurisdicción',
+                    value: camera.jurisdiction ?? 'No publicada',
+                  ),
+                  _CameraDetailLine(
+                    label: 'Tecnología',
+                    value: _cameraDetailValue(
+                      camera.technology,
+                      'No publicada',
+                    ),
+                  ),
+                  _CameraDetailLine(
+                    label: 'Tipo de instalación',
+                    value: _cameraDetailValue(
+                      camera.installationType,
+                      'No publicado',
+                    ),
+                  ),
+                  _CameraDetailLine(
+                    label: 'Equipo',
+                    value: camera.equipmentName ?? 'No publicado',
+                  ),
+                  _CameraDetailLine(
+                    label: 'Estado operación',
+                    value: camera.operationStatus ?? 'No publicado',
+                  ),
+                  _CameraDetailLine(
+                    label: 'Velocidad reportada',
+                    value: camera.speedLimitKmh == null
+                        ? 'No publicada'
+                        : '${camera.speedLimitKmh} km/h',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -482,7 +557,7 @@ class _CameraFacts extends StatelessWidget {
       DrivingSpeedState.near => 'Cerca del valor reportado',
       DrivingSpeedState.within => 'Dentro del valor',
       DrivingSpeedState.unknownReportedSpeed => 'Velocidad no publicada',
-      DrivingSpeedState.noCamera => 'Sin camara inmediata',
+      DrivingSpeedState.noCamera => 'Sin cámara inmediata',
     };
     final delta = state.speedDeltaKmh > 0 ? '+${state.speedDeltaKmh} km/h' : '';
     return Column(
@@ -519,6 +594,41 @@ class _CameraFacts extends StatelessWidget {
           style: _panelCaptionStyle(state),
         ),
       ],
+    );
+  }
+}
+
+String _cameraDetailValue(String? value, String fallback) {
+  final text = value?.trim();
+  if (text == null || text.isEmpty) {
+    return fallback;
+  }
+  return text
+      .replaceAll('Camara', 'Cámara')
+      .replaceAll('camara', 'cámara')
+      .replaceAll('Fotodeteccion', 'Fotodetección')
+      .replaceAll('fotodeteccion', 'fotodetección')
+      .replaceAll('Semaforo', 'Semáforo')
+      .replaceAll('semaforo', 'semáforo');
+}
+
+class _CameraDetailLine extends StatelessWidget {
+  const _CameraDetailLine({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.s),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(value),
+        ],
+      ),
     );
   }
 }
@@ -744,7 +854,7 @@ class _CameraSpeedSign extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Velocidad de control reportada $speedKmh kilometros por hora',
+      label: 'Velocidad de control reportada $speedKmh kilómetros por hora',
       child: Container(
         width: size,
         height: size,
@@ -911,7 +1021,7 @@ class _HudView extends StatelessWidget {
                     const SizedBox(height: AppSpacing.l),
                     if (distance != null)
                       Text(
-                        'Camara $distance m',
+                        'Cámara $distance m',
                         key: const ValueKey('hud-camera-distance'),
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -1033,7 +1143,7 @@ class _DrivingSettingsSheetState extends State<_DrivingSettingsSheet> {
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Vibracion'),
+                title: const Text('Vibración'),
                 value: _value.vibrationEnabled,
                 onChanged: (value) => setState(
                   () => _value = _value.copyWith(vibrationEnabled: value),

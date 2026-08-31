@@ -153,7 +153,7 @@ void main() {
     gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 0));
     await tester.pump();
 
-    expect(find.text('Fotodeteccion autorizada'), findsOneWidget);
+    expect(find.text('Fotodetección autorizada'), findsOneWidget);
   });
 
   testWidgets('known camera speed shows sign, distance, status, and delta', (
@@ -187,6 +187,7 @@ void main() {
     expect(find.byKey(const ValueKey('camera-distance-pill')), findsOneWidget);
     expect(find.text('60 km/h'), findsWidgets);
     expect(find.textContaining('Reduce velocidad'), findsOneWidget);
+    expect(find.textContaining('300 m ·'), findsNothing);
     expect(
       find.byKey(const ValueKey('driving-overspeed-delta')),
       findsOneWidget,
@@ -266,7 +267,48 @@ void main() {
     expect(transform.transform.storage[0], -1);
     expect(find.byKey(const ValueKey('hud-camera-distance')), findsOneWidget);
     expect(find.byKey(const ValueKey('hud-camera-speed-sign')), findsOneWidget);
-    expect(find.textContaining('Camara'), findsOneWidget);
+    expect(find.textContaining('Cámara'), findsOneWidget);
+  });
+
+  testWidgets('camera detail sheet can render future B05 source fields', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20));
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey('driving-camera-detail-action')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('driving-camera-detail-sheet')),
+      findsOneWidget,
+    );
+    expect(find.text('Avenida 80'), findsOneWidget);
+    expect(find.text('Secretaría de Movilidad de Medellín'), findsOneWidget);
+    expect(find.text('Cámara'), findsOneWidget);
+    expect(find.text('Operando'), findsOneWidget);
+    expect(find.text('Equipo 123'), findsOneWidget);
   });
 
   testWidgets('HUD with unknown speed omits the speed sign', (tester) async {
@@ -354,6 +396,11 @@ CameraPack _pack({int? speedLimitKmh = 60}) {
         technology: 'Camara',
         kind: CameraKind.mixed,
         speedLimitKmh: speedLimitKmh,
+        operationStatus: 'Operando',
+        trafficAuthority: 'Secretaría de Movilidad de Medellín',
+        installationType: 'Fija',
+        equipmentName: 'Equipo 123',
+        rawInfractionCodes: const ['C29'],
       ),
     ],
   );

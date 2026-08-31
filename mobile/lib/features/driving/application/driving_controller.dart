@@ -255,7 +255,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         _setStopped(
           current,
           DrivingSessionStatus.locationUnavailable,
-          'No hay camaras locales compatibles para simular la ruta.',
+          'No hay cámaras locales compatibles para simular la ruta.',
         );
         return;
       }
@@ -269,7 +269,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         _setStopped(
           current,
           DrivingSessionStatus.serviceDisabled,
-          'Activa la ubicacion del telefono para iniciar.',
+          'Activa la ubicación del teléfono para iniciar.',
         );
         return;
       }
@@ -307,7 +307,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         _setStopped(
           latest,
           DrivingSessionStatus.locationUnavailable,
-          'No se pudo leer la ubicacion en tiempo real.',
+          'No se pudo leer la ubicación en tiempo real.',
         );
       },
       cancelOnError: false,
@@ -459,8 +459,8 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   String _permissionMessage(DeviceLocationPermission permission) {
     return switch (permission) {
       DeviceLocationPermission.deniedForever =>
-        'Habilita el permiso de ubicacion en ajustes para conducir.',
-      _ => 'PicoRadar solo usa GPS mientras Conducir esta activo.',
+        'Habilita el permiso de ubicación en ajustes para conducir.',
+      _ => 'PicoRadar solo usa GPS mientras Conducir está activo.',
     };
   }
 
@@ -481,17 +481,17 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   String _voiceMessage(DrivingAlert alert) {
     final reported = alert.reportedSpeedKmh;
     if (reported == null) {
-      return 'Camara de fotodeteccion autorizada a '
+      return 'Cámara de fotodetección autorizada a '
           '${alert.thresholdMeters} metros.';
     }
     if (alert.overspeed) {
-      return 'Camara a ${alert.thresholdMeters} metros. '
+      return 'Cámara a ${alert.thresholdMeters} metros. '
           'Velocidad reportada: $reported. '
           'Vas a ${alert.currentSpeedKmh}. Reduce la velocidad.';
     }
-    return 'Camara de fotodeteccion autorizada a '
+    return 'Cámara de fotodetección autorizada a '
         '${alert.thresholdMeters} metros. '
-        'Velocidad reportada: $reported kilometros por hora.';
+        'Velocidad reportada: $reported kilómetros por hora.';
   }
 
   int _knownSpeedCount(CameraPack pack) {
