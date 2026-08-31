@@ -3,64 +3,58 @@
 namespace App\Services;
 
 use App\Enums\CameraStatus;
+use App\Models\AnsvCameraImport;
 use App\Models\AnsvCameraImportRow;
-use App\Models\Camera;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Facades\File;
 
 class CameraMobileDatasetPublisher
 {
-    public function __construct(private readonly CameraContractReadinessService $readiness) {}
-
     public function publish(string $outputDirectory, string $version, CarbonImmutable $generatedAt, CarbonImmutable $asOf): array
     {
         if (! preg_match('/^\d{4}\.\d{2}\.\d{2}[-a-z0-9.]*$/', $version)) {
             throw new DomainException('Camera dataset version is invalid.');
         }
 
+        $import = AnsvCameraImport::query()
+            ->with('source')
+            ->latest('source_fetched_at')
+            ->first();
+        if ($import === null) {
+            throw new DomainException('No accepted ANSV camera import is available for publication.');
+        }
+
         $records = [];
         $speedKnown = 0;
-        $latestSourceFetchedAt = null;
-        $sourceSnapshotSha = null;
 
-        Camera::query()
-            ->where('status', CameraStatus::Active)
-            ->where('operation_status', 'Operando')
-            ->with(['source', 'jurisdiction.primaryGeographicUnit', 'geographicUnit'])
-            ->orderBy('camera_id')
-            ->each(function (Camera $camera) use (&$records, &$speedKnown, &$latestSourceFetchedAt, &$sourceSnapshotSha, $asOf): void {
-                $assessment = $this->readiness->assess($camera);
-                if (! $assessment['readyForFutureDataset']) {
-                    throw new DomainException("Camera {$camera->camera_id} is not ready for publication: ".implode(', ', $assessment['reasons']));
+        AnsvCameraImportRow::query()
+            ->where('ansv_camera_import_id', $import->id)
+            ->where('active_public_candidate', true)
+            ->where('review_state', 'OK')
+            ->with(['camera', 'import'])
+            ->orderBy('source_row_identity')
+            ->each(function (AnsvCameraImportRow $sourceRow) use (&$records, &$speedKnown, $asOf): void {
+                $camera = $sourceRow->camera;
+                if ($camera === null) {
+                    throw new DomainException("ANSV row {$sourceRow->source_row_identity} has no linked camera.");
+                }
+                if ($camera->status !== CameraStatus::Active) {
+                    throw new DomainException("Camera {$camera->camera_id} is not active.");
                 }
                 if ($camera->operation_status !== 'Operando') {
                     throw new DomainException("Camera {$camera->camera_id} is not operating.");
                 }
-                if ($camera->operation_started_on !== null && CarbonImmutable::parse($camera->operation_started_on)->isAfter($asOf)) {
+                if ($sourceRow->operation_started_on !== null && CarbonImmutable::parse($sourceRow->operation_started_on)->isAfter($asOf)) {
                     throw new DomainException("Camera {$camera->camera_id} operation starts in the future.");
                 }
-                $operationEndsOn = $camera->operation_extension_ends_on ?? $camera->operation_initial_ends_on;
+                $operationEndsOn = $sourceRow->operation_extension_ends_on ?? $sourceRow->operation_initial_ends_on;
                 if ($operationEndsOn !== null && CarbonImmutable::parse($operationEndsOn)->isBefore($asOf)) {
                     throw new DomainException("Camera {$camera->camera_id} operation window is expired.");
                 }
 
-                $sourceRow = AnsvCameraImportRow::query()
-                    ->where('camera_id', $camera->id)
-                    ->where('active_public_candidate', true)
-                    ->latest('id')
-                    ->first();
-                if ($sourceRow === null) {
-                    throw new DomainException("Camera {$camera->camera_id} has no accepted ANSV source row.");
-                }
-
-                $speed = $camera->speed_limit_verified ? $camera->speed_limit : null;
+                $speed = $sourceRow->reported_speed_kmh;
                 $speedKnown += $speed !== null ? 1 : 0;
-                $latestSourceFetchedAt = max(
-                    $latestSourceFetchedAt ?? $camera->source_fetched_at?->toIso8601String(),
-                    $camera->source_fetched_at?->toIso8601String(),
-                );
-                $sourceSnapshotSha ??= $camera->source_snapshot_sha;
 
                 $records[] = [
                     'cameraId' => $camera->camera_id,
@@ -81,8 +75,8 @@ class CameraMobileDatasetPublisher
                     'installationType' => $camera->installation_type,
                     'equipmentName' => $camera->equipment_name,
                     'infractionCodes' => $camera->raw_infraction_codes ?? [],
-                    'sourceFetchedAt' => $camera->source_fetched_at?->toIso8601String(),
-                    'validFrom' => $camera->operation_started_on?->toDateString(),
+                    'sourceFetchedAt' => $sourceRow->import->source_fetched_at?->toIso8601String(),
+                    'validFrom' => $sourceRow->operation_started_on?->toDateString(),
                     'validUntil' => $operationEndsOn?->toDateString(),
                 ];
             });
@@ -98,10 +92,10 @@ class CameraMobileDatasetPublisher
             'version' => $version,
             'generatedAt' => $generatedAt->toIso8601String(),
             'source' => [
-                'title' => 'ANSV ubicaciones aprobadas de fotodetección',
-                'url' => 'https://fotodeteccion.ansv.gov.co/ubicaciones-aprobadas.html',
-                'snapshotSha256' => $sourceSnapshotSha,
-                'fetchedAt' => $latestSourceFetchedAt,
+                'title' => $import->source?->title ?? 'ANSV ubicaciones aprobadas de fotodetección',
+                'url' => $import->source_url,
+                'snapshotSha256' => $import->snapshot_sha,
+                'fetchedAt' => $import->source_fetched_at?->toIso8601String(),
             ],
             'recordCount' => $recordCount,
             'speedKnownCount' => $speedKnown,
@@ -116,7 +110,8 @@ class CameraMobileDatasetPublisher
             'datasetKey' => 'traffic_cameras',
             'version' => $version,
             'generatedAt' => $generatedAt->toIso8601String(),
-            'sourceSnapshotSha256' => $sourceSnapshotSha,
+            'sourceSnapshotSha256' => $import->snapshot_sha,
+            'acceptedImportId' => $import->id,
             'asset' => [
                 'path' => 'cameras_v1.json',
                 'sha256' => $assetSha,
@@ -128,10 +123,10 @@ class CameraMobileDatasetPublisher
             'runtimeFilter' => [
                 'status' => 'active',
                 'operationStatus' => 'Operando',
-                'readiness' => 'ready',
+                'sourceImportRowState' => 'OK',
             ],
             'freshness' => [
-                'sourceFetchedAt' => $latestSourceFetchedAt,
+                'sourceFetchedAt' => $import->source_fetched_at?->toIso8601String(),
                 'asOf' => $asOf->toDateString(),
             ],
         ];
