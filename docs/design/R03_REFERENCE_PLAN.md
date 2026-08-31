@@ -1,6 +1,6 @@
 # R03 Reference Plan
 
-Status: R03A_MERGED_R03B_REFERENCE_BLOCKED
+Status: P03_MERGED_R03B_BLOCKED_ON_RTM_REFERENCE
 Last updated: 2026-08-30
 
 R03A Pico y Placa visual recovery is merged and implemented from exact owner-selected reference images. Codex must not generate, infer, or invent SOAT/RTM references for R03B.
@@ -71,7 +71,10 @@ R03 references are split by implementation slice:
 
 - `pico_personal_owner_v1.png`: IMPLEMENTED for R03A.
 - `pico_city_owner_v1.png`: IMPLEMENTED for R03A.
-- `soat_owner_v1.png`: PENDING_OWNER_SELECTION.
+- `soat_owner_v1.png`: OWNER_SELECTED.
+  - Reference package: `PICORADAR_R03B_SOAT_OWNER_V1_REFERENCE.zip`.
+  - Reference package SHA-256: `5e064fa5c6a72ba1e8dc3eeb44cbc17ac4308ad8705328bb4de3922ba32d6216`.
+  - Image SHA-256: `2e08d64c68a69b179b81d87c9a0f322df9d86fd3233f63605efd700f1228ef57`.
 - `rtm_owner_v1.png`: PENDING_OWNER_SELECTION.
 
 ## R03A Scope
@@ -85,9 +88,65 @@ R03 references are split by implementation slice:
 
 ## R03B Pending
 
-- R03B_UI_IMPLEMENTATION = BLOCKED_ON_OWNER_REFERENCES.
+- SOAT_REFERENCE = OWNER_SELECTED.
+- RTM_REFERENCE = PENDING_OWNER_SELECTION.
+- R03B_UI_IMPLEMENTATION = BLOCKED_ON_RTM_REFERENCE.
 - SOAT visual recovery from owner-selected reference.
 - RTM visual recovery from owner-selected reference.
+
+## P03 City Catalog Freeze
+
+- P03 = MERGED.
+- `pico_jurisdiction_catalog_v1` is a Pico coverage/discovery catalog, not a vehicle registration city catalog.
+- Current catalog count is 15 researched jurisdictions.
+- Runtime `Disponible` calculation remains limited to actual implemented rule jurisdictions: Bogota and Medellin / Valle de Aburra.
+- Catalog-only jurisdictions remain non-calculating and visibly `Proximamente` until future validated rule packs exist.
+
+## C10B Boundary
+
+- C10B_NATIONAL_PICO = NOT_STARTED.
+- Future C10B may expand the catalog and implement validated rule packs in controlled batches.
+- No catalog-only jurisdiction may be promoted to runtime available without verified local rules.
+
+## SOAT Product Contract Freeze
+
+Future SOAT states are:
+
+- NOT_CONFIGURED.
+- ACTIVE.
+- DUE_SOON.
+- EXPIRED.
+- UNKNOWN.
+
+SOAT data and attached documents are distinct concepts. Local data may support status, dates, reminders and insurer/policy metadata. An optional local PDF/image only means the user has a local copy; it does not mean official RUNT verification.
+
+Future SOAT document actions:
+
+- No document: `Adjuntar SOAT`.
+- Document exists: `Ver SOAT` and `Reemplazar`.
+
+Future primary CTAs:
+
+- NOT_CONFIGURED: `Agregar datos del SOAT`.
+- ACTIVE without document: `Adjuntar SOAT`.
+- ACTIVE with document: `Ver SOAT`.
+- DUE_SOON: `Renovar SOAT`.
+- EXPIRED: `Renovar SOAT`.
+- Official external check: `Consultar / Verificar en RUNT`.
+
+Future document storage must use the reusable private vehicle-document storage architecture, not obligation JSON.
+
+## RTM Product Contract Freeze
+
+RTM reference is still pending owner selection. Future RTM belongs to the same information family as SOAT and should support expiration/status, CDA, certificate number, reminder, optional local PDF/image certificate, `Consultar en RUNT` and real history when it exists.
+
+Future RTM commercial/utility CTA is `Buscar CDA`, not `Renovar tecnomecanica`.
+
+## Future CDA And Ads Boundaries
+
+`Buscar CDA` will later be a separate reusable module reachable from Tecnomecanica and Apps. Sponsored CDA placements must remain visually separated from organic proximity results and must never be presented as official preference or best because paid.
+
+Commercial banners may later appear on SOAT/RTM dashboards only after legal/functional information. Ads are not allowed inside private document viewers, legal/status heroes, or as blockers to SOAT/RTM information.
 
 ## Explicit Non-Scope
 

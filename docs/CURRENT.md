@@ -123,17 +123,21 @@ R02C Apps Launcher Owner V1:
 
 R03 C13 Logic Integration + UI Restyle:
 - R03A Pico visual recovery is implemented and merged.
+- P03 Pico shell/month calendar/catalog selector fixes are merged.
 - schema v4, obligation/reminder/catalog tests and C13 vehicle status logic remain recovered.
 - R03 route/product contract is frozen in `docs/design/R03_REFERENCE_PLAN.md`.
 - `/pico?vehicleId=<id>` is **Mi Pico y Placa** personalized vehicle detail.
 - `/pico` is **Pico y Placa de la ciudad** regulation overview.
 - The Home card is labeled `Pico y placa` while keeping contextual secondary content such as tomorrow/next restriction state; its tap continues to use the focused vehicle.
-- R03B is blocked until owner-selected references exist for `soat_owner_v1.png` and `rtm_owner_v1.png`.
+- SOAT reference is owner-selected; R03B remains blocked until owner-selected `rtm_owner_v1.png` exists.
+- R03B UI implementation is not started.
 - SOAT and RTM current logic remains valid, but their current presentation is owner-rejected visual debt for R03B.
 
 C10B National Pico rollout:
 - `docs/data/PICO_JURISDICTION_COVERAGE_AUDIT_20260830.md` is research authority only.
 - Candidate cities from the audit are not runtime jurisdictions until a separate approved C10B lot.
+- Current Pico catalog count is 15 researched jurisdictions. Runtime available jurisdictions remain Bogota and Medellin / Valle de Aburra only.
+- C10B_NATIONAL_PICO = NOT_STARTED.
 
 B00/B01 proposed backend split:
 - bring forward the C28 control-plane/dataset-publisher foundation only if explicitly approved.
