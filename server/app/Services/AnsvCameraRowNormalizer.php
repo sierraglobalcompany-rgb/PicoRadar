@@ -59,7 +59,7 @@ class AnsvCameraRowNormalizer
         if (! $this->validColombiaCoordinates($lat, $lon)) {
             $reasons[] = 'INVALID_COLOMBIA_COORDINATES';
         }
-        if ($this->text($row['Dirección'] ?? null) === '' || $this->text($row['Nombre equipo'] ?? null) === '' || $this->text($row['Código solicitud'] ?? null) === '') {
+        if ($this->text($row['Nombre equipo'] ?? null) === '' || ($this->text($row['Código solicitud'] ?? null) === '' && $this->text($row['Código único'] ?? $row['Código unico'] ?? null) === '')) {
             $reasons[] = 'MISSING_REQUIRED_IDENTITY';
         }
         if ($operationStarted !== null && $operationStarted->isAfter($today)) {
@@ -140,10 +140,6 @@ class AnsvCameraRowNormalizer
             $this->text($row['Código único'] ?? $row['Código unico'] ?? null),
             $this->text($row['Código solicitud'] ?? null),
             $this->text($row['Nombre equipo'] ?? null),
-            $this->text($row['Dirección'] ?? null),
-            $this->text($row['Latitud'] ?? null),
-            $this->text($row['Longitud'] ?? null),
-            $this->text($row['_source_row_number'] ?? null),
         ];
 
         return hash('sha256', Str::lower(implode('|', $parts)));
