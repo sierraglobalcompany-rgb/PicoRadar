@@ -6,6 +6,7 @@ use App\Enums\CameraStatus;
 use App\Models\AnsvCameraImport;
 use App\Models\AnsvCameraImportRow;
 use App\Models\Camera;
+use App\Models\Jurisdiction;
 use App\Services\AnsvCameraRowNormalizer;
 use App\Services\AnsvRichCameraImporter;
 use App\Services\DatasetAuditLogger;
@@ -83,6 +84,51 @@ class AnsvRichCameraImportTest extends TestCase
         $this->assertSame(2, AnsvCameraImportRow::query()->distinct('source_row_identity')->count('source_row_identity'));
     }
 
+    public function test_source_row_identity_excludes_mutable_location_and_worksheet_row_number(): void
+    {
+        $normalizer = app(AnsvCameraRowNormalizer::class);
+        $first = $this->row(['Dirección' => 'AV 1', 'Latitud' => '6.244203', 'Longitud' => '-75.581211']) + ['_source_row_number' => '2'];
+        $second = $this->row(['Dirección' => 'AV 2', 'Latitud' => '6.300000', 'Longitud' => '-75.500000']) + ['_source_row_number' => '57'];
+
+        $this->assertSame($normalizer->identity($first), $normalizer->identity($second));
+    }
+
+    public function test_exact_official_identity_duplicates_are_disambiguated_without_location_identity(): void
+    {
+        $duplicate = $this->row(['Estado operación' => 'Autorizada instalar']);
+
+        $result = $this->import([$duplicate, $duplicate], str_repeat('4', 64));
+
+        $this->assertSame(0, $result['duplicateIdentityCount']);
+        $this->assertSame(1, $result['duplicateIdentitySignals']['codigoUnicoCodigoSolicitudNombreEquipo']);
+        $this->assertSame(2, AnsvCameraImportRow::query()->count());
+        $this->assertSame(2, AnsvCameraImportRow::query()->distinct('source_row_identity')->count('source_row_identity'));
+        $this->assertSame(2, AnsvCameraImportRow::query()->whereJsonContains('review_reasons', 'DUPLICATE_OFFICIAL_IDENTITY_DISAMBIGUATED')->count());
+    }
+
+    public function test_operating_rows_outside_pico_jurisdictions_are_not_dropped(): void
+    {
+        $result = $this->import([
+            $this->row([
+                'Código solicitud' => 'SOL-AMAGA-1',
+                'Código unico' => 'CU-AMAGA-1',
+                'Departamento' => 'ANTIOQUIA',
+                'Municipio' => 'AMAGÁ',
+                'Nombre equipo' => 'AMAGA-CAM-01',
+                'Dirección' => 'CL 50 # 50-10',
+                'Latitud' => '6.040000',
+                'Longitud' => '-75.700000',
+            ]),
+        ], str_repeat('1', 64));
+
+        $this->assertSame(1, $result['activeImportedCount']);
+        $this->assertSame(0, $result['operatingRowsDroppedDueToPicoJurisdiction']);
+        $this->assertSame(1, Camera::query()->where('status', CameraStatus::Active)->count());
+        $jurisdiction = Jurisdiction::query()->where('key', 'camera-registry-05030')->firstOrFail();
+        $this->assertFalse($jurisdiction->enabled);
+        $this->assertSame('camera_registry', $jurisdiction->metadata['scope']);
+    }
+
     public function test_unknown_status_empty_source_and_missing_schema_require_review(): void
     {
         $this->expectException(DomainException::class);
@@ -142,7 +188,7 @@ class AnsvRichCameraImportTest extends TestCase
     public function test_active_camera_immutable_fields_are_not_mutated_by_later_import(): void
     {
         $row = $this->row();
-        $identity = app(AnsvCameraRowNormalizer::class)->identity($row + ['_source_row_number' => '2']);
+        $identity = app(AnsvCameraRowNormalizer::class)->identity($row);
 
         $this->import([$row]);
         $camera = Camera::query()->firstOrFail();
@@ -156,6 +202,49 @@ class AnsvRichCameraImportTest extends TestCase
         $this->assertSame($identity, $camera->external_id);
         $this->assertSame('AV REGIONAL - CL HISTORICA', $camera->direction);
         $this->assertSame(6.244203, (float) $camera->lat);
+        $importRow = AnsvCameraImportRow::query()->latest('id')->firstOrFail();
+        $this->assertSame('REVIEW_REQUIRED', $importRow->review_state);
+        $this->assertContains('ACTIVE_CAMERA_SOURCE_CHANGE_REVIEW_REQUIRED', $importRow->review_reasons);
+        $this->assertSame('AV REGIONAL - CL HISTORICA', $importRow->source_delta['direction']['current']);
+        $this->assertSame('AV REGIONAL - CL 10', $importRow->source_delta['direction']['incoming']);
+    }
+
+    public function test_snapshot_diff_reports_added_removed_and_changed_rows(): void
+    {
+        $this->import([
+            $this->row(['Código unico' => 'CU-A', 'Código solicitud' => 'SOL-A', 'Nombre equipo' => 'CAM-A']),
+            $this->row(['Código unico' => 'CU-B', 'Código solicitud' => 'SOL-B', 'Nombre equipo' => 'CAM-B']),
+        ], str_repeat('2', 64));
+
+        $result = $this->import([
+            $this->row(['Código unico' => 'CU-A', 'Código solicitud' => 'SOL-A', 'Nombre equipo' => 'CAM-A', 'Velocidad' => '60 km/h']),
+            $this->row(['Código unico' => 'CU-C', 'Código solicitud' => 'SOL-C', 'Nombre equipo' => 'CAM-C']),
+        ], str_repeat('3', 64));
+
+        $this->assertSame(1, $result['snapshotDiff']['addedRows']);
+        $this->assertSame(1, $result['snapshotDiff']['removedRows']);
+        $this->assertSame(1, $result['snapshotDiff']['changedRows']);
+    }
+
+    public function test_official_grid_reconciliation_records_real_counts(): void
+    {
+        $row = $this->row();
+        $result = app(AnsvRichCameraImporter::class)->importRows(
+            [$row],
+            str_repeat('5', 64),
+            $this->fetchedAt,
+            false,
+            [[
+                'codigo_unico' => $row['Código unico'],
+                'latitud' => (float) $row['Latitud'],
+                'longitud' => (float) $row['Longitud'],
+            ]],
+        );
+
+        $this->assertSame('RUN', $result['featureServerReconciliation']['status']);
+        $this->assertSame(1, $result['featureServerReconciliation']['matchedRows']);
+        $this->assertSame(0, $result['featureServerReconciliation']['xlsxOnlyRows']);
+        $this->assertSame(0, $result['featureServerReconciliation']['featureServerOnlyRows']);
     }
 
     /** @param list<array<string, string|null>> $rows */
