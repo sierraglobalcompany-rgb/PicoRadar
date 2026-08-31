@@ -81,6 +81,15 @@ class CdaCatalogMetrics {
   const CdaCatalogMetrics({
     required this.sourceRows,
     required this.cdaSourceRows,
+    required this.latestSourcePeriod,
+    required this.globalLatestSourcePeriod,
+    required this.futureSourcePeriodsIgnored,
+    required this.latestPeriodCdaRows,
+    required this.currentUniqueCdaCount,
+    required this.staleHistoricalCdaExcludedCount,
+    required this.certificoNotSiCount,
+    required this.unsafeNoveltyCount,
+    required this.ambiguousCurrentDuplicateCount,
     required this.uniqueCdaCount,
     required this.excludedCurrentStatusCount,
     required this.municipalityCount,
@@ -90,6 +99,15 @@ class CdaCatalogMetrics {
 
   final int sourceRows;
   final int cdaSourceRows;
+  final String latestSourcePeriod;
+  final String globalLatestSourcePeriod;
+  final bool futureSourcePeriodsIgnored;
+  final int latestPeriodCdaRows;
+  final int currentUniqueCdaCount;
+  final int staleHistoricalCdaExcludedCount;
+  final int certificoNotSiCount;
+  final int unsafeNoveltyCount;
+  final int ambiguousCurrentDuplicateCount;
   final int uniqueCdaCount;
   final int excludedCurrentStatusCount;
   final int municipalityCount;
@@ -100,6 +118,27 @@ class CdaCatalogMetrics {
     return CdaCatalogMetrics(
       sourceRows: _requiredInt(json, 'sourceRows'),
       cdaSourceRows: _requiredInt(json, 'cdaSourceRows'),
+      latestSourcePeriod: _requiredString(json, 'latestSourcePeriod'),
+      globalLatestSourcePeriod: _requiredString(
+        json,
+        'globalLatestSourcePeriod',
+      ),
+      futureSourcePeriodsIgnored: _requiredBool(
+        json,
+        'futureSourcePeriodsIgnored',
+      ),
+      latestPeriodCdaRows: _requiredInt(json, 'latestPeriodCdaRows'),
+      currentUniqueCdaCount: _requiredInt(json, 'currentUniqueCdaCount'),
+      staleHistoricalCdaExcludedCount: _requiredInt(
+        json,
+        'staleHistoricalCdaExcludedCount',
+      ),
+      certificoNotSiCount: _requiredInt(json, 'certificoNotSiCount'),
+      unsafeNoveltyCount: _requiredInt(json, 'unsafeNoveltyCount'),
+      ambiguousCurrentDuplicateCount: _requiredInt(
+        json,
+        'ambiguousCurrentDuplicateCount',
+      ),
       uniqueCdaCount: _requiredInt(json, 'uniqueCdaCount'),
       excludedCurrentStatusCount: _requiredInt(
         json,
@@ -218,19 +257,26 @@ List<CdaCatalogEntry> searchCdaCatalog(
 List<CdaCatalogEntry> currentOfficialCdaEntries(
   Iterable<CdaSourceRow> rows, {
   required DateTime timestamp,
+  SourcePeriod? latestAcceptedPeriod,
 }) {
-  final latest = <String, CdaSourceRow>{};
-  for (final row in rows) {
+  final rowList = rows.toList(growable: false);
+  final acceptedPeriod =
+      latestAcceptedPeriod ?? latestNonFutureSourcePeriod(rowList, timestamp);
+  final rowsById = <String, List<CdaSourceRow>>{};
+  for (final row in rowList) {
     if (row.id.trim().isEmpty || row.actorType.trim().toUpperCase() != 'CDA') {
       continue;
     }
-    final previous = latest[row.id];
-    if (previous == null || _isAfter(row, previous)) {
-      latest[row.id] = row;
+    if (SourcePeriod.fromRow(row) == acceptedPeriod) {
+      rowsById.putIfAbsent(row.id.trim(), () => []).add(row);
     }
   }
   final entries = <CdaCatalogEntry>[];
-  for (final row in latest.values) {
+  for (final rowsForId in rowsById.values) {
+    if (_hasAmbiguousCurrentRows(rowsForId)) {
+      continue;
+    }
+    final row = rowsForId.first;
     if (!_isSafeCurrentCda(row) ||
         row.name.trim().isEmpty ||
         row.municipality.trim().isEmpty ||
@@ -260,6 +306,51 @@ List<CdaCatalogEntry> currentOfficialCdaEntries(
   return entries;
 }
 
+SourcePeriod latestNonFutureSourcePeriod(
+  Iterable<CdaSourceRow> rows,
+  DateTime timestamp,
+) {
+  final currentPeriod = SourcePeriod(timestamp.year, timestamp.month);
+  final periods = rows
+      .where((row) => row.actorType.trim().toUpperCase() == 'CDA')
+      .map(SourcePeriod.fromRow)
+      .where((period) => period.compareTo(currentPeriod) <= 0)
+      .toList();
+  if (periods.isEmpty) {
+    throw const FormatException('No non-future CDA source period.');
+  }
+  periods.sort();
+  return periods.last;
+}
+
+class SourcePeriod implements Comparable<SourcePeriod> {
+  const SourcePeriod(this.year, this.month);
+
+  factory SourcePeriod.fromRow(CdaSourceRow row) {
+    return SourcePeriod(row.sourceYear, row.sourceMonth);
+  }
+
+  final int year;
+  final int month;
+
+  @override
+  int compareTo(SourcePeriod other) {
+    final yearComparison = year.compareTo(other.year);
+    if (yearComparison != 0) {
+      return yearComparison;
+    }
+    return month.compareTo(other.month);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is SourcePeriod && other.year == year && other.month == month;
+  }
+
+  @override
+  int get hashCode => Object.hash(year, month);
+}
+
 String cdaCatalogUpdateLabel(CdaCatalog catalog) {
   return 'Directorio RUNT · Actualizado '
       '${_monthName(catalog.source.latestSourceMonth)} '
@@ -284,11 +375,20 @@ bool _isSafeCurrentCda(CdaSourceRow row) {
       row.novelty.trim().toUpperCase() == 'NO';
 }
 
-bool _isAfter(CdaSourceRow candidate, CdaSourceRow previous) {
-  if (candidate.sourceYear != previous.sourceYear) {
-    return candidate.sourceYear > previous.sourceYear;
-  }
-  return candidate.sourceMonth > previous.sourceMonth;
+bool _hasAmbiguousCurrentRows(List<CdaSourceRow> rows) {
+  final signatures = {
+    for (final row in rows)
+      (
+        row.name.trim(),
+        row.nit?.trim(),
+        row.municipality.trim(),
+        row.department.trim(),
+        row.departmentCode.trim(),
+        row.certified.trim().toUpperCase(),
+        row.novelty.trim().toUpperCase(),
+      ),
+  };
+  return signatures.length > 1;
 }
 
 String _normalize(String value) {

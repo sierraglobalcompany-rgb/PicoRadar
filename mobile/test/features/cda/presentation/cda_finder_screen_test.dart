@@ -6,6 +6,7 @@ import 'package:picoradar/features/cda/data/cda_catalog.dart';
 import 'package:picoradar/features/cda/presentation/cda_finder_screen.dart';
 import 'package:picoradar/features/location/application/location_controller.dart';
 import 'package:picoradar/features/location/platform/device_location_gateway.dart';
+import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
 void main() {
   testWidgets('typing local search does not request GPS permission', (
@@ -63,12 +64,32 @@ void main() {
     expect(find.byKey(const ValueKey('cda-detail-sheet')), findsOneWidget);
     expect(find.text('Estado de fuente oficial'), findsOneWidget);
     expect(find.text('RUNT / MinTransporte'), findsOneWidget);
+    expect(find.text('No publicado en la fuente RUNT.'), findsOneWidget);
+  });
+
+  testWidgets('detail sheet opens directions as external map search', (
+    tester,
+  ) async {
+    final launcher = _FakeExternalLauncher();
+    await _pumpScreen(tester, launcher: launcher, size: const Size(390, 1200));
+
+    await tester.tap(find.byKey(const ValueKey('cda-detail-cda-bog')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('cda-open-directions')));
+    await tester.pump();
+
+    expect(launcher.openedUris, hasLength(1));
+    expect(launcher.openedUris.single, startsWith('https://www.google.com/'));
+    expect(launcher.openedUris.single, contains('maps/search'));
+    expect(launcher.openedUris.single, contains('CDA+Bogot'));
+    expect(launcher.openedUris.single, contains('Colombia'));
   });
 }
 
 Future<void> _pumpScreen(
   WidgetTester tester, {
   DeviceLocationGateway? gateway,
+  ExternalLauncher? launcher,
   Size size = const Size(390, 844),
 }) async {
   tester.view.devicePixelRatio = 1;
@@ -82,6 +103,9 @@ Future<void> _pumpScreen(
         bogotaNowProvider.overrideWithValue(DateTime(2026, 8, 31)),
         deviceLocationGatewayProvider.overrideWithValue(
           gateway ?? _FakeLocationGateway(),
+        ),
+        externalLauncherProvider.overrideWithValue(
+          launcher ?? _FakeExternalLauncher(),
         ),
       ],
       child: const MaterialApp(home: CdaFinderScreen()),
@@ -99,13 +123,22 @@ CdaCatalog _catalog() {
       datasetName: 'ACTORES RUNT POR MUNICIPIO Y DEPARTAMENTO RUNT2.0',
       sourceUrl: cdaCatalogSourceUrl,
       sourceVerifiedAt: timestamp,
-      latestSourceYear: 2025,
+      latestSourceYear: 2026,
       latestSourceMonth: 7,
       latestSourceMonthName: 'JULIO',
     ),
     metrics: const CdaCatalogMetrics(
       sourceRows: 3,
       cdaSourceRows: 3,
+      latestSourcePeriod: '2026-07',
+      globalLatestSourcePeriod: '2026-12',
+      futureSourcePeriodsIgnored: true,
+      latestPeriodCdaRows: 3,
+      currentUniqueCdaCount: 3,
+      staleHistoricalCdaExcludedCount: 0,
+      certificoNotSiCount: 0,
+      unsafeNoveltyCount: 0,
+      ambiguousCurrentDuplicateCount: 0,
       uniqueCdaCount: 3,
       excludedCurrentStatusCount: 0,
       municipalityCount: 2,
@@ -149,7 +182,7 @@ CdaCatalogEntry _entry({
     municipality: municipality,
     department: department,
     departmentCode: '05',
-    sourceYear: 2025,
+    sourceYear: 2026,
     sourceMonth: 7,
     sourceMonthName: 'JULIO',
     certified: true,
@@ -194,5 +227,22 @@ class _FakeLocationGateway implements DeviceLocationGateway {
   Future<DeviceLocationPermission> requestPermission() async {
     requestPermissionCalls += 1;
     return DeviceLocationPermission.granted;
+  }
+}
+
+class _FakeExternalLauncher implements ExternalLauncher {
+  final openedUris = <String>[];
+  final calledPhones = <String>[];
+
+  @override
+  Future<bool> callPhone(String phone) async {
+    calledPhones.add(phone);
+    return true;
+  }
+
+  @override
+  Future<bool> openExternal(String uri) async {
+    openedUris.add(uri);
+    return true;
   }
 }

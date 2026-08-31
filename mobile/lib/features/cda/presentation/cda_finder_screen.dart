@@ -331,53 +331,102 @@ class _CdaResultCard extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (context) {
         return SafeArea(
-          child: Padding(
-            key: const ValueKey('cda-detail-sheet'),
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.l,
-              0,
-              AppSpacing.l,
-              AppSpacing.xl,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(entry.name, style: AppTextStyles.h2),
-                const SizedBox(height: AppSpacing.s),
-                Text('${entry.municipality} · ${entry.department}'),
-                const SizedBox(height: AppSpacing.m),
-                _DetailLine(
-                  label: 'Estado de fuente oficial',
-                  value: 'CDA certificado',
-                ),
-                _DetailLine(
-                  label: 'Actualizado en catálogo',
-                  value:
-                      '${_friendlyMonth(entry.sourceMonth)} ${entry.sourceYear}',
-                ),
-                const _DetailLine(
-                  label: 'Fuente',
-                  value: 'RUNT / MinTransporte',
-                ),
-                const SizedBox(height: AppSpacing.m),
-                OutlinedButton.icon(
-                  key: const ValueKey('cda-open-source'),
-                  onPressed: () {
-                    ref.read(externalLauncherProvider).openExternal(sourceUrl);
-                  },
-                  icon: const Icon(Icons.open_in_new),
-                  label: const Text('Abrir fuente oficial'),
-                ),
-              ],
+          child: SingleChildScrollView(
+            child: Padding(
+              key: const ValueKey('cda-detail-sheet'),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.l,
+                0,
+                AppSpacing.l,
+                AppSpacing.xl,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(entry.name, style: AppTextStyles.h2),
+                  const SizedBox(height: AppSpacing.s),
+                  Text('${entry.municipality} · ${entry.department}'),
+                  const SizedBox(height: AppSpacing.m),
+                  _DetailLine(
+                    label: 'Estado de fuente oficial',
+                    value: 'CDA certificado',
+                  ),
+                  _DetailLine(
+                    label: 'Actualizado en catálogo',
+                    value:
+                        '${_friendlyMonth(entry.sourceMonth)} ${entry.sourceYear}',
+                  ),
+                  const _DetailLine(
+                    label: 'Fuente',
+                    value: 'RUNT / MinTransporte',
+                  ),
+                  const _DetailLine(
+                    label: 'Dirección / teléfono',
+                    value: 'No publicado en la fuente RUNT.',
+                  ),
+                  const SizedBox(height: AppSpacing.m),
+                  FilledButton.icon(
+                    key: const ValueKey('cda-open-directions'),
+                    onPressed: () {
+                      ref
+                          .read(externalLauncherProvider)
+                          .openExternal(_googleMapsSearchUrl(entry));
+                    },
+                    icon: const Icon(Icons.directions),
+                    label: const Text('Cómo llegar'),
+                  ),
+                  const SizedBox(height: AppSpacing.s),
+                  OutlinedButton.icon(
+                    key: const ValueKey('cda-open-waze'),
+                    onPressed: () {
+                      ref
+                          .read(externalLauncherProvider)
+                          .openExternal(_wazeSearchUrl(entry));
+                    },
+                    icon: const Icon(Icons.navigation_outlined),
+                    label: const Text('Abrir en Waze'),
+                  ),
+                  const SizedBox(height: AppSpacing.s),
+                  OutlinedButton.icon(
+                    key: const ValueKey('cda-open-source'),
+                    onPressed: () {
+                      ref
+                          .read(externalLauncherProvider)
+                          .openExternal(sourceUrl);
+                    },
+                    icon: const Icon(Icons.open_in_new),
+                    label: const Text('Abrir fuente oficial'),
+                  ),
+                ],
+              ),
             ),
           ),
         );
       },
     );
   }
+}
+
+String _googleMapsSearchUrl(CdaCatalogEntry entry) {
+  return Uri.https('www.google.com', '/maps/search/', {
+    'api': '1',
+    'query': _navigationQuery(entry),
+  }).toString();
+}
+
+String _wazeSearchUrl(CdaCatalogEntry entry) {
+  return Uri.https('waze.com', '/ul', {
+    'q': _navigationQuery(entry),
+    'navigate': 'yes',
+  }).toString();
+}
+
+String _navigationQuery(CdaCatalogEntry entry) {
+  return '${entry.name}, ${entry.municipality}, ${entry.department}, Colombia';
 }
 
 class _RuntBadge extends StatelessWidget {

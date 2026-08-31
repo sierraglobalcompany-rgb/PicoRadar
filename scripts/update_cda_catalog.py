@@ -8,7 +8,7 @@ import json
 import sys
 import urllib.parse
 import urllib.request
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -95,6 +95,22 @@ def is_safe_current_cda(row: dict[str, object]) -> bool:
     )
 
 
+def period_label(period: tuple[int, int]) -> str:
+    year, month = period
+    return f"{year}-{month:02d}"
+
+
+def latest_accepted_period(
+    periods: set[tuple[int, int]],
+    generated_at: datetime,
+) -> tuple[int, int]:
+    current_period = (generated_at.year, generated_at.month)
+    accepted = [period for period in periods if period <= current_period]
+    if not accepted:
+        raise RuntimeError("Official CDA source has no non-future source period.")
+    return max(accepted)
+
+
 def main() -> int:
     metadata = fetch_json(METADATA_URL)
     fields = {
@@ -131,37 +147,71 @@ def main() -> int:
     if not rows:
         raise RuntimeError("Official CDA source returned an empty catalog.")
 
-    latest_by_id: dict[str, dict[str, object]] = {}
-    duplicate_current_ids: set[str] = set()
+    generated_at_dt = datetime.now(timezone.utc).replace(microsecond=0)
+    generated_at = generated_at_dt.isoformat().replace("+00:00", "Z")
+
+    period_rows: Counter[tuple[int, int]] = Counter()
+    period_ids: dict[tuple[int, int], set[str]] = defaultdict(set)
+    periods: set[tuple[int, int]] = set()
+    latest_safe_period_by_id: dict[str, tuple[int, int]] = {}
     for row in rows:
         cda_id = clean(row.get("id_empresa"))
         if not cda_id:
             continue
         period = source_period(row)
-        current = latest_by_id.get(cda_id)
-        if current is None or period > source_period(current):
-            latest_by_id[cda_id] = row
-        elif period == source_period(current):
-            relevant = [
-                "nombre_empresa",
-                "nit_empresa",
-                "nombre_municipio",
-                "codigo_departamento",
-                "nombre_departamento",
-                "certifico",
-                "registro_novedad",
-            ]
-            if any(clean(row.get(key)) != clean(current.get(key)) for key in relevant):
-                duplicate_current_ids.add(cda_id)
+        periods.add(period)
+        period_rows[period] += 1
+        period_ids[period].add(cda_id)
+        if is_safe_current_cda(row):
+            previous = latest_safe_period_by_id.get(cda_id)
+            if previous is None or period > previous:
+                latest_safe_period_by_id[cda_id] = period
+
+    latest_global_period = max(periods)
+    accepted_period = latest_accepted_period(periods, generated_at_dt)
+    if latest_global_period > accepted_period:
+        print(
+            "WARNING=Future source periods ignored for active CDA catalog: "
+            f"{period_label(latest_global_period)}"
+        )
+
+    rows_in_accepted_period = [
+        row for row in rows if source_period(row) == accepted_period
+    ]
+    rows_by_id: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for row in rows_in_accepted_period:
+        cda_id = clean(row.get("id_empresa"))
+        if cda_id:
+            rows_by_id[cda_id].append(row)
 
     excluded = Counter()
     entries: list[dict[str, object]] = []
-    latest_periods: list[tuple[int, int, str]] = []
-    generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-    for cda_id, row in latest_by_id.items():
-        if cda_id in duplicate_current_ids:
+    latest_accepted_ids = set(rows_by_id)
+    stale_historical_ids = {
+        cda_id
+        for cda_id, period in latest_safe_period_by_id.items()
+        if period < accepted_period and cda_id not in latest_accepted_ids
+    }
+    excluded["stale_historical_cda"] = len(stale_historical_ids)
+
+    for cda_id, current_rows in rows_by_id.items():
+        relevant = [
+            "nombre_empresa",
+            "nit_empresa",
+            "nombre_municipio",
+            "codigo_departamento",
+            "nombre_departamento",
+            "certifico",
+            "registro_novedad",
+        ]
+        signatures = {
+            tuple(clean(row.get(key)) for key in relevant)
+            for row in current_rows
+        }
+        if len(signatures) > 1:
             excluded["ambiguous_current_duplicate"] += 1
             continue
+        row = current_rows[0]
         required_values = {
             "id": cda_id,
             "name": clean(row.get("nombre_empresa")),
@@ -179,10 +229,9 @@ def main() -> int:
             excluded["certifico_not_si"] += 1
             continue
         if upper(row.get("registro_novedad")) != "NO":
-            excluded[f"unsafe_novelty_{upper(row.get('registro_novedad')) or 'EMPTY'}"] += 1
+            excluded["unsafe_novelty"] += 1
             continue
         year, month = source_period(row)
-        latest_periods.append((year, month, upper(row.get("mes_nombre"))))
         entries.append(
             {
                 **required_values,
@@ -208,7 +257,12 @@ def main() -> int:
             item["id"],
         )
     )
-    latest_year, latest_month, latest_month_name = max(latest_periods)
+    latest_year, latest_month = accepted_period
+    latest_month_name = next(
+        upper(row.get("mes_nombre"))
+        for row in rows_in_accepted_period
+        if source_period(row) == accepted_period
+    )
     catalog = {
         "schemaVersion": 1,
         "source": {
@@ -224,6 +278,17 @@ def main() -> int:
         "metrics": {
             "sourceRows": int(source_total),
             "cdaSourceRows": int(cda_source_total),
+            "latestSourcePeriod": period_label(accepted_period),
+            "globalLatestSourcePeriod": period_label(latest_global_period),
+            "futureSourcePeriodsIgnored": latest_global_period > accepted_period,
+            "latestPeriodCdaRows": period_rows[accepted_period],
+            "currentUniqueCdaCount": len(entries),
+            "staleHistoricalCdaExcludedCount": excluded["stale_historical_cda"],
+            "certificoNotSiCount": excluded["certifico_not_si"],
+            "unsafeNoveltyCount": excluded["unsafe_novelty"],
+            "ambiguousCurrentDuplicateCount": excluded[
+                "ambiguous_current_duplicate"
+            ],
             "uniqueCdaCount": len(entries),
             "excludedCurrentStatusCount": sum(excluded.values()),
             "municipalityCount": len({item["municipality"] for item in entries}),
@@ -240,6 +305,17 @@ def main() -> int:
     digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
     print(f"SOURCE_ROWS={source_total}")
     print(f"CDA_SOURCE_ROWS={cda_source_total}")
+    print(f"LATEST_SOURCE_PERIOD={period_label(accepted_period)}")
+    print(f"GLOBAL_LATEST_SOURCE_PERIOD={period_label(latest_global_period)}")
+    print(f"LATEST_PERIOD_CDA_ROWS={period_rows[accepted_period]}")
+    print(f"CURRENT_UNIQUE_CDA_COUNT={len(entries)}")
+    print(f"STALE_HISTORICAL_CDA_EXCLUDED_COUNT={excluded['stale_historical_cda']}")
+    print(f"CERTIFICO_NOT_SI_COUNT={excluded['certifico_not_si']}")
+    print(f"UNSAFE_NOVELTY_COUNT={excluded['unsafe_novelty']}")
+    print(
+        "AMBIGUOUS_CURRENT_DUPLICATE_COUNT="
+        f"{excluded['ambiguous_current_duplicate']}"
+    )
     print(f"UNIQUE_CDA_COUNT={len(entries)}")
     print(f"EXCLUDED_CURRENT_STATUS_COUNT={sum(excluded.values())}")
     print(f"MUNICIPALITY_COUNT={catalog['metrics']['municipalityCount']}")
