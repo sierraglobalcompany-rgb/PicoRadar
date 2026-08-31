@@ -17,7 +17,11 @@ class CameraDuplicatesCommand extends Command
         $distance = min(500, max(1, (float) $this->option('distance')));
         $query = Camera::query()->where('status', '!=', 'retired')->when($this->option('jurisdiction'), fn ($builder, $key) => $builder->whereHas('jurisdiction', fn ($jurisdiction) => $jurisdiction->where('key', $key)));
         $query->orderBy('id')->eachById(function (Camera $camera) use ($detector, $distance): void {
-            foreach ($detector->candidates($camera, $distance) as $candidate) {
+            $scan = $detector->scan($camera, $distance);
+            if ($scan['scanCapped']) {
+                $this->warn("{$camera->camera_id} candidate scan capped; additional nearby records may exist.");
+            }
+            foreach ($scan['candidates'] as $candidate) {
                 if ($camera->id < $candidate['camera']->id) {
                     $this->line("{$camera->camera_id} {$candidate['camera']->camera_id} ".round($candidate['distanceMeters'], 2).'m');
                 }

@@ -9,25 +9,45 @@ class CameraDuplicateDetector
     /** @return list<array{camera: Camera, distanceMeters: float}> */
     public function candidates(Camera $camera, float $meters = 25, int $limit = 25): array
     {
+        return $this->scan($camera, $meters, $limit)['candidates'];
+    }
+
+    /**
+     * Performs a portable, bounded geographic scan. `scanCapped` is derived
+     * from the raw bounding-box query before Haversine filtering or result
+     * limiting, so callers never infer completeness from a short result list.
+     *
+     * @return array{candidates: list<array{camera: Camera, distanceMeters: float}>, scanCapped: bool, boundingCandidateCountObserved: int, scanCap: int}
+     */
+    public function scan(Camera $camera, float $meters = 25, int $returnLimit = 25, int $candidateScanCap = 250): array
+    {
         $latitude = (float) $camera->lat;
         $longitude = (float) $camera->lon;
         $latitudeDelta = $meters / 111_320;
         $longitudeDelta = $meters / (111_320 * max(0.01, cos(deg2rad($latitude))));
-
-        return Camera::query()
+        $scanCap = max(1, $candidateScanCap);
+        $rawBoundingRows = Camera::query()
             ->with(['source', 'jurisdiction', 'geographicUnit'])
             ->where('jurisdiction_id', $camera->jurisdiction_id)
             ->whereKeyNot($camera->id)
             ->where('status', '!=', 'retired')
             ->whereBetween('lat', [$latitude - $latitudeDelta, $latitude + $latitudeDelta])
             ->whereBetween('lon', [$longitude - $longitudeDelta, $longitude + $longitudeDelta])
-            ->limit(250)
-            ->get()
+            ->orderBy('id')
+            ->limit($scanCap + 1)
+            ->get();
+        $scanCapped = $rawBoundingRows->count() > $scanCap;
+        $candidates = $rawBoundingRows->take($scanCap)
             ->map(function (Camera $candidate) use ($latitude, $longitude): array {
                 return ['camera' => $candidate, 'distanceMeters' => $this->haversine($latitude, $longitude, (float) $candidate->lat, (float) $candidate->lon)];
             })
             ->filter(fn (array $candidate): bool => $candidate['distanceMeters'] <= $meters)
-            ->sortBy('distanceMeters')->take($limit)->values()->all();
+            ->sortBy('distanceMeters')
+            ->take(max(1, $returnLimit))
+            ->values()
+            ->all();
+
+        return ['candidates' => $candidates, 'scanCapped' => $scanCapped, 'boundingCandidateCountObserved' => $rawBoundingRows->count(), 'scanCap' => $scanCap];
     }
 
     /**
@@ -41,11 +61,11 @@ class CameraDuplicateDetector
         $pairs = 0;
         $cappedSeeds = 0;
         Camera::query()->where('status', '!=', 'retired')->orderBy('id')->eachById(function (Camera $camera) use ($meters, &$pairs, &$cappedSeeds): void {
-            $candidates = $this->candidates($camera, $meters, 250);
-            if (count($candidates) === 250) {
+            $scan = $this->scan($camera, $meters, 250);
+            if ($scan['scanCapped']) {
                 $cappedSeeds++;
             }
-            foreach ($candidates as $candidate) {
+            foreach ($scan['candidates'] as $candidate) {
                 if ($camera->id < $candidate['camera']->id) {
                     $pairs++;
                 }

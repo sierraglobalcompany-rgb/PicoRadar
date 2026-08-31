@@ -104,7 +104,9 @@ class CameraController extends Controller
         Gate::authorize('cameras.view');
         $camera->load(['source', 'jurisdiction', 'geographicUnit', 'verifications']);
 
-        return view('admin.cameras.show', $this->base($request) + ['camera' => $camera, 'duplicates' => $duplicates->candidates($camera)]);
+        $duplicateScan = $duplicates->scan($camera);
+
+        return view('admin.cameras.show', $this->base($request) + ['camera' => $camera, 'duplicates' => $duplicateScan['candidates'], 'duplicateScanCapped' => $duplicateScan['scanCapped']]);
     }
 
     public function review(Request $request)
@@ -135,15 +137,20 @@ class CameraController extends Controller
         $distance = min(500, max(1, (float) $request->input('distance', 25)));
         $cameras = Camera::query()->with(['source', 'jurisdiction', 'geographicUnit'])->when($request->filled('jurisdiction_id'), fn ($query) => $query->where('jurisdiction_id', $request->input('jurisdiction_id')))->where('status', '!=', CameraStatus::Retired)->orderBy('id')->paginate(50)->withQueryString();
         $pairs = [];
+        $cappedSeedCameras = collect();
         foreach ($cameras as $camera) {
-            foreach ($detector->candidates($camera, $distance) as $candidate) {
+            $scan = $detector->scan($camera, $distance);
+            if ($scan['scanCapped']) {
+                $cappedSeedCameras->push($camera);
+            }
+            foreach ($scan['candidates'] as $candidate) {
                 if ($camera->id < $candidate['camera']->id) {
                     $pairs[] = ['a' => $camera, 'b' => $candidate['camera'], 'distanceMeters' => $candidate['distanceMeters']];
                 }
             }
         }
 
-        return view('admin.cameras.duplicates', $this->base($request) + ['pairs' => $pairs, 'distance' => $distance, 'seedCameras' => $cameras]);
+        return view('admin.cameras.duplicates', $this->base($request) + ['pairs' => $pairs, 'distance' => $distance, 'seedCameras' => $cameras, 'cappedSeedCameras' => $cappedSeedCameras]);
     }
 
     public function quality(Request $request, CameraIntegrityAuditor $integrity, CameraDuplicateDetector $duplicates)

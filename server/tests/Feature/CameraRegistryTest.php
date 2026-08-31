@@ -104,6 +104,71 @@ class CameraRegistryTest extends TestCase
         $this->artisan('picoradar:cameras:readiness', ['--json' => true])->expectsOutputToContain('picoradar.camera-readiness.v1')->assertExitCode(0);
     }
 
+    public function test_duplicate_scan_marks_raw_bounding_box_truncation_even_when_filtered_results_are_below_cap(): void
+    {
+        $seed = $this->draft();
+        $this->denseBoundingCluster($seed);
+
+        $scan = app(CameraDuplicateDetector::class)->scan($seed, 25, 250);
+
+        $this->assertTrue($scan['scanCapped']);
+        $this->assertSame(251, $scan['boundingCandidateCountObserved']);
+        $this->assertSame(250, $scan['scanCap']);
+        $this->assertLessThan(250, count($scan['candidates']));
+        $this->assertNotEmpty($scan['candidates']);
+    }
+
+    public function test_duplicate_scan_does_not_mistake_return_limit_for_database_scan_cap(): void
+    {
+        $seed = $this->draft();
+        $this->createNearbyCameras($seed, 100, 5);
+
+        $scan = app(CameraDuplicateDetector::class)->scan($seed, 25, 25);
+
+        $this->assertFalse($scan['scanCapped']);
+        $this->assertSame(100, $scan['boundingCandidateCountObserved']);
+        $this->assertCount(25, $scan['candidates']);
+    }
+
+    public function test_duplicate_scan_returns_nearest_candidates_first_independent_of_insert_order(): void
+    {
+        $seed = $this->draft();
+        $far = $this->cameraAtMeters($seed, 20);
+        $near = $this->cameraAtMeters($seed, 5);
+        $middle = $this->cameraAtMeters($seed, 10);
+
+        $scan = app(CameraDuplicateDetector::class)->scan($seed, 25, 25);
+
+        $this->assertSame([$near->id, $middle->id, $far->id], array_map(fn (array $candidate) => $candidate['camera']->id, $scan['candidates']));
+        $this->assertSame([5, 10, 20], array_map(fn (array $candidate) => (int) round($candidate['distanceMeters']), $scan['candidates']));
+    }
+
+    public function test_duplicates_page_discloses_capped_seed_scans(): void
+    {
+        $seed = $this->draft();
+        $this->denseBoundingCluster($seed);
+        $operator = User::factory()->create(['role' => OperatorRole::Editor]);
+
+        $this->actingAs($operator)->get(route('admin.cameras.duplicates'))->assertOk()->assertSee('Candidate scan capped; additional nearby records may exist');
+    }
+
+    public function test_camera_detail_discloses_capped_duplicate_scan(): void
+    {
+        $seed = $this->draft();
+        $this->denseBoundingCluster($seed);
+        $operator = User::factory()->create(['role' => OperatorRole::Editor]);
+
+        $this->actingAs($operator)->get(route('admin.cameras.show', $seed))->assertOk()->assertSee('Candidate scan capped; additional nearby records may exist.');
+    }
+
+    public function test_duplicates_cli_discloses_capped_duplicate_scan(): void
+    {
+        $seed = $this->draft();
+        $this->denseBoundingCluster($seed);
+
+        $this->artisan('picoradar:cameras:duplicates')->expectsOutputToContain("{$seed->camera_id} candidate scan capped; additional nearby records may exist.")->assertExitCode(0);
+    }
+
     public function test_tampered_lifecycle_fields_are_not_accepted_by_camera_request(): void
     {
         $editor = User::factory()->create(['role' => OperatorRole::Editor]);
@@ -406,6 +471,24 @@ class CameraRegistryTest extends TestCase
     private function cameraPayload(Camera $camera, array $overrides = []): array
     {
         return array_merge(['jurisdiction_id' => $camera->jurisdiction_id, 'geographic_unit_id' => $camera->geographic_unit_id, 'source_id' => $camera->source_id, 'external_id' => $camera->external_id, 'name' => $camera->name, 'lat' => $camera->lat, 'lon' => $camera->lon, 'type' => $camera->type->value, 'updated_at' => $camera->updated_at?->toISOString()], $overrides);
+    }
+
+    private function denseBoundingCluster(Camera $seed): void
+    {
+        $this->createNearbyCameras($seed, 10, 5);
+        $latitudeDelta = 25 / 111_320;
+        $longitudeDelta = 25 / (111_320 * max(0.01, cos(deg2rad((float) $seed->lat))));
+        Camera::factory()->count(250)->state(['jurisdiction_id' => $seed->jurisdiction_id, 'geographic_unit_id' => $seed->geographic_unit_id, 'source_id' => $seed->source_id, 'lat' => (float) $seed->lat + ($latitudeDelta * 0.9), 'lon' => (float) $seed->lon + ($longitudeDelta * 0.9), 'type' => CameraType::Other])->create();
+    }
+
+    private function createNearbyCameras(Camera $seed, int $count, float $meters): void
+    {
+        Camera::factory()->count($count)->state(['jurisdiction_id' => $seed->jurisdiction_id, 'geographic_unit_id' => $seed->geographic_unit_id, 'source_id' => $seed->source_id, 'lat' => (float) $seed->lat + ($meters / 111_320), 'lon' => $seed->lon, 'type' => CameraType::Other])->create();
+    }
+
+    private function cameraAtMeters(Camera $seed, float $meters): Camera
+    {
+        return Camera::factory()->create(['jurisdiction_id' => $seed->jurisdiction_id, 'geographic_unit_id' => $seed->geographic_unit_id, 'source_id' => $seed->source_id, 'lat' => (float) $seed->lat + ($meters / 111_320), 'lon' => $seed->lon, 'type' => CameraType::Other]);
     }
 
     private function assertDomainException(callable $operation): void
