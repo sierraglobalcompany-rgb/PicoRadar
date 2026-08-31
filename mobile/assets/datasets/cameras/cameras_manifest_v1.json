@@ -1,0 +1,24 @@
+{
+    "schemaVersion": 1,
+    "datasetKey": "traffic_cameras",
+    "version": "2026.08.31-ansv",
+    "generatedAt": "2026-08-31T15:44:00+00:00",
+    "sourceSnapshotSha256": "0935082c9a3b7642fb7b5072184dbf141db1126d7f56d7a08037331a569610c1",
+    "asset": {
+        "path": "cameras_v1.json",
+        "sha256": "34807899c67a4d2be81c259140c0d86a430054029afca14ac2139628972b57dd",
+        "bytes": 84512
+    },
+    "recordCount": 72,
+    "speedKnownCount": 69,
+    "speedCoverage": 0.9583,
+    "runtimeFilter": {
+        "status": "active",
+        "operationStatus": "Operando",
+        "readiness": "ready"
+    },
+    "freshness": {
+        "sourceFetchedAt": "2026-08-31T15:44:00+00:00",
+        "asOf": "2026-08-31"
+    }
+}
