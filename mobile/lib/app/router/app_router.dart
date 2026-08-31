@@ -32,10 +32,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoute.pico.path,
-        builder: (context, state) => PicoDetailScreen(
-          vehicleId: state.uri.queryParameters['vehicleId'],
-          jurisdictionId: state.uri.queryParameters['jurisdictionId'],
-        ),
+        redirect: (context, state) => picoCompatibilityLocation(state.uri),
       ),
       GoRoute(
         path: AppRoute.vehicleOnboarding.path,
@@ -80,6 +77,7 @@ StatefulShellBranch _rootBranch(AppTab tab) {
 List<RouteBase> _tabRoutes(AppTab tab) {
   return switch (tab) {
     AppTab.garage => [
+      _picoRoute(),
       GoRoute(
         path: 'vehicle/:id',
         builder: (context, state) {
@@ -100,6 +98,7 @@ List<RouteBase> _tabRoutes(AppTab tab) {
       ),
     ],
     AppTab.apps => [
+      _picoRoute(),
       GoRoute(
         path: 'module/:id',
         builder: (context, state) {
@@ -114,8 +113,19 @@ List<RouteBase> _tabRoutes(AppTab tab) {
         },
       ),
     ],
+    AppTab.home => [_picoRoute()],
     _ => const [],
   };
+}
+
+GoRoute _picoRoute() {
+  return GoRoute(
+    path: 'pico',
+    builder: (context, state) => PicoDetailScreen(
+      vehicleId: state.uri.queryParameters['vehicleId'],
+      jurisdictionId: state.uri.queryParameters['jurisdictionId'],
+    ),
+  );
 }
 
 const _vehicleStatusModules = {

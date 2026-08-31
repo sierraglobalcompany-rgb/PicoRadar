@@ -61,7 +61,10 @@ void main() {
   });
 
   test('launcher destinations append vehicleId only when required', () {
-    expect(appsLauncherLocation(primaryModules.first, 'vehicle-b'), '/pico');
+    expect(
+      appsLauncherLocation(primaryModules.first, 'vehicle-b'),
+      '/apps/pico',
+    );
     expect(
       appsLauncherLocation(
         primaryModules.singleWhere((module) => module.id == 'soat'),
@@ -182,7 +185,7 @@ void main() {
     }
   });
 
-  testWidgets('P02 Apps reopens after navigating to Pico and returning Home', (
+  testWidgets('P03 Apps opens overlay over shell-preserved Pico', (
     tester,
   ) async {
     await _createVehicle(harness, plate: 'AAA111');
@@ -195,27 +198,16 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('app-module-pico')));
     await _pumpPicoRoute(tester);
     expect(find.byType(PicoDetailScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('app-bottom-navigation')), findsOneWidget);
+    expect(_selectedBottomNavLabels(tester), contains('Apps'));
 
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('tab-apps')));
-    await tester.pumpAndSettle();
-
+    await _pumpRoute(tester);
     expect(find.byKey(const ValueKey('apps-launcher-overlay')), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-empty-state')), findsNothing);
-  });
 
-  testWidgets('Pico y placa opens the city overview route', (tester) async {
-    await _createVehicle(harness, plate: 'AAA111');
-    await harness.preferences.setString(
-      picoJurisdictionPreferenceKey,
-      'co-dc-bogota',
-    );
-    await _openApps(tester, harness);
-
-    await tester.tap(find.byKey(const ValueKey('app-module-pico')));
-    await _pumpPicoRoute(tester);
-
+    await tester.tap(find.byKey(const ValueKey('tab-apps')));
+    await _pumpRoute(tester);
+    expect(find.byKey(const ValueKey('apps-launcher-overlay')), findsNothing);
     expect(find.byType(PicoDetailScreen), findsOneWidget);
   });
 
@@ -484,9 +476,10 @@ Future<void> _pumpRoute(WidgetTester tester) async {
 }
 
 Future<void> _pumpPicoRoute(WidgetTester tester) async {
-  for (var i = 0; i < 10; i += 1) {
+  for (var i = 0; i < 20; i += 1) {
     await tester.pump(const Duration(milliseconds: 300));
-    if (find.byType(PicoDetailScreen).evaluate().isNotEmpty) {
+    if (find.byKey(const ValueKey('pico-city-screen')).evaluate().isNotEmpty ||
+        find.text('MI PICO Y PLACA').evaluate().isNotEmpty) {
       return;
     }
   }

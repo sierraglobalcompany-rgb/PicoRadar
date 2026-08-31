@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/app_providers.dart';
+import '../../../app/router/app_routes.dart';
 import '../../../app/theme/app_tokens.dart';
 import '../../vehicle_status/data/vehicle_status_catalog.dart';
 import '../../vehicle_status/domain/vehicle_obligation.dart';
@@ -174,9 +175,16 @@ class _VehicleDetail extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   _StatusCard(
-                    title: 'Pico y Placa',
-                    status: 'Pendiente de activar datos de movilidad',
+                    key: const ValueKey('detail-status-pico'),
+                    title: 'Pico y placa',
+                    status: 'Ver estado y calendario',
                     icon: Icons.traffic,
+                    onTap: () => context.push(
+                      picoShellLocation(
+                        origin: PicoRouteOrigin.garage,
+                        vehicleId: vehicle.id,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.m),
                   _VehicleStatusSummaryCards(vehicle: vehicle),

@@ -117,10 +117,10 @@ class _TomorrowStatusStrip extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => context.push(
-            Uri(
-              path: AppRoute.pico.path,
-              queryParameters: {'vehicleId': snapshot.vehicle.id},
-            ).toString(),
+            picoShellLocation(
+              origin: PicoRouteOrigin.home,
+              vehicleId: snapshot.vehicle.id,
+            ),
           ),
           child: Container(
             constraints: const BoxConstraints(minHeight: 50),
