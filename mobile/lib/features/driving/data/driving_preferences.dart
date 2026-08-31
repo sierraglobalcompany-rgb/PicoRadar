@@ -6,6 +6,7 @@ const _voiceKey = 'driving.alert.voice';
 const _soundKey = 'driving.alert.sound';
 const _vibrationKey = 'driving.alert.vibration';
 const _customThresholdsKey = 'driving.alert.customThresholds';
+const _hudMirrorKey = 'driving.hud.mirror';
 
 class DrivingPreferences {
   const DrivingPreferences({
@@ -14,6 +15,7 @@ class DrivingPreferences {
     required this.soundEnabled,
     required this.vibrationEnabled,
     required this.customThresholdsMeters,
+    required this.hudMirrorEnabled,
   });
 
   final DrivingAlertProfile profile;
@@ -21,6 +23,7 @@ class DrivingPreferences {
   final bool soundEnabled;
   final bool vibrationEnabled;
   final List<int> customThresholdsMeters;
+  final bool hudMirrorEnabled;
 
   List<int> get activeThresholdsMeters {
     return profile == DrivingAlertProfile.custom
@@ -34,6 +37,7 @@ class DrivingPreferences {
     bool? soundEnabled,
     bool? vibrationEnabled,
     List<int>? customThresholdsMeters,
+    bool? hudMirrorEnabled,
   }) {
     return DrivingPreferences(
       profile: profile ?? this.profile,
@@ -42,6 +46,7 @@ class DrivingPreferences {
       vibrationEnabled: vibrationEnabled ?? this.vibrationEnabled,
       customThresholdsMeters:
           customThresholdsMeters ?? this.customThresholdsMeters,
+      hudMirrorEnabled: hudMirrorEnabled ?? this.hudMirrorEnabled,
     );
   }
 }
@@ -52,6 +57,7 @@ const defaultDrivingPreferences = DrivingPreferences(
   soundEnabled: true,
   vibrationEnabled: true,
   customThresholdsMeters: [500, 300, 100],
+  hudMirrorEnabled: false,
 );
 
 Future<DrivingPreferences> loadDrivingPreferences(
@@ -70,6 +76,7 @@ Future<DrivingPreferences> loadDrivingPreferences(
     soundEnabled: await preferences.getBool(_soundKey) ?? true,
     vibrationEnabled: await preferences.getBool(_vibrationKey) ?? true,
     customThresholdsMeters: customThresholds,
+    hudMirrorEnabled: await preferences.getBool(_hudMirrorKey) ?? false,
   );
 }
 
@@ -81,6 +88,7 @@ Future<void> saveDrivingPreferences(
   await preferences.setBool(_voiceKey, value.voiceEnabled);
   await preferences.setBool(_soundKey, value.soundEnabled);
   await preferences.setBool(_vibrationKey, value.vibrationEnabled);
+  await preferences.setBool(_hudMirrorKey, value.hudMirrorEnabled);
   await preferences.setString(
     _customThresholdsKey,
     value.customThresholdsMeters.join(','),

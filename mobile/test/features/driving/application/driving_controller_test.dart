@@ -79,6 +79,83 @@ void main() {
       );
     },
   );
+
+  test('first movement sample does not emit a camera alert', () async {
+    final gateway = _FakeDrivingLocationGateway();
+    final feedback = _FakeDrivingFeedbackGateway();
+    final container = ProviderContainer(
+      overrides: [
+        appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+        cameraPackProvider.overrideWith((ref) async => _pack()),
+        drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(drivingControllerProvider.notifier).start();
+    gateway.add(
+      DrivingPoint(
+        latitude: 6.2434,
+        longitude: -75.57,
+        accuracyMeters: 14,
+        speedKmh: 42,
+        headingDegrees: 0,
+        recordedAt: DateTime.utc(2026, 8, 31, 12),
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    final state = container.read(drivingControllerProvider).value!;
+    expect(state.nearestCamera, isNull);
+    expect(state.lastAlert, isNull);
+    expect(feedback.spokenMessages, isEmpty);
+  });
+
+  test(
+    'poor GPS accuracy keeps speed but blocks camera alert stages',
+    () async {
+      final gateway = _FakeDrivingLocationGateway();
+      final feedback = _FakeDrivingFeedbackGateway();
+      final container = ProviderContainer(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(drivingControllerProvider.notifier).start();
+      for (final latitude in [6.241, 6.242]) {
+        gateway.add(
+          DrivingPoint(
+            latitude: latitude,
+            longitude: -75.57,
+            accuracyMeters: 90,
+            speedKmh: 42,
+            headingDegrees: 0,
+            recordedAt: DateTime.utc(
+              2026,
+              8,
+              31,
+              12,
+              latitude == 6.241 ? 0 : 1,
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      final state = container.read(drivingControllerProvider).value!;
+      expect(state.speedKmh, 42);
+      expect(state.gpsQuality, GpsQuality.weak);
+      expect(state.nearestCamera, isNull);
+      expect(state.lastAlert, isNull);
+      expect(feedback.spokenMessages, isEmpty);
+    },
+  );
 }
 
 CameraPack _pack() {

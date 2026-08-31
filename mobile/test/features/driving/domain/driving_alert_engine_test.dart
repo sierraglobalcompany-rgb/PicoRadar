@@ -20,8 +20,110 @@ void main() {
     final repeated = engine.evaluate(match: match, speedKmh: 50);
 
     expect(first, isNotNull);
-    expect(first!.thresholdMeters, 500);
+    expect(first!.thresholdMeters, 300);
     expect(repeated, isNull);
+  });
+
+  test('a GPS jump from 520 to 180 meters only announces 200 meters', () {
+    final engine = DrivingAlertEngine(profile: DrivingAlertProfile.detailed);
+    final camera = _camera(speedLimitKmh: null);
+
+    final outside = engine.evaluate(
+      match: CameraMatch(
+        camera: camera,
+        distanceMeters: 520,
+        approaching: true,
+        bearingDifferenceDegrees: 0,
+      ),
+      speedKmh: 36,
+      now: DateTime.utc(2026, 8, 31, 12),
+    );
+    final jumped = engine.evaluate(
+      match: CameraMatch(
+        camera: camera,
+        distanceMeters: 180,
+        approaching: true,
+        bearingDifferenceDegrees: 0,
+      ),
+      speedKmh: 36,
+      now: DateTime.utc(2026, 8, 31, 12, 1),
+    );
+
+    expect(outside, isNull);
+    expect(jumped!.thresholdMeters, 200);
+  });
+
+  test(
+    'cooldown consumes crossed thresholds instead of delaying stale alerts',
+    () {
+      final engine = DrivingAlertEngine(profile: DrivingAlertProfile.normal);
+      final camera = _camera(speedLimitKmh: null);
+
+      final first = engine.evaluate(
+        match: CameraMatch(
+          camera: camera,
+          distanceMeters: 480,
+          approaching: true,
+          bearingDifferenceDegrees: 0,
+        ),
+        speedKmh: 36,
+        now: DateTime.utc(2026, 8, 31, 12),
+      );
+      final suppressed = engine.evaluate(
+        match: CameraMatch(
+          camera: camera,
+          distanceMeters: 180,
+          approaching: true,
+          bearingDifferenceDegrees: 0,
+        ),
+        speedKmh: 36,
+        now: DateTime.utc(2026, 8, 31, 12, 0, 5),
+      );
+      final nextFresh = engine.evaluate(
+        match: CameraMatch(
+          camera: camera,
+          distanceMeters: 90,
+          approaching: true,
+          bearingDifferenceDegrees: 0,
+        ),
+        speedKmh: 36,
+        now: DateTime.utc(2026, 8, 31, 12, 0, 20),
+      );
+
+      expect(first!.thresholdMeters, 500);
+      expect(suppressed, isNull);
+      expect(nextFresh!.thresholdMeters, 100);
+    },
+  );
+
+  test('camera episode closes and rearms after a real second approach', () {
+    final engine = DrivingAlertEngine(profile: DrivingAlertProfile.detailed);
+    final camera = _camera(speedLimitKmh: null);
+
+    final firstApproach = engine.evaluate(
+      match: CameraMatch(
+        camera: camera,
+        distanceMeters: 180,
+        approaching: true,
+        bearingDifferenceDegrees: 0,
+      ),
+      speedKmh: 36,
+      now: DateTime.utc(2026, 8, 31, 12),
+    );
+    engine.markNoMatch(DateTime.utc(2026, 8, 31, 12, 0, 31));
+    final secondApproach = engine.evaluate(
+      match: CameraMatch(
+        camera: camera,
+        distanceMeters: 180,
+        approaching: true,
+        bearingDifferenceDegrees: 0,
+      ),
+      speedKmh: 36,
+      now: DateTime.utc(2026, 8, 31, 12, 0, 32),
+    );
+
+    expect(firstApproach!.thresholdMeters, 200);
+    expect(secondApproach!.thresholdMeters, 200);
   });
 
   test('marks overspeed only when official speed limit is present', () {

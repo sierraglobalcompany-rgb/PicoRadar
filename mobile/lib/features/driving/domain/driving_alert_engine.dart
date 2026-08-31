@@ -46,44 +46,44 @@ class DrivingAlertEngine {
   final DrivingAlertProfile profile;
   final List<int> customThresholdsMeters;
   final DateTime? now;
-  final Map<String, Set<int>> _firedThresholdsByCamera = {};
-  final Map<String, DateTime> _lastAlertByCamera = {};
+  final Map<String, _CameraAlertEpisode> _episodesByCamera = {};
 
   DrivingAlert? evaluate({
     required CameraMatch? match,
     required double speedKmh,
     DateTime? now,
   }) {
+    final currentInstant = now ?? this.now ?? DateTime.now().toUtc();
     if (match == null || !match.approaching || speedKmh < 5) {
+      _closeLostEpisodes(currentInstant);
       return null;
     }
     if (match.distanceMeters > cameraAwarenessRadiusMeters) {
+      _closeLostEpisodes(currentInstant);
       return null;
     }
     final camera = match.camera;
-    if (match.distanceMeters > cameraAwarenessRadiusMeters + 80) {
-      _firedThresholdsByCamera.remove(camera.id);
-      _lastAlertByCamera.remove(camera.id);
-    }
+    final episode = _episodesByCamera.putIfAbsent(
+      camera.id,
+      () => _CameraAlertEpisode(),
+    )..lastSeenAt = currentInstant;
 
-    final currentInstant = now ?? this.now ?? DateTime.now().toUtc();
-    final lastAlert = _lastAlertByCamera[camera.id];
-    if (lastAlert != null &&
-        currentInstant.difference(lastAlert) < const Duration(seconds: 18)) {
+    final threshold = _nextThreshold(episode, match.distanceMeters);
+    if (threshold == null) {
       return null;
     }
 
-    final threshold = _nextThreshold(camera.id, match.distanceMeters);
-    if (threshold == null) {
+    final lastAlertAt = episode.lastAlertAt;
+    if (lastAlertAt != null &&
+        currentInstant.difference(lastAlertAt) < const Duration(seconds: 18)) {
+      _markCrossedThresholds(episode, match.distanceMeters);
       return null;
     }
 
     final speedLimit = camera.speedLimitKmh;
     final overspeed = speedLimit != null && speedKmh > speedLimit + 3;
-    _firedThresholdsByCamera
-        .putIfAbsent(camera.id, () => <int>{})
-        .add(threshold);
-    _lastAlertByCamera[camera.id] = currentInstant;
+    _markCrossedThresholds(episode, match.distanceMeters);
+    episode.lastAlertAt = currentInstant;
     return DrivingAlert(
       cameraId: camera.id,
       title: overspeed ? 'Reduce la velocidad' : 'Camara cerca',
@@ -96,19 +96,53 @@ class DrivingAlertEngine {
     );
   }
 
-  int? _nextThreshold(String cameraId, double distanceMeters) {
-    final fired = _firedThresholdsByCamera[cameraId] ?? const <int>{};
+  void markNoMatch(DateTime now) {
+    _closeLostEpisodes(now);
+  }
+
+  bool hasActiveEpisode(String cameraId, DateTime now) {
+    final episode = _episodesByCamera[cameraId];
+    return episode != null &&
+        now.difference(episode.lastSeenAt) <= const Duration(seconds: 25);
+  }
+
+  int? _nextThreshold(_CameraAlertEpisode episode, double distanceMeters) {
+    final crossed = _crossedThresholds(episode, distanceMeters);
+    if (crossed.isEmpty) {
+      return null;
+    }
+    return crossed.reduce((a, b) => a < b ? a : b);
+  }
+
+  void _markCrossedThresholds(
+    _CameraAlertEpisode episode,
+    double distanceMeters,
+  ) {
+    episode.firedThresholds.addAll(_crossedThresholds(episode, distanceMeters));
+  }
+
+  List<int> _crossedThresholds(
+    _CameraAlertEpisode episode,
+    double distanceMeters,
+  ) {
     final thresholds = [
       ...(profile == DrivingAlertProfile.custom
           ? _normalizedCustomThresholds()
           : profile.defaultThresholdsMeters),
     ]..sort((a, b) => b.compareTo(a));
-    for (final threshold in thresholds) {
-      if (distanceMeters <= threshold && !fired.contains(threshold)) {
-        return threshold;
-      }
-    }
-    return null;
+    return [
+      for (final threshold in thresholds)
+        if (distanceMeters <= threshold &&
+            !episode.firedThresholds.contains(threshold))
+          threshold,
+    ];
+  }
+
+  void _closeLostEpisodes(DateTime now) {
+    _episodesByCamera.removeWhere(
+      (_, episode) =>
+          now.difference(episode.lastSeenAt) > const Duration(seconds: 25),
+    );
   }
 
   List<int> _normalizedCustomThresholds() {
@@ -133,4 +167,10 @@ class DrivingAlertEngine {
     }
     return '$locality · $threshold m · $speed/$limit km/h';
   }
+}
+
+class _CameraAlertEpisode {
+  final Set<int> firedThresholds = {};
+  DateTime lastSeenAt = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+  DateTime? lastAlertAt;
 }

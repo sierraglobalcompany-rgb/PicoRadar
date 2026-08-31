@@ -78,6 +78,7 @@ class DrivingState {
     required this.status,
     required this.preferences,
     required this.cameraCount,
+    this.cameraPackSource,
     this.currentPoint,
     this.nearestCamera,
     this.lastAlert,
@@ -87,6 +88,7 @@ class DrivingState {
   final DrivingSessionStatus status;
   final DrivingPreferences preferences;
   final int cameraCount;
+  final CameraPackSource? cameraPackSource;
   final DrivingPoint? currentPoint;
   final CameraMatch? nearestCamera;
   final DrivingAlert? lastAlert;
@@ -95,6 +97,11 @@ class DrivingState {
   bool get isActive => status == DrivingSessionStatus.active;
 
   int get speedKmh => (currentPoint?.speedKmh ?? 0).round();
+
+  bool get canEvaluateAlerts {
+    final accuracy = currentPoint?.accuracyMeters;
+    return accuracy != null && accuracy <= 60;
+  }
 
   GpsQuality get gpsQuality {
     final accuracy = currentPoint?.accuracyMeters;
@@ -114,6 +121,7 @@ class DrivingState {
     DrivingSessionStatus? status,
     DrivingPreferences? preferences,
     int? cameraCount,
+    CameraPackSource? cameraPackSource,
     DrivingPoint? currentPoint,
     CameraMatch? nearestCamera,
     DrivingAlert? lastAlert,
@@ -126,6 +134,7 @@ class DrivingState {
       status: status ?? this.status,
       preferences: preferences ?? this.preferences,
       cameraCount: cameraCount ?? this.cameraCount,
+      cameraPackSource: cameraPackSource ?? this.cameraPackSource,
       currentPoint: currentPoint ?? this.currentPoint,
       nearestCamera: clearNearestCamera
           ? null
@@ -152,6 +161,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       status: DrivingSessionStatus.idle,
       preferences: preferences,
       cameraCount: pack.cameras.length,
+      cameraPackSource: pack.source,
     );
   }
 
@@ -249,25 +259,69 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   Future<void> _onPoint(DrivingPoint point) async {
     final current = state.asData?.value ?? await build();
     final pack = await ref.read(cameraPackProvider.future);
+    final alertEngine = _alertEngine ??= _alertEngineFor(current.preferences);
+    if (point.accuracyMeters > 60) {
+      alertEngine.markNoMatch(point.recordedAt);
+      final keepLastAlert =
+          current.lastAlert != null &&
+          alertEngine.hasActiveEpisode(
+            current.lastAlert!.cameraId,
+            point.recordedAt,
+          );
+      state = AsyncData(
+        current.copyWith(
+          status: DrivingSessionStatus.active,
+          currentPoint: point,
+          clearNearestCamera: true,
+          clearLastAlert: !keepLastAlert,
+          clearErrorMessage: true,
+        ),
+      );
+      return;
+    }
+
+    if (_previousPoint == null) {
+      _previousPoint = point;
+      alertEngine.markNoMatch(point.recordedAt);
+      state = AsyncData(
+        current.copyWith(
+          status: DrivingSessionStatus.active,
+          currentPoint: point,
+          clearNearestCamera: true,
+          clearLastAlert: current.lastAlert == null,
+          clearErrorMessage: true,
+        ),
+      );
+      return;
+    }
+
     final match = matchNearestCamera(
       current: point,
       previous: _previousPoint,
       cameras: pack.cameras,
     );
-    final alert = (_alertEngine ??= _alertEngineFor(
-      current.preferences,
-    )).evaluate(match: match, speedKmh: point.speedKmh, now: point.recordedAt);
+    final alert = alertEngine.evaluate(
+      match: match,
+      speedKmh: point.speedKmh,
+      now: point.recordedAt,
+    );
     _previousPoint = point;
     if (alert != null) {
       await _notify(current.preferences, alert);
     }
+    final keepLastAlert =
+        current.lastAlert != null &&
+        alertEngine.hasActiveEpisode(
+          current.lastAlert!.cameraId,
+          point.recordedAt,
+        );
     state = AsyncData(
       current.copyWith(
         status: DrivingSessionStatus.active,
         currentPoint: point,
         nearestCamera: match,
         lastAlert: alert,
-        clearLastAlert: alert == null,
+        clearLastAlert: alert == null && !keepLastAlert,
         clearErrorMessage: true,
       ),
     );

@@ -7,6 +7,7 @@ import '../application/driving_controller.dart';
 import '../data/driving_preferences.dart';
 import '../domain/camera_matcher.dart';
 import '../domain/driving_alert_engine.dart';
+import '../domain/traffic_camera.dart';
 
 class DrivingScreen extends ConsumerStatefulWidget {
   const DrivingScreen({super.key});
@@ -19,6 +20,7 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
     with WidgetsBindingObserver {
   late final DrivingHudActiveNotifier _hudActiveNotifier;
   bool _hudMode = false;
+  bool _hudMirror = false;
 
   @override
   void initState() {
@@ -59,11 +61,16 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
         onStop: () => ref.read(drivingControllerProvider.notifier).stop(),
         onSettings: () => _showSettings(context, defaultDrivingPreferences),
         onHud: null,
+        onMirrorHud: null,
       ),
       error: (error, stackTrace) => _DrivingError(message: error.toString()),
       data: (state) {
         if (_hudMode) {
-          return _HudView(state: state, onExit: _toggleHudMode);
+          return _HudView(
+            state: state,
+            mirror: _hudMirror,
+            onExit: _leaveHudMode,
+          );
         }
         return _DrivingDashboard(
           state: state,
@@ -75,7 +82,12 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
               : null,
           onStop: () => ref.read(drivingControllerProvider.notifier).stop(),
           onSettings: () => _showSettings(context, state.preferences),
-          onHud: state.isActive ? _toggleHudMode : null,
+          onHud: state.isActive
+              ? () => _enterHudMode(mirror: state.preferences.hudMirrorEnabled)
+              : null,
+          onMirrorHud: state.isActive
+              ? () => _enterHudMode(mirror: true)
+              : null,
         );
       },
     );
@@ -88,7 +100,14 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
     final updated = await showModalBottomSheet<DrivingPreferences>(
       context: context,
       showDragHandle: true,
-      builder: (context) => _DrivingSettingsSheet(initial: preferences),
+      builder: (context) => _DrivingSettingsSheet(
+        initial: preferences,
+        cameraPackSource: ref
+            .read(drivingControllerProvider)
+            .asData
+            ?.value
+            .cameraPackSource,
+      ),
     );
     if (updated != null) {
       await ref
@@ -97,15 +116,14 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
     }
   }
 
-  void _toggleHudMode() {
-    setState(() => _hudMode = !_hudMode);
-    if (_hudMode) {
-      _hudActiveNotifier.setActive(true);
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    } else {
-      _leaveHudMode();
-    }
+  void _enterHudMode({required bool mirror}) {
+    setState(() {
+      _hudMode = true;
+      _hudMirror = mirror;
+    });
+    _hudActiveNotifier.setActive(true);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   }
 
   void _leaveHudMode({bool updateState = true}) {
@@ -113,7 +131,10 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     if (updateState && mounted && _hudMode) {
-      setState(() => _hudMode = false);
+      setState(() {
+        _hudMode = false;
+        _hudMirror = false;
+      });
     }
   }
 }
@@ -132,6 +153,7 @@ class _DrivingDashboard extends StatelessWidget {
     required this.onStop,
     required this.onSettings,
     required this.onHud,
+    required this.onMirrorHud,
   });
 
   final DrivingState state;
@@ -140,6 +162,7 @@ class _DrivingDashboard extends StatelessWidget {
   final VoidCallback onStop;
   final VoidCallback onSettings;
   final VoidCallback? onHud;
+  final VoidCallback? onMirrorHud;
 
   @override
   Widget build(BuildContext context) {
@@ -169,7 +192,7 @@ class _DrivingDashboard extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
                 key: const ValueKey('hud-mirror-action'),
-                onPressed: onHud,
+                onPressed: onMirrorHud,
                 icon: const Icon(Icons.flip),
                 label: const Text('HUD espejo'),
               ),
@@ -288,6 +311,7 @@ class _CameraPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final alert = state.lastAlert;
     final match = state.nearestCamera;
+    final weakForAlerts = state.isActive && !state.canEvaluateAlerts;
     final urgent = alert?.severity == DrivingAlertSeverity.urgent;
     final color = urgent ? AppColors.red : AppColors.orange;
     final hasCamera = match != null;
@@ -309,16 +333,26 @@ class _CameraPanel extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  alert == null ? Icons.videocam_outlined : Icons.warning,
-                  color: alert == null ? AppColors.navy : color,
+                  weakForAlerts
+                      ? Icons.gps_not_fixed
+                      : alert == null
+                      ? Icons.videocam_outlined
+                      : Icons.warning,
+                  color: weakForAlerts
+                      ? AppColors.blue
+                      : alert == null
+                      ? AppColors.navy
+                      : color,
                 ),
                 const SizedBox(width: AppSpacing.s),
                 Expanded(
                   child: Text(
-                    alert?.title ??
-                        (hasCamera
-                            ? 'Fotodeteccion autorizada'
-                            : 'No hay camaras proximas'),
+                    weakForAlerts
+                        ? 'GPS debil'
+                        : alert?.title ??
+                              (hasCamera
+                                  ? 'Fotodeteccion autorizada'
+                                  : 'No hay camaras proximas'),
                     style: AppTextStyles.h2,
                   ),
                 ),
@@ -326,7 +360,9 @@ class _CameraPanel extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.s),
             Text(
-              alert?.message ?? _cameraMessage(match),
+              weakForAlerts
+                  ? 'Esperando mejor precision para alertas'
+                  : alert?.message ?? _cameraMessage(match),
               key: const ValueKey('driving-camera-message'),
               style: AppTextStyles.body,
             ),
@@ -373,9 +409,14 @@ class _StatusMessage extends StatelessWidget {
 }
 
 class _HudView extends StatelessWidget {
-  const _HudView({required this.state, required this.onExit});
+  const _HudView({
+    required this.state,
+    required this.mirror,
+    required this.onExit,
+  });
 
   final DrivingState state;
+  final bool mirror;
   final VoidCallback onExit;
 
   @override
@@ -387,8 +428,11 @@ class _HudView extends StatelessWidget {
           children: [
             Center(
               child: Transform(
+                key: const ValueKey('hud-content-transform'),
                 alignment: Alignment.center,
-                transform: Matrix4.diagonal3Values(-1, 1, 1),
+                transform: mirror
+                    ? Matrix4.diagonal3Values(-1, 1, 1)
+                    : Matrix4.identity(),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -412,7 +456,8 @@ class _HudView extends StatelessWidget {
                         horizontal: AppSpacing.xl,
                       ),
                       child: Text(
-                        state.lastAlert?.title ?? state.gpsQuality.label,
+                        _hudMessage(state),
+                        key: const ValueKey('hud-camera-distance'),
                         textAlign: TextAlign.center,
                         style: AppTextStyles.h2.copyWith(
                           color: state.lastAlert == null
@@ -440,12 +485,27 @@ class _HudView extends StatelessWidget {
       ),
     );
   }
+
+  String _hudMessage(DrivingState state) {
+    final match = state.nearestCamera;
+    if (match != null) {
+      return 'Camara ${match.distanceMeters.round()} m';
+    }
+    if (state.lastAlert != null) {
+      return state.lastAlert!.title;
+    }
+    return state.gpsQuality.label;
+  }
 }
 
 class _DrivingSettingsSheet extends StatefulWidget {
-  const _DrivingSettingsSheet({required this.initial});
+  const _DrivingSettingsSheet({
+    required this.initial,
+    required this.cameraPackSource,
+  });
 
   final DrivingPreferences initial;
+  final CameraPackSource? cameraPackSource;
 
   @override
   State<_DrivingSettingsSheet> createState() => _DrivingSettingsSheetState();
@@ -474,9 +534,16 @@ class _DrivingSettingsSheetState extends State<_DrivingSettingsSheet> {
               SegmentedButton<DrivingAlertProfile>(
                 segments: [
                   for (final profile in DrivingAlertProfile.values)
-                    ButtonSegment(value: profile, label: Text(profile.label)),
+                    ButtonSegment(
+                      value: profile,
+                      label: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(profile.label, maxLines: 1),
+                      ),
+                    ),
                 ],
                 selected: {_value.profile},
+                showSelectedIcon: false,
                 onSelectionChanged: (selection) {
                   setState(
                     () => _value = _value.copyWith(profile: selection.first),
@@ -505,6 +572,14 @@ class _DrivingSettingsSheetState extends State<_DrivingSettingsSheet> {
                 value: _value.vibrationEnabled,
                 onChanged: (value) => setState(
                   () => _value = _value.copyWith(vibrationEnabled: value),
+                ),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('HUD espejo por defecto'),
+                value: _value.hudMirrorEnabled,
+                onChanged: (value) => setState(
+                  () => _value = _value.copyWith(hudMirrorEnabled: value),
                 ),
               ),
               if (_value.profile == DrivingAlertProfile.custom) ...[
@@ -543,6 +618,15 @@ class _DrivingSettingsSheetState extends State<_DrivingSettingsSheet> {
                         },
                       ),
                   ],
+                ),
+              ],
+              if (widget.cameraPackSource != null) ...[
+                const SizedBox(height: AppSpacing.m),
+                Text(
+                  'Datos ANSV · ${widget.cameraPackSource!.fetchedAtUtc}',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.navy.withValues(alpha: 0.66),
+                  ),
                 ),
               ],
               const SizedBox(height: AppSpacing.s),

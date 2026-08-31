@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -94,6 +96,71 @@ void main() {
     expect(find.byKey(const ValueKey('custom-alert-100')), findsOneWidget);
     expect(find.byKey(const ValueKey('custom-alert-50')), findsOneWidget);
     expect(find.text('250 m'), findsNothing);
+    expect(find.textContaining('Datos ANSV'), findsOneWidget);
+  });
+
+  testWidgets('normal HUD is not mirrored', (tester) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    await tester.tap(find.byTooltip('HUD'));
+    await tester.pumpAndSettle();
+
+    final transform = tester.widget<Transform>(
+      find.byKey(const ValueKey('hud-content-transform')),
+    );
+    expect(transform.transform.storage[0], 1);
+  });
+
+  testWidgets('mirror HUD is mirrored and shows current camera distance', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('hud-mirror-action')));
+    await tester.pumpAndSettle();
+
+    final transform = tester.widget<Transform>(
+      find.byKey(const ValueKey('hud-content-transform')),
+    );
+    expect(transform.transform.storage[0], -1);
+    expect(find.byKey(const ValueKey('hud-camera-distance')), findsOneWidget);
+    expect(find.textContaining('Camara'), findsOneWidget);
   });
 }
 
@@ -123,6 +190,43 @@ CameraPack _emptyPack() {
   );
 }
 
+CameraPack _pack() {
+  return CameraPack(
+    source: const CameraPackSource(
+      name: 'ANSV',
+      pageUrl: 'https://fotodeteccion.ansv.gov.co/ubicaciones-aprobadas.html',
+      dataUrl: 'https://fotodeteccion.ansv.gov.co/map/data/sast.json',
+      fetchedAtUtc: '2026-08-31T00:00:00Z',
+    ),
+    cameras: [
+      const TrafficCamera(
+        id: 'cam-1',
+        department: 'ANTIOQUIA',
+        municipality: 'MEDELLIN',
+        jurisdiction: 'Municipal',
+        address: 'Avenida 80',
+        latitude: 6.244,
+        longitude: -75.57,
+        status: 'Aprobada',
+        technology: 'Camara',
+        kind: CameraKind.mixed,
+        speedLimitKmh: 60,
+      ),
+    ],
+  );
+}
+
+DrivingPoint _point({required double latitude, required int seconds}) {
+  return DrivingPoint(
+    latitude: latitude,
+    longitude: -75.57,
+    accuracyMeters: 12,
+    speedKmh: 42,
+    headingDegrees: 0,
+    recordedAt: DateTime.utc(2026, 8, 31, 12, 0, seconds),
+  );
+}
+
 class _IdleGateway implements DrivingLocationGateway {
   var requestPermissionCalls = 0;
 
@@ -143,5 +247,31 @@ class _IdleGateway implements DrivingLocationGateway {
   Future<DeviceLocationPermission> requestPermission() async {
     requestPermissionCalls += 1;
     return DeviceLocationPermission.denied;
+  }
+}
+
+class _StreamingGateway implements DrivingLocationGateway {
+  final _controller = StreamController<DrivingPoint>();
+
+  void add(DrivingPoint point) {
+    _controller.add(point);
+  }
+
+  @override
+  Future<DeviceLocationPermission> checkPermission() async {
+    return DeviceLocationPermission.granted;
+  }
+
+  @override
+  Future<bool> isLocationServiceEnabled() async => true;
+
+  @override
+  Stream<DrivingPoint> positionStream() {
+    return _controller.stream;
+  }
+
+  @override
+  Future<DeviceLocationPermission> requestPermission() async {
+    return DeviceLocationPermission.granted;
   }
 }
