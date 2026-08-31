@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\CameraStatus;
 use App\Enums\CameraType;
 use App\Enums\OperatorRole;
+use App\Models\AuditLog;
 use App\Models\Camera;
 use App\Models\CameraSource;
 use App\Models\CameraVerification;
@@ -14,6 +15,7 @@ use App\Models\User;
 use App\Services\CameraContractReadinessService;
 use App\Services\CameraDuplicateDetector;
 use App\Services\CameraRegistryService;
+use App\Services\CameraSourceService;
 use App\Services\CameraVerificationService;
 use App\Services\GeographyImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -43,6 +45,32 @@ class CameraRegistryTest extends TestCase
         $this->assertSame(CameraStatus::Active, $active->status);
         $this->assertFalse($active->speed_limit_verified);
         $this->assertTrue(app(CameraContractReadinessService::class)->assess($active)['readyForFutureDataset']);
+    }
+
+    public function test_rejected_camera_is_editable_and_resubmittable_without_erasing_history(): void
+    {
+        $editor = User::factory()->create(['role' => OperatorRole::Editor]);
+        $reviewer = User::factory()->create(['role' => OperatorRole::Reviewer]);
+        $camera = $this->draft($editor);
+        $registry = app(CameraRegistryService::class);
+        $registry->submit($camera, $editor);
+        app(CameraVerificationService::class)->reject($camera->fresh(), 'Synthetic rejection', $reviewer);
+        $registry->updateDraft($camera->fresh(), ['name' => 'Synthetic corrected camera'], $editor);
+        $resubmitted = $registry->submit($camera->fresh(), $editor);
+        $this->assertSame(CameraStatus::InReview, $resubmitted->status);
+        $this->assertSame(1, CameraVerification::query()->where('camera_id', $camera->id)->count());
+    }
+
+    public function test_source_provenance_change_invalidates_verification_and_audits_real_changes(): void
+    {
+        $editor = User::factory()->create(['role' => OperatorRole::Editor]);
+        $source = CameraSource::factory()->create(['verified_at' => now()]);
+        $service = app(CameraSourceService::class);
+        $service->update($source, ['key' => $source->key, 'title' => $source->title, 'authority' => 'Synthetic corrected authority', 'url' => $source->url, 'source_type' => $source->source_type, 'is_active' => true, 'verified_at' => $source->verified_at], $editor);
+        $this->assertNull($source->fresh()->verified_at);
+        $this->assertSame(1, AuditLog::query()->where('action', 'camera_source.updated')->count());
+        $service->update($source->fresh(), ['key' => $source->key, 'title' => $source->title, 'authority' => 'Synthetic corrected authority', 'url' => $source->url, 'source_type' => $source->source_type, 'is_active' => true, 'verified_at' => null], $editor);
+        $this->assertSame(1, AuditLog::query()->where('action', 'camera_source.updated')->count());
     }
 
     public function test_duplicate_detector_uses_bounded_candidates_and_ignores_retired(): void

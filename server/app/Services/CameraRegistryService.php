@@ -29,15 +29,15 @@ class CameraRegistryService
 
     public function submit(Camera $camera, ?User $actor = null): Camera
     {
-        return $this->transition($camera, CameraStatus::Draft, CameraStatus::InReview, 'camera.submitted', $actor);
+        return $this->transition($camera, [CameraStatus::Draft, CameraStatus::Rejected], CameraStatus::InReview, 'camera.submitted', $actor, true);
     }
 
     public function updateDraft(Camera $camera, array $attributes, ?User $actor = null): Camera
     {
         return DB::transaction(function () use ($camera, $attributes, $actor): Camera {
             $current = Camera::lockForUpdate()->findOrFail($camera->id);
-            if ($current->status !== CameraStatus::Draft) {
-                throw new DomainException('Only draft cameras can edit master data. Reopen for correction first.');
+            if (! in_array($current->status, [CameraStatus::Draft, CameraStatus::Rejected], true)) {
+                throw new DomainException('Only draft or rejected cameras can edit master data. Reopen for correction first.');
             }
             $current->fill($attributes);
             $current->forceFill(['updated_by_id' => $actor?->id]);
@@ -51,7 +51,7 @@ class CameraRegistryService
 
     public function withdraw(Camera $camera, ?User $actor = null): Camera
     {
-        return $this->transition($camera, CameraStatus::InReview, CameraStatus::Draft, 'camera.withdrawn', $actor);
+        return $this->transition($camera, CameraStatus::InReview, CameraStatus::Draft, 'camera.withdrawn', $actor, true);
     }
 
     public function deactivate(Camera $camera, string $reason, ?User $actor = null): Camera
@@ -94,21 +94,26 @@ class CameraRegistryService
 
     public function assertCoverage(Camera $camera): void
     {
-        $unit = GeographicUnit::findOrFail($camera->geographic_unit_id);
+        $unit = $camera->relationLoaded('geographicUnit') ? $camera->geographicUnit : GeographicUnit::findOrFail($camera->geographic_unit_id);
         $camera->loadMissing('jurisdiction');
-        if ($unit->level !== GeographicUnitLevel::Municipality || ! $camera->jurisdiction->geographicUnits()->whereKey($unit->id)->exists()) {
+        $covered = $camera->jurisdiction->relationLoaded('geographicUnits')
+            ? $camera->jurisdiction->geographicUnits->contains('id', $unit->id)
+            : $camera->jurisdiction->geographicUnits()->whereKey($unit->id)->exists();
+        if ($unit->level !== GeographicUnitLevel::Municipality || ! $covered) {
             throw new DomainException('Camera municipality must belong to jurisdiction coverage.');
         }
     }
 
-    private function transition(Camera $camera, CameraStatus $from, CameraStatus $to, string $event, ?User $actor, bool $noop = false, array $extra = []): Camera
+    /** @param CameraStatus|list<CameraStatus> $from */
+    private function transition(Camera $camera, CameraStatus|array $from, CameraStatus $to, string $event, ?User $actor, bool $noop = false, array $extra = []): Camera
     {
         return DB::transaction(function () use ($camera, $from, $to, $event, $actor, $noop, $extra): Camera {
             $current = Camera::lockForUpdate()->findOrFail($camera->id);
             if ($noop && $current->status === $to) {
                 return $current;
             }
-            if ($current->status !== $from) {
+            $allowed = is_array($from) ? $from : [$from];
+            if (! in_array($current->status, $allowed, true)) {
                 throw new DomainException('Invalid camera state transition.');
             }
             $values = ['status' => $to];

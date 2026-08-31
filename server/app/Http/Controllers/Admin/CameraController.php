@@ -133,7 +133,7 @@ class CameraController extends Controller
     {
         Gate::authorize('cameras.view');
         $distance = min(500, max(1, (float) $request->input('distance', 25)));
-        $cameras = Camera::query()->with(['source', 'jurisdiction', 'geographicUnit'])->when($request->filled('jurisdiction_id'), fn ($query) => $query->where('jurisdiction_id', $request->input('jurisdiction_id')))->where('status', '!=', CameraStatus::Retired)->orderBy('id')->limit(100)->get();
+        $cameras = Camera::query()->with(['source', 'jurisdiction', 'geographicUnit'])->when($request->filled('jurisdiction_id'), fn ($query) => $query->where('jurisdiction_id', $request->input('jurisdiction_id')))->where('status', '!=', CameraStatus::Retired)->orderBy('id')->paginate(50)->withQueryString();
         $pairs = [];
         foreach ($cameras as $camera) {
             foreach ($detector->candidates($camera, $distance) as $candidate) {
@@ -143,7 +143,7 @@ class CameraController extends Controller
             }
         }
 
-        return view('admin.cameras.duplicates', $this->base($request) + ['pairs' => $pairs, 'distance' => $distance]);
+        return view('admin.cameras.duplicates', $this->base($request) + ['pairs' => $pairs, 'distance' => $distance, 'seedCameras' => $cameras]);
     }
 
     public function quality(Request $request, CameraIntegrityAuditor $integrity)
@@ -215,21 +215,21 @@ class CameraController extends Controller
 
     public function deactivate(LifecycleReasonRequest $request, Camera $camera, CameraRegistryService $registry): RedirectResponse
     {
-        Gate::authorize('cameras.edit');
+        Gate::authorize('cameras.review');
 
         return $this->action(fn () => $registry->deactivate($camera, $request->validated('reason'), $request->user()), $camera);
     }
 
     public function reopen(LifecycleReasonRequest $request, Camera $camera, CameraRegistryService $registry): RedirectResponse
     {
-        Gate::authorize('cameras.edit');
+        Gate::authorize('cameras.reopen');
 
         return $this->action(fn () => $registry->reopen($camera, $request->validated('reason'), $request->user()), $camera);
     }
 
     public function retire(LifecycleReasonRequest $request, Camera $camera, CameraRegistryService $registry): RedirectResponse
     {
-        Gate::authorize('cameras.edit');
+        Gate::authorize('cameras.review');
 
         return $this->action(fn () => $registry->retire($camera, $request->validated('reason'), $request->user()), $camera);
     }

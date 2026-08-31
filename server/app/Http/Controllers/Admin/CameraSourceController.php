@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CameraSourceRequest;
 use App\Models\CameraSource;
+use App\Services\CameraSourceService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,10 +27,10 @@ class CameraSourceController extends Controller
         return view('admin.camera-sources.form', ['operator' => $request->user(), 'source' => new CameraSource, 'action' => route('admin.camera-sources.store'), 'method' => 'POST']);
     }
 
-    public function store(CameraSourceRequest $request): RedirectResponse
+    public function store(CameraSourceRequest $request, CameraSourceService $service): RedirectResponse
     {
         Gate::authorize('camera_sources.edit');
-        $source = CameraSource::create($request->safe()->except('updated_at'));
+        $source = $service->create($request->safe()->except('updated_at'), $request->user());
 
         return redirect()->route('admin.camera-sources.show', $source);
     }
@@ -49,14 +50,13 @@ class CameraSourceController extends Controller
         return view('admin.camera-sources.form', ['operator' => $request->user(), 'source' => $source, 'action' => route('admin.camera-sources.update', $source), 'method' => 'PUT']);
     }
 
-    public function update(CameraSourceRequest $request, CameraSource $source): RedirectResponse
+    public function update(CameraSourceRequest $request, CameraSource $source, CameraSourceService $service): RedirectResponse
     {
         Gate::authorize('camera_sources.edit');
         if ($source->updated_at?->toISOString() !== Carbon::parse($request->validated('updated_at'))->toISOString()) {
             abort(409, 'This source changed after this form was opened. Reload before editing again.');
         }
-        $source->fill($request->safe()->except('updated_at'));
-        $source->save();
+        $service->update($source, $request->safe()->except('updated_at'), $request->user());
 
         return redirect()->route('admin.camera-sources.show', $source);
     }

@@ -9,7 +9,7 @@ class LifecycleReasonRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Gate::allows(in_array($this->route()?->getName(), ['admin.cameras.reject'], true) ? 'cameras.review' : 'cameras.edit');
+        return Gate::allows($this->route()?->getName() === 'admin.cameras.reopen' ? 'cameras.reopen' : 'cameras.review');
     }
 
     public function rules(): array

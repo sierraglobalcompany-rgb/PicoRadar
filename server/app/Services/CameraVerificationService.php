@@ -23,6 +23,9 @@ class CameraVerificationService
     {
         return DB::transaction(function () use ($camera, $speedVerified, $actor, $notes): Camera {
             $current = Camera::lockForUpdate()->with(['source', 'jurisdiction', 'geographicUnit'])->findOrFail($camera->id);
+            if ($current->status === CameraStatus::Verified) {
+                return $current;
+            }
             if ($current->status !== CameraStatus::InReview) {
                 throw new DomainException('Only in-review cameras can verify.');
             }
@@ -48,6 +51,9 @@ class CameraVerificationService
 
         return DB::transaction(function () use ($camera, $reason, $actor): Camera {
             $current = Camera::lockForUpdate()->with('source')->findOrFail($camera->id);
+            if ($current->status === CameraStatus::Rejected) {
+                return $current;
+            }
             if ($current->status !== CameraStatus::InReview) {
                 throw new DomainException('Only in-review cameras can reject.');
             }
