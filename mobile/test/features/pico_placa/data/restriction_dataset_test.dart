@@ -384,30 +384,37 @@ void main() {
       expect(
         await _assetStatus(
           db,
-          jurisdictionId: 'co-tol-ibague',
-          plate: 'ABC067',
-          localDateTime: DateTime(2026, 7, 6, 8),
-        ),
-        RestrictionStatus.restricted,
-      );
-      expect(
-        await _assetStatus(
-          db,
-          jurisdictionId: 'co-met-villavicencio',
-          plate: 'ABC056',
-          localDateTime: DateTime(2026, 1, 26, 7),
-        ),
-        RestrictionStatus.restricted,
-      );
-      expect(
-        await _assetStatus(
-          db,
           jurisdictionId: 'co-cau-popayan',
           plate: 'ABC090',
           localDateTime: DateTime(2026, 7, 6, 8),
         ),
         RestrictionStatus.restricted,
       );
+    },
+  );
+
+  test(
+    'C10B-A demoted conditional cities fail closed without runtime rules',
+    () async {
+      await importRestrictionsDataset(db, await _assetDataset());
+
+      final ibague = await _assetEvaluation(
+        db,
+        jurisdictionId: 'co-tol-ibague',
+        plate: 'ABC067',
+        localDateTime: DateTime(2026, 7, 6, 8),
+      );
+      final villavicencio = await _assetEvaluation(
+        db,
+        jurisdictionId: 'co-met-villavicencio',
+        plate: 'ABC056',
+        localDateTime: DateTime(2026, 1, 26, 7),
+      );
+
+      expect(ibague.status, RestrictionStatus.unknown);
+      expect(ibague.reasonCode, RestrictionReasonCode.unknownCoverage);
+      expect(villavicencio.status, RestrictionStatus.unknown);
+      expect(villavicencio.reasonCode, RestrictionReasonCode.unknownCoverage);
     },
   );
 
@@ -465,7 +472,7 @@ void main() {
     await importRestrictionsDataset(db, await _assetDataset());
 
     final rows = await db.select(db.restrictionCoverages).get();
-    expect(rows, hasLength(11));
+    expect(rows, hasLength(9));
   });
 
   test('bundled staleAfter values represent Colombia midnight', () async {
@@ -505,14 +512,6 @@ void main() {
       DateTime.utc(2026, 10, 1, 5),
     );
     expect(
-      staleAfterById['co-tol-ibague:car:private'],
-      DateTime.utc(2027, 1, 1, 5),
-    );
-    expect(
-      staleAfterById['co-met-villavicencio:car:private'],
-      DateTime.utc(2026, 12, 23, 5),
-    );
-    expect(
       staleAfterById['co-cau-popayan:car:private'],
       DateTime.utc(2027, 1, 1, 5),
     );
@@ -525,23 +524,36 @@ Future<RestrictionStatus> _assetStatus(
   required String plate,
   required DateTime localDateTime,
 }) async {
+  return (await _assetEvaluation(
+    db,
+    jurisdictionId: jurisdictionId,
+    plate: plate,
+    localDateTime: localDateTime,
+  ))
+      .status;
+}
+
+Future<RestrictionEvaluation> _assetEvaluation(
+  AppDatabase db, {
+  required String jurisdictionId,
+  required String plate,
+  required DateTime localDateTime,
+}) async {
   final loaded = await RestrictionStore(db).loadCoverage(
     jurisdictionId,
     VehicleKind.car,
     VehicleServiceType.private,
     localDateTime,
   );
-  return const RestrictionEngine()
-      .evaluate(
-        _context(
-          loaded,
-          jurisdictionId: jurisdictionId,
-          plate: plate,
-          localDateTime: localDateTime,
-        ),
-        loaded.rules,
-      )
-      .status;
+  return const RestrictionEngine().evaluate(
+    _context(
+      loaded,
+      jurisdictionId: jurisdictionId,
+      plate: plate,
+      localDateTime: localDateTime,
+    ),
+    loaded.rules,
+  );
 }
 
 RestrictionStatus _taxiStatus(

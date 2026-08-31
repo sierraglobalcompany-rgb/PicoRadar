@@ -27,8 +27,6 @@ void main() {
         'co-vac-cali',
         'co-bol-cartagena',
         'co-san-bucaramanga',
-        'co-tol-ibague',
-        'co-met-villavicencio',
         'co-cau-popayan',
       ]),
     );
@@ -37,6 +35,36 @@ void main() {
           .singleWhere((entry) => entry.id == 'co-qui-armenia')
           .classification,
       'PENDING_EXACT_RULES',
+    );
+    expect(
+      catalog.records
+          .singleWhere((entry) => entry.id == 'co-tol-ibague')
+          .classification,
+      'PENDING_EXACT_RULES',
+    );
+    expect(
+      catalog.records
+          .singleWhere((entry) => entry.id == 'co-met-villavicencio')
+          .classification,
+      'PENDING_EXACT_RULES',
+    );
+  });
+
+  test('pending catalog records explain conditional-rule blockers', () {
+    final raw = jsonDecode(
+      File(picoJurisdictionCatalogAssetPath).readAsStringSync(),
+    ) as Map<String, Object?>;
+    final records = (raw['records'] as List).cast<Map<String, Object?>>();
+
+    expect(
+      records.singleWhere((entry) => entry['id'] == 'co-tol-ibague')
+          ['pendingReason'],
+      'CONDITIONAL_REGISTRATION_CITY_WINDOW_UNSUPPORTED',
+    );
+    expect(
+      records.singleWhere((entry) => entry['id'] == 'co-met-villavicencio')
+          ['pendingReason'],
+      'CONDITIONAL_REGISTRATION_MODEL_EXEMPTION_UNSUPPORTED',
     );
   });
 
