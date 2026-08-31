@@ -50,4 +50,3 @@ Before any conditional city is promoted to AVAILABLE, a later lot must define:
 - No registration-city or model-year storage.
 - No geofence/corridor runtime.
 - No Home or Pico UI changes.
-

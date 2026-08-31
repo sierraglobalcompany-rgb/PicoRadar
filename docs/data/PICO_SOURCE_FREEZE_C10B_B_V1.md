@@ -262,4 +262,3 @@ Classification vocabulary:
 - Active catalog availability changes in C10B-B: 0
 - `mobile/assets/datasets/restrictions/restrictions_v1.json` edited: no
 - Source URLs verified on: 2026-08-31
-
