@@ -289,6 +289,18 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
           category: currentCoverage.category,
           date: now,
         );
+        final ruleSummary = summarizeCityRestrictionRules(
+          ruleSet: currentCoverage.ruleSet,
+          jurisdictionId: jurisdiction.id,
+          category: currentCoverage.category,
+          date: now,
+        );
+        final rotation = summarizeCityRestrictionRotation(
+          ruleSet: currentCoverage.ruleSet,
+          jurisdictionId: jurisdiction.id,
+          category: currentCoverage.category,
+          date: now,
+        );
 
         return ListView(
           key: const ValueKey('pico-city-screen'),
@@ -315,7 +327,15 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
               onChanged: (category) => setState(() => _category = category),
             ),
             const SizedBox(height: AppSpacing.m),
-            _CityHero(summary: summary, jurisdiction: jurisdiction),
+            _CityHero(
+              summary: summary,
+              ruleSummary: ruleSummary,
+              jurisdiction: jurisdiction,
+            ),
+            const SizedBox(height: AppSpacing.m),
+            _RuleSummaryCard(summary: ruleSummary),
+            const SizedBox(height: AppSpacing.m),
+            _RotationMatrixCard(rotation: rotation),
             const SizedBox(height: AppSpacing.m),
             _WeekSchedule(
               jurisdiction: jurisdiction,
@@ -2093,9 +2113,7 @@ class _CategorySegment extends StatelessWidget {
               child: _CategorySegmentButton(
                 coverage: coverages[index],
                 selected: coverages[index].category == selected,
-                onPressed: coverages[index].ruleSet.coverageKnown
-                    ? () => onChanged(coverages[index].category)
-                    : null,
+                onPressed: () => onChanged(coverages[index].category),
               ),
             ),
             if (index != coverages.length - 1) const SizedBox(width: 4),
@@ -2159,9 +2177,14 @@ class _CategorySegmentButton extends StatelessWidget {
 }
 
 class _CityHero extends StatelessWidget {
-  const _CityHero({required this.summary, required this.jurisdiction});
+  const _CityHero({
+    required this.summary,
+    required this.ruleSummary,
+    required this.jurisdiction,
+  });
 
   final CityRestrictionDaySummary summary;
+  final CityRestrictionRuleSummary ruleSummary;
   final RestrictionJurisdiction jurisdiction;
 
   @override
@@ -2194,15 +2217,24 @@ class _CityHero extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  summary.ruleLabel,
+                  '${ruleSummary.category.label} · ${summary.digitBasis.label}',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.bodyStrong,
                 ),
                 const SizedBox(height: AppSpacing.s),
+                _HeroFact(
+                  label: summary.status == RestrictionDayStatus.restricted
+                      ? 'Restringidos'
+                      : 'Estado',
+                  value: summary.status == RestrictionDayStatus.restricted
+                      ? _digitsOrRule(summary)
+                      : summary.ruleLabel,
+                ),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
-                  _windowsOrText(summary.effectiveWindows),
-                  maxLines: 1,
+                  _heroScheduleText(summary.effectiveWindows),
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption,
                 ),
@@ -2228,6 +2260,176 @@ class _CityHero extends StatelessWidget {
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroFact extends StatelessWidget {
+  const _HeroFact({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return RichText(
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      text: TextSpan(
+        style: AppTextStyles.caption.copyWith(
+          color: AppColors.navy.withValues(alpha: 0.68),
+        ),
+        children: [
+          TextSpan(text: '$label: '),
+          TextSpan(
+            text: value,
+            style: AppTextStyles.bodyStrong.copyWith(color: AppColors.navy),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RuleSummaryCard extends StatelessWidget {
+  const _RuleSummaryCard({required this.summary});
+
+  final CityRestrictionRuleSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final unavailable = !summary.coverageKnown;
+    return AppCard(
+      key: const ValueKey('pico-city-rule-summary-card'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Cómo aplica', style: AppTextStyles.h2),
+          const SizedBox(height: AppSpacing.m),
+          if (unavailable)
+            _RuleSummaryLine(
+              label: summary.category.label,
+              value: 'Cobertura aún no disponible para esta ciudad.',
+            )
+          else ...[
+            _RuleSummaryLine(label: 'Categoría', value: summary.category.label),
+            _RuleSummaryLine(
+              label: 'Se controla por',
+              value: summary.digitBasis.label.toUpperCase(),
+            ),
+            _RuleSummaryLine(
+              label: 'Horario',
+              value: _windowsOrText(summary.generalWindows),
+            ),
+            _RuleSummaryLine(
+              label: 'Vigencia',
+              value: _validity(summary.validFrom, summary.validUntil),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _RuleSummaryLine extends StatelessWidget {
+  const _RuleSummaryLine({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.s),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 118,
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.caption,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s),
+          Expanded(child: Text(value, style: AppTextStyles.bodyStrong)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RotationMatrixCard extends StatelessWidget {
+  const _RotationMatrixCard({required this.rotation});
+
+  final CityRestrictionRotationSummary rotation;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      key: const ValueKey('pico-city-rotation-card'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(rotation.title, style: AppTextStyles.h2),
+          const SizedBox(height: AppSpacing.s),
+          for (var index = 0; index < rotation.rows.length; index += 1)
+            _RotationRow(row: rotation.rows[index], index: index),
+        ],
+      ),
+    );
+  }
+}
+
+class _RotationRow extends StatelessWidget {
+  const _RotationRow({required this.row, required this.index});
+
+  final CityRestrictionRotationRow row;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _statusColor(row.status);
+    return Container(
+      key: ValueKey('pico-city-rotation-row-$index'),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: AppColors.border.withValues(alpha: 0.7)),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 92,
+            child: Text(
+              row.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodyStrong,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s),
+          Expanded(
+            child: Text(
+              _rotationDigits(row),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodyStrong.copyWith(color: color),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s),
+          Text(
+            _compactWindows(row.windows),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption,
           ),
         ],
       ),
@@ -2824,6 +3026,47 @@ String _windowsOrControlled(RestrictionDayEvaluation evaluation) {
 
 String _windowsOrText(List<RestrictionDayWindow> windows) {
   return windows.isEmpty ? 'Horario no publicado' : _windows(windows);
+}
+
+String _heroScheduleText(List<RestrictionDayWindow> windows) {
+  return windows.isEmpty
+      ? 'Horario no publicado'
+      : 'Horario: ${_windows(windows)}';
+}
+
+String _digitsOrRule(CityRestrictionDaySummary summary) {
+  if (summary.restrictedDigits.isEmpty) {
+    return summary.ruleLabel;
+  }
+  return summary.restrictedDigits.map((digit) => '$digit').join(' · ');
+}
+
+String _rotationDigits(CityRestrictionRotationRow row) {
+  if (row.status == RestrictionDayStatus.restricted) {
+    if (row.digits.isEmpty) {
+      return 'Todas las placas';
+    }
+    return row.digits.map((digit) => '$digit').join(' · ');
+  }
+  return switch (row.status) {
+    RestrictionDayStatus.allowed => 'Sin restricción',
+    RestrictionDayStatus.unknown => 'Cobertura no disponible',
+    RestrictionDayStatus.stale => 'Datos por actualizar',
+    RestrictionDayStatus.restricted => 'Todas las placas',
+  };
+}
+
+String _validity(DateTime? validFrom, DateTime? validUntil) {
+  if (validFrom == null && validUntil == null) {
+    return 'No publicada';
+  }
+  if (validFrom != null && validUntil != null) {
+    return '${_shortDate(validFrom)} - ${_shortDate(validUntil)}';
+  }
+  if (validFrom != null) {
+    return 'Desde ${_shortDate(validFrom)}';
+  }
+  return 'Hasta ${_shortDate(validUntil!)}';
 }
 
 String _compactWindows(List<RestrictionDayWindow> windows) {

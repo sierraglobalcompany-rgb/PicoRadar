@@ -122,6 +122,118 @@ void main() {
       'Primer número 1',
     );
   });
+
+  group('P04 city comprehension helpers', () {
+    test('summarizes weekly last-digit rules without duplicating data', () {
+      final ruleSet = _ruleSet(
+        rules: [
+          _rule(weekdays: {DateTime.monday}, digits: {5, 8}),
+          _rule(weekdays: {DateTime.tuesday}, digits: {1, 4}),
+        ],
+      );
+
+      final summary = summarizeCityRestrictionRules(
+        ruleSet: ruleSet,
+        jurisdictionId: 'co-dc-bogota',
+        category: PicoVehicleCategory.cars,
+        date: DateTime(2026, 8, 31),
+      );
+      final rotation = summarizeCityRestrictionRotation(
+        ruleSet: ruleSet,
+        jurisdictionId: 'co-dc-bogota',
+        category: PicoVehicleCategory.cars,
+        date: DateTime(2026, 8, 31),
+      );
+
+      expect(summary.digitBasis, CityRestrictionDigitBasis.lastNumeric);
+      expect(summary.generalWindows.single.startMinute, 360);
+      expect(summary.hasUniformSchedule, isTrue);
+      expect(rotation.title, 'Rotación vigente');
+      expect(rotation.isWeekly, isTrue);
+      expect(rotation.rows.first.label, 'Lunes');
+      expect(rotation.rows.first.digits, [5, 8]);
+      expect(rotation.rows[5].status, RestrictionDayStatus.allowed);
+    });
+
+    test('summarizes weekly first-number motorcycle rules', () {
+      final summary = summarizeCityRestrictionRules(
+        ruleSet: _ruleSet(
+          rules: [
+            _rule(
+              vehicleKinds: {VehicleKind.motorcycle},
+              digitPosition: RestrictionDigitPosition.firstNumeric,
+              digits: {5, 8},
+            ),
+          ],
+        ),
+        jurisdictionId: 'co-dc-bogota',
+        category: PicoVehicleCategory.motorcycles,
+        date: DateTime(2026, 8, 31),
+      );
+
+      expect(summary.category, PicoVehicleCategory.motorcycles);
+      expect(summary.digitBasis, CityRestrictionDigitBasis.firstNumeric);
+    });
+
+    test('date-parity rules render a seven-day date matrix', () {
+      final rotation = summarizeCityRestrictionRotation(
+        ruleSet: _ruleSet(
+          rules: [
+            _rule(
+              weekdays: null,
+              dateParity: RestrictionDateParity.odd,
+              digits: {1, 3, 5, 7, 9},
+            ),
+            _rule(
+              weekdays: null,
+              dateParity: RestrictionDateParity.even,
+              digits: {0, 2, 4, 6, 8},
+            ),
+          ],
+        ),
+        jurisdictionId: 'co-dc-bogota',
+        category: PicoVehicleCategory.cars,
+        date: DateTime(2026, 8, 31),
+      );
+
+      expect(rotation.title, 'Próximos 7 días');
+      expect(rotation.isWeekly, isFalse);
+      expect(rotation.rows, hasLength(7));
+      expect(rotation.rows.first.digits, [1, 3, 5, 7, 9]);
+      expect(rotation.rows[1].digits, [1, 3, 5, 7, 9]);
+      expect(rotation.rows[2].digits, [0, 2, 4, 6, 8]);
+    });
+
+    test('taxi without coverage fails closed with explicit unknown rows', () {
+      final rotation = summarizeCityRestrictionRotation(
+        ruleSet: const RestrictionRuleSet(
+          coverageKnown: false,
+          dataIsStale: false,
+          rules: [],
+        ),
+        jurisdictionId: 'co-ant-medellin',
+        category: PicoVehicleCategory.taxis,
+        date: DateTime(2026, 8, 31),
+      );
+
+      expect(rotation.isWeekly, isFalse);
+      expect(rotation.rows.first.status, RestrictionDayStatus.unknown);
+      expect(rotation.rows.first.digits, isEmpty);
+    });
+
+    test('stale data never reports a green rule summary', () {
+      final summary = summarizeCityRestrictionRules(
+        ruleSet: _ruleSet(dataIsStale: true, rules: [_rule()]),
+        jurisdictionId: 'co-dc-bogota',
+        category: PicoVehicleCategory.cars,
+        date: DateTime(2026, 8, 31),
+      );
+
+      expect(summary.dataIsStale, isTrue);
+      expect(summary.digitBasis, CityRestrictionDigitBasis.none);
+      expect(summary.generalWindows, isEmpty);
+    });
+  });
 }
 
 RestrictionRuleSet _ruleSet({
@@ -140,7 +252,8 @@ RestrictionRuleSet _ruleSet({
 RestrictionRule _rule({
   Set<VehicleKind> vehicleKinds = const {VehicleKind.car},
   Set<VehicleServiceType> serviceTypes = const {VehicleServiceType.private},
-  Set<int> weekdays = const {DateTime.thursday},
+  Set<int>? weekdays = const {DateTime.thursday},
+  RestrictionDateParity? dateParity,
   Set<int> digits = const {3},
   RestrictionDigitPosition digitPosition = RestrictionDigitPosition.lastNumeric,
   List<RestrictionTimeWindow> windows = const [
@@ -158,6 +271,7 @@ RestrictionRule _rule({
     vehicleKinds: vehicleKinds,
     serviceTypes: serviceTypes,
     weekdays: weekdays,
+    dateParity: dateParity,
     digitPosition: digitPosition,
     digits: digits,
     timeWindows: windows,
