@@ -14,7 +14,6 @@ use App\Support\GeographicNameNormalizer;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class AnsvRichCameraImporter
 {
@@ -146,7 +145,7 @@ class AnsvRichCameraImporter
         }
         $camera ??= new Camera;
         $camera->forceFill($attributes + [
-            'camera_id' => $camera->camera_id ?: 'cam_'.strtolower((string) Str::ulid()),
+            'camera_id' => $camera->camera_id ?: 'cam_'.substr($row['source_row_identity'], 0, 26),
             'status' => $status,
             'verified_at' => $fetchedAt,
             'speed_limit_verified' => $row['reported_speed_kmh'] !== null && $type->supportsSpeed(),

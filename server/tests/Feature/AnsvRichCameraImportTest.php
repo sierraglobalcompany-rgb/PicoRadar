@@ -132,6 +132,7 @@ class AnsvRichCameraImportTest extends TestCase
         $this->assertSame(1, Camera::query()->count());
         $camera = Camera::query()->firstOrFail();
         $this->assertSame(CameraStatus::Active, $camera->status);
+        $this->assertSame('cam_'.substr($camera->external_id, 0, 26), $camera->camera_id);
         $this->assertNull($camera->speed_limit);
         $this->assertFalse($camera->speed_limit_verified);
         $this->assertSame('Operando', $camera->operation_status);
