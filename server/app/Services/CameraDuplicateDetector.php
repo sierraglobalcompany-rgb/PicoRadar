@@ -30,6 +30,31 @@ class CameraDuplicateDetector
             ->sortBy('distanceMeters')->take($limit)->values()->all();
     }
 
+    /**
+     * Returns a bounded, non-N² registry scan. A cap hit is exposed so callers
+     * never present this operational signal as a complete global duplicate total.
+     *
+     * @return array{pairs: int, cappedSeeds: int}
+     */
+    public function boundedRegistryMetrics(float $meters = 25): array
+    {
+        $pairs = 0;
+        $cappedSeeds = 0;
+        Camera::query()->where('status', '!=', 'retired')->orderBy('id')->eachById(function (Camera $camera) use ($meters, &$pairs, &$cappedSeeds): void {
+            $candidates = $this->candidates($camera, $meters, 250);
+            if (count($candidates) === 250) {
+                $cappedSeeds++;
+            }
+            foreach ($candidates as $candidate) {
+                if ($camera->id < $candidate['camera']->id) {
+                    $pairs++;
+                }
+            }
+        });
+
+        return ['pairs' => $pairs, 'cappedSeeds' => $cappedSeeds];
+    }
+
     private function haversine(float $latA, float $lonA, float $latB, float $lonB): float
     {
         $a = sin(deg2rad(($latB - $latA) / 2)) ** 2 + cos(deg2rad($latA)) * cos(deg2rad($latB)) * sin(deg2rad(($lonB - $lonA) / 2)) ** 2;

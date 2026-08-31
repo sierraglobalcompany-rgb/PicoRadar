@@ -14,7 +14,9 @@ The duplicates view is read-only. It first bounds the search by jurisdiction and
 
 ## Integrity and readiness
 
-Run `php artisan picoradar:cameras:quality --json` for informational aggregate quality. Run `php artisan picoradar:cameras:integrity --json --fail-on-error` to find impossible state, provenance, geography, timestamp, fingerprint, and speed invariants. Run `php artisan picoradar:cameras:readiness --json --fail-on-error` to identify active records that cannot satisfy the future dataset contract. Both are read-only and accept `--jurisdiction=<key>`.
+Run `php artisan picoradar:cameras:quality --json` for informational aggregate quality. It includes reverification due, inactive/unverified source references, integrity-violation count and a bounded duplicate-candidate metric. The duplicate metric is explicitly not a global total if the per-seed cap is reached. Run `php artisan picoradar:cameras:integrity --json --fail-on-error` to find impossible state, provenance, geography, timestamp, fingerprint, and speed invariants. Run `php artisan picoradar:cameras:readiness --json --fail-on-error` to identify active records that cannot satisfy the future dataset contract. Both are read-only and accept `--jurisdiction=<key>`.
+
+The registry, verification and retirement operations use one database transaction for state mutation, history and audit. Their internal failure hook is constructor-only and test-only: no HTTP request or configuration enables it. The B03 test suite injects a failure after mutation for verify, activate and retire and proves that all of the associated rows roll back.
 
 ## Incident recovery
 
@@ -28,4 +30,4 @@ B04 receives stable `camera_id`, source registry and external-id uniqueness, man
 
 The camera table indexes status; jurisdiction/status; municipality/status; source/status; type/status; speed-verification/status; and jurisdiction/latitude/longitude. The last index supports the database bounding-box candidate query without spatial extensions and is portable across SQLite and MariaDB.
 
-The B03 scale test creates 5,000 synthetic distant cameras plus a nearby candidate and asserts that duplicate lookup uses the latitude/longitude bounding query. It does not use real camera data or network access.
+The B03 scale test creates 5,000 synthetic distant cameras plus a nearby candidate, asserts that duplicate lookup uses the latitude/longitude bounding query, and executes the chunked integrity/readiness commands. It does not use real camera data or network access.

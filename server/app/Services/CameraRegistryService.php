@@ -13,7 +13,8 @@ use Illuminate\Support\Str;
 
 class CameraRegistryService
 {
-    public function __construct(private readonly DatasetAuditLogger $audit) {}
+    /** The optional hook is a test-only transaction seam; no request can set it. */
+    public function __construct(private readonly DatasetAuditLogger $audit, private readonly ?\Closure $failureHook = null) {}
 
     public function create(array $data, ?User $actor = null): Camera
     {
@@ -71,6 +72,7 @@ class CameraRegistryService
                 throw new DomainException('Camera cannot retire from this state.');
             }
             $current->forceFill(['status' => CameraStatus::Retired, 'retired_at' => now(), 'retired_by_id' => $actor?->id])->save();
+            $this->checkpoint('retire.after_mutation');
             $this->audit->log($actor, 'camera.retired', $current, $this->meta($current) + $metadata);
 
             return $current;
@@ -121,6 +123,7 @@ class CameraRegistryService
                 $values['submitted_at'] = now();
             }
             $current->forceFill($values)->save();
+            $this->checkpoint("{$event}.after_mutation");
             $this->audit->log($actor, $event, $current, $this->meta($current) + $extra);
 
             return $current;
@@ -142,5 +145,10 @@ class CameraRegistryService
         $camera->loadMissing(['source', 'jurisdiction', 'geographicUnit']);
 
         return ['cameraId' => $camera->camera_id, 'sourceKey' => $camera->source->key, 'jurisdictionKey' => $camera->jurisdiction->key, 'geographicUnitCode' => $camera->geographicUnit->code];
+    }
+
+    private function checkpoint(string $point): void
+    {
+        ($this->failureHook) ? ($this->failureHook)($point) : null;
     }
 }

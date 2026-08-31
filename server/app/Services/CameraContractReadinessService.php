@@ -34,7 +34,7 @@ class CameraContractReadinessService
         if ((float) $camera->lat < -90 || (float) $camera->lat > 90 || (float) $camera->lon < -180 || (float) $camera->lon > 180) {
             $reasons[] = 'coordinates';
         }
-        if ($camera->speed_limit_verified && ($camera->speed_limit === null || ! $camera->type->supportsSpeed())) {
+        if ($camera->speed_limit_verified && ($camera->speed_limit === null || ! $camera->type->supportsSpeed() || ! $camera->speed_limit_verified_at)) {
             $reasons[] = 'speed_invariant';
         }
         try {

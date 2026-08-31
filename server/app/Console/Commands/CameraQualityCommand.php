@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\Enums\CameraStatus;
 use App\Models\Camera;
+use App\Services\CameraDuplicateDetector;
+use App\Services\CameraIntegrityAuditor;
 use Illuminate\Console\Command;
 
 class CameraQualityCommand extends Command
@@ -12,7 +14,7 @@ class CameraQualityCommand extends Command
 
     protected $description = 'Report read-only camera registry quality.';
 
-    public function handle(): int
+    public function handle(CameraIntegrityAuditor $integrity, CameraDuplicateDetector $duplicates): int
     {
         $byStatus = Camera::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
         $metrics = ['total' => (int) $byStatus->sum()];
@@ -26,6 +28,14 @@ class CameraQualityCommand extends Command
         $metrics['reverification_due'] = Camera::query()->whereIn('status', ['active', 'verified', 'inactive'])->whereNotNull('verified_at')->where('verified_at', '<=', now()->subDays((int) config('picoradar.camera_reverify_after_days', 180)))->count();
         $metrics['inactive_source_references'] = Camera::query()->whereHas('source', fn ($query) => $query->where('is_active', false))->count();
         $metrics['unverified_source_references'] = Camera::query()->whereHas('source', fn ($query) => $query->whereNull('verified_at'))->count();
+        $integrityViolations = 0;
+        Camera::query()->with(['source', 'jurisdiction.geographicUnits', 'geographicUnit'])->orderBy('id')->eachById(function (Camera $camera) use ($integrity, &$integrityViolations): void {
+            $integrityViolations += $integrity->assess($camera)['errors'] !== [];
+        });
+        $duplicateMetrics = $duplicates->boundedRegistryMetrics();
+        $metrics['integrity_violations'] = $integrityViolations;
+        $metrics['possible_duplicate_pairs_bounded'] = $duplicateMetrics['pairs'];
+        $metrics['duplicate_candidate_cap_hits'] = $duplicateMetrics['cappedSeeds'];
 
         if ($this->option('json')) {
             $this->line(json_encode(['schema' => 'picoradar.camera-quality.v1', 'metrics' => $metrics], JSON_THROW_ON_ERROR));

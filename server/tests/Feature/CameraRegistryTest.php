@@ -14,9 +14,11 @@ use App\Models\Jurisdiction;
 use App\Models\User;
 use App\Services\CameraContractReadinessService;
 use App\Services\CameraDuplicateDetector;
+use App\Services\CameraIntegrityAuditor;
 use App\Services\CameraRegistryService;
 use App\Services\CameraSourceService;
 use App\Services\CameraVerificationService;
+use App\Services\DatasetAuditLogger;
 use App\Services\GeographyImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -98,6 +100,8 @@ class CameraRegistryTest extends TestCase
         $result = app(CameraDuplicateDetector::class)->candidates($camera, 25);
         $this->assertSame($near->id, $result[0]['camera']->id);
         $this->assertNotEmpty($queries);
+        $this->artisan('picoradar:cameras:integrity', ['--json' => true])->expectsOutputToContain('picoradar.camera-integrity.v1')->assertExitCode(0);
+        $this->artisan('picoradar:cameras:readiness', ['--json' => true])->expectsOutputToContain('picoradar.camera-readiness.v1')->assertExitCode(0);
     }
 
     public function test_tampered_lifecycle_fields_are_not_accepted_by_camera_request(): void
@@ -189,6 +193,190 @@ class CameraRegistryTest extends TestCase
         $verification->delete();
     }
 
+    public function test_lifecycle_transition_matrix_allows_every_approved_edge(): void
+    {
+        $editor = User::factory()->create(['role' => OperatorRole::Editor]);
+        $reviewer = User::factory()->create(['role' => OperatorRole::Reviewer]);
+        $admin = User::factory()->create(['role' => OperatorRole::Admin]);
+        $registry = app(CameraRegistryService::class);
+        $verification = app(CameraVerificationService::class);
+
+        $camera = $this->draft($editor);
+        $this->assertSame(CameraStatus::InReview, $registry->submit($camera, $editor)->status);
+        $this->assertSame(CameraStatus::Draft, $registry->withdraw($camera, $editor)->status);
+        $registry->submit($camera, $editor);
+        $this->assertSame(CameraStatus::Rejected, $verification->reject($camera, 'Needs correction', $reviewer)->status);
+        $this->assertSame(CameraStatus::InReview, $registry->submit($camera, $editor)->status);
+        $verified = $verification->verify($camera, false, $reviewer);
+        $this->assertSame(CameraStatus::Draft, $registry->reopen($verified, 'Admin correction', $admin)->status);
+
+        $active = $this->verifiedCamera($editor, $reviewer);
+        $active = $verification->activate($active, $reviewer);
+        $this->assertSame(CameraStatus::Draft, $registry->reopen($active, 'Admin correction', $admin)->status);
+
+        $active = $verification->activate($this->verifiedCamera($editor, $reviewer), $reviewer);
+        $inactive = $registry->deactivate($active, 'Maintenance', $reviewer);
+        $this->assertSame(CameraStatus::Inactive, $inactive->status);
+        $reactivated = $verification->activate($inactive, $reviewer);
+        $this->assertSame(CameraStatus::Active, $reactivated->status);
+        $inactive = $registry->deactivate($reactivated, 'Maintenance again', $reviewer);
+        $this->assertSame(CameraStatus::Draft, $registry->reopen($inactive, 'Admin correction', $admin)->status);
+
+        $retiredFromActive = $registry->retire($verification->activate($this->verifiedCamera($editor, $reviewer), $reviewer), 'Removed', $reviewer);
+        $this->assertSame(CameraStatus::Retired, $retiredFromActive->status);
+        $retiredFromInactive = $registry->retire($registry->deactivate($verification->activate($this->verifiedCamera($editor, $reviewer), $reviewer), 'Maintenance', $reviewer), 'Removed', $reviewer);
+        $this->assertSame(CameraStatus::Retired, $retiredFromInactive->status);
+    }
+
+    public function test_lifecycle_transition_matrix_rejects_every_forbidden_edge(): void
+    {
+        $registry = app(CameraRegistryService::class);
+        $verification = app(CameraVerificationService::class);
+        $draft = $this->draft();
+        $this->assertDomainException(fn () => $verification->activate($draft));
+        $this->assertDomainException(fn () => $registry->retire($draft, 'No'));
+        $registry->submit($draft);
+        $this->assertDomainException(fn () => $verification->activate($draft));
+        $verification->reject($draft, 'No');
+        $this->assertDomainException(fn () => $verification->activate($draft));
+        $retired = $this->draft();
+        $retired->forceFill(['status' => CameraStatus::Retired, 'retired_at' => now()])->save();
+        $this->assertDomainException(fn () => $verification->activate($retired));
+        $this->assertDomainException(fn () => $registry->reopen($retired, 'No'));
+        $this->assertDomainException(fn () => $registry->updateDraft($retired, ['name' => 'No']));
+    }
+
+    public function test_each_lifecycle_retry_is_a_noop_without_duplicate_audit_or_history(): void
+    {
+        $editor = User::factory()->create(['role' => OperatorRole::Editor]);
+        $reviewer = User::factory()->create(['role' => OperatorRole::Reviewer]);
+        $registry = app(CameraRegistryService::class);
+        $verification = app(CameraVerificationService::class);
+        $camera = $this->draft($editor);
+        $registry->submit($camera, $editor);
+        $this->assertNoNewAudit(fn () => $registry->submit($camera, $editor));
+        $registry->withdraw($camera, $editor);
+        $this->assertNoNewAudit(fn () => $registry->withdraw($camera, $editor));
+        $registry->submit($camera, $editor);
+        $verification->verify($camera, false, $reviewer);
+        $verificationCount = CameraVerification::query()->where('camera_id', $camera->id)->count();
+        $this->assertNoNewAudit(fn () => $verification->verify($camera, false, $reviewer));
+        $this->assertSame($verificationCount, CameraVerification::query()->where('camera_id', $camera->id)->count());
+        $verification->activate($camera, $reviewer);
+        $this->assertNoNewAudit(fn () => $verification->activate($camera, $reviewer));
+        $registry->deactivate($camera, 'Maintenance', $reviewer);
+        $this->assertNoNewAudit(fn () => $registry->deactivate($camera, 'Maintenance', $reviewer));
+        $registry->retire($camera, 'Removed', $reviewer);
+        $this->assertNoNewAudit(fn () => $registry->retire($camera, 'Removed', $reviewer));
+    }
+
+    public function test_fault_injection_rolls_back_verify_activate_and_retire(): void
+    {
+        $editor = User::factory()->create(['role' => OperatorRole::Editor]);
+        $reviewer = User::factory()->create(['role' => OperatorRole::Reviewer]);
+        $registry = app(CameraRegistryService::class);
+        $fault = static fn (string $point) => throw new \RuntimeException("Injected {$point}");
+        $faultyVerification = new CameraVerificationService(app(DatasetAuditLogger::class), $registry, $fault);
+        $camera = $this->draft($editor);
+        $registry->submit($camera, $editor);
+        $this->assertThrowsRuntime(fn () => $faultyVerification->verify($camera, false, $reviewer));
+        $this->assertSame(CameraStatus::InReview, $camera->fresh()->status);
+        $this->assertSame(0, CameraVerification::query()->where('camera_id', $camera->id)->count());
+        $this->assertSame(0, AuditLog::query()->where('action', 'camera.verified')->count());
+
+        $verified = app(CameraVerificationService::class)->verify($camera, false, $reviewer);
+        $this->assertThrowsRuntime(fn () => $faultyVerification->activate($verified, $reviewer));
+        $this->assertSame(CameraStatus::Verified, $camera->fresh()->status);
+        $this->assertSame(0, AuditLog::query()->where('action', 'camera.activated')->count());
+
+        $active = app(CameraVerificationService::class)->activate($camera, $reviewer);
+        $faultyRegistry = new CameraRegistryService(app(DatasetAuditLogger::class), $fault);
+        $this->assertThrowsRuntime(fn () => $faultyRegistry->retire($active, 'Injected', $reviewer));
+        $this->assertSame(CameraStatus::Active, $camera->fresh()->status);
+        $this->assertNull($camera->fresh()->retired_at);
+        $this->assertSame(0, AuditLog::query()->where('action', 'camera.retired')->count());
+    }
+
+    public function test_source_workflow_audits_real_changes_and_blocks_active_dependencies(): void
+    {
+        $editor = User::factory()->create(['role' => OperatorRole::Editor]);
+        $service = app(CameraSourceService::class);
+        $source = $service->create(CameraSource::factory()->make()->toArray(), $editor);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'camera_source.created']);
+        $service->update($source, ['key' => $source->key, 'title' => 'Updated title', 'authority' => $source->authority, 'url' => $source->url, 'source_type' => $source->source_type, 'is_active' => true, 'verified_at' => $source->verified_at], $editor);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'camera_source.updated']);
+        $service->update($source->fresh(), ['key' => $source->key, 'title' => 'Updated title', 'authority' => $source->authority, 'url' => $source->url, 'source_type' => $source->source_type, 'is_active' => false, 'verified_at' => $source->verified_at], $editor);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'camera_source.deactivated']);
+        $service->update($source->fresh(), ['key' => $source->key, 'title' => 'Updated title', 'authority' => $source->authority, 'url' => $source->url, 'source_type' => $source->source_type, 'is_active' => true, 'verified_at' => $source->verified_at], $editor);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'camera_source.reactivated']);
+
+        $active = $this->activeCameraUsing($source->fresh(), $editor);
+        $this->assertDomainException(fn () => $service->update($source->fresh(), ['key' => $source->key, 'title' => 'Updated title', 'authority' => 'Changed authority', 'url' => $source->url, 'source_type' => $source->source_type, 'is_active' => true, 'verified_at' => $source->verified_at], $editor));
+        $this->assertDomainException(fn () => $service->update($source->fresh(), ['key' => $source->key, 'title' => 'Updated title', 'authority' => $source->authority, 'url' => $source->url, 'source_type' => $source->source_type, 'is_active' => false, 'verified_at' => $source->verified_at], $editor));
+        $this->assertSame(CameraStatus::Active, $active->fresh()->status);
+    }
+
+    public function test_external_id_is_unique_per_source_through_http_validation(): void
+    {
+        $editor = User::factory()->create(['role' => OperatorRole::Editor]);
+        $first = $this->draft($editor, ['external_id' => 'shared-id']);
+        $payload = $this->cameraPayload($first, ['external_id' => 'shared-id']);
+        $this->actingAs($editor)->post(route('admin.cameras.store'), $payload)->assertSessionHasErrors('external_id');
+        $otherSource = CameraSource::factory()->create();
+        $this->actingAs($editor)->post(route('admin.cameras.store'), $this->cameraPayload($first, ['source_id' => $otherSource->id, 'external_id' => 'shared-id']))->assertRedirect();
+        $this->actingAs($editor)->put(route('admin.cameras.update', $first), $this->cameraPayload($first, ['external_id' => 'shared-id', 'updated_at' => $first->updated_at->toISOString()]))->assertRedirect();
+    }
+
+    public function test_speed_verification_requires_timestamp_and_controls_overspeed_readiness(): void
+    {
+        $editor = User::factory()->create(['role' => OperatorRole::Editor]);
+        $reviewer = User::factory()->create(['role' => OperatorRole::Reviewer]);
+        $speed = $this->draft($editor, ['type' => CameraType::Speed, 'speed_limit' => 50]);
+        app(CameraRegistryService::class)->submit($speed, $editor);
+        $verifiedWithoutSpeed = app(CameraVerificationService::class)->verify($speed, false, $reviewer);
+        $activeWithoutSpeed = app(CameraVerificationService::class)->activate($verifiedWithoutSpeed, $reviewer);
+        $this->assertFalse($activeWithoutSpeed->isOverspeedEligible());
+        $speed2 = $this->draft($editor, ['type' => CameraType::Speed, 'speed_limit' => 50]);
+        app(CameraRegistryService::class)->submit($speed2, $editor);
+        $activeWithSpeed = app(CameraVerificationService::class)->activate(app(CameraVerificationService::class)->verify($speed2, true, $reviewer), $reviewer);
+        $this->assertTrue($activeWithSpeed->isOverspeedEligible());
+        $redLight = $this->draft($editor, ['type' => CameraType::RedLight, 'speed_limit' => 50]);
+        $this->assertFalse($redLight->isOverspeedEligible());
+        $activeWithSpeed->forceFill(['speed_limit_verified_at' => null])->save();
+        $tampered = $activeWithSpeed->fresh();
+        $this->assertContains('speed_verification', app(CameraIntegrityAuditor::class)->assess($tampered)['errors']);
+        $this->assertFalse(app(CameraContractReadinessService::class)->assess($tampered)['readyForFutureDataset']);
+    }
+
+    public function test_http_authorization_matrix_for_editor_reviewer_admin_super_admin_and_commercial(): void
+    {
+        $camera = $this->draft();
+        $source = $camera->source;
+        $editor = User::factory()->create(['role' => OperatorRole::Editor]);
+        $reviewer = User::factory()->create(['role' => OperatorRole::Reviewer]);
+        foreach ([route('admin.cameras.index'), route('admin.cameras.create'), route('admin.camera-sources.index'), route('admin.camera-sources.create')] as $route) {
+            $this->actingAs($editor)->get($route)->assertOk();
+        }
+        foreach ([route('admin.cameras.edit', $camera), route('admin.camera-sources.edit', $source)] as $route) {
+            $this->actingAs($reviewer)->get($route)->assertForbidden();
+        }
+        foreach ([route('admin.cameras.index'), route('admin.cameras.review'), route('admin.cameras.quality')] as $route) {
+            $this->actingAs($reviewer)->get($route)->assertOk();
+        }
+        $this->actingAs($editor)->post(route('admin.cameras.verify', $camera))->assertForbidden();
+        $this->actingAs($editor)->post(route('admin.cameras.reopen', $camera))->assertForbidden();
+        foreach ([OperatorRole::Admin, OperatorRole::SuperAdmin] as $role) {
+            $operator = User::factory()->create(['role' => $role]);
+            foreach ([route('admin.cameras.quality'), route('admin.cameras.review'), route('admin.cameras.edit', $camera), route('admin.camera-sources.edit', $source)] as $route) {
+                $this->actingAs($operator)->get($route)->assertOk();
+            }
+        }
+        $commercial = User::factory()->create(['role' => OperatorRole::Commercial]);
+        foreach ([route('admin.cameras.index'), route('admin.camera-sources.index'), route('admin.cameras.review'), route('admin.cameras.quality')] as $route) {
+            $this->actingAs($commercial)->get($route)->assertForbidden();
+        }
+    }
+
     private function draft(?User $actor = null, array $overrides = []): Camera
     {
         $jurisdiction = Jurisdiction::query()->where('enabled', true)->with('geographicUnits')->firstOrFail();
@@ -196,5 +384,54 @@ class CameraRegistryTest extends TestCase
         $source = CameraSource::factory()->create();
 
         return app(CameraRegistryService::class)->create(array_merge(['jurisdiction_id' => $jurisdiction->id, 'geographic_unit_id' => $municipality->id, 'source_id' => $source->id, 'lat' => 4.7110000, 'lon' => -74.0721000, 'type' => CameraType::Other, 'name' => 'Synthetic Camera A'], $overrides), $actor);
+    }
+
+    private function verifiedCamera(User $editor, User $reviewer): Camera
+    {
+        $camera = $this->draft($editor);
+        app(CameraRegistryService::class)->submit($camera, $editor);
+
+        return app(CameraVerificationService::class)->verify($camera, false, $reviewer);
+    }
+
+    private function activeCameraUsing(CameraSource $source, User $editor): Camera
+    {
+        $reviewer = User::factory()->create(['role' => OperatorRole::Reviewer]);
+        $camera = $this->draft($editor, ['source_id' => $source->id]);
+        app(CameraRegistryService::class)->submit($camera, $editor);
+
+        return app(CameraVerificationService::class)->activate(app(CameraVerificationService::class)->verify($camera, false, $reviewer), $reviewer);
+    }
+
+    private function cameraPayload(Camera $camera, array $overrides = []): array
+    {
+        return array_merge(['jurisdiction_id' => $camera->jurisdiction_id, 'geographic_unit_id' => $camera->geographic_unit_id, 'source_id' => $camera->source_id, 'external_id' => $camera->external_id, 'name' => $camera->name, 'lat' => $camera->lat, 'lon' => $camera->lon, 'type' => $camera->type->value, 'updated_at' => $camera->updated_at?->toISOString()], $overrides);
+    }
+
+    private function assertDomainException(callable $operation): void
+    {
+        try {
+            $operation();
+            $this->fail('Expected a domain transition failure.');
+        } catch (\DomainException|LogicException) {
+            $this->addToAssertionCount(1);
+        }
+    }
+
+    private function assertThrowsRuntime(callable $operation): void
+    {
+        try {
+            $operation();
+            $this->fail('Expected injected transaction failure.');
+        } catch (\RuntimeException) {
+            $this->addToAssertionCount(1);
+        }
+    }
+
+    private function assertNoNewAudit(callable $operation): void
+    {
+        $before = AuditLog::query()->count();
+        $operation();
+        $this->assertSame($before, AuditLog::query()->count());
     }
 }

@@ -146,21 +146,25 @@ class CameraController extends Controller
         return view('admin.cameras.duplicates', $this->base($request) + ['pairs' => $pairs, 'distance' => $distance, 'seedCameras' => $cameras]);
     }
 
-    public function quality(Request $request, CameraIntegrityAuditor $integrity)
+    public function quality(Request $request, CameraIntegrityAuditor $integrity, CameraDuplicateDetector $duplicates)
     {
         Gate::authorize('cameras.view');
         $all = Camera::query();
         $statuses = Camera::query()->selectRaw('status,count(*) count')->groupBy('status')->pluck('count', 'status');
         $invalidCoverage = 0;
         $fingerprint = 0;
-        Camera::query()->with(['source', 'jurisdiction.geographicUnits', 'geographicUnit'])->eachById(function (Camera $camera) use ($integrity, &$invalidCoverage, &$fingerprint): void {
+        $integrityViolations = 0;
+        Camera::query()->with(['source', 'jurisdiction.geographicUnits', 'geographicUnit'])->eachById(function (Camera $camera) use ($integrity, &$invalidCoverage, &$fingerprint, &$integrityViolations): void {
             $errors = $integrity->assess($camera)['errors'];
             $invalidCoverage += in_array('coverage', $errors, true);
             $fingerprint += in_array('fingerprint', $errors, true);
+            $integrityViolations += $errors !== [];
         });
 
         $operational = [CameraStatus::Active, CameraStatus::Verified, CameraStatus::Inactive];
         $speedReview = Camera::query()->whereIn('status', [CameraStatus::Active, CameraStatus::Verified])->whereIn('type', [CameraType::Speed, CameraType::Combined]);
+
+        $duplicateMetrics = $duplicates->boundedRegistryMetrics();
 
         return view('admin.cameras.quality', $this->base($request) + [
             'total' => $all->count(), 'byStatus' => $statuses,
@@ -173,7 +177,8 @@ class CameraController extends Controller
             'bySource' => Camera::query()->where('status', CameraStatus::Active)->join('camera_sources', 'camera_sources.id', '=', 'cameras.source_id')->selectRaw('camera_sources.title, count(*) as total')->groupBy('camera_sources.title')->pluck('total', 'title'),
             'byJurisdiction' => Camera::query()->join('jurisdictions', 'jurisdictions.id', '=', 'cameras.jurisdiction_id')->selectRaw('jurisdictions.name, count(*) as total')->groupBy('jurisdictions.name')->pluck('total', 'name'),
             'byMunicipality' => Camera::query()->join('geographic_units', 'geographic_units.id', '=', 'cameras.geographic_unit_id')->selectRaw('geographic_units.name, count(*) as total')->groupBy('geographic_units.name')->pluck('total', 'name'),
-            'invalidCoverage' => $invalidCoverage, 'fingerprintMismatch' => $fingerprint,
+            'invalidCoverage' => $invalidCoverage, 'fingerprintMismatch' => $fingerprint, 'integrityViolations' => $integrityViolations,
+            'possibleDuplicatePairs' => $duplicateMetrics['pairs'], 'duplicateCandidateCapHits' => $duplicateMetrics['cappedSeeds'],
             'reverifyCount' => Camera::query()->whereIn('status', $operational)->whereNotNull('verified_at')->where('verified_at', '<=', now()->subDays((int) config('picoradar.camera_reverify_after_days', 180)))->count(),
         ]);
     }

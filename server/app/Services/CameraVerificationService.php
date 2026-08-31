@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\DB;
 
 class CameraVerificationService
 {
-    public function __construct(private readonly DatasetAuditLogger $audit, private readonly CameraRegistryService $registry) {}
+    /** The optional hook is a test-only transaction seam; no request can set it. */
+    public function __construct(private readonly DatasetAuditLogger $audit, private readonly CameraRegistryService $registry, private readonly ?\Closure $failureHook = null) {}
 
     public function fingerprint(Camera $camera): string
     {
@@ -39,6 +40,7 @@ class CameraVerificationService
             $fingerprint = $this->fingerprint($current);
             $verification = CameraVerification::create(['camera_id' => $current->id, 'reviewer_id' => $actor?->id, 'decision' => CameraVerificationDecision::Verified, 'fingerprint' => $fingerprint, 'source_id' => $current->source_id, 'source_url_snapshot' => $current->source->url, 'speed_limit_snapshot' => $current->speed_limit, 'speed_limit_verified' => $speedVerified, 'notes' => trim(strip_tags($notes))]);
             $current->forceFill(['status' => CameraStatus::Verified, 'verified_at' => now(), 'verified_by_id' => $actor?->id, 'verification_fingerprint' => $fingerprint, 'speed_limit_verified' => $speedVerified, 'speed_limit_verified_at' => $speedVerified ? now() : null, 'speed_limit_verified_by_id' => $speedVerified ? $actor?->id : null])->save();
+            $this->checkpoint('verify.after_mutation');
             $this->audit->log($actor, 'camera.verified', $current, ['cameraId' => $current->camera_id, 'verificationId' => $verification->id, 'speedVerified' => $speedVerified]);
 
             return $current;
@@ -77,6 +79,7 @@ class CameraVerificationService
             }
             $this->registry->assertCoverage($current);
             $current->forceFill(['status' => CameraStatus::Active])->save();
+            $this->checkpoint('activate.after_mutation');
             $this->audit->log($actor, 'camera.activated', $current, ['cameraId' => $current->camera_id]);
 
             return $current;
@@ -91,5 +94,10 @@ class CameraVerificationService
         }
 
         return $reason;
+    }
+
+    private function checkpoint(string $point): void
+    {
+        ($this->failureHook) ? ($this->failureHook)($point) : null;
     }
 }
