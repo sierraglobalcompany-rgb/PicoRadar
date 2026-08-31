@@ -82,8 +82,7 @@ class SoatRtmOwnerContent extends ConsumerWidget {
                   onView: metadata == null
                       ? null
                       : () => _viewDocument(context, ref, metadata),
-                  onFindCda: () =>
-                      context.push('/apps/module/servicios?category=cda'),
+                  onFindCda: () => context.push('/apps/cda'),
                 ),
                 const SizedBox(height: AppSpacing.m),
                 _DocumentCard(
