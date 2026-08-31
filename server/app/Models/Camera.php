@@ -14,11 +14,11 @@ class Camera extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['jurisdiction_id', 'geographic_unit_id', 'source_id', 'external_id', 'name', 'lat', 'lon', 'type', 'direction', 'bearing', 'corridor', 'speed_limit', 'notes'];
+    protected $fillable = ['jurisdiction_id', 'geographic_unit_id', 'source_id', 'external_id', 'name', 'lat', 'lon', 'type', 'direction', 'bearing', 'corridor', 'speed_limit', 'notes', 'operation_status', 'traffic_authority', 'installation_type', 'equipment_name', 'raw_infraction_codes', 'raw_speed', 'operation_started_on', 'operation_initial_ends_on', 'operation_extension_ends_on', 'source_snapshot_sha', 'source_fetched_at'];
 
     protected function casts(): array
     {
-        return ['type' => CameraType::class, 'status' => CameraStatus::class, 'speed_limit_verified' => 'boolean', 'submitted_at' => 'datetime', 'verified_at' => 'datetime', 'speed_limit_verified_at' => 'datetime', 'retired_at' => 'datetime'];
+        return ['type' => CameraType::class, 'status' => CameraStatus::class, 'speed_limit_verified' => 'boolean', 'submitted_at' => 'datetime', 'verified_at' => 'datetime', 'speed_limit_verified_at' => 'datetime', 'retired_at' => 'datetime', 'raw_infraction_codes' => 'array', 'operation_started_on' => 'date', 'operation_initial_ends_on' => 'date', 'operation_extension_ends_on' => 'date', 'source_fetched_at' => 'datetime'];
     }
 
     public function source(): BelongsTo

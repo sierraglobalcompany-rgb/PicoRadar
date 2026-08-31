@@ -1,0 +1,198 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\CameraStatus;
+use App\Models\AnsvCameraImport;
+use App\Models\AnsvCameraImportRow;
+use App\Models\Camera;
+use App\Services\AnsvCameraRowNormalizer;
+use App\Services\AnsvRichCameraImporter;
+use App\Services\DatasetAuditLogger;
+use App\Services\GeographyImporter;
+use Carbon\CarbonImmutable;
+use DomainException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Tests\TestCase;
+
+class AnsvRichCameraImportTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private CarbonImmutable $fetchedAt;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutVite();
+        app(GeographyImporter::class)->bootstrap();
+        $this->fetchedAt = CarbonImmutable::parse('2026-08-31T15:44:00Z');
+    }
+
+    public function test_source_mapping_keeps_raw_37_nullable_and_parses_explicit_kmh(): void
+    {
+        $normalizer = app(AnsvCameraRowNormalizer::class);
+
+        $this->assertNull($normalizer->speed('37'));
+        $this->assertSame(50, $normalizer->speed('50 km/h'));
+    }
+
+    public function test_imports_operating_candidates_and_keeps_authorized_install_out_of_runtime(): void
+    {
+        $result = $this->import([
+            $this->row(['Estado operación' => 'Operando', 'Velocidad' => '50 km/h']),
+            $this->row(['Estado operación' => 'Autorizada instalar', 'Nombre equipo' => 'FUTURE01', 'Dirección' => 'CL 1 # 1-2']),
+        ]);
+
+        $this->assertSame(2, $result['rowCount']);
+        $this->assertSame(2, $result['masterImportedCount']);
+        $this->assertSame(1, $result['activeCandidateCount']);
+        $this->assertSame(0, $result['raw37ParsedAs37Kmh']);
+        $this->assertSame(1, Camera::query()->where('status', CameraStatus::Active)->count());
+        $this->assertSame(1, Camera::query()->where('status', CameraStatus::Inactive)->count());
+        $this->assertDatabaseHas('ansv_camera_import_rows', [
+            'operation_status' => 'Autorizada instalar',
+            'active_public_candidate' => false,
+        ]);
+    }
+
+    public function test_expired_desisted_future_and_invalid_coordinates_fail_closed(): void
+    {
+        $result = $this->import([
+            $this->row(['Estado operación' => 'Vencida', 'Nombre equipo' => 'VEN01', 'Dirección' => 'CL 2 # 1-2']),
+            $this->row(['Estado operación' => 'Autorizada – Desistida', 'Nombre equipo' => 'DES01', 'Dirección' => 'CL 3 # 1-2']),
+            $this->row(['Estado operación' => 'Operando', 'Nombre equipo' => 'FUT01', 'Dirección' => 'CL 4 # 1-2', 'Fecha inicio de operación' => '2027-01-01']),
+            $this->row(['Estado operación' => 'Operando', 'Nombre equipo' => 'BAD01', 'Dirección' => 'CL 5 # 1-2', 'Latitud' => '20', 'Longitud' => '-74.082919']),
+        ], 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+
+        $this->assertSame(0, $result['activeCandidateCount']);
+        $this->assertSame(1, $result['invalidCoordinateCount']);
+        $this->assertSame(0, Camera::query()->where('status', CameraStatus::Active)->count());
+    }
+
+    public function test_source_row_identity_does_not_collapse_duplicate_codigo_unico_with_distinct_equipment(): void
+    {
+        $result = $this->import([
+            $this->row(['Código unico' => 'CU0001', 'Nombre equipo' => 'CAM01', 'Dirección' => 'AV 1']),
+            $this->row(['Código unico' => 'CU0001', 'Nombre equipo' => 'CAM02', 'Dirección' => 'AV 2']),
+        ], 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc');
+
+        $this->assertSame(0, $result['duplicateIdentityCount']);
+        $this->assertSame(2, Camera::query()->count());
+        $this->assertSame(2, AnsvCameraImportRow::query()->distinct('source_row_identity')->count('source_row_identity'));
+    }
+
+    public function test_unknown_status_empty_source_and_missing_schema_require_review(): void
+    {
+        $this->expectException(DomainException::class);
+        $this->import([$this->row(['Estado operación' => 'Nuevo estado'])]);
+    }
+
+    public function test_empty_source_is_rejected(): void
+    {
+        $this->expectException(DomainException::class);
+        app(AnsvRichCameraImporter::class)->importRows([], str_repeat('d', 64), $this->fetchedAt);
+    }
+
+    public function test_schema_columns_are_required(): void
+    {
+        $this->expectException(DomainException::class);
+        app(AnsvRichCameraImporter::class)->importRows([['Estado operación' => 'Operando']], str_repeat('e', 64), $this->fetchedAt);
+    }
+
+    public function test_transaction_rolls_back_when_import_checkpoint_fails(): void
+    {
+        $importer = new AnsvRichCameraImporter(
+            app(AnsvCameraRowNormalizer::class),
+            app(DatasetAuditLogger::class),
+            static fn (string $point) => throw new \RuntimeException($point),
+        );
+
+        try {
+            $importer->importRows([$this->row()], str_repeat('f', 64), $this->fetchedAt);
+            $this->fail('Expected injected failure.');
+        } catch (\RuntimeException) {
+            $this->assertSame(0, AnsvCameraImport::query()->count());
+            $this->assertSame(0, AnsvCameraImportRow::query()->count());
+            $this->assertSame(0, Camera::query()->count());
+        }
+    }
+
+    public function test_idempotent_reimport_keeps_b03_master_and_provenance_stable(): void
+    {
+        $rows = [$this->row(['Velocidad' => '37'])];
+        $sha = str_repeat('a', 64);
+
+        $first = $this->import($rows, $sha);
+        $second = $this->import($rows, $sha);
+
+        $this->assertFalse($first['idempotent']);
+        $this->assertTrue($second['idempotent']);
+        $this->assertSame(1, Camera::query()->count());
+        $camera = Camera::query()->firstOrFail();
+        $this->assertSame(CameraStatus::Active, $camera->status);
+        $this->assertNull($camera->speed_limit);
+        $this->assertFalse($camera->speed_limit_verified);
+        $this->assertSame('Operando', $camera->operation_status);
+        $this->assertSame(str_repeat('a', 64), $camera->source_snapshot_sha);
+    }
+
+    public function test_active_camera_immutable_fields_are_not_mutated_by_later_import(): void
+    {
+        $row = $this->row();
+        $identity = app(AnsvCameraRowNormalizer::class)->identity($row + ['_source_row_number' => '2']);
+
+        $this->import([$row]);
+        $camera = Camera::query()->firstOrFail();
+        $this->assertSame('AV REGIONAL - CL 10', $camera->direction);
+
+        DB::table('cameras')->where('id', $camera->id)->update(['direction' => 'AV REGIONAL - CL HISTORICA']);
+
+        $this->import([$row], str_repeat('b', 64));
+
+        $camera->refresh();
+        $this->assertSame($identity, $camera->external_id);
+        $this->assertSame('AV REGIONAL - CL HISTORICA', $camera->direction);
+        $this->assertSame(6.244203, (float) $camera->lat);
+    }
+
+    /** @param list<array<string, string|null>> $rows */
+    private function import(array $rows, string $sha = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'): array
+    {
+        return app(AnsvRichCameraImporter::class)->importRows($rows, $sha, $this->fetchedAt);
+    }
+
+    /** @param array<string, string|null> $overrides */
+    private function row(array $overrides = []): array
+    {
+        return array_merge([
+            'Acciones' => '',
+            'Código solicitud' => 'SOL0000016334',
+            'Código unico' => 'CU000000000001',
+            'Estado operación' => 'Operando',
+            'Departamento' => 'ANTIOQUIA',
+            'Municipio' => 'MEDELLÍN',
+            'Fecha aprobación' => '2025-01-01',
+            'Dirección' => 'AV REGIONAL - CL 10',
+            'Latitud' => '6.244203',
+            'Longitud' => '-75.581211',
+            'Autoridad de tránsito' => 'SECRETARIA DE MOVILIDAD DE MEDELLÍN',
+            'Jurisdicción' => 'Municipal',
+            'Infracciones' => 'C02, C14, D02',
+            'Velocidad' => '50 km/h',
+            'Tipo de tecnología' => 'Radar Doppler',
+            'Tipo de instalación' => 'Fijo',
+            'Nombre equipo' => 'DEI47CAM01',
+            'Resolución de renovación' => '',
+            'Fecha radicación de renovación' => '',
+            'Fecha de notificación' => '',
+            'Fecha de recurso' => '',
+            'Fecha resolución de recurso' => '',
+            'Fecha de aprobación final' => '',
+            'Fecha finalización de prórroga' => '',
+            'Fecha inicio de operación' => '2025-01-01',
+            'Fecha finalización inicial' => '2031-08-31',
+        ], $overrides);
+    }
+}
