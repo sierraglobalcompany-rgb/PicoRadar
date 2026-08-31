@@ -10,6 +10,13 @@ class CameraPack {
         .whereType<Map>()
         .map((item) => TrafficCamera.fromJson(item.cast<String, Object?>()))
         .toList(growable: false);
+    for (final camera in cameraItems) {
+      if (!camera.hasApprovedAuthorizationStatus) {
+        throw FormatException(
+          'Camera pack contains a non-approved ANSV camera: ${camera.id}',
+        );
+      }
+    }
     return CameraPack(
       source: CameraPackSource.fromJson(sourceJson ?? const {}),
       cameras: cameraItems,
@@ -104,6 +111,10 @@ class TrafficCamera {
       return '$city, $dept';
     }
     return city ?? dept ?? 'Colombia';
+  }
+
+  bool get hasApprovedAuthorizationStatus {
+    return status?.trim().toLowerCase() == 'aprobada';
   }
 }
 

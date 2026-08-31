@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
 import sys
 import urllib.parse
@@ -13,6 +14,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from unicodedata import normalize
 
 
 SOURCE_URL = (
@@ -37,6 +39,28 @@ def _text(value: Any) -> str | None:
     if not text or text.lower() == "none":
         return None
     return text
+
+
+def _normalized_text(value: Any) -> str | None:
+    text = _text(value)
+    if text is None:
+        return None
+    without_accents = "".join(
+        char
+        for char in normalize("NFKD", text)
+        if not 0x300 <= ord(char) <= 0x036F
+    )
+    return re.sub(r"\s+", " ", without_accents).strip().casefold()
+
+
+def _camera_status(attributes: dict[str, Any]) -> str | None:
+    return _text(attributes.get("ESTADO_EQUIPO")) or _text(
+        attributes.get("ESTADO_SOLICITUD")
+    )
+
+
+def _is_approved_status(value: Any) -> bool:
+    return _normalized_text(value) == "aprobada"
 
 
 def _number(value: Any) -> float | None:
@@ -87,6 +111,25 @@ def _date(value: Any) -> str | None:
 
 def _is_colombia_coordinate(lat: float, lon: float) -> bool:
     return -5.0 <= lat <= 14.0 and -82.5 <= lon <= -66.0
+
+
+def _distance_meters(
+    *,
+    from_lat: float,
+    from_lon: float,
+    to_lat: float,
+    to_lon: float,
+) -> float:
+    radius = 6371000.0
+    lat1 = math.radians(from_lat)
+    lat2 = math.radians(to_lat)
+    delta_lat = math.radians(to_lat - from_lat)
+    delta_lon = math.radians(to_lon - from_lon)
+    haversine = (
+        math.sin(delta_lat / 2) ** 2
+        + math.cos(lat1) * math.cos(lat2) * math.sin(delta_lon / 2) ** 2
+    )
+    return radius * 2 * math.atan2(math.sqrt(haversine), math.sqrt(1 - haversine))
 
 
 def _query_json(path: str, params: dict[str, str | int]) -> dict[str, Any]:
@@ -149,16 +192,28 @@ def _fetch_features() -> tuple[dict[str, Any], list[dict[str, Any]]]:
 def build_pack(schema: dict[str, Any], features: list[dict[str, Any]]) -> dict[str, Any]:
     cameras: list[dict[str, Any]] = []
     official_ids: set[str] = set()
+    status_distribution: dict[str, int] = {}
+    excluded_status_distribution: dict[str, int] = {}
+    invalid_approved_coordinates = 0
     for feature in features:
         if not isinstance(feature, dict):
             continue
         attributes = feature.get("attributes")
         if not isinstance(attributes, dict):
             continue
+        status = _camera_status(attributes)
+        status_key = status or "UNKNOWN"
+        status_distribution[status_key] = status_distribution.get(status_key, 0) + 1
+        if not _is_approved_status(status):
+            excluded_status_distribution[status_key] = (
+                excluded_status_distribution.get(status_key, 0) + 1
+            )
+            continue
         geometry = feature.get("geometry") if isinstance(feature.get("geometry"), dict) else {}
         lat = _number(geometry.get("y")) or _number(attributes.get("LATITUD"))
         lon = _number(geometry.get("x")) or _number(attributes.get("LONGITUD"))
         if lat is None or lon is None or not _is_colombia_coordinate(lat, lon):
+            invalid_approved_coordinates += 1
             continue
 
         official_id = _text(attributes.get("ID_EQUIPO")) or _text(attributes.get("ID"))
@@ -178,8 +233,7 @@ def build_pack(schema: dict[str, Any], features: list[dict[str, Any]]) -> dict[s
                 "address": None,
                 "latitude": round(lat, 7),
                 "longitude": round(lon, 7),
-                "status": _text(attributes.get("ESTADO_EQUIPO"))
-                or _text(attributes.get("ESTADO_SOLICITUD")),
+                "status": "Aprobada",
                 "technology": _text(attributes.get("TIPO_INSTALACION")),
                 "kind": _kind(attributes),
                 "speedLimitKmh": _speed(attributes.get("VELOCIDAD_INFRACCIONAR")),
@@ -189,6 +243,8 @@ def build_pack(schema: dict[str, Any], features: list[dict[str, Any]]) -> dict[s
     cameras.sort(
         key=lambda item: (item["department"] or "", item["municipality"] or "", item["id"])
     )
+    exact_duplicate_coordinates = _count_exact_duplicate_coordinates(cameras)
+    near_duplicate_coordinates = _count_near_duplicate_coordinates(cameras)
     return {
         "schemaVersion": 1,
         "source": {
@@ -197,9 +253,50 @@ def build_pack(schema: dict[str, Any], features: list[dict[str, Any]]) -> dict[s
             "dataUrl": f"{SOURCE_URL}/query",
             "fetchedAtUtc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "featureServerLayer": schema.get("name"),
+            "sourceTotalCount": len(features),
+            "statusDistribution": dict(sorted(status_distribution.items())),
+            "approvedStatusCount": status_distribution.get("Aprobada", 0),
+            "approvedRuntimeCandidateCount": len(cameras),
+            "approvedWithoutRuntimeCoordinatesCount": invalid_approved_coordinates,
+            "excludedCount": len(features) - len(cameras),
+            "excludedStatusDistribution": dict(sorted(excluded_status_distribution.items())),
+            "duplicateAudit": {
+                "duplicateOfficialIds": 0,
+                "exactDuplicateCoordinates": exact_duplicate_coordinates,
+                "nearDuplicateCoordinatePairsWithin10m": near_duplicate_coordinates,
+            },
         },
         "cameras": cameras,
     }
+
+
+def _count_exact_duplicate_coordinates(cameras: list[dict[str, Any]]) -> int:
+    seen: set[tuple[float, float]] = set()
+    duplicates = 0
+    for camera in cameras:
+        coordinates = (float(camera["latitude"]), float(camera["longitude"]))
+        if coordinates in seen:
+            duplicates += 1
+        else:
+            seen.add(coordinates)
+    return duplicates
+
+
+def _count_near_duplicate_coordinates(cameras: list[dict[str, Any]]) -> int:
+    pairs = 0
+    for index, camera in enumerate(cameras):
+        lat = float(camera["latitude"])
+        lon = float(camera["longitude"])
+        for other in cameras[index + 1 :]:
+            distance = _distance_meters(
+                from_lat=lat,
+                from_lon=lon,
+                to_lat=float(other["latitude"]),
+                to_lon=float(other["longitude"]),
+            )
+            if 0 < distance <= 10:
+                pairs += 1
+    return pairs
 
 
 def main() -> int:
@@ -216,8 +313,16 @@ def main() -> int:
     )
     args.output.write_bytes(encoded)
     digest = hashlib.sha256(encoded).hexdigest()
+    source = pack["source"]
     print(f"wrote {args.output}")
+    print(f"sourceTotalCount {source['sourceTotalCount']}")
+    print(f"statusDistribution {json.dumps(source['statusDistribution'], ensure_ascii=False, sort_keys=True)}")
+    print(f"approvedStatusCount {source['approvedStatusCount']}")
+    print(f"approvedRuntimeCandidateCount {source['approvedRuntimeCandidateCount']}")
+    print(f"approvedWithoutRuntimeCoordinatesCount {source['approvedWithoutRuntimeCoordinatesCount']}")
+    print(f"excludedCount {source['excludedCount']}")
     print(f"cameras {len(pack['cameras'])}")
+    print(f"duplicateAudit {json.dumps(source['duplicateAudit'], sort_keys=True)}")
     print(f"sha256 {digest}")
     return 0
 

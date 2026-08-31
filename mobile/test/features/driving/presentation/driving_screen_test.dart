@@ -127,6 +127,35 @@ void main() {
     expect(transform.transform.storage[0], 1);
   });
 
+  testWidgets('authorized wording is shown for approved camera source', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 0));
+    await tester.pump();
+
+    expect(find.text('Fotodeteccion autorizada'), findsOneWidget);
+  });
+
   testWidgets('mirror HUD is mirrored and shows current camera distance', (
     tester,
   ) async {
@@ -216,12 +245,16 @@ CameraPack _pack() {
   );
 }
 
-DrivingPoint _point({required double latitude, required int seconds}) {
+DrivingPoint _point({
+  required double latitude,
+  required int seconds,
+  double speedKmh = 42,
+}) {
   return DrivingPoint(
     latitude: latitude,
     longitude: -75.57,
     accuracyMeters: 12,
-    speedKmh: 42,
+    speedKmh: speedKmh,
     headingDegrees: 0,
     recordedAt: DateTime.utc(2026, 8, 31, 12, 0, seconds),
   );
