@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../shell/app_shell.dart';
 import '../../features/apps_launcher/presentation/apps_screen.dart';
 import '../../features/apps_launcher/presentation/module_placeholder_screen.dart';
+import '../../features/cda/presentation/cda_finder_screen.dart';
 import '../../features/garage/presentation/garage_screen.dart';
 import '../../features/garage/presentation/vehicle_detail_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
@@ -99,6 +100,10 @@ List<RouteBase> _tabRoutes(AppTab tab) {
     ],
     AppTab.apps => [
       _picoRoute(),
+      GoRoute(
+        path: 'cda',
+        builder: (context, state) => const CdaFinderScreen(),
+      ),
       GoRoute(
         path: 'module/:id',
         builder: (context, state) {

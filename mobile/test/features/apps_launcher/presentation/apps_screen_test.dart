@@ -7,7 +7,9 @@ import 'package:picoradar/features/apps_launcher/data/module_registry.dart';
 import 'package:picoradar/features/apps_launcher/presentation/apps_launcher_panel.dart';
 import 'package:picoradar/features/apps_launcher/presentation/apps_screen.dart';
 import 'package:picoradar/features/apps_launcher/presentation/module_placeholder_screen.dart';
+import 'package:picoradar/features/cda/presentation/cda_finder_screen.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
+import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/presentation/pico_detail_screen.dart';
 
@@ -51,6 +53,7 @@ void main() {
 
   test('secondary modules keep the approved order', () {
     expect(secondaryModules.map((module) => module.title), [
+      'CDA',
       'Servicios',
       'Compra/Venta',
       'Trámites',
@@ -71,6 +74,13 @@ void main() {
         'vehicle-b',
       ),
       '/apps/module/soat?vehicleId=vehicle-b',
+    );
+    expect(
+      appsLauncherLocation(
+        secondaryModules.singleWhere((module) => module.id == 'cda'),
+        'vehicle-b',
+      ),
+      '/apps/cda',
     );
     expect(
       appsLauncherLocation(
@@ -230,6 +240,18 @@ void main() {
     expect(find.text('Planeacion de ruta sin mapa propio.'), findsOneWidget);
   });
 
+  testWidgets('Apps Más opens the official CDA finder', (tester) async {
+    await _openApps(tester, harness);
+    await tester.tap(find.text('Más'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('app-secondary-cda')));
+    await _pumpRoute(tester);
+
+    expect(find.byType(CdaFinderScreen), findsOneWidget);
+    expect(find.text('Buscar CDA'), findsWidgets);
+  });
+
   testWidgets('unimplemented modules open one neutral placeholder', (
     tester,
   ) async {
@@ -289,6 +311,26 @@ void main() {
       findsOneWidget,
     );
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
+  });
+
+  testWidgets('RTM Buscar CDA opens finder without mutating active vehicle', (
+    tester,
+  ) async {
+    final vehicle = await _createVehicle(harness, plate: 'RTM789');
+    await harness.repository.setActiveVehicle(vehicle.id);
+
+    await _openModuleFromApps(tester, harness, 'tecnomecanica');
+    await tester.tap(find.byKey(const ValueKey('owner-primary-rtm')));
+    await _pumpRoute(tester);
+    await _pumpUntil(tester, find.byKey(const ValueKey('cda-use-location')));
+
+    expect(find.byType(CdaFinderScreen), findsOneWidget);
+    expect(
+      await harness.preferences.getString(
+        VehicleRepository.activeVehiclePreferenceKey,
+      ),
+      vehicle.id,
+    );
   });
 
   testWidgets('vehicle status modules work for taxi and motorcycle', (
@@ -470,6 +512,15 @@ Future<void> _openApps(
 Future<void> _pumpRoute(WidgetTester tester) async {
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 350));
+}
+
+Future<void> _pumpUntil(WidgetTester tester, Finder finder) async {
+  for (var i = 0; i < 20; i += 1) {
+    if (finder.evaluate().isNotEmpty) {
+      return;
+    }
+    await tester.pump(const Duration(milliseconds: 250));
+  }
 }
 
 Future<void> _pumpPicoRoute(WidgetTester tester) async {

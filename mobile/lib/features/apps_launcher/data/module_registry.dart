@@ -84,6 +84,14 @@ const primaryModules = [
 
 const secondaryModules = [
   AppModule(
+    id: 'cda',
+    title: 'CDA',
+    icon: Icons.car_repair_outlined,
+    requiresVehicle: false,
+    destination: '/apps/cda',
+    featureFlagKey: 'module_cda_enabled',
+  ),
+  AppModule(
     id: 'servicios',
     title: 'Servicios',
     icon: Icons.handyman_outlined,
