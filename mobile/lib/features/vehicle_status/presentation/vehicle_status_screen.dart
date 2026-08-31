@@ -472,8 +472,7 @@ class _OfficialActions extends ConsumerWidget {
             padding: const EdgeInsets.only(top: AppSpacing.s),
             child: OutlinedButton.icon(
               key: const ValueKey('rtm-find-cda'),
-              onPressed: () =>
-                  context.push('/apps/module/servicios?category=cda'),
+              onPressed: () => context.push('/apps/cda'),
               icon: const Icon(Icons.search),
               label: const Text('Buscar CDA'),
             ),

@@ -26,6 +26,7 @@ Fecha de recuperacion R00: 2026-08-27. Base auditada: `main` en `0905d394b037966
 - Launcher Apps en recuperacion R02C como accion central overlay/bottom sheet; widget Android de acceso rapido en estado neutral/local.
 - Laravel 13 Control Plane: B00 Control Plane Foundation y B01 Dataset Registry + Publisher están merged en `main`. B01 aporta `datasets`, `sources`, releases inmutables, audit logs append-only, publisher de manifest estático, rollback y separación de roles. No existe API de producto en el hot path móvil.
 - Contrato estático B01: el manifest móvil y público del servidor es `/v1/manifest.json`; los datasets publicados siguen `/storage/datasets/{key}/{version}/{key}-{version}.json`. Flutter no se conecta directamente a MariaDB.
+- CDA01 implementa el finder oficial de CDA desde el dataset abierto RUNT/MinTransporte `epfm-5fhb`, con catálogo local versionado, búsqueda por nombre/municipio/departamento, entrada desde Apps Más y RTM `Buscar CDA`. No incluye direcciones, coordenadas, distancias, precios, teléfonos, WhatsApp, ratings ni patrocinados.
 
 ## Backend forense
 
@@ -136,7 +137,7 @@ R03 C13 Logic Integration + UI Restyle:
 - SOAT and RTM preserve C13 local obligation logic: due dates, optional metadata, reminders, RUNT official links and focused vehicle context.
 - SOAT/RTM now use a shared local private document store for optional PDF/image copies. Payloads are app-owned and AES-GCM encrypted; metadata remains local and no document bytes are stored in SQLite/detailsJson.
 - Plaintext viewer copies are temporary only: stale cache is purged before each view, after app resume, during startup, on failed external open and when replacing/deleting the document.
-- RTM `Buscar CDA` is a truthful navigation entry/placeholder only. Full CDA directory, GPS search, paid ranking and backend are not implemented.
+- RTM `Buscar CDA` abre el finder oficial CDA01. `CDA02_COORDINATES` queda como seam futuro para direcciones verificadas, coordenadas, distancia real, orden por cercanía y vista de mapa. Paid ranking y backend de patrocinados no estan implementados.
 - SOAT/RTM history shows real records only; history persistence for replaced obligations remains a future lot.
 - SOAT due/expired CTA updates local SOAT data; it does not claim renewal unless a real renewal destination is integrated. Commercial seams render house content or nothing unless a real HTTPS sponsored campaign exists; no ads are shown in document viewing.
 
