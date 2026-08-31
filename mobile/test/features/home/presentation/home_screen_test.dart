@@ -719,10 +719,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('tab-drive')));
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
 
-      expect(
-        find.text('Modo de conduccion de alta concentracion.'),
-        findsOneWidget,
-      );
+      expect(find.byKey(const ValueKey('start-driving')), findsOneWidget);
       expect((await harness.repository.getActiveVehicle())?.id, restricted.id);
     });
 
@@ -743,10 +740,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('tab-drive')));
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
 
-      expect(
-        find.text('Modo de conduccion de alta concentracion.'),
-        findsOneWidget,
-      );
+      expect(find.byKey(const ValueKey('start-driving')), findsOneWidget);
       expect((await harness.repository.getActiveVehicle())?.id, active.id);
     });
   });
@@ -1916,10 +1910,7 @@ void main() {
       await _goToShellPico(tester);
       await tester.tap(find.byKey(const ValueKey('tab-drive')));
       await _pumpAsyncHome(tester);
-      expect(
-        find.text('Modo de conduccion de alta concentracion.'),
-        findsOneWidget,
-      );
+      expect(find.byKey(const ValueKey('start-driving')), findsOneWidget);
       expect(find.byKey(const ValueKey('pico-city-screen')), findsNothing);
     });
 

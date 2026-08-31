@@ -74,6 +74,7 @@ flutter:
 
   assets:
     - assets/datasets/restrictions/restrictions_v1.json
+    - assets/datasets/cameras/camera_pack_v1.json
     - assets/avatars/
     - assets/vehicles/
     - assets/pico/
