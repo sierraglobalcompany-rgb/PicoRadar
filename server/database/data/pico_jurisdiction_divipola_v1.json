@@ -17,6 +17,7 @@
     { "key": "co-cal-manizales", "primaryDivipolaCode": "17001", "kind": "city", "coverageDivipolaCodes": ["17001"] },
     { "key": "co-atl-barranquilla", "primaryDivipolaCode": "08001", "kind": "city", "coverageDivipolaCodes": ["08001"] },
     { "key": "co-nar-pasto", "primaryDivipolaCode": "52001", "kind": "city", "coverageDivipolaCodes": ["52001"] },
-    { "key": "co-cor-monteria", "primaryDivipolaCode": "23001", "kind": "city", "coverageDivipolaCodes": ["23001"] }
+    { "key": "co-cor-monteria", "primaryDivipolaCode": "23001", "kind": "city", "coverageDivipolaCodes": ["23001"] },
+    { "key": "co-cau-popayan", "primaryDivipolaCode": "19001", "kind": "city", "coverageDivipolaCodes": ["19001"] }
   ]
 }
