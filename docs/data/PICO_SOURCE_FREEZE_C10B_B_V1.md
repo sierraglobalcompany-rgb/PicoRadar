@@ -16,6 +16,14 @@ Classification vocabulary:
 
 ## Summary
 
+Merged C10B-A runtime boundary as of this refresh:
+
+- AVAILABLE: Bogota, Medellin / Valle de Aburra, Cali, Cartagena,
+  Bucaramanga, Popayan.
+- Pending conditional: Ibague, Villavicencio.
+- Armenia remains pending exact implementation; this freeze preserves its
+  source dossier but does not promote it to runtime availability.
+
 | City | Department | Recommended runtime status | Confidence | Reason |
 |---|---|---|---|---|
 | Armenia | Quindio | READY_FOR_RULE_PACK | Medium | Official municipal news lists the 2026 extension; exact decree extraction remains the next rule-pack step. |
