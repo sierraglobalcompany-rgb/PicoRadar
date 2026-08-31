@@ -11,6 +11,8 @@ import '../theme/app_tokens.dart';
 import 'startup_timing.dart';
 
 final startupReadinessProvider = FutureProvider<StartupReadiness>((ref) async {
+  await ref.watch(privateVehicleDocumentStoreProvider).purgeViewerCache();
+  await ref.watch(vehicleDocumentGatewayProvider).clearTemporaryFiles();
   await ref.watch(bundledRestrictionsProvider.future);
   final vehicles = await ref.watch(vehicleListProvider.future);
   final activeVehicle = await ref.watch(activeVehicleProvider.future);

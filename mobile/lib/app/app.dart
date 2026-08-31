@@ -18,6 +18,20 @@ class PicoRadarApp extends ConsumerStatefulWidget {
 
 class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
   bool _notificationsStarted = false;
+  late final _DocumentViewerCacheLifecycleObserver _documentCacheObserver;
+
+  @override
+  void initState() {
+    super.initState();
+    _documentCacheObserver = _DocumentViewerCacheLifecycleObserver(ref);
+    WidgetsBinding.instance.addObserver(_documentCacheObserver);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(_documentCacheObserver);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +75,26 @@ class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
           alerts.copyWith(permissionGranted: enabled),
         );
         ref.invalidate(picoAlertPreferencesProvider);
+      } on MissingPluginException {
+        return;
+      }
+    });
+  }
+}
+
+class _DocumentViewerCacheLifecycleObserver extends WidgetsBindingObserver {
+  _DocumentViewerCacheLifecycleObserver(this.ref);
+
+  final WidgetRef ref;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      return;
+    }
+    Future<void>.microtask(() async {
+      try {
+        await ref.read(privateVehicleDocumentStoreProvider).purgeViewerCache();
       } on MissingPluginException {
         return;
       }

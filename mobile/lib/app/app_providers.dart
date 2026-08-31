@@ -8,8 +8,10 @@ import '../features/garage/data/vehicle_profile.dart';
 import '../features/garage/data/vehicle_repository.dart';
 import '../features/home/data/home_banner_config.dart';
 import '../features/vehicle_status/data/vehicle_obligation_store.dart';
+import '../features/vehicle_status/data/private_vehicle_document_store.dart';
 import '../features/vehicle_status/domain/vehicle_obligation.dart';
 import '../features/vehicle_status/platform/obligation_notifications.dart';
+import '../features/vehicle_status/platform/vehicle_document_gateway.dart';
 import '../features/visual_assets/data/visual_asset_catalogs.dart';
 import '../features/visual_assets/data/visual_asset_preferences.dart';
 import '../features/pico_placa/data/bundled_restrictions.dart';
@@ -124,6 +126,15 @@ final vehicleObligationStoreProvider = Provider<VehicleObligationStore>((ref) {
   return VehicleObligationStore(ref.watch(appDatabaseProvider));
 });
 
+final privateVehicleDocumentStoreProvider =
+    Provider<PrivateVehicleDocumentStore>((ref) {
+      return PrivateVehicleDocumentStore();
+    });
+
+final vehicleDocumentGatewayProvider = Provider<VehicleDocumentGateway>((ref) {
+  return const FilePickerVehicleDocumentGateway();
+});
+
 final vehicleObligationsProvider =
     FutureProvider.family<List<VehicleObligation>, String>((ref, vehicleId) {
       return ref
@@ -137,6 +148,16 @@ final vehicleObligationProvider =
       key,
     ) {
       return ref.watch(vehicleObligationStoreProvider).get(key.$1, key.$2);
+    });
+
+final privateVehicleDocumentProvider =
+    FutureProvider.family<
+      PrivateVehicleDocumentMetadata?,
+      (String, PrivateVehicleDocumentType)
+    >((ref, key) {
+      return ref
+          .watch(privateVehicleDocumentStoreProvider)
+          .get(vehicleId: key.$1, documentType: key.$2);
     });
 
 final picoWidgetBridgeProvider = Provider<PicoWidgetBridge>((ref) {

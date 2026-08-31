@@ -1503,6 +1503,13 @@ void main() {
 
       await _pumpDetail(tester, harness);
 
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('pico-city-week-list')),
+        220,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await _pumpAsyncHome(tester);
+
       final weekList = tester.widget<ListView>(
         find.descendant(
           of: find.byKey(const ValueKey('pico-city-week-list')),
@@ -1546,6 +1553,76 @@ void main() {
         find.byKey(const ValueKey('pico-city-add-vehicle')),
         findsOneWidget,
       );
+    });
+
+    testWidgets('P04 Medellin shows digit basis, hours and weekly rotation', (
+      tester,
+    ) async {
+      harness.now = DateTime(2026, 8, 31, 12);
+      await _readyHome(
+        harness,
+        plate: 'ABC125',
+        jurisdictionId: 'co-ant-medellin',
+      );
+
+      await _pumpDetail(tester, harness);
+
+      expect(find.text('Cómo aplica'), findsOneWidget);
+      expect(find.text('ÚLTIMO DÍGITO'), findsOneWidget);
+      expect(find.text('Horario no publicado'), findsNothing);
+      expect(find.text('05:00-20:00'), findsWidgets);
+      expect(find.text('Rotación vigente'), findsOneWidget);
+      expect(find.text('5 · 8'), findsWidgets);
+
+      await tester.tap(
+        find.byKey(const ValueKey('pico-city-category-motorcycles')),
+      );
+      await _pumpAsyncHome(tester);
+
+      expect(find.text('PRIMER NÚMERO'), findsOneWidget);
+      expect(find.text('5 · 8'), findsWidgets);
+    });
+
+    testWidgets('P04 Medellin taxi fails closed with explicit copy', (
+      tester,
+    ) async {
+      harness.now = DateTime(2026, 8, 31, 12);
+      await _readyHome(
+        harness,
+        plate: 'ABC125',
+        jurisdictionId: 'co-ant-medellin',
+      );
+
+      await _pumpDetail(tester, harness);
+      await tester.tap(find.byKey(const ValueKey('pico-city-category-taxis')));
+      await _pumpAsyncHome(tester);
+
+      expect(find.text('Taxis'), findsWidgets);
+      expect(
+        find.text('Cobertura aún no disponible para esta ciudad.'),
+        findsOneWidget,
+      );
+      expect(find.text('Cobertura no disponible'), findsWidgets);
+    });
+
+    testWidgets('P04 Bogota date-parity rules show seven-day matrix', (
+      tester,
+    ) async {
+      harness.now = DateTime(2026, 8, 31, 12);
+      await _readyHome(
+        harness,
+        plate: 'ABC125',
+        jurisdictionId: 'co-dc-bogota',
+      );
+
+      await _pumpDetail(tester, harness);
+
+      expect(find.text('Pico y placa de la ciudad'), findsOneWidget);
+      expect(find.text('PARIDAD DE FECHA'), findsOneWidget);
+      expect(find.text('Próximos 7 días'), findsOneWidget);
+      expect(find.text('Lun 31'), findsOneWidget);
+      expect(find.text('3'), findsWidgets);
+      expect(find.text('6'), findsWidgets);
     });
 
     testWidgets('city info icon and official source CTA are functional', (
@@ -2447,6 +2524,10 @@ const _jurisdictions = [
   RestrictionJurisdiction(id: 'co-ant-medellin', name: 'Medellín'),
 ];
 
+const _medellinWindows = [
+  RestrictionTimeWindow(startMinute: 300, endMinute: 1200),
+];
+
 class _FakeRestrictionStore extends RestrictionStore {
   _FakeRestrictionStore(super.database, this.now);
 
@@ -2475,21 +2556,63 @@ class _FakeRestrictionStore extends RestrictionStore {
         ? this.now.isAfter(DateTime(2026, 12, 31, 23, 59))
         : this.now.isAfter(DateTime(2026, 8, 31, 23, 59));
     if (jurisdictionId == 'co-ant-medellin') {
+      final digitPosition = vehicleKind == VehicleKind.motorcycle
+          ? RestrictionDigitPosition.firstNumeric
+          : RestrictionDigitPosition.lastNumeric;
       return RestrictionRuleSet(
         coverageKnown: true,
         dataIsStale: stale,
         staleAfter: staleAfter,
         rules: [
           _rule(
-            id: 'medellin-particular-thursday',
+            id: 'medellin-h2-monday',
+            jurisdictionId: jurisdictionId,
+            vehicleKinds: {vehicleKind},
+            serviceTypes: {serviceType},
+            weekdays: {DateTime.monday},
+            digitPosition: digitPosition,
+            digits: {5, 8},
+            timeWindows: _medellinWindows,
+          ),
+          _rule(
+            id: 'medellin-h2-tuesday',
+            jurisdictionId: jurisdictionId,
+            vehicleKinds: {vehicleKind},
+            serviceTypes: {serviceType},
+            weekdays: {DateTime.tuesday},
+            digitPosition: digitPosition,
+            digits: {1, 4},
+            timeWindows: _medellinWindows,
+          ),
+          _rule(
+            id: 'medellin-h2-wednesday',
+            jurisdictionId: jurisdictionId,
+            vehicleKinds: {vehicleKind},
+            serviceTypes: {serviceType},
+            weekdays: {DateTime.wednesday},
+            digitPosition: digitPosition,
+            digits: {0, 2},
+            timeWindows: _medellinWindows,
+          ),
+          _rule(
+            id: 'medellin-h2-thursday',
             jurisdictionId: jurisdictionId,
             vehicleKinds: {vehicleKind},
             serviceTypes: {serviceType},
             weekdays: {DateTime.thursday},
-            digitPosition: vehicleKind == VehicleKind.motorcycle
-                ? RestrictionDigitPosition.firstNumeric
-                : RestrictionDigitPosition.lastNumeric,
-            digits: {3},
+            digitPosition: digitPosition,
+            digits: {3, 6},
+            timeWindows: _medellinWindows,
+          ),
+          _rule(
+            id: 'medellin-h2-friday',
+            jurisdictionId: jurisdictionId,
+            vehicleKinds: {vehicleKind},
+            serviceTypes: {serviceType},
+            weekdays: {DateTime.friday},
+            digitPosition: digitPosition,
+            digits: {7, 9},
+            timeWindows: _medellinWindows,
           ),
         ],
         verifiedAt: DateTime(2026, 8, 1),
@@ -2503,21 +2626,23 @@ class _FakeRestrictionStore extends RestrictionStore {
       staleAfter: staleAfter,
       rules: [
         _rule(
-          id: 'bogota-private-monday',
+          id: 'bogota-private-odd-date',
           jurisdictionId: jurisdictionId,
           vehicleKinds: {VehicleKind.car},
           serviceTypes: {VehicleServiceType.private},
-          weekdays: {DateTime.monday},
+          weekdays: null,
+          dateParity: RestrictionDateParity.odd,
           digits: {3},
           appliesOnHolidays: false,
         ),
         _rule(
-          id: 'bogota-private-thursday',
+          id: 'bogota-private-even-date',
           jurisdictionId: jurisdictionId,
           vehicleKinds: {VehicleKind.car},
           serviceTypes: {VehicleServiceType.private},
-          weekdays: {DateTime.thursday},
-          digits: {3},
+          weekdays: null,
+          dateParity: RestrictionDateParity.even,
+          digits: {6},
           appliesOnHolidays: false,
         ),
         _rule(
@@ -2554,8 +2679,9 @@ RestrictionRule _rule({
   required String jurisdictionId,
   required Set<VehicleKind> vehicleKinds,
   required Set<VehicleServiceType> serviceTypes,
-  required Set<int> weekdays,
+  required Set<int>? weekdays,
   required Set<int> digits,
+  RestrictionDateParity? dateParity,
   RestrictionDigitPosition digitPosition = RestrictionDigitPosition.lastNumeric,
   List<RestrictionTimeWindow> timeWindows = const [
     RestrictionTimeWindow(startMinute: 360, endMinute: 1260),
@@ -2572,6 +2698,7 @@ RestrictionRule _rule({
     vehicleKinds: vehicleKinds,
     serviceTypes: serviceTypes,
     weekdays: weekdays,
+    dateParity: dateParity,
     digitPosition: digitPosition,
     digits: digits,
     timeWindows: timeWindows,

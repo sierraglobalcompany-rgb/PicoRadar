@@ -1,9 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/startup/startup_gate.dart';
+import 'package:picoradar/features/vehicle_status/data/private_vehicle_document_store.dart';
+import 'package:picoradar/features/vehicle_status/platform/vehicle_document_gateway.dart';
+
+import '../../test_app_harness.dart';
 
 void main() {
   testWidgets('shows branded loader until readiness completes', (tester) async {
@@ -107,6 +113,51 @@ void main() {
     expect(find.text('count 1'), findsOneWidget);
     expect(find.byKey(const ValueKey('startup-loader')), findsNothing);
   });
+
+  test('startup readiness purges stale plaintext viewer cache', () async {
+    final harness = TestAppHarness();
+    addTearDown(harness.dispose);
+    final source = File('${harness.documentRoot.path}/stale-soat.pdf');
+    await source.writeAsBytes([0x25, 0x50, 0x44, 0x46]);
+    final metadata = await harness.documentStore.importDocument(
+      vehicleId: 'vehicle-1',
+      documentType: PrivateVehicleDocumentType.soat,
+      source: source,
+      originalName: 'stale-soat.pdf',
+      mimeType: 'application/pdf',
+    );
+    final viewFile = await harness.documentStore.decryptForView(metadata);
+    expect(await viewFile.exists(), isTrue);
+
+    final container = ProviderContainer(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(harness.database),
+        appPreferencesProvider.overrideWithValue(harness.preferences),
+        privateVehicleDocumentStoreProvider.overrideWithValue(
+          harness.documentStore,
+        ),
+        vehicleDocumentGatewayProvider.overrideWithValue(
+          _StartupTestDocumentGateway(),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(startupReadinessProvider.future);
+
+    expect(await viewFile.exists(), isFalse);
+  });
+}
+
+class _StartupTestDocumentGateway implements VehicleDocumentGateway {
+  @override
+  Future<void> clearTemporaryFiles() async {}
+
+  @override
+  Future<bool> openDocument(File file) async => true;
+
+  @override
+  Future<PickedVehicleDocument?> pickDocument() async => null;
 }
 
 Widget _app({
