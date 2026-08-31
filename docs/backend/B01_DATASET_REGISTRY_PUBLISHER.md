@@ -1,5 +1,8 @@
 # B01 Dataset Registry + Publisher
 
+Status: **MERGED**
+Merge SHA: `ed691be34b8681e73d3d1aa3257b8b17d06a5431`
+
 B01 adds the Control Plane master data for `datasets`, `sources`, immutable `dataset_releases`, and append-only `audit_logs`. Draft JSON uses the private Laravel disk: it has no public route or URL.
 
 The release state machine is `draft → validated → published → retired`; `retired` is terminal. Historical release fields are protected in the model, not only in the UI. Publishing preserves the validated bytes in `datasets/{key}/{version}/{key}-{version}.json`, calculates SHA-256 from those exact bytes, locks dataset then release rows, and updates the dataset pointer. A retry of the same published release is idempotent. Any different pre-existing asset at the deterministic path aborts; no published asset is overwritten.
