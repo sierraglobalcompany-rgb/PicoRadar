@@ -16,12 +16,27 @@ void main() {
       expect(entry.classification.trim(), isNotEmpty);
     }
 
-    expect(catalog.records.length, 15);
+    expect(catalog.records.length, 16);
     expect(
       catalog.records
           .where((entry) => entry.classification == 'SUPPORTED_CURRENT')
           .map((entry) => entry.id),
-      containsAll(['co-dc-bogota', 'co-ant-medellin']),
+      containsAll([
+        'co-dc-bogota',
+        'co-ant-medellin',
+        'co-vac-cali',
+        'co-bol-cartagena',
+        'co-san-bucaramanga',
+        'co-tol-ibague',
+        'co-met-villavicencio',
+        'co-cau-popayan',
+      ]),
+    );
+    expect(
+      catalog.records
+          .singleWhere((entry) => entry.id == 'co-qui-armenia')
+          .classification,
+      'PENDING_EXACT_RULES',
     );
   });
 
@@ -35,6 +50,10 @@ void main() {
     expect(
       catalog.search('quindio').map((entry) => entry.id),
       contains('co-qui-armenia'),
+    );
+    expect(
+      catalog.search('cauca').map((entry) => entry.id),
+      contains('co-cau-popayan'),
     );
     expect(
       catalog.search('medellin').map((entry) => entry.id),
