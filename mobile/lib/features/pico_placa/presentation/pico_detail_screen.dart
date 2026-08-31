@@ -2233,8 +2233,8 @@ class _CityHero extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Horario: ${_windowsOrText(summary.effectiveWindows)}',
-                  maxLines: 1,
+                  _heroScheduleText(summary.effectiveWindows),
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption,
                 ),
@@ -3026,6 +3026,12 @@ String _windowsOrControlled(RestrictionDayEvaluation evaluation) {
 
 String _windowsOrText(List<RestrictionDayWindow> windows) {
   return windows.isEmpty ? 'Horario no publicado' : _windows(windows);
+}
+
+String _heroScheduleText(List<RestrictionDayWindow> windows) {
+  return windows.isEmpty
+      ? 'Horario no publicado'
+      : 'Horario: ${_windows(windows)}';
 }
 
 String _digitsOrRule(CityRestrictionDaySummary summary) {
