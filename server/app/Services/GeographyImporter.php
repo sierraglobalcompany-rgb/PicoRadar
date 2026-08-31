@@ -24,6 +24,7 @@ class GeographyImporter
         private readonly ?string $picoCatalogPath = null,
         private readonly ?string $picoMappingPath = null,
         private readonly ?string $registrationCatalogPath = null,
+        private readonly ?\Closure $failureHook = null,
     ) {}
 
     /** @return array<string, int> */
@@ -65,6 +66,9 @@ class GeographyImporter
                     'metadata' => ['officialType' => $municipality['officialType']],
                 ]);
             }
+            if ($this->failureHook) {
+                ($this->failureHook)();
+            }
             foreach ($data['picoCatalog']['records'] as $record) {
                 $mapping = $data['picoMappings'][$record['id']];
                 $primary = GeographicUnit::query()->where('code', $mapping['primaryDivipolaCode'])->firstOrFail();
@@ -79,8 +83,7 @@ class GeographyImporter
                 $jurisdiction = Jurisdiction::query()->where('key', $record['id'])->first();
                 $attributes = ['name' => $record['name'], 'kind' => JurisdictionKind::from($mapping['kind']), 'primary_geographic_unit_id' => $primary->id, 'enabled' => $record['classification'] === 'SUPPORTED_CURRENT', 'timezone' => 'America/Bogota', 'metadata' => $metadata];
                 if ($jurisdiction) {
-                    $jurisdiction = $this->jurisdictions->update($jurisdiction, $attributes);
-                    $this->jurisdictions->setCoverage($jurisdiction, $coverage);
+                    $jurisdiction = $this->jurisdictions->syncFromCanonicalMapping($jurisdiction, $attributes, $coverage);
                 } else {
                     $jurisdiction = $this->jurisdictions->create(['key' => $record['id']] + $attributes, $coverage);
                 }
@@ -129,15 +132,26 @@ class GeographyImporter
             }
             $municipalityCodes[$municipality['code']] = $municipality;
         }
-        $aliasMap = $this->validateAliases($aliases, $municipalityCodes, $departmentCodes);
         $registration = $this->readJson($this->registrationCatalogPath ?? base_path('../mobile/assets/catalogs/colombia_registration_cities_v1.json'));
         $registrationRecords = $registration['records'] ?? null;
         if (! is_array($registrationRecords) || ! array_is_list($registrationRecords)) {
             throw new DomainException('Registration city catalog is invalid.');
         }
+        $registrationPairs = [];
+        foreach ($registrationRecords as $record) {
+            if (! is_array($record) || ! is_string($record['municipality'] ?? null) || ! is_string($record['department'] ?? null)) {
+                throw new DomainException('Registration city record is invalid.');
+            }
+            $registrationPairs[$this->pair($record['municipality'], $record['department'])] = true;
+        }
+        $aliasMap = $this->validateAliases($aliases, $municipalityCodes, $departmentCodes, $registrationPairs);
         $canonicalPairs = [];
         foreach ($municipalityCodes as $municipality) {
-            $canonicalPairs[$this->pair($municipality['name'], $departmentCodes[$municipality['departmentCode']]['name'])] = $municipality['code'];
+            $pair = $this->pair($municipality['name'], $departmentCodes[$municipality['departmentCode']]['name']);
+            if (isset($canonicalPairs[$pair]) && $canonicalPairs[$pair] !== $municipality['code']) {
+                throw new DomainException('Ambiguous canonical municipality/department pair.');
+            }
+            $canonicalPairs[$pair] = $municipality['code'];
         }
         $exact = 0;
         $alias = 0;
@@ -159,8 +173,8 @@ class GeographyImporter
         return ['fixture' => $fixture, 'picoCatalog' => $picoCatalog, 'picoMappings' => $picoMappings, 'summary' => ['countries' => 1, 'departments' => count($departments), 'municipalities' => count($municipalities), 'jurisdictions' => count($picoCatalog['records']), 'coverageMappings' => array_sum(array_map(fn (array $mapping): int => count($mapping['coverageDivipolaCodes']), $picoMappings)), 'errors' => 0, 'registrationRecords' => count($registrationRecords), 'exactMatches' => $exact, 'aliasMatches' => $alias, 'unmatched' => 0, 'ambiguous' => 0]];
     }
 
-    /** @param array<string,mixed> $aliases @param array<string,array<string,mixed>> $municipalities @param array<string,array<string,mixed>> $departments @return array<string,string> */
-    private function validateAliases(array $aliases, array $municipalities, array $departments): array
+    /** @param array<string,mixed> $aliases @param array<string,array<string,mixed>> $municipalities @param array<string,array<string,mixed>> $departments @param array<string,bool> $registrationPairs @return array<string,string> */
+    private function validateAliases(array $aliases, array $municipalities, array $departments, array $registrationPairs): array
     {
         $records = $aliases['records'] ?? null;
         if (($aliases['schemaVersion'] ?? null) !== 1 || ($aliases['sourceSystem'] ?? null) !== 'runt_registration_city_catalog' || ! is_array($records) || ! array_is_list($records) || count($records) !== 12) {
@@ -168,16 +182,16 @@ class GeographyImporter
         }
         $map = [];
         foreach ($records as $alias) {
-            if (! is_array($alias) || ! is_string($alias['sourceMunicipality'] ?? null) || trim($alias['sourceMunicipality']) === '' || ! is_string($alias['sourceDepartment'] ?? null) || trim($alias['sourceDepartment']) === '' || ! is_string($alias['divipolaCode'] ?? null) || ! preg_match('/^\d{5}$/', $alias['divipolaCode']) || ! isset($municipalities[$alias['divipolaCode']])) {
+            if (! is_array($alias) || ! is_string($alias['sourceMunicipality'] ?? null) || trim($alias['sourceMunicipality']) === '' || ! is_string($alias['sourceDepartment'] ?? null) || trim($alias['sourceDepartment']) === '' || ! is_string($alias['sourceDepartmentDivipolaCode'] ?? null) || ! preg_match('/^\d{2}$/', $alias['sourceDepartmentDivipolaCode']) || ! is_string($alias['divipolaCode'] ?? null) || ! preg_match('/^\d{5}$/', $alias['divipolaCode']) || ! isset($municipalities[$alias['divipolaCode']])) {
                 throw new DomainException('Registration alias target is invalid.');
             }
             $target = $municipalities[$alias['divipolaCode']];
             $department = $departments[$target['departmentCode']];
-            if (GeographicNameNormalizer::normalize($target['name']) !== GeographicNameNormalizer::normalize((string) ($alias['canonicalMunicipality'] ?? '')) || GeographicNameNormalizer::normalize($department['name']) !== GeographicNameNormalizer::normalize((string) ($alias['canonicalDepartment'] ?? ''))) {
+            if ($target['departmentCode'] !== $alias['sourceDepartmentDivipolaCode'] || GeographicNameNormalizer::normalize($target['name']) !== GeographicNameNormalizer::normalize((string) ($alias['canonicalMunicipality'] ?? '')) || GeographicNameNormalizer::normalize($department['name']) !== GeographicNameNormalizer::normalize((string) ($alias['canonicalDepartment'] ?? ''))) {
                 throw new DomainException('Registration alias canonical evidence is invalid.');
             }
             $pair = $this->pair($alias['sourceMunicipality'], $alias['sourceDepartment']);
-            if (isset($map[$pair])) {
+            if (! isset($registrationPairs[$pair]) || isset($map[$pair])) {
                 throw new DomainException('Duplicate registration alias source pair.');
             }
             $map[$pair] = $alias['divipolaCode'];
@@ -191,12 +205,19 @@ class GeographyImporter
     {
         $records = $catalog['records'] ?? null;
         $mappings = $mappingFixture['records'] ?? null;
-        if (! is_array($records) || ! array_is_list($records) || ! is_array($mappings) || ! array_is_list($mappings)) {
+        if (! is_array($records) || ! array_is_list($records) || count($records) !== 15 || ! is_array($mappings) || ! array_is_list($mappings)) {
             throw new DomainException('Pico jurisdiction catalog is invalid.');
+        }
+        $catalogKeys = [];
+        foreach ($records as $record) {
+            if (! is_array($record) || ! is_string($record['id'] ?? null) || ! is_string($record['classification'] ?? null) || ! is_string($record['sourceDate'] ?? null) || isset($catalogKeys[$record['id']])) {
+                throw new DomainException('Pico jurisdiction catalog is invalid.');
+            }
+            $catalogKeys[$record['id']] = true;
         }
         $byKey = [];
         foreach ($mappings as $mapping) {
-            if (! is_array($mapping) || ! is_string($mapping['key'] ?? null) || ! is_string($mapping['primaryDivipolaCode'] ?? null) || ! isset($municipalities[$mapping['primaryDivipolaCode']]) || ! in_array($mapping['kind'] ?? null, array_map(static fn (JurisdictionKind $kind): string => $kind->value, JurisdictionKind::cases()), true) || ! is_array($mapping['coverageDivipolaCodes'] ?? null) || ! in_array($mapping['primaryDivipolaCode'], $mapping['coverageDivipolaCodes'], true) || isset($byKey[$mapping['key']])) {
+            if (! is_array($mapping) || ! is_string($mapping['key'] ?? null) || ! is_string($mapping['primaryDivipolaCode'] ?? null) || ! isset($municipalities[$mapping['primaryDivipolaCode']]) || ! in_array($mapping['kind'] ?? null, array_map(static fn (JurisdictionKind $kind): string => $kind->value, JurisdictionKind::cases()), true) || ! is_array($mapping['coverageDivipolaCodes'] ?? null) || ! array_is_list($mapping['coverageDivipolaCodes']) || count(array_keys($mapping['coverageDivipolaCodes'], $mapping['primaryDivipolaCode'], true)) !== 1 || count($mapping['coverageDivipolaCodes']) !== count(array_unique($mapping['coverageDivipolaCodes'])) || isset($byKey[$mapping['key']])) {
                 throw new DomainException('Pico jurisdiction mapping is invalid.');
             }
             foreach ($mapping['coverageDivipolaCodes'] as $code) {

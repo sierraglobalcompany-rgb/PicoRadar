@@ -87,6 +87,29 @@ class GeographyJurisdictionTest extends TestCase
         $this->importer(registrationPath: $this->writeFixture($catalog))->bootstrap(true);
     }
 
+    public function test_wrong_department_alias_and_ambiguous_canonical_pair_fail_during_dry_run_without_mutation(): void
+    {
+        $aliases = $this->fixture('registration_city_divipola_aliases_v1.json');
+        $aliases['records'][11]['sourceDepartmentDivipolaCode'] = '05';
+        try {
+            $this->importer(aliasPath: $this->writeFixture($aliases))->bootstrap(true);
+            $this->fail('Wrong-department alias was accepted.');
+        } catch (DomainException) {
+            $this->addToAssertionCount(1);
+        }
+        $dane = $this->fixture('colombia_divipola_mgn_2025.json');
+        $duplicate = $dane['municipalities'][0];
+        $duplicate['code'] = '99998';
+        $dane['municipalities'][] = $duplicate;
+        try {
+            $this->importer(fixturePath: $this->writeFixture($dane))->bootstrap(true);
+            $this->fail('Ambiguous canonical pair was accepted.');
+        } catch (DomainException) {
+            $this->addToAssertionCount(1);
+        }
+        $this->assertSame(0, GeographicUnit::query()->count());
+    }
+
     public function test_geography_structure_is_immutable_and_invalid_hierarchy_is_rejected(): void
     {
         $country = GeographicUnit::query()->create(['key' => 'co', 'code' => 'CO', 'level' => GeographicUnitLevel::Country, 'name' => 'Colombia', 'normalized_name' => 'colombia', 'is_active' => true, 'source_system' => 'test', 'source_version' => 'v1']);
@@ -141,6 +164,83 @@ class GeographyJurisdictionTest extends TestCase
         $jurisdiction->save();
     }
 
+    public function test_service_enforces_municipality_only_coverage_exact_sync_atomic_primary_changes_and_accurate_audits(): void
+    {
+        app(GeographyImporter::class)->bootstrap();
+        $service = app(JurisdictionService::class);
+        $municipalityA = GeographicUnit::query()->where('code', '05001')->firstOrFail();
+        $municipalityB = GeographicUnit::query()->where('code', '05088')->firstOrFail();
+        $municipalityX = GeographicUnit::query()->where('code', '05079')->firstOrFail();
+        $municipalityY = GeographicUnit::query()->where('code', '05129')->firstOrFail();
+        $department = GeographicUnit::query()->where('code', '05')->firstOrFail();
+        $country = GeographicUnit::query()->where('code', 'CO')->firstOrFail();
+        $jurisdiction = $service->create(['key' => 'co-ant-sync-test', 'name' => 'Sync test', 'kind' => 'city', 'primary_geographic_unit_id' => $municipalityA->id, 'enabled' => false, 'timezone' => 'America/Bogota'], [$municipalityA->id]);
+        $service->attachCoverage($jurisdiction, $municipalityX);
+        foreach ([$department, $country] as $nonMunicipality) {
+            try {
+                $service->attachCoverage($jurisdiction, $nonMunicipality);
+                $this->fail('Non-municipality coverage was accepted.');
+            } catch (DomainException) {
+                $this->addToAssertionCount(1);
+            }
+            try {
+                $service->create(['key' => 'co-invalid-'.$nonMunicipality->code, 'name' => 'Invalid', 'kind' => 'city', 'primary_geographic_unit_id' => $nonMunicipality->id, 'enabled' => false, 'timezone' => 'America/Bogota'], [$nonMunicipality->id]);
+                $this->fail('Non-municipality primary was accepted.');
+            } catch (DomainException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+        $service->setCoverage($jurisdiction, [$municipalityA->id]);
+        $this->assertSame([$municipalityA->id], $jurisdiction->fresh()->geographicUnits()->pluck('geographic_unit_id')->all());
+        $service->syncFromCanonicalMapping($jurisdiction, ['primary_geographic_unit_id' => $municipalityB->id, 'name' => 'Sync test updated'], [$municipalityB->id, $municipalityY->id]);
+        $jurisdiction = $jurisdiction->fresh();
+        $this->assertSame($municipalityB->id, $jurisdiction->primary_geographic_unit_id);
+        $this->assertSame([$municipalityB->id, $municipalityY->id], $jurisdiction->geographicUnits()->orderBy('geographic_unit_id')->pluck('geographic_unit_id')->all());
+        $auditCount = AuditLog::query()->count();
+        try {
+            $service->detachCoverage($jurisdiction, $municipalityX);
+            $this->fail('Missing coverage detach was accepted.');
+        } catch (DomainException) {
+            $this->addToAssertionCount(1);
+        }
+        $this->assertSame($auditCount, AuditLog::query()->count());
+        $beforeIdempotent = AuditLog::query()->whereIn('action', ['jurisdiction.coverage_attached', 'jurisdiction.coverage_detached'])->count();
+        $service->syncFromCanonicalMapping($jurisdiction, ['primary_geographic_unit_id' => $municipalityB->id, 'name' => 'Sync test updated'], [$municipalityB->id, $municipalityY->id]);
+        $this->assertSame($beforeIdempotent, AuditLog::query()->whereIn('action', ['jurisdiction.coverage_attached', 'jurisdiction.coverage_detached'])->count());
+    }
+
+    public function test_pico_mapping_contract_reconciles_every_mobile_key_and_preserves_metadata_and_enabled_state(): void
+    {
+        app(GeographyImporter::class)->bootstrap();
+        $mobile = $this->mobileFixture('catalogs/pico_jurisdiction_catalog_v1.json');
+        $server = Jurisdiction::query()->orderBy('key')->get()->keyBy('key');
+        $this->assertCount(15, $server);
+        $this->assertSame(collect($mobile['records'])->pluck('id')->sort()->values()->all(), $server->keys()->sort()->values()->all());
+        foreach ($mobile['records'] as $record) {
+            $jurisdiction = $server[$record['id']];
+            $this->assertSame($record['classification'], $jurisdiction->metadata['picoClassification']);
+            $this->assertSame($record['sourceDate'], $jurisdiction->metadata['sourceDate']);
+            $this->assertSame($record['classification'] === 'SUPPORTED_CURRENT', $jurisdiction->enabled);
+        }
+    }
+
+    public function test_bootstrap_rolls_back_everything_when_a_failure_occurs_after_geography_import(): void
+    {
+        $importer = $this->importer(failureHook: static function (): void {
+            throw new DomainException('Injected bootstrap failure.');
+        });
+        try {
+            $importer->bootstrap();
+            $this->fail('Injected bootstrap failure was accepted.');
+        } catch (DomainException) {
+            $this->addToAssertionCount(1);
+        }
+        $this->assertSame(0, GeographicUnit::query()->count());
+        $this->assertSame(0, Jurisdiction::query()->count());
+        $this->assertSame(0, DB::table('jurisdiction_geographic_unit')->count());
+        $this->assertSame(0, AuditLog::query()->count());
+    }
+
     public function test_admin_surfaces_enforce_roles_and_search_normalized_geography(): void
     {
         app(GeographyImporter::class)->bootstrap();
@@ -153,6 +253,42 @@ class GeographyJurisdictionTest extends TestCase
         $this->actingAs($reviewer)->get(route('admin.jurisdictions.create'))->assertForbidden();
         $this->actingAs($commercial)->get(route('admin.geography.index'))->assertForbidden();
         $this->actingAs($commercial)->get(route('admin.jurisdictions.index'))->assertForbidden();
+    }
+
+    public function test_authorization_matrix_covers_editor_reviewer_commercial_admin_and_super_admin_http_operations(): void
+    {
+        app(GeographyImporter::class)->bootstrap();
+        $primary = GeographicUnit::query()->where('code', '05001')->firstOrFail();
+        $extra = GeographicUnit::query()->where('code', '05088')->firstOrFail();
+        $editor = User::factory()->create(['role' => OperatorRole::Editor, 'is_active' => true]);
+        $reviewer = User::factory()->create(['role' => OperatorRole::Reviewer, 'is_active' => true]);
+        $commercial = User::factory()->create(['role' => OperatorRole::Commercial, 'is_active' => true]);
+        foreach ([OperatorRole::Admin, OperatorRole::SuperAdmin] as $role) {
+            $operator = User::factory()->create(['role' => $role, 'is_active' => true]);
+            $this->actingAs($operator)->get(route('admin.geography.index'))->assertOk();
+            $this->actingAs($operator)->get(route('admin.jurisdictions.index'))->assertOk();
+            $this->actingAs($operator)->get(route('admin.jurisdictions.create'))->assertOk();
+        }
+        $this->actingAs($editor)->get(route('admin.geography.index'))->assertOk();
+        $this->actingAs($editor)->get(route('admin.jurisdictions.index'))->assertOk();
+        $response = $this->actingAs($editor)->post(route('admin.jurisdictions.store'), ['key' => 'co-ant-editor-test', 'name' => 'Editor test', 'kind' => 'city', 'enabled' => '1', 'timezone' => 'America/Bogota', 'primary_geographic_unit_id' => $primary->id]);
+        $response->assertRedirect();
+        $jurisdiction = Jurisdiction::query()->where('key', 'co-ant-editor-test')->firstOrFail();
+        $this->actingAs($editor)->put(route('admin.jurisdictions.update', $jurisdiction), ['name' => 'Editor test updated', 'kind' => 'city', 'enabled' => '1', 'timezone' => 'America/Bogota', 'primary_geographic_unit_id' => $primary->id])->assertRedirect();
+        $this->actingAs($editor)->post(route('admin.jurisdictions.coverage.attach', $jurisdiction), ['geographic_unit_id' => $extra->id])->assertRedirect();
+        $this->actingAs($editor)->delete(route('admin.jurisdictions.coverage.detach', [$jurisdiction, $extra]))->assertRedirect();
+        $this->actingAs($reviewer)->get(route('admin.geography.index'))->assertOk();
+        $this->actingAs($reviewer)->get(route('admin.jurisdictions.index'))->assertOk();
+        $this->actingAs($reviewer)->post(route('admin.jurisdictions.store'), [])->assertForbidden();
+        $this->actingAs($reviewer)->put(route('admin.jurisdictions.update', $jurisdiction), [])->assertForbidden();
+        $this->actingAs($reviewer)->post(route('admin.jurisdictions.coverage.attach', $jurisdiction), ['geographic_unit_id' => $extra->id])->assertForbidden();
+        $this->actingAs($reviewer)->delete(route('admin.jurisdictions.coverage.detach', [$jurisdiction, $extra]))->assertForbidden();
+        $this->actingAs($commercial)->get(route('admin.geography.index'))->assertForbidden();
+        $this->actingAs($commercial)->get(route('admin.jurisdictions.index'))->assertForbidden();
+        $this->actingAs($commercial)->post(route('admin.jurisdictions.store'), [])->assertForbidden();
+        $this->actingAs($commercial)->put(route('admin.jurisdictions.update', $jurisdiction), [])->assertForbidden();
+        $this->actingAs($commercial)->post(route('admin.jurisdictions.coverage.attach', $jurisdiction), ['geographic_unit_id' => $extra->id])->assertForbidden();
+        $this->actingAs($commercial)->delete(route('admin.jurisdictions.coverage.detach', [$jurisdiction, $extra]))->assertForbidden();
     }
 
     /** @return array<string,mixed> */
@@ -176,8 +312,8 @@ class GeographyJurisdictionTest extends TestCase
         return $path;
     }
 
-    private function importer(?string $aliasPath = null, ?string $registrationPath = null): GeographyImporter
+    private function importer(?string $aliasPath = null, ?string $registrationPath = null, ?string $fixturePath = null, ?\Closure $failureHook = null): GeographyImporter
     {
-        return new GeographyImporter(app(DatasetAuditLogger::class), app(JurisdictionService::class), null, $aliasPath, null, null, $registrationPath);
+        return new GeographyImporter(app(DatasetAuditLogger::class), app(JurisdictionService::class), $fixturePath, $aliasPath, null, null, $registrationPath, $failureHook);
     }
 }

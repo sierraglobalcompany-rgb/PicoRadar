@@ -97,7 +97,7 @@ class JurisdictionController extends Controller
             $rules['key'] = ['required', 'regex:/^[a-z0-9-]+$/', 'max:64', Rule::unique('jurisdictions', 'key')];
         }
         $data = $request->validate($rules);
-        if (GeographicUnit::query()->whereKey($data['primary_geographic_unit_id'])->value('level') !== GeographicUnitLevel::Municipality->value) {
+        if (GeographicUnit::query()->whereKey($data['primary_geographic_unit_id'])->value('level') !== GeographicUnitLevel::Municipality) {
             abort(422, 'Primary geographic unit must be a municipality.');
         }
 
