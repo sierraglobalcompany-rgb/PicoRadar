@@ -8,6 +8,7 @@ use App\Models\Dataset;
 use App\Models\DatasetRelease;
 use App\Models\User;
 use App\Services\DatasetAuditLogger;
+use App\Services\DatasetPublisher;
 use App\Services\DatasetReleaseValidator;
 use DomainException;
 use Illuminate\Database\Eloquent\Model;
@@ -60,9 +61,10 @@ class DatasetReleaseValidationTest extends TestCase
         $this->assertSame(DatasetReleaseStatus::Validated, $canonical->refresh()->status);
     }
 
-    public function test_release_versions_are_path_safe_and_release_state_machine_is_closed(): void
+    public function test_release_versions_are_path_safe_and_state_machine_rejects_direct_advanced_creates(): void
     {
         $dataset = $this->dataset();
+        $operator = $this->operator();
         $valid = $dataset->releases()->create(['version' => '2026.08.27-pilot', 'status' => DatasetReleaseStatus::Draft]);
         $this->assertSame('2026.08.27-pilot', $valid->version);
         foreach (['.', '..', 'bad/path', 'bad\\path', str_repeat('a', 129)] as $unsafe) {
@@ -73,11 +75,26 @@ class DatasetReleaseValidationTest extends TestCase
                 $this->addToAssertionCount(1);
             }
         }
-        $validated = $dataset->releases()->create(['version' => 'validated', 'status' => DatasetReleaseStatus::Validated]);
+        foreach ([DatasetReleaseStatus::Validated, DatasetReleaseStatus::Published, DatasetReleaseStatus::Retired] as $status) {
+            try {
+                $dataset->releases()->create(['version' => "direct-{$status->value}", 'status' => $status]);
+                $this->fail("Direct {$status->value} creation unexpectedly succeeded.");
+            } catch (LogicException) {
+                $this->addToAssertionCount(1);
+            }
+        }
+        $validated = $this->draft($dataset, 'validated');
+        $validated = app(DatasetReleaseValidator::class)->validate($validated, $operator);
         $this->assertTransitionFails($validated, DatasetReleaseStatus::Draft);
-        $published = $dataset->releases()->create(['version' => 'published', 'status' => DatasetReleaseStatus::Published]);
+        $published = $this->draft($dataset, 'published');
+        $published = app(DatasetReleaseValidator::class)->validate($published, $operator);
+        $published = app(DatasetPublisher::class)->publish($published, $operator);
         $this->assertTransitionFails($published, DatasetReleaseStatus::Draft);
-        $retired = $dataset->releases()->create(['version' => 'retired', 'status' => DatasetReleaseStatus::Retired]);
+        $current = $this->draft($dataset, 'current');
+        $current = app(DatasetReleaseValidator::class)->validate($current, $operator);
+        app(DatasetPublisher::class)->publish($current, $operator);
+        app(DatasetPublisher::class)->retire($dataset, $published, $operator);
+        $retired = $published->refresh();
         $this->assertTransitionFails($retired, DatasetReleaseStatus::Published);
     }
 

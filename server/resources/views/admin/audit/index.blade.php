@@ -10,4 +10,5 @@
             <tbody>@forelse($logs as $log)<tr class="border-t"><td class="p-3">{{ $log->created_at?->toAtomString() }}</td><td class="p-3">{{ $log->actor?->email ?? 'System' }}</td><td class="p-3">{{ $log->action }}</td><td class="p-3">{{ class_basename($log->subject_type) }} #{{ $log->subject_id ?? '—' }}</td><td class="p-3"><code>{{ json_encode($log->metadata, JSON_UNESCAPED_SLASHES) }}</code></td></tr>@empty<tr><td class="p-3" colspan="5">No events yet.</td></tr>@endforelse</tbody>
         </table>
     </div>
+    <div class="mt-4">{{ $logs->links() }}</div>
 @endsection

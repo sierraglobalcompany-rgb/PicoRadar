@@ -4,4 +4,6 @@ Implements the Laravel-only dataset control plane: registry, verified sources, p
 
 State machine: `draft → validated → published → retired`; `retired` is terminal. Published assets are deterministic, content-addressed by SHA-256 of exact distributed bytes, and never overwritten. A shared cache lock serializes DB mutation plus post-commit static manifest regeneration; a failed rebuild is recovered through `picoradar:datasets:manifest`.
 
+The static mobile manifest is served at `/v1/manifest.json` through `public/v1 → storage/app/public/manifest/v1`; dataset releases remain at `/storage/datasets/...`. No PHP controller or MariaDB query serves sync traffic.
+
 CI retains the B00 PHP 8.3/8.4/8.5 SQLite matrix and MariaDB 11 job. External runner unavailability remains an infrastructure debt, not a pass.

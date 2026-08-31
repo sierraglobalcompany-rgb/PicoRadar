@@ -7,6 +7,7 @@ return [
     'max_upload_kb' => (int) env('DATASET_MAX_UPLOAD_KB', 5120),
     'min_app_version' => env('PICORADAR_MIN_APP_VERSION', '1.0.0'),
     'manifest_path' => 'manifest/v1/manifest.json',
+    'manifest_public_url' => '/v1/manifest.json',
     'manifest_lock_name' => 'picoradar:dataset-manifest-publication',
     'manifest_lock_seconds' => (int) env('DATASET_MANIFEST_LOCK_SECONDS', 60),
     'manifest_lock_wait_seconds' => (int) env('DATASET_MANIFEST_LOCK_WAIT_SECONDS', 10),

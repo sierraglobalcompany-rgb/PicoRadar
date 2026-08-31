@@ -24,6 +24,9 @@ class DatasetRelease extends Model
     protected static function booted(): void
     {
         static::creating(function (self $release): void {
+            if ($release->status !== DatasetReleaseStatus::Draft) {
+                throw new LogicException('New releases must be created as drafts.');
+            }
             if (! preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/', $release->version)) {
                 throw new LogicException('Release version is unsafe.');
             }
