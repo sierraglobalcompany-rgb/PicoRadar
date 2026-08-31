@@ -264,17 +264,14 @@ void main() {
 
     await _openModuleFromApps(tester, harness, 'soat');
     expect(find.text('SOAT'), findsWidgets);
-    expect(
-      find.text(
-        'La fecha mostrada fue guardada en este dispositivo. Verifica la vigencia oficial en RUNT.',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('SOAT SIN CONFIGURAR'), findsOneWidget);
+    expect(find.text('Configura tu SOAT'), findsOneWidget);
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
 
     await _openModuleFromApps(tester, harness, 'tecnomecanica');
     expect(find.text('Tecnomecánica / RTM'), findsOneWidget);
-    expect(find.byKey(const ValueKey('rtm-find-cda')), findsOneWidget);
+    expect(find.byKey(const ValueKey('owner-primary-rtm')), findsOneWidget);
+    expect(find.text('BUSCAR CDA'), findsOneWidget);
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
 
     await _openModuleFromApps(tester, harness, 'seguro_asistencia');
@@ -317,7 +314,7 @@ void main() {
       kind: VehicleKind.motorcycle,
     );
     await _openModuleFromApps(tester, motorcycleHarness, 'tecnomecanica');
-    expect(find.text('MOT123'), findsOneWidget);
+    expect(find.text('MOT123'), findsWidgets);
     expect(find.text('Tecnomecánica / RTM'), findsOneWidget);
   });
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/theme/app_tokens.dart';
@@ -9,40 +8,12 @@ import '../../garage/data/vehicle_profile.dart';
 import '../../garage/presentation/vehicle_display.dart';
 import '../data/vehicle_status_catalog.dart';
 import '../domain/vehicle_obligation.dart';
+import '../platform/external_launcher.dart';
+import 'soat_rtm_owner_content.dart';
 
-final externalLauncherProvider = Provider<ExternalLauncher>((ref) {
-  return const UrlExternalLauncher();
-});
+export '../platform/external_launcher.dart';
 
-abstract interface class ExternalLauncher {
-  Future<bool> openExternal(String uri);
-
-  Future<bool> callPhone(String phone);
-}
-
-class UrlExternalLauncher implements ExternalLauncher {
-  const UrlExternalLauncher();
-
-  @override
-  Future<bool> openExternal(String uri) {
-    return launchUrl(Uri.parse(uri), mode: LaunchMode.externalApplication);
-  }
-
-  @override
-  Future<bool> callPhone(String phone) {
-    final normalized = normalizePhoneForTel(phone);
-    if (normalized.isEmpty) {
-      return Future.value(false);
-    }
-    return launchUrl(Uri(scheme: 'tel', path: normalized));
-  }
-}
-
-String normalizePhoneForTel(String phone) {
-  return phone.trim().replaceAll(RegExp(r'[\s-]+'), '');
-}
-
-class VehicleStatusScreen extends ConsumerWidget {
+class VehicleStatusScreen extends ConsumerStatefulWidget {
   const VehicleStatusScreen({
     required this.moduleId,
     required this.vehicleId,
@@ -53,8 +24,30 @@ class VehicleStatusScreen extends ConsumerWidget {
   final String? vehicleId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final type = _typeFromModule(moduleId);
+  ConsumerState<VehicleStatusScreen> createState() =>
+      _VehicleStatusScreenState();
+}
+
+class _VehicleStatusScreenState extends ConsumerState<VehicleStatusScreen> {
+  String? _selectedVehicleId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedVehicleId = widget.vehicleId;
+  }
+
+  @override
+  void didUpdateWidget(VehicleStatusScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.vehicleId != widget.vehicleId) {
+      _selectedVehicleId = widget.vehicleId;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final type = _typeFromModule(widget.moduleId);
     if (type == null) {
       return const _MissingStatusModule();
     }
@@ -71,7 +64,7 @@ class VehicleStatusScreen extends ConsumerWidget {
             final vehicle = _resolveVehicle(
               items,
               active.asData?.value,
-              vehicleId,
+              _selectedVehicleId,
             );
             if (vehicle == null) {
               return const Center(
@@ -85,11 +78,27 @@ class VehicleStatusScreen extends ConsumerWidget {
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stackTrace) =>
                   _ErrorText(message: error.toString()),
-              data: (value) => _VehicleStatusContent(
-                vehicle: vehicle,
-                type: type,
-                obligation: value,
-              ),
+              data: (value) {
+                if (type == VehicleObligationType.soat ||
+                    type == VehicleObligationType.rtm) {
+                  return SoatRtmOwnerContent(
+                    vehicle: vehicle,
+                    vehicles: items,
+                    type: type,
+                    obligation: value,
+                    onEdit: () =>
+                        _editObligation(context, ref, vehicle, type, value),
+                    onSelectVehicle: (selected) {
+                      setState(() => _selectedVehicleId = selected.id);
+                    },
+                  );
+                }
+                return _VehicleStatusContent(
+                  vehicle: vehicle,
+                  type: type,
+                  obligation: value,
+                );
+              },
             );
           },
         ),
@@ -574,6 +583,9 @@ Future<void> _editObligation(
   final policyController = TextEditingController(
     text: details['policyNumber'] ?? '',
   );
+  final certificateController = TextEditingController(
+    text: details['certificateNumber'] ?? '',
+  );
   final assistanceController = TextEditingController(
     text: details['assistancePhone'] ?? '',
   );
@@ -652,6 +664,14 @@ Future<void> _editObligation(
                       decoration: const InputDecoration(
                         labelText: 'Número póliza',
                       ),
+                    )
+                  else
+                    TextField(
+                      key: const ValueKey('status-certificate-number-field'),
+                      controller: certificateController,
+                      decoration: const InputDecoration(
+                        labelText: 'N. de certificado',
+                      ),
                     ),
                   if (type == VehicleObligationType.insurance) ...[
                     TextField(
@@ -696,6 +716,7 @@ Future<void> _editObligation(
                     firstController.text,
                     selectedProvider,
                     policyController.text,
+                    certificateController.text,
                     assistanceController.text,
                     towController.text,
                     driverController.text,
@@ -719,6 +740,7 @@ Future<void> _editObligation(
   dueController.dispose();
   firstController.dispose();
   policyController.dispose();
+  certificateController.dispose();
   assistanceController.dispose();
   towController.dispose();
   driverController.dispose();
@@ -733,6 +755,7 @@ Future<void> _saveObligation(
   String firstDetail,
   String? selectedProvider,
   String policyNumber,
+  String certificateNumber,
   String assistancePhone,
   String towPhone,
   String driverPhone,
@@ -745,6 +768,7 @@ Future<void> _saveObligation(
       details['policyNumber'] = policyNumber;
     case VehicleObligationType.rtm:
       details['cdaName'] = firstDetail;
+      details['certificateNumber'] = certificateNumber;
     case VehicleObligationType.insurance:
       details['providerName'] = selectedProvider == 'Otra / no aparece'
           ? firstDetail
@@ -861,7 +885,10 @@ List<(String, String)> _detailRows(
       ('Aseguradora', details['insurerName'] ?? ''),
       ('Número póliza', details['policyNumber'] ?? ''),
     ],
-    VehicleObligationType.rtm => [('CDA', details['cdaName'] ?? '')],
+    VehicleObligationType.rtm => [
+      ('CDA', details['cdaName'] ?? ''),
+      ('N. de certificado', details['certificateNumber'] ?? ''),
+    ],
     VehicleObligationType.insurance => [
       ('Aseguradora', details['providerName'] ?? ''),
       ('Número póliza', details['policyNumber'] ?? ''),

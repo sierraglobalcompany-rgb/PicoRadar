@@ -109,7 +109,10 @@ List<RouteBase> _tabRoutes(AppTab tab) {
               vehicleId: state.uri.queryParameters['vehicleId'],
             );
           }
-          return ModulePlaceholderScreen(moduleId: moduleId);
+          return ModulePlaceholderScreen(
+            moduleId: moduleId,
+            category: state.uri.queryParameters['category'],
+          );
         },
       ),
     ],

@@ -130,9 +130,13 @@ R03 C13 Logic Integration + UI Restyle:
 - `/pico?vehicleId=<id>` is **Mi Pico y Placa** personalized vehicle detail.
 - `/pico` is **Pico y Placa de la ciudad** regulation overview.
 - The Home card is labeled `Pico y placa` while keeping contextual secondary content such as tomorrow/next restriction state; its tap continues to use the focused vehicle.
-- SOAT reference is owner-selected; R03B remains blocked until owner-selected `rtm_owner_v1.png` exists.
-- R03B UI implementation is not started.
-- SOAT and RTM current logic remains valid, but their current presentation is owner-rejected visual debt for R03B.
+- R03B SOAT/RTM owner V1 is implemented on branch `feat/R03B-soat-rtm-owner-v1` from owner-selected `soat_owner_v1.png` and `rtm_owner_v1.png`.
+- SOAT and RTM preserve C13 local obligation logic: due dates, optional metadata, reminders, RUNT official links and focused vehicle context.
+- SOAT/RTM now use a shared local private document store for optional PDF/image copies. Payloads are app-owned and AES-GCM encrypted; metadata remains local and no document bytes are stored in SQLite/detailsJson.
+- Plaintext viewer copies are temporary only: stale cache is purged before each view, after app resume, during startup, on failed external open and when replacing/deleting the document.
+- RTM `Buscar CDA` is a truthful navigation entry/placeholder only. Full CDA directory, GPS search, paid ranking and backend are not implemented.
+- SOAT/RTM history shows real records only; history persistence for replaced obligations remains a future lot.
+- SOAT due/expired CTA updates local SOAT data; it does not claim renewal unless a real renewal destination is integrated. Commercial seams render house content or nothing unless a real HTTPS sponsored campaign exists; no ads are shown in document viewing.
 
 C10B National Pico rollout:
 - `docs/data/PICO_JURISDICTION_COVERAGE_AUDIT_20260830.md` is research authority only.
