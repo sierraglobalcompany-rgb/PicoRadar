@@ -50,6 +50,16 @@ class OperatorAuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_login_page_has_security_headers(): void
+    {
+        $this->get('/login')
+            ->assertOk()
+            ->assertHeader('X-Frame-Options', 'DENY')
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+            ->assertHeader('Permissions-Policy', 'camera=(), geolocation=(), microphone=()');
+    }
+
     public function test_an_inactive_operator_cannot_sign_in_or_keep_a_dashboard_session(): void
     {
         $operator = $this->operator(active: false);

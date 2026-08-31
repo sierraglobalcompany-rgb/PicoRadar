@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table): void {
             $table->string('role', 32)->default('reviewer')->after('password');
-            $table->boolean('is_active')->default(true)->after('role');
+            $table->boolean('is_active')->default(false)->after('role');
         });
     }
 
