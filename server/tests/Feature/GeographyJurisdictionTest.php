@@ -34,7 +34,7 @@ class GeographyJurisdictionTest extends TestCase
         $this->assertSame(1, $summary['countries']);
         $this->assertSame(33, $summary['departments']);
         $this->assertSame(1104, $summary['municipalities']);
-        $this->assertSame(15, $summary['jurisdictions']);
+        $this->assertSame(16, $summary['jurisdictions']);
         $this->assertSame(288, $summary['registrationRecords']);
         $this->assertSame(276, $summary['exactMatches']);
         $this->assertSame(12, $summary['aliasMatches']);
@@ -42,11 +42,11 @@ class GeographyJurisdictionTest extends TestCase
         $this->assertSame(0, GeographicUnit::query()->count());
     }
 
-    public function test_pico_runtime_validation_is_dynamic_while_current_fixture_snapshot_is_fifteen(): void
+    public function test_pico_runtime_validation_is_dynamic_while_current_fixture_snapshot_is_sixteen(): void
     {
         $catalog = $this->mobileFixture('catalogs/pico_jurisdiction_catalog_v1.json');
         $mappings = $this->fixture('pico_jurisdiction_divipola_v1.json');
-        $this->assertCount(15, $catalog['records']);
+        $this->assertCount(16, $catalog['records']);
         array_pop($catalog['records']);
         array_pop($mappings['records']);
 
@@ -55,7 +55,7 @@ class GeographyJurisdictionTest extends TestCase
             picoMappingPath: $this->writeFixture($mappings),
         )->bootstrap(true);
 
-        $this->assertSame(14, $summary['jurisdictions']);
+        $this->assertSame(15, $summary['jurisdictions']);
         $this->assertSame(0, GeographicUnit::query()->count());
     }
 
@@ -253,7 +253,7 @@ class GeographyJurisdictionTest extends TestCase
         app(GeographyImporter::class)->bootstrap();
         $mobile = $this->mobileFixture('catalogs/pico_jurisdiction_catalog_v1.json');
         $server = Jurisdiction::query()->orderBy('key')->get()->keyBy('key');
-        $this->assertCount(15, $server);
+        $this->assertCount(16, $server);
         $this->assertSame(collect($mobile['records'])->pluck('id')->sort()->values()->all(), $server->keys()->sort()->values()->all());
         foreach ($mobile['records'] as $record) {
             $jurisdiction = $server[$record['id']];
