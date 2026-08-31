@@ -28,6 +28,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('datasets.view', fn (User $user): bool => $user->role !== OperatorRole::Commercial);
         Gate::define('datasets.edit', fn (User $user): bool => in_array($user->role, [OperatorRole::SuperAdmin, OperatorRole::Admin, OperatorRole::Editor], true));
         Gate::define('datasets.review', fn (User $user): bool => in_array($user->role, [OperatorRole::SuperAdmin, OperatorRole::Admin, OperatorRole::Reviewer], true));
+        Gate::define('geography.view', fn (User $user): bool => $user->role !== OperatorRole::Commercial);
+        Gate::define('geography.bootstrap', fn (User $user): bool => in_array($user->role, [OperatorRole::SuperAdmin, OperatorRole::Admin], true));
+        Gate::define('jurisdictions.view', fn (User $user): bool => $user->role !== OperatorRole::Commercial);
+        Gate::define('jurisdictions.edit', fn (User $user): bool => in_array($user->role, [OperatorRole::SuperAdmin, OperatorRole::Admin, OperatorRole::Editor], true));
         RateLimiter::for('health', function (Request $request): Limit {
             return Limit::perMinute(60)
                 ->by('health|'.$request->ip())
