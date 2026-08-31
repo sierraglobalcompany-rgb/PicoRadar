@@ -31,11 +31,11 @@ Fecha de recuperacion R00: 2026-08-27. Base auditada: `main` en `0905d394b037966
 | Area | Estado | Decision |
 |---|---|---|
 | `server/routes/web.php` | Ruta `/` Laravel scaffold | KEEP |
-| Controllers de producto | Health API y sesión/panel de operadores B00 | FOUNDATION ONLY; B01+ sigue pendiente |
+| Controllers de producto | Health API, sesión de operadores y registry/publisher B01 | Control plane estático; sin hot path móvil |
 | Models de producto | `User` como operador administrativo con role/active | FOUNDATION ONLY; sin usuarios móviles |
-| Migrations | Usuarios, cache, jobs, sesiones Laravel + roles de operador B00 | FOUNDATION ONLY; sin schema de datasets |
-| Jobs/Commands de producto | Creación interactiva de primer `super_admin` | FOUNDATION ONLY; publisher pendiente |
-| Tests server | Health, auth de operadores y migración SQLite B00 | B01+ requiere pruebas de publisher |
+| Migrations | Usuarios B00 y datasets/sources/releases/audit B01 | Control plane MariaDB/SQLite compatible |
+| Jobs/Commands de producto | Creación de `super_admin` y regeneración de manifest B01 | Publisher síncrono, sin queues |
+| Tests server | Health/auth B00 y pruebas de registry/publisher B01 | Publisher, rollback, manifiesto y permisos cubiertos |
 | Config/env | SQLite local/tests, MySQL/MariaDB documentado y CI PHP 8.3–8.5 | B00 READY FOR EXTERNAL AUDIT |
 
 Backend/control-plane esta materialmente pendiente. El roadmap C00-C29 original sigue siendo la autoridad para responsabilidades backend: C22 Routes/Places proxy, C25 Reports/Leads, C28 Admin/control plane + dataset publisher y C29 hardening. R00 recomienda adelantar la fundacion publisher/control-plane de C28, pero cualquier numeracion B00/B01 es propuesta hasta aprobacion explicita. No implementar capacidades duplicadas entre Bxx propuesto y Cxx aprobado.
