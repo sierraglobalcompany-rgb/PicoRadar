@@ -2,8 +2,11 @@
 
 namespace App\Providers;
 
+use App\Enums\OperatorRole;
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -22,6 +25,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::define('datasets.view', fn (User $user): bool => $user->role !== OperatorRole::Commercial);
+        Gate::define('datasets.edit', fn (User $user): bool => in_array($user->role, [OperatorRole::SuperAdmin, OperatorRole::Admin, OperatorRole::Editor], true));
+        Gate::define('datasets.review', fn (User $user): bool => in_array($user->role, [OperatorRole::SuperAdmin, OperatorRole::Admin, OperatorRole::Reviewer], true));
         RateLimiter::for('health', function (Request $request): Limit {
             return Limit::perMinute(60)
                 ->by('health|'.$request->ip())
