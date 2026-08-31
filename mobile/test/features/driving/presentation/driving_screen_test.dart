@@ -35,7 +35,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Conducir'), findsOneWidget);
+    expect(find.byKey(const ValueKey('ready-speed-coverage')), findsOneWidget);
     expect(find.byKey(const ValueKey('start-driving')), findsOneWidget);
     expect(find.textContaining('No se guarda recorrido'), findsOneWidget);
     expect(gateway.requestPermissionCalls, 0);
@@ -156,6 +156,82 @@ void main() {
     expect(find.text('Fotodeteccion autorizada'), findsOneWidget);
   });
 
+  testWidgets('known camera speed shows sign, distance, status, and delta', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 50));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 70));
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('driving-speed-gauge')), findsOneWidget);
+    expect(find.byKey(const ValueKey('camera-speed-sign')), findsOneWidget);
+    expect(find.byKey(const ValueKey('camera-distance-pill')), findsOneWidget);
+    expect(find.text('60 km/h'), findsWidgets);
+    expect(find.textContaining('Reduce velocidad'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('driving-overspeed-delta')),
+      findsOneWidget,
+    );
+    expect(find.text('+10 km/h'), findsOneWidget);
+  });
+
+  testWidgets(
+    'unknown camera speed omits speed sign and avoids overspeed claim',
+    (tester) async {
+      final gateway = _StreamingGateway();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+            cameraPackProvider.overrideWith(
+              (ref) async => _pack(speedLimitKmh: null),
+            ),
+            drivingLocationGatewayProvider.overrideWithValue(gateway),
+            drivingFeedbackGatewayProvider.overrideWithValue(
+              _NoopDrivingFeedbackGateway(),
+            ),
+          ],
+          child: const MaterialApp(home: DrivingScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('start-driving')));
+      await tester.pump();
+      gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 100));
+      await tester.pump();
+      gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 100));
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('camera-speed-sign')), findsNothing);
+      expect(find.text('No publicada'), findsOneWidget);
+      expect(find.textContaining('Reduce velocidad'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('driving-overspeed-delta')),
+        findsNothing,
+      );
+    },
+  );
+
   testWidgets('mirror HUD is mirrored and shows current camera distance', (
     tester,
   ) async {
@@ -189,7 +265,45 @@ void main() {
     );
     expect(transform.transform.storage[0], -1);
     expect(find.byKey(const ValueKey('hud-camera-distance')), findsOneWidget);
+    expect(find.byKey(const ValueKey('hud-camera-speed-sign')), findsOneWidget);
     expect(find.textContaining('Camara'), findsOneWidget);
+  });
+
+  testWidgets('HUD with unknown speed omits the speed sign', (tester) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith(
+            (ref) async => _pack(speedLimitKmh: null),
+          ),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20));
+    await tester.pump();
+    await tester.tap(find.byTooltip('HUD'));
+    await tester.pumpAndSettle();
+
+    final transform = tester.widget<Transform>(
+      find.byKey(const ValueKey('hud-content-transform')),
+    );
+    expect(transform.transform.storage[0], 1);
+    expect(find.byKey(const ValueKey('hud-camera-speed-sign')), findsNothing);
+    expect(find.byKey(const ValueKey('hud-camera-distance')), findsOneWidget);
+    expect(find.text('Velocidad no publicada'), findsOneWidget);
   });
 }
 
@@ -219,7 +333,7 @@ CameraPack _emptyPack() {
   );
 }
 
-CameraPack _pack() {
+CameraPack _pack({int? speedLimitKmh = 60}) {
   return CameraPack(
     source: const CameraPackSource(
       name: 'ANSV',
@@ -228,7 +342,7 @@ CameraPack _pack() {
       fetchedAtUtc: '2026-08-31T00:00:00Z',
     ),
     cameras: [
-      const TrafficCamera(
+      TrafficCamera(
         id: 'cam-1',
         department: 'ANTIOQUIA',
         municipality: 'MEDELLIN',
@@ -239,7 +353,7 @@ CameraPack _pack() {
         status: 'Aprobada',
         technology: 'Camara',
         kind: CameraKind.mixed,
-        speedLimitKmh: 60,
+        speedLimitKmh: speedLimitKmh,
       ),
     ],
   );

@@ -152,7 +152,60 @@ void main() {
     );
 
     expect(withLimit!.overspeed, isTrue);
+    expect(withLimit.currentSpeedKmh, 50);
+    expect(withLimit.reportedSpeedKmh, 40);
     expect(withoutLimit!.overspeed, isFalse);
+    expect(withoutLimit.reportedSpeedKmh, isNull);
+  });
+
+  test('speed comparison documents the 3 km/h visual hysteresis', () {
+    final camera = _camera(speedLimitKmh: 60);
+
+    bool overspeedAt(double speed) {
+      return DrivingAlertEngine()
+          .evaluate(
+            match: CameraMatch(
+              camera: camera,
+              distanceMeters: 90,
+              approaching: true,
+              bearingDifferenceDegrees: 0,
+            ),
+            speedKmh: speed,
+            now: DateTime.utc(2026, 8, 31, 12),
+          )!
+          .overspeed;
+    }
+
+    expect(overspeedAt(50), isFalse);
+    expect(overspeedAt(60), isFalse);
+    expect(overspeedAt(62), isFalse);
+    expect(overspeedAt(70), isTrue);
+  });
+
+  test('null and red light without speed never claim overspeed', () {
+    final nullLimit = DrivingAlertEngine().evaluate(
+      match: CameraMatch(
+        camera: _camera(speedLimitKmh: null),
+        distanceMeters: 90,
+        approaching: true,
+        bearingDifferenceDegrees: 0,
+      ),
+      speedKmh: 100,
+      now: DateTime.utc(2026, 8, 31, 12),
+    );
+    final redLightOnly = DrivingAlertEngine().evaluate(
+      match: CameraMatch(
+        camera: _camera(speedLimitKmh: null, kind: CameraKind.redLight),
+        distanceMeters: 90,
+        approaching: true,
+        bearingDifferenceDegrees: 0,
+      ),
+      speedKmh: 100,
+      now: DateTime.utc(2026, 8, 31, 12),
+    );
+
+    expect(nullLimit!.overspeed, isFalse);
+    expect(redLightOnly!.overspeed, isFalse);
   });
 
   test('stays quiet while stopped', () {
@@ -212,7 +265,10 @@ void main() {
   });
 }
 
-TrafficCamera _camera({required int? speedLimitKmh}) {
+TrafficCamera _camera({
+  required int? speedLimitKmh,
+  CameraKind kind = CameraKind.mixed,
+}) {
   return TrafficCamera(
     id: 'cam-${speedLimitKmh ?? 'none'}',
     department: 'ANTIOQUIA',
@@ -223,7 +279,7 @@ TrafficCamera _camera({required int? speedLimitKmh}) {
     longitude: -75.57,
     status: 'Aprobada',
     technology: 'Camara',
-    kind: CameraKind.mixed,
+    kind: kind,
     speedLimitKmh: speedLimitKmh,
   );
 }

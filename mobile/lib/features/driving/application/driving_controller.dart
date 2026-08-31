@@ -19,6 +19,28 @@ const drivingSimulationEnabled = bool.fromEnvironment(
 
 bool get canUseDebugDrivingSimulation => kDebugMode && drivingSimulationEnabled;
 
+const drivingOverspeedVisualMarginKmh = 3;
+
+enum DrivingSimulationScenario { knownSpeed, unknownSpeed }
+
+enum DrivingSpeedState { noCamera, unknownReportedSpeed, within, near, over }
+
+class OverspeedPulseGate {
+  DrivingSpeedState? _previous;
+
+  bool shouldPulse({
+    required DrivingSpeedState current,
+    required bool reducedMotion,
+  }) {
+    final pulse =
+        !reducedMotion &&
+        current == DrivingSpeedState.over &&
+        _previous != current;
+    _previous = current;
+    return pulse;
+  }
+}
+
 final drivingLocationGatewayProvider = Provider<DrivingLocationGateway>((ref) {
   return const GeolocatorDrivingLocationGateway();
 });
@@ -78,6 +100,7 @@ class DrivingState {
     required this.status,
     required this.preferences,
     required this.cameraCount,
+    required this.cameraSpeedKnownCount,
     this.cameraPackSource,
     this.currentPoint,
     this.nearestCamera,
@@ -88,6 +111,7 @@ class DrivingState {
   final DrivingSessionStatus status;
   final DrivingPreferences preferences;
   final int cameraCount;
+  final int cameraSpeedKnownCount;
   final CameraPackSource? cameraPackSource;
   final DrivingPoint? currentPoint;
   final CameraMatch? nearestCamera;
@@ -97,6 +121,47 @@ class DrivingState {
   bool get isActive => status == DrivingSessionStatus.active;
 
   int get speedKmh => (currentPoint?.speedKmh ?? 0).round();
+
+  int get cameraSpeedUnknownCount => cameraCount - cameraSpeedKnownCount;
+
+  TrafficCamera? get currentCamera => nearestCamera?.camera;
+
+  int? get reportedCameraSpeedKmh {
+    final camera = currentCamera;
+    if (camera == null) {
+      return null;
+    }
+    return camera.speedLimitKmh;
+  }
+
+  int get speedDeltaKmh {
+    final reported = reportedCameraSpeedKmh;
+    if (reported == null) {
+      return 0;
+    }
+    return speedKmh - reported;
+  }
+
+  DrivingSpeedState get speedState {
+    final camera = currentCamera;
+    if (!isActive || camera == null) {
+      return DrivingSpeedState.noCamera;
+    }
+    final reported = camera.speedLimitKmh;
+    if (reported == null) {
+      return DrivingSpeedState.unknownReportedSpeed;
+    }
+    // UI hysteresis only: avoids color jitter. This is not a legal tolerance.
+    if (speedKmh > reported + drivingOverspeedVisualMarginKmh) {
+      return DrivingSpeedState.over;
+    }
+    if (speedKmh >= reported - 5) {
+      return DrivingSpeedState.near;
+    }
+    return DrivingSpeedState.within;
+  }
+
+  bool get isOverspeeding => speedState == DrivingSpeedState.over;
 
   bool get canEvaluateAlerts {
     final accuracy = currentPoint?.accuracyMeters;
@@ -121,6 +186,7 @@ class DrivingState {
     DrivingSessionStatus? status,
     DrivingPreferences? preferences,
     int? cameraCount,
+    int? cameraSpeedKnownCount,
     CameraPackSource? cameraPackSource,
     DrivingPoint? currentPoint,
     CameraMatch? nearestCamera,
@@ -134,6 +200,8 @@ class DrivingState {
       status: status ?? this.status,
       preferences: preferences ?? this.preferences,
       cameraCount: cameraCount ?? this.cameraCount,
+      cameraSpeedKnownCount:
+          cameraSpeedKnownCount ?? this.cameraSpeedKnownCount,
       cameraPackSource: cameraPackSource ?? this.cameraPackSource,
       currentPoint: currentPoint ?? this.currentPoint,
       nearestCamera: clearNearestCamera
@@ -151,6 +219,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   StreamSubscription<DrivingPoint>? _subscription;
   DrivingPoint? _previousPoint;
   DrivingAlertEngine? _alertEngine;
+  bool _wasOverspeeding = false;
 
   @override
   Future<DrivingState> build() async {
@@ -161,11 +230,15 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       status: DrivingSessionStatus.idle,
       preferences: preferences,
       cameraCount: pack.cameras.length,
+      cameraSpeedKnownCount: _knownSpeedCount(pack),
       cameraPackSource: pack.source,
     );
   }
 
-  Future<void> start({bool simulated = false}) async {
+  Future<void> start({
+    bool simulated = false,
+    DrivingSimulationScenario? simulationScenario,
+  }) async {
     final current = state.asData?.value ?? await build();
     state = AsyncData(
       current.copyWith(
@@ -175,16 +248,21 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     );
     final pack = await ref.read(cameraPackProvider.future);
     final Stream<DrivingPoint> drivingStream;
-    if (simulated && canUseDebugDrivingSimulation) {
-      if (pack.cameras.isEmpty) {
+    final scenario = simulationScenario;
+    if ((simulated || scenario != null) && canUseDebugDrivingSimulation) {
+      final camera = _simulationCamera(pack, scenario);
+      if (camera == null) {
         _setStopped(
           current,
           DrivingSessionStatus.locationUnavailable,
-          'No hay camaras locales para simular la ruta.',
+          'No hay camaras locales compatibles para simular la ruta.',
         );
         return;
       }
-      drivingStream = _simulatedApproachStream(pack.cameras.first);
+      drivingStream = _simulatedApproachStream(
+        camera,
+        scenario ?? DrivingSimulationScenario.knownSpeed,
+      );
     } else {
       final gateway = ref.read(drivingLocationGatewayProvider);
       if (!await gateway.isLocationServiceEnabled()) {
@@ -211,6 +289,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     }
 
     _previousPoint = null;
+    _wasOverspeeding = false;
     _alertEngine = _alertEngineFor(current.preferences);
     state = AsyncData(
       current.copyWith(
@@ -315,16 +394,22 @@ class DrivingController extends AsyncNotifier<DrivingState> {
           current.lastAlert!.cameraId,
           point.recordedAt,
         );
-    state = AsyncData(
-      current.copyWith(
-        status: DrivingSessionStatus.active,
-        currentPoint: point,
-        nearestCamera: match,
-        lastAlert: alert,
-        clearLastAlert: alert == null && !keepLastAlert,
-        clearErrorMessage: true,
-      ),
+    final nextState = current.copyWith(
+      status: DrivingSessionStatus.active,
+      currentPoint: point,
+      nearestCamera: match,
+      lastAlert: alert,
+      clearLastAlert: alert == null && !keepLastAlert,
+      clearErrorMessage: true,
     );
+    if (nextState.isOverspeeding &&
+        !_wasOverspeeding &&
+        current.preferences.vibrationEnabled &&
+        alert == null) {
+      await ref.read(drivingFeedbackGatewayProvider).vibrate();
+    }
+    _wasOverspeeding = nextState.isOverspeeding;
+    state = AsyncData(nextState);
   }
 
   Future<void> _notify(
@@ -394,20 +479,79 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   }
 
   String _voiceMessage(DrivingAlert alert) {
+    final reported = alert.reportedSpeedKmh;
+    if (reported == null) {
+      return 'Camara de fotodeteccion autorizada a '
+          '${alert.thresholdMeters} metros.';
+    }
+    if (alert.overspeed) {
+      return 'Camara a ${alert.thresholdMeters} metros. '
+          'Velocidad reportada: $reported. '
+          'Vas a ${alert.currentSpeedKmh}. Reduce la velocidad.';
+    }
     return 'Camara de fotodeteccion autorizada a '
-        '${alert.thresholdMeters} metros.';
+        '${alert.thresholdMeters} metros. '
+        'Velocidad reportada: $reported kilometros por hora.';
   }
 
-  Stream<DrivingPoint> _simulatedApproachStream(TrafficCamera camera) {
+  int _knownSpeedCount(CameraPack pack) {
+    return pack.cameras.where((camera) => camera.speedLimitKmh != null).length;
+  }
+
+  TrafficCamera? _simulationCamera(
+    CameraPack pack,
+    DrivingSimulationScenario? scenario,
+  ) {
+    if (pack.cameras.isEmpty) {
+      return null;
+    }
+    return switch (scenario ?? DrivingSimulationScenario.knownSpeed) {
+      DrivingSimulationScenario.knownSpeed =>
+        _firstCameraWhere(pack, (camera) => camera.speedLimitKmh == 60) ??
+            _firstCameraWhere(pack, (camera) => camera.speedLimitKmh != null),
+      DrivingSimulationScenario.unknownSpeed => _firstCameraWhere(
+        pack,
+        (camera) => camera.speedLimitKmh == null,
+      ),
+    };
+  }
+
+  TrafficCamera? _firstCameraWhere(
+    CameraPack pack,
+    bool Function(TrafficCamera camera) predicate,
+  ) {
+    for (final camera in pack.cameras) {
+      if (predicate(camera)) {
+        return camera;
+      }
+    }
+    return null;
+  }
+
+  Stream<DrivingPoint> _simulatedApproachStream(
+    TrafficCamera camera,
+    DrivingSimulationScenario scenario,
+  ) {
     final now = DateTime.now().toUtc();
     final metersSouth = [520.0, 390.0, 290.0, 95.0, 45.0];
+    final reported = camera.speedLimitKmh ?? 60;
+    final speeds = switch (scenario) {
+      DrivingSimulationScenario.knownSpeed => [
+        reported - 10.0,
+        reported - 2.0,
+        reported + 2.0,
+        reported + 10.0,
+        reported - 6.0,
+      ],
+      DrivingSimulationScenario.unknownSpeed => [48.0, 58.0, 68.0, 78.0, 70.0],
+    };
     final points = [
       for (var index = 0; index < metersSouth.length; index += 1)
         DrivingPoint(
           latitude: camera.latitude - metersSouth[index] / 111320,
           longitude: camera.longitude,
           accuracyMeters: 12,
-          speedKmh: 36,
+          speedKmh: speeds[index],
           headingDegrees: 0,
           recordedAt: now.add(Duration(seconds: index * 20)),
         ),

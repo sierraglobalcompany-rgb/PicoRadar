@@ -24,6 +24,8 @@ class DrivingAlert {
     required this.thresholdMeters,
     required this.severity,
     required this.overspeed,
+    required this.currentSpeedKmh,
+    required this.reportedSpeedKmh,
   });
 
   final String cameraId;
@@ -32,6 +34,8 @@ class DrivingAlert {
   final int thresholdMeters;
   final DrivingAlertSeverity severity;
   final bool overspeed;
+  final int currentSpeedKmh;
+  final int? reportedSpeedKmh;
 }
 
 class DrivingAlertEngine {
@@ -81,6 +85,9 @@ class DrivingAlertEngine {
     }
 
     final speedLimit = camera.speedLimitKmh;
+    final currentSpeed = speedKmh.round();
+    // Technical UI/alert stability margin only. Do not present this as a
+    // legal, camera, or enforcement tolerance to users.
     final overspeed = speedLimit != null && speedKmh > speedLimit + 3;
     _markCrossedThresholds(episode, match.distanceMeters);
     episode.lastAlertAt = currentInstant;
@@ -93,6 +100,8 @@ class DrivingAlertEngine {
           ? DrivingAlertSeverity.urgent
           : DrivingAlertSeverity.headsUp,
       overspeed: overspeed,
+      currentSpeedKmh: currentSpeed,
+      reportedSpeedKmh: speedLimit,
     );
   }
 
@@ -165,7 +174,7 @@ class DrivingAlertEngine {
     if (limit == null) {
       return '$locality · $threshold m · $speed km/h';
     }
-    return '$locality · $threshold m · $speed/$limit km/h';
+    return '$locality · $threshold m · $speed km/h · ANSV $limit km/h';
   }
 }
 

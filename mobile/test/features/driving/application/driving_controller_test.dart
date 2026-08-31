@@ -66,7 +66,9 @@ void main() {
       final state = container.read(drivingControllerProvider).value!;
       expect(state.nearestCamera, isNotNull);
       expect(state.speedKmh, 42);
+      expect(state.speedState, DrivingSpeedState.within);
       expect(feedback.spokenMessages.single, contains('500 metros'));
+      expect(feedback.spokenMessages.single, contains('Velocidad reportada'));
       expect(feedback.soundCalls, 1);
       expect(feedback.vibrationCalls, 1);
 
@@ -156,9 +158,114 @@ void main() {
       expect(feedback.spokenMessages, isEmpty);
     },
   );
+
+  test(
+    'continuous speed state updates while the camera episode persists',
+    () async {
+      final gateway = _FakeDrivingLocationGateway();
+      final feedback = _FakeDrivingFeedbackGateway();
+      final container = ProviderContainer(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(drivingControllerProvider.notifier).start();
+      gateway.add(_point(latitude: 6.239, speedKmh: 50, seconds: 0));
+      await Future<void>.delayed(Duration.zero);
+      gateway.add(_point(latitude: 6.241, speedKmh: 50, seconds: 20));
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        container.read(drivingControllerProvider).value!.speedState,
+        DrivingSpeedState.within,
+      );
+
+      gateway.add(_point(latitude: 6.242, speedKmh: 70, seconds: 21));
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        container.read(drivingControllerProvider).value!.speedState,
+        DrivingSpeedState.over,
+      );
+
+      gateway.add(_point(latitude: 6.243, speedKmh: 54, seconds: 22));
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        container.read(drivingControllerProvider).value!.speedState,
+        DrivingSpeedState.within,
+      );
+    },
+  );
+
+  test('unknown reported speed keeps comparison fail-closed', () async {
+    final gateway = _FakeDrivingLocationGateway();
+    final feedback = _FakeDrivingFeedbackGateway();
+    final container = ProviderContainer(
+      overrides: [
+        appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+        cameraPackProvider.overrideWith(
+          (ref) async => _pack(speedLimitKmh: null),
+        ),
+        drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(drivingControllerProvider.notifier).start();
+    gateway.add(_point(latitude: 6.239, speedKmh: 100, seconds: 0));
+    await Future<void>.delayed(Duration.zero);
+    gateway.add(_point(latitude: 6.241, speedKmh: 100, seconds: 20));
+    await Future<void>.delayed(Duration.zero);
+
+    final state = container.read(drivingControllerProvider).value!;
+    expect(state.speedState, DrivingSpeedState.unknownReportedSpeed);
+    expect(state.isOverspeeding, isFalse);
+    expect(
+      feedback.spokenMessages.single,
+      isNot(contains('Velocidad reportada')),
+    );
+  });
+
+  test(
+    'overspeed pulse gate fires only on transition and respects reduced motion',
+    () {
+      final gate = OverspeedPulseGate();
+
+      expect(
+        gate.shouldPulse(
+          current: DrivingSpeedState.within,
+          reducedMotion: false,
+        ),
+        isFalse,
+      );
+      expect(
+        gate.shouldPulse(current: DrivingSpeedState.over, reducedMotion: false),
+        isTrue,
+      );
+      expect(
+        gate.shouldPulse(current: DrivingSpeedState.over, reducedMotion: false),
+        isFalse,
+      );
+      expect(
+        gate.shouldPulse(
+          current: DrivingSpeedState.within,
+          reducedMotion: false,
+        ),
+        isFalse,
+      );
+      expect(
+        gate.shouldPulse(current: DrivingSpeedState.over, reducedMotion: true),
+        isFalse,
+      );
+    },
+  );
 }
 
-CameraPack _pack() {
+CameraPack _pack({int? speedLimitKmh = 60}) {
   return CameraPack(
     source: const CameraPackSource(
       name: 'ANSV',
@@ -167,7 +274,7 @@ CameraPack _pack() {
       fetchedAtUtc: '2026-08-31T00:00:00Z',
     ),
     cameras: [
-      const TrafficCamera(
+      TrafficCamera(
         id: 'cam-1',
         department: 'ANTIOQUIA',
         municipality: 'MEDELLIN',
@@ -178,9 +285,24 @@ CameraPack _pack() {
         status: 'Aprobada',
         technology: 'Camara',
         kind: CameraKind.mixed,
-        speedLimitKmh: 60,
+        speedLimitKmh: speedLimitKmh,
       ),
     ],
+  );
+}
+
+DrivingPoint _point({
+  required double latitude,
+  required double speedKmh,
+  required int seconds,
+}) {
+  return DrivingPoint(
+    latitude: latitude,
+    longitude: -75.57,
+    accuracyMeters: 14,
+    speedKmh: speedKmh,
+    headingDegrees: 0,
+    recordedAt: DateTime.utc(2026, 8, 31, 12, 0, seconds),
   );
 }
 
