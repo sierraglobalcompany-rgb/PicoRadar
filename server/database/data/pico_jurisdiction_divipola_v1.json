@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "sourceSystem": "pico_jurisdiction_catalog_v1",
+  "targetSystem": "dane_divipola",
+  "records": [
+    { "key": "co-dc-bogota", "primaryDivipolaCode": "11001", "kind": "district", "coverageDivipolaCodes": ["11001"] },
+    { "key": "co-ant-medellin", "primaryDivipolaCode": "05001", "kind": "metro_area", "coverageDivipolaCodes": ["05079", "05088", "05129", "05212", "05266", "05308", "05360", "05380", "05001", "05631"] },
+    { "key": "co-vac-cali", "primaryDivipolaCode": "76001", "kind": "city", "coverageDivipolaCodes": ["76001"] },
+    { "key": "co-bol-cartagena", "primaryDivipolaCode": "13001", "kind": "city", "coverageDivipolaCodes": ["13001"] },
+    { "key": "co-san-bucaramanga", "primaryDivipolaCode": "68001", "kind": "city", "coverageDivipolaCodes": ["68001"] },
+    { "key": "co-qui-armenia", "primaryDivipolaCode": "63001", "kind": "city", "coverageDivipolaCodes": ["63001"] },
+    { "key": "co-tol-ibague", "primaryDivipolaCode": "73001", "kind": "city", "coverageDivipolaCodes": ["73001"] },
+    { "key": "co-nds-cucuta", "primaryDivipolaCode": "54001", "kind": "metro_area", "coverageDivipolaCodes": ["54001"], "coverageStatus": "reference_only" },
+    { "key": "co-mag-santa-marta", "primaryDivipolaCode": "47001", "kind": "city", "coverageDivipolaCodes": ["47001"] },
+    { "key": "co-met-villavicencio", "primaryDivipolaCode": "50001", "kind": "city", "coverageDivipolaCodes": ["50001"] },
+    { "key": "co-ris-pereira", "primaryDivipolaCode": "66001", "kind": "city", "coverageDivipolaCodes": ["66001"] },
+    { "key": "co-cal-manizales", "primaryDivipolaCode": "17001", "kind": "city", "coverageDivipolaCodes": ["17001"] },
+    { "key": "co-atl-barranquilla", "primaryDivipolaCode": "08001", "kind": "city", "coverageDivipolaCodes": ["08001"] },
+    { "key": "co-nar-pasto", "primaryDivipolaCode": "52001", "kind": "city", "coverageDivipolaCodes": ["52001"] },
+    { "key": "co-cor-monteria", "primaryDivipolaCode": "23001", "kind": "city", "coverageDivipolaCodes": ["23001"] }
+  ]
+}

@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DatasetController;
+use App\Http\Controllers\Admin\GeographyController;
+use App\Http\Controllers\Admin\JurisdictionController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Middleware\EnsureActiveOperator;
 use App\Http\Middleware\SecurityHeaders;
@@ -22,6 +24,14 @@ Route::middleware(['guest', SecurityHeaders::class])->group(function (): void {
 Route::middleware(['auth', EnsureActiveOperator::class, SecurityHeaders::class])->group(function (): void {
     Route::get('/admin', DashboardController::class)->name('admin.dashboard');
     Route::get('/admin/audit', [AuditLogController::class, 'index'])->name('admin.audit.index');
+    Route::get('/admin/geography', [GeographyController::class, 'index'])->name('admin.geography.index');
+    Route::get('/admin/jurisdictions', [JurisdictionController::class, 'index'])->name('admin.jurisdictions.index');
+    Route::get('/admin/jurisdictions/create', [JurisdictionController::class, 'create'])->name('admin.jurisdictions.create');
+    Route::post('/admin/jurisdictions', [JurisdictionController::class, 'store'])->name('admin.jurisdictions.store');
+    Route::get('/admin/jurisdictions/{jurisdiction}', [JurisdictionController::class, 'show'])->name('admin.jurisdictions.show');
+    Route::put('/admin/jurisdictions/{jurisdiction}', [JurisdictionController::class, 'update'])->name('admin.jurisdictions.update');
+    Route::post('/admin/jurisdictions/{jurisdiction}/coverage', [JurisdictionController::class, 'attach'])->name('admin.jurisdictions.coverage.attach');
+    Route::delete('/admin/jurisdictions/{jurisdiction}/coverage/{unit}', [JurisdictionController::class, 'detach'])->name('admin.jurisdictions.coverage.detach');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
     Route::get('/admin/datasets', [DatasetController::class, 'index'])->name('admin.datasets.index');
     Route::get('/admin/datasets/create', [DatasetController::class, 'create'])->name('admin.datasets.create');
