@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:cryptography/cryptography.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/services.dart';
@@ -10,20 +14,28 @@ import 'package:picoradar/app/startup/startup_gate.dart';
 import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/features/apps_launcher/data/module_registry.dart';
+import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
+import 'package:picoradar/features/vehicle_status/data/private_vehicle_document_store.dart';
 import 'package:picoradar/features/vehicle_status/platform/obligation_notifications.dart';
+import 'package:picoradar/features/vehicle_status/platform/vehicle_document_gateway.dart';
 import 'package:picoradar/features/vehicle_status/presentation/vehicle_status_screen.dart';
 
 class TestAppHarness {
   TestAppHarness()
     : database = _createDatabase(),
-      preferences = MemoryPreferences();
+      preferences = MemoryPreferences(),
+      documentRoot = Directory.systemTemp.createTempSync(
+        'picoradar-documents-test-',
+      );
 
   final AppDatabase database;
   final MemoryPreferences preferences;
+  final Directory documentRoot;
   DateTime now = DateTime(2026, 8, 27, 22);
   int _vehicleIdSequence = 0;
+  int _documentIdSequence = 0;
 
   static AppDatabase _createDatabase() {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -47,6 +59,13 @@ class TestAppHarness {
     WidgetTester tester, {
     Map<String, bool> moduleFeatureFlags = const {},
     ExternalLauncher? externalLauncher,
+    VehicleDocumentGateway? documentGateway,
+    List<VehicleProfile>? vehicleListOverride,
+    VehicleProfile? activeVehicleOverride,
+    String? documentVehicleIdOverride,
+    PrivateVehicleDocumentType? documentTypeOverride,
+    PrivateVehicleDocumentMetadata? documentMetadataOverride,
+    Widget? childOverride,
     Widget Function(Widget child)? wrap,
   }) async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -75,6 +94,32 @@ class TestAppHarness {
         externalLauncherProvider.overrideWithValue(
           externalLauncher ?? _FakeExternalLauncher(),
         ),
+        privateVehicleDocumentStoreProvider.overrideWithValue(
+          PrivateVehicleDocumentStore(
+            rootDirectory: () async => documentRoot,
+            cacheDirectory: () async => documentRoot,
+            masterKey: () async => SecretKey(List<int>.filled(32, 7)),
+            idGenerator: _nextDocumentId,
+          ),
+        ),
+        vehicleDocumentGatewayProvider.overrideWithValue(
+          documentGateway ?? _FakeVehicleDocumentGateway(),
+        ),
+        if (vehicleListOverride != null)
+          vehicleListProvider.overrideWithValue(
+            AsyncValue.data(vehicleListOverride),
+          ),
+        if (activeVehicleOverride != null)
+          activeVehicleProvider.overrideWithValue(
+            AsyncValue.data(activeVehicleOverride),
+          ),
+        if (documentVehicleIdOverride != null &&
+            documentTypeOverride != null &&
+            documentMetadataOverride != null)
+          privateVehicleDocumentProvider((
+            documentVehicleIdOverride,
+            documentTypeOverride,
+          )).overrideWithValue(AsyncValue.data(documentMetadataOverride)),
         bogotaNowProvider.overrideWithValue(now),
         startupReadinessProvider.overrideWith(
           (ref) async => const StartupReadiness(
@@ -86,7 +131,7 @@ class TestAppHarness {
         if (moduleFeatureFlags.isNotEmpty)
           moduleFeatureFlagsProvider.overrideWithValue(moduleFeatureFlags),
       ],
-      child: const PicoRadarApp(),
+      child: childOverride ?? const PicoRadarApp(),
     );
     await tester.pumpWidget(wrap == null ? app : wrap(app));
     await tester.pump();
@@ -95,9 +140,16 @@ class TestAppHarness {
     }
   }
 
+  String _nextDocumentId() {
+    _documentIdSequence += 1;
+    return 'document-${_documentIdSequence.toString().padLeft(4, '0')}';
+  }
+
   Future<void> dispose() async {
-    // Flutter widget teardown can outlive the test body while providers still
-    // finish async work. The in-memory DB is scoped to the test isolate.
+    unawaited(database.close());
+    if (documentRoot.existsSync()) {
+      documentRoot.deleteSync(recursive: true);
+    }
   }
 }
 
@@ -132,6 +184,14 @@ class _FakeExternalLauncher implements ExternalLauncher {
 
   @override
   Future<bool> openExternal(String uri) async => true;
+}
+
+class _FakeVehicleDocumentGateway implements VehicleDocumentGateway {
+  @override
+  Future<bool> openDocument(File file) async => true;
+
+  @override
+  Future<PickedVehicleDocument?> pickDocument() async => null;
 }
 
 class MemoryPreferences implements AppPreferences {

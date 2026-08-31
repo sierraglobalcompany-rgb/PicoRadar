@@ -31,12 +31,12 @@ Fecha de recuperacion R00: 2026-08-27. Base auditada: `main` en `0905d394b037966
 | Area | Estado | Decision |
 |---|---|---|
 | `server/routes/web.php` | Ruta `/` Laravel scaffold | KEEP |
-| Controllers de producto | No existen | MISSING BUT NEEDED FREE 1.0 para B01+ |
-| Models de producto | No existen; solo `User` scaffold | SCAFFOLD ONLY |
-| Migrations | Usuarios, cache, jobs, sesiones Laravel | SCAFFOLD ONLY |
-| Jobs/Commands de producto | No existen | MISSING BUT NEEDED FREE 1.0 para publisher/admin |
-| Tests server | Example tests Laravel | SCAFFOLD ONLY |
-| Config/env | `.env.example`, sqlite local/CI | KEEP |
+| Controllers de producto | Health API y sesión/panel de operadores B00 | FOUNDATION ONLY; B01+ sigue pendiente |
+| Models de producto | `User` como operador administrativo con role/active | FOUNDATION ONLY; sin usuarios móviles |
+| Migrations | Usuarios, cache, jobs, sesiones Laravel + roles de operador B00 | FOUNDATION ONLY; sin schema de datasets |
+| Jobs/Commands de producto | Creación interactiva de primer `super_admin` | FOUNDATION ONLY; publisher pendiente |
+| Tests server | Health, auth de operadores y migración SQLite B00 | B01+ requiere pruebas de publisher |
+| Config/env | SQLite local/tests, MySQL/MariaDB documentado y CI PHP 8.3–8.5 | B00 READY FOR EXTERNAL AUDIT |
 
 Backend/control-plane esta materialmente pendiente. El roadmap C00-C29 original sigue siendo la autoridad para responsabilidades backend: C22 Routes/Places proxy, C25 Reports/Leads, C28 Admin/control plane + dataset publisher y C29 hardening. R00 recomienda adelantar la fundacion publisher/control-plane de C28, pero cualquier numeracion B00/B01 es propuesta hasta aprobacion explicita. No implementar capacidades duplicadas entre Bxx propuesto y Cxx aprobado.
 
@@ -129,9 +129,12 @@ R03 C13 Logic Integration + UI Restyle:
 - `/pico?vehicleId=<id>` is **Mi Pico y Placa** personalized vehicle detail.
 - `/pico` is **Pico y Placa de la ciudad** regulation overview.
 - The Home card is labeled `Pico y placa` while keeping contextual secondary content such as tomorrow/next restriction state; its tap continues to use the focused vehicle.
-- SOAT reference is owner-selected; R03B remains blocked until owner-selected `rtm_owner_v1.png` exists.
-- R03B UI implementation is not started.
-- SOAT and RTM current logic remains valid, but their current presentation is owner-rejected visual debt for R03B.
+- R03B SOAT/RTM owner V1 is implemented on branch `feat/R03B-soat-rtm-owner-v1` from owner-selected `soat_owner_v1.png` and `rtm_owner_v1.png`.
+- SOAT and RTM preserve C13 local obligation logic: due dates, optional metadata, reminders, RUNT official links and focused vehicle context.
+- SOAT/RTM now use a shared local private document store for optional PDF/image copies. Payloads are app-owned and AES-GCM encrypted; metadata remains local and no document bytes are stored in SQLite/detailsJson.
+- RTM `Buscar CDA` is a truthful navigation entry/placeholder only. Full CDA directory, GPS search, paid ranking and backend are not implemented.
+- SOAT/RTM history shows real records only; history persistence for replaced obligations remains a future lot.
+- Commercial seams are below functional content and visibly labeled `Patrocinado`; no ads are shown in document viewing.
 
 C10B National Pico rollout:
 - `docs/data/PICO_JURISDICTION_COVERAGE_AUDIT_20260830.md` is research authority only.

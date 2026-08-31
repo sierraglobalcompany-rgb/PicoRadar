@@ -376,8 +376,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('detail-status-soat')));
     await tester.pumpAndSettle();
 
-    expect(find.text('BBB222'), findsOneWidget);
-    expect(find.text('Vigente según la fecha guardada'), findsOneWidget);
+    expect(find.text('BBB222'), findsWidgets);
+    expect(find.text('SOAT ACTIVO'), findsOneWidget);
+    expect(find.text('¡Todo en regla!'), findsOneWidget);
     expect((await harness.repository.getActiveVehicle())?.id, other.id);
   });
 
@@ -470,6 +471,7 @@ void main() {
         harness,
         size: viewport.size,
         textScaleFactor: viewport.scale,
+        boundedSettle: true,
       );
 
       expect(
@@ -496,7 +498,12 @@ void main() {
       (name: '412x915', size: const Size(412, 915)),
     ]) {
       await _seedThreeVehicles(harness);
-      await _openGarage(tester, harness, size: viewport.size);
+      await _openGarage(
+        tester,
+        harness,
+        size: viewport.size,
+        boundedSettle: true,
+      );
 
       _expectGarageCoreAboveNav(tester, reason: '${viewport.name} active');
       await _focusNewestVehicle(tester);
@@ -588,6 +595,7 @@ Future<void> _openGarage(
   TestAppHarness harness, {
   Size size = const Size(390, 844),
   double textScaleFactor = 1,
+  bool boundedSettle = false,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -597,7 +605,13 @@ Future<void> _openGarage(
   addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
   await harness.pump(tester);
   await tester.tap(find.byKey(const ValueKey('tab-garage')));
-  await tester.pumpAndSettle();
+  if (boundedSettle) {
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(seconds: 1));
+  } else {
+    await tester.pumpAndSettle();
+  }
 }
 
 Future<void> _focusNewestVehicle(WidgetTester tester) async {

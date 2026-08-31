@@ -4,14 +4,23 @@ import '../../../app/theme/app_tokens.dart';
 import '../data/module_registry.dart';
 
 class ModulePlaceholderScreen extends StatelessWidget {
-  const ModulePlaceholderScreen({required this.moduleId, super.key});
+  const ModulePlaceholderScreen({
+    required this.moduleId,
+    this.category,
+    super.key,
+  });
 
   final String moduleId;
+  final String? category;
 
   @override
   Widget build(BuildContext context) {
     final module = findModuleById(moduleId);
-    final title = module?.title ?? 'Módulo';
+    final isCdaSearch = moduleId == 'servicios' && category == 'cda';
+    final title = isCdaSearch ? 'Buscar CDA' : module?.title ?? 'Módulo';
+    final body = isCdaSearch
+        ? 'Próximamente podrás encontrar CDA cercanos y consultar opciones por ciudad.'
+        : 'Este módulo estará disponible en una próxima etapa.';
 
     return Scaffold(
       appBar: AppBar(title: Text(title)),
@@ -40,10 +49,7 @@ class ModulePlaceholderScreen extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: AppSpacing.s),
-                  const Text(
-                    'Este módulo estará disponible en una próxima etapa.',
-                    textAlign: TextAlign.center,
-                  ),
+                  Text(body, textAlign: TextAlign.center),
                 ],
               ),
             ),

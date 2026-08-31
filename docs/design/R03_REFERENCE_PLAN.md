@@ -1,6 +1,6 @@
 # R03 Reference Plan
 
-Status: P03_MERGED_R03B_BLOCKED_ON_RTM_REFERENCE
+Status: R03B_OWNER_V1_IMPLEMENTED_PENDING_PR
 Last updated: 2026-08-30
 
 R03A Pico y Placa visual recovery is merged and implemented from exact owner-selected reference images. Codex must not generate, infer, or invent SOAT/RTM references for R03B.
@@ -75,7 +75,10 @@ R03 references are split by implementation slice:
   - Reference package: `PICORADAR_R03B_SOAT_OWNER_V1_REFERENCE.zip`.
   - Reference package SHA-256: `5e064fa5c6a72ba1e8dc3eeb44cbc17ac4308ad8705328bb4de3922ba32d6216`.
   - Image SHA-256: `2e08d64c68a69b179b81d87c9a0f322df9d86fd3233f63605efd700f1228ef57`.
-- `rtm_owner_v1.png`: PENDING_OWNER_SELECTION.
+- `rtm_owner_v1.png`: OWNER_SELECTED.
+  - Reference package: `PICORADAR_R03B_SOAT_RTM_OWNER_REFERENCES_V1.zip`.
+  - Reference package SHA-256: `d35a354aef2c3831f3d0e6b9d11fef728e687476f79e49daa69ed8eccc2bd1c4`.
+  - Image SHA-256: `f9a03a22975cec3fc58c858d394c0568b211c8002178ecf22c59b6a114857e89`.
 
 ## R03A Scope
 
@@ -86,13 +89,21 @@ R03 references are split by implementation slice:
 - Exact owner-selected Pico references are in `docs/design/reference/`.
 - Runtime values remain derived from local vehicles, jurisdiction preferences, `RestrictionStore`, `RestrictionRuleSet`, `RestrictionDayEvaluation` and source metadata.
 
-## R03B Pending
+## R03B Owner V1
 
 - SOAT_REFERENCE = OWNER_SELECTED.
-- RTM_REFERENCE = PENDING_OWNER_SELECTION.
-- R03B_UI_IMPLEMENTATION = BLOCKED_ON_RTM_REFERENCE.
-- SOAT visual recovery from owner-selected reference.
-- RTM visual recovery from owner-selected reference.
+- RTM_REFERENCE = OWNER_SELECTED.
+- R03B_UI_IMPLEMENTATION = IMPLEMENTED_PENDING_PR.
+- SOAT visual recovery follows `docs/design/reference/soat_owner_v1.png`.
+- RTM visual recovery follows `docs/design/reference/rtm_owner_v1.png`.
+- Both screens use a local vehicle selector that changes only the current screen context and does not mutate the global active vehicle.
+- Manual configuration reuses the C13 `VehicleObligationStore` and `detailsJson` for optional SOAT insurer/policy and RTM CDA/certificate metadata. No database migration was added.
+- Optional SOAT/RTM documents use one shared private document store. PDF/JPEG/PNG/WEBP payloads are copied into app-owned storage and encrypted with AES-GCM via existing secure storage/file crypto infrastructure.
+- A local document is only a convenience copy and never an official verification claim.
+- RUNT verification remains a user-initiated external HTTPS link. No scraping, CAPTCHA bypass or backend verification was added.
+- RTM `Buscar CDA` opens a truthful placeholder entry; the full CDA finder remains future scope.
+- History renders only real local records. Replaced-obligation history persistence remains `HISTORY_PERSISTENCE_FUTURE_LOT`.
+- Sponsored content remains below functional SOAT/RTM content and is visibly labeled.
 
 ## P03 City Catalog Freeze
 
@@ -138,7 +149,7 @@ Future document storage must use the reusable private vehicle-document storage a
 
 ## RTM Product Contract Freeze
 
-RTM reference is still pending owner selection. Future RTM belongs to the same information family as SOAT and should support expiration/status, CDA, certificate number, reminder, optional local PDF/image certificate, `Consultar en RUNT` and real history when it exists.
+RTM belongs to the same information family as SOAT and supports expiration/status, CDA, certificate number, reminder, optional local PDF/image certificate, `Consultar en RUNT` and real history when it exists.
 
 Future RTM commercial/utility CTA is `Buscar CDA`, not `Renovar tecnomecanica`.
 
@@ -152,6 +163,7 @@ Commercial banners may later appear on SOAT/RTM dashboards only after legal/func
 
 - No changes to SOAT, RTM, Garage root visuals, Apps launcher visuals, backend or database schema in R03A.
 - Home changes in R03A are limited to the Pico y placa entry/card copy and route target.
+- R03B changes are limited to SOAT/RTM owner V1, shared local document handling, the CDA entry placeholder and canonical reference/docs updates.
 - No backend.
 - No database migration.
 - No C14, Maintenance, or C17B execution.
