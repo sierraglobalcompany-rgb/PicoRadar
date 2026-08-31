@@ -75,6 +75,7 @@ return [
 
     'links' => [
         public_path('storage') => storage_path('app/public'),
+        public_path('v1') => storage_path('app/public/manifest/v1'),
     ],
 
 ];

@@ -24,21 +24,22 @@ Fecha de recuperacion R00: 2026-08-27. Base auditada: `main` en `0905d394b037966
 - Importador/evaluador local de restricciones y cobertura por jurisdiccion.
 - Inicio/Pico con estado local y planificacion inicial de notificaciones.
 - Launcher Apps en recuperacion R02C como accion central overlay/bottom sheet; widget Android de acceso rapido en estado neutral/local.
-- Laravel 13 scaffold con tests base; sin API de producto implementada.
+- Laravel 13 Control Plane: B00 Control Plane Foundation y B01 Dataset Registry + Publisher están merged en `main`. B01 aporta `datasets`, `sources`, releases inmutables, audit logs append-only, publisher de manifest estático, rollback y separación de roles. No existe API de producto en el hot path móvil.
+- Contrato estático B01: el manifest móvil y público del servidor es `/v1/manifest.json`; los datasets publicados siguen `/storage/datasets/{key}/{version}/{key}-{version}.json`. Flutter no se conecta directamente a MariaDB.
 
 ## Backend forense
 
 | Area | Estado | Decision |
 |---|---|---|
-| `server/routes/web.php` | Ruta `/` Laravel scaffold | KEEP |
-| Controllers de producto | Health API y sesión/panel de operadores B00 | FOUNDATION ONLY; B01+ sigue pendiente |
-| Models de producto | `User` como operador administrativo con role/active | FOUNDATION ONLY; sin usuarios móviles |
-| Migrations | Usuarios, cache, jobs, sesiones Laravel + roles de operador B00 | FOUNDATION ONLY; sin schema de datasets |
-| Jobs/Commands de producto | Creación interactiva de primer `super_admin` | FOUNDATION ONLY; publisher pendiente |
-| Tests server | Health, auth de operadores y migración SQLite B00 | B01+ requiere pruebas de publisher |
-| Config/env | SQLite local/tests, MySQL/MariaDB documentado y CI PHP 8.3–8.5 | B00 READY FOR EXTERNAL AUDIT |
+| `server/routes/web.php` | Control Plane B00/B01: health, operadores y administración de datasets | Sin hot path móvil |
+| Controllers de producto | Health API, sesión de operadores y registry/publisher B01 | Control plane estático; sin hot path móvil |
+| Models de producto | Operadores B00 y `datasets`/`sources`/releases inmutables/audit logs B01 | Control plane únicamente; sin usuarios móviles |
+| Migrations | Usuarios B00 y datasets/sources/releases/audit B01 | Control plane MariaDB/SQLite compatible |
+| Jobs/Commands de producto | Creación de `super_admin` y regeneración de manifest B01 | Publisher síncrono, sin queues |
+| Tests server | Health/auth B00 y pruebas de registry/publisher B01 | Publisher, rollback, manifiesto y permisos cubiertos |
+| Config/env | SQLite local/tests, MySQL/MariaDB documentado y CI PHP 8.3–8.5 | B00 MERGED; B01 MERGED; CI remoto pendiente por infraestructura externa |
 
-Backend/control-plane esta materialmente pendiente. El roadmap C00-C29 original sigue siendo la autoridad para responsabilidades backend: C22 Routes/Places proxy, C25 Reports/Leads, C28 Admin/control plane + dataset publisher y C29 hardening. R00 recomienda adelantar la fundacion publisher/control-plane de C28, pero cualquier numeracion B00/B01 es propuesta hasta aprobacion explicita. No implementar capacidades duplicadas entre Bxx propuesto y Cxx aprobado.
+El Control Plane B00 y el publisher B01 están merged en `main`; la deuda de CI remoto B00/B01 es infraestructura (jobs sin runner/steps), no un PASS. El roadmap C00-C29 sigue siendo autoridad para responsabilidades posteriores: C22 Routes/Places proxy, C25 Reports/Leads y C29 hardening. No implementar capacidades duplicadas ni iniciar B02 antes de aprobación.
 
 No construir backend para vehiculo activo, garaje, widget, pico de hoy, historial GPS, hot path de camaras, documentos privados, historial de notificaciones ni cuentas obligatorias Free 1.0.
 
@@ -82,7 +83,7 @@ Extraccion semantica sin LLM API key se hizo por lectura manual/subagentes sigui
 | Trip | NOT_STARTED | NOT_STARTED | NOT_STARTED | NOT_STARTED | N/A | NOT_STARTED |
 | Services | NOT_STARTED | NOT_STARTED | NOT_STARTED | NOT_STARTED | N/A | NOT_STARTED |
 | Defense | NOT_STARTED | NOT_STARTED | NOT_STARTED | NOT_STARTED | N/A | NOT_STARTED |
-| Backend publisher | NEEDED | NOT_STARTED | N/A | NOT_STARTED | NOT_STARTED | NOT_STARTED |
+| Backend publisher | IMPLEMENTED B01 | MERGED | N/A | LOCAL PASS / REMOTE CI INFRA BLOCKED | Static manifest/assets | MERGED / CI INFRA DEBT |
 | Backend routes proxy | NEEDED | NOT_STARTED | N/A | NOT_STARTED | NOT_STARTED | NOT_STARTED |
 | iOS | FUTURE | NOT_STARTED | NOT_STARTED | NOT_STARTED | N/A | NOT_STARTED |
 
@@ -143,8 +144,11 @@ C10B National Pico rollout:
 - Current Pico catalog count is 15 researched jurisdictions. Runtime available jurisdictions remain Bogota and Medellin / Valle de Aburra only.
 - C10B_NATIONAL_PICO = NOT_STARTED.
 
-B00/B01 proposed backend split:
-- bring forward the C28 control-plane/dataset-publisher foundation only if explicitly approved.
+B00/B01 backend split:
+- B00 Control Plane Foundation está merged en `main`.
+- B01 Dataset Registry + Publisher está merged en `main`.
+- B01 merge SHA: `ed691be34b8681e73d3d1aa3257b8b17d06a5431`.
+- CI remoto B00/B01 permanece bloqueado por infraestructura externa, con jobs configurados intactos y sin steps ejecutados.
 
 C14+ resumes product functionality only after the chosen R01/R02/R03/backend authority path is explicitly approved.
 
