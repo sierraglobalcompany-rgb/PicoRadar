@@ -23,9 +23,34 @@ class DatasetRelease extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (self $release): void {
+            if (! preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/', $release->version)) {
+                throw new LogicException('Release version is unsafe.');
+            }
+        });
         static::updating(function (self $release): void {
-            if ($release->getRawOriginal('status') === DatasetReleaseStatus::Published->value && $release->isDirty(['version', 'draft_path', 'asset_path', 'sha256', 'content_encoding', 'generated_at'])) {
-                throw new LogicException('Published releases are immutable.');
+            $from = $release->getRawOriginal('status');
+            $to = $release->status->value;
+            if ($from === DatasetReleaseStatus::Draft->value && ! in_array($to, [DatasetReleaseStatus::Draft->value, DatasetReleaseStatus::Validated->value], true)) {
+                throw new LogicException('Invalid draft release transition.');
+            }
+            if ($from === DatasetReleaseStatus::Validated->value && $to !== DatasetReleaseStatus::Published->value) {
+                throw new LogicException('Validated releases can only be published.');
+            }
+            if ($from === DatasetReleaseStatus::Published->value && $to !== DatasetReleaseStatus::Retired->value) {
+                throw new LogicException('Published releases can only be retired.');
+            }
+            if ($from === DatasetReleaseStatus::Retired->value) {
+                throw new LogicException('Retired releases are terminal.');
+            }
+            $allowed = match ($from) {
+                DatasetReleaseStatus::Draft->value => ['status', 'sha256', 'generated_at', 'verified_at', 'validated_at', 'metadata'],
+                DatasetReleaseStatus::Validated->value => ['status', 'asset_path', 'content_encoding', 'published_at'],
+                DatasetReleaseStatus::Published->value => ['status', 'retired_at'],
+                default => [],
+            };
+            if (array_diff(array_keys($release->getDirty()), $allowed) !== []) {
+                throw new LogicException('Historical release fields are immutable.');
             }
         });
     }

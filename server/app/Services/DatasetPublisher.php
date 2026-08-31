@@ -16,67 +16,82 @@ class DatasetPublisher
 
     public function publish(DatasetRelease $release, User $actor): DatasetRelease
     {
-        $release->loadMissing('dataset');
-        if ($release->status === DatasetReleaseStatus::Published) {
-            $this->manifest->regenerate();
+        return $this->manifest->mutateAndRegenerate(function () use ($release, $actor): DatasetRelease {
+            return DB::transaction(function () use ($release, $actor): DatasetRelease {
+                $dataset = Dataset::query()->lockForUpdate()->findOrFail($release->dataset_id);
+                $locked = DatasetRelease::query()->whereKey($release->id)->lockForUpdate()->firstOrFail();
+                if ($locked->dataset_id !== $dataset->id) {
+                    throw new DomainException('Release does not belong to the dataset.');
+                }
+                if ($locked->status === DatasetReleaseStatus::Published) {
+                    return $locked;
+                }
+                if ($locked->status !== DatasetReleaseStatus::Validated || ! $locked->draft_path || ! $locked->sha256) {
+                    throw new DomainException('Only a validated release can be published.');
+                }
+                $draft = Storage::disk(config('datasets.draft_disk'));
+                $published = Storage::disk(config('datasets.published_disk'));
+                if (! $draft->exists($locked->draft_path)) {
+                    throw new DomainException('Draft file is unavailable.');
+                }
+                $bytes = $draft->get($locked->draft_path);
+                $sha = hash('sha256', $bytes);
+                if (! hash_equals($locked->sha256, $sha)) {
+                    throw new DomainException('Draft bytes changed after validation.');
+                }
+                $path = "datasets/{$dataset->key}/{$locked->version}/{$dataset->key}-{$locked->version}.json";
+                if ($published->exists($path)) {
+                    if (! hash_equals($sha, hash('sha256', $published->get($path)))) {
+                        throw new DomainException('An immutable asset already exists with different bytes.');
+                    }
+                } elseif ($published->put($path, $bytes) === false || ! hash_equals($sha, hash('sha256', $published->get($path)))) {
+                    throw new DomainException('Published asset verification failed.');
+                }
+                $previous = $dataset->current_version;
+                $locked->forceFill(['status' => DatasetReleaseStatus::Published, 'asset_path' => $path, 'content_encoding' => null, 'published_at' => now()])->save();
+                $dataset->forceFill(['current_version' => $locked->version])->save();
+                $this->audit->log($actor, 'release.published', $locked, ['datasetKey' => $dataset->key, 'version' => $locked->version, 'sha256' => $sha, 'previousVersion' => $previous]);
 
-            return $release;
-        }
-        if ($release->status !== DatasetReleaseStatus::Validated || ! $release->draft_path || ! $release->sha256) {
-            throw new DomainException('Only a validated release can be published.');
-        }
-        $draft = Storage::disk(config('datasets.draft_disk'));
-        $published = Storage::disk(config('datasets.published_disk'));
-        if (! $draft->exists($release->draft_path)) {
-            throw new DomainException('Draft file is unavailable.');
-        } $bytes = $draft->get($release->draft_path);
-        $sha = hash('sha256', $bytes);
-        if (! hash_equals($release->sha256, $sha)) {
-            throw new DomainException('Draft bytes changed after validation.');
-        }
-        $path = "datasets/{$release->dataset->key}/{$release->version}/{$release->dataset->key}-{$release->version}.json";
-        if ($published->exists($path)) {
-            if (! hash_equals($sha, hash('sha256', $published->get($path)))) {
-                throw new DomainException('An immutable asset already exists with different bytes.');
-            }
-        } else {
-            $published->put($path, $bytes);
-            if (! hash_equals($sha, hash('sha256', $published->get($path)))) {
-                throw new DomainException('Published asset verification failed.');
-            }
-        }
-
-        return DB::transaction(function () use ($release, $actor, $path, $sha): DatasetRelease {
-            $dataset = Dataset::query()->lockForUpdate()->findOrFail($release->dataset_id);
-            $locked = DatasetRelease::query()->findOrFail($release->id);
-            $locked->forceFill(['status' => DatasetReleaseStatus::Published, 'asset_path' => $path, 'sha256' => $sha, 'content_encoding' => null, 'published_at' => now()])->save();
-            $previous = $dataset->current_version;
-            $dataset->forceFill(['current_version' => $locked->version])->save();
-            $this->manifest->regenerate();
-            $this->audit->log($actor, 'release.published', $locked, ['datasetKey' => $dataset->key, 'version' => $locked->version, 'sha256' => $sha, 'previousVersion' => $previous]);
-
-            return $locked->refresh();
+                return $locked->refresh();
+            });
         });
     }
 
     public function rollback(Dataset $dataset, DatasetRelease $target, User $actor): void
     {
-        if ($target->dataset_id !== $dataset->id || $target->status !== DatasetReleaseStatus::Published) {
-            throw new DomainException('Rollback target is not an eligible published release.');
-        } DB::transaction(function () use ($dataset, $target, $actor): void {
-            $locked = Dataset::query()->lockForUpdate()->findOrFail($dataset->id);
-            $previous = $locked->current_version;
-            $locked->update(['current_version' => $target->version]);
-            $this->manifest->regenerate();
-            $this->audit->log($actor, 'dataset.rollback', $locked, ['datasetKey' => $locked->key, 'previousVersion' => $previous, 'newVersion' => $target->version]);
+        $this->manifest->mutateAndRegenerate(function () use ($dataset, $target, $actor): void {
+            DB::transaction(function () use ($dataset, $target, $actor): void {
+                $locked = Dataset::query()->lockForUpdate()->findOrFail($dataset->id);
+                $release = DatasetRelease::query()->whereKey($target->id)->lockForUpdate()->firstOrFail();
+                if ($release->dataset_id !== $locked->id || $release->status !== DatasetReleaseStatus::Published || ! $release->asset_path || ! $release->sha256) {
+                    throw new DomainException('Rollback target is not an eligible published release.');
+                }
+                $disk = Storage::disk(config('datasets.published_disk'));
+                if (! $disk->exists($release->asset_path) || ! hash_equals($release->sha256, hash('sha256', $disk->get($release->asset_path)))) {
+                    throw new DomainException('Rollback target asset is missing or corrupt.');
+                }
+                if ($locked->current_version === $release->version) {
+                    return;
+                }
+                $previous = $locked->current_version;
+                $locked->forceFill(['current_version' => $release->version])->save();
+                $this->audit->log($actor, 'dataset.rollback', $locked, ['datasetKey' => $locked->key, 'previousVersion' => $previous, 'newVersion' => $release->version]);
+            });
         });
     }
 
     public function retire(Dataset $dataset, DatasetRelease $release, User $actor): void
     {
-        if ($release->dataset_id !== $dataset->id || $release->status !== DatasetReleaseStatus::Published || $dataset->current_version === $release->version) {
-            throw new DomainException('The current or non-published release cannot be retired.');
-        } $release->update(['status' => DatasetReleaseStatus::Retired, 'retired_at' => now()]);
-        $this->audit->log($actor, 'release.retired', $release, ['datasetKey' => $dataset->key, 'version' => $release->version]);
+        $this->manifest->mutateAndRegenerate(function () use ($dataset, $release, $actor): void {
+            DB::transaction(function () use ($dataset, $release, $actor): void {
+                $locked = Dataset::query()->lockForUpdate()->findOrFail($dataset->id);
+                $target = DatasetRelease::query()->whereKey($release->id)->lockForUpdate()->firstOrFail();
+                if ($target->dataset_id !== $locked->id || $target->status !== DatasetReleaseStatus::Published || $locked->current_version === $target->version) {
+                    throw new DomainException('The current or non-published release cannot be retired.');
+                }
+                $target->forceFill(['status' => DatasetReleaseStatus::Retired, 'retired_at' => now()])->save();
+                $this->audit->log($actor, 'release.retired', $target, ['datasetKey' => $locked->key, 'version' => $target->version]);
+            });
+        });
     }
 }

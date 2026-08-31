@@ -10,9 +10,11 @@ use App\Models\DatasetSource;
 use App\Services\DatasetAuditLogger;
 use App\Services\DatasetPublisher;
 use App\Services\DatasetReleaseValidator;
+use App\Services\ManifestPublisher;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -20,7 +22,7 @@ use Illuminate\Validation\ValidationException;
 
 class DatasetController extends Controller
 {
-    public function __construct(private readonly DatasetAuditLogger $audit) {}
+    public function __construct(private readonly DatasetAuditLogger $audit, private readonly ManifestPublisher $manifest) {}
 
     public function index(Request $request)
     {
@@ -58,8 +60,25 @@ class DatasetController extends Controller
     {
         Gate::authorize('datasets.edit');
         $data = $request->validate(['title' => ['required', 'string', 'max:255'], 'enabled' => ['required', 'boolean']]);
-        $dataset->update($data);
-        $this->audit->log($request->user(), 'dataset.updated', $dataset, ['datasetKey' => $dataset->key, 'enabled' => $dataset->enabled]);
+        try {
+            $update = function () use ($dataset, $data, $request): void {
+                DB::transaction(function () use ($dataset, $data, $request): void {
+                    $locked = Dataset::query()->lockForUpdate()->findOrFail($dataset->id);
+                    if (! $locked->enabled && $data['enabled']) {
+                        $this->manifest->assertDatasetCanBeManifested($locked);
+                    }
+                    $locked->update($data);
+                    $this->audit->log($request->user(), 'dataset.updated', $locked, ['datasetKey' => $locked->key, 'enabled' => $locked->enabled]);
+                });
+            };
+            if ((bool) $dataset->enabled !== (bool) $data['enabled']) {
+                $this->manifest->mutateAndRegenerate($update);
+            } else {
+                $update();
+            }
+        } catch (DomainException $error) {
+            return back()->withErrors(['dataset' => $error->getMessage()]);
+        }
 
         return back();
     }
@@ -98,10 +117,14 @@ class DatasetController extends Controller
             $payload = json_decode($file->get(), true, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
             throw ValidationException::withMessages(['dataset' => 'The upload is not valid JSON.']);
-        } if (! is_array($payload) || ! is_string($payload['version'] ?? null) || ! preg_match('/^[A-Za-z0-9._-]+$/', $payload['version'])) {
+        }
+        if (! is_array($payload) || array_is_list($payload) || ! is_string($payload['version'] ?? null) || ! preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/', $payload['version'])) {
             throw ValidationException::withMessages(['dataset' => 'The JSON version is required and unsafe versions are rejected.']);
-        } $path = "dataset-drafts/{$dataset->key}/".Str::uuid().'.json';
-        Storage::disk(config('datasets.draft_disk'))->put($path, $file->get());
+        }
+        $path = "dataset-drafts/{$dataset->key}/".Str::uuid().'.json';
+        if (Storage::disk(config('datasets.draft_disk'))->put($path, $file->get()) === false) {
+            throw ValidationException::withMessages(['dataset' => 'The draft could not be stored.']);
+        }
         $release = $dataset->releases()->create(['version' => $payload['version'], 'status' => DatasetReleaseStatus::Draft, 'draft_path' => $path, 'verified_at' => $request->input('verified_at'), 'expires_at' => $request->input('expires_at')]);
         $this->audit->log($request->user(), 'release.created', $release, ['datasetKey' => $dataset->key, 'version' => $release->version]);
 
