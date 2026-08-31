@@ -17,6 +17,7 @@ import 'package:picoradar/features/home/presentation/home_screen.dart';
 import 'package:picoradar/features/location/application/location_controller.dart';
 import 'package:picoradar/features/location/data/location_preferences.dart';
 import 'package:picoradar/features/location/platform/device_location_gateway.dart';
+import 'package:picoradar/features/pico_placa/data/pico_jurisdiction_catalog.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_store.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.dart';
@@ -1583,7 +1584,7 @@ void main() {
       expect(find.textContaining('https://'), findsNothing);
     });
 
-    testWidgets('city selector searches and shows runtime coverage', (
+    testWidgets('city selector searches national catalog and runtime states', (
       tester,
     ) async {
       await _readyHome(
@@ -1594,23 +1595,91 @@ void main() {
 
       await _pumpDetail(tester, harness);
       await tester.tap(find.byKey(const ValueKey('pico-city-change')));
-      await tester.pumpAndSettle();
+      await _pumpAsyncHome(tester);
 
       expect(find.byKey(const ValueKey('pico-city-search')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('pico-city-section-available')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('pico-city-section-upcoming')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('pico-city-status-co-ant-medellin')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('pico-city-status-co-dc-bogota')),
+        findsOneWidget,
+      );
       expect(find.text('Carros, Motos · Cobertura vigente'), findsOneWidget);
       expect(
         find.text('Carros, Motos, Taxis · Cobertura vigente'),
         findsOneWidget,
       );
+      expect(find.text('Próximamente'), findsWidgets);
+      await _waitForPicoCityOption(tester, 'co-vac-cali');
+      expect(
+        find.byKey(const ValueKey('pico-city-option-co-vac-cali')),
+        findsOneWidget,
+      );
+
+      await tester.enterText(
+        find.byKey(const ValueKey('pico-city-search')),
+        'cali',
+      );
+      await _pumpAsyncHome(tester);
+
+      expect(
+        find.byKey(const ValueKey('pico-city-option-co-ant-medellin')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('pico-city-option-co-dc-bogota')),
+        findsNothing,
+      );
+      final caliTile = tester.widget<ListTile>(
+        find.byKey(const ValueKey('pico-city-option-co-vac-cali')),
+      );
+      expect(caliTile.enabled, isFalse);
+      expect(find.text('Cali'), findsOneWidget);
+      expect(
+        find.text('Valle del Cauca · Cobertura en preparación'),
+        findsOneWidget,
+      );
+
+      await tester.enterText(
+        find.byKey(const ValueKey('pico-city-search')),
+        'pere',
+      );
+      await _pumpAsyncHome(tester);
+      expect(
+        find.byKey(const ValueKey('pico-city-option-co-ris-pereira')),
+        findsOneWidget,
+      );
+      expect(find.text('Risaralda · Cobertura en preparación'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('pico-city-search')),
+        'arme',
+      );
+      await _pumpAsyncHome(tester);
+      expect(
+        find.byKey(const ValueKey('pico-city-option-co-qui-armenia')),
+        findsOneWidget,
+      );
+      expect(find.text('Quindío · Cobertura en preparación'), findsOneWidget);
 
       await tester.enterText(
         find.byKey(const ValueKey('pico-city-search')),
         'bogota',
       );
-      await tester.pumpAndSettle();
-
+      await _pumpAsyncHome(tester);
+      await _waitForPicoCityOption(tester, 'co-dc-bogota');
       expect(
-        find.byKey(const ValueKey('pico-city-option-co-ant-medellin')),
+        find.byKey(const ValueKey('pico-city-option-co-vac-cali')),
         findsNothing,
       );
       expect(
@@ -1620,7 +1689,7 @@ void main() {
       await tester.tap(
         find.byKey(const ValueKey('pico-city-option-co-dc-bogota')),
       );
-      await tester.pumpAndSettle();
+      await _pumpAsyncHome(tester);
 
       expect(find.text('Bogotá'), findsWidgets);
       expect(
@@ -1628,6 +1697,52 @@ void main() {
         'co-ant-medellin',
       );
     });
+
+    testWidgets(
+      'personal Pico selector applies temporary jurisdiction without mutation',
+      (tester) async {
+        final vehicle = await _readyHome(
+          harness,
+          plate: 'ABC123',
+          jurisdictionId: 'co-ant-medellin',
+        );
+
+        await _pumpDetail(tester, harness, vehicleId: vehicle.id);
+        await tester.tap(
+          find.byKey(const ValueKey('pico-personal-location-source')),
+        );
+        await _pumpAsyncHome(tester);
+
+        expect(find.text('Ciudad para este vehículo'), findsOneWidget);
+        expect(find.byKey(const ValueKey('pico-city-search')), findsOneWidget);
+
+        await tester.enterText(
+          find.byKey(const ValueKey('pico-city-search')),
+          'bogota',
+        );
+        await _pumpAsyncHome(tester);
+        await _waitForPicoCityOption(tester, 'co-dc-bogota');
+        await tester.tap(
+          find.byKey(const ValueKey('pico-city-option-co-dc-bogota')),
+        );
+        await _pumpAsyncHome(tester);
+
+        expect(find.text('MI PICO Y PLACA'), findsOneWidget);
+        expect(
+          find.text('Bogotá · Fuente oficial: bogota.gov.co · Vigentes'),
+          findsAtLeastNWidgets(1),
+        );
+        expect(
+          await harness.preferences.getString(picoJurisdictionPreferenceKey),
+          'co-ant-medellin',
+        );
+        expect((await harness.repository.getActiveVehicle())?.id, vehicle.id);
+        expect(
+          (await harness.repository.getVehicle(vehicle.id))?.registrationCity,
+          'Bogota',
+        );
+      },
+    );
 
     testWidgets(
       'transient jurisdiction does not mutate global city until adopted',
@@ -1640,11 +1755,12 @@ void main() {
 
         await _pumpDetail(tester, harness);
         await tester.tap(find.byKey(const ValueKey('pico-city-change')));
-        await tester.pumpAndSettle();
+        await _pumpAsyncHome(tester);
+        await _waitForPicoCityOption(tester, 'co-dc-bogota');
         await tester.tap(
           find.byKey(const ValueKey('pico-city-option-co-dc-bogota')),
         );
-        await tester.pumpAndSettle();
+        await _pumpAsyncHome(tester);
 
         expect(find.text('Bogotá'), findsWidgets);
         expect(
@@ -1653,7 +1769,7 @@ void main() {
         );
 
         await tester.tap(find.byKey(const ValueKey('pico-city-adopt')));
-        await tester.pumpAndSettle();
+        await _pumpAsyncHome(tester);
 
         expect(
           await harness.preferences.getString(picoJurisdictionPreferenceKey),
@@ -1677,19 +1793,20 @@ void main() {
 
       await _pumpPicoApp(tester, harness);
       await tester.tap(find.byKey(const ValueKey('pico-city-change')));
-      await tester.pumpAndSettle();
+      await _pumpAsyncHome(tester);
+      await _waitForPicoCityOption(tester, 'co-dc-bogota');
       await tester.tap(
         find.byKey(const ValueKey('pico-city-option-co-dc-bogota')),
       );
-      await tester.pumpAndSettle();
+      await _pumpAsyncHome(tester);
       await tester.scrollUntilVisible(
         find.byKey(ValueKey('pico-city-vehicle-${vehicle.id}')),
         300,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.pumpAndSettle();
+      await _pumpAsyncHome(tester);
       await tester.tap(find.byKey(ValueKey('pico-city-vehicle-${vehicle.id}')));
-      await tester.pumpAndSettle();
+      await _pumpAsyncHome(tester);
 
       expect(find.text('MI PICO Y PLACA'), findsOneWidget);
       expect(
@@ -1819,6 +1936,7 @@ void main() {
         await _openShellPicoFromApps(tester);
         await tester.tap(find.byKey(const ValueKey('pico-city-change')));
         await _pumpAsyncHome(tester);
+        await _waitForPicoCityOption(tester, 'co-dc-bogota');
         await tester.tap(
           find.byKey(const ValueKey('pico-city-option-co-dc-bogota')),
         );
@@ -2149,6 +2267,12 @@ Widget _providerScope(
       restrictionStoreProvider.overrideWithValue(
         _FakeRestrictionStore(harness.database, harness.now),
       ),
+      picoJurisdictionCatalogProvider.overrideWith(
+        (ref) async => PicoJurisdictionCatalog.fromJson(
+          jsonDecode(File(picoJurisdictionCatalogAssetPath).readAsStringSync())
+              as Map<String, Object?>,
+        ),
+      ),
       picoNotificationSchedulerProvider.overrideWithValue(
         _FakePicoNotificationScheduler(),
       ),
@@ -2237,6 +2361,17 @@ Future<void> _pumpAsyncHome(WidgetTester tester) async {
   for (var i = 0; i < 6; i += 1) {
     await tester.pump(const Duration(milliseconds: 300));
   }
+}
+
+Future<void> _waitForPicoCityOption(WidgetTester tester, String id) async {
+  final finder = find.byKey(ValueKey('pico-city-option-$id'));
+  for (var i = 0; i < 20; i += 1) {
+    await tester.pump(const Duration(milliseconds: 100));
+    if (finder.evaluate().isNotEmpty) {
+      return;
+    }
+  }
+  expect(finder, findsOneWidget);
 }
 
 Future<VehicleProfile> _readyHome(

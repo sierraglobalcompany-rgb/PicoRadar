@@ -13,6 +13,7 @@ import '../../garage/presentation/vehicle_display.dart';
 import '../../home/presentation/pico_notification_sheet.dart';
 import '../../location/application/location_controller.dart';
 import '../../visual_assets/presentation/visual_asset_widgets.dart';
+import '../data/pico_jurisdiction_catalog.dart';
 import '../data/pico_preferences.dart';
 import '../data/restriction_store.dart';
 import '../domain/city_restriction_summary.dart';
@@ -63,6 +64,7 @@ class PicoDetailScreen extends ConsumerWidget {
                       return _PersonalPicoView(
                         vehicle: explicitVehicle,
                         jurisdiction: jurisdiction,
+                        runtimeJurisdictions: jurisdictionItems,
                       );
                     }
                     if (_hasQueryValue(vehicleId) && explicitVehicle == null) {
@@ -77,6 +79,7 @@ class PicoDetailScreen extends ConsumerWidget {
                       return _PersonalPicoView(
                         vehicle: fallback,
                         jurisdiction: jurisdiction,
+                        runtimeJurisdictions: jurisdictionItems,
                       );
                     }
                     return _CityPicoView(
@@ -105,15 +108,33 @@ class PicoDetailScreen extends ConsumerWidget {
   }
 }
 
-class _PersonalPicoView extends ConsumerWidget {
-  const _PersonalPicoView({required this.vehicle, required this.jurisdiction});
+class _PersonalPicoView extends ConsumerStatefulWidget {
+  const _PersonalPicoView({
+    required this.vehicle,
+    required this.jurisdiction,
+    required this.runtimeJurisdictions,
+  });
 
   final VehicleProfile vehicle;
   final RestrictionJurisdiction jurisdiction;
+  final List<RestrictionJurisdiction> runtimeJurisdictions;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_PersonalPicoView> createState() => _PersonalPicoViewState();
+}
+
+class _PersonalPicoViewState extends ConsumerState<_PersonalPicoView> {
+  String? _transientJurisdictionId;
+
+  @override
+  Widget build(BuildContext context) {
     final now = ref.watch(bogotaNowProvider);
+    final jurisdiction =
+        _findJurisdiction(
+          widget.runtimeJurisdictions,
+          _transientJurisdictionId,
+        ) ??
+        widget.jurisdiction;
     final alertPreferences = ref
         .watch(picoAlertPreferencesProvider)
         .maybeWhen(
@@ -125,8 +146,8 @@ class _PersonalPicoView extends ConsumerWidget {
           .read(restrictionStoreProvider)
           .loadCoverage(
             jurisdiction.id,
-            vehicle.kind,
-            vehicle.serviceType,
+            widget.vehicle.kind,
+            widget.vehicle.serviceType,
             ref.read(currentInstantProvider),
           ),
       builder: (context, snapshot) {
@@ -134,12 +155,12 @@ class _PersonalPicoView extends ConsumerWidget {
           return const _Loading();
         }
         final ruleSet = snapshot.data!;
-        final today = _evaluate(ruleSet, jurisdiction, vehicle, now);
+        final today = _evaluate(ruleSet, jurisdiction, widget.vehicle, now);
         final tomorrowDate = DateTime(now.year, now.month, now.day + 1);
         final tomorrow = _evaluate(
           ruleSet,
           jurisdiction,
-          vehicle,
+          widget.vehicle,
           tomorrowDate,
         );
         final futureDays = [
@@ -149,7 +170,7 @@ class _PersonalPicoView extends ConsumerWidget {
         final nextRestriction = _nextRestriction(
           ruleSet,
           jurisdiction,
-          vehicle,
+          widget.vehicle,
           now,
         );
 
@@ -164,10 +185,15 @@ class _PersonalPicoView extends ConsumerWidget {
           children: [
             _PersonalPicoHeader(alertPreferences: alertPreferences),
             const SizedBox(height: AppSpacing.m),
-            _SourceStrip(jurisdiction: jurisdiction, ruleSet: ruleSet),
+            _SourceStrip(
+              jurisdiction: jurisdiction,
+              ruleSet: ruleSet,
+              isTransient: jurisdiction.id != widget.jurisdiction.id,
+              onSelect: () => _showPersonalCitySelector(context, jurisdiction),
+            ),
             const SizedBox(height: AppSpacing.m),
             _PersonalHero(
-              vehicle: vehicle,
+              vehicle: widget.vehicle,
               jurisdiction: jurisdiction,
               ruleSet: ruleSet,
               today: today,
@@ -179,18 +205,34 @@ class _PersonalPicoView extends ConsumerWidget {
               nextRestriction: nextRestriction,
               jurisdiction: jurisdiction,
               ruleSet: ruleSet,
-              vehicle: vehicle,
+              vehicle: widget.vehicle,
               now: now,
               days: futureDays,
               evaluations: [
                 for (final day in futureDays)
-                  _evaluate(ruleSet, jurisdiction, vehicle, day),
+                  _evaluate(ruleSet, jurisdiction, widget.vehicle, day),
               ],
             ),
           ],
         );
       },
     );
+  }
+
+  Future<void> _showPersonalCitySelector(
+    BuildContext context,
+    RestrictionJurisdiction selectedJurisdiction,
+  ) async {
+    final selected = await _showPicoJurisdictionSelector(
+      context: context,
+      title: 'Ciudad para este vehículo',
+      runtimeJurisdictions: widget.runtimeJurisdictions,
+      selectedJurisdictionId: selectedJurisdiction.id,
+      now: ref.read(currentInstantProvider),
+    );
+    if (selected != null && mounted) {
+      setState(() => _transientJurisdictionId = selected);
+    }
   }
 }
 
@@ -305,19 +347,13 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
   }
 
   Future<void> _showCitySelector(BuildContext context) async {
-    final now = ref.read(currentInstantProvider);
-    final selected = await showModalBottomSheet<String>(
+    final selected = await _showPicoJurisdictionSelector(
       context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: _CitySelectorSheet(
-          jurisdictions: widget.jurisdictions,
-          selectedJurisdictionId:
-              _consultedJurisdictionId ?? widget.selectedJurisdictionId,
-          now: now,
-        ),
-      ),
+      title: 'Consultar ciudad',
+      runtimeJurisdictions: widget.jurisdictions,
+      selectedJurisdictionId:
+          _consultedJurisdictionId ?? widget.selectedJurisdictionId,
+      now: ref.read(currentInstantProvider),
     );
     if (selected != null && mounted) {
       setState(() => _consultedJurisdictionId = selected);
@@ -332,14 +368,38 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
   }
 }
 
+Future<String?> _showPicoJurisdictionSelector({
+  required BuildContext context,
+  required String title,
+  required List<RestrictionJurisdiction> runtimeJurisdictions,
+  required String? selectedJurisdictionId,
+  required DateTime now,
+}) {
+  return showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      child: _CitySelectorSheet(
+        title: title,
+        runtimeJurisdictions: runtimeJurisdictions,
+        selectedJurisdictionId: selectedJurisdictionId,
+        now: now,
+      ),
+    ),
+  );
+}
+
 class _CitySelectorSheet extends ConsumerStatefulWidget {
   const _CitySelectorSheet({
-    required this.jurisdictions,
+    required this.title,
+    required this.runtimeJurisdictions,
     required this.selectedJurisdictionId,
     required this.now,
   });
 
-  final List<RestrictionJurisdiction> jurisdictions;
+  final String title;
+  final List<RestrictionJurisdiction> runtimeJurisdictions;
   final String? selectedJurisdictionId;
   final DateTime now;
 
@@ -367,16 +427,7 @@ class _CitySelectorSheetState extends ConsumerState<_CitySelectorSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = widget.jurisdictions
-        .where((jurisdiction) {
-          final query = _normalizeSearch(_query);
-          if (query.isEmpty) {
-            return true;
-          }
-          return _normalizeSearch(jurisdiction.name).contains(query);
-        })
-        .toList(growable: false);
-
+    final catalog = ref.watch(picoJurisdictionCatalogProvider);
     return SizedBox(
       height: MediaQuery.sizeOf(context).height * 0.72,
       child: Padding(
@@ -390,7 +441,7 @@ class _CitySelectorSheetState extends ConsumerState<_CitySelectorSheet> {
           key: const ValueKey('pico-city-selector'),
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Consultar ciudad', style: AppTextStyles.h2),
+            Text(widget.title, style: AppTextStyles.h2),
             const SizedBox(height: AppSpacing.s),
             TextField(
               key: const ValueKey('pico-city-search'),
@@ -406,40 +457,29 @@ class _CitySelectorSheetState extends ConsumerState<_CitySelectorSheet> {
             Expanded(
               child: FutureBuilder<Map<String, _CityCoverageAvailability>>(
                 future: _availability,
-                builder: (context, snapshot) {
-                  final availability = snapshot.data ?? const {};
-                  if (filtered.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
-                      child: Center(child: Text('Sin resultados')),
-                    );
-                  }
-                  return ListView.separated(
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final jurisdiction = filtered[index];
-                      final item = availability[jurisdiction.id];
-                      final enabled = item == null || item.hasCoverage;
-                      return ListTile(
-                        key: ValueKey('pico-city-option-${jurisdiction.id}'),
-                        enabled: enabled,
-                        minVerticalPadding: AppSpacing.s,
-                        title: Text(jurisdiction.name),
-                        subtitle: Text(
-                          item == null
-                              ? 'Verificando cobertura'
-                              : item.description,
-                        ),
-                        trailing:
-                            jurisdiction.id == widget.selectedJurisdictionId
-                            ? const Icon(Icons.check_rounded)
-                            : null,
-                        onTap: enabled
-                            ? () => Navigator.of(context).pop(jurisdiction.id)
-                            : null,
-                      );
-                    },
+                builder: (context, availabilitySnapshot) {
+                  return catalog.when(
+                    data: (catalog) => _CitySelectorList(
+                      entries: _catalogWithRuntimeFallback(
+                        catalog,
+                        widget.runtimeJurisdictions,
+                      ),
+                      query: _query,
+                      runtimeJurisdictionIds: widget.runtimeJurisdictions
+                          .map((jurisdiction) => jurisdiction.id)
+                          .toSet(),
+                      availability: availabilitySnapshot.data ?? const {},
+                      selectedJurisdictionId: widget.selectedJurisdictionId,
+                    ),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (error, stackTrace) => Center(
+                      child: Text(
+                        'No pudimos cargar el catálogo.',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.body,
+                      ),
+                    ),
                   );
                 },
               ),
@@ -453,7 +493,7 @@ class _CitySelectorSheetState extends ConsumerState<_CitySelectorSheet> {
   Future<Map<String, _CityCoverageAvailability>> _loadCityAvailability() async {
     final store = ref.read(restrictionStoreProvider);
     final values = <String, _CityCoverageAvailability>{};
-    for (final jurisdiction in widget.jurisdictions) {
+    for (final jurisdiction in widget.runtimeJurisdictions) {
       final categories = <String>[];
       var stale = false;
       for (final category in PicoVehicleCategory.values) {
@@ -475,6 +515,222 @@ class _CitySelectorSheetState extends ConsumerState<_CitySelectorSheet> {
     }
     return values;
   }
+}
+
+class _CitySelectorList extends StatelessWidget {
+  const _CitySelectorList({
+    required this.entries,
+    required this.query,
+    required this.runtimeJurisdictionIds,
+    required this.availability,
+    required this.selectedJurisdictionId,
+  });
+
+  final List<PicoJurisdictionCatalogEntry> entries;
+  final String query;
+  final Set<String> runtimeJurisdictionIds;
+  final Map<String, _CityCoverageAvailability> availability;
+  final String? selectedJurisdictionId;
+
+  @override
+  Widget build(BuildContext context) {
+    final normalizedQuery = normalizePicoJurisdictionText(query);
+    final filtered = entries
+        .where((entry) {
+          if (normalizedQuery.isEmpty) {
+            return true;
+          }
+          return normalizePicoJurisdictionText(
+            '${entry.name} ${entry.department}',
+          ).contains(normalizedQuery);
+        })
+        .toList(growable: false);
+    final available = filtered
+        .where((entry) => runtimeJurisdictionIds.contains(entry.id))
+        .toList(growable: false);
+    final upcoming = filtered
+        .where((entry) => !runtimeJurisdictionIds.contains(entry.id))
+        .toList(growable: false);
+
+    if (filtered.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
+        child: Center(child: Text('Sin resultados')),
+      );
+    }
+
+    return ListView(
+      key: const ValueKey('pico-city-selector-results'),
+      children: [
+        if (available.isNotEmpty)
+          _CitySelectorSection(
+            key: const ValueKey('pico-city-section-available'),
+            title: 'Disponibles en PicoRadar',
+            entries: available,
+            available: true,
+            availability: availability,
+            selectedJurisdictionId: selectedJurisdictionId,
+          ),
+        if (upcoming.isNotEmpty)
+          _CitySelectorSection(
+            key: const ValueKey('pico-city-section-upcoming'),
+            title: 'Otras ciudades',
+            entries: upcoming,
+            available: false,
+            availability: availability,
+            selectedJurisdictionId: selectedJurisdictionId,
+          ),
+      ],
+    );
+  }
+}
+
+class _CitySelectorSection extends StatelessWidget {
+  const _CitySelectorSection({
+    super.key,
+    required this.title,
+    required this.entries,
+    required this.available,
+    required this.availability,
+    required this.selectedJurisdictionId,
+  });
+
+  final String title;
+  final List<PicoJurisdictionCatalogEntry> entries;
+  final bool available;
+  final Map<String, _CityCoverageAvailability> availability;
+  final String? selectedJurisdictionId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.s),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(
+              top: AppSpacing.s,
+              bottom: AppSpacing.xs,
+            ),
+            child: Text(title, style: AppTextStyles.caption),
+          ),
+          for (final entry in entries)
+            _PicoCatalogCityTile(
+              entry: entry,
+              available: available,
+              availability: availability[entry.id],
+              selected: entry.id == selectedJurisdictionId,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PicoCatalogCityTile extends StatelessWidget {
+  const _PicoCatalogCityTile({
+    required this.entry,
+    required this.available,
+    required this.availability,
+    required this.selected,
+  });
+
+  final PicoJurisdictionCatalogEntry entry;
+  final bool available;
+  final _CityCoverageAvailability? availability;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusLabel = available ? 'Disponible' : 'Próximamente';
+    return ListTile(
+      key: ValueKey('pico-city-option-${entry.id}'),
+      enabled: available,
+      minVerticalPadding: AppSpacing.s,
+      title: Text(entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        available
+            ? availability?.description ?? 'Verificando cobertura'
+            : '${entry.department} · Cobertura en preparación',
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _AvailabilityChip(
+            key: ValueKey('pico-city-status-${entry.id}'),
+            label: statusLabel,
+            available: available,
+          ),
+          if (selected) ...[
+            const SizedBox(width: AppSpacing.xs),
+            const Icon(Icons.check_rounded),
+          ],
+        ],
+      ),
+      onTap: available ? () => Navigator.of(context).pop(entry.id) : null,
+    );
+  }
+}
+
+class _AvailabilityChip extends StatelessWidget {
+  const _AvailabilityChip({
+    super.key,
+    required this.label,
+    required this.available,
+  });
+
+  final String label;
+  final bool available;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = available ? AppColors.green : AppColors.orange;
+    return Container(
+      constraints: const BoxConstraints(minHeight: 28),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.s,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppTextStyles.caption.copyWith(
+          color: color,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+List<PicoJurisdictionCatalogEntry> _catalogWithRuntimeFallback(
+  PicoJurisdictionCatalog catalog,
+  List<RestrictionJurisdiction> runtimeJurisdictions,
+) {
+  final entries = [...catalog.records];
+  final catalogIds = entries.map((entry) => entry.id).toSet();
+  for (final jurisdiction in runtimeJurisdictions) {
+    if (!catalogIds.contains(jurisdiction.id)) {
+      entries.add(
+        PicoJurisdictionCatalogEntry(
+          id: jurisdiction.id,
+          name: jurisdiction.name,
+          department: 'Colombia',
+          classification: 'SUPPORTED_CURRENT',
+          sourceDate: 'runtime',
+        ),
+      );
+    }
+  }
+  return entries;
 }
 
 class _CityCoverageAvailability {
@@ -687,52 +943,76 @@ void _showCityInfo(BuildContext context) {
 }
 
 class _SourceStrip extends StatelessWidget {
-  const _SourceStrip({required this.jurisdiction, required this.ruleSet});
+  const _SourceStrip({
+    required this.jurisdiction,
+    required this.ruleSet,
+    required this.isTransient,
+    required this.onSelect,
+  });
 
   final RestrictionJurisdiction jurisdiction;
   final RestrictionRuleSet ruleSet;
+  final bool isTransient;
+  final VoidCallback onSelect;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      key: const ValueKey('pico-personal-location-source'),
-      constraints: const BoxConstraints(minHeight: 56),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.l,
-        vertical: AppSpacing.s,
-      ),
-      decoration: BoxDecoration(
+    return Semantics(
+      button: true,
+      label: 'Cambiar ciudad temporal de Pico y Placa',
+      child: Material(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.input),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.location_on_outlined, color: AppColors.blue),
-          const SizedBox(width: AppSpacing.m),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: const ValueKey('pico-personal-location-source'),
+          onTap: onSelect,
+          borderRadius: BorderRadius.circular(AppRadius.input),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 56),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.l,
+              vertical: AppSpacing.s,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.input),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
               children: [
-                Text(
-                  '${jurisdiction.name}, Colombia',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodyStrong.copyWith(
-                    color: AppColors.teal,
+                const Icon(Icons.location_on_outlined, color: AppColors.blue),
+                const SizedBox(width: AppSpacing.m),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${jurisdiction.name}, Colombia',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyStrong.copyWith(
+                          color: AppColors.teal,
+                        ),
+                      ),
+                      Text(
+                        isTransient
+                            ? 'Consulta temporal · ${_sourceLabel(ruleSet)}'
+                            : _sourceLabel(ruleSet),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption,
+                      ),
+                    ],
                   ),
                 ),
-                Text(
-                  _sourceLabel(ruleSet),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption,
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.teal,
                 ),
               ],
             ),
           ),
-          const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.teal),
-        ],
+        ),
       ),
     );
   }
@@ -2458,18 +2738,6 @@ RestrictionJurisdiction? _findJurisdiction(
 }
 
 bool _hasQueryValue(String? value) => value != null && value.trim().isNotEmpty;
-
-String _normalizeSearch(String value) {
-  final lower = value.trim().toLowerCase();
-  return lower
-      .replaceAll('á', 'a')
-      .replaceAll('é', 'e')
-      .replaceAll('í', 'i')
-      .replaceAll('ó', 'o')
-      .replaceAll('ú', 'u')
-      .replaceAll('ü', 'u')
-      .replaceAll('ñ', 'n');
-}
 
 const _defaultAlertPreferences = PicoAlertPreferences(
   enabled: true,
