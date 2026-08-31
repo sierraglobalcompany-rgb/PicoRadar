@@ -12,6 +12,7 @@ import 'package:picoradar/features/driving/platform/driving_feedback_gateway.dar
 import 'package:picoradar/features/driving/platform/driving_location_gateway.dart';
 import 'package:picoradar/features/driving/presentation/driving_screen.dart';
 import 'package:picoradar/features/location/platform/device_location_gateway.dart';
+import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
 import '../../../test_app_harness.dart';
 
@@ -185,6 +186,10 @@ void main() {
     expect(find.byKey(const ValueKey('driving-speed-gauge')), findsOneWidget);
     expect(find.byKey(const ValueKey('camera-speed-sign')), findsOneWidget);
     expect(find.byKey(const ValueKey('camera-distance-pill')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('driving-camera-address')),
+      findsOneWidget,
+    );
     expect(find.text('60 km/h'), findsWidgets);
     expect(find.textContaining('Reduce velocidad'), findsOneWidget);
     expect(find.textContaining('300 m ·'), findsNothing);
@@ -267,6 +272,7 @@ void main() {
     expect(transform.transform.storage[0], -1);
     expect(find.byKey(const ValueKey('hud-camera-distance')), findsOneWidget);
     expect(find.byKey(const ValueKey('hud-camera-speed-sign')), findsOneWidget);
+    expect(find.byKey(const ValueKey('hud-camera-address')), findsOneWidget);
     expect(find.textContaining('Cámara'), findsOneWidget);
   });
 
@@ -304,11 +310,52 @@ void main() {
       find.byKey(const ValueKey('driving-camera-detail-sheet')),
       findsOneWidget,
     );
-    expect(find.text('Avenida 80'), findsOneWidget);
+    expect(find.text('Avenida 80'), findsWidgets);
     expect(find.text('Secretaría de Movilidad de Medellín'), findsOneWidget);
     expect(find.text('Cámara'), findsOneWidget);
     expect(find.text('Operando'), findsOneWidget);
     expect(find.text('Equipo 123'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('driving-camera-map-action-sheet')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('camera map action opens Google Maps with camera coordinates', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    final launcher = _FakeExternalLauncher();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+          externalLauncherProvider.overrideWithValue(launcher),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('driving-camera-map-action')));
+    await tester.pump();
+
+    expect(launcher.opened, hasLength(1));
+    final uri = Uri.parse(launcher.opened.single);
+    expect(uri.host, 'www.google.com');
+    expect(uri.path, '/maps/search/');
+    expect(uri.queryParameters['query'], '6.244,-75.57');
   });
 
   testWidgets('HUD with unknown speed omits the speed sign', (tester) async {
@@ -361,6 +408,19 @@ class _NoopDrivingFeedbackGateway implements DrivingFeedbackGateway {
 
   @override
   Future<void> vibrate() async {}
+}
+
+class _FakeExternalLauncher implements ExternalLauncher {
+  final opened = <String>[];
+
+  @override
+  Future<bool> callPhone(String phone) async => false;
+
+  @override
+  Future<bool> openExternal(String uri) async {
+    opened.add(uri);
+    return true;
+  }
 }
 
 CameraPack _emptyPack() {

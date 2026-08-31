@@ -8,6 +8,7 @@ import '../data/driving_preferences.dart';
 import '../domain/camera_matcher.dart';
 import '../domain/driving_alert_engine.dart';
 import '../domain/traffic_camera.dart';
+import '../../vehicle_status/platform/external_launcher.dart';
 
 class DrivingScreen extends ConsumerStatefulWidget {
   const DrivingScreen({super.key});
@@ -385,13 +386,13 @@ class _ReadySummary extends StatelessWidget {
   }
 }
 
-class _CameraPanel extends StatelessWidget {
+class _CameraPanel extends ConsumerWidget {
   const _CameraPanel({required this.state});
 
   final DrivingState state;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final alert = state.lastAlert;
     final match = state.nearestCamera;
     final weakForAlerts = state.isActive && !state.canEvaluateAlerts;
@@ -440,10 +441,19 @@ class _CameraPanel extends StatelessWidget {
                 ),
                 if (hasCamera)
                   IconButton(
+                    key: const ValueKey('driving-camera-map-action'),
+                    tooltip: 'Ver en Google Maps',
+                    color: state.isActive ? Colors.white70 : AppColors.navy,
+                    onPressed: () => _openCameraMap(ref, match.camera),
+                    icon: const Icon(Icons.near_me_outlined),
+                  ),
+                if (hasCamera)
+                  IconButton(
                     key: const ValueKey('driving-camera-detail-action'),
                     tooltip: 'Fuente de cámara',
                     color: state.isActive ? Colors.white70 : AppColors.navy,
-                    onPressed: () => _showCameraDetails(context, match.camera),
+                    onPressed: () =>
+                        _showCameraDetails(context, ref, match.camera),
                     icon: const Icon(Icons.info_outline),
                   ),
               ],
@@ -469,7 +479,11 @@ class _CameraPanel extends StatelessWidget {
     );
   }
 
-  void _showCameraDetails(BuildContext context, TrafficCamera camera) {
+  void _showCameraDetails(
+    BuildContext context,
+    WidgetRef ref,
+    TrafficCamera camera,
+  ) {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -495,6 +509,14 @@ class _CameraPanel extends StatelessWidget {
                     label: 'Dirección',
                     value: camera.address ?? 'No publicada',
                   ),
+                  const SizedBox(height: AppSpacing.xs),
+                  OutlinedButton.icon(
+                    key: const ValueKey('driving-camera-map-action-sheet'),
+                    onPressed: () => _openCameraMap(ref, camera),
+                    icon: const Icon(Icons.near_me_outlined),
+                    label: const Text('Ver en Google Maps'),
+                  ),
+                  const SizedBox(height: AppSpacing.s),
                   _CameraDetailLine(
                     label: 'Autoridad de tránsito',
                     value: camera.trafficAuthority ?? 'No publicada',
@@ -539,6 +561,12 @@ class _CameraPanel extends StatelessWidget {
       },
     );
   }
+
+  Future<void> _openCameraMap(WidgetRef ref, TrafficCamera camera) async {
+    await ref
+        .read(externalLauncherProvider)
+        .openExternal(_cameraMapUri(camera).toString());
+  }
 }
 
 class _CameraFacts extends StatelessWidget {
@@ -552,6 +580,7 @@ class _CameraFacts extends StatelessWidget {
     final camera = match.camera;
     final distance = match.distanceMeters.round();
     final reported = camera.speedLimitKmh;
+    final locationText = _cameraLocationText(camera);
     final status = switch (state.speedState) {
       DrivingSpeedState.over => 'Reduce velocidad',
       DrivingSpeedState.near => 'Cerca del valor reportado',
@@ -593,9 +622,47 @@ class _CameraFacts extends StatelessWidget {
           key: const ValueKey('driving-camera-message'),
           style: _panelCaptionStyle(state),
         ),
+        const SizedBox(height: AppSpacing.xs),
+        Row(
+          key: const ValueKey('driving-camera-address'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.place_outlined,
+              size: 16,
+              color: state.isActive
+                  ? Colors.white.withValues(alpha: 0.68)
+                  : AppColors.navy.withValues(alpha: 0.66),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(
+              child: Text(
+                locationText,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: _panelCaptionStyle(state),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
+}
+
+String _cameraLocationText(TrafficCamera camera) {
+  final address = camera.address?.trim();
+  if (address != null && address.isNotEmpty) {
+    return address;
+  }
+  return camera.locality;
+}
+
+Uri _cameraMapUri(TrafficCamera camera) {
+  return Uri.https('www.google.com', '/maps/search/', {
+    'api': '1',
+    'query': '${camera.latitude},${camera.longitude}',
+  });
 }
 
 String _cameraDetailValue(String? value, String fallback) {
@@ -977,6 +1044,8 @@ class _HudView extends StatelessWidget {
     final colors = _DrivingColors.forSpeedState(state.speedState);
     final cameraSpeed = state.reportedCameraSpeedKmh;
     final distance = state.nearestCamera?.distanceMeters.round();
+    final camera = state.nearestCamera?.camera;
+    final cameraLocation = camera == null ? null : _cameraLocationText(camera);
     return ColoredBox(
       color: Colors.black,
       child: SafeArea(
@@ -1031,6 +1100,25 @@ class _HudView extends StatelessWidget {
                           height: 1,
                         ),
                       ),
+                    if (cameraLocation != null) ...[
+                      const SizedBox(height: AppSpacing.s),
+                      SizedBox(
+                        width: 320,
+                        child: Text(
+                          cameraLocation,
+                          key: const ValueKey('hud-camera-address'),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            height: 1.08,
+                          ),
+                        ),
+                      ),
+                    ],
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.xl,
