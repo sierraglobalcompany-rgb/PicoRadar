@@ -4,13 +4,15 @@ enum DrivingAlertProfile {
   calm('Tranquilo', [500, 200, 50]),
   normal('Normal', [500, 300, 100]),
   detailed('Detallado', [500, 400, 300, 200, 100, 50]),
-  custom('Personalizado', [500, 250, 100]);
+  custom('Personalizado', [500, 300, 100]);
 
   const DrivingAlertProfile(this.label, this.defaultThresholdsMeters);
 
   final String label;
   final List<int> defaultThresholdsMeters;
 }
+
+const allowedCustomAlertThresholdsMeters = [500, 400, 300, 200, 100, 50];
 
 enum DrivingAlertSeverity { calm, headsUp, urgent }
 
@@ -33,9 +35,16 @@ class DrivingAlert {
 }
 
 class DrivingAlertEngine {
-  DrivingAlertEngine({this.profile = DrivingAlertProfile.normal, this.now});
+  DrivingAlertEngine({
+    this.profile = DrivingAlertProfile.normal,
+    List<int>? customThresholdsMeters,
+    this.now,
+  }) : customThresholdsMeters =
+           customThresholdsMeters ??
+           DrivingAlertProfile.custom.defaultThresholdsMeters;
 
   final DrivingAlertProfile profile;
+  final List<int> customThresholdsMeters;
   final DateTime? now;
   final Map<String, Set<int>> _firedThresholdsByCamera = {};
   final Map<String, DateTime> _lastAlertByCamera = {};
@@ -89,14 +98,29 @@ class DrivingAlertEngine {
 
   int? _nextThreshold(String cameraId, double distanceMeters) {
     final fired = _firedThresholdsByCamera[cameraId] ?? const <int>{};
-    final thresholds = [...profile.defaultThresholdsMeters]
-      ..sort((a, b) => b.compareTo(a));
+    final thresholds = [
+      ...(profile == DrivingAlertProfile.custom
+          ? _normalizedCustomThresholds()
+          : profile.defaultThresholdsMeters),
+    ]..sort((a, b) => b.compareTo(a));
     for (final threshold in thresholds) {
       if (distanceMeters <= threshold && !fired.contains(threshold)) {
         return threshold;
       }
     }
     return null;
+  }
+
+  List<int> _normalizedCustomThresholds() {
+    final selected =
+        customThresholdsMeters
+            .where(allowedCustomAlertThresholdsMeters.contains)
+            .toSet()
+            .toList()
+          ..sort((a, b) => b.compareTo(a));
+    return selected.isEmpty
+        ? DrivingAlertProfile.custom.defaultThresholdsMeters
+        : selected;
   }
 
   String _message(CameraMatch match, int threshold, double speedKmh) {

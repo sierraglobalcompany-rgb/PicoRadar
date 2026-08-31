@@ -6,6 +6,7 @@ import 'package:picoradar/features/driving/application/driving_controller.dart';
 import 'package:picoradar/features/driving/data/camera_pack_loader.dart';
 import 'package:picoradar/features/driving/domain/camera_matcher.dart';
 import 'package:picoradar/features/driving/domain/traffic_camera.dart';
+import 'package:picoradar/features/driving/platform/driving_feedback_gateway.dart';
 import 'package:picoradar/features/driving/platform/driving_location_gateway.dart';
 import 'package:picoradar/features/driving/presentation/driving_screen.dart';
 import 'package:picoradar/features/location/platform/device_location_gateway.dart';
@@ -23,6 +24,9 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _emptyPack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
         ],
         child: const MaterialApp(home: DrivingScreen()),
       ),
@@ -45,6 +49,9 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _emptyPack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
         ],
         child: const MaterialApp(home: DrivingScreen()),
       ),
@@ -56,6 +63,52 @@ void main() {
 
     expect(gateway.requestPermissionCalls, 1);
   });
+
+  testWidgets('settings expose custom thresholds from the approved set', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _emptyPack()),
+          drivingLocationGatewayProvider.overrideWithValue(_IdleGateway()),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Alertas'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Personalizado'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('custom-alert-500')), findsOneWidget);
+    expect(find.byKey(const ValueKey('custom-alert-400')), findsOneWidget);
+    expect(find.byKey(const ValueKey('custom-alert-300')), findsOneWidget);
+    expect(find.byKey(const ValueKey('custom-alert-200')), findsOneWidget);
+    expect(find.byKey(const ValueKey('custom-alert-100')), findsOneWidget);
+    expect(find.byKey(const ValueKey('custom-alert-50')), findsOneWidget);
+    expect(find.text('250 m'), findsNothing);
+  });
+}
+
+class _NoopDrivingFeedbackGateway implements DrivingFeedbackGateway {
+  @override
+  Future<void> playSound() async {}
+
+  @override
+  Future<void> setKeepScreenOn(bool enabled) async {}
+
+  @override
+  Future<void> speak(String message) async {}
+
+  @override
+  Future<void> vibrate() async {}
 }
 
 CameraPack _emptyPack() {

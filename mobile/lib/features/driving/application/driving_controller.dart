@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/app_providers.dart';
@@ -9,11 +9,37 @@ import '../data/camera_pack_loader.dart';
 import '../data/driving_preferences.dart';
 import '../domain/camera_matcher.dart';
 import '../domain/driving_alert_engine.dart';
+import '../domain/traffic_camera.dart';
+import '../platform/driving_feedback_gateway.dart';
 import '../platform/driving_location_gateway.dart';
+
+const drivingSimulationEnabled = bool.fromEnvironment(
+  'PICORADAR_DRIVING_SIMULATION',
+);
+
+bool get canUseDebugDrivingSimulation => kDebugMode && drivingSimulationEnabled;
 
 final drivingLocationGatewayProvider = Provider<DrivingLocationGateway>((ref) {
   return const GeolocatorDrivingLocationGateway();
 });
+
+final drivingFeedbackGatewayProvider = Provider<DrivingFeedbackGateway>((ref) {
+  return const PlatformDrivingFeedbackGateway();
+});
+
+final drivingHudActiveProvider =
+    NotifierProvider<DrivingHudActiveNotifier, bool>(
+      DrivingHudActiveNotifier.new,
+    );
+
+class DrivingHudActiveNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void setActive(bool value) {
+    state = value;
+  }
+}
 
 final drivingPreferencesProvider = FutureProvider<DrivingPreferences>((
   ref,
@@ -129,7 +155,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     );
   }
 
-  Future<void> start() async {
+  Future<void> start({bool simulated = false}) async {
     final current = state.asData?.value ?? await build();
     state = AsyncData(
       current.copyWith(
@@ -137,30 +163,45 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         clearErrorMessage: true,
       ),
     );
-    final gateway = ref.read(drivingLocationGatewayProvider);
-    if (!await gateway.isLocationServiceEnabled()) {
-      _setStopped(
-        current,
-        DrivingSessionStatus.serviceDisabled,
-        'Activa la ubicacion del telefono para iniciar.',
-      );
-      return;
-    }
-    var permission = await gateway.checkPermission();
-    if (permission != DeviceLocationPermission.granted) {
-      permission = await gateway.requestPermission();
-    }
-    if (permission != DeviceLocationPermission.granted) {
-      _setStopped(
-        current,
-        _permissionStatus(permission),
-        _permissionMessage(permission),
-      );
-      return;
+    final pack = await ref.read(cameraPackProvider.future);
+    final Stream<DrivingPoint> drivingStream;
+    if (simulated && canUseDebugDrivingSimulation) {
+      if (pack.cameras.isEmpty) {
+        _setStopped(
+          current,
+          DrivingSessionStatus.locationUnavailable,
+          'No hay camaras locales para simular la ruta.',
+        );
+        return;
+      }
+      drivingStream = _simulatedApproachStream(pack.cameras.first);
+    } else {
+      final gateway = ref.read(drivingLocationGatewayProvider);
+      if (!await gateway.isLocationServiceEnabled()) {
+        _setStopped(
+          current,
+          DrivingSessionStatus.serviceDisabled,
+          'Activa la ubicacion del telefono para iniciar.',
+        );
+        return;
+      }
+      var permission = await gateway.checkPermission();
+      if (permission != DeviceLocationPermission.granted) {
+        permission = await gateway.requestPermission();
+      }
+      if (permission != DeviceLocationPermission.granted) {
+        _setStopped(
+          current,
+          _permissionStatus(permission),
+          _permissionMessage(permission),
+        );
+        return;
+      }
+      drivingStream = gateway.positionStream();
     }
 
     _previousPoint = null;
-    _alertEngine = DrivingAlertEngine(profile: current.preferences.profile);
+    _alertEngine = _alertEngineFor(current.preferences);
     state = AsyncData(
       current.copyWith(
         status: DrivingSessionStatus.active,
@@ -169,7 +210,8 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         clearErrorMessage: true,
       ),
     );
-    _subscription = gateway.positionStream().listen(
+    await ref.read(drivingFeedbackGatewayProvider).setKeepScreenOn(true);
+    _subscription = drivingStream.listen(
       _onPoint,
       onError: (_) {
         final latest = state.asData?.value ?? current;
@@ -186,6 +228,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   Future<void> stop() async {
     final current = state.asData?.value ?? await build();
     await _cancelSubscription();
+    await ref.read(drivingFeedbackGatewayProvider).setKeepScreenOn(false);
     state = AsyncData(
       current.copyWith(
         status: DrivingSessionStatus.idle,
@@ -198,7 +241,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
 
   Future<void> savePreferences(DrivingPreferences preferences) async {
     await saveDrivingPreferences(ref.read(appPreferencesProvider), preferences);
-    _alertEngine = DrivingAlertEngine(profile: preferences.profile);
+    _alertEngine = _alertEngineFor(preferences);
     final current = state.asData?.value ?? await build();
     state = AsyncData(current.copyWith(preferences: preferences));
   }
@@ -211,12 +254,12 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       previous: _previousPoint,
       cameras: pack.cameras,
     );
-    final alert = (_alertEngine ??= DrivingAlertEngine(
-      profile: current.preferences.profile,
+    final alert = (_alertEngine ??= _alertEngineFor(
+      current.preferences,
     )).evaluate(match: match, speedKmh: point.speedKmh, now: point.recordedAt);
     _previousPoint = point;
     if (alert != null) {
-      _notify(current.preferences);
+      await _notify(current.preferences, alert);
     }
     state = AsyncData(
       current.copyWith(
@@ -230,12 +273,19 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     );
   }
 
-  void _notify(DrivingPreferences preferences) {
+  Future<void> _notify(
+    DrivingPreferences preferences,
+    DrivingAlert alert,
+  ) async {
+    final feedback = ref.read(drivingFeedbackGatewayProvider);
+    if (preferences.voiceEnabled) {
+      await feedback.speak(_voiceMessage(alert));
+    }
     if (preferences.soundEnabled) {
-      SystemSound.play(SystemSoundType.alert);
+      await feedback.playSound();
     }
     if (preferences.vibrationEnabled) {
-      HapticFeedback.mediumImpact();
+      await feedback.vibrate();
     }
   }
 
@@ -245,6 +295,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     String message,
   ) {
     _cancelSubscription();
+    ref.read(drivingFeedbackGatewayProvider).setKeepScreenOn(false);
     state = AsyncData(
       previous.copyWith(
         status: status,
@@ -279,5 +330,37 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     _subscription = null;
     _previousPoint = null;
     _alertEngine = null;
+  }
+
+  DrivingAlertEngine _alertEngineFor(DrivingPreferences preferences) {
+    return DrivingAlertEngine(
+      profile: preferences.profile,
+      customThresholdsMeters: preferences.customThresholdsMeters,
+    );
+  }
+
+  String _voiceMessage(DrivingAlert alert) {
+    return 'Camara de fotodeteccion autorizada a '
+        '${alert.thresholdMeters} metros.';
+  }
+
+  Stream<DrivingPoint> _simulatedApproachStream(TrafficCamera camera) {
+    final now = DateTime.now().toUtc();
+    final metersSouth = [520.0, 390.0, 290.0, 95.0, 45.0];
+    final points = [
+      for (var index = 0; index < metersSouth.length; index += 1)
+        DrivingPoint(
+          latitude: camera.latitude - metersSouth[index] / 111320,
+          longitude: camera.longitude,
+          accuracyMeters: 12,
+          speedKmh: 36,
+          headingDegrees: 0,
+          recordedAt: now.add(Duration(seconds: index * 20)),
+        ),
+    ];
+    return Stream<DrivingPoint>.periodic(
+      const Duration(milliseconds: 800),
+      (index) => points[index],
+    ).take(points.length);
   }
 }

@@ -66,6 +66,48 @@ void main() {
 
     expect(alert, isNull);
   });
+
+  test('custom profile uses only owner-approved thresholds', () {
+    final engine = DrivingAlertEngine(
+      profile: DrivingAlertProfile.custom,
+      customThresholdsMeters: const [400, 250, 50],
+    );
+
+    final first = engine.evaluate(
+      match: CameraMatch(
+        camera: _camera(speedLimitKmh: null),
+        distanceMeters: 390,
+        approaching: true,
+        bearingDifferenceDegrees: 0,
+      ),
+      speedKmh: 36,
+      now: DateTime.utc(2026, 8, 31, 12),
+    );
+    final unsupported = engine.evaluate(
+      match: CameraMatch(
+        camera: _camera(speedLimitKmh: null),
+        distanceMeters: 240,
+        approaching: true,
+        bearingDifferenceDegrees: 0,
+      ),
+      speedKmh: 36,
+      now: DateTime.utc(2026, 8, 31, 12, 1),
+    );
+    final finalStage = engine.evaluate(
+      match: CameraMatch(
+        camera: _camera(speedLimitKmh: null),
+        distanceMeters: 45,
+        approaching: true,
+        bearingDifferenceDegrees: 0,
+      ),
+      speedKmh: 36,
+      now: DateTime.utc(2026, 8, 31, 12, 2),
+    );
+
+    expect(first!.thresholdMeters, 400);
+    expect(unsupported, isNull);
+    expect(finalStage!.thresholdMeters, 50);
+  });
 }
 
 TrafficCamera _camera({required int? speedLimitKmh}) {

@@ -7,6 +7,7 @@ import 'package:picoradar/features/driving/application/driving_controller.dart';
 import 'package:picoradar/features/driving/data/camera_pack_loader.dart';
 import 'package:picoradar/features/driving/domain/camera_matcher.dart';
 import 'package:picoradar/features/driving/domain/traffic_camera.dart';
+import 'package:picoradar/features/driving/platform/driving_feedback_gateway.dart';
 import 'package:picoradar/features/driving/platform/driving_location_gateway.dart';
 import 'package:picoradar/features/location/platform/device_location_gateway.dart';
 
@@ -17,11 +18,13 @@ void main() {
     'requests location only when the driver starts a foreground session',
     () async {
       final gateway = _FakeDrivingLocationGateway();
+      final feedback = _FakeDrivingFeedbackGateway();
       final container = ProviderContainer(
         overrides: [
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(feedback),
         ],
       );
       addTearDown(container.dispose);
@@ -35,10 +38,11 @@ void main() {
         container.read(drivingControllerProvider).value!.status,
         DrivingSessionStatus.active,
       );
+      expect(feedback.keepScreenOnStates, [true]);
 
       gateway.add(
         DrivingPoint(
-          latitude: 6.241,
+          latitude: 6.239,
           longitude: -75.57,
           accuracyMeters: 14,
           speedKmh: 42,
@@ -47,13 +51,28 @@ void main() {
         ),
       );
       await Future<void>.delayed(Duration.zero);
+      gateway.add(
+        DrivingPoint(
+          latitude: 6.241,
+          longitude: -75.57,
+          accuracyMeters: 14,
+          speedKmh: 42,
+          headingDegrees: 0,
+          recordedAt: DateTime.utc(2026, 8, 31, 12, 1),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
 
       final state = container.read(drivingControllerProvider).value!;
       expect(state.nearestCamera, isNotNull);
       expect(state.speedKmh, 42);
+      expect(feedback.spokenMessages.single, contains('500 metros'));
+      expect(feedback.soundCalls, 1);
+      expect(feedback.vibrationCalls, 1);
 
       await container.read(drivingControllerProvider.notifier).stop();
       expect(gateway.cancelled, isTrue);
+      expect(feedback.keepScreenOnStates, [true, false]);
       expect(
         container.read(drivingControllerProvider).value!.status,
         DrivingSessionStatus.idle,
@@ -86,6 +105,33 @@ CameraPack _pack() {
       ),
     ],
   );
+}
+
+class _FakeDrivingFeedbackGateway implements DrivingFeedbackGateway {
+  final spokenMessages = <String>[];
+  final keepScreenOnStates = <bool>[];
+  var soundCalls = 0;
+  var vibrationCalls = 0;
+
+  @override
+  Future<void> playSound() async {
+    soundCalls += 1;
+  }
+
+  @override
+  Future<void> setKeepScreenOn(bool enabled) async {
+    keepScreenOnStates.add(enabled);
+  }
+
+  @override
+  Future<void> speak(String message) async {
+    spokenMessages.add(message);
+  }
+
+  @override
+  Future<void> vibrate() async {
+    vibrationCalls += 1;
+  }
 }
 
 class _FakeDrivingLocationGateway implements DrivingLocationGateway {

@@ -17,18 +17,20 @@ class DrivingScreen extends ConsumerStatefulWidget {
 
 class _DrivingScreenState extends ConsumerState<DrivingScreen>
     with WidgetsBindingObserver {
+  late final DrivingHudActiveNotifier _hudActiveNotifier;
   bool _hudMode = false;
 
   @override
   void initState() {
     super.initState();
+    _hudActiveNotifier = ref.read(drivingHudActiveProvider.notifier);
     WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _leaveHudMode();
+    _leaveHudMode(updateState: false);
     super.dispose();
   }
 
@@ -49,6 +51,11 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
       loading: () => _DrivingDashboard(
         state: _initialDrivingState,
         onStart: () => ref.read(drivingControllerProvider.notifier).start(),
+        onDebugRoute: canUseDebugDrivingSimulation
+            ? () => ref
+                  .read(drivingControllerProvider.notifier)
+                  .start(simulated: true)
+            : null,
         onStop: () => ref.read(drivingControllerProvider.notifier).stop(),
         onSettings: () => _showSettings(context, defaultDrivingPreferences),
         onHud: null,
@@ -61,6 +68,11 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
         return _DrivingDashboard(
           state: state,
           onStart: () => ref.read(drivingControllerProvider.notifier).start(),
+          onDebugRoute: canUseDebugDrivingSimulation
+              ? () => ref
+                    .read(drivingControllerProvider.notifier)
+                    .start(simulated: true)
+              : null,
           onStop: () => ref.read(drivingControllerProvider.notifier).stop(),
           onSettings: () => _showSettings(context, state.preferences),
           onHud: state.isActive ? _toggleHudMode : null,
@@ -88,6 +100,7 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
   void _toggleHudMode() {
     setState(() => _hudMode = !_hudMode);
     if (_hudMode) {
+      _hudActiveNotifier.setActive(true);
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     } else {
@@ -95,10 +108,11 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
     }
   }
 
-  void _leaveHudMode() {
+  void _leaveHudMode({bool updateState = true}) {
+    _hudActiveNotifier.setActive(false);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    if (mounted && _hudMode) {
+    if (updateState && mounted && _hudMode) {
       setState(() => _hudMode = false);
     }
   }
@@ -114,6 +128,7 @@ class _DrivingDashboard extends StatelessWidget {
   const _DrivingDashboard({
     required this.state,
     required this.onStart,
+    required this.onDebugRoute,
     required this.onStop,
     required this.onSettings,
     required this.onHud,
@@ -121,6 +136,7 @@ class _DrivingDashboard extends StatelessWidget {
 
   final DrivingState state;
   final VoidCallback onStart;
+  final VoidCallback? onDebugRoute;
   final VoidCallback onStop;
   final VoidCallback onSettings;
   final VoidCallback? onHud;
@@ -147,6 +163,18 @@ class _DrivingDashboard extends StatelessWidget {
               ),
             ],
           ),
+          if (active) ...[
+            const SizedBox(height: AppSpacing.s),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: const ValueKey('hud-mirror-action'),
+                onPressed: onHud,
+                icon: const Icon(Icons.flip),
+                label: const Text('HUD espejo'),
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.l),
           _SpeedPanel(state: state),
           const SizedBox(height: AppSpacing.l),
@@ -166,6 +194,17 @@ class _DrivingDashboard extends StatelessWidget {
             icon: Icon(active ? Icons.stop : Icons.play_arrow),
             label: Text(active ? 'Detener' : 'Iniciar'),
           ),
+          if (!active && onDebugRoute != null) ...[
+            const SizedBox(height: AppSpacing.s),
+            OutlinedButton.icon(
+              key: const ValueKey('debug-driving-route'),
+              onPressed: state.status == DrivingSessionStatus.starting
+                  ? null
+                  : onDebugRoute,
+              icon: const Icon(Icons.route),
+              label: const Text('Ruta demo'),
+            ),
+          ],
           const SizedBox(height: AppSpacing.m),
           Text(
             'GPS foreground. No se guarda recorrido ni se envia ubicacion al servidor.',
@@ -251,6 +290,7 @@ class _CameraPanel extends StatelessWidget {
     final match = state.nearestCamera;
     final urgent = alert?.severity == DrivingAlertSeverity.urgent;
     final color = urgent ? AppColors.red : AppColors.orange;
+    final hasCamera = match != null;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: alert == null ? Colors.white : color.withValues(alpha: 0.10),
@@ -275,7 +315,10 @@ class _CameraPanel extends StatelessWidget {
                 const SizedBox(width: AppSpacing.s),
                 Expanded(
                   child: Text(
-                    alert?.title ?? 'Sin camara cercana',
+                    alert?.title ??
+                        (hasCamera
+                            ? 'Fotodeteccion autorizada'
+                            : 'No hay camaras proximas'),
                     style: AppTextStyles.h2,
                   ),
                 ),
@@ -299,7 +342,12 @@ class _CameraPanel extends StatelessWidget {
     }
     final camera = match.camera;
     final distance = match.distanceMeters.round();
-    return '${camera.locality} · $distance m · ${camera.kind.label}';
+    final direction = match.approaching ? 'Aproximandote' : 'En zona';
+    final speedLimit = camera.speedLimitKmh == null
+        ? ''
+        : ' · ${camera.speedLimitKmh} km/h';
+    return '${camera.locality} · $distance m · $direction · '
+        '${camera.kind.label}$speedLimit · ANSV';
   }
 }
 
@@ -416,55 +464,97 @@ class _DrivingSettingsSheetState extends State<_DrivingSettingsSheet> {
           AppSpacing.l,
           AppSpacing.l,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Alertas', style: AppTextStyles.h2),
-            const SizedBox(height: AppSpacing.l),
-            SegmentedButton<DrivingAlertProfile>(
-              segments: [
-                for (final profile in DrivingAlertProfile.values)
-                  ButtonSegment(value: profile, label: Text(profile.label)),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Alertas', style: AppTextStyles.h2),
+              const SizedBox(height: AppSpacing.l),
+              SegmentedButton<DrivingAlertProfile>(
+                segments: [
+                  for (final profile in DrivingAlertProfile.values)
+                    ButtonSegment(value: profile, label: Text(profile.label)),
+                ],
+                selected: {_value.profile},
+                onSelectionChanged: (selection) {
+                  setState(
+                    () => _value = _value.copyWith(profile: selection.first),
+                  );
+                },
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Voz'),
+                value: _value.voiceEnabled,
+                onChanged: (value) => setState(
+                  () => _value = _value.copyWith(voiceEnabled: value),
+                ),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Sonido'),
+                value: _value.soundEnabled,
+                onChanged: (value) => setState(
+                  () => _value = _value.copyWith(soundEnabled: value),
+                ),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Vibracion'),
+                value: _value.vibrationEnabled,
+                onChanged: (value) => setState(
+                  () => _value = _value.copyWith(vibrationEnabled: value),
+                ),
+              ),
+              if (_value.profile == DrivingAlertProfile.custom) ...[
+                const SizedBox(height: AppSpacing.s),
+                Text(
+                  'Distancias',
+                  style: AppTextStyles.caption.copyWith(color: AppColors.navy),
+                ),
+                const SizedBox(height: AppSpacing.s),
+                Wrap(
+                  spacing: AppSpacing.s,
+                  runSpacing: AppSpacing.s,
+                  children: [
+                    for (final threshold in allowedCustomAlertThresholdsMeters)
+                      FilterChip(
+                        key: ValueKey('custom-alert-$threshold'),
+                        label: Text('$threshold m'),
+                        selected: _value.customThresholdsMeters.contains(
+                          threshold,
+                        ),
+                        onSelected: (selected) {
+                          final thresholds = _value.customThresholdsMeters
+                              .toSet();
+                          if (selected) {
+                            thresholds.add(threshold);
+                          } else if (thresholds.length > 1) {
+                            thresholds.remove(threshold);
+                          }
+                          final ordered = thresholds.toList()
+                            ..sort((a, b) => b.compareTo(a));
+                          setState(
+                            () => _value = _value.copyWith(
+                              customThresholdsMeters: ordered,
+                            ),
+                          );
+                        },
+                      ),
+                  ],
+                ),
               ],
-              selected: {_value.profile},
-              onSelectionChanged: (selection) {
-                setState(
-                  () => _value = _value.copyWith(profile: selection.first),
-                );
-              },
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Voz'),
-              value: _value.voiceEnabled,
-              onChanged: (value) =>
-                  setState(() => _value = _value.copyWith(voiceEnabled: value)),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Sonido'),
-              value: _value.soundEnabled,
-              onChanged: (value) =>
-                  setState(() => _value = _value.copyWith(soundEnabled: value)),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Vibracion'),
-              value: _value.vibrationEnabled,
-              onChanged: (value) => setState(
-                () => _value = _value.copyWith(vibrationEnabled: value),
+              const SizedBox(height: AppSpacing.s),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(_value),
+                  child: const Text('Guardar'),
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.s),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton(
-                onPressed: () => Navigator.of(context).pop(_value),
-                child: const Text('Guardar'),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
