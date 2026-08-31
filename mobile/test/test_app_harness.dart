@@ -16,6 +16,7 @@ import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/features/apps_launcher/data/module_registry.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
+import 'package:picoradar/features/home/data/home_banner_config.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
 import 'package:picoradar/features/vehicle_status/data/private_vehicle_document_store.dart';
 import 'package:picoradar/features/vehicle_status/platform/obligation_notifications.dart';
@@ -28,11 +29,19 @@ class TestAppHarness {
       preferences = MemoryPreferences(),
       documentRoot = Directory.systemTemp.createTempSync(
         'picoradar-documents-test-',
-      );
+      ) {
+    documentStore = PrivateVehicleDocumentStore(
+      rootDirectory: () async => documentRoot,
+      cacheDirectory: () async => documentRoot,
+      masterKey: () async => SecretKey(List<int>.filled(32, 7)),
+      idGenerator: _nextDocumentId,
+    );
+  }
 
   final AppDatabase database;
   final MemoryPreferences preferences;
   final Directory documentRoot;
+  late final PrivateVehicleDocumentStore documentStore;
   DateTime now = DateTime(2026, 8, 27, 22);
   int _vehicleIdSequence = 0;
   int _documentIdSequence = 0;
@@ -60,11 +69,14 @@ class TestAppHarness {
     Map<String, bool> moduleFeatureFlags = const {},
     ExternalLauncher? externalLauncher,
     VehicleDocumentGateway? documentGateway,
+    PrivateVehicleDocumentStore? documentStoreOverride,
     List<VehicleProfile>? vehicleListOverride,
     VehicleProfile? activeVehicleOverride,
     String? documentVehicleIdOverride,
     PrivateVehicleDocumentType? documentTypeOverride,
     PrivateVehicleDocumentMetadata? documentMetadataOverride,
+    bool overrideHomeBannerCampaign = false,
+    HomeBannerCampaign? homeBannerCampaignOverride,
     Widget? childOverride,
     Widget Function(Widget child)? wrap,
   }) async {
@@ -95,12 +107,7 @@ class TestAppHarness {
           externalLauncher ?? _FakeExternalLauncher(),
         ),
         privateVehicleDocumentStoreProvider.overrideWithValue(
-          PrivateVehicleDocumentStore(
-            rootDirectory: () async => documentRoot,
-            cacheDirectory: () async => documentRoot,
-            masterKey: () async => SecretKey(List<int>.filled(32, 7)),
-            idGenerator: _nextDocumentId,
-          ),
+          documentStoreOverride ?? documentStore,
         ),
         vehicleDocumentGatewayProvider.overrideWithValue(
           documentGateway ?? _FakeVehicleDocumentGateway(),
@@ -130,6 +137,10 @@ class TestAppHarness {
         ),
         if (moduleFeatureFlags.isNotEmpty)
           moduleFeatureFlagsProvider.overrideWithValue(moduleFeatureFlags),
+        if (overrideHomeBannerCampaign)
+          homeBannerCampaignProvider.overrideWithValue(
+            AsyncValue.data(homeBannerCampaignOverride),
+          ),
       ],
       child: childOverride ?? const PicoRadarApp(),
     );
@@ -187,6 +198,9 @@ class _FakeExternalLauncher implements ExternalLauncher {
 }
 
 class _FakeVehicleDocumentGateway implements VehicleDocumentGateway {
+  @override
+  Future<void> clearTemporaryFiles() async {}
+
   @override
   Future<bool> openDocument(File file) async => true;
 

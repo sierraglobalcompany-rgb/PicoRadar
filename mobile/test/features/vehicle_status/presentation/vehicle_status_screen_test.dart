@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
+import 'package:picoradar/features/home/data/home_banner_config.dart';
 import 'package:picoradar/features/vehicle_status/data/private_vehicle_document_store.dart';
 import 'package:picoradar/features/vehicle_status/data/vehicle_obligation_store.dart';
 import 'package:picoradar/features/vehicle_status/domain/vehicle_obligation.dart';
@@ -60,7 +63,7 @@ void main() {
       await _openModule(tester, harness, 'soat');
 
       expect(find.text('SOAT POR VENCER'), findsOneWidget);
-      expect(find.text('RENOVAR SOAT'), findsOneWidget);
+      expect(find.text('ACTUALIZAR DATOS DEL SOAT'), findsOneWidget);
       expect(find.text('Aún no hay registros anteriores.'), findsOneWidget);
     },
   );
@@ -116,7 +119,7 @@ void main() {
       await _openModule(tester, harness, 'soat');
 
       expect(find.text('SOAT VENCIDO'), findsOneWidget);
-      expect(find.text('RENOVAR SOAT'), findsOneWidget);
+      expect(find.text('ACTUALIZAR DATOS DEL SOAT'), findsOneWidget);
       expect(find.textContaining('Verificado oficialmente'), findsNothing);
     },
   );
@@ -211,6 +214,37 @@ void main() {
     expect(find.textContaining('Verificado oficialmente'), findsNothing);
   });
 
+  testWidgets('SOAT attach clears picker plaintext cache after local import', (
+    tester,
+  ) async {
+    final vehicle = await _createVehicle(harness, plate: 'TMP123');
+    final source = File('picked-soat.pdf');
+    final gateway = _CapturingDocumentGateway(
+      openResult: true,
+      pickedDocument: PickedVehicleDocument(
+        file: source,
+        originalName: 'picked-soat.pdf',
+        mimeType: 'application/pdf',
+      ),
+    );
+    final store = _CapturingDocumentStore();
+
+    await _openModule(
+      tester,
+      harness,
+      'soat',
+      documentGateway: gateway,
+      documentStoreOverride: store,
+    );
+    await tester.tap(find.byKey(const ValueKey('owner-document-action-soat')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(store.importedMetadata?.vehicleId, vehicle.id);
+    expect(store.importedMetadata?.originalName, 'picked-soat.pdf');
+    expect(gateway.clearTemporaryFileCalls, 1);
+  });
+
   testWidgets('SOAT and RTM owner screens tolerate R03B viewports', (
     tester,
   ) async {
@@ -247,6 +281,143 @@ void main() {
       harness = TestAppHarness();
     }
   });
+
+  testWidgets(
+    'vehicle selector uses plate data without hardcoded Bogota text',
+    (tester) async {
+      await _createVehicle(harness, plate: 'MED123', city: 'Medellin');
+
+      await _openModule(tester, harness, 'soat');
+
+      expect(find.text('MED123'), findsWidgets);
+      expect(find.text('BOGOTÁ D.C.'), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('owner-vehicle-selector')));
+      await _pumpNavigation(tester);
+
+      expect(find.text('MED123'), findsWidgets);
+      expect(find.text('BOGOTÁ D.C.'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'document view keeps plaintext only for viewer handoff and purges on failed open',
+    (tester) async {
+      final vehicle = await _createVehicle(harness, plate: 'DOC123');
+      await VehicleObligationStore(harness.database).upsert(
+        vehicleId: vehicle.id,
+        type: VehicleObligationType.soat,
+        dueDate: DateTime(2026, 12, 31),
+      );
+      final metadata = _documentMetadata(
+        vehicleId: vehicle.id,
+        documentType: PrivateVehicleDocumentType.soat,
+        name: 'soat.pdf',
+      );
+      final store = _CapturingDocumentStore(metadata: metadata);
+      final gateway = _CapturingDocumentGateway(openResult: false);
+
+      await _openModule(
+        tester,
+        harness,
+        'soat',
+        documentGateway: gateway,
+        documentStoreOverride: store,
+        documentMetadataOverride: metadata,
+      );
+      await tester.tap(find.byKey(const ValueKey('owner-primary-soat')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(gateway.openedFiles, hasLength(1));
+      expect(store.decryptCalls, 1);
+      expect(store.purgedMetadata, metadata);
+      expect(find.text('No se pudo abrir el documento.'), findsOneWidget);
+    },
+  );
+
+  testWidgets('document plaintext cache purges when the app resumes', (
+    tester,
+  ) async {
+    final store = _CapturingDocumentStore();
+
+    await harness.pump(tester, documentStoreOverride: store);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    await tester.pump();
+
+    expect(store.purgeAllCalls, 1);
+  });
+
+  testWidgets(
+    'owner banners avoid fake sponsored labels and require safe URLs',
+    (tester) async {
+      await _createVehicle(harness, plate: 'BAN123');
+
+      await _openModule(
+        tester,
+        harness,
+        'soat',
+        overrideHomeBannerCampaign: true,
+        homeBannerCampaignOverride: null,
+      );
+      expect(find.text('Patrocinado'), findsNothing);
+
+      await _openModule(
+        tester,
+        harness,
+        'soat',
+        overrideHomeBannerCampaign: true,
+        homeBannerCampaignOverride: _bannerCampaign(
+          kind: HomeBannerKind.house,
+          targetUrl: null,
+        ),
+      );
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('owner-house-soat')),
+        280,
+      );
+      await tester.pump();
+      expect(find.byKey(const ValueKey('owner-house-soat')), findsOneWidget);
+      expect(find.text('PicoRadar'), findsOneWidget);
+      expect(find.text('Patrocinado'), findsNothing);
+
+      await _openModule(
+        tester,
+        harness,
+        'soat',
+        overrideHomeBannerCampaign: true,
+        homeBannerCampaignOverride: _bannerCampaign(
+          kind: HomeBannerKind.sponsored,
+          targetUrl: 'http://unsafe.example',
+        ),
+      );
+      expect(find.text('Patrocinado'), findsNothing);
+
+      final launcher = _CapturingLauncher();
+      await _openModule(
+        tester,
+        harness,
+        'soat',
+        externalLauncher: launcher,
+        overrideHomeBannerCampaign: true,
+        homeBannerCampaignOverride: _bannerCampaign(
+          kind: HomeBannerKind.sponsored,
+          targetUrl: 'https://sponsor.example/soat',
+        ),
+      );
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('owner-sponsored-soat')),
+        280,
+      );
+      await tester.pump();
+      expect(find.text('Patrocinado'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('owner-sponsored-soat')));
+      await tester.pump();
+      expect(launcher.openedUris, ['https://sponsor.example/soat']);
+    },
+  );
 
   testWidgets('insurance assistance phones can be launched by user action', (
     tester,
@@ -315,7 +486,10 @@ Future<void> _openModule(
   String moduleId, {
   ExternalLauncher? externalLauncher,
   VehicleDocumentGateway? documentGateway,
+  PrivateVehicleDocumentStore? documentStoreOverride,
   PrivateVehicleDocumentMetadata? documentMetadataOverride,
+  bool overrideHomeBannerCampaign = false,
+  HomeBannerCampaign? homeBannerCampaignOverride,
   Size size = const Size(390, 844),
   double textScaleFactor = 1,
 }) async {
@@ -331,11 +505,14 @@ Future<void> _openModule(
     tester,
     externalLauncher: externalLauncher,
     documentGateway: documentGateway,
+    documentStoreOverride: documentStoreOverride,
     vehicleListOverride: vehicles,
     activeVehicleOverride: activeVehicle,
     documentVehicleIdOverride: documentMetadataOverride?.vehicleId,
     documentTypeOverride: documentMetadataOverride?.documentType,
     documentMetadataOverride: documentMetadataOverride,
+    overrideHomeBannerCampaign: overrideHomeBannerCampaign,
+    homeBannerCampaignOverride: homeBannerCampaignOverride,
     childOverride: MaterialApp(
       home: VehicleStatusScreen(moduleId: moduleId, vehicleId: null),
     ),
@@ -386,4 +563,117 @@ class _CapturingLauncher implements ExternalLauncher {
     openedUris.add(uri);
     return true;
   }
+}
+
+class _CapturingDocumentGateway implements VehicleDocumentGateway {
+  _CapturingDocumentGateway({required this.openResult, this.pickedDocument});
+
+  final bool openResult;
+  final PickedVehicleDocument? pickedDocument;
+  final openedFiles = <File>[];
+  int clearTemporaryFileCalls = 0;
+
+  @override
+  Future<void> clearTemporaryFiles() async {
+    clearTemporaryFileCalls += 1;
+  }
+
+  @override
+  Future<bool> openDocument(File file) async {
+    openedFiles.add(file);
+    return openResult;
+  }
+
+  @override
+  Future<PickedVehicleDocument?> pickDocument() async => pickedDocument;
+}
+
+class _CapturingDocumentStore extends PrivateVehicleDocumentStore {
+  _CapturingDocumentStore({this.metadata});
+
+  PrivateVehicleDocumentMetadata? metadata;
+  PrivateVehicleDocumentMetadata? importedMetadata;
+  int decryptCalls = 0;
+  int purgeAllCalls = 0;
+  PrivateVehicleDocumentMetadata? purgedMetadata;
+
+  @override
+  Future<PrivateVehicleDocumentMetadata?> get({
+    required String vehicleId,
+    required PrivateVehicleDocumentType documentType,
+  }) async {
+    return metadata;
+  }
+
+  @override
+  Future<PrivateVehicleDocumentMetadata> importDocument({
+    required String vehicleId,
+    required PrivateVehicleDocumentType documentType,
+    required File source,
+    required String originalName,
+    required String mimeType,
+  }) async {
+    importedMetadata = PrivateVehicleDocumentMetadata(
+      documentId: 'imported-${documentType.value}',
+      vehicleId: vehicleId,
+      documentType: documentType,
+      originalName: originalName,
+      mimeType: mimeType,
+      importedAt: DateTime.utc(2026, 8, 30, 12),
+      encryptedRelativePath:
+          'docs/${documentType.value}/$vehicleId/imported.prcf',
+    );
+    metadata = importedMetadata;
+    return importedMetadata!;
+  }
+
+  @override
+  Future<File> decryptForView(PrivateVehicleDocumentMetadata metadata) async {
+    decryptCalls += 1;
+    return File('viewer-${metadata.documentId}-${metadata.originalName}');
+  }
+
+  @override
+  Future<void> purgeViewerCache({
+    PrivateVehicleDocumentMetadata? metadata,
+  }) async {
+    if (metadata == null) {
+      purgeAllCalls += 1;
+    } else {
+      purgedMetadata = metadata;
+    }
+  }
+}
+
+PrivateVehicleDocumentMetadata _documentMetadata({
+  required String vehicleId,
+  required PrivateVehicleDocumentType documentType,
+  required String name,
+}) {
+  return PrivateVehicleDocumentMetadata(
+    documentId: 'metadata-${documentType.value}',
+    vehicleId: vehicleId,
+    documentType: documentType,
+    originalName: name,
+    mimeType: name.endsWith('.pdf') ? 'application/pdf' : 'image/png',
+    importedAt: DateTime.utc(2026, 8, 30, 12),
+    encryptedRelativePath: 'docs/${documentType.value}/$vehicleId/test.prcf',
+  );
+}
+
+HomeBannerCampaign _bannerCampaign({
+  required HomeBannerKind kind,
+  required String? targetUrl,
+}) {
+  return HomeBannerCampaign(
+    id: 'test-${kind.name}',
+    kind: kind,
+    enabled: true,
+    label: '',
+    title: '',
+    subtitle: '',
+    ctaText: '',
+    priority: 1,
+    targetUrl: targetUrl,
+  );
 }

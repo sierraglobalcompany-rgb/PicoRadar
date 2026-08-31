@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/theme/app_tokens.dart';
+import '../../../core/design_system/branding.dart';
 import '../../garage/data/vehicle_profile.dart';
 import '../../garage/presentation/vehicle_display.dart';
+import '../../home/data/home_banner_config.dart';
 import '../data/private_vehicle_document_store.dart';
 import '../data/vehicle_status_catalog.dart';
 import '../domain/vehicle_obligation.dart';
@@ -46,9 +48,9 @@ class SoatRtmOwnerContent extends ConsumerWidget {
     return ListView(
       key: ValueKey('owner-status-${type.value}'),
       padding: const EdgeInsets.fromLTRB(
-        AppSpacing.l,
-        AppSpacing.l,
-        AppSpacing.l,
+        AppSpacing.m,
+        AppSpacing.m,
+        AppSpacing.m,
         AppSpacing.xxl,
       ),
       children: [
@@ -109,7 +111,7 @@ class SoatRtmOwnerContent extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.m),
                 _EducationCard(type: type),
                 const SizedBox(height: AppSpacing.m),
-                _SponsoredBanner(type: type),
+                _CommercialBanner(type: type),
               ],
             ),
           ),
@@ -136,7 +138,7 @@ class SoatRtmOwnerContent extends ConsumerWidget {
               final item = vehicles[index];
               return ListTile(
                 key: ValueKey('vehicle-selector-${item.id}'),
-                leading: _MiniPlate(plate: item.plate),
+                leading: ColombianPlateBadge(plate: item.plate, compact: true),
                 title: Text(_vehicleTitle(item)),
                 subtitle: Text(vehicleTypeLabel(item)),
                 trailing: item.id == vehicle.id
@@ -157,21 +159,24 @@ class SoatRtmOwnerContent extends ConsumerWidget {
   }
 
   Future<void> _attachDocument(BuildContext context, WidgetRef ref) async {
-    final picked = await ref
-        .read(vehicleDocumentGatewayProvider)
-        .pickDocument();
+    final documentGateway = ref.read(vehicleDocumentGatewayProvider);
+    final picked = await documentGateway.pickDocument();
     if (picked == null) {
       return;
     }
-    await ref
-        .read(privateVehicleDocumentStoreProvider)
-        .importDocument(
-          vehicleId: vehicle.id,
-          documentType: _documentType(type),
-          source: picked.file,
-          originalName: picked.originalName,
-          mimeType: picked.mimeType,
-        );
+    try {
+      await ref
+          .read(privateVehicleDocumentStoreProvider)
+          .importDocument(
+            vehicleId: vehicle.id,
+            documentType: _documentType(type),
+            source: picked.file,
+            originalName: picked.originalName,
+            mimeType: picked.mimeType,
+          );
+    } finally {
+      await documentGateway.clearTemporaryFiles();
+    }
     ref.invalidate(
       privateVehicleDocumentProvider((vehicle.id, _documentType(type))),
     );
@@ -193,6 +198,11 @@ class SoatRtmOwnerContent extends ConsumerWidget {
     final opened = await ref
         .read(vehicleDocumentGatewayProvider)
         .openDocument(file);
+    if (!opened) {
+      await ref
+          .read(privateVehicleDocumentStoreProvider)
+          .purgeViewerCache(metadata: metadata);
+    }
     if (context.mounted && !opened) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No se pudo abrir el documento.')),
@@ -266,7 +276,7 @@ class _VehicleSelectorCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              _MiniPlate(plate: vehicle.plate),
+              ColombianPlateBadge(plate: vehicle.plate, compact: true),
               const SizedBox(width: AppSpacing.m),
               Expanded(
                 child: Column(
@@ -310,12 +320,18 @@ class _StatusHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isSoat = type == VehicleObligationType.soat;
     final details = obligation?.details ?? const <String, String>{};
     final color = _stateColor(visualState);
+    final facts = _heroFacts(
+      vehicle: vehicle,
+      type: type,
+      obligation: obligation,
+      details: details,
+      color: color,
+    );
     return Container(
       key: ValueKey('owner-hero-${type.value}'),
-      padding: const EdgeInsets.all(AppSpacing.l),
+      padding: const EdgeInsets.all(AppSpacing.m),
       decoration: BoxDecoration(
         color: AppColors.navy,
         borderRadius: BorderRadius.circular(AppRadius.card),
@@ -341,12 +357,16 @@ class _StatusHero extends StatelessWidget {
                       label: _stateChip(type, visualState),
                       color: color,
                     ),
-                    const SizedBox(height: AppSpacing.l),
+                    const SizedBox(height: AppSpacing.s),
                     Text(
                       _heroTitle(type, visualState),
-                      style: AppTextStyles.h1.copyWith(color: Colors.white),
+                      style: AppTextStyles.h2.copyWith(
+                        color: Colors.white,
+                        fontSize: 26,
+                        height: 1.06,
+                      ),
                     ),
-                    const SizedBox(height: AppSpacing.xs),
+                    const SizedBox(height: 4),
                     Text(
                       _heroSubtitle(type, visualState),
                       style: AppTextStyles.body.copyWith(
@@ -360,58 +380,10 @@ class _StatusHero extends StatelessWidget {
               _HeroMark(type: type, color: color),
             ],
           ),
-          const SizedBox(height: AppSpacing.l),
-          Divider(color: Colors.white.withValues(alpha: 0.22), height: 1),
           const SizedBox(height: AppSpacing.m),
-          Wrap(
-            spacing: AppSpacing.l,
-            runSpacing: AppSpacing.m,
-            children: [
-              _HeroFact(
-                icon: Icons.calendar_month,
-                label: isSoat ? 'Vence el' : 'Próxima RTM',
-                value: obligation?.dueDate == null
-                    ? 'Sin fecha'
-                    : _formatHeroDate(obligation!.dueDate!),
-                color: color,
-              ),
-              if (isSoat && (details['insurerName'] ?? '').isNotEmpty)
-                _HeroFact(
-                  icon: Icons.shield_outlined,
-                  label: 'Aseguradora',
-                  value: details['insurerName']!,
-                  color: color,
-                ),
-              if (isSoat && (details['policyNumber'] ?? '').isNotEmpty)
-                _HeroFact(
-                  icon: Icons.confirmation_number_outlined,
-                  label: 'Póliza',
-                  value: details['policyNumber']!,
-                  color: color,
-                ),
-              if (!isSoat && (details['cdaName'] ?? '').isNotEmpty)
-                _HeroFact(
-                  icon: Icons.apartment_outlined,
-                  label: 'CDA',
-                  value: details['cdaName']!,
-                  color: color,
-                ),
-              if (!isSoat && (details['certificateNumber'] ?? '').isNotEmpty)
-                _HeroFact(
-                  icon: Icons.verified_outlined,
-                  label: 'N. de certificado',
-                  value: details['certificateNumber']!,
-                  color: color,
-                ),
-              if (!isSoat)
-                _HeroFact(
-                  icon: vehicleIcon(vehicle),
-                  label: 'Placa',
-                  value: vehicle.plate,
-                  color: color,
-                ),
-            ],
-          ),
+          Divider(color: Colors.white.withValues(alpha: 0.22), height: 1),
+          const SizedBox(height: AppSpacing.s),
+          _HeroFactGrid(facts: facts),
         ],
       ),
     );
@@ -451,7 +423,7 @@ class _PrimaryAction extends StatelessWidget {
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.plateYellow,
         foregroundColor: AppColors.navy,
-        minimumSize: const Size.fromHeight(58),
+        minimumSize: const Size.fromHeight(52),
         textStyle: const TextStyle(fontWeight: FontWeight.w800),
       ),
       onPressed: action,
@@ -633,55 +605,132 @@ class _EducationCard extends StatelessWidget {
   }
 }
 
-class _SponsoredBanner extends StatelessWidget {
-  const _SponsoredBanner({required this.type});
+class _CommercialBanner extends ConsumerWidget {
+  const _CommercialBanner({required this.type});
 
   final VehicleObligationType type;
 
   @override
-  Widget build(BuildContext context) {
-    final isSoat = type == VehicleObligationType.soat;
-    return Container(
-      key: ValueKey('owner-sponsored-${type.value}'),
-      padding: const EdgeInsets.all(AppSpacing.m),
-      decoration: BoxDecoration(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final campaign = ref.watch(homeBannerCampaignProvider);
+    return campaign.when(
+      data: (item) => _CommercialBannerBody(type: type, campaign: item),
+      loading: () => const SizedBox.shrink(),
+      error: (error, stackTrace) => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _CommercialBannerBody extends ConsumerWidget {
+  const _CommercialBannerBody({required this.type, required this.campaign});
+
+  final VehicleObligationType type;
+  final HomeBannerCampaign? campaign;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final item = campaign;
+    if (item == null) {
+      return const SizedBox.shrink(key: ValueKey('owner-commercial-none'));
+    }
+    final target = safeHomeBannerUri(item);
+    final isSponsored = item.kind == HomeBannerKind.sponsored && target != null;
+    final isHouse = item.kind == HomeBannerKind.house;
+    if (!isSponsored && !isHouse) {
+      return const SizedBox.shrink(key: ValueKey('owner-commercial-none'));
+    }
+
+    final label = isSponsored ? 'Patrocinado' : 'PicoRadar';
+    final title = item.title.trim().isEmpty ? _houseTitle(type) : item.title;
+    final subtitle = item.subtitle.trim().isEmpty
+        ? _houseSubtitle(type)
+        : item.subtitle;
+
+    return Semantics(
+      button: target != null,
+      label: '$label, $title',
+      child: Material(
+        key: ValueKey(
+          isSponsored
+              ? 'owner-sponsored-${type.value}'
+              : 'owner-house-${type.value}',
+        ),
         color: AppColors.navy,
         borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Row(
-        children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.plateYellow,
-              borderRadius: BorderRadius.circular(AppRadius.chip),
-            ),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.s,
-                vertical: AppSpacing.xs,
-              ),
-              child: Text(
-                'Patrocinado',
-                style: TextStyle(
-                  color: AppColors.navy,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: target == null
+              ? null
+              : () => ref
+                    .read(externalLauncherProvider)
+                    .openExternal(target.toString()),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.m),
+            child: Row(
+              children: [
+                _BannerLabel(label: label),
+                const SizedBox(width: AppSpacing.m),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption.copyWith(
+                          color: Colors.white.withValues(alpha: 0.78),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+                if (target != null)
+                  const Icon(Icons.arrow_outward_rounded, color: Colors.white),
+              ],
             ),
           ),
-          const SizedBox(width: AppSpacing.m),
-          Expanded(
-            child: Text(
-              isSoat ? 'Revisa opciones de SOAT' : 'Encuentra servicios CDA',
-              style: AppTextStyles.caption.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BannerLabel extends StatelessWidget {
+  const _BannerLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.plateYellow,
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.s,
+          vertical: AppSpacing.xs,
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.navy,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
           ),
-          const Icon(Icons.chevron_right, color: Colors.white),
-        ],
+        ),
       ),
     );
   }
@@ -706,6 +755,44 @@ class _SoftCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    final compact = scale < 1.5;
+    final header = Row(
+      children: [
+        CircleAvatar(
+          radius: compact ? 21 : 25,
+          backgroundColor: iconColor.withValues(alpha: 0.10),
+          child: Icon(icon, color: iconColor, size: compact ? 22 : 24),
+        ),
+        const SizedBox(width: AppSpacing.m),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                body,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.navy.withValues(alpha: 0.70),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (compact) ...[
+          const SizedBox(width: AppSpacing.s),
+          Flexible(
+            child: Align(alignment: Alignment.centerRight, child: trailing),
+          ),
+        ],
+      ],
+    );
     return Container(
       key: ValueKey(keyName),
       padding: const EdgeInsets.all(AppSpacing.m),
@@ -717,46 +804,44 @@ class _SoftCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 25,
-                backgroundColor: iconColor.withValues(alpha: 0.10),
-                child: Icon(icon, color: iconColor),
-              ),
-              const SizedBox(width: AppSpacing.m),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTextStyles.caption.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      body,
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.navy.withValues(alpha: 0.70),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.s),
-          Align(alignment: Alignment.centerRight, child: trailing),
+          header,
+          if (!compact) ...[
+            const SizedBox(height: AppSpacing.s),
+            Align(alignment: Alignment.centerRight, child: trailing),
+          ],
         ],
       ),
     );
   }
 }
 
-class _HeroFact extends StatelessWidget {
-  const _HeroFact({
+class _HeroFactGrid extends StatelessWidget {
+  const _HeroFactGrid({required this.facts});
+
+  final List<_HeroFactData> facts;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final scale = MediaQuery.textScalerOf(context).scale(1);
+        final columns = scale >= 1.7 || constraints.maxWidth < 300 ? 1 : 2;
+        final spacing = columns == 1 ? 0.0 : AppSpacing.s;
+        final width = (constraints.maxWidth - spacing) / columns;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: AppSpacing.s,
+          children: [
+            for (final fact in facts) _HeroFact(data: fact, width: width),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _HeroFactData {
+  const _HeroFactData({
     required this.icon,
     required this.label,
     required this.value,
@@ -767,29 +852,48 @@ class _HeroFact extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
+}
+
+class _HeroFact extends StatelessWidget {
+  const _HeroFact({required this.data, required this.width});
+
+  final _HeroFactData data;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 210,
+      width: width,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.white.withValues(alpha: 0.78), size: 22),
-          const SizedBox(width: AppSpacing.s),
+          Icon(
+            data.icon,
+            color: Colors.white.withValues(alpha: 0.78),
+            size: 18,
+          ),
+          const SizedBox(width: AppSpacing.xs),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  label,
+                  data.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption.copyWith(
                     color: Colors.white.withValues(alpha: 0.78),
+                    height: 1.05,
                   ),
                 ),
                 Text(
-                  value,
-                  style: AppTextStyles.bodyStrong.copyWith(color: color),
+                  data.value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyStrong.copyWith(
+                    color: data.color,
+                    height: 1.05,
+                  ),
                 ),
               ],
             ),
@@ -809,14 +913,14 @@ class _HeroMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CircleAvatar(
-      radius: 38,
+      radius: 30,
       backgroundColor: color.withValues(alpha: 0.16),
       child: Icon(
         type == VehicleObligationType.soat
             ? Icons.verified_user_outlined
             : Icons.assignment_turned_in_outlined,
         color: color,
-        size: 42,
+        size: 34,
       ),
     );
   }
@@ -853,61 +957,67 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-class _MiniPlate extends StatelessWidget {
-  const _MiniPlate({required this.plate});
-
-  final String plate;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 96,
-      height: 50,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.plateYellow,
-        border: Border.all(color: Colors.black, width: 1.4),
-        borderRadius: BorderRadius.circular(5),
-      ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                plate,
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  height: 1,
-                ),
-              ),
-              const Text(
-                'BOGOTÁ D.C.',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 8,
-                  fontWeight: FontWeight.w800,
-                  height: 1.1,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 PrivateVehicleDocumentType _documentType(VehicleObligationType type) {
   return switch (type) {
     VehicleObligationType.soat => PrivateVehicleDocumentType.soat,
     VehicleObligationType.rtm => PrivateVehicleDocumentType.rtm,
     _ => throw ArgumentError.value(type, 'type', 'Unsupported owner screen.'),
   };
+}
+
+List<_HeroFactData> _heroFacts({
+  required VehicleProfile vehicle,
+  required VehicleObligationType type,
+  required VehicleObligation? obligation,
+  required Map<String, String> details,
+  required Color color,
+}) {
+  final isSoat = type == VehicleObligationType.soat;
+  return [
+    _HeroFactData(
+      icon: Icons.calendar_month,
+      label: isSoat ? 'Vence el' : 'Próxima RTM',
+      value: obligation?.dueDate == null
+          ? 'Sin fecha'
+          : _formatHeroDate(obligation!.dueDate!),
+      color: color,
+    ),
+    if (isSoat && (details['insurerName'] ?? '').isNotEmpty)
+      _HeroFactData(
+        icon: Icons.shield_outlined,
+        label: 'Aseguradora',
+        value: details['insurerName']!,
+        color: color,
+      ),
+    if (isSoat && (details['policyNumber'] ?? '').isNotEmpty)
+      _HeroFactData(
+        icon: Icons.confirmation_number_outlined,
+        label: 'Póliza',
+        value: details['policyNumber']!,
+        color: color,
+      ),
+    if (!isSoat && (details['cdaName'] ?? '').isNotEmpty)
+      _HeroFactData(
+        icon: Icons.apartment_outlined,
+        label: 'CDA',
+        value: details['cdaName']!,
+        color: color,
+      ),
+    if (!isSoat && (details['certificateNumber'] ?? '').isNotEmpty)
+      _HeroFactData(
+        icon: Icons.verified_outlined,
+        label: 'N.º certificado',
+        value: details['certificateNumber']!,
+        color: color,
+      ),
+    if (!isSoat)
+      _HeroFactData(
+        icon: vehicleIcon(vehicle),
+        label: 'Placa',
+        value: vehicle.plate,
+        color: color,
+      ),
+  ];
 }
 
 _OwnerVisualState _visualState({
@@ -1001,10 +1111,23 @@ String _heroSubtitle(VehicleObligationType type, _OwnerVisualState state) {
 String _soatPrimaryLabel(_OwnerVisualState state, bool hasDocument) {
   return switch (state) {
     _OwnerVisualState.active => hasDocument ? 'VER SOAT' : 'ADJUNTAR SOAT',
-    _OwnerVisualState.dueSoon || _OwnerVisualState.expired => 'RENOVAR SOAT',
+    _OwnerVisualState.dueSoon ||
+    _OwnerVisualState.expired => 'ACTUALIZAR DATOS DEL SOAT',
     _OwnerVisualState.notConfigured => 'AGREGAR DATOS DEL SOAT',
     _OwnerVisualState.unknown => 'COMPLETAR DATOS',
   };
+}
+
+String _houseTitle(VehicleObligationType type) {
+  return type == VehicleObligationType.soat
+      ? 'Guarda tu SOAT local'
+      : 'Lleva tu RTM a mano';
+}
+
+String _houseSubtitle(VehicleObligationType type) {
+  return type == VehicleObligationType.soat
+      ? 'Sin subir documentos a la nube.'
+      : 'Tu certificado queda privado en este dispositivo.';
 }
 
 String _documentLabel(VehicleObligationType type) {

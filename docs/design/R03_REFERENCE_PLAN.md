@@ -98,12 +98,13 @@ R03 references are split by implementation slice:
 - RTM visual recovery follows `docs/design/reference/rtm_owner_v1.png`.
 - Both screens use a local vehicle selector that changes only the current screen context and does not mutate the global active vehicle.
 - Manual configuration reuses the C13 `VehicleObligationStore` and `detailsJson` for optional SOAT insurer/policy and RTM CDA/certificate metadata. No database migration was added.
-- Optional SOAT/RTM documents use one shared private document store. PDF/JPEG/PNG/WEBP payloads are copied into app-owned storage and encrypted with AES-GCM via existing secure storage/file crypto infrastructure.
+- Optional SOAT/RTM documents use one shared private document store. PDF/JPEG/PNG/WEBP payloads up to 25 MB are copied into app-owned storage and encrypted with AES-GCM via existing secure storage/file crypto infrastructure.
 - A local document is only a convenience copy and never an official verification claim.
+- Plaintext viewer copies are temporary handoff files only. The app purges stale viewer cache before decrypting a new view, on failed external open, on app resume, during startup and when replacing/deleting a document.
 - RUNT verification remains a user-initiated external HTTPS link. No scraping, CAPTCHA bypass or backend verification was added.
 - RTM `Buscar CDA` opens a truthful placeholder entry; the full CDA finder remains future scope.
 - History renders only real local records. Replaced-obligation history persistence remains `HISTORY_PERSISTENCE_FUTURE_LOT`.
-- Sponsored content remains below functional SOAT/RTM content and is visibly labeled.
+- Commercial content remains below functional SOAT/RTM content. `Patrocinado` appears only for a real sponsored campaign with a safe HTTPS destination; otherwise the slot renders PicoRadar house content or nothing.
 
 ## P03 City Catalog Freeze
 
@@ -141,8 +142,8 @@ Future primary CTAs:
 - NOT_CONFIGURED: `Agregar datos del SOAT`.
 - ACTIVE without document: `Adjuntar SOAT`.
 - ACTIVE with document: `Ver SOAT`.
-- DUE_SOON: `Renovar SOAT`.
-- EXPIRED: `Renovar SOAT`.
+- DUE_SOON: `Actualizar datos del SOAT` until a real renewal destination exists.
+- EXPIRED: `Actualizar datos del SOAT` until a real renewal destination exists.
 - Official external check: `Consultar / Verificar en RUNT`.
 
 Future document storage must use the reusable private vehicle-document storage architecture, not obligation JSON.

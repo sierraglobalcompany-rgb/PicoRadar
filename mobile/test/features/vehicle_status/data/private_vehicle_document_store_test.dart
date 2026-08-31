@@ -56,11 +56,15 @@ void main() {
 
       final viewFile = await store.decryptForView(metadata);
       expect(await viewFile.readAsBytes(), [0x25, 0x50, 0x44, 0x46]);
+      expect(await viewFile.exists(), isTrue);
+
+      await store.purgeViewerCache();
+      expect(await viewFile.exists(), isFalse);
     },
   );
 
   test(
-    'replaces and deletes image documents without keeping old ciphertext',
+    'replaces and deletes image documents without keeping old files',
     () async {
       final first = File('${root.path}/first.png');
       final second = File('${root.path}/second.webp');
@@ -77,6 +81,8 @@ void main() {
       final originalEncrypted = File(
         '${root.path}/vehicle_documents/${original.encryptedRelativePath}',
       );
+      final originalViewFile = await store.decryptForView(original);
+      expect(await originalViewFile.exists(), isTrue);
 
       final replacement = await store.importDocument(
         vehicleId: 'vehicle-1',
@@ -87,6 +93,7 @@ void main() {
       );
 
       expect(await originalEncrypted.exists(), isFalse);
+      expect(await originalViewFile.exists(), isFalse);
       expect(replacement.originalName, 'certificado.webp');
       expect(
         (await store.get(
@@ -96,7 +103,11 @@ void main() {
         replacement.documentId,
       );
 
+      final replacementViewFile = await store.decryptForView(replacement);
+      expect(await replacementViewFile.exists(), isTrue);
+
       await store.delete(replacement);
+      expect(await replacementViewFile.exists(), isFalse);
       expect(
         await store.get(
           vehicleId: 'vehicle-1',
@@ -104,6 +115,42 @@ void main() {
         ),
         isNull,
       );
+    },
+  );
+
+  test(
+    'new store instance reads encrypted metadata and purges stale viewer cache',
+    () async {
+      final source = File('${root.path}/source.jpg');
+      await source.writeAsBytes([7, 8, 9]);
+
+      final metadata = await store.importDocument(
+        vehicleId: 'vehicle-1',
+        documentType: PrivateVehicleDocumentType.soat,
+        source: source,
+        originalName: 'poliza.jpg',
+        mimeType: 'image/jpeg',
+      );
+      final viewFile = await store.decryptForView(metadata);
+
+      final restartedStore = PrivateVehicleDocumentStore(
+        rootDirectory: () async => root,
+        cacheDirectory: () async => root,
+        masterKey: () async => SecretKey(List<int>.filled(32, 9)),
+        idGenerator: () => 'unused',
+      );
+
+      expect(
+        (await restartedStore.get(
+          vehicleId: 'vehicle-1',
+          documentType: PrivateVehicleDocumentType.soat,
+        ))?.documentId,
+        metadata.documentId,
+      );
+      expect(await viewFile.exists(), isTrue);
+
+      await restartedStore.purgeViewerCache();
+      expect(await viewFile.exists(), isFalse);
     },
   );
 
@@ -118,6 +165,24 @@ void main() {
         source: source,
         originalName: 'source.txt',
         mimeType: 'text/plain',
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('rejects documents over the local import limit', () async {
+    final source = File('${root.path}/large.pdf');
+    final handle = await source.open(mode: FileMode.write);
+    await handle.truncate(PrivateVehicleDocumentStore.maxImportBytes + 1);
+    await handle.close();
+
+    await expectLater(
+      store.importDocument(
+        vehicleId: 'vehicle-1',
+        documentType: PrivateVehicleDocumentType.soat,
+        source: source,
+        originalName: 'large.pdf',
+        mimeType: 'application/pdf',
       ),
       throwsArgumentError,
     );

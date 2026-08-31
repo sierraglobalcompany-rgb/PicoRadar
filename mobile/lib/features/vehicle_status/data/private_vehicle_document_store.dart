@@ -92,6 +92,7 @@ class PrivateVehicleDocumentStore {
   static const _indexName = 'index_v1.prcf';
   static const _storageFolder = 'vehicle_documents';
   static const _viewerFolder = 'vehicle_document_viewer';
+  static const maxImportBytes = 25 * 1024 * 1024;
   static const allowedExtensions = {'pdf', 'jpg', 'jpeg', 'png', 'webp'};
 
   final DirectoryResolver _rootDirectory;
@@ -135,9 +136,20 @@ class PrivateVehicleDocumentStore {
     if (!await source.exists()) {
       throw ArgumentError.value(source.path, 'source', 'File does not exist.');
     }
+    final sourceLength = await source.length();
+    if (sourceLength > maxImportBytes) {
+      throw ArgumentError.value(
+        sourceLength,
+        'source',
+        'Document exceeds the 25 MB local import limit.',
+      );
+    }
 
     final root = await _storeRoot();
     final current = await get(vehicleId: vehicleId, documentType: documentType);
+    if (current != null) {
+      await purgeViewerCache(metadata: current);
+    }
     final documentId = _idGenerator();
     final relativePath =
         'docs/${documentType.value}/$vehicleId/$documentId.prcf';
@@ -178,6 +190,7 @@ class PrivateVehicleDocumentStore {
   }
 
   Future<File> decryptForView(PrivateVehicleDocumentMetadata metadata) async {
+    await purgeViewerCache();
     final encrypted = await _encryptedFile(metadata);
     final cacheRoot = await _viewerRoot();
     final viewFile = File(
@@ -199,10 +212,27 @@ class PrivateVehicleDocumentStore {
         if (document.documentId != metadata.documentId) document,
     ]);
     await _deleteEncryptedFile(metadata);
+    await purgeViewerCache(metadata: metadata);
+  }
+
+  Future<void> purgeViewerCache({
+    PrivateVehicleDocumentMetadata? metadata,
+  }) async {
     final cacheRoot = await _viewerRoot();
-    final cached = Directory('${cacheRoot.path}/${metadata.documentId}');
-    if (await cached.exists()) {
-      await cached.delete(recursive: true);
+    if (metadata != null) {
+      final cached = Directory('${cacheRoot.path}/${metadata.documentId}');
+      if (await cached.exists()) {
+        await cached.delete(recursive: true);
+      }
+      return;
+    }
+
+    await for (final entity in cacheRoot.list()) {
+      if (entity is File) {
+        await entity.delete();
+      } else if (entity is Directory) {
+        await entity.delete(recursive: true);
+      }
     }
   }
 

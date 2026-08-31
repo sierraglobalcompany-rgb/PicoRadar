@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 
 class PickedVehicleDocument {
   const PickedVehicleDocument({
@@ -19,6 +20,8 @@ abstract interface class VehicleDocumentGateway {
   Future<PickedVehicleDocument?> pickDocument();
 
   Future<bool> openDocument(File file);
+
+  Future<void> clearTemporaryFiles();
 }
 
 class FilePickerVehicleDocumentGateway implements VehicleDocumentGateway {
@@ -46,6 +49,20 @@ class FilePickerVehicleDocumentGateway implements VehicleDocumentGateway {
   Future<bool> openDocument(File file) async {
     final result = await OpenFilex.open(file.path);
     return result.type == ResultType.done;
+  }
+
+  @override
+  Future<void> clearTemporaryFiles() async {
+    try {
+      await FilePicker.clearTemporaryFiles();
+    } catch (_) {
+      // Best-effort privacy cleanup; the explicit cache purge below is the gate.
+    }
+    final cache = await getTemporaryDirectory();
+    final pickerCache = Directory('${cache.path}/file_picker');
+    if (await pickerCache.exists()) {
+      await pickerCache.delete(recursive: true);
+    }
   }
 
   String _mimeForName(String name) {
