@@ -23,4 +23,8 @@
         <a class="mt-6 inline-flex rounded-md bg-slate-900 px-4 py-2 font-medium text-white" href="{{ route('admin.datasets.index') }}">Manage datasets</a>
         <a class="mt-6 inline-flex rounded-md border border-slate-300 px-4 py-2 font-medium text-slate-800" href="{{ route('admin.audit.index') }}">Audit log</a>
     @endcan
+    @can('geography.view')
+        <a class="mt-6 inline-flex rounded-md border border-slate-300 px-4 py-2 font-medium text-slate-800" href="{{ route('admin.geography.index') }}">Geography</a>
+        <a class="mt-6 inline-flex rounded-md border border-slate-300 px-4 py-2 font-medium text-slate-800" href="{{ route('admin.jurisdictions.index') }}">Jurisdictions</a>
+    @endcan
 @endsection

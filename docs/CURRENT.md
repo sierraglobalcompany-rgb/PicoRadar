@@ -39,7 +39,9 @@ Fecha de recuperacion R00: 2026-08-27. Base auditada: `main` en `0905d394b037966
 | Tests server | Health/auth B00 y pruebas de registry/publisher B01 | Publisher, rollback, manifiesto y permisos cubiertos |
 | Config/env | SQLite local/tests, MySQL/MariaDB documentado y CI PHP 8.3–8.5 | B00 MERGED; B01 MERGED; CI remoto pendiente por infraestructura externa |
 
-El Control Plane B00 y el publisher B01 están merged en `main`; la deuda de CI remoto B00/B01 es infraestructura (jobs sin runner/steps), no un PASS. El roadmap C00-C29 sigue siendo autoridad para responsabilidades posteriores: C22 Routes/Places proxy, C25 Reports/Leads y C29 hardening. No implementar capacidades duplicadas ni iniciar B02 antes de aprobación.
+El Control Plane B00 y el publisher B01 están merged en `main`; la deuda de CI remoto B00/B01 es infraestructura (jobs sin runner/steps), no un PASS. El roadmap C00-C29 sigue siendo autoridad para responsabilidades posteriores: C22 Routes/Places proxy, C25 Reports/Leads y C29 hardening. No implementar capacidades duplicadas ni iniciar B03 antes de aprobación.
+
+La capacidad B02 de geografía/jurisdicciones del Control Plane usa identidad DANE DIVIPOLA/MGN 2025, jerarquía Colombia → departamento → municipio y cobertura operativa por jurisdicción. No almacena geometrías ni crea un hot path móvil o una publicación de dataset.
 
 No construir backend para vehiculo activo, garaje, widget, pico de hoy, historial GPS, hot path de camaras, documentos privados, historial de notificaciones ni cuentas obligatorias Free 1.0.
 

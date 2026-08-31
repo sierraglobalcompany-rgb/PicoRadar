@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "sourceSystem": "runt_registration_city_catalog",
+  "targetSystem": "dane_divipola",
+  "records": [
+    { "sourceMunicipality": "Don Matias", "sourceDepartment": "Antioquia", "divipolaCode": "05237", "canonicalMunicipality": "Donmatías", "canonicalDepartment": "Antioquia", "reason": "official-name-variant" },
+    { "sourceMunicipality": "Santafe De Antioquia", "sourceDepartment": "Antioquia", "divipolaCode": "05042", "canonicalMunicipality": "Santa Fé de Antioquia", "canonicalDepartment": "Antioquia", "reason": "official-name-variant" },
+    { "sourceMunicipality": "San Andrés", "sourceDepartment": "Archipielago De San Andres, Providencia", "divipolaCode": "88001", "canonicalMunicipality": "San Andrés", "canonicalDepartment": "Archipiélago de San Andrés, Providencia y Santa Catalina", "reason": "official-name-variant" },
+    { "sourceMunicipality": "Bogotá", "sourceDepartment": "Bogotá D.C.", "divipolaCode": "11001", "canonicalMunicipality": "Bogotá, D.C.", "canonicalDepartment": "Bogotá, D.C.", "reason": "official-name-variant" },
+    { "sourceMunicipality": "Cartagena", "sourceDepartment": "Bolívar", "divipolaCode": "13001", "canonicalMunicipality": "Cartagena de Indias", "canonicalDepartment": "Bolívar", "reason": "official-name-variant" },
+    { "sourceMunicipality": "Mompos", "sourceDepartment": "Bolívar", "divipolaCode": "13468", "canonicalMunicipality": "Santa Cruz de Mompox", "canonicalDepartment": "Bolívar", "reason": "official-name-variant" },
+    { "sourceMunicipality": "Piendamo", "sourceDepartment": "Cauca", "divipolaCode": "19548", "canonicalMunicipality": "Piendamó - Tunía", "canonicalDepartment": "Cauca", "reason": "official-name-variant" },
+    { "sourceMunicipality": "Ubate", "sourceDepartment": "Cundinamarca", "divipolaCode": "25843", "canonicalMunicipality": "Villa de San Diego de Ubaté", "canonicalDepartment": "Cundinamarca", "reason": "official-name-variant" },
+    { "sourceMunicipality": "Tumaco", "sourceDepartment": "Nariño", "divipolaCode": "52835", "canonicalMunicipality": "San Andrés de Tumaco", "canonicalDepartment": "Nariño", "reason": "official-name-variant" },
+    { "sourceMunicipality": "Cúcuta", "sourceDepartment": "Norte De Santander", "divipolaCode": "54001", "canonicalMunicipality": "San José de Cúcuta", "canonicalDepartment": "Norte de Santander", "reason": "official-name-variant" },
+    { "sourceMunicipality": "Since", "sourceDepartment": "Sucre", "divipolaCode": "70742", "canonicalMunicipality": "San Luis de Sincé", "canonicalDepartment": "Sucre", "reason": "official-name-variant" },
+    { "sourceMunicipality": "Cali", "sourceDepartment": "Valle del Cauca", "divipolaCode": "76001", "canonicalMunicipality": "Santiago de Cali", "canonicalDepartment": "Valle del Cauca", "reason": "official-name-variant" }
+  ]
+}
