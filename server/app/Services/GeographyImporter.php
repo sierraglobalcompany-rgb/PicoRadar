@@ -66,10 +66,8 @@ class GeographyImporter
                     'metadata' => ['officialType' => $municipality['officialType']],
                 ]);
             }
-            if ($this->failureHook) {
-                ($this->failureHook)();
-            }
-            foreach ($data['picoCatalog']['records'] as $record) {
+            $this->invokeFailureHook('after_geography');
+            foreach ($data['picoCatalog']['records'] as $index => $record) {
                 $mapping = $data['picoMappings'][$record['id']];
                 $primary = GeographicUnit::query()->where('code', $mapping['primaryDivipolaCode'])->firstOrFail();
                 $coverage = GeographicUnit::query()->whereIn('code', $mapping['coverageDivipolaCodes'])->pluck('id')->all();
@@ -86,6 +84,9 @@ class GeographyImporter
                     $jurisdiction = $this->jurisdictions->syncFromCanonicalMapping($jurisdiction, $attributes, $coverage);
                 } else {
                     $jurisdiction = $this->jurisdictions->create(['key' => $record['id']] + $attributes, $coverage);
+                }
+                if ($index === 0) {
+                    $this->invokeFailureHook('after_first_jurisdiction');
                 }
             }
             $this->audit->log(null, 'geography.bootstrapped', $country, [
@@ -177,7 +178,7 @@ class GeographyImporter
     private function validateAliases(array $aliases, array $municipalities, array $departments, array $registrationPairs): array
     {
         $records = $aliases['records'] ?? null;
-        if (($aliases['schemaVersion'] ?? null) !== 1 || ($aliases['sourceSystem'] ?? null) !== 'runt_registration_city_catalog' || ! is_array($records) || ! array_is_list($records) || count($records) !== 12) {
+        if (($aliases['schemaVersion'] ?? null) !== 1 || ($aliases['sourceSystem'] ?? null) !== 'runt_registration_city_catalog' || ($aliases['targetSystem'] ?? null) !== 'dane_divipola' || ! is_array($records) || ! array_is_list($records) || count($records) !== 12) {
             throw new DomainException('Registration alias fixture is invalid.');
         }
         $map = [];
@@ -205,7 +206,7 @@ class GeographyImporter
     {
         $records = $catalog['records'] ?? null;
         $mappings = $mappingFixture['records'] ?? null;
-        if (! is_array($records) || ! array_is_list($records) || count($records) !== 15 || ! is_array($mappings) || ! array_is_list($mappings)) {
+        if (! is_array($records) || ! array_is_list($records) || $records === [] || ! is_array($mappings) || ! array_is_list($mappings)) {
             throw new DomainException('Pico jurisdiction catalog is invalid.');
         }
         $catalogKeys = [];
@@ -280,5 +281,12 @@ class GeographyImporter
     private function pair(string $municipality, string $department): string
     {
         return GeographicNameNormalizer::normalize($municipality).'|'.GeographicNameNormalizer::normalize($department);
+    }
+
+    private function invokeFailureHook(string $stage): void
+    {
+        if ($this->failureHook) {
+            ($this->failureHook)($stage);
+        }
     }
 }

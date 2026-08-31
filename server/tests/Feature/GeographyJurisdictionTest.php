@@ -42,6 +42,23 @@ class GeographyJurisdictionTest extends TestCase
         $this->assertSame(0, GeographicUnit::query()->count());
     }
 
+    public function test_pico_runtime_validation_is_dynamic_while_current_fixture_snapshot_is_fifteen(): void
+    {
+        $catalog = $this->mobileFixture('catalogs/pico_jurisdiction_catalog_v1.json');
+        $mappings = $this->fixture('pico_jurisdiction_divipola_v1.json');
+        $this->assertCount(15, $catalog['records']);
+        array_pop($catalog['records']);
+        array_pop($mappings['records']);
+
+        $summary = $this->importer(
+            picoCatalogPath: $this->writeFixture($catalog),
+            picoMappingPath: $this->writeFixture($mappings),
+        )->bootstrap(true);
+
+        $this->assertSame(14, $summary['jurisdictions']);
+        $this->assertSame(0, GeographicUnit::query()->count());
+    }
+
     public function test_bootstrap_is_idempotent_and_preserves_canonical_hierarchy_and_audit_summary(): void
     {
         $first = app(GeographyImporter::class)->bootstrap();
@@ -104,6 +121,22 @@ class GeographyJurisdictionTest extends TestCase
         try {
             $this->importer(fixturePath: $this->writeFixture($dane))->bootstrap(true);
             $this->fail('Ambiguous canonical pair was accepted.');
+        } catch (DomainException) {
+            $this->addToAssertionCount(1);
+        }
+        $aliases = $this->fixture('registration_city_divipola_aliases_v1.json');
+        $aliases['sourceSystem'] = 'other';
+        try {
+            $this->importer(aliasPath: $this->writeFixture($aliases))->bootstrap(true);
+            $this->fail('Wrong alias source system was accepted.');
+        } catch (DomainException) {
+            $this->addToAssertionCount(1);
+        }
+        $aliases = $this->fixture('registration_city_divipola_aliases_v1.json');
+        $aliases['targetSystem'] = 'other';
+        try {
+            $this->importer(aliasPath: $this->writeFixture($aliases))->bootstrap(true);
+            $this->fail('Wrong alias target system was accepted.');
         } catch (DomainException) {
             $this->addToAssertionCount(1);
         }
@@ -230,9 +263,19 @@ class GeographyJurisdictionTest extends TestCase
         }
     }
 
-    public function test_bootstrap_rolls_back_everything_when_a_failure_occurs_after_geography_import(): void
+    public function test_bootstrap_rolls_back_everything_when_a_failure_occurs_after_first_jurisdiction_mapping_and_audit(): void
     {
-        $importer = $this->importer(failureHook: static function (): void {
+        $observed = [];
+        $importer = $this->importer(failureHook: static function (string $stage) use (&$observed): void {
+            if ($stage !== 'after_first_jurisdiction') {
+                return;
+            }
+            $observed = [
+                'geographicUnits' => GeographicUnit::query()->count(),
+                'jurisdictions' => Jurisdiction::query()->count(),
+                'coverageMappings' => DB::table('jurisdiction_geographic_unit')->count(),
+                'auditLogs' => AuditLog::query()->count(),
+            ];
             throw new DomainException('Injected bootstrap failure.');
         });
         try {
@@ -241,6 +284,10 @@ class GeographyJurisdictionTest extends TestCase
         } catch (DomainException) {
             $this->addToAssertionCount(1);
         }
+        $this->assertSame(1138, $observed['geographicUnits']);
+        $this->assertSame(1, $observed['jurisdictions']);
+        $this->assertSame(1, $observed['coverageMappings']);
+        $this->assertGreaterThanOrEqual(2, $observed['auditLogs']);
         $this->assertSame(0, GeographicUnit::query()->count());
         $this->assertSame(0, Jurisdiction::query()->count());
         $this->assertSame(0, DB::table('jurisdiction_geographic_unit')->count());
@@ -328,8 +375,8 @@ class GeographyJurisdictionTest extends TestCase
         return $path;
     }
 
-    private function importer(?string $aliasPath = null, ?string $registrationPath = null, ?string $fixturePath = null, ?\Closure $failureHook = null): GeographyImporter
+    private function importer(?string $aliasPath = null, ?string $registrationPath = null, ?string $fixturePath = null, ?\Closure $failureHook = null, ?string $picoCatalogPath = null, ?string $picoMappingPath = null): GeographyImporter
     {
-        return new GeographyImporter(app(DatasetAuditLogger::class), app(JurisdictionService::class), $fixturePath, $aliasPath, null, null, $registrationPath, $failureHook);
+        return new GeographyImporter(app(DatasetAuditLogger::class), app(JurisdictionService::class), $fixturePath, $aliasPath, $picoCatalogPath, $picoMappingPath, $registrationPath, $failureHook);
     }
 }
