@@ -93,7 +93,8 @@ class CameraRegistryTest extends TestCase
         $near = $this->draft(null, ['lat' => 4.7110500]);
         $queries = [];
         DB::listen(function ($query) use (&$queries): void {
-            if (str_contains($query->sql, '"lat" between') && str_contains($query->sql, '"lon" between')) {
+            $sql = str_replace(['"', '`'], '', $query->sql);
+            if (str_contains($sql, 'lat between') && str_contains($sql, 'lon between')) {
                 $queries[] = $query->sql;
             }
         });
