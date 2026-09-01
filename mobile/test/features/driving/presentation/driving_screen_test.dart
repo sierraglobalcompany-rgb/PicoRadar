@@ -128,7 +128,7 @@ void main() {
     expect(transform.transform.storage[0], 1);
   });
 
-  testWidgets('authorized wording is shown for approved camera source', (
+  testWidgets('operating wording is shown for approved camera source', (
     tester,
   ) async {
     final gateway = _StreamingGateway();
@@ -154,7 +154,7 @@ void main() {
     gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 0));
     await tester.pump();
 
-    expect(find.text('Fotodetección autorizada'), findsOneWidget);
+    expect(find.text('Fotodetección en operación'), findsOneWidget);
   });
 
   testWidgets('known camera speed shows sign, distance, status, and delta', (

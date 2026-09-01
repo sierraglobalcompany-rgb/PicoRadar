@@ -481,7 +481,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   String _voiceMessage(DrivingAlert alert) {
     final reported = alert.reportedSpeedKmh;
     if (reported == null) {
-      return 'Cámara de fotodetección autorizada a '
+      return 'Cámara de fotodetección en operación a '
           '${alert.thresholdMeters} metros.';
     }
     if (alert.overspeed) {
@@ -489,7 +489,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
           'Velocidad reportada: $reported. '
           'Vas a ${alert.currentSpeedKmh}. Reduce la velocidad.';
     }
-    return 'Cámara de fotodetección autorizada a '
+    return 'Cámara de fotodetección en operación a '
         '${alert.thresholdMeters} metros. '
         'Velocidad reportada: $reported kilómetros por hora.';
   }

@@ -27,12 +27,15 @@ class ImportAnsvRichCamerasCommand extends Command
         $officialGridRows = $this->officialGridRows((string) $this->option('official-grid-json'));
         $geography->bootstrap();
         $result = $importer->importRows($reader->rows($path), strtolower($snapshotSha), $fetchedAt, (bool) $this->option('dry-run'), $officialGridRows);
+        $result['RAW_DATE_37_STORED_AS_1900_DATE'] = $result['rawDate37StoredAs1900Date'] ?? null;
+        $result['RAW_37_PARSED_AS_37_KMH'] = $result['raw37ParsedAs37Kmh'] ?? null;
         if ($this->option('json')) {
             $this->line(json_encode($result, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
         } else {
             $this->components->info("ANSV camera rows: {$result['rowCount']}");
             $this->components->info("Active public candidates: {$result['activeCandidateCount']}");
             $this->components->info("RAW_37_PARSED_AS_37_KMH={$result['raw37ParsedAs37Kmh']}");
+            $this->components->info("RAW_DATE_37_STORED_AS_1900_DATE={$result['rawDate37StoredAs1900Date']}");
         }
 
         return self::SUCCESS;

@@ -432,7 +432,7 @@ class _CameraPanel extends ConsumerWidget {
                     weakForAlerts
                         ? 'GPS débil'
                         : hasCamera
-                        ? 'Fotodetección autorizada'
+                        ? 'Fotodetección en operación'
                         : 'Sin cámara inmediata',
                     style: AppTextStyles.h2.copyWith(
                       color: state.isActive ? Colors.white : AppColors.navy,
