@@ -12,7 +12,7 @@ return new class extends Migration
             $table->foreignId('jurisdiction_id')->constrained('jurisdictions')->cascadeOnDelete();
             $table->foreignId('geographic_unit_id')->constrained('geographic_units')->restrictOnDelete();
             $table->timestamps();
-            $table->unique(['jurisdiction_id', 'geographic_unit_id']);
+            $table->unique(['jurisdiction_id', 'geographic_unit_id'], 'jurisdiction_geo_unit_unique');
         });
     }
 

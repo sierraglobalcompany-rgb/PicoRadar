@@ -529,8 +529,7 @@ Future<RestrictionStatus> _assetStatus(
     jurisdictionId: jurisdictionId,
     plate: plate,
     localDateTime: localDateTime,
-  ))
-      .status;
+  )).status;
 }
 
 Future<RestrictionEvaluation> _assetEvaluation(
