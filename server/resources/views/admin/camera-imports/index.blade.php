@@ -1,0 +1,5 @@
+@extends('layouts.admin',['title'=>'Camera imports | PicoRadar'])
+@section('content')
+<div class="flex items-center justify-between"><h1 class="text-3xl font-semibold">Camera imports</h1>@can('camera_imports.edit')<a class="rounded bg-slate-900 px-4 py-2 text-white" href="{{ route('admin.camera-imports.create') }}">Upload import</a>@endcan</div>
+<div class="mt-6 overflow-x-auto rounded border bg-white"><table class="w-full text-left"><thead><tr><th>Run</th><th>Source</th><th>Format</th><th>Status</th><th>Rows</th><th>Created</th></tr></thead><tbody>@forelse($runs as $run)<tr class="border-t"><td><a class="underline" href="{{ route('admin.camera-imports.show',$run) }}">#{{ $run->id }}</a></td><td>{{ $run->source->title }}</td><td>{{ $run->format }} · {{ $run->import_mode }}</td><td>{{ $run->status }}</td><td>{{ $run->applied_rows }}/{{ $run->total_rows }}</td><td>{{ $run->created_at }}</td></tr>@empty<tr><td class="p-4" colspan="6">No import runs exist.</td></tr>@endforelse</tbody></table></div>{{ $runs->links() }}
+@endsection

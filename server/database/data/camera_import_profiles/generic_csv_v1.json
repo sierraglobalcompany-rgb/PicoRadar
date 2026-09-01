@@ -1,0 +1,1 @@
+{"schemaVersion":1,"key":"generic_csv_v1","format":"csv","requiredColumns":["lat","lon"],"columnMappings":{},"typeAliases":{},"defaults":{}}

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CameraController;
+use App\Http\Controllers\Admin\CameraImportController;
 use App\Http\Controllers\Admin\CameraSourceController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DatasetController;
@@ -32,6 +33,14 @@ Route::middleware(['auth', EnsureActiveOperator::class, SecurityHeaders::class])
     Route::post('/admin/jurisdictions', [JurisdictionController::class, 'store'])->name('admin.jurisdictions.store');
     Route::get('/admin/jurisdictions/{jurisdiction}', [JurisdictionController::class, 'show'])->name('admin.jurisdictions.show');
     Route::resource('/admin/camera-sources', CameraSourceController::class)->except('destroy')->parameters(['camera-sources' => 'source'])->names('admin.camera-sources');
+    Route::get('/admin/camera-imports', [CameraImportController::class, 'index'])->name('admin.camera-imports.index');
+    Route::get('/admin/camera-imports/create', [CameraImportController::class, 'create'])->name('admin.camera-imports.create');
+    Route::post('/admin/camera-imports', [CameraImportController::class, 'store'])->name('admin.camera-imports.store');
+    Route::get('/admin/camera-imports/{run}', [CameraImportController::class, 'show'])->name('admin.camera-imports.show');
+    Route::post('/admin/camera-imports/{run}/analyze', [CameraImportController::class, 'analyze'])->name('admin.camera-imports.analyze');
+    Route::post('/admin/camera-imports/{run}/apply', [CameraImportController::class, 'apply'])->name('admin.camera-imports.apply');
+    Route::post('/admin/camera-imports/{run}/items/{item}/skip', [CameraImportController::class, 'skip'])->name('admin.camera-imports.items.skip');
+    Route::post('/admin/camera-imports/{run}/items/{item}/resolve', [CameraImportController::class, 'resolve'])->name('admin.camera-imports.items.resolve');
     Route::get('/admin/cameras/quality', [CameraController::class, 'quality'])->name('admin.cameras.quality');
     Route::get('/admin/cameras/review', [CameraController::class, 'review'])->name('admin.cameras.review');
     Route::get('/admin/cameras/speed-review', [CameraController::class, 'speedReview'])->name('admin.cameras.speed-review');
