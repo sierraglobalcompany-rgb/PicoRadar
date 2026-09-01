@@ -35,11 +35,13 @@ return new class extends Migration
             $t->date('operation_extension_ends_on')->nullable();
             $t->boolean('valid_colombia_coordinates')->default(false);
             $t->boolean('active_public_candidate')->default(false);
+            $t->unsignedInteger('duplicate_source_row_count')->default(1);
             $t->string('review_state', 32)->default('OK');
             $t->json('review_reasons')->nullable();
+            $t->json('date_anomalies')->nullable();
             $t->json('raw')->nullable();
             $t->timestamps();
-            $t->unique(['ansv_camera_import_id', 'source_row_identity'], 'ansv_import_row_identity_unique');
+            $t->index(['ansv_camera_import_id', 'source_row_identity'], 'ansv_import_row_identity_idx');
             $t->index(['operation_status', 'active_public_candidate'], 'ansv_import_row_status_public_idx');
             $t->index('source_row_identity');
         });

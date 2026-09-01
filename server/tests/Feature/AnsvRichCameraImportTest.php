@@ -3,12 +3,16 @@
 namespace Tests\Feature;
 
 use App\Enums\CameraStatus;
+use App\Enums\OperatorRole;
 use App\Models\AnsvCameraImport;
 use App\Models\AnsvCameraImportRow;
 use App\Models\Camera;
 use App\Models\Jurisdiction;
+use App\Models\User;
+use App\Services\AnsvCameraImportGovernanceService;
 use App\Services\AnsvCameraRowNormalizer;
 use App\Services\AnsvRichCameraImporter;
+use App\Services\CameraRegistryService;
 use App\Services\DatasetAuditLogger;
 use App\Services\GeographyImporter;
 use Carbon\CarbonImmutable;
@@ -37,6 +41,9 @@ class AnsvRichCameraImportTest extends TestCase
 
         $this->assertNull($normalizer->speed('37'));
         $this->assertSame(50, $normalizer->speed('50 km/h'));
+        $this->assertNull($normalizer->sourceDate('37', 'operation_started_on')['date']);
+        $this->assertSame('IMPLAUSIBLE_ANSV_DATE', $normalizer->sourceDate('37', 'operation_started_on')['anomaly']['reason']);
+        $this->assertSame('2025-01-01', $normalizer->sourceDate('2025-01-01', 'operation_started_on')['date']?->toDateString());
     }
 
     public function test_imports_operating_candidates_and_keeps_authorized_install_out_of_runtime(): void
@@ -50,8 +57,8 @@ class AnsvRichCameraImportTest extends TestCase
         $this->assertSame(2, $result['masterImportedCount']);
         $this->assertSame(1, $result['activeCandidateCount']);
         $this->assertSame(0, $result['raw37ParsedAs37Kmh']);
-        $this->assertSame(1, Camera::query()->where('status', CameraStatus::Active)->count());
-        $this->assertSame(1, Camera::query()->where('status', CameraStatus::Inactive)->count());
+        $this->assertSame(0, Camera::query()->where('status', CameraStatus::Active)->count());
+        $this->assertSame(2, Camera::query()->where('status', CameraStatus::Draft)->count());
         $this->assertDatabaseHas('ansv_camera_import_rows', [
             'operation_status' => 'Autorizada instalar',
             'active_public_candidate' => false,
@@ -93,17 +100,19 @@ class AnsvRichCameraImportTest extends TestCase
         $this->assertSame($normalizer->identity($first), $normalizer->identity($second));
     }
 
-    public function test_exact_official_identity_duplicates_are_disambiguated_without_location_identity(): void
+    public function test_exact_official_identity_duplicates_are_collapsed_without_location_identity(): void
     {
         $duplicate = $this->row(['Estado operación' => 'Autorizada instalar']);
 
         $result = $this->import([$duplicate, $duplicate], str_repeat('4', 64));
 
         $this->assertSame(0, $result['duplicateIdentityCount']);
-        $this->assertSame(1, $result['duplicateIdentitySignals']['codigoUnicoCodigoSolicitudNombreEquipo']);
-        $this->assertSame(2, AnsvCameraImportRow::query()->count());
-        $this->assertSame(2, AnsvCameraImportRow::query()->distinct('source_row_identity')->count('source_row_identity'));
-        $this->assertSame(2, AnsvCameraImportRow::query()->whereJsonContains('review_reasons', 'DUPLICATE_OFFICIAL_IDENTITY_DISAMBIGUATED')->count());
+        $this->assertSame(0, $result['duplicateIdentitySignals']['codigoUnicoCodigoSolicitudNombreEquipo']);
+        $this->assertSame(1, $result['exactDuplicateSourceRowCount']);
+        $this->assertSame(1, AnsvCameraImportRow::query()->count());
+        $this->assertSame(1, AnsvCameraImportRow::query()->distinct('source_row_identity')->count('source_row_identity'));
+        $this->assertSame(2, AnsvCameraImportRow::query()->firstOrFail()->duplicate_source_row_count);
+        $this->assertSame(0, AnsvCameraImportRow::query()->whereJsonContains('review_reasons', 'DUPLICATE_OFFICIAL_IDENTITY_DISAMBIGUATED')->count());
     }
 
     public function test_operating_rows_outside_pico_jurisdictions_are_not_dropped(): void
@@ -123,16 +132,19 @@ class AnsvRichCameraImportTest extends TestCase
 
         $this->assertSame(1, $result['activeImportedCount']);
         $this->assertSame(0, $result['operatingRowsDroppedDueToPicoJurisdiction']);
-        $this->assertSame(1, Camera::query()->where('status', CameraStatus::Active)->count());
+        $this->assertSame(1, Camera::query()->where('status', CameraStatus::Draft)->count());
         $jurisdiction = Jurisdiction::query()->where('key', 'camera-registry-05030')->firstOrFail();
-        $this->assertFalse($jurisdiction->enabled);
+        $this->assertTrue($jurisdiction->enabled);
         $this->assertSame('camera_registry', $jurisdiction->metadata['scope']);
     }
 
     public function test_unknown_status_empty_source_and_missing_schema_require_review(): void
     {
-        $this->expectException(DomainException::class);
-        $this->import([$this->row(['Estado operación' => 'Nuevo estado'])]);
+        $result = $this->import([$this->row(['Estado operación' => 'Nuevo estado'])]);
+
+        $this->assertTrue($result['reviewRequired']);
+        $this->assertSame(1, $result['reviewGates']['unknownOperationStatusCount']);
+        $this->assertSame('review_required', AnsvCameraImport::query()->firstOrFail()->status);
     }
 
     public function test_empty_source_is_rejected(): void
@@ -152,6 +164,7 @@ class AnsvRichCameraImportTest extends TestCase
         $importer = new AnsvRichCameraImporter(
             app(AnsvCameraRowNormalizer::class),
             app(DatasetAuditLogger::class),
+            app(CameraRegistryService::class),
             static fn (string $point) => throw new \RuntimeException($point),
         );
 
@@ -177,10 +190,12 @@ class AnsvRichCameraImportTest extends TestCase
         $this->assertTrue($second['idempotent']);
         $this->assertSame(1, Camera::query()->count());
         $camera = Camera::query()->firstOrFail();
-        $this->assertSame(CameraStatus::Active, $camera->status);
+        $this->assertSame(CameraStatus::Draft, $camera->status);
         $this->assertSame('cam_'.substr($camera->external_id, 0, 26), $camera->camera_id);
         $this->assertNull($camera->speed_limit);
         $this->assertFalse($camera->speed_limit_verified);
+        $this->assertNull($camera->verified_at);
+        $this->assertNull($camera->verification_fingerprint);
         $this->assertSame('Operando', $camera->operation_status);
         $this->assertSame(str_repeat('a', 64), $camera->source_snapshot_sha);
     }
@@ -190,9 +205,18 @@ class AnsvRichCameraImportTest extends TestCase
         $row = $this->row();
         $identity = app(AnsvCameraRowNormalizer::class)->identity($row);
 
-        $this->import([$row]);
+        $result = $this->import([$row]);
+        $import = AnsvCameraImport::query()->findOrFail($result['importId']);
         $camera = Camera::query()->firstOrFail();
         $this->assertSame('AV REGIONAL - CL 10', $camera->direction);
+        [$editor, $reviewer] = $this->users();
+        $governance = app(AnsvCameraImportGovernanceService::class);
+        $governance->approve($import, $reviewer, 'Synthetic reviewed import');
+        $governance->submitCandidates($import, $editor);
+        $governance->verifyCandidates($import, $reviewer);
+        $governance->activateCandidates($import, $reviewer);
+        $camera->refresh();
+        $this->assertSame(CameraStatus::Active, $camera->status);
 
         DB::table('cameras')->where('id', $camera->id)->update(['direction' => 'AV REGIONAL - CL HISTORICA']);
 
@@ -224,6 +248,51 @@ class AnsvRichCameraImportTest extends TestCase
         $this->assertSame(1, $result['snapshotDiff']['addedRows']);
         $this->assertSame(1, $result['snapshotDiff']['removedRows']);
         $this->assertSame(1, $result['snapshotDiff']['changedRows']);
+    }
+
+    public function test_governance_bulk_review_is_four_eyes_and_never_marks_speed_verified(): void
+    {
+        $result = $this->import([$this->row(['Velocidad' => '50 km/h'])]);
+        $import = AnsvCameraImport::query()->findOrFail($result['importId']);
+        [$editor, $reviewer] = $this->users();
+        $governance = app(AnsvCameraImportGovernanceService::class);
+
+        $governance->approve($import, $reviewer, 'Synthetic reviewed import');
+        $this->assertSame(['submitted' => 1, 'skipped' => 0], $governance->submitCandidates($import, $editor));
+        $this->assertSame(['verified' => 1, 'skipped' => 0], $governance->verifyCandidates($import, $reviewer));
+        $this->assertSame(['activated' => 1, 'skipped' => 0], $governance->activateCandidates($import, $reviewer));
+
+        $camera = Camera::query()->firstOrFail();
+        $this->assertSame(CameraStatus::Active, $camera->status);
+        $this->assertNull($camera->speed_limit);
+        $this->assertFalse($camera->speed_limit_verified);
+        $this->assertNotNull($camera->verified_at);
+    }
+
+    public function test_same_operator_cannot_bulk_verify_import_candidate(): void
+    {
+        $result = $this->import([$this->row()]);
+        $import = AnsvCameraImport::query()->findOrFail($result['importId']);
+        $admin = User::factory()->create(['role' => OperatorRole::Admin]);
+        $governance = app(AnsvCameraImportGovernanceService::class);
+
+        $governance->approve($import, $admin, 'Synthetic reviewed import');
+        $governance->submitCandidates($import, $admin);
+        $this->expectException(DomainException::class);
+        $governance->verifyCandidates($import, $admin);
+    }
+
+    public function test_active_import_rows_with_review_reasons_block_approval(): void
+    {
+        $result = $this->import([
+            $this->row(['Código unico' => 'CU0001', 'Nombre equipo' => 'CAM01', 'Dirección' => 'AV 1']),
+            $this->row(['Código unico' => 'CU0001', 'Nombre equipo' => 'CAM01', 'Dirección' => 'AV 2']),
+        ], str_repeat('6', 64));
+        $import = AnsvCameraImport::query()->findOrFail($result['importId']);
+        $reviewer = User::factory()->create(['role' => OperatorRole::Reviewer]);
+
+        $this->expectException(DomainException::class);
+        app(AnsvCameraImportGovernanceService::class)->approve($import, $reviewer, 'Synthetic review');
     }
 
     public function test_official_grid_reconciliation_records_real_counts(): void
@@ -284,5 +353,14 @@ class AnsvRichCameraImportTest extends TestCase
             'Fecha inicio de operación' => '2025-01-01',
             'Fecha finalización inicial' => '2031-08-31',
         ], $overrides);
+    }
+
+    /** @return array{0:User,1:User} */
+    private function users(): array
+    {
+        return [
+            User::factory()->create(['role' => OperatorRole::Editor]),
+            User::factory()->create(['role' => OperatorRole::Reviewer]),
+        ];
     }
 }

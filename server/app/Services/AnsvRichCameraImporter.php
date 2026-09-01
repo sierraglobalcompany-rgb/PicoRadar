@@ -27,6 +27,7 @@ class AnsvRichCameraImporter
     public function __construct(
         private readonly AnsvCameraRowNormalizer $normalizer,
         private readonly DatasetAuditLogger $audit,
+        private readonly CameraRegistryService $registry,
         private readonly ?\Closure $failureHook = null,
     ) {}
 
@@ -45,11 +46,9 @@ class AnsvRichCameraImporter
         foreach ($rows as $index => $row) {
             $normalized[] = $this->normalizer->normalize($row + ['_source_row_number' => (string) ($index + 2)], $fetchedAt);
         }
-        $normalized = $this->disambiguateDuplicateIdentities($normalized);
+        $normalized = $this->collapseExactDuplicateSourceRows($normalized);
+        $normalized = $this->markIdentityCollisions($normalized);
         $report = $this->report($normalized, $officialGridRows);
-        if ($report['reviewGates']['missingCriticalColumns'] || $report['reviewGates']['emptySource'] || $report['reviewGates']['unknownOperationStatusCount'] > 0) {
-            throw new DomainException('ANSV camera source requires review before import.');
-        }
         if ($dryRun) {
             return $report + ['snapshotSha' => strtolower($snapshotSha), 'dryRun' => true];
         }
@@ -68,6 +67,8 @@ class AnsvRichCameraImporter
                     'source_id' => $source->id,
                     'source_url' => self::SOURCE_URL,
                     'source_fetched_at' => $fetchedAt,
+                    'status' => $report['reviewRequired'] ? 'review_required' : 'analyzed',
+                    'analyzed_at' => now(),
                     'row_count' => count($normalized),
                     'master_imported_count' => 0,
                     'active_candidate_count' => 0,
@@ -143,7 +144,10 @@ class AnsvRichCameraImporter
             return ['camera' => null, 'sourceDelta' => [], 'reviewReasons' => ['CAMERA_REGISTRY_JURISDICTION_UNAVAILABLE'], 'dropReason' => 'CAMERA_REGISTRY_JURISDICTION_UNAVAILABLE'];
         }
 
-        $status = $row['active_public_candidate'] ? CameraStatus::Active : CameraStatus::Inactive;
+        if (in_array('IDENTITY_COLLISION_REVIEW_REQUIRED', $row['review_reasons'], true)) {
+            return ['camera' => null, 'sourceDelta' => [], 'reviewReasons' => [], 'dropReason' => 'IDENTITY_COLLISION_REVIEW_REQUIRED'];
+        }
+
         $type = $this->cameraType($row);
         $camera = Camera::query()->where('source_id', $source->id)->where('external_id', $row['source_row_identity'])->first();
         $attributes = [
@@ -156,7 +160,6 @@ class AnsvRichCameraImporter
             'lon' => $row['lon'],
             'type' => $type,
             'direction' => $row['address'],
-            'speed_limit' => $row['reported_speed_kmh'],
             'notes' => 'ANSV rich import; source status: '.$row['operation_status'],
             'operation_status' => $row['operation_status'],
             'traffic_authority' => $row['traffic_authority'],
@@ -171,7 +174,7 @@ class AnsvRichCameraImporter
             'source_fetched_at' => $fetchedAt,
         ];
         $sourceDelta = $camera !== null ? $this->sourceDelta($camera, $attributes) : [];
-        if ($camera !== null && $camera->status === CameraStatus::Active && $this->hasImmutableDifferences($camera, $attributes)) {
+        if ($camera !== null && in_array($camera->status, [CameraStatus::Verified, CameraStatus::Active, CameraStatus::Inactive], true) && $this->hasImmutableDifferences($camera, $attributes)) {
             return [
                 'camera' => $camera,
                 'sourceDelta' => $sourceDelta,
@@ -179,42 +182,67 @@ class AnsvRichCameraImporter
                 'dropReason' => null,
             ];
         }
-        $camera ??= new Camera;
-        $camera->forceFill($attributes + [
-            'camera_id' => $camera->camera_id ?: 'cam_'.substr($row['source_row_identity'], 0, 26),
-            'status' => $status,
-            'verified_at' => $fetchedAt,
-            'speed_limit_verified' => $row['reported_speed_kmh'] !== null && $type->supportsSpeed(),
-            'speed_limit_verified_at' => $row['reported_speed_kmh'] !== null && $type->supportsSpeed() ? $fetchedAt : null,
-        ]);
-        $camera->verification_fingerprint = app(CameraVerificationService::class)->fingerprint($camera);
-        $camera->save();
+        if ($camera === null) {
+            $camera = $this->registry->create($attributes + ['camera_id' => 'cam_'.substr($row['source_row_identity'], 0, 26)]);
+        } elseif (in_array($camera->status, [CameraStatus::Draft, CameraStatus::Rejected], true)) {
+            $camera = $this->registry->updateDraft($camera, $attributes);
+        }
 
         return ['camera' => $camera, 'sourceDelta' => $sourceDelta, 'reviewReasons' => [], 'dropReason' => null];
     }
 
     /** @param list<array<string,mixed>> $rows @return list<array<string,mixed>> */
-    private function disambiguateDuplicateIdentities(array $rows): array
+    private function collapseExactDuplicateSourceRows(array $rows): array
+    {
+        $byRawRow = [];
+        $collapsed = [];
+        foreach ($rows as $row) {
+            $key = $this->canonicalSourceRowHash($row);
+            if (! isset($byRawRow[$key])) {
+                $row['duplicate_source_row_count'] = 1;
+                $row['raw']['_duplicate_source_row_numbers'] = [$row['raw']['_source_row_number'] ?? null];
+                $byRawRow[$key] = count($collapsed);
+                $collapsed[] = $row;
+
+                continue;
+            }
+
+            $index = $byRawRow[$key];
+            $collapsed[$index]['duplicate_source_row_count']++;
+            $collapsed[$index]['raw']['_duplicate_source_row_numbers'][] = $row['raw']['_source_row_number'] ?? null;
+        }
+
+        return $collapsed;
+    }
+
+    /** @param list<array<string,mixed>> $rows @return list<array<string,mixed>> */
+    private function markIdentityCollisions(array $rows): array
     {
         $counts = [];
         foreach ($rows as $row) {
             $counts[$row['source_row_identity']] = ($counts[$row['source_row_identity']] ?? 0) + 1;
         }
-        $ordinals = [];
         foreach ($rows as $index => $row) {
             $identity = $row['source_row_identity'];
             if (($counts[$identity] ?? 0) < 2) {
                 continue;
             }
-            $ordinals[$identity] = ($ordinals[$identity] ?? 0) + 1;
-            $rows[$index]['source_row_identity'] = hash('sha256', $identity.'|duplicate_ordinal:'.$ordinals[$identity]);
-            $rows[$index]['review_reasons'][] = 'DUPLICATE_OFFICIAL_IDENTITY_DISAMBIGUATED';
+            $rows[$index]['review_reasons'][] = 'IDENTITY_COLLISION_REVIEW_REQUIRED';
             $rows[$index]['review_state'] = 'REVIEW_REQUIRED';
             $rows[$index]['raw']['_base_source_row_identity'] = $identity;
-            $rows[$index]['raw']['_identity_duplicate_ordinal'] = $ordinals[$identity];
         }
 
         return $rows;
+    }
+
+    /** @param array<string,mixed> $row */
+    private function canonicalSourceRowHash(array $row): string
+    {
+        $raw = $row['raw'] ?? [];
+        unset($raw['_source_row_number']);
+        ksort($raw);
+
+        return hash('sha256', json_encode($raw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
     }
 
     /** @param array<string,mixed> $attributes */
@@ -298,7 +326,7 @@ class AnsvRichCameraImporter
                 'name' => 'Camera registry '.$municipality->name,
                 'kind' => JurisdictionKind::City,
                 'primary_geographic_unit_id' => $municipality->id,
-                'enabled' => false,
+                'enabled' => true,
                 'timezone' => 'America/Bogota',
                 'metadata' => ['scope' => 'camera_registry', 'source' => 'dane_geography'],
             ],
@@ -451,6 +479,10 @@ class AnsvRichCameraImporter
         $duplicateIdentities = 0;
         $speedKnown = 0;
         $raw37Parsed = 0;
+        $rawDate37StoredAs1900 = 0;
+        $dateAnomalyCount = 0;
+        $activeDateAnomalyCount = 0;
+        $exactDuplicateSourceRows = 0;
         $invalidCoordinates = 0;
         $unknownStatuses = 0;
         $codigoUnicoKeys = [];
@@ -465,18 +497,25 @@ class AnsvRichCameraImporter
             $stableIdentityKeys[] = [(string) ($row['codigo_unico'] ?? ''), (string) ($row['codigo_solicitud'] ?? ''), (string) ($row['equipment_name'] ?? '')];
             $speedKnown += $row['reported_speed_kmh'] !== null ? 1 : 0;
             $raw37Parsed += trim((string) $row['raw_speed']) === '37' && $row['reported_speed_kmh'] === 37 ? 1 : 0;
+            $dateAnomalies = $row['date_anomalies'] ?? [];
+            $dateAnomalyCount += count($dateAnomalies);
+            $activeDateAnomalyCount += $row['active_public_candidate'] ? count($dateAnomalies) : 0;
+            $rawDate37StoredAs1900 += count(array_filter($dateAnomalies, fn (array $anomaly): bool => ($anomaly['raw'] ?? null) === '37')) > 0 && ($row['operation_started_on'] ?? null) === '1900-02-05' ? 1 : 0;
+            $exactDuplicateSourceRows += max(0, (int) ($row['duplicate_source_row_count'] ?? 1) - 1);
             $invalidCoordinates += $row['valid_colombia_coordinates'] ? 0 : 1;
             $unknownStatuses += ! in_array($row['operation_status'], AnsvCameraRowNormalizer::KNOWN_STATUSES, true) ? 1 : 0;
         }
         $activeCandidates = count(array_filter($rows, fn (array $row): bool => (bool) $row['active_public_candidate']));
+        $reviewRequired = $rows === [] || $unknownStatuses > 0 || $invalidCoordinates > 0 || $duplicateIdentities > 0 || $dateAnomalyCount > 0;
 
         return [
             'schema' => 'picoradar.ansv-camera-import.v1',
             'rowCount' => count($rows),
             'statusCounts' => $statusCounts,
-            'sourceIdentity' => 'sha256(codigo_unico|codigo_solicitud|nombre_equipo); duplicate_ordinal fallback only for official identity collisions',
+            'sourceIdentity' => 'sha256(codigo_unico|codigo_solicitud|nombre_equipo); exact duplicate source rows collapse; non-identical official identity collisions require review',
             'sourceIdentityExcludedMutableFields' => ['direccion', 'latitud', 'longitud', 'worksheet_row_number', 'operation_status', 'velocidad'],
             'duplicateIdentityCount' => $duplicateIdentities,
+            'exactDuplicateSourceRowCount' => $exactDuplicateSourceRows,
             'duplicateIdentitySignals' => [
                 'codigoUnicoOnly' => $this->duplicateKeyCount($codigoUnicoKeys),
                 'codigoUnicoCodigoSolicitud' => $this->duplicateKeyCount($codigoSolicitudKeys),
@@ -484,14 +523,21 @@ class AnsvRichCameraImporter
             ],
             'speedKnownCount' => $speedKnown,
             'raw37ParsedAs37Kmh' => $raw37Parsed,
+            'rawDate37StoredAs1900Date' => $rawDate37StoredAs1900,
+            'dateAnomalyCount' => $dateAnomalyCount,
+            'activeDateAnomalyCount' => $activeDateAnomalyCount,
             'invalidCoordinateCount' => $invalidCoordinates,
             'activeCandidateCount' => $activeCandidates,
+            'reviewRequired' => $reviewRequired,
             'reviewGates' => [
                 'emptySource' => $rows === [],
                 'missingCriticalColumns' => false,
                 'unknownOperationStatusCount' => $unknownStatuses,
                 'duplicateIdentityCount' => $duplicateIdentities,
                 'invalidCoordinateCount' => $invalidCoordinates,
+                'dateAnomalyCount' => $dateAnomalyCount,
+                'activeDateAnomalyCount' => $activeDateAnomalyCount,
+                'suspiciousSnapshot' => $reviewRequired,
             ],
             'featureServerReconciliation' => $this->officialGridReconciliation($rows, $officialGridRows),
             'sourceAcquisition' => [
