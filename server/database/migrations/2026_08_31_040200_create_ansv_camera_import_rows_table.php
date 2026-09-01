@@ -40,7 +40,7 @@ return new class extends Migration
             $t->json('raw')->nullable();
             $t->timestamps();
             $t->unique(['ansv_camera_import_id', 'source_row_identity'], 'ansv_import_row_identity_unique');
-            $t->index(['operation_status', 'active_public_candidate']);
+            $t->index(['operation_status', 'active_public_candidate'], 'ansv_import_row_status_public_idx');
             $t->index('source_row_identity');
         });
     }
