@@ -2,7 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CameraStatus;
+use App\Enums\OperatorRole;
+use App\Models\AnsvCameraImport;
 use App\Models\Camera;
+use App\Models\User;
+use App\Services\AnsvCameraImportGovernanceService;
 use App\Services\AnsvRichCameraImporter;
 use App\Services\CameraMobileDatasetPublisher;
 use App\Services\GeographyImporter;
@@ -27,11 +32,12 @@ class CameraDatasetPublicationTest extends TestCase
 
     public function test_publishes_only_operating_ready_cameras_with_compact_mobile_manifest(): void
     {
-        app(AnsvRichCameraImporter::class)->importRows([
+        $result = app(AnsvRichCameraImporter::class)->importRows([
             $this->row(['Nombre equipo' => 'DEI47CAM01', 'Dirección' => 'AV REGIONAL - CL 10', 'Velocidad' => '50 km/h']),
             $this->row(['Nombre equipo' => 'DEI47CAM02', 'Dirección' => 'AV REGIONAL - CL 20', 'Velocidad' => '37']),
             $this->row(['Nombre equipo' => 'DEI47CAM03', 'Dirección' => 'AV REGIONAL - CL 30', 'Estado operación' => 'Autorizada instalar']),
         ], str_repeat('a', 64), $this->fetchedAt);
+        $import = $this->approveAndActivateImport($result['importId']);
 
         $output = base_path('storage/testing-camera-dataset');
         File::deleteDirectory($output);
@@ -41,6 +47,7 @@ class CameraDatasetPublicationTest extends TestCase
             '2026.08.31-ansv',
             $this->fetchedAt,
             CarbonImmutable::parse('2026-08-31'),
+            $import->id,
         );
 
         $datasetPath = $output.DIRECTORY_SEPARATOR.'cameras_v1.json';
@@ -60,6 +67,8 @@ class CameraDatasetPublicationTest extends TestCase
         $this->assertSame($result['assetSha256'], $manifest['asset']['sha256']);
         $this->assertSame(0, $result['nonOperatingPublishedCount']);
         $this->assertSame(0, $result['reportedSpeedInventedCount']);
+        $this->assertSame($import->id, $result['acceptedImportId']);
+        $this->assertSame([], $result['exclusions']);
         $this->assertCount(2, $dataset['records']);
         $this->assertSame(['Operando'], array_values(array_unique(array_column($dataset['records'], 'operationStatus'))));
         $speedRecord = collect($dataset['records'])->firstWhere('reportedSpeedKmh', 50);
@@ -72,9 +81,10 @@ class CameraDatasetPublicationTest extends TestCase
 
     public function test_artisan_command_writes_dataset_and_reports_json_contract(): void
     {
-        app(AnsvRichCameraImporter::class)->importRows([
+        $result = app(AnsvRichCameraImporter::class)->importRows([
             $this->row(),
         ], str_repeat('b', 64), $this->fetchedAt);
+        $import = $this->approveAndActivateImport($result['importId']);
         $output = base_path('storage/testing-camera-dataset-command');
         File::deleteDirectory($output);
 
@@ -83,11 +93,57 @@ class CameraDatasetPublicationTest extends TestCase
             '--dataset-version' => '2026.08.31-ansv',
             '--generated-at' => '2026-08-31T15:44:00Z',
             '--as-of' => '2026-08-31',
+            '--import-id' => $import->id,
             '--json' => true,
         ])->expectsOutputToContain('picoradar.camera-dataset-publication.v1')->assertExitCode(0);
 
         $this->assertFileExists($output.DIRECTORY_SEPARATOR.'cameras_v1.json');
         $this->assertFileExists($output.DIRECTORY_SEPARATOR.'cameras_manifest_v1.json');
+    }
+
+    public function test_publication_requires_explicit_approved_import_selection(): void
+    {
+        app(AnsvRichCameraImporter::class)->importRows([$this->row()], str_repeat('c', 64), $this->fetchedAt);
+
+        $this->expectException(\DomainException::class);
+        app(CameraMobileDatasetPublisher::class)->publish(
+            base_path('storage/testing-camera-dataset-blocked'),
+            '2026.08.31-ansv',
+            $this->fetchedAt,
+            CarbonImmutable::parse('2026-08-31'),
+        );
+    }
+
+    public function test_unapproved_import_id_is_not_publishable(): void
+    {
+        $result = app(AnsvRichCameraImporter::class)->importRows([$this->row()], str_repeat('d', 64), $this->fetchedAt);
+
+        $this->expectException(\DomainException::class);
+        app(CameraMobileDatasetPublisher::class)->publish(
+            base_path('storage/testing-camera-dataset-blocked'),
+            '2026.08.31-ansv',
+            $this->fetchedAt,
+            CarbonImmutable::parse('2026-08-31'),
+            $result['importId'],
+        );
+    }
+
+    public function test_forged_active_camera_without_b03_readiness_is_excluded(): void
+    {
+        $result = app(AnsvRichCameraImporter::class)->importRows([$this->row()], str_repeat('e', 64), $this->fetchedAt);
+        $import = AnsvCameraImport::query()->findOrFail($result['importId']);
+        $reviewer = User::factory()->create(['role' => OperatorRole::Reviewer]);
+        app(AnsvCameraImportGovernanceService::class)->approve($import, $reviewer, 'Synthetic reviewed import');
+        Camera::query()->firstOrFail()->forceFill(['status' => CameraStatus::Active])->saveQuietly();
+
+        $this->expectException(\DomainException::class);
+        app(CameraMobileDatasetPublisher::class)->publish(
+            base_path('storage/testing-camera-dataset-forged'),
+            '2026.08.31-ansv',
+            $this->fetchedAt,
+            CarbonImmutable::parse('2026-08-31'),
+            $import->id,
+        );
     }
 
     /** @param array<string, string|null> $overrides */
@@ -121,5 +177,19 @@ class CameraDatasetPublicationTest extends TestCase
             'Fecha inicio de operación' => '2025-01-01',
             'Fecha finalización inicial' => '2031-08-31',
         ], $overrides);
+    }
+
+    private function approveAndActivateImport(int $importId): AnsvCameraImport
+    {
+        $import = AnsvCameraImport::query()->findOrFail($importId);
+        $editor = User::factory()->create(['role' => OperatorRole::Editor]);
+        $reviewer = User::factory()->create(['role' => OperatorRole::Reviewer]);
+        $governance = app(AnsvCameraImportGovernanceService::class);
+        $governance->approve($import, $reviewer, 'Synthetic reviewed import');
+        $governance->submitCandidates($import, $editor);
+        $governance->verifyCandidates($import, $reviewer);
+        $governance->activateCandidates($import, $reviewer);
+
+        return $import->fresh();
     }
 }

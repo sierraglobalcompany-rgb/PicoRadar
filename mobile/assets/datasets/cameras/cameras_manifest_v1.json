@@ -16,6 +16,7 @@
     "runtimeFilter": {
         "status": "active",
         "operationStatus": "Operando",
+        "cameraContractReadiness": true,
         "sourceImportRowState": "OK"
     },
     "freshness": {

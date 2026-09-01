@@ -11,22 +11,28 @@ use Illuminate\Support\Facades\File;
 
 class CameraMobileDatasetPublisher
 {
-    public function publish(string $outputDirectory, string $version, CarbonImmutable $generatedAt, CarbonImmutable $asOf): array
+    public function __construct(private readonly CameraContractReadinessService $readiness) {}
+
+    public function publish(string $outputDirectory, string $version, CarbonImmutable $generatedAt, CarbonImmutable $asOf, ?int $importId = null, bool $latestApproved = false): array
     {
         if (! preg_match('/^\d{4}\.\d{2}\.\d{2}[-a-z0-9.]*$/', $version)) {
             throw new DomainException('Camera dataset version is invalid.');
         }
+        if ($importId === null && ! $latestApproved) {
+            throw new DomainException('Explicit approved ANSV import selection is required.');
+        }
 
-        $import = AnsvCameraImport::query()
-            ->with('source')
-            ->latest('source_fetched_at')
-            ->first();
+        $query = AnsvCameraImport::query()->with('source')->where('status', 'approved');
+        $import = $importId !== null
+            ? $query->whereKey($importId)->first()
+            : $query->latest('source_fetched_at')->first();
         if ($import === null) {
-            throw new DomainException('No accepted ANSV camera import is available for publication.');
+            throw new DomainException('No approved ANSV camera import is available for publication.');
         }
 
         $records = [];
         $speedKnown = 0;
+        $exclusions = [];
 
         AnsvCameraImportRow::query()
             ->where('ansv_camera_import_id', $import->id)
@@ -34,23 +40,41 @@ class CameraMobileDatasetPublisher
             ->where('review_state', 'OK')
             ->with(['camera', 'import'])
             ->orderBy('source_row_identity')
-            ->each(function (AnsvCameraImportRow $sourceRow) use (&$records, &$speedKnown, $asOf): void {
+            ->each(function (AnsvCameraImportRow $sourceRow) use (&$records, &$speedKnown, &$exclusions, $asOf): void {
                 $camera = $sourceRow->camera;
                 if ($camera === null) {
-                    throw new DomainException("ANSV row {$sourceRow->source_row_identity} has no linked camera.");
+                    $this->exclude($exclusions, 'missing_camera');
+
+                    return;
                 }
-                if ($camera->status !== CameraStatus::Active) {
-                    throw new DomainException("Camera {$camera->camera_id} is not active.");
+                $readiness = $this->readiness->assess($camera);
+                if (! $readiness['readyForFutureDataset']) {
+                    foreach ($readiness['reasons'] as $reason) {
+                        $this->exclude($exclusions, 'readiness_'.$reason);
+                    }
+
+                    return;
                 }
-                if ($camera->operation_status !== 'Operando') {
-                    throw new DomainException("Camera {$camera->camera_id} is not operating.");
+                if ($camera->status !== CameraStatus::Active || $camera->operation_status !== 'Operando' || $sourceRow->operation_status !== 'Operando') {
+                    $this->exclude($exclusions, 'non_operating');
+
+                    return;
+                }
+                if ($sourceRow->source_delta !== null) {
+                    $this->exclude($exclusions, 'pending_source_delta');
+
+                    return;
                 }
                 if ($sourceRow->operation_started_on !== null && CarbonImmutable::parse($sourceRow->operation_started_on)->isAfter($asOf)) {
-                    throw new DomainException("Camera {$camera->camera_id} operation starts in the future.");
+                    $this->exclude($exclusions, 'future_operation_window');
+
+                    return;
                 }
                 $operationEndsOn = $sourceRow->operation_extension_ends_on ?? $sourceRow->operation_initial_ends_on;
                 if ($operationEndsOn !== null && CarbonImmutable::parse($operationEndsOn)->isBefore($asOf)) {
-                    throw new DomainException("Camera {$camera->camera_id} operation window is expired.");
+                    $this->exclude($exclusions, 'expired_operation_window');
+
+                    return;
                 }
 
                 $speed = $sourceRow->reported_speed_kmh;
@@ -123,6 +147,7 @@ class CameraMobileDatasetPublisher
             'runtimeFilter' => [
                 'status' => 'active',
                 'operationStatus' => 'Operando',
+                'cameraContractReadiness' => true,
                 'sourceImportRowState' => 'OK',
             ],
             'freshness' => [
@@ -147,9 +172,18 @@ class CameraMobileDatasetPublisher
             'manifestBytes' => strlen($manifestBytes),
             'manifestSha256' => hash('sha256', $manifestBytes),
             'outputDirectory' => $outputDirectory,
+            'acceptedImportId' => $import->id,
+            'sourceSnapshotSha256' => $import->snapshot_sha,
+            'exclusions' => $exclusions,
             'nonOperatingPublishedCount' => count(array_filter($records, fn (array $record): bool => $record['operationStatus'] !== 'Operando')),
             'reportedSpeedInventedCount' => count(array_filter($records, fn (array $record): bool => $record['rawSpeed'] === '37' && $record['reportedSpeedKmh'] === 37)),
         ];
+    }
+
+    /** @param array<string,int> $exclusions */
+    private function exclude(array &$exclusions, string $reason): void
+    {
+        $exclusions[$reason] = ($exclusions[$reason] ?? 0) + 1;
     }
 
     /** @param array<string,mixed> $payload */

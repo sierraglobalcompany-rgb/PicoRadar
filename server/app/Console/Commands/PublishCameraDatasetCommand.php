@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 
 class PublishCameraDatasetCommand extends Command
 {
-    protected $signature = 'picoradar:cameras:publish-mobile-dataset {--output-dir=} {--dataset-version=2026.08.31-ansv} {--generated-at=2026-08-31T15:44:00Z} {--as-of=2026-08-31} {--json}';
+    protected $signature = 'picoradar:cameras:publish-mobile-dataset {--output-dir=} {--dataset-version=2026.08.31-ansv} {--generated-at=2026-08-31T15:44:00Z} {--as-of=2026-08-31} {--import-id=} {--latest-approved} {--json}';
 
     protected $description = 'Publish the compact mobile camera dataset from accepted active camera records.';
 
@@ -20,6 +20,8 @@ class PublishCameraDatasetCommand extends Command
             (string) $this->option('dataset-version'),
             CarbonImmutable::parse((string) $this->option('generated-at')),
             CarbonImmutable::parse((string) $this->option('as-of')),
+            $this->option('import-id') ? (int) $this->option('import-id') : null,
+            (bool) $this->option('latest-approved'),
         );
 
         if ($this->option('json')) {
