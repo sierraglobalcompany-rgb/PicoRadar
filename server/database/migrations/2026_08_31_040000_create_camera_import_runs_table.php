@@ -41,6 +41,8 @@ return new class extends Migration
             $t->json('warning_summary')->nullable();
             $t->timestamps();
             $t->index(['source_id', 'status']);
+            // Admin queues filter by lifecycle and render newest-first pages.
+            $t->index(['status', 'created_at']);
         });
     }
 

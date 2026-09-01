@@ -32,6 +32,13 @@ return new class extends Migration
             $t->timestamps();
             $t->unique(['run_id', 'analysis_generation', 'row_number']);
             $t->index(['run_id', 'analysis_generation', 'classification']);
+            // These cover bounded admin review, resolution and apply lookups without
+            // relying on an unbounded in-memory item collection.
+            $t->index(['run_id', 'classification']);
+            $t->index(['run_id', 'status']);
+            $t->index(['run_id', 'external_id']);
+            $t->index('matched_camera_id');
+            $t->index('applied_camera_id');
         });
     }
 
