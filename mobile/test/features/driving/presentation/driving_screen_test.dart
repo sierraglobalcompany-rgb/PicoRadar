@@ -157,6 +157,38 @@ void main() {
     expect(find.text('Fotodetección en operación'), findsOneWidget);
   });
 
+  testWidgets('legacy camera without operation status uses generic wording', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith(
+            (ref) async => _pack(operationStatus: null),
+          ),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 0));
+    await tester.pump();
+
+    expect(find.text('Fotodetección'), findsOneWidget);
+    expect(find.text('Fotodetección en operación'), findsNothing);
+  });
+
   testWidgets('known camera speed shows sign, distance, status, and delta', (
     tester,
   ) async {
@@ -435,7 +467,10 @@ CameraPack _emptyPack() {
   );
 }
 
-CameraPack _pack({int? speedLimitKmh = 60}) {
+CameraPack _pack({
+  int? speedLimitKmh = 60,
+  String? operationStatus = 'Operando',
+}) {
   return CameraPack(
     source: const CameraPackSource(
       name: 'ANSV',
@@ -456,7 +491,7 @@ CameraPack _pack({int? speedLimitKmh = 60}) {
         technology: 'Camara',
         kind: CameraKind.mixed,
         speedLimitKmh: speedLimitKmh,
-        operationStatus: 'Operando',
+        operationStatus: operationStatus,
         trafficAuthority: 'Secretaría de Movilidad de Medellín',
         installationType: 'Fija',
         equipmentName: 'Equipo 123',

@@ -432,7 +432,7 @@ class _CameraPanel extends ConsumerWidget {
                     weakForAlerts
                         ? 'GPS débil'
                         : hasCamera
-                        ? 'Fotodetección en operación'
+                        ? _cameraTitle(match.camera)
                         : 'Sin cámara inmediata',
                     style: AppTextStyles.h2.copyWith(
                       color: state.isActive ? Colors.white : AppColors.navy,
@@ -486,7 +486,11 @@ class _CameraPanel extends ConsumerWidget {
   ) {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.88,
+      ),
       builder: (context) {
         return SafeArea(
           child: SingleChildScrollView(
@@ -521,38 +525,7 @@ class _CameraPanel extends ConsumerWidget {
                     label: 'Autoridad de tránsito',
                     value: camera.trafficAuthority ?? 'No publicada',
                   ),
-                  _CameraDetailLine(
-                    label: 'Jurisdicción',
-                    value: camera.jurisdiction ?? 'No publicada',
-                  ),
-                  _CameraDetailLine(
-                    label: 'Tecnología',
-                    value: _cameraDetailValue(
-                      camera.technology,
-                      'No publicada',
-                    ),
-                  ),
-                  _CameraDetailLine(
-                    label: 'Tipo de instalación',
-                    value: _cameraDetailValue(
-                      camera.installationType,
-                      'No publicado',
-                    ),
-                  ),
-                  _CameraDetailLine(
-                    label: 'Equipo',
-                    value: camera.equipmentName ?? 'No publicado',
-                  ),
-                  _CameraDetailLine(
-                    label: 'Estado operación',
-                    value: camera.operationStatus ?? 'No publicado',
-                  ),
-                  _CameraDetailLine(
-                    label: 'Velocidad reportada',
-                    value: camera.speedLimitKmh == null
-                        ? 'No publicada'
-                        : '${camera.speedLimitKmh} km/h',
-                  ),
+                  _CameraDetailGrid(camera: camera),
                 ],
               ),
             ),
@@ -658,6 +631,13 @@ String _cameraLocationText(TrafficCamera camera) {
   return camera.locality;
 }
 
+String _cameraTitle(TrafficCamera camera) {
+  if (camera.operationStatus?.trim().toLowerCase() == 'operando') {
+    return 'Fotodetección en operación';
+  }
+  return 'Fotodetección';
+}
+
 Uri _cameraMapUri(TrafficCamera camera) {
   return Uri.https('www.google.com', '/maps/search/', {
     'api': '1',
@@ -688,12 +668,111 @@ class _CameraDetailLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.s),
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
-          Text(value),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+          ),
+          Text(value, style: const TextStyle(fontSize: 14, height: 1.16)),
+        ],
+      ),
+    );
+  }
+}
+
+class _CameraDetailGrid extends StatelessWidget {
+  const _CameraDetailGrid({required this.camera});
+
+  final TrafficCamera camera;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tileWidth = (constraints.maxWidth - AppSpacing.s) / 2;
+        return Wrap(
+          spacing: AppSpacing.s,
+          runSpacing: AppSpacing.xs,
+          children: [
+            _CameraDetailTile(
+              width: tileWidth,
+              label: 'Jurisdicción',
+              value: camera.jurisdiction ?? 'No publicada',
+            ),
+            _CameraDetailTile(
+              width: tileWidth,
+              label: 'Tecnología',
+              value: _cameraDetailValue(camera.technology, 'No publicada'),
+            ),
+            _CameraDetailTile(
+              width: tileWidth,
+              label: 'Tipo de instalación',
+              value: _cameraDetailValue(
+                camera.installationType,
+                'No publicado',
+              ),
+            ),
+            _CameraDetailTile(
+              width: tileWidth,
+              label: 'Equipo',
+              value: camera.equipmentName ?? 'No publicado',
+            ),
+            _CameraDetailTile(
+              width: tileWidth,
+              label: 'Estado operación',
+              value: camera.operationStatus ?? 'No publicado',
+            ),
+            _CameraDetailTile(
+              width: tileWidth,
+              label: 'Velocidad reportada',
+              value: camera.speedLimitKmh == null
+                  ? 'No publicada'
+                  : '${camera.speedLimitKmh} km/h',
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _CameraDetailTile extends StatelessWidget {
+  const _CameraDetailTile({
+    required this.width,
+    required this.label,
+    required this.value,
+  });
+
+  final double width;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              height: 1.08,
+            ),
+          ),
+          Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13, height: 1.08),
+          ),
         ],
       ),
     );
