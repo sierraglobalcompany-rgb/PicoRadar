@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CameraSourceType;
 use App\Enums\CameraStatus;
+use App\Enums\CameraType;
 use App\Enums\OperatorRole;
 use App\Models\AnsvCameraImport;
 use App\Models\AnsvCameraImportRow;
 use App\Models\Camera;
+use App\Models\CameraSource;
 use App\Models\Jurisdiction;
 use App\Models\User;
 use App\Services\AnsvCameraImportGovernanceService;
@@ -63,6 +66,22 @@ class AnsvRichCameraImportTest extends TestCase
             'operation_status' => 'Autorizada instalar',
             'active_public_candidate' => false,
         ]);
+    }
+
+    public function test_raw_infraction_codes_are_preserved_without_unsourced_d02_camera_type_semantics(): void
+    {
+        $this->import([
+            $this->row(['Código unico' => 'CU-D02-A', 'Código solicitud' => 'SOL-D02-A', 'Nombre equipo' => 'D02-NO-SPEED', 'Velocidad' => '', 'Infracciones' => 'D02']),
+            $this->row(['Código unico' => 'CU-D02-B', 'Código solicitud' => 'SOL-D02-B', 'Nombre equipo' => 'D02-SPEED', 'Velocidad' => '50 km/h', 'Infracciones' => 'C02, D02']),
+        ], str_repeat('7', 64));
+
+        $withoutSpeed = Camera::query()->where('name', 'D02-NO-SPEED')->firstOrFail();
+        $withSpeed = Camera::query()->where('name', 'D02-SPEED')->firstOrFail();
+
+        $this->assertSame(['D02'], $withoutSpeed->raw_infraction_codes);
+        $this->assertSame(CameraType::Other, $withoutSpeed->type);
+        $this->assertSame(['C02', 'D02'], $withSpeed->raw_infraction_codes);
+        $this->assertSame(CameraType::Speed, $withSpeed->type);
     }
 
     public function test_expired_desisted_future_and_invalid_coordinates_fail_closed(): void
@@ -233,6 +252,31 @@ class AnsvRichCameraImportTest extends TestCase
         $this->assertSame('AV REGIONAL - CL 10', $importRow->source_delta['direction']['incoming']);
     }
 
+    public function test_deactivated_ansv_source_is_not_reactivated_and_blocks_approval_until_operator_action(): void
+    {
+        CameraSource::factory()->create([
+            'key' => 'ansv-fotodeteccion-rich',
+            'title' => 'ANSV ubicaciones aprobadas de fotodetección',
+            'authority' => 'Agencia Nacional de Seguridad Vial',
+            'url' => 'https://fotodeteccion.ansv.gov.co/ubicaciones-aprobadas.html',
+            'source_type' => CameraSourceType::Official,
+            'is_active' => false,
+            'verified_at' => null,
+        ]);
+
+        $result = $this->import([$this->row()], str_repeat('8', 64));
+        $source = CameraSource::query()->where('key', 'ansv-fotodeteccion-rich')->firstOrFail();
+        $import = AnsvCameraImport::query()->findOrFail($result['importId']);
+        $reviewer = User::factory()->create(['role' => OperatorRole::Reviewer]);
+
+        $this->assertFalse($source->is_active);
+        $this->assertNull($source->verified_at);
+        $this->assertTrue($import->report['reviewGates']['sourceConfigurationReviewRequired']);
+        $this->assertContains('ANSV_SOURCE_INACTIVE', $import->report['sourceReviewReasons']);
+        $this->expectException(DomainException::class);
+        app(AnsvCameraImportGovernanceService::class)->approve($import, $reviewer, 'Source must be reactivated explicitly.');
+    }
+
     public function test_snapshot_diff_reports_added_removed_and_changed_rows(): void
     {
         $this->import([
@@ -280,6 +324,25 @@ class AnsvRichCameraImportTest extends TestCase
         $governance->submitCandidates($import, $admin);
         $this->expectException(DomainException::class);
         $governance->verifyCandidates($import, $admin);
+    }
+
+    public function test_combined_submit_verify_cli_same_actor_fails_before_partial_mutation(): void
+    {
+        $result = $this->import([$this->row()], str_repeat('9', 64));
+        $import = AnsvCameraImport::query()->findOrFail($result['importId']);
+        $admin = User::factory()->create(['role' => OperatorRole::Admin]);
+        app(AnsvCameraImportGovernanceService::class)->approve($import, $admin, 'Synthetic reviewed import');
+
+        $this->artisan('picoradar:ansv:cameras:review', [
+            'import' => $import->id,
+            '--submit' => true,
+            '--verify' => true,
+            '--reviewer-id' => $admin->id,
+            '--operator-id' => $admin->id,
+        ])->expectsOutputToContain('Combined submit and verify requires different operator and reviewer IDs.')
+            ->assertFailed();
+
+        $this->assertSame(CameraStatus::Draft, Camera::query()->firstOrFail()->status);
     }
 
     public function test_active_import_rows_with_review_reasons_block_approval(): void

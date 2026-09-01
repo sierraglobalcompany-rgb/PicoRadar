@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\AnsvCameraImport;
 use App\Models\User;
 use App\Services\AnsvCameraImportGovernanceService;
+use DomainException;
 use Illuminate\Console\Command;
 
 class ReviewAnsvCameraImportCommand extends Command
@@ -18,6 +19,17 @@ class ReviewAnsvCameraImportCommand extends Command
         $import = AnsvCameraImport::query()->findOrFail((int) $this->argument('import'));
         $reviewer = $this->user((string) $this->option('reviewer-id'));
         $operator = $this->option('operator-id') ? $this->user((string) $this->option('operator-id')) : $reviewer;
+        try {
+            $this->validateActionPlan($operator, $reviewer);
+        } catch (DomainException $exception) {
+            if ((bool) $this->option('json')) {
+                $this->line(json_encode(['error' => $exception->getMessage()], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+            } else {
+                $this->components->error($exception->getMessage());
+            }
+
+            return self::FAILURE;
+        }
         $summary = [
             'schema' => 'picoradar.ansv-camera-import-review.v1',
             'importId' => $import->id,
@@ -52,9 +64,19 @@ class ReviewAnsvCameraImportCommand extends Command
     private function user(string $id): User
     {
         if ($id === '') {
-            throw new \DomainException('A reviewer ID is required.');
+            throw new DomainException('A reviewer ID is required.');
         }
 
         return User::query()->findOrFail((int) $id);
+    }
+
+    private function validateActionPlan(User $operator, User $reviewer): void
+    {
+        if ($this->option('reject') && ($this->option('approve') || $this->option('submit') || $this->option('verify') || $this->option('activate'))) {
+            throw new DomainException('Reject cannot be combined with approval or lifecycle actions.');
+        }
+        if ($this->option('submit') && $this->option('verify') && $operator->id === $reviewer->id) {
+            throw new DomainException('Combined submit and verify requires different operator and reviewer IDs.');
+        }
     }
 }
