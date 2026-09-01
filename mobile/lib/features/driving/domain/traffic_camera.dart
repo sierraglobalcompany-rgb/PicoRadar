@@ -6,7 +6,9 @@ class CameraPack {
 
   factory CameraPack.fromJson(Map<String, Object?> json) {
     final sourceJson = (json['source'] as Map?)?.cast<String, Object?>();
-    final cameraItems = (json['cameras'] as List? ?? const [])
+    final sourceItems =
+        json['records'] as List? ?? json['cameras'] as List? ?? const [];
+    final cameraItems = sourceItems
         .whereType<Map>()
         .map((item) => TrafficCamera.fromJson(item.cast<String, Object?>()))
         .toList(growable: false);
@@ -39,10 +41,10 @@ class CameraPackSource {
 
   factory CameraPackSource.fromJson(Map<String, Object?> json) {
     return CameraPackSource(
-      name: _string(json['name']),
-      pageUrl: _string(json['pageUrl']),
-      dataUrl: _string(json['dataUrl']),
-      fetchedAtUtc: _string(json['fetchedAtUtc']),
+      name: _string(json['name'] ?? json['title']),
+      pageUrl: _string(json['pageUrl'] ?? json['url']),
+      dataUrl: _string(json['dataUrl'] ?? json['url']),
+      fetchedAtUtc: _string(json['fetchedAtUtc'] ?? json['fetchedAt']),
     );
   }
 }
@@ -96,21 +98,21 @@ class TrafficCamera {
 
   factory TrafficCamera.fromJson(Map<String, Object?> json) {
     return TrafficCamera(
-      id: _string(json['id']),
+      id: _string(json['id'] ?? json['cameraId']),
       department: _nullableString(json['department']),
       municipality: _nullableString(json['municipality']),
       jurisdiction: _nullableString(json['jurisdiction']),
       address: _nullableString(json['address']),
-      latitude: _double(json['latitude']),
-      longitude: _double(json['longitude']),
-      status: _nullableString(json['status']),
+      latitude: _double(json['latitude'] ?? json['lat']),
+      longitude: _double(json['longitude'] ?? json['lon']),
+      status: _nullableString(json['status'] ?? json['authorizationStatus']),
       technology: _nullableString(json['technology']),
       kind: switch (_string(json['kind'])) {
         'speed' => CameraKind.speed,
         'red_light' => CameraKind.redLight,
         _ => CameraKind.mixed,
       },
-      speedLimitKmh: _int(json['speedLimitKmh']),
+      speedLimitKmh: _int(json['speedLimitKmh'] ?? json['reportedSpeedKmh']),
       operationStatus: _nullableString(json['operationStatus']),
       trafficAuthority: _nullableString(json['trafficAuthority']),
       installationType: _nullableString(json['installationType']),
@@ -131,7 +133,9 @@ class TrafficCamera {
   }
 
   bool get hasApprovedAuthorizationStatus {
-    return status?.trim().toLowerCase() == 'aprobada';
+    final approvedStatus = status?.trim().toLowerCase() == 'aprobada';
+    final operatingStatus = operationStatus?.trim().toLowerCase() == 'operando';
+    return approvedStatus || operatingStatus;
   }
 }
 

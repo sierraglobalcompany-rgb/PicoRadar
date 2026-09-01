@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/traffic_camera.dart';
 
-const cameraPackAssetPath = 'assets/datasets/cameras/camera_pack_v1.json';
+const cameraPackAssetPath = 'assets/datasets/cameras/cameras_v1.json';
 
 final cameraPackProvider = FutureProvider<CameraPack>((ref) {
   return loadCameraPack(rootBundle);

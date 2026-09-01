@@ -10,11 +10,20 @@ void main() {
   test('production camera pack contains approved ANSV cameras only', () async {
     final pack = await loadCameraPack(rootBundle);
 
-    expect(pack.cameras, isNotEmpty);
+    expect(pack.cameras, hasLength(360));
+    expect(pack.source.name, 'ANSV ubicaciones aprobadas de fotodetección');
+    expect(pack.source.fetchedAtUtc, '2026-08-31T15:44:00+00:00');
     expect(
       pack.cameras.where((camera) => !camera.hasApprovedAuthorizationStatus),
       isEmpty,
     );
+    expect(pack.cameras.where((camera) => camera.address == null), isEmpty);
+    expect(
+      pack.cameras.where((camera) => camera.trafficAuthority == null),
+      isEmpty,
+    );
+    expect(pack.cameras.where((camera) => camera.latitude == 0), isEmpty);
+    expect(pack.cameras.where((camera) => camera.longitude == 0), isEmpty);
   });
 
   test('loader rejects rejected ANSV cameras', () async {
@@ -41,21 +50,40 @@ void main() {
 
   test('loader accepts optional B05 rich source fields', () async {
     final bundle = _StringAssetBundle(
-      _packJson(
-        status: 'Aprobada',
-        extraFields: {
-          'operationStatus': 'Operando',
-          'trafficAuthority': 'Secretaría de Movilidad de Medellín',
-          'installationType': 'Fija',
-          'equipmentName': 'Equipo 123',
-          'rawInfractionCodes': ['C29'],
+      jsonEncode({
+        'schemaVersion': 1,
+        'datasetKey': 'traffic_cameras',
+        'source': {
+          'title': 'ANSV ubicaciones aprobadas de fotodetección',
+          'url': 'https://fotodeteccion.ansv.gov.co/ubicaciones-aprobadas.html',
+          'fetchedAt': '2026-08-31T10:44:00-05:00',
         },
-      ),
+        'records': [
+          {
+            'cameraId': 'ansv-test',
+            'department': 'ANTIOQUIA',
+            'municipality': 'MEDELLIN',
+            'jurisdiction': 'Municipal',
+            'address': 'Avenida 80',
+            'lat': 6.244,
+            'lon': -75.57,
+            'operationStatus': 'Operando',
+            'reportedSpeedKmh': 60,
+            'technology': 'Camara',
+            'trafficAuthority': 'Secretaría de Movilidad de Medellín',
+            'installationType': 'Fija',
+            'equipmentName': 'Equipo 123',
+            'infractionCodes': ['C29'],
+          },
+        ],
+      }),
     );
 
     final pack = await loadCameraPack(bundle);
     final camera = pack.cameras.single;
 
+    expect(pack.source.name, 'ANSV ubicaciones aprobadas de fotodetección');
+    expect(pack.source.fetchedAtUtc, '2026-08-31T10:44:00-05:00');
     expect(camera.operationStatus, 'Operando');
     expect(camera.trafficAuthority, 'Secretaría de Movilidad de Medellín');
     expect(camera.installationType, 'Fija');
