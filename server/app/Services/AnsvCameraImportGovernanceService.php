@@ -163,6 +163,9 @@ class AnsvCameraImportGovernanceService
         if ((bool) ($gates['missingCriticalColumns'] ?? false)) {
             $critical[] = 'missingCriticalColumns';
         }
+        if ((bool) ($gates['sourceConfigurationReviewRequired'] ?? false)) {
+            $critical[] = 'sourceConfigurationReviewRequired';
+        }
         if ($import->rows()->where('review_state', 'REVIEW_REQUIRED')->where('active_public_candidate', true)->exists()) {
             $critical[] = 'activeRowsReviewRequired';
         }

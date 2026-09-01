@@ -55,6 +55,12 @@ class AnsvRichCameraImporter
 
         return DB::transaction(function () use ($normalized, $snapshotSha, $fetchedAt, $report): array {
             $source = $this->source($fetchedAt);
+            $sourceReviewReasons = $this->sourceReviewReasons($source);
+            if ($sourceReviewReasons !== []) {
+                $report['reviewRequired'] = true;
+                $report['sourceReviewReasons'] = $sourceReviewReasons;
+                $report['reviewGates']['sourceConfigurationReviewRequired'] = true;
+            }
             $previousImport = AnsvCameraImport::query()
                 ->where('source_id', $source->id)
                 ->where('snapshot_sha', '!=', strtolower($snapshotSha))
@@ -354,6 +360,29 @@ class AnsvRichCameraImporter
         );
     }
 
+    /** @return list<string> */
+    private function sourceReviewReasons(CameraSource $source): array
+    {
+        $reasons = [];
+        if ($source->authority !== 'Agencia Nacional de Seguridad Vial') {
+            $reasons[] = 'ANSV_SOURCE_AUTHORITY_CHANGED';
+        }
+        if ($source->url !== self::SOURCE_URL) {
+            $reasons[] = 'ANSV_SOURCE_URL_CHANGED';
+        }
+        if ($source->source_type !== CameraSourceType::Official) {
+            $reasons[] = 'ANSV_SOURCE_TYPE_CHANGED';
+        }
+        if (! $source->is_active) {
+            $reasons[] = 'ANSV_SOURCE_INACTIVE';
+        }
+        if ($source->verified_at === null) {
+            $reasons[] = 'ANSV_SOURCE_UNVERIFIED';
+        }
+
+        return $reasons;
+    }
+
     private function municipality(string $municipality, string $department): ?GeographicUnit
     {
         [$municipality, $department] = $this->ansvGeographyAlias($municipality, $department);
@@ -390,15 +419,8 @@ class AnsvRichCameraImporter
 
     private function cameraType(array $row): CameraType
     {
-        $codes = $row['raw_infraction_codes'];
-        if ($row['reported_speed_kmh'] !== null && in_array('D02', $codes, true)) {
-            return CameraType::Combined;
-        }
         if ($row['reported_speed_kmh'] !== null) {
             return CameraType::Speed;
-        }
-        if (in_array('D02', $codes, true)) {
-            return CameraType::RedLight;
         }
 
         return CameraType::Other;
