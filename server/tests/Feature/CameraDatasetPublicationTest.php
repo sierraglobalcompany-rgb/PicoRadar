@@ -30,6 +30,12 @@ class CameraDatasetPublicationTest extends TestCase
         $this->fetchedAt = CarbonImmutable::parse('2026-08-31T15:44:00Z');
     }
 
+    protected function tearDown(): void
+    {
+        CarbonImmutable::setTestNow();
+        parent::tearDown();
+    }
+
     public function test_publishes_only_operating_ready_cameras_with_compact_mobile_manifest(): void
     {
         $result = app(AnsvRichCameraImporter::class)->importRows([
@@ -65,6 +71,9 @@ class CameraDatasetPublicationTest extends TestCase
         $this->assertSame(0.5, $dataset['speedCoverage']);
         $this->assertSame(2, $manifest['recordCount']);
         $this->assertSame($result['assetSha256'], $manifest['asset']['sha256']);
+        $this->assertArrayNotHasKey('acceptedImportId', $manifest);
+        $this->assertSame('ansv:'.$import->snapshot_sha, $manifest['sourceImportKey']);
+        $this->assertSame('ansv:'.$import->snapshot_sha, $dataset['source']['importKey']);
         $this->assertSame(0, $result['nonOperatingPublishedCount']);
         $this->assertSame(0, $result['reportedSpeedInventedCount']);
         $this->assertSame($import->id, $result['acceptedImportId']);
@@ -75,6 +84,8 @@ class CameraDatasetPublicationTest extends TestCase
         $noSpeedRecord = collect($dataset['records'])->firstWhere('reportedSpeedKmh', null);
         $this->assertSame('AV REGIONAL - CL 10', $speedRecord['address']);
         $this->assertSame('SECRETARIA DE MOVILIDAD DE MEDELLÍN', $speedRecord['trafficAuthority']);
+        $this->assertSame(['C02', 'C14', 'D02'], $speedRecord['infractionCodes']);
+        $this->assertArrayNotHasKey('infractionDescriptions', $speedRecord);
         $this->assertSame('AV REGIONAL - CL 20', $noSpeedRecord['address']);
         $this->assertSame(3, Camera::query()->count());
     }
@@ -99,6 +110,30 @@ class CameraDatasetPublicationTest extends TestCase
 
         $this->assertFileExists($output.DIRECTORY_SEPARATOR.'cameras_v1.json');
         $this->assertFileExists($output.DIRECTORY_SEPARATOR.'cameras_manifest_v1.json');
+        $manifest = json_decode((string) file_get_contents($output.DIRECTORY_SEPARATOR.'cameras_manifest_v1.json'), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame('2026.08.31-ansv', $manifest['version']);
+        $this->assertSame('2026-08-31', $manifest['freshness']['asOf']);
+    }
+
+    public function test_command_defaults_use_current_colombia_date_not_frozen_seed_date(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-15T10:30:00-05:00'));
+        $result = app(AnsvRichCameraImporter::class)->importRows([$this->row()], str_repeat('f', 64), $this->fetchedAt);
+        $import = $this->approveAndActivateImport($result['importId']);
+        $output = base_path('storage/testing-camera-dataset-defaults');
+        File::deleteDirectory($output);
+
+        $this->artisan('picoradar:cameras:publish-mobile-dataset', [
+            '--output-dir' => $output,
+            '--import-id' => $import->id,
+            '--json' => true,
+        ])->expectsOutputToContain('2026.09.15-ansv-ffffffffffff')->assertExitCode(0);
+
+        $manifest = json_decode((string) file_get_contents($output.DIRECTORY_SEPARATOR.'cameras_manifest_v1.json'), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame('2026.09.15-ansv-ffffffffffff', $manifest['version']);
+        $this->assertSame('2026-09-15T15:30:00+00:00', $manifest['generatedAt']);
+        $this->assertSame('2026-09-15', $manifest['freshness']['asOf']);
+        $this->assertFalse(str_starts_with($manifest['version'], '2026.08.31'));
     }
 
     public function test_publication_requires_explicit_approved_import_selection(): void
@@ -146,6 +181,79 @@ class CameraDatasetPublicationTest extends TestCase
         );
     }
 
+    public function test_bad_verification_fingerprint_cannot_publish(): void
+    {
+        $result = app(AnsvRichCameraImporter::class)->importRows([$this->row()], str_repeat('1', 64), $this->fetchedAt);
+        $import = $this->approveAndActivateImport($result['importId']);
+        Camera::query()->firstOrFail()->forceFill(['verification_fingerprint' => str_repeat('0', 64)])->saveQuietly();
+
+        $this->expectException(\DomainException::class);
+        app(CameraMobileDatasetPublisher::class)->publish(
+            base_path('storage/testing-camera-dataset-bad-fingerprint'),
+            '2026.08.31-ansv',
+            $this->fetchedAt,
+            CarbonImmutable::parse('2026-08-31'),
+            $import->id,
+        );
+    }
+
+    public function test_operation_window_uses_selected_as_of_date(): void
+    {
+        $result = app(AnsvRichCameraImporter::class)->importRows([
+            $this->row(['Fecha finalización inicial' => '2026-09-10']),
+        ], str_repeat('2', 64), $this->fetchedAt);
+        $import = $this->approveAndActivateImport($result['importId']);
+
+        $published = app(CameraMobileDatasetPublisher::class)->publish(
+            base_path('storage/testing-camera-dataset-as-of-ok'),
+            '2026.09.10-ansv',
+            CarbonImmutable::parse('2026-09-10T12:00:00Z'),
+            CarbonImmutable::parse('2026-09-10'),
+            $import->id,
+        );
+        $this->assertSame(1, $published['recordCount']);
+
+        $this->expectException(\DomainException::class);
+        app(CameraMobileDatasetPublisher::class)->publish(
+            base_path('storage/testing-camera-dataset-as-of-expired'),
+            '2026.09.11-ansv',
+            CarbonImmutable::parse('2026-09-11T12:00:00Z'),
+            CarbonImmutable::parse('2026-09-11'),
+            $import->id,
+        );
+    }
+
+    public function test_master_source_row_mismatch_is_not_published(): void
+    {
+        $result = app(AnsvRichCameraImporter::class)->importRows([$this->row()], str_repeat('3', 64), $this->fetchedAt);
+        $import = $this->approveAndActivateImport($result['importId']);
+        Camera::query()->firstOrFail()->forceFill(['direction' => 'UNREVIEWED CHANGE'])->saveQuietly();
+
+        $this->expectException(\DomainException::class);
+        app(CameraMobileDatasetPublisher::class)->publish(
+            base_path('storage/testing-camera-dataset-source-mismatch'),
+            '2026.08.31-ansv',
+            $this->fetchedAt,
+            CarbonImmutable::parse('2026-08-31'),
+            $import->id,
+        );
+    }
+
+    public function test_mobile_manifest_portable_provenance_does_not_depend_on_local_import_id(): void
+    {
+        app(AnsvRichCameraImporter::class)->importRows([
+            $this->row(['Código unico' => 'CU-DUMMY', 'Código solicitud' => 'SOL-DUMMY', 'Nombre equipo' => 'DUMMY']),
+        ], str_repeat('4', 64), $this->fetchedAt);
+        $result = app(AnsvRichCameraImporter::class)->importRows([$this->row()], str_repeat('5', 64), $this->fetchedAt);
+        $import = $this->approveAndActivateImport($result['importId']);
+        $manifest = $this->publishManifest($import->id, 'portable');
+
+        $this->assertGreaterThan(1, $import->id);
+        $this->assertArrayNotHasKey('acceptedImportId', $manifest);
+        $this->assertSame('ansv:'.$import->snapshot_sha, $manifest['sourceImportKey']);
+        $this->assertSame($import->snapshot_sha, $manifest['sourceSnapshotSha256']);
+    }
+
     /** @param array<string, string|null> $overrides */
     private function row(array $overrides = []): array
     {
@@ -191,5 +299,22 @@ class CameraDatasetPublicationTest extends TestCase
         $governance->activateCandidates($import, $reviewer);
 
         return $import->fresh();
+    }
+
+    /** @return array<string,mixed> */
+    private function publishManifest(int $importId, string $outputName): array
+    {
+        $output = base_path('storage/testing-camera-dataset-'.$outputName);
+        File::deleteDirectory($output);
+
+        app(CameraMobileDatasetPublisher::class)->publish(
+            $output,
+            '2026.09.15-ansv-portable',
+            CarbonImmutable::parse('2026-09-15T15:30:00Z'),
+            CarbonImmutable::parse('2026-09-15'),
+            $importId,
+        );
+
+        return json_decode((string) file_get_contents($output.DIRECTORY_SEPARATOR.'cameras_manifest_v1.json'), true, flags: JSON_THROW_ON_ERROR);
     }
 }

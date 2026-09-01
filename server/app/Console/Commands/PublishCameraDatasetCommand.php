@@ -8,18 +8,24 @@ use Illuminate\Console\Command;
 
 class PublishCameraDatasetCommand extends Command
 {
-    protected $signature = 'picoradar:cameras:publish-mobile-dataset {--output-dir=} {--dataset-version=2026.08.31-ansv} {--generated-at=2026-08-31T15:44:00Z} {--as-of=2026-08-31} {--import-id=} {--latest-approved} {--json}';
+    protected $signature = 'picoradar:cameras:publish-mobile-dataset {--output-dir=} {--dataset-version=} {--generated-at=} {--as-of=} {--import-id=} {--latest-approved} {--json}';
 
     protected $description = 'Publish the compact mobile camera dataset from accepted active camera records.';
 
     public function handle(CameraMobileDatasetPublisher $publisher): int
     {
         $outputDirectory = $this->option('output-dir') ?: dirname(base_path()).DIRECTORY_SEPARATOR.'mobile'.DIRECTORY_SEPARATOR.'assets'.DIRECTORY_SEPARATOR.'datasets'.DIRECTORY_SEPARATOR.'cameras';
+        $generatedAt = $this->option('generated-at')
+            ? CarbonImmutable::parse((string) $this->option('generated-at'))->utc()
+            : CarbonImmutable::now('America/Bogota')->utc();
+        $asOf = $this->option('as-of')
+            ? CarbonImmutable::parse((string) $this->option('as-of'), 'America/Bogota')
+            : CarbonImmutable::now('America/Bogota');
         $result = $publisher->publish(
             (string) $outputDirectory,
-            (string) $this->option('dataset-version'),
-            CarbonImmutable::parse((string) $this->option('generated-at')),
-            CarbonImmutable::parse((string) $this->option('as-of')),
+            $this->option('dataset-version') ? (string) $this->option('dataset-version') : null,
+            $generatedAt,
+            $asOf,
             $this->option('import-id') ? (int) $this->option('import-id') : null,
             (bool) $this->option('latest-approved'),
         );
