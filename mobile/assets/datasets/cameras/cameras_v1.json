@@ -6,6 +6,7 @@
     "source": {
         "title": "ANSV ubicaciones aprobadas de fotodetección",
         "url": "https://fotodeteccion.ansv.gov.co/ubicaciones-aprobadas.html",
+        "importKey": "ansv:0935082c9a3b7642fb7b5072184dbf141db1126d7f56d7a08037331a569610c1",
         "snapshotSha256": "0935082c9a3b7642fb7b5072184dbf141db1126d7f56d7a08037331a569610c1",
         "fetchedAt": "2026-08-31T15:44:00+00:00"
     },

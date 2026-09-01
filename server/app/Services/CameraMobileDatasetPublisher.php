@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\CameraStatus;
 use App\Models\AnsvCameraImport;
 use App\Models\AnsvCameraImportRow;
+use App\Models\Camera;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Support\Facades\File;
@@ -13,11 +14,8 @@ class CameraMobileDatasetPublisher
 {
     public function __construct(private readonly CameraContractReadinessService $readiness) {}
 
-    public function publish(string $outputDirectory, string $version, CarbonImmutable $generatedAt, CarbonImmutable $asOf, ?int $importId = null, bool $latestApproved = false): array
+    public function publish(string $outputDirectory, ?string $version, CarbonImmutable $generatedAt, CarbonImmutable $asOf, ?int $importId = null, bool $latestApproved = false): array
     {
-        if (! preg_match('/^\d{4}\.\d{2}\.\d{2}[-a-z0-9.]*$/', $version)) {
-            throw new DomainException('Camera dataset version is invalid.');
-        }
         if ($importId === null && ! $latestApproved) {
             throw new DomainException('Explicit approved ANSV import selection is required.');
         }
@@ -28,6 +26,10 @@ class CameraMobileDatasetPublisher
             : $query->latest('source_fetched_at')->first();
         if ($import === null) {
             throw new DomainException('No approved ANSV camera import is available for publication.');
+        }
+        $version = $version ?: $this->defaultVersion($import, $asOf);
+        if (! preg_match('/^\d{4}\.\d{2}\.\d{2}[-a-z0-9.]*$/', $version)) {
+            throw new DomainException('Camera dataset version is invalid.');
         }
 
         $records = [];
@@ -62,6 +64,11 @@ class CameraMobileDatasetPublisher
                 }
                 if ($sourceRow->source_delta !== null) {
                     $this->exclude($exclusions, 'pending_source_delta');
+
+                    return;
+                }
+                if (! $this->matchesVerifiedSourceRow($camera, $sourceRow)) {
+                    $this->exclude($exclusions, 'stale_master_source_mismatch');
 
                     return;
                 }
@@ -118,6 +125,7 @@ class CameraMobileDatasetPublisher
             'source' => [
                 'title' => $import->source?->title ?? 'ANSV ubicaciones aprobadas de fotodetección',
                 'url' => $import->source_url,
+                'importKey' => $this->importKey($import),
                 'snapshotSha256' => $import->snapshot_sha,
                 'fetchedAt' => $import->source_fetched_at?->toIso8601String(),
             ],
@@ -134,8 +142,8 @@ class CameraMobileDatasetPublisher
             'datasetKey' => 'traffic_cameras',
             'version' => $version,
             'generatedAt' => $generatedAt->toIso8601String(),
+            'sourceImportKey' => $this->importKey($import),
             'sourceSnapshotSha256' => $import->snapshot_sha,
-            'acceptedImportId' => $import->id,
             'asset' => [
                 'path' => 'cameras_v1.json',
                 'sha256' => $assetSha,
@@ -184,6 +192,31 @@ class CameraMobileDatasetPublisher
     private function exclude(array &$exclusions, string $reason): void
     {
         $exclusions[$reason] = ($exclusions[$reason] ?? 0) + 1;
+    }
+
+    private function defaultVersion(AnsvCameraImport $import, CarbonImmutable $asOf): string
+    {
+        return $asOf->setTimezone('America/Bogota')->format('Y.m.d').'-ansv-'.substr($import->snapshot_sha, 0, 12);
+    }
+
+    private function importKey(AnsvCameraImport $import): string
+    {
+        return 'ansv:'.$import->snapshot_sha;
+    }
+
+    private function matchesVerifiedSourceRow(Camera $camera, AnsvCameraImportRow $sourceRow): bool
+    {
+        return $camera->external_id === $sourceRow->source_row_identity
+            && round((float) $camera->lat, 7) === round((float) $sourceRow->lat, 7)
+            && round((float) $camera->lon, 7) === round((float) $sourceRow->lon, 7)
+            && $camera->direction === $sourceRow->address
+            && $camera->operation_status === $sourceRow->operation_status
+            && $camera->traffic_authority === $sourceRow->traffic_authority
+            && $camera->installation_type === $sourceRow->installation_type
+            && $camera->equipment_name === $sourceRow->equipment_name
+            && ($camera->raw_infraction_codes ?? []) === ($sourceRow->raw_infraction_codes ?? [])
+            && $camera->raw_speed === $sourceRow->raw_speed
+            && $camera->source_snapshot_sha === $sourceRow->import->snapshot_sha;
     }
 
     /** @param array<string,mixed> $payload */
