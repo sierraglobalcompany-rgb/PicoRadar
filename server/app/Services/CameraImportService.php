@@ -55,12 +55,18 @@ class CameraImportService
 
     public function analyze(CameraImportRun $run, ?User $actor = null): CameraImportRun
     {
-        if (in_array($run->status, ['applied', 'cancelled', 'applying'], true) || ($run->applied_rows ?? 0) > 0) {
-            throw new DomainException('Run cannot be analyzed in its current state.');
-        }
+        $run = CameraImportRun::query()->findOrFail($run->id);
         $this->assertFile($run);
-        $run->update(['status' => 'analyzing', 'analysis_generation' => $run->analysis_generation + 1]);
-        $generation = $run->analysis_generation;
+        [$run, $generation] = DB::transaction(function () use ($run): array {
+            $locked = CameraImportRun::query()->lockForUpdate()->findOrFail($run->id);
+            if (in_array($locked->status, ['cancelled', 'applying'], true) || $locked->items()->where('status', 'applied')->exists()) {
+                throw new DomainException('Run cannot be analyzed after items have been applied.');
+            }
+            $generation = $locked->analysis_generation + 1;
+            $locked->forceFill(['status' => 'analyzing', 'analysis_generation' => $generation])->save();
+
+            return [$locked, $generation];
+        });
         try {
             foreach ($this->records($run) as $number => $raw) {
                 $this->analyseRecord($run, $generation, $number + 1, $raw);
@@ -74,7 +80,13 @@ class CameraImportService
         $this->resolveSameFileExternalIdConflicts($run, $generation);
         $this->refreshCounters($run);
         $result = $this->resultHash($run, $generation);
-        $run->forceFill(['status' => 'ready', 'analysis_result_hash' => $result, 'analyzed_at' => now()])->save();
+        $source = $run->source()->first();
+        $run->forceFill([
+            'status' => 'ready',
+            'analysis_result_hash' => $result,
+            'analyzed_at' => now(),
+            'warning_summary' => ! $source || ! $source->is_active || ! $source->verified_at ? ['source_not_operational' => 1] : null,
+        ])->save();
         $this->audit->log($actor, 'camera_import.analyzed', $run, ['analysisResultHash' => $result]);
 
         return $run->fresh();
@@ -414,7 +426,7 @@ class CameraImportService
 
     private function sourceSnapshot(CameraSource $s): array
     {
-        return ['source_id' => $s->id, 'key' => $s->key, 'authority' => $s->authority, 'url' => $s->url, 'source_type' => $s->source_type->value, 'verified_at' => $s->verified_at?->toISOString()];
+        return ['source_id' => $s->id, 'key' => $s->key, 'authority' => $s->authority, 'url' => $s->url, 'source_type' => $s->source_type->value, 'is_active' => (bool) $s->is_active, 'verified_at' => $s->verified_at?->toISOString()];
     }
 
     private function resultHash(CameraImportRun $r, int $g): string

@@ -3,19 +3,24 @@
 namespace App\Console\Commands;
 
 use App\Models\CameraImportRun;
+use App\Services\CameraImportReproducibilityVerifier;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
 
 class CameraImportReproducibilityCommand extends Command
 {
     protected $signature = 'picoradar:cameras:import:verify-reproducibility {runId}';
 
-    public function handle(): int
+    public function handle(CameraImportReproducibilityVerifier $verifier): int
     {
-        $r = CameraImportRun::findOrFail($this->argument('runId'));
-        $status = ! Storage::disk('local')->exists($r->stored_path) || hash_file('sha256', Storage::disk('local')->path($r->stored_path)) !== $r->file_sha256 ? 'file_changed' : ($r->analysis_schema_version !== 1 ? 'unsupported_old_version' : 'reproducible');
-        $this->line(json_encode(['schema' => 'picoradar.camera-import-reproducibility.v1', 'status' => $status, 'runId' => $r->id]));
+        $run = CameraImportRun::query()->find($this->argument('runId'));
+        if (! $run) {
+            $this->line(json_encode(['schema' => 'picoradar.camera-import-reproducibility.v1', 'status' => 'not_found', 'runId' => (int) $this->argument('runId')], JSON_THROW_ON_ERROR));
 
-        return $status === 'reproducible' ? self::SUCCESS : self::FAILURE;
+            return self::FAILURE;
+        }
+        $result = $verifier->verify($run);
+        $this->line(json_encode($result, JSON_THROW_ON_ERROR));
+
+        return $result['status'] === 'reproducible' ? self::SUCCESS : self::FAILURE;
     }
 }
