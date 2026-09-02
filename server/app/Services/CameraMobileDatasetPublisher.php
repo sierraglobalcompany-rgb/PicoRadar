@@ -7,23 +7,28 @@ use App\Models\AnsvCameraImport;
 use App\Models\AnsvCameraImportRow;
 use App\Models\Camera;
 use Carbon\CarbonImmutable;
+use Closure;
 use DomainException;
 use Illuminate\Support\Facades\File;
+use RuntimeException;
+use Throwable;
 
 class CameraMobileDatasetPublisher
 {
+    public static ?Closure $failureHook = null;
+
     public function __construct(private readonly CameraContractReadinessService $readiness) {}
 
     public function publish(string $outputDirectory, ?string $version, CarbonImmutable $generatedAt, CarbonImmutable $asOf, ?int $importId = null, bool $latestApproved = false): array
     {
-        if ($importId === null && ! $latestApproved) {
-            throw new DomainException('Explicit approved ANSV import selection is required.');
+        if (($importId === null) === ! $latestApproved) {
+            throw new DomainException('Select exactly one approved ANSV import source.');
         }
 
         $query = AnsvCameraImport::query()->with('source')->where('status', 'approved');
         $import = $importId !== null
             ? $query->whereKey($importId)->first()
-            : $query->latest('source_fetched_at')->first();
+            : $query->orderByDesc('source_fetched_at')->orderByDesc('id')->first();
         if ($import === null) {
             throw new DomainException('No approved ANSV camera import is available for publication.');
         }
@@ -35,6 +40,7 @@ class CameraMobileDatasetPublisher
         $records = [];
         $speedKnown = 0;
         $exclusions = [];
+        $asOfDate = $asOf->setTimezone('America/Bogota')->toDateString();
 
         AnsvCameraImportRow::query()
             ->where('ansv_camera_import_id', $import->id)
@@ -42,7 +48,7 @@ class CameraMobileDatasetPublisher
             ->where('review_state', 'OK')
             ->with(['camera', 'import'])
             ->orderBy('source_row_identity')
-            ->each(function (AnsvCameraImportRow $sourceRow) use (&$records, &$speedKnown, &$exclusions, $asOf): void {
+            ->each(function (AnsvCameraImportRow $sourceRow) use (&$records, &$speedKnown, &$exclusions, $asOfDate): void {
                 $camera = $sourceRow->camera;
                 if ($camera === null) {
                     $this->exclude($exclusions, 'missing_camera');
@@ -72,13 +78,13 @@ class CameraMobileDatasetPublisher
 
                     return;
                 }
-                if ($sourceRow->operation_started_on !== null && CarbonImmutable::parse($sourceRow->operation_started_on)->isAfter($asOf)) {
+                if ($sourceRow->operation_started_on !== null && $sourceRow->operation_started_on->toDateString() > $asOfDate) {
                     $this->exclude($exclusions, 'future_operation_window');
 
                     return;
                 }
                 $operationEndsOn = $sourceRow->operation_extension_ends_on ?? $sourceRow->operation_initial_ends_on;
-                if ($operationEndsOn !== null && CarbonImmutable::parse($operationEndsOn)->isBefore($asOf)) {
+                if ($operationEndsOn !== null && $operationEndsOn->toDateString() < $asOfDate) {
                     $this->exclude($exclusions, 'expired_operation_window');
 
                     return;
@@ -116,6 +122,7 @@ class CameraMobileDatasetPublisher
         if ($recordCount === 0) {
             throw new DomainException('No operating cameras are ready for publication.');
         }
+        $this->validateRecords($records, $import, $asOfDate);
 
         $dataset = [
             'schemaVersion' => 1,
@@ -165,9 +172,7 @@ class CameraMobileDatasetPublisher
         ];
         $manifestBytes = $this->canonicalJson($manifest);
 
-        File::ensureDirectoryExists($outputDirectory);
-        File::put($outputDirectory.DIRECTORY_SEPARATOR.'cameras_v1.json', $datasetBytes);
-        File::put($outputDirectory.DIRECTORY_SEPARATOR.'cameras_manifest_v1.json', $manifestBytes);
+        $this->publishPair($outputDirectory, $datasetBytes, $manifestBytes);
 
         return [
             'schema' => 'picoradar.camera-dataset-publication.v1',
@@ -223,5 +228,125 @@ class CameraMobileDatasetPublisher
     private function canonicalJson(array $payload): string
     {
         return json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)."\n";
+    }
+
+    /** @param list<array<string,mixed>> $records */
+    private function validateRecords(array $records, AnsvCameraImport $import, string $asOfDate): void
+    {
+        $cameraIds = [];
+        $sourceRowIds = [];
+        $speedKnown = 0;
+
+        foreach ($records as $record) {
+            $cameraId = (string) ($record['cameraId'] ?? '');
+            $sourceRowId = (string) ($record['sourceRowId'] ?? '');
+            if ($cameraId === '' || isset($cameraIds[$cameraId])) {
+                throw new DomainException('Camera dataset contains duplicate or empty camera IDs.');
+            }
+            if ($sourceRowId === '' || isset($sourceRowIds[$sourceRowId])) {
+                throw new DomainException('Camera dataset contains duplicate or empty source row IDs.');
+            }
+            $cameraIds[$cameraId] = true;
+            $sourceRowIds[$sourceRowId] = true;
+
+            $lat = $record['lat'] ?? null;
+            $lon = $record['lon'] ?? null;
+            if (! is_numeric($lat) || ! is_numeric($lon) || $lat < -4.5 || $lat > 13.5 || $lon < -82.5 || $lon > -66.0) {
+                throw new DomainException('Camera dataset contains coordinates outside Colombia bounds.');
+            }
+            if (($record['operationStatus'] ?? null) !== 'Operando') {
+                throw new DomainException('Camera dataset contains a non-operating camera.');
+            }
+            if (trim((string) ($record['address'] ?? '')) === '' || trim((string) ($record['trafficAuthority'] ?? '')) === '') {
+                throw new DomainException('Camera dataset contains missing address or authority.');
+            }
+            $speed = $record['reportedSpeedKmh'] ?? null;
+            if ($speed !== null) {
+                if (! is_int($speed) || $speed < 1 || $speed > 200) {
+                    throw new DomainException('Camera dataset contains invalid reported speed.');
+                }
+                $speedKnown++;
+            }
+            if (($record['rawSpeed'] ?? null) === '37' && $speed === 37) {
+                throw new DomainException('Camera dataset contains an invented raw 37 speed.');
+            }
+            if (($record['sourceFetchedAt'] ?? null) !== $import->source_fetched_at?->toIso8601String()) {
+                throw new DomainException('Camera dataset contains mismatched source snapshot metadata.');
+            }
+            $validFrom = $record['validFrom'] ?? null;
+            $validUntil = $record['validUntil'] ?? null;
+            if ($validFrom !== null && $validFrom > $asOfDate) {
+                throw new DomainException('Camera dataset contains future validFrom values.');
+            }
+            if ($validUntil !== null && $validUntil < $asOfDate) {
+                throw new DomainException('Camera dataset contains expired validUntil values.');
+            }
+        }
+
+        if ($speedKnown !== count(array_filter($records, fn (array $record): bool => $record['reportedSpeedKmh'] !== null))) {
+            throw new DomainException('Camera dataset speed count is inconsistent.');
+        }
+    }
+
+    private function publishPair(string $outputDirectory, string $datasetBytes, string $manifestBytes): void
+    {
+        File::ensureDirectoryExists($outputDirectory);
+        if (! is_dir($outputDirectory) || ! is_writable($outputDirectory)) {
+            throw new DomainException('Camera dataset output directory is not writable.');
+        }
+
+        $datasetPath = $outputDirectory.DIRECTORY_SEPARATOR.'cameras_v1.json';
+        $manifestPath = $outputDirectory.DIRECTORY_SEPARATOR.'cameras_manifest_v1.json';
+        $token = bin2hex(random_bytes(8));
+        $datasetTemp = $datasetPath.'.tmp-'.$token;
+        $manifestTemp = $manifestPath.'.tmp-'.$token;
+        $previousDataset = File::exists($datasetPath) ? File::get($datasetPath) : null;
+        $previousManifest = File::exists($manifestPath) ? File::get($manifestPath) : null;
+
+        try {
+            if (File::put($datasetTemp, $datasetBytes) === false || File::put($manifestTemp, $manifestBytes) === false) {
+                throw new RuntimeException('Camera dataset temporary files could not be written.');
+            }
+            $this->fail('after_temp_files');
+
+            if (File::exists($datasetPath)) {
+                File::delete($datasetPath);
+            }
+            if (! rename($datasetTemp, $datasetPath)) {
+                throw new RuntimeException('Camera dataset file could not be published.');
+            }
+            $this->fail('after_dataset_replace');
+            $this->fail('before_manifest_replace');
+
+            if (File::exists($manifestPath)) {
+                File::delete($manifestPath);
+            }
+            if (! rename($manifestTemp, $manifestPath)) {
+                throw new RuntimeException('Camera dataset manifest could not be published.');
+            }
+        } catch (Throwable $throwable) {
+            File::delete([$datasetTemp, $manifestTemp]);
+            if ($previousDataset === null) {
+                File::delete($datasetPath);
+            } elseif (File::put($datasetPath, $previousDataset) === false) {
+                throw new RuntimeException('Previous camera dataset could not be restored.', 0, $throwable);
+            }
+            if ($previousManifest === null) {
+                File::delete($manifestPath);
+            } elseif (File::put($manifestPath, $previousManifest) === false) {
+                throw new RuntimeException('Previous camera dataset manifest could not be restored.', 0, $throwable);
+            }
+
+            throw $throwable;
+        } finally {
+            File::delete([$datasetTemp, $manifestTemp]);
+        }
+    }
+
+    private function fail(string $point): void
+    {
+        if (self::$failureHook !== null) {
+            (self::$failureHook)($point);
+        }
     }
 }
