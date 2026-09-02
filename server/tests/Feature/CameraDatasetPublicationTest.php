@@ -118,6 +118,29 @@ class CameraDatasetPublicationTest extends TestCase
         $this->assertSame('2026-08-31', $manifest['freshness']['asOf']);
     }
 
+    public function test_command_accepts_valid_leap_day_publication_dates(): void
+    {
+        $result = app(AnsvRichCameraImporter::class)->importRows([
+            $this->row(['Fecha inicio de operación' => '2024-01-01']),
+        ], str_repeat('0', 64), CarbonImmutable::parse('2024-02-29T23:59:59Z'));
+        $import = $this->approveAndActivateImport($result['importId']);
+        $output = base_path('storage/testing-camera-dataset-leap-day');
+        File::deleteDirectory($output);
+
+        $this->artisan('picoradar:cameras:publish-mobile-dataset', [
+            '--output-dir' => $output,
+            '--dataset-version' => '2024.02.29-ansv',
+            '--generated-at' => '2024-02-29T23:59:59Z',
+            '--as-of' => '2024-02-29',
+            '--import-id' => $import->id,
+            '--json' => true,
+        ])->assertExitCode(0);
+
+        $manifest = json_decode((string) file_get_contents($output.DIRECTORY_SEPARATOR.'cameras_manifest_v1.json'), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame('2024.02.29-ansv', $manifest['version']);
+        $this->assertSame('2024-02-29', $manifest['freshness']['asOf']);
+    }
+
     public function test_command_defaults_use_current_colombia_date_not_frozen_seed_date(): void
     {
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-09-15T10:30:00-05:00'));
@@ -266,6 +289,37 @@ class CameraDatasetPublicationTest extends TestCase
         $this->assertSame(1, $published['recordCount']);
     }
 
+    public function test_manifest_as_of_and_default_version_use_same_colombia_date_as_filters(): void
+    {
+        $result = app(AnsvRichCameraImporter::class)->importRows([
+            $this->row(['Nombre equipo' => 'COLOMBIA-DATE']),
+            $this->row([
+                'Código unico' => 'CU000000000002',
+                'Código solicitud' => 'SOL0000016335',
+                'Nombre equipo' => 'FUTURE-FILTERED',
+                'Dirección' => 'AV REGIONAL - CL 20',
+                'Fecha inicio de operación' => '2026-09-01',
+            ]),
+        ], str_repeat('7', 64), $this->fetchedAt);
+        $import = $this->approveAndActivateImport($result['importId']);
+        $output = base_path('storage/testing-camera-dataset-as-of-provenance');
+        File::deleteDirectory($output);
+
+        $published = app(CameraMobileDatasetPublisher::class)->publish(
+            $output,
+            null,
+            CarbonImmutable::parse('2026-09-01T01:00:00Z'),
+            CarbonImmutable::parse('2026-09-01T01:00:00Z'),
+            $import->id,
+        );
+
+        $manifest = json_decode((string) file_get_contents($output.DIRECTORY_SEPARATOR.'cameras_manifest_v1.json'), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame(1, $published['recordCount']);
+        $this->assertSame('2026-08-31', $published['asOf']);
+        $this->assertSame('2026-08-31', $manifest['freshness']['asOf']);
+        $this->assertStringStartsWith('2026.08.31-ansv-', $manifest['version']);
+    }
+
     public function test_master_source_row_mismatch_is_not_published(): void
     {
         $result = app(AnsvRichCameraImporter::class)->importRows([$this->row()], str_repeat('3', 64), $this->fetchedAt);
@@ -404,15 +458,29 @@ class CameraDatasetPublicationTest extends TestCase
 
         foreach ([
             ['--generated-at' => 'tomorrow', '--as-of' => '2026-08-31', '--import-id' => $import->id],
+            ['--generated-at' => '2026-02-30T15:44:00Z', '--as-of' => '2026-08-31', '--import-id' => $import->id],
+            ['--generated-at' => '2026-08-31T24:00:00Z', '--as-of' => '2026-08-31', '--import-id' => $import->id],
+            ['--generated-at' => '2026-08-31T23:60:00Z', '--as-of' => '2026-08-31', '--import-id' => $import->id],
+            ['--generated-at' => '2026-08-31T23:59:60Z', '--as-of' => '2026-08-31', '--import-id' => $import->id],
+            ['--generated-at' => '2026-08-31T15:44:00+99:99', '--as-of' => '2026-08-31', '--import-id' => $import->id],
             ['--generated-at' => '2026-08-31T15:44:00Z', '--as-of' => 'tomorrow', '--import-id' => $import->id],
+            ['--generated-at' => '2026-08-31T15:44:00Z', '--as-of' => '2026-02-30', '--import-id' => $import->id],
+            ['--generated-at' => '2026-08-31T15:44:00Z', '--as-of' => '2026-02-29', '--import-id' => $import->id],
+            ['--generated-at' => '2026-08-31T15:44:00Z', '--as-of' => '2026-04-31', '--import-id' => $import->id],
+            ['--generated-at' => '2026-08-31T15:44:00Z', '--as-of' => '2026-13-01', '--import-id' => $import->id],
+            ['--generated-at' => '2026-08-31T15:44:00Z', '--as-of' => '2026-00-10', '--import-id' => $import->id],
+            ['--generated-at' => '2026-08-31T15:44:00Z', '--as-of' => '0000-01-01', '--import-id' => $import->id],
             ['--generated-at' => '2026-08-31T15:44:00Z', '--as-of' => '2026-08-31', '--dataset-version' => '../bad', '--import-id' => $import->id],
+            ['--generated-at' => '2026-08-31T15:44:00Z', '--as-of' => '2026-08-31', '--dataset-version' => '2026.02.30-ansv', '--import-id' => $import->id],
+            ['--generated-at' => '2026-08-31T15:44:00Z', '--as-of' => '2026-08-31', '--dataset-version' => '2026.13.01-ansv', '--import-id' => $import->id],
+            ['--generated-at' => '2026-08-31T15:44:00Z', '--as-of' => '2026-08-31', '--dataset-version' => '2026.00.01', '--import-id' => $import->id],
             ['--generated-at' => '2026-08-31T15:44:00Z', '--as-of' => '2026-08-31', '--import-id' => $import->id, '--latest-approved' => true],
             ['--generated-at' => '2026-08-31T15:44:00Z', '--as-of' => '2026-08-31', '--import-id' => 'abc'],
         ] as $options) {
             $this->artisan('picoradar:cameras:publish-mobile-dataset', array_merge([
                 '--output-dir' => $output,
                 '--json' => true,
-            ], $options))->assertExitCode(1);
+            ], $options))->expectsOutputToContain('"status":"failed"')->assertExitCode(1);
             $this->assertSame($datasetBefore, File::get($output.DIRECTORY_SEPARATOR.'cameras_v1.json'));
             $this->assertSame($manifestBefore, File::get($output.DIRECTORY_SEPARATOR.'cameras_manifest_v1.json'));
             $this->assertNoPublisherTempFiles($output);

@@ -70,11 +70,25 @@ class PublishCameraDatasetCommand extends Command
             return CarbonImmutable::now('America/Bogota')->utc();
         }
         $value = (string) $option;
-        if (! preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$/', $value)) {
+        if (! preg_match('/^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})T(?<hour>\d{2}):(?<minute>\d{2}):(?<second>\d{2})(?<timezone>Z|[+-]\d{2}:\d{2})$/', $value, $matches)) {
             throw new DomainException('Camera dataset generated-at timestamp is invalid.');
         }
 
-        return CarbonImmutable::parse($value)->utc();
+        $year = (int) $matches['year'];
+        $month = (int) $matches['month'];
+        $day = (int) $matches['day'];
+        $hour = (int) $matches['hour'];
+        $minute = (int) $matches['minute'];
+        $second = (int) $matches['second'];
+        $timezone = $matches['timezone'] === 'Z' ? '+00:00' : $matches['timezone'];
+        $offsetHour = (int) substr($timezone, 1, 2);
+        $offsetMinute = (int) substr($timezone, 4, 2);
+
+        if (! $this->isValidDate($year, $month, $day) || $hour > 23 || $minute > 59 || $second > 59 || $offsetHour > 23 || $offsetMinute > 59) {
+            throw new DomainException('Camera dataset generated-at timestamp is invalid.');
+        }
+
+        return CarbonImmutable::create($year, $month, $day, $hour, $minute, $second, $timezone)->utc();
     }
 
     private function asOf(): CarbonImmutable
@@ -84,11 +98,18 @@ class PublishCameraDatasetCommand extends Command
             return CarbonImmutable::now('America/Bogota');
         }
         $value = (string) $option;
-        if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+        if (! preg_match('/^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$/', $value, $matches)) {
             throw new DomainException('Camera dataset as-of date is invalid.');
         }
 
-        return CarbonImmutable::createFromFormat('!Y-m-d', $value, 'America/Bogota');
+        $year = (int) $matches['year'];
+        $month = (int) $matches['month'];
+        $day = (int) $matches['day'];
+        if (! $this->isValidDate($year, $month, $day)) {
+            throw new DomainException('Camera dataset as-of date is invalid.');
+        }
+
+        return CarbonImmutable::create($year, $month, $day, 0, 0, 0, 'America/Bogota');
     }
 
     private function importId(): ?int
@@ -103,5 +124,10 @@ class PublishCameraDatasetCommand extends Command
         }
 
         return (int) $value;
+    }
+
+    private function isValidDate(int $year, int $month, int $day): bool
+    {
+        return $year > 0 && checkdate($month, $day, $year);
     }
 }

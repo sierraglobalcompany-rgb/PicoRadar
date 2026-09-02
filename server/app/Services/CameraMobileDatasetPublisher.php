@@ -32,15 +32,12 @@ class CameraMobileDatasetPublisher
         if ($import === null) {
             throw new DomainException('No approved ANSV camera import is available for publication.');
         }
-        $version = $version ?: $this->defaultVersion($import, $asOf);
-        if (! preg_match('/^\d{4}\.\d{2}\.\d{2}[-a-z0-9.]*$/', $version)) {
-            throw new DomainException('Camera dataset version is invalid.');
-        }
-
         $records = [];
         $speedKnown = 0;
         $exclusions = [];
         $asOfDate = $asOf->setTimezone('America/Bogota')->toDateString();
+        $version = $version ?: $this->defaultVersion($import, $asOfDate);
+        $this->validateVersion($version);
 
         AnsvCameraImportRow::query()
             ->where('ansv_camera_import_id', $import->id)
@@ -167,7 +164,7 @@ class CameraMobileDatasetPublisher
             ],
             'freshness' => [
                 'sourceFetchedAt' => $import->source_fetched_at?->toIso8601String(),
-                'asOf' => $asOf->toDateString(),
+                'asOf' => $asOfDate,
             ],
         ];
         $manifestBytes = $this->canonicalJson($manifest);
@@ -184,6 +181,7 @@ class CameraMobileDatasetPublisher
             'assetSha256' => $assetSha,
             'manifestBytes' => strlen($manifestBytes),
             'manifestSha256' => hash('sha256', $manifestBytes),
+            'asOf' => $asOfDate,
             'outputDirectory' => $outputDirectory,
             'acceptedImportId' => $import->id,
             'sourceSnapshotSha256' => $import->snapshot_sha,
@@ -199,9 +197,23 @@ class CameraMobileDatasetPublisher
         $exclusions[$reason] = ($exclusions[$reason] ?? 0) + 1;
     }
 
-    private function defaultVersion(AnsvCameraImport $import, CarbonImmutable $asOf): string
+    private function defaultVersion(AnsvCameraImport $import, string $asOfDate): string
     {
-        return $asOf->setTimezone('America/Bogota')->format('Y.m.d').'-ansv-'.substr($import->snapshot_sha, 0, 12);
+        return str_replace('-', '.', $asOfDate).'-ansv-'.substr($import->snapshot_sha, 0, 12);
+    }
+
+    private function validateVersion(string $version): void
+    {
+        if (! preg_match('/^(?<year>\d{4})\.(?<month>\d{2})\.(?<day>\d{2})(?:-[a-z0-9.-]+)?$/', $version, $matches)) {
+            throw new DomainException('Camera dataset version is invalid.');
+        }
+
+        $year = (int) $matches['year'];
+        $month = (int) $matches['month'];
+        $day = (int) $matches['day'];
+        if ($year < 1 || ! checkdate($month, $day, $year)) {
+            throw new DomainException('Camera dataset version is invalid.');
+        }
     }
 
     private function importKey(AnsvCameraImport $import): string
