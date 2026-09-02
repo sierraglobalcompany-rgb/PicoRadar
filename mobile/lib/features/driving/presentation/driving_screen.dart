@@ -1,6 +1,11 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 
 import '../../../app/theme/app_tokens.dart';
 import '../application/driving_controller.dart';
@@ -9,6 +14,8 @@ import '../domain/camera_matcher.dart';
 import '../domain/driving_alert_engine.dart';
 import '../domain/traffic_camera.dart';
 import '../../vehicle_status/platform/external_launcher.dart';
+import 'driving_map_episode.dart';
+import 'driving_radar.dart';
 
 class DrivingScreen extends ConsumerStatefulWidget {
   const DrivingScreen({super.key});
@@ -40,7 +47,7 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
       ref.read(drivingControllerProvider.notifier).stop();
       _leaveHudMode();
@@ -67,6 +74,29 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
                   .start(
                     simulationScenario: DrivingSimulationScenario.unknownSpeed,
                   )
+            : null,
+        onDebugRouteSide: canUseDebugDrivingSimulation
+            ? () => ref
+                  .read(drivingControllerProvider.notifier)
+                  .start(simulationScenario: DrivingSimulationScenario.sidePass)
+            : null,
+        onDebugRouteLateralApproach: canUseDebugDrivingSimulation
+            ? () => ref
+                  .read(drivingControllerProvider.notifier)
+                  .start(
+                    simulationScenario:
+                        DrivingSimulationScenario.lateralApproach,
+                  )
+            : null,
+        onDebugRouteTurnAway: canUseDebugDrivingSimulation
+            ? () => ref
+                  .read(drivingControllerProvider.notifier)
+                  .start(simulationScenario: DrivingSimulationScenario.turnAway)
+            : null,
+        onDebugRouteGpsWeak: canUseDebugDrivingSimulation
+            ? () => ref
+                  .read(drivingControllerProvider.notifier)
+                  .start(simulationScenario: DrivingSimulationScenario.gpsWeak)
             : null,
         onStop: () => ref.read(drivingControllerProvider.notifier).stop(),
         onSettings: () => _showSettings(context, defaultDrivingPreferences),
@@ -100,6 +130,35 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
                     .start(
                       simulationScenario:
                           DrivingSimulationScenario.unknownSpeed,
+                    )
+              : null,
+          onDebugRouteSide: canUseDebugDrivingSimulation
+              ? () => ref
+                    .read(drivingControllerProvider.notifier)
+                    .start(
+                      simulationScenario: DrivingSimulationScenario.sidePass,
+                    )
+              : null,
+          onDebugRouteLateralApproach: canUseDebugDrivingSimulation
+              ? () => ref
+                    .read(drivingControllerProvider.notifier)
+                    .start(
+                      simulationScenario:
+                          DrivingSimulationScenario.lateralApproach,
+                    )
+              : null,
+          onDebugRouteTurnAway: canUseDebugDrivingSimulation
+              ? () => ref
+                    .read(drivingControllerProvider.notifier)
+                    .start(
+                      simulationScenario: DrivingSimulationScenario.turnAway,
+                    )
+              : null,
+          onDebugRouteGpsWeak: canUseDebugDrivingSimulation
+              ? () => ref
+                    .read(drivingControllerProvider.notifier)
+                    .start(
+                      simulationScenario: DrivingSimulationScenario.gpsWeak,
                     )
               : null,
           onStop: () => ref.read(drivingControllerProvider.notifier).stop(),
@@ -176,12 +235,59 @@ const _initialDrivingState = DrivingState(
   cameraSpeedKnownCount: 0,
 );
 
+final drivingMapConfigProvider = Provider<DrivingMapConfig>(
+  (ref) => DrivingMapConfig.fromEnvironment(),
+);
+
+class DrivingMapConfig {
+  const DrivingMapConfig({
+    required this.tileUrlTemplate,
+    required this.attributionLabel,
+    required this.userAgentPackageName,
+    required this.forceOfflineFallback,
+    this.tileProvider,
+  });
+
+  factory DrivingMapConfig.fromEnvironment() {
+    return const DrivingMapConfig(
+      tileUrlTemplate: String.fromEnvironment(
+        'PICORADAR_DRIVING_TILE_URL_TEMPLATE',
+        defaultValue: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      ),
+      attributionLabel: 'OpenStreetMap contributors',
+      userAgentPackageName: String.fromEnvironment(
+        'PICORADAR_DRIVING_TILE_USER_AGENT',
+        defaultValue: 'co.picoradar.app.dev',
+      ),
+      forceOfflineFallback: bool.fromEnvironment(
+        'PICORADAR_FORCE_CAMERA_MAP_FALLBACK',
+      ),
+    );
+  }
+
+  final String tileUrlTemplate;
+  final String attributionLabel;
+  final String userAgentPackageName;
+  final bool forceOfflineFallback;
+  final TileProvider? tileProvider;
+}
+
+Duration _motionDuration(BuildContext context, Duration duration) {
+  return (MediaQuery.maybeDisableAnimationsOf(context) ?? false)
+      ? Duration.zero
+      : duration;
+}
+
 class _DrivingDashboard extends StatelessWidget {
   const _DrivingDashboard({
     required this.state,
     required this.onStart,
     required this.onDebugRouteKnown,
     required this.onDebugRouteUnknown,
+    required this.onDebugRouteSide,
+    required this.onDebugRouteLateralApproach,
+    required this.onDebugRouteTurnAway,
+    required this.onDebugRouteGpsWeak,
     required this.onStop,
     required this.onSettings,
     required this.onHud,
@@ -192,6 +298,10 @@ class _DrivingDashboard extends StatelessWidget {
   final VoidCallback onStart;
   final VoidCallback? onDebugRouteKnown;
   final VoidCallback? onDebugRouteUnknown;
+  final VoidCallback? onDebugRouteSide;
+  final VoidCallback? onDebugRouteLateralApproach;
+  final VoidCallback? onDebugRouteTurnAway;
+  final VoidCallback? onDebugRouteGpsWeak;
   final VoidCallback onStop;
   final VoidCallback onSettings;
   final VoidCallback? onHud;
@@ -209,57 +319,138 @@ class _DrivingDashboard extends StatelessWidget {
               AppSpacing.l,
               AppSpacing.m,
               AppSpacing.l,
-              AppSpacing.l,
+              AppSpacing.m,
             ),
-            child: Column(
-              children: [
-                Row(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final hasAlertSpace =
+                    state.showCameraAlertPanel ||
+                    state.dismissedCameraId != null;
+                final motionDuration = _motionDuration(
+                  context,
+                  const Duration(milliseconds: 320),
+                );
+                final gaugeHeight = hasAlertSpace
+                    ? (constraints.maxHeight * 0.48)
+                          .clamp(282.0, 344.0)
+                          .toDouble()
+                    : math.max(360.0, constraints.maxHeight - 168);
+                return Column(
                   children: [
-                    Expanded(
-                      child: Text(
-                        state.gpsQuality.label,
-                        style: AppTextStyles.caption.copyWith(
-                          color: Colors.white70,
-                        ),
+                    _DrivingTopBar(
+                      state: state,
+                      onHud: onHud,
+                      onMirrorHud: onMirrorHud,
+                    ),
+                    AnimatedContainer(
+                      duration: motionDuration,
+                      curve: Curves.easeOutCubic,
+                      height: gaugeHeight,
+                      child: LayoutBuilder(
+                        builder: (context, gaugeConstraints) {
+                          final showSpeedBadge =
+                              state.showCameraAlertPanel &&
+                              state.reportedCameraSpeedKmh != null;
+                          final diameter = math.min(
+                            showSpeedBadge
+                                ? 288.0
+                                : hasAlertSpace
+                                ? 270.0
+                                : 316.0,
+                            math.min(
+                              gaugeConstraints.maxWidth * 0.88,
+                              gaugeConstraints.maxHeight * 0.98,
+                            ),
+                          );
+                          if (showSpeedBadge) {
+                            return Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                AnimatedAlign(
+                                  duration: motionDuration,
+                                  curve: Curves.easeOutCubic,
+                                  alignment: const Alignment(0, -0.05),
+                                  child: _SpeedGauge(
+                                    key: const ValueKey('driving-speed-gauge'),
+                                    state: state,
+                                    diameter: diameter,
+                                    speedFontSize: math.max(
+                                      88.0,
+                                      diameter * 0.46,
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 102,
+                                  right: 0,
+                                  child: _GaugeSpeedLimitBadge(
+                                    speedKmh: state.reportedCameraSpeedKmh!,
+                                  ),
+                                ),
+                              ],
+                            );
+                          }
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              AnimatedAlign(
+                                duration: motionDuration,
+                                curve: Curves.easeOutCubic,
+                                alignment: hasAlertSpace
+                                    ? Alignment.topCenter
+                                    : Alignment.center,
+                                child: _SpeedGauge(
+                                  key: const ValueKey('driving-speed-gauge'),
+                                  state: state,
+                                  diameter: diameter,
+                                  speedFontSize: math.max(
+                                    72.0,
+                                    diameter * 0.42,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
-                    IconButton(
-                      tooltip: 'HUD',
-                      onPressed: onHud,
-                      color: Colors.white,
-                      icon: const Icon(Icons.flip_to_front),
-                    ),
-                    IconButton(
-                      key: const ValueKey('hud-mirror-action'),
-                      tooltip: 'HUD espejo',
-                      onPressed: onMirrorHud,
-                      color: Colors.white,
-                      icon: const Icon(Icons.flip),
+                    const SizedBox(height: AppSpacing.xs),
+                    if (hasAlertSpace)
+                      Flexible(
+                        child: LayoutBuilder(
+                          builder: (context, alertConstraints) {
+                            return SingleChildScrollView(
+                              physics: const ClampingScrollPhysics(),
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minHeight: alertConstraints.maxHeight,
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    _CameraAlertSwitcher(state: state),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                    else
+                      const Spacer(),
+                    const SizedBox(height: AppSpacing.s),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        key: const ValueKey('stop-driving'),
+                        onPressed: onStop,
+                        icon: const Icon(Icons.stop),
+                        label: const Text('Finalizar'),
+                      ),
                     ),
                   ],
-                ),
-                Expanded(
-                  child: Center(
-                    child: _SpeedGauge(
-                      key: const ValueKey('driving-speed-gauge'),
-                      state: state,
-                      diameter: 236,
-                      speedFontSize: 108,
-                    ),
-                  ),
-                ),
-                _CameraPanel(state: state),
-                const SizedBox(height: AppSpacing.m),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    key: const ValueKey('stop-driving'),
-                    onPressed: onStop,
-                    icon: const Icon(Icons.stop),
-                    label: const Text('Finalizar'),
-                  ),
-                ),
-              ],
+                );
+              },
             ),
           ),
         ),
@@ -298,7 +489,12 @@ class _DrivingDashboard extends StatelessWidget {
                   : 'Iniciar conducción',
             ),
           ),
-          if (onDebugRouteKnown != null || onDebugRouteUnknown != null) ...[
+          if (onDebugRouteKnown != null ||
+              onDebugRouteUnknown != null ||
+              onDebugRouteSide != null ||
+              onDebugRouteLateralApproach != null ||
+              onDebugRouteTurnAway != null ||
+              onDebugRouteGpsWeak != null) ...[
             const SizedBox(height: AppSpacing.s),
             OutlinedButton.icon(
               key: const ValueKey('debug-driving-route'),
@@ -317,16 +513,114 @@ class _DrivingDashboard extends StatelessWidget {
               icon: const Icon(Icons.route_outlined),
               label: const Text('Ruta demo · sin velocidad'),
             ),
+            const SizedBox(height: AppSpacing.s),
+            OutlinedButton.icon(
+              key: const ValueKey('debug-driving-route-side'),
+              onPressed: state.status == DrivingSessionStatus.starting
+                  ? null
+                  : onDebugRouteSide,
+              icon: const Icon(Icons.alt_route),
+              label: const Text('Ruta demo · cámara lateral'),
+            ),
+            const SizedBox(height: AppSpacing.s),
+            OutlinedButton.icon(
+              key: const ValueKey('debug-driving-route-lateral-approach'),
+              onPressed: state.status == DrivingSessionStatus.starting
+                  ? null
+                  : onDebugRouteLateralApproach,
+              icon: const Icon(Icons.radar),
+              label: const Text('Ruta demo · radar 500 m'),
+            ),
+            const SizedBox(height: AppSpacing.s),
+            OutlinedButton.icon(
+              key: const ValueKey('debug-driving-route-turn-away'),
+              onPressed: state.status == DrivingSessionStatus.starting
+                  ? null
+                  : onDebugRouteTurnAway,
+              icon: const Icon(Icons.turn_right),
+              label: const Text('Ruta demo · giro antes'),
+            ),
+            const SizedBox(height: AppSpacing.s),
+            OutlinedButton.icon(
+              key: const ValueKey('debug-driving-route-gps-weak'),
+              onPressed: state.status == DrivingSessionStatus.starting
+                  ? null
+                  : onDebugRouteGpsWeak,
+              icon: const Icon(Icons.gps_off),
+              label: const Text('Ruta demo · GPS débil'),
+            ),
           ],
           const SizedBox(height: AppSpacing.m),
           Text(
-            'GPS foreground. No se guarda recorrido ni se envía ubicación al servidor.',
+            'Ubicación activa solo mientras conduces. No se guarda recorrido '
+            'ni se envía al servidor.',
             style: AppTextStyles.caption.copyWith(
               color: AppColors.navy.withValues(alpha: 0.66),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _GaugeSpeedLimitBadge extends StatelessWidget {
+  const _GaugeSpeedLimitBadge({required this.speedKmh});
+
+  final int speedKmh;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 72,
+      child: _CameraSpeedSign(
+        key: const ValueKey('camera-speed-sign'),
+        speedKmh: speedKmh,
+        size: 72,
+      ),
+    );
+  }
+}
+
+class _CameraAlertSwitcher extends StatelessWidget {
+  const _CameraAlertSwitcher({required this.state});
+
+  final DrivingState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final motionDuration = _motionDuration(
+      context,
+      const Duration(milliseconds: 260),
+    );
+    return AnimatedSwitcher(
+      duration: motionDuration,
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) {
+        final offset = Tween<Offset>(
+          begin: const Offset(0, 0.18),
+          end: Offset.zero,
+        ).animate(animation);
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(position: offset, child: child),
+        );
+      },
+      child: state.showCameraAlertPanel
+          ? _CameraPanel(
+              key: ValueKey('camera-panel-${state.nearestCamera!.camera.id}'),
+              state: state,
+            )
+          : state.dismissedCameraId != null
+          ? _DismissedAlertChip(
+              key: const ValueKey('driving-camera-dismissed'),
+              state: state,
+            )
+          : const SizedBox(
+              key: ValueKey('driving-camera-alert-empty'),
+              height: 0,
+            ),
     );
   }
 }
@@ -364,19 +658,20 @@ class _ReadySummary extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.m),
             Text(
-              'Cámaras ANSV locales: ${state.cameraCount}',
+              '${state.cameraCount} cámaras disponibles',
               style: AppTextStyles.caption.copyWith(color: Colors.white70),
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Velocidad reportada: ${state.cameraSpeedKnownCount} de '
-              '${state.cameraCount}',
+              '${state.cameraSpeedKnownCount} con velocidad reportada por la '
+              'fuente oficial',
               key: const ValueKey('ready-speed-coverage'),
               style: AppTextStyles.caption.copyWith(color: Colors.white70),
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Actualizado: ${state.cameraPackSource?.fetchedAtUtc ?? 'pendiente'}',
+              'Base de cámaras actualizada: '
+              '${_formatCameraPackDate(state.cameraPackSource)}',
               style: AppTextStyles.caption.copyWith(color: Colors.white70),
             ),
           ],
@@ -386,94 +681,347 @@ class _ReadySummary extends StatelessWidget {
   }
 }
 
+class _DrivingTopBar extends StatelessWidget {
+  const _DrivingTopBar({
+    required this.state,
+    required this.onHud,
+    required this.onMirrorHud,
+  });
+
+  final DrivingState state;
+  final VoidCallback? onHud;
+  final VoidCallback? onMirrorHud;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _TopStatusChip(
+          key: const ValueKey('driving-connection-chip'),
+          icon: Icons.circle,
+          label: state.gpsQuality.label,
+          color: state.canEvaluateAlerts ? AppColors.teal : AppColors.orange,
+        ),
+        const Spacer(),
+        _TopStatusChip(
+          key: const ValueKey('driving-country-chip'),
+          icon: Icons.flag_outlined,
+          label: 'Colombia',
+          color: AppColors.plateYellow,
+        ),
+        IconButton(
+          tooltip: 'HUD',
+          onPressed: onHud,
+          color: Colors.white,
+          icon: const Icon(Icons.flip_to_front),
+        ),
+        IconButton(
+          key: const ValueKey('hud-mirror-action'),
+          tooltip: 'HUD espejo',
+          onPressed: onMirrorHud,
+          color: Colors.white,
+          icon: const Icon(Icons.flip),
+        ),
+      ],
+    );
+  }
+}
+
+class _TopStatusChip extends StatelessWidget {
+  const _TopStatusChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+    super.key,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.m,
+          vertical: AppSpacing.xs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              label,
+              style: AppTextStyles.caption.copyWith(color: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DrivingStatusChip extends StatelessWidget {
+  const _DrivingStatusChip({required this.state});
+
+  final DrivingState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = _DrivingColors.forSpeedState(state.speedState);
+    final label = switch (state.speedState) {
+      DrivingSpeedState.over => 'Reduce velocidad',
+      DrivingSpeedState.near => 'Cerca del valor reportado',
+      DrivingSpeedState.within => 'Vía clara',
+      DrivingSpeedState.unknownReportedSpeed => 'Fotodetección sin velocidad',
+      DrivingSpeedState.noCamera =>
+        state.canEvaluateAlerts
+            ? 'Sin cámara objetivo'
+            : state.gpsQuality.label,
+    };
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 260),
+      child: DecoratedBox(
+        key: const ValueKey('driving-state-chip'),
+        decoration: BoxDecoration(
+          color: colors.accent.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: colors.accent.withValues(alpha: 0.62)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.m,
+            vertical: AppSpacing.xs,
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodyStrong.copyWith(color: colors.accent),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DismissedAlertChip extends StatelessWidget {
+  const _DismissedAlertChip({required this.state, super.key});
+
+  final DrivingState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.s),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.m,
+            vertical: AppSpacing.s,
+          ),
+          child: Text(
+            'Alerta silenciada para esta cámara',
+            style: AppTextStyles.caption.copyWith(color: Colors.white70),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CameraPanel extends ConsumerWidget {
-  const _CameraPanel({required this.state});
+  const _CameraPanel({required this.state, super.key});
 
   final DrivingState state;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final alert = state.lastAlert;
-    final match = state.nearestCamera;
-    final weakForAlerts = state.isActive && !state.canEvaluateAlerts;
-    final colors = _DrivingColors.forSpeedState(state.speedState);
-    final urgent =
-        state.isOverspeeding || alert?.severity == DrivingAlertSeverity.urgent;
-    final color = urgent ? AppColors.red : colors.accent;
-    final hasCamera = match != null;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: state.isActive ? const Color(0xFF0F2335) : Colors.white,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(
-          color: hasCamera || alert != null
-              ? color.withValues(alpha: 0.72)
-              : AppColors.border,
-        ),
-      ),
+    final match = state.nearestCamera!;
+    final urgent = state.isOverspeeding;
+    final color = _cameraPanelAccent(state);
+    final compactPanel = MediaQuery.sizeOf(context).height < 820;
+    final mapHeight = compactPanel ? 156.0 : 184.0;
+    void dismissAlert() {
+      ref.read(drivingControllerProvider.notifier).dismissCurrentCameraAlert();
+    }
+
+    return GestureDetector(
+      key: const ValueKey('driving-camera-alert-panel'),
+      onVerticalDragEnd: (details) {
+        if ((details.primaryVelocity ?? 0) > 180) {
+          dismissAlert();
+        }
+      },
+      onVerticalDragUpdate: (details) {
+        if ((details.primaryDelta ?? 0) > 64) {
+          dismissAlert();
+        }
+      },
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.l),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+        padding: EdgeInsets.zero,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: const Color(0xEA0B1D2C),
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: color.withValues(alpha: 0.78)),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.2),
+                blurRadius: 22,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.m,
+              AppSpacing.s,
+              AppSpacing.m,
+              AppSpacing.m,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  weakForAlerts
-                      ? Icons.gps_not_fixed
-                      : state.isOverspeeding
-                      ? Icons.warning_amber_rounded
-                      : Icons.videocam_outlined,
-                  color: weakForAlerts ? AppColors.blue : color,
+                GestureDetector(
+                  key: const ValueKey('driving-camera-alert-header'),
+                  behavior: HitTestBehavior.opaque,
+                  onVerticalDragEnd: (details) {
+                    if ((details.primaryVelocity ?? 0) > 180) {
+                      dismissAlert();
+                    }
+                  },
+                  onVerticalDragUpdate: (details) {
+                    if ((details.primaryDelta ?? 0) > 64) {
+                      dismissAlert();
+                    }
+                  },
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _AlertIcon(
+                        key: ValueKey(
+                          urgent
+                              ? 'driving-camera-alert-icon-urgent'
+                              : 'driving-camera-alert-icon-camera',
+                        ),
+                        color: color,
+                        urgent: urgent,
+                      ),
+                      const SizedBox(width: AppSpacing.s),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _cameraTitle(match.camera),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.bodyStrong.copyWith(
+                                color: Colors.white,
+                                height: 1.08,
+                              ),
+                            ),
+                            Text(
+                              _cameraDistanceLabel(match),
+                              key: const ValueKey('camera-distance-pill'),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.bodyStrong.copyWith(
+                                color: color,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton.filled(
+                        key: const ValueKey('driving-camera-map-action'),
+                        tooltip: 'Cómo llegar',
+                        onPressed: () => _openCameraMap(ref, match.camera),
+                        iconSize: 16,
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.1),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.square(30),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        icon: const Icon(Icons.near_me_outlined),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      IconButton.filled(
+                        key: const ValueKey('driving-camera-detail-action'),
+                        tooltip: 'Fuente de cámara',
+                        onPressed: () =>
+                            _showCameraDetails(context, ref, match.camera),
+                        iconSize: 16,
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.1),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.square(30),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        icon: const Icon(Icons.info_outline),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      IconButton.filled(
+                        key: const ValueKey('driving-camera-dismiss-action'),
+                        tooltip: 'Cerrar alerta de fotodetección',
+                        onPressed: dismissAlert,
+                        iconSize: 16,
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.1),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.square(30),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: AppSpacing.s),
-                Expanded(
-                  child: Text(
-                    weakForAlerts
-                        ? 'GPS débil'
-                        : hasCamera
-                        ? _cameraTitle(match.camera)
-                        : 'Sin cámara inmediata',
-                    style: AppTextStyles.h2.copyWith(
-                      color: state.isActive ? Colors.white : AppColors.navy,
+                const SizedBox(height: AppSpacing.s),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Flexible(
+                      flex: 4,
+                      child: _CameraMiniMap(
+                        key: const ValueKey('driving-mini-map'),
+                        match: match,
+                        episodeKey: state.cameraEpisodeKey ?? match.camera.id,
+                        currentPoint: state.currentPoint!,
+                        targetingConeDegrees:
+                            state.preferences.cameraTargetingConeDegrees,
+                        visualizationMode:
+                            state.preferences.cameraVisualizationMode,
+                        alertColor: color,
+                        height: mapHeight,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: AppSpacing.s),
+                    Flexible(
+                      flex: 5,
+                      child: _CameraPanelFacts(state: state, match: match),
+                    ),
+                  ],
                 ),
-                if (hasCamera)
-                  IconButton(
-                    key: const ValueKey('driving-camera-map-action'),
-                    tooltip: 'Ver en Google Maps',
-                    color: state.isActive ? Colors.white70 : AppColors.navy,
-                    onPressed: () => _openCameraMap(ref, match.camera),
-                    icon: const Icon(Icons.near_me_outlined),
-                  ),
-                if (hasCamera)
-                  IconButton(
-                    key: const ValueKey('driving-camera-detail-action'),
-                    tooltip: 'Fuente de cámara',
-                    color: state.isActive ? Colors.white70 : AppColors.navy,
-                    onPressed: () =>
-                        _showCameraDetails(context, ref, match.camera),
-                    icon: const Icon(Icons.info_outline),
-                  ),
               ],
             ),
-            const SizedBox(height: AppSpacing.m),
-            if (weakForAlerts)
-              Text(
-                'Esperando mejor precisión para alertas',
-                key: const ValueKey('driving-camera-message'),
-                style: _panelTextStyle(state),
-              )
-            else if (hasCamera)
-              _CameraFacts(state: state, match: match)
-            else
-              Text(
-                'PicoRadar revisa rumbo, distancia y aproximación desde el pack local.',
-                key: const ValueKey('driving-camera-message'),
-                style: _panelTextStyle(state),
-              ),
-          ],
+          ),
         ),
       ),
     );
@@ -542,8 +1090,474 @@ class _CameraPanel extends ConsumerWidget {
   }
 }
 
-class _CameraFacts extends StatelessWidget {
-  const _CameraFacts({required this.state, required this.match});
+class _AlertIcon extends StatelessWidget {
+  const _AlertIcon({required this.color, required this.urgent, super.key});
+
+  final Color color;
+  final bool urgent;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.16),
+        shape: BoxShape.circle,
+        border: Border.all(color: color.withValues(alpha: 0.58)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.s),
+        child: Icon(
+          urgent ? Icons.warning_amber_rounded : Icons.videocam_outlined,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+class _CameraMiniMap extends ConsumerStatefulWidget {
+  const _CameraMiniMap({
+    required this.match,
+    required this.episodeKey,
+    required this.currentPoint,
+    required this.targetingConeDegrees,
+    required this.visualizationMode,
+    required this.alertColor,
+    required this.height,
+    super.key,
+  });
+
+  final CameraMatch match;
+  final String episodeKey;
+  final DrivingPoint currentPoint;
+  final int targetingConeDegrees;
+  final CameraVisualizationMode visualizationMode;
+  final Color alertColor;
+  final double height;
+
+  @override
+  ConsumerState<_CameraMiniMap> createState() => _CameraMiniMapState();
+}
+
+class _CameraMiniMapState extends ConsumerState<_CameraMiniMap> {
+  late final CameraMapEpisodeStateMachine _mapEpisode;
+  Timer? _mapTimeoutTimer;
+  String? _mapTimeoutEpisodeKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapEpisode = CameraMapEpisodeStateMachine();
+    _beginMapEpisode();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CameraMiniMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.episodeKey != widget.episodeKey) {
+      _cancelMapTimeout();
+      _beginMapEpisode();
+    }
+  }
+
+  @override
+  void dispose() {
+    _cancelMapTimeout();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mapConfig = ref.watch(drivingMapConfigProvider);
+    final radarOnly = widget.visualizationMode == CameraVisualizationMode.radar;
+    final canTryMap =
+        widget.visualizationMode == CameraVisualizationMode.auto ||
+        widget.visualizationMode == CameraVisualizationMode.map;
+    final forcedFallback =
+        radarOnly ||
+        mapConfig.forceOfflineFallback ||
+        mapConfig.tileUrlTemplate.trim().isEmpty;
+    final mapState =
+        CameraMapEpisodeCache.read(widget.episodeKey) ?? _mapEpisode.state;
+    final showFallback =
+        forcedFallback || mapState == CameraMapEpisodeViewState.fallback;
+    final showPendingRadar =
+        !forcedFallback &&
+        canTryMap &&
+        mapState == CameraMapEpisodeViewState.pending;
+    if (showPendingRadar) {
+      _ensureMapTimeoutScheduled();
+    } else {
+      _cancelMapTimeout();
+    }
+    final showFallbackLabel = !radarOnly && canTryMap && showFallback;
+    return SizedBox(
+      height: widget.height,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.input),
+        child: showFallback || showPendingRadar
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  _CameraOfflineRadar(
+                    key: const ValueKey('driving-map-offline-fallback'),
+                    match: widget.match,
+                    currentPoint: widget.currentPoint,
+                    targetingConeDegrees: widget.targetingConeDegrees,
+                    alertColor: widget.alertColor,
+                    fallbackLabel: showFallbackLabel
+                        ? 'Sin conexión · Radar'
+                        : null,
+                  ),
+                  if (showPendingRadar)
+                    Opacity(
+                      opacity: 0,
+                      child: IgnorePointer(
+                        child: _RealCameraMiniMap(
+                          key: const ValueKey('driving-real-mini-map'),
+                          match: widget.match,
+                          currentPoint: widget.currentPoint,
+                          alertColor: widget.alertColor,
+                          config: mapConfig,
+                          episodeKey: widget.episodeKey,
+                          onTileReady: _markMapReady,
+                          onTileError: _markMapFallback,
+                        ),
+                      ),
+                    ),
+                ],
+              )
+            : _RealCameraMiniMap(
+                key: const ValueKey('driving-real-mini-map'),
+                match: widget.match,
+                currentPoint: widget.currentPoint,
+                alertColor: widget.alertColor,
+                config: mapConfig,
+                episodeKey: widget.episodeKey,
+                onTileReady: _markMapReady,
+                onTileError: _markMapFallback,
+              ),
+      ),
+    );
+  }
+
+  void _beginMapEpisode() {
+    final now = DateTime.now().toUtc();
+    _mapEpisode.begin(widget.episodeKey, now);
+    final cachedState = CameraMapEpisodeCache.read(widget.episodeKey);
+    if (cachedState != null) {
+      if (cachedState == CameraMapEpisodeViewState.ready) {
+        _mapEpisode.markReady(widget.episodeKey);
+      } else if (cachedState == CameraMapEpisodeViewState.fallback) {
+        _mapEpisode.markFallback(widget.episodeKey);
+      }
+    }
+  }
+
+  void _ensureMapTimeoutScheduled() {
+    if (_mapTimeoutTimer != null &&
+        _mapTimeoutEpisodeKey == widget.episodeKey) {
+      return;
+    }
+    _cancelMapTimeout();
+    if (_mapEpisode.state != CameraMapEpisodeViewState.pending) {
+      return;
+    }
+    final episodeKey = widget.episodeKey;
+    _mapTimeoutEpisodeKey = episodeKey;
+    _mapTimeoutTimer = Timer(drivingMapTileReadinessTimeout, () {
+      if (!mounted ||
+          _mapTimeoutEpisodeKey != episodeKey ||
+          !_mapEpisode.markFallback(episodeKey)) {
+        return;
+      }
+      CameraMapEpisodeCache.write(episodeKey, _mapEpisode.state);
+      _cancelMapTimeout();
+      setState(() {});
+    });
+  }
+
+  void _markMapReady(String episodeKey) {
+    if (!mounted ||
+        episodeKey != widget.episodeKey ||
+        !_mapEpisode.markReady(episodeKey)) {
+      return;
+    }
+    CameraMapEpisodeCache.write(episodeKey, _mapEpisode.state);
+    _cancelMapTimeout();
+    setState(() {});
+  }
+
+  void _markMapFallback(String episodeKey) {
+    if (!mounted ||
+        episodeKey != widget.episodeKey ||
+        !_mapEpisode.markFallback(episodeKey)) {
+      return;
+    }
+    CameraMapEpisodeCache.write(episodeKey, _mapEpisode.state);
+    _cancelMapTimeout();
+    setState(() {});
+  }
+
+  void _cancelMapTimeout() {
+    _mapTimeoutTimer?.cancel();
+    _mapTimeoutTimer = null;
+    _mapTimeoutEpisodeKey = null;
+  }
+}
+
+class _RealCameraMiniMap extends StatelessWidget {
+  const _RealCameraMiniMap({
+    required this.match,
+    required this.currentPoint,
+    required this.alertColor,
+    required this.config,
+    required this.episodeKey,
+    required this.onTileReady,
+    required this.onTileError,
+    super.key,
+  });
+
+  final CameraMatch match;
+  final DrivingPoint currentPoint;
+  final Color alertColor;
+  final DrivingMapConfig config;
+  final String episodeKey;
+  final ValueChanged<String> onTileReady;
+  final ValueChanged<String> onTileError;
+
+  @override
+  Widget build(BuildContext context) {
+    final ownerEpisodeKey = episodeKey;
+    final userPoint = LatLng(currentPoint.latitude, currentPoint.longitude);
+    final cameraPoint = LatLng(match.camera.latitude, match.camera.longitude);
+    final initialCenter = LatLng(
+      (userPoint.latitude + cameraPoint.latitude) / 2,
+      (userPoint.longitude + cameraPoint.longitude) / 2,
+    );
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        FlutterMap(
+          options: MapOptions(
+            initialCenter: initialCenter,
+            initialZoom: _initialMiniMapZoom(match.distanceMeters),
+            initialCameraFit: CameraFit.coordinates(
+              coordinates: [userPoint, cameraPoint],
+              padding: const EdgeInsets.fromLTRB(26, 24, 26, 38),
+              maxZoom: _maxMiniMapZoom(match.distanceMeters),
+              minZoom: 13,
+            ),
+            minZoom: 10,
+            maxZoom: 18,
+            backgroundColor: const Color(0xFF07111B),
+            interactionOptions: const InteractionOptions(
+              flags: InteractiveFlag.none,
+            ),
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: config.tileUrlTemplate,
+              userAgentPackageName: config.userAgentPackageName,
+              tileProvider: config.tileProvider,
+              keepBuffer: 0,
+              panBuffer: 0,
+              tileDisplay: const TileDisplay.instantaneous(),
+              tileBuilder: (context, tileWidget, tile) {
+                if (!tile.loadError && tile.readyToDisplay) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    onTileReady(ownerEpisodeKey);
+                  });
+                }
+                return tileWidget;
+              },
+              errorTileCallback: (tile, error, stackTrace) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  onTileError(ownerEpisodeKey);
+                });
+              },
+            ),
+            MarkerLayer(
+              markers: [
+                Marker(
+                  point: userPoint,
+                  width: 34,
+                  height: 34,
+                  child: _MiniMapUserMarker(
+                    key: const ValueKey('driving-map-user-marker'),
+                    headingDegrees: currentPoint.headingDegrees,
+                  ),
+                ),
+                Marker(
+                  point: cameraPoint,
+                  width: 34,
+                  height: 34,
+                  child: _MiniMapCameraMarker(
+                    key: const ValueKey('driving-map-camera-marker'),
+                    color: alertColor,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        Positioned(
+          right: 6,
+          bottom: 5,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.52),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              child: Text(
+                '© ${config.attributionLabel}',
+                key: const ValueKey('driving-map-attribution'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.82),
+                  fontSize: 8,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MiniMapUserMarker extends StatelessWidget {
+  const _MiniMapUserMarker({required this.headingDegrees, super.key});
+
+  final double? headingDegrees;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.blue.withValues(alpha: 0.22),
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.blue.withValues(alpha: 0.34),
+            blurRadius: 16,
+          ),
+        ],
+      ),
+      child: Center(
+        child: Transform.rotate(
+          angle: (headingDegrees ?? 0) * math.pi / 180,
+          child: Container(
+            width: 24,
+            height: 24,
+            decoration: const BoxDecoration(
+              color: AppColors.blue,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.navigation_rounded,
+              color: Colors.white,
+              size: 16,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniMapCameraMarker extends StatelessWidget {
+  const _MiniMapCameraMarker({required this.color, super.key});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.24),
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(color: color.withValues(alpha: 0.36), blurRadius: 16),
+        ],
+      ),
+      child: Center(
+        child: Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          child: const Icon(Icons.photo_camera, color: Colors.white, size: 15),
+        ),
+      ),
+    );
+  }
+}
+
+class _CameraOfflineRadar extends StatelessWidget {
+  const _CameraOfflineRadar({
+    required this.match,
+    required this.currentPoint,
+    required this.targetingConeDegrees,
+    required this.alertColor,
+    this.fallbackLabel,
+    super.key,
+  });
+
+  final CameraMatch match;
+  final DrivingPoint currentPoint;
+  final int targetingConeDegrees;
+  final Color alertColor;
+  final String? fallbackLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        DrivingRadarView(
+          match: match,
+          currentPoint: currentPoint,
+          targetingConeDegrees: targetingConeDegrees,
+          alertColor: alertColor,
+        ),
+        if (fallbackLabel case final label?)
+          Positioned(
+            left: 8,
+            right: 8,
+            bottom: 7,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.52),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Text(
+                  label,
+                  key: const ValueKey('driving-map-fallback-label'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.86),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _CameraPanelFacts extends StatelessWidget {
+  const _CameraPanelFacts({required this.state, required this.match});
 
   final DrivingState state;
   final CameraMatch match;
@@ -551,72 +1565,63 @@ class _CameraFacts extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final camera = match.camera;
-    final distance = match.distanceMeters.round();
-    final reported = camera.speedLimitKmh;
-    final locationText = _cameraLocationText(camera);
-    final status = switch (state.speedState) {
-      DrivingSpeedState.over => 'Reduce velocidad',
-      DrivingSpeedState.near => 'Cerca del valor reportado',
-      DrivingSpeedState.within => 'Dentro del valor',
-      DrivingSpeedState.unknownReportedSpeed => 'Velocidad no publicada',
-      DrivingSpeedState.noCamera => 'Sin cámara inmediata',
-    };
-    final delta = state.speedDeltaKmh > 0 ? '+${state.speedDeltaKmh} km/h' : '';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _CameraFactBlock(
+          key: const ValueKey('driving-camera-address'),
+          label: 'Dirección',
+          value: _cameraLocationText(camera),
+          maxLines: 3,
+        ),
+        const SizedBox(height: AppSpacing.m),
+        _CameraFactBlock(
+          key: const ValueKey('camera-authority-row'),
+          label: 'Autoridad',
+          value: _compactTrafficAuthority(camera.trafficAuthority),
+          maxLines: 2,
+        ),
+      ],
+    );
+  }
+}
+
+class _CameraFactBlock extends StatelessWidget {
+  const _CameraFactBlock({
+    required this.label,
+    required this.value,
+    this.maxLines = 2,
+    super.key,
+  });
+
+  final String label;
+  final String value;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: AppSpacing.s,
-          runSpacing: AppSpacing.s,
-          children: [
-            _FactPill(
-              key: const ValueKey('camera-distance-pill'),
-              label: 'Distancia',
-              value: '$distance m',
-              active: state.isActive,
-            ),
-            _FactPill(
-              key: const ValueKey('camera-speed-pill'),
-              label: 'Velocidad ANSV',
-              value: reported == null ? 'No publicada' : '$reported km/h',
-              active: state.isActive,
-            ),
-            _FactPill(
-              key: const ValueKey('camera-status-pill'),
-              label: 'Estado',
-              value: delta.isEmpty ? status : '$status · $delta',
-              active: state.isActive,
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.s),
         Text(
-          '${camera.locality} · ${camera.kind.label} · ANSV',
-          key: const ValueKey('driving-camera-message'),
-          style: _panelCaptionStyle(state),
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.caption.copyWith(
+            color: Colors.white.withValues(alpha: 0.58),
+            height: 1.05,
+          ),
         ),
-        const SizedBox(height: AppSpacing.xs),
-        Row(
-          key: const ValueKey('driving-camera-address'),
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              Icons.place_outlined,
-              size: 16,
-              color: state.isActive
-                  ? Colors.white.withValues(alpha: 0.68)
-                  : AppColors.navy.withValues(alpha: 0.66),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Expanded(
-              child: Text(
-                locationText,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: _panelCaptionStyle(state),
-              ),
-            ),
-          ],
+        const SizedBox(height: 2),
+        Text(
+          value,
+          maxLines: maxLines,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.caption.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            height: 1.12,
+          ),
         ),
       ],
     );
@@ -626,16 +1631,44 @@ class _CameraFacts extends StatelessWidget {
 String _cameraLocationText(TrafficCamera camera) {
   final address = camera.address?.trim();
   if (address != null && address.isNotEmpty) {
-    return address;
+    return address
+        .replaceAll(' (TRAMO DE VÍA, SENTIDO ', '\nSentido ')
+        .replaceAll(' (TRAMO DE VIA, SENTIDO ', '\nSentido ')
+        .replaceAll(')', '');
   }
   return camera.locality;
 }
 
-String _cameraTitle(TrafficCamera camera) {
-  if (camera.operationStatus?.trim().toLowerCase() == 'operando') {
-    return 'Fotodetección en operación';
+String _compactTrafficAuthority(String? authority) {
+  final text = authority?.trim();
+  if (text == null || text.isEmpty) {
+    return 'No publicada';
   }
-  return 'Fotodetección';
+  final normalized = text
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .replaceAll('SECRETARIA', 'Secretaría')
+      .replaceAll('TRANSITO', 'Tránsito');
+  return normalized
+      .replaceAll(
+        'Secretaría DE MOVILIDAD Y Tránsito DE ',
+        'Movilidad y Tránsito ',
+      )
+      .replaceAll(
+        'SECRETARÍA DE MOVILIDAD Y TRÁNSITO DE ',
+        'Movilidad y Tránsito ',
+      );
+}
+
+String _cameraTitle(TrafficCamera camera) {
+  return 'Cámara detectada';
+}
+
+String _cameraDistanceLabel(CameraMatch match) {
+  final status = match.camera.operationStatus?.trim();
+  if (status == null || status.isEmpty) {
+    return 'A ${match.distanceMeters.round()} m';
+  }
+  return 'A ${match.distanceMeters.round()} m · $status';
 }
 
 Uri _cameraMapUri(TrafficCamera camera) {
@@ -727,7 +1760,7 @@ class _CameraDetailGrid extends StatelessWidget {
             ),
             _CameraDetailTile(
               width: tileWidth,
-              label: 'Velocidad reportada',
+              label: 'Velocidad reportada por ANSV',
               value: camera.speedLimitKmh == null
                   ? 'No publicada'
                   : '${camera.speedLimitKmh} km/h',
@@ -774,46 +1807,6 @@ class _CameraDetailTile extends StatelessWidget {
             style: const TextStyle(fontSize: 13, height: 1.08),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _FactPill extends StatelessWidget {
-  const _FactPill({
-    required this.label,
-    required this.value,
-    required this.active,
-    super.key,
-  });
-
-  final String label;
-  final String value;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: active
-            ? Colors.white.withValues(alpha: 0.08)
-            : AppColors.background,
-        borderRadius: BorderRadius.circular(AppRadius.input),
-        border: Border.all(color: active ? Colors.white24 : AppColors.border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.m,
-          vertical: AppSpacing.s,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: _pillLabelStyle(active)),
-            Text(value, style: _pillValueStyle(active)),
-          ],
-        ),
       ),
     );
   }
@@ -881,14 +1874,19 @@ class _SpeedGaugeState extends State<_SpeedGauge>
 
   @override
   Widget build(BuildContext context) {
-    final colors = _DrivingColors.forSpeedState(widget.state.speedState);
-    final reported = widget.state.reportedCameraSpeedKmh;
+    final gaugeColor = widget.state.isOverspeeding
+        ? AppColors.red
+        : AppColors.teal;
+    final speedColor = widget.state.isOverspeeding
+        ? AppColors.red
+        : Colors.white;
     return AnimatedBuilder(
       animation: _pulseController,
       builder: (context, child) {
         final pulse = 1 - _pulseController.value;
         return SizedBox(
           width: widget.diameter,
+          height: widget.diameter,
           child: Stack(
             clipBehavior: Clip.none,
             alignment: Alignment.center,
@@ -908,48 +1906,72 @@ class _SpeedGaugeState extends State<_SpeedGauge>
                 ),
               CustomPaint(
                 size: Size.square(widget.diameter),
-                painter: _SpeedRingPainter(color: colors.accent),
+                painter: _SpeedRingPainter(
+                  color: gaugeColor,
+                  speedKmh: widget.state.speedKmh,
+                ),
               ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${widget.state.speedKmh}',
-                    key: const ValueKey('driving-speed'),
-                    style: TextStyle(
-                      color: colors.speedColor,
-                      fontSize: widget.speedFontSize,
-                      fontWeight: FontWeight.w900,
-                      height: 0.82,
-                    ),
-                  ),
-                  Text(
-                    'km/h',
-                    style: AppTextStyles.bodyStrong.copyWith(
-                      color: Colors.white70,
-                    ),
-                  ),
-                  if (widget.state.isOverspeeding) ...[
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      '+${widget.state.speedDeltaKmh} km/h',
-                      key: const ValueKey('driving-overspeed-delta'),
-                      style: AppTextStyles.bodyStrong.copyWith(
-                        color: AppColors.red,
+              Positioned.fill(
+                child: Align(
+                  alignment: const Alignment(0, -0.04),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: widget.diameter * 0.64,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '${widget.state.speedKmh}',
+                            key: const ValueKey('driving-speed'),
+                            maxLines: 1,
+                            style: TextStyle(
+                              color: speedColor,
+                              fontSize: widget.speedFontSize * 0.88,
+                              fontWeight: FontWeight.w900,
+                              height: 0.78,
+                              shadows: [
+                                Shadow(
+                                  color: speedColor.withValues(alpha: 0.34),
+                                  blurRadius: 14,
+                                ),
+                                Shadow(
+                                  color: Colors.black.withValues(alpha: 0.44),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ],
-              ),
-              if (reported != null)
-                Positioned(
-                  right: -4,
-                  top: 12,
-                  child: _CameraSpeedSign(
-                    key: const ValueKey('camera-speed-sign'),
-                    speedKmh: reported,
-                    size: 68,
+                      Text(
+                        'km/h',
+                        style: AppTextStyles.bodyStrong.copyWith(
+                          color: Colors.white.withValues(alpha: 0.62),
+                          fontSize: 18,
+                        ),
+                      ),
+                      if (widget.state.isOverspeeding) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          '+${widget.state.speedDeltaKmh} km/h',
+                          key: const ValueKey('driving-overspeed-delta'),
+                          style: AppTextStyles.bodyStrong.copyWith(
+                            color: AppColors.red,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
+                ),
+              ),
+              if (!widget.state.showCameraAlertPanel)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: widget.diameter * 0.08,
+                  child: Center(child: _DrivingStatusChip(state: widget.state)),
                 ),
             ],
           ),
@@ -960,30 +1982,122 @@ class _SpeedGaugeState extends State<_SpeedGauge>
 }
 
 class _SpeedRingPainter extends CustomPainter {
-  const _SpeedRingPainter({required this.color});
+  const _SpeedRingPainter({required this.color, required this.speedKmh});
 
   final Color color;
+  final int speedKmh;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.shortestSide / 2 - 18;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    const startAngle = 2.48;
+    const sweepAngle = 4.60;
     final basePaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = 14
-      ..color = Colors.white.withValues(alpha: 0.14);
+      ..strokeWidth = 10
+      ..color = Colors.white.withValues(alpha: 0.16);
+    final glowPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 20
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14)
+      ..color = color.withValues(alpha: 0.34);
     final activePaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = 14
+      ..strokeWidth = 13
       ..color = color;
-    canvas.drawArc(rect.deflate(10), -2.35, 4.7, false, basePaint);
-    canvas.drawArc(rect.deflate(10), -2.35, 3.65, false, activePaint);
+    final tickPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.2
+      ..color = Colors.white.withValues(alpha: 0.38);
+    final fillPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          Colors.black.withValues(alpha: 0.03),
+          Colors.black.withValues(alpha: 0.28),
+          Colors.black.withValues(alpha: 0.52),
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: radius));
+    canvas.drawCircle(center, radius - 2, fillPaint);
+    canvas.drawArc(rect, startAngle, sweepAngle, false, basePaint);
+    final progress = (speedKmh / 200).clamp(0.0, 1.0);
+    final activeSweep = sweepAngle * progress;
+    canvas.drawArc(rect, startAngle, activeSweep, false, glowPaint);
+    canvas.drawArc(rect, startAngle, activeSweep, false, activePaint);
+    if (progress > 0.04) {
+      final endAngle = startAngle + activeSweep;
+      canvas.drawArc(
+        rect,
+        endAngle - 0.025,
+        0.05,
+        false,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = 3
+          ..color = Colors.white.withValues(alpha: 0.78),
+      );
+    }
+    for (var tick = 0; tick <= 40; tick += 1) {
+      final angle = startAngle + sweepAngle * tick / 40;
+      final major = tick % 10 == 0;
+      final innerRadius = radius - (major ? 28 : 18);
+      final outerRadius = radius - 8;
+      final start = Offset(
+        center.dx + math.cos(angle) * innerRadius,
+        center.dy + math.sin(angle) * innerRadius,
+      );
+      final end = Offset(
+        center.dx + math.cos(angle) * outerRadius,
+        center.dy + math.sin(angle) * outerRadius,
+      );
+      canvas.drawLine(start, end, tickPaint..strokeWidth = major ? 2.6 : 1.1);
+    }
+    for (final mark in const [0, 50, 100, 150, 200]) {
+      _drawMarkLabel(canvas, center, radius, startAngle, sweepAngle, mark);
+    }
+  }
+
+  void _drawMarkLabel(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    double startAngle,
+    double sweepAngle,
+    int mark,
+  ) {
+    final angle = startAngle + sweepAngle * (mark / 200);
+    final labelRadius = radius - 32;
+    final offset = Offset(
+      center.dx + math.cos(angle) * labelRadius,
+      center.dy + math.sin(angle) * labelRadius,
+    );
+    final painter = TextPainter(
+      text: TextSpan(
+        text: '$mark',
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.86),
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    )..layout();
+    painter.paint(
+      canvas,
+      Offset(offset.dx - painter.width / 2, offset.dy - painter.height / 2),
+    );
   }
 
   @override
   bool shouldRepaint(covariant _SpeedRingPainter oldDelegate) {
-    return oldDelegate.color != color;
+    return oldDelegate.color != color || oldDelegate.speedKmh != speedKmh;
   }
 }
 
@@ -1000,35 +2114,133 @@ class _CameraSpeedSign extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Velocidad de control reportada $speedKmh kilómetros por hora',
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: AppColors.red, width: size * 0.09),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.26),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
+      label: 'Velocidad reportada por ANSV: $speedKmh kilómetros por hora',
+      child: ExcludeSemantics(
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.red, width: size * 0.09),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.26),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: Padding(
+            padding: EdgeInsets.all(size * 0.15),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  flex: 6,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '$speedKmh',
+                      maxLines: 1,
+                      style: TextStyle(
+                        color: AppColors.navy,
+                        fontSize: size * 0.42,
+                        fontWeight: FontWeight.w900,
+                        height: 0.86,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: size * 0.02),
+                Flexible(
+                  flex: 2,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Vel. Max.',
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.navy.withValues(alpha: 0.76),
+                        fontSize: size * 0.12,
+                        fontWeight: FontWeight.w900,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          '$speedKmh',
-          style: TextStyle(
-            color: AppColors.navy,
-            fontSize: size * 0.42,
-            fontWeight: FontWeight.w900,
-            height: 1,
           ),
         ),
       ),
     );
   }
+}
+
+Color _cameraPanelAccent(DrivingState state) {
+  if (state.isOverspeeding) {
+    return AppColors.red;
+  }
+  if (state.speedState == DrivingSpeedState.unknownReportedSpeed) {
+    return AppColors.orange;
+  }
+  return _DrivingColors.forSpeedState(state.speedState).accent;
+}
+
+double _maxMiniMapZoom(double distanceMeters) {
+  if (distanceMeters <= 40) {
+    return 17;
+  }
+  if (distanceMeters <= 120) {
+    return 16;
+  }
+  if (distanceMeters <= 320) {
+    return 15;
+  }
+  return 14;
+}
+
+double _initialMiniMapZoom(double distanceMeters) {
+  if (distanceMeters <= 40) {
+    return 17;
+  }
+  if (distanceMeters <= 120) {
+    return 16;
+  }
+  if (distanceMeters <= 320) {
+    return 15;
+  }
+  return 14;
+}
+
+String _formatCameraPackDate(CameraPackSource? source) {
+  final raw = source?.fetchedAtUtc.trim();
+  if (raw == null || raw.isEmpty) {
+    return 'pendiente';
+  }
+  final parsed = DateTime.tryParse(raw);
+  if (parsed == null) {
+    return raw.contains('T') ? raw.split('T').first : raw;
+  }
+  final date = parsed.toLocal();
+  const months = [
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'may',
+    'jun',
+    'jul',
+    'ago',
+    'sep',
+    'oct',
+    'nov',
+    'dic',
+  ];
+  return '${date.day} ${months[date.month - 1]} ${date.year}';
 }
 
 class _DrivingColors {
@@ -1055,35 +2267,6 @@ class _DrivingColors {
         const _DrivingColors(accent: AppColors.blue, speedColor: Colors.white),
     };
   }
-}
-
-TextStyle _panelTextStyle(DrivingState state) {
-  return AppTextStyles.body.copyWith(
-    color: state.isActive ? Colors.white : AppColors.navy,
-  );
-}
-
-TextStyle _panelCaptionStyle(DrivingState state) {
-  return AppTextStyles.caption.copyWith(
-    color: state.isActive
-        ? Colors.white.withValues(alpha: 0.68)
-        : AppColors.navy.withValues(alpha: 0.66),
-  );
-}
-
-TextStyle _pillLabelStyle(bool active) {
-  return AppTextStyles.caption.copyWith(
-    fontSize: 11,
-    color: active
-        ? Colors.white.withValues(alpha: 0.64)
-        : AppColors.navy.withValues(alpha: 0.64),
-  );
-}
-
-TextStyle _pillValueStyle(bool active) {
-  return AppTextStyles.bodyStrong.copyWith(
-    color: active ? Colors.white : AppColors.navy,
-  );
 }
 
 class _StatusMessage extends StatelessWidget {
@@ -1198,17 +2381,22 @@ class _HudView extends StatelessWidget {
                         ),
                       ),
                     ],
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.xl,
+                    if (_hudMessage(state) case final hudMessage?) ...[
+                      const SizedBox(height: AppSpacing.s),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.xl,
+                        ),
+                        child: Text(
+                          hudMessage,
+                          key: const ValueKey('hud-speed-state'),
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.h2.copyWith(
+                            color: Colors.white70,
+                          ),
+                        ),
                       ),
-                      child: Text(
-                        _hudMessage(state),
-                        key: const ValueKey('hud-speed-state'),
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.h2.copyWith(color: Colors.white70),
-                      ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -1229,11 +2417,11 @@ class _HudView extends StatelessWidget {
     );
   }
 
-  String _hudMessage(DrivingState state) {
+  String? _hudMessage(DrivingState state) {
     return switch (state.speedState) {
       DrivingSpeedState.over => 'Reduce velocidad',
       DrivingSpeedState.near => 'Cerca del valor reportado',
-      DrivingSpeedState.within => 'Dentro del valor',
+      DrivingSpeedState.within => null,
       DrivingSpeedState.unknownReportedSpeed => 'Velocidad no publicada',
       DrivingSpeedState.noCamera => state.gpsQuality.label,
     };
@@ -1271,8 +2459,105 @@ class _DrivingSettingsSheetState extends State<_DrivingSettingsSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Alertas', style: AppTextStyles.h2),
+              const Text('Visualización de cámara', style: AppTextStyles.h2),
+              const SizedBox(height: AppSpacing.s),
+              SegmentedButton<CameraVisualizationMode>(
+                key: const ValueKey('driving-visualization-mode-control'),
+                segments: [
+                  for (final mode in CameraVisualizationMode.values)
+                    ButtonSegment(
+                      value: mode,
+                      label: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(mode.label, maxLines: 1),
+                      ),
+                    ),
+                ],
+                selected: {_value.cameraVisualizationMode},
+                showSelectedIcon: false,
+                onSelectionChanged: (selection) {
+                  setState(
+                    () => _value = _value.copyWith(
+                      cameraVisualizationMode: selection.first,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                _value.cameraVisualizationMode.description,
+                key: ValueKey(
+                  'driving-visualization-${_value.cameraVisualizationMode.name}',
+                ),
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.navy.withValues(alpha: 0.72),
+                ),
+              ),
               const SizedBox(height: AppSpacing.l),
+              const Text('Ángulo de detección', style: AppTextStyles.h2),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Centrado en el rumbo del vehículo.',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.navy.withValues(alpha: 0.66),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _ConePreview(
+                    key: ValueKey(
+                      'driving-cone-preview-${_value.cameraTargetingConeDegrees}',
+                    ),
+                    degrees: _value.cameraTargetingConeDegrees,
+                  ),
+                  const SizedBox(width: AppSpacing.s),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SegmentedButton<int>(
+                          key: const ValueKey('driving-detection-cone-control'),
+                          segments: [
+                            for (final degrees
+                                in allowedCameraTargetingConeDegrees)
+                              ButtonSegment(
+                                value: degrees,
+                                label: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text('$degrees°', maxLines: 1),
+                                ),
+                              ),
+                          ],
+                          selected: {_value.cameraTargetingConeDegrees},
+                          showSelectedIcon: false,
+                          onSelectionChanged: (selection) {
+                            setState(
+                              () => _value = _value.copyWith(
+                                cameraTargetingConeDegrees: selection.first,
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          _coneDescription(_value.cameraTargetingConeDegrees),
+                          key: ValueKey(
+                            'driving-detection-${_value.cameraTargetingConeDegrees}',
+                          ),
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.navy.withValues(alpha: 0.72),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.l),
+              const Text('Alertas', style: AppTextStyles.h2),
+              const SizedBox(height: AppSpacing.s),
               SegmentedButton<DrivingAlertProfile>(
                 segments: [
                   for (final profile in DrivingAlertProfile.values)
@@ -1384,6 +2669,83 @@ class _DrivingSettingsSheetState extends State<_DrivingSettingsSheet> {
         ),
       ),
     );
+  }
+}
+
+String _coneDescription(int degrees) {
+  return switch (degrees) {
+    45 => 'Preciso · prioriza cámaras casi directamente al frente.',
+    90 => 'Normal · detecta al frente con margen para curvas.',
+    180 => 'Amplio · incluye todo lo que queda delante.',
+    360 =>
+      'Alrededor · muestra cámaras alrededor; puede aumentar avisos cercanos.',
+    _ => 'Normal · detecta al frente con margen para curvas.',
+  };
+}
+
+class _ConePreview extends StatelessWidget {
+  const _ConePreview({required this.degrees, super.key});
+
+  final int degrees;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Vista del ángulo de detección de $degrees grados',
+      child: SizedBox.square(
+        dimension: 72,
+        child: CustomPaint(painter: _ConePreviewPainter(degrees)),
+      ),
+    );
+  }
+}
+
+class _ConePreviewPainter extends CustomPainter {
+  const _ConePreviewPainter(this.degrees);
+
+  final int degrees;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height * 0.62);
+    final radius = size.width * 0.38;
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = AppColors.navy.withValues(alpha: 0.16),
+    );
+    final normalized = degrees.clamp(45, 360);
+    final conePaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = AppColors.teal.withValues(alpha: 0.22);
+    if (normalized >= 360) {
+      canvas.drawCircle(center, radius, conePaint);
+    } else {
+      final half = normalized * math.pi / 360;
+      final rect = Rect.fromCircle(center: center, radius: radius);
+      final path = Path()
+        ..moveTo(center.dx, center.dy)
+        ..arcTo(rect, -math.pi / 2 - half, half * 2, false)
+        ..close();
+      canvas.drawPath(path, conePaint);
+    }
+    canvas.drawLine(
+      center,
+      Offset(center.dx, center.dy - radius),
+      Paint()
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round
+        ..color = AppColors.teal,
+    );
+    canvas.drawCircle(center, 4, Paint()..color = AppColors.blue);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ConePreviewPainter oldDelegate) {
+    return oldDelegate.degrees != degrees;
   }
 }
 

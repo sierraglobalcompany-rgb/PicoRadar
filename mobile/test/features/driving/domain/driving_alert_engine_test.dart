@@ -46,7 +46,7 @@ void main() {
         bearingDifferenceDegrees: 0,
       ),
       speedKmh: 36,
-      now: DateTime.utc(2026, 8, 31, 12, 1),
+      now: DateTime.utc(2026, 8, 31, 12, 0, 5),
     );
 
     expect(outside, isNull);
@@ -125,6 +125,38 @@ void main() {
     expect(firstApproach!.thresholdMeters, 200);
     expect(secondApproach!.thresholdMeters, 200);
   });
+
+  test(
+    'expired episode purges before a direct valid match without no-match',
+    () {
+      final engine = DrivingAlertEngine(profile: DrivingAlertProfile.detailed);
+      final camera = _camera(speedLimitKmh: null);
+
+      final firstApproach = engine.evaluate(
+        match: CameraMatch(
+          camera: camera,
+          distanceMeters: 180,
+          approaching: true,
+          bearingDifferenceDegrees: 0,
+        ),
+        speedKmh: 36,
+        now: DateTime.utc(2026, 8, 31, 12),
+      );
+      final directSecondApproach = engine.evaluate(
+        match: CameraMatch(
+          camera: camera,
+          distanceMeters: 180,
+          approaching: true,
+          bearingDifferenceDegrees: 0,
+        ),
+        speedKmh: 36,
+        now: DateTime.utc(2026, 8, 31, 12, 0, 31),
+      );
+
+      expect(firstApproach!.thresholdMeters, 200);
+      expect(directSecondApproach!.thresholdMeters, 200);
+    },
+  );
 
   test('marks overspeed only when official speed limit is present', () {
     final engine = DrivingAlertEngine();
@@ -246,7 +278,7 @@ void main() {
         bearingDifferenceDegrees: 0,
       ),
       speedKmh: 36,
-      now: DateTime.utc(2026, 8, 31, 12, 1),
+      now: DateTime.utc(2026, 8, 31, 12, 0, 5),
     );
     final finalStage = engine.evaluate(
       match: CameraMatch(

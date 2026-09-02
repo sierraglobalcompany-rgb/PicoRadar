@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,7 +22,14 @@ bool get canUseDebugDrivingSimulation => kDebugMode && drivingSimulationEnabled;
 
 const drivingOverspeedVisualMarginKmh = 3;
 
-enum DrivingSimulationScenario { knownSpeed, unknownSpeed }
+enum DrivingSimulationScenario {
+  knownSpeed,
+  unknownSpeed,
+  sidePass,
+  lateralApproach,
+  turnAway,
+  gpsWeak,
+}
 
 enum DrivingSpeedState { noCamera, unknownReportedSpeed, within, near, over }
 
@@ -88,7 +96,7 @@ enum GpsQuality {
   waiting('Buscando GPS'),
   good('GPS bueno'),
   fair('GPS medio'),
-  weak('GPS debil');
+  weak('GPS débil');
 
   const GpsQuality(this.label);
 
@@ -104,7 +112,9 @@ class DrivingState {
     this.cameraPackSource,
     this.currentPoint,
     this.nearestCamera,
+    this.cameraEpisodeKey,
     this.lastAlert,
+    this.dismissedCameraId,
     this.errorMessage,
   });
 
@@ -115,7 +125,9 @@ class DrivingState {
   final CameraPackSource? cameraPackSource;
   final DrivingPoint? currentPoint;
   final CameraMatch? nearestCamera;
+  final String? cameraEpisodeKey;
   final DrivingAlert? lastAlert;
+  final String? dismissedCameraId;
   final String? errorMessage;
 
   bool get isActive => status == DrivingSessionStatus.active;
@@ -163,6 +175,12 @@ class DrivingState {
 
   bool get isOverspeeding => speedState == DrivingSpeedState.over;
 
+  bool get hasTargetCamera =>
+      isActive && canEvaluateAlerts && nearestCamera != null;
+
+  bool get showCameraAlertPanel =>
+      hasTargetCamera && dismissedCameraId != nearestCamera!.camera.id;
+
   bool get canEvaluateAlerts {
     final accuracy = currentPoint?.accuracyMeters;
     return accuracy != null && accuracy <= 60;
@@ -190,10 +208,13 @@ class DrivingState {
     CameraPackSource? cameraPackSource,
     DrivingPoint? currentPoint,
     CameraMatch? nearestCamera,
+    String? cameraEpisodeKey,
     DrivingAlert? lastAlert,
+    String? dismissedCameraId,
     String? errorMessage,
     bool clearNearestCamera = false,
     bool clearLastAlert = false,
+    bool clearDismissedCamera = false,
     bool clearErrorMessage = false,
   }) {
     return DrivingState(
@@ -207,7 +228,13 @@ class DrivingState {
       nearestCamera: clearNearestCamera
           ? null
           : nearestCamera ?? this.nearestCamera,
+      cameraEpisodeKey: clearNearestCamera
+          ? null
+          : cameraEpisodeKey ?? this.cameraEpisodeKey,
       lastAlert: clearLastAlert ? null : lastAlert ?? this.lastAlert,
+      dismissedCameraId: clearDismissedCamera
+          ? null
+          : dismissedCameraId ?? this.dismissedCameraId,
       errorMessage: clearErrorMessage
           ? null
           : errorMessage ?? this.errorMessage,
@@ -220,12 +247,31 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   DrivingPoint? _previousPoint;
   DrivingAlertEngine? _alertEngine;
   bool _wasOverspeeding = false;
+  String? _activeCameraId;
+  var _cameraEpisodeSerial = 0;
+  var _sessionSerial = 0;
+  Future<void> _pointProcessing = Future<void>.value();
 
   @override
   Future<DrivingState> build() async {
-    ref.onDispose(_cancelSubscription);
+    final cleanupFeedback = ref.read(drivingFeedbackGatewayProvider);
+    ref.onDispose(() {
+      _sessionSerial += 1;
+      _pointProcessing = Future<void>.value();
+      unawaited(_cancelSubscription());
+      unawaited(_stopNativeSessionCleanup(cleanupFeedback));
+    });
     final preferences = await ref.watch(drivingPreferencesProvider.future);
     final pack = await ref.watch(cameraPackProvider.future);
+    final current = state.asData?.value;
+    if (current != null && current.status != DrivingSessionStatus.idle) {
+      return current.copyWith(
+        cameraCount: pack.cameras.length,
+        cameraSpeedKnownCount: _knownSpeedCount(pack),
+        cameraPackSource: pack.source,
+        preferences: preferences,
+      );
+    }
     return DrivingState(
       status: DrivingSessionStatus.idle,
       preferences: preferences,
@@ -239,7 +285,21 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     bool simulated = false,
     DrivingSimulationScenario? simulationScenario,
   }) async {
-    final current = state.asData?.value ?? await build();
+    final current =
+        state.asData?.value ??
+        const DrivingState(
+          status: DrivingSessionStatus.idle,
+          preferences: defaultDrivingPreferences,
+          cameraCount: 0,
+          cameraSpeedKnownCount: 0,
+        );
+    if (current.status == DrivingSessionStatus.starting ||
+        current.status == DrivingSessionStatus.active) {
+      return;
+    }
+    _sessionSerial += 1;
+    final sessionSerial = _sessionSerial;
+    _pointProcessing = Future<void>.value();
     state = AsyncData(
       current.copyWith(
         status: DrivingSessionStatus.starting,
@@ -247,12 +307,20 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       ),
     );
     final pack = await ref.read(cameraPackProvider.future);
+    if (!_isCurrentStart(sessionSerial)) {
+      return;
+    }
     final Stream<DrivingPoint> drivingStream;
+    final readyState = current.copyWith(
+      cameraCount: pack.cameras.length,
+      cameraSpeedKnownCount: _knownSpeedCount(pack),
+      cameraPackSource: pack.source,
+    );
     final scenario = simulationScenario;
     if ((simulated || scenario != null) && canUseDebugDrivingSimulation) {
       final camera = _simulationCamera(pack, scenario);
       if (camera == null) {
-        _setStopped(
+        await _setStopped(
           current,
           DrivingSessionStatus.locationUnavailable,
           'No hay cámaras locales compatibles para simular la ruta.',
@@ -266,19 +334,31 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     } else {
       final gateway = ref.read(drivingLocationGatewayProvider);
       if (!await gateway.isLocationServiceEnabled()) {
-        _setStopped(
+        if (!_isCurrentStart(sessionSerial)) {
+          return;
+        }
+        await _setStopped(
           current,
           DrivingSessionStatus.serviceDisabled,
           'Activa la ubicación del teléfono para iniciar.',
         );
         return;
       }
+      if (!_isCurrentStart(sessionSerial)) {
+        return;
+      }
       var permission = await gateway.checkPermission();
+      if (!_isCurrentStart(sessionSerial)) {
+        return;
+      }
       if (permission != DeviceLocationPermission.granted) {
         permission = await gateway.requestPermission();
       }
+      if (!_isCurrentStart(sessionSerial)) {
+        return;
+      }
       if (permission != DeviceLocationPermission.granted) {
-        _setStopped(
+        await _setStopped(
           current,
           _permissionStatus(permission),
           _permissionMessage(permission),
@@ -288,26 +368,38 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       drivingStream = gateway.positionStream();
     }
 
+    await _cancelSubscription();
+    if (!_isCurrentStart(sessionSerial)) {
+      return;
+    }
     _previousPoint = null;
     _wasOverspeeding = false;
-    _alertEngine = _alertEngineFor(current.preferences);
+    _activeCameraId = null;
+    _alertEngine = _alertEngineFor(readyState.preferences);
     state = AsyncData(
-      current.copyWith(
+      readyState.copyWith(
         status: DrivingSessionStatus.active,
         clearNearestCamera: true,
         clearLastAlert: true,
+        clearDismissedCamera: true,
         clearErrorMessage: true,
       ),
     );
     await ref.read(drivingFeedbackGatewayProvider).setKeepScreenOn(true);
+    if (!_isActiveSession(sessionSerial)) {
+      await _stopNativeSessionCleanup();
+      return;
+    }
     _subscription = drivingStream.listen(
-      _onPoint,
+      (point) => _enqueuePoint(point, sessionSerial),
       onError: (_) {
         final latest = state.asData?.value ?? current;
-        _setStopped(
-          latest,
-          DrivingSessionStatus.locationUnavailable,
-          'No se pudo leer la ubicación en tiempo real.',
+        unawaited(
+          _setStopped(
+            latest,
+            DrivingSessionStatus.locationUnavailable,
+            'No se pudo leer la ubicación en tiempo real.',
+          ),
         );
       },
       cancelOnError: false,
@@ -316,30 +408,81 @@ class DrivingController extends AsyncNotifier<DrivingState> {
 
   Future<void> stop() async {
     final current = state.asData?.value ?? await build();
+    _sessionSerial += 1;
+    _pointProcessing = Future<void>.value();
     await _cancelSubscription();
-    await ref.read(drivingFeedbackGatewayProvider).setKeepScreenOn(false);
+    await _stopNativeSessionCleanup();
     state = AsyncData(
       current.copyWith(
         status: DrivingSessionStatus.idle,
         clearNearestCamera: true,
         clearLastAlert: true,
+        clearDismissedCamera: true,
         clearErrorMessage: true,
       ),
     );
   }
 
+  Future<void> dismissCurrentCameraAlert() async {
+    final current = state.asData?.value ?? await build();
+    final cameraId = current.nearestCamera?.camera.id;
+    if (cameraId == null) {
+      return;
+    }
+    state = AsyncData(current.copyWith(dismissedCameraId: cameraId));
+  }
+
   Future<void> savePreferences(DrivingPreferences preferences) async {
     await saveDrivingPreferences(ref.read(appPreferencesProvider), preferences);
-    _alertEngine = _alertEngineFor(preferences);
     final current = state.asData?.value ?? await build();
+    if (_shouldResetAlertEngine(current.preferences, preferences, current)) {
+      _alertEngine = _alertEngineFor(preferences);
+    }
     state = AsyncData(current.copyWith(preferences: preferences));
   }
 
-  Future<void> _onPoint(DrivingPoint point) async {
+  void _enqueuePoint(DrivingPoint point, int sessionSerial) {
+    _pointProcessing = _pointProcessing
+        .catchError((_) {})
+        .then((_) => _onPoint(point, sessionSerial))
+        .catchError((_) {
+          if (!_isActiveSession(sessionSerial)) {
+            return;
+          }
+          final latest = state.asData?.value;
+          if (latest == null) {
+            return;
+          }
+          unawaited(
+            _setStopped(
+              latest,
+              DrivingSessionStatus.locationUnavailable,
+              'No se pudo leer la ubicación en tiempo real.',
+            ),
+          );
+        });
+  }
+
+  Future<void> _onPoint(DrivingPoint point, int sessionSerial) async {
+    if (!_isActiveSession(sessionSerial)) {
+      return;
+    }
     final current = state.asData?.value ?? await build();
+    if (!_isActiveSession(sessionSerial)) {
+      return;
+    }
+    final latestPoint = current.currentPoint;
+    if (latestPoint != null &&
+        !point.recordedAt.isAfter(latestPoint.recordedAt)) {
+      return;
+    }
     final pack = await ref.read(cameraPackProvider.future);
+    if (!_isActiveSession(sessionSerial)) {
+      return;
+    }
     final alertEngine = _alertEngine ??= _alertEngineFor(current.preferences);
     if (point.accuracyMeters > 60) {
+      _previousPoint = null;
       alertEngine.markNoMatch(point.recordedAt);
       final keepLastAlert =
           current.lastAlert != null &&
@@ -347,12 +490,14 @@ class DrivingController extends AsyncNotifier<DrivingState> {
             current.lastAlert!.cameraId,
             point.recordedAt,
           );
+      final keepDismissal = _hasActiveDismissal(current, point.recordedAt);
       state = AsyncData(
         current.copyWith(
           status: DrivingSessionStatus.active,
           currentPoint: point,
           clearNearestCamera: true,
           clearLastAlert: !keepLastAlert,
+          clearDismissedCamera: !keepDismissal,
           clearErrorMessage: true,
         ),
       );
@@ -362,12 +507,14 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     if (_previousPoint == null) {
       _previousPoint = point;
       alertEngine.markNoMatch(point.recordedAt);
+      final keepDismissal = _hasActiveDismissal(current, point.recordedAt);
       state = AsyncData(
         current.copyWith(
           status: DrivingSessionStatus.active,
           currentPoint: point,
           clearNearestCamera: true,
           clearLastAlert: current.lastAlert == null,
+          clearDismissedCamera: !keepDismissal,
           clearErrorMessage: true,
         ),
       );
@@ -378,15 +525,30 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       current: point,
       previous: _previousPoint,
       cameras: pack.cameras,
+      targetingConeDegrees: current.preferences.cameraTargetingConeDegrees,
     );
+    final sameActiveEpisode =
+        match != null &&
+        alertEngine.hasActiveEpisode(match.camera.id, point.recordedAt);
+    final episodeKey = match == null
+        ? current.cameraEpisodeKey
+        : _episodeKeyFor(match.camera.id, sameActiveEpisode);
     final alert = alertEngine.evaluate(
       match: match,
       speedKmh: point.speedKmh,
       now: point.recordedAt,
     );
     _previousPoint = point;
-    if (alert != null) {
-      await _notify(current.preferences, alert);
+    final dismissedCurrentEpisode =
+        match != null &&
+        current.dismissedCameraId == match.camera.id &&
+        sameActiveEpisode;
+    final visibleAlert = dismissedCurrentEpisode ? null : alert;
+    if (visibleAlert != null) {
+      await _notify(current.preferences, visibleAlert, sessionSerial);
+      if (!_isActiveSession(sessionSerial)) {
+        return;
+      }
     }
     final keepLastAlert =
         current.lastAlert != null &&
@@ -394,55 +556,136 @@ class DrivingController extends AsyncNotifier<DrivingState> {
           current.lastAlert!.cameraId,
           point.recordedAt,
         );
+    final keepDismissalWithoutMatch =
+        match == null && _hasActiveDismissal(current, point.recordedAt);
+    final clearDismissedCamera =
+        current.dismissedCameraId != null &&
+        !dismissedCurrentEpisode &&
+        !keepDismissalWithoutMatch;
     final nextState = current.copyWith(
       status: DrivingSessionStatus.active,
       currentPoint: point,
       nearestCamera: match,
-      lastAlert: alert,
-      clearLastAlert: alert == null && !keepLastAlert,
+      cameraEpisodeKey: episodeKey,
+      lastAlert: visibleAlert,
+      clearNearestCamera: match == null,
+      clearLastAlert: visibleAlert == null && !keepLastAlert,
+      clearDismissedCamera: clearDismissedCamera,
       clearErrorMessage: true,
     );
     if (nextState.isOverspeeding &&
         !_wasOverspeeding &&
         current.preferences.vibrationEnabled &&
-        alert == null) {
+        visibleAlert == null &&
+        !dismissedCurrentEpisode) {
+      if (!_isActiveSession(sessionSerial)) {
+        return;
+      }
       await ref.read(drivingFeedbackGatewayProvider).vibrate();
+      if (!_isActiveSession(sessionSerial)) {
+        return;
+      }
     }
     _wasOverspeeding = nextState.isOverspeeding;
     state = AsyncData(nextState);
   }
 
+  bool _isActiveSession(int sessionSerial) {
+    return sessionSerial == _sessionSerial &&
+        state.asData?.value.status == DrivingSessionStatus.active;
+  }
+
+  bool _isCurrentStart(int sessionSerial) {
+    return sessionSerial == _sessionSerial &&
+        state.asData?.value.status == DrivingSessionStatus.starting;
+  }
+
+  bool _hasActiveDismissal(DrivingState current, DateTime now) {
+    final dismissedCameraId = current.dismissedCameraId;
+    final alertEngine = _alertEngine;
+    return dismissedCameraId != null &&
+        alertEngine != null &&
+        alertEngine.hasActiveEpisode(dismissedCameraId, now);
+  }
+
+  String _episodeKeyFor(String cameraId, bool sameActiveEpisode) {
+    if (_activeCameraId != cameraId || !sameActiveEpisode) {
+      _activeCameraId = cameraId;
+      _cameraEpisodeSerial += 1;
+    }
+    return '$cameraId:$_cameraEpisodeSerial';
+  }
+
   Future<void> _notify(
     DrivingPreferences preferences,
     DrivingAlert alert,
+    int sessionSerial,
   ) async {
     final feedback = ref.read(drivingFeedbackGatewayProvider);
     if (preferences.voiceEnabled) {
+      if (!_isActiveSession(sessionSerial)) {
+        return;
+      }
       await feedback.speak(_voiceMessage(alert));
+      if (!_isActiveSession(sessionSerial)) {
+        return;
+      }
     }
     if (preferences.soundEnabled) {
+      if (!_isActiveSession(sessionSerial)) {
+        return;
+      }
       await feedback.playSound();
+      if (!_isActiveSession(sessionSerial)) {
+        return;
+      }
     }
     if (preferences.vibrationEnabled) {
+      if (!_isActiveSession(sessionSerial)) {
+        return;
+      }
       await feedback.vibrate();
+      if (!_isActiveSession(sessionSerial)) {
+        return;
+      }
     }
   }
 
-  void _setStopped(
+  Future<void> _setStopped(
     DrivingState previous,
     DrivingSessionStatus status,
     String message,
-  ) {
-    _cancelSubscription();
-    ref.read(drivingFeedbackGatewayProvider).setKeepScreenOn(false);
+  ) async {
+    _sessionSerial += 1;
+    _pointProcessing = Future<void>.value();
+    await _cancelSubscription();
+    await _stopNativeSessionCleanup();
     state = AsyncData(
       previous.copyWith(
         status: status,
         errorMessage: message,
         clearNearestCamera: true,
         clearLastAlert: true,
+        clearDismissedCamera: true,
       ),
     );
+  }
+
+  Future<void> _stopNativeSessionCleanup([
+    DrivingFeedbackGateway? gateway,
+  ]) async {
+    final DrivingFeedbackGateway feedback =
+        gateway ?? ref.read(drivingFeedbackGatewayProvider);
+    try {
+      await feedback.stopOngoingFeedback();
+    } catch (_) {
+      // Cleanup must be idempotent and must not crash the UI.
+    }
+    try {
+      await feedback.setKeepScreenOn(false);
+    } catch (_) {
+      // Cleanup must be idempotent and must not crash the UI.
+    }
   }
 
   DrivingSessionStatus _permissionStatus(DeviceLocationPermission permission) {
@@ -469,6 +712,33 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     _subscription = null;
     _previousPoint = null;
     _alertEngine = null;
+    _activeCameraId = null;
+  }
+
+  bool _shouldResetAlertEngine(
+    DrivingPreferences previous,
+    DrivingPreferences next,
+    DrivingState current,
+  ) {
+    final alertConfigChanged =
+        previous.profile != next.profile ||
+        !_sameThresholds(
+          previous.customThresholdsMeters,
+          next.customThresholdsMeters,
+        );
+    return alertConfigChanged && !current.isActive;
+  }
+
+  bool _sameThresholds(List<int> a, List<int> b) {
+    if (a.length != b.length) {
+      return false;
+    }
+    for (var index = 0; index < a.length; index += 1) {
+      if (a[index] != b[index]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   DrivingAlertEngine _alertEngineFor(DrivingPreferences preferences) {
@@ -513,6 +783,22 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         pack,
         (camera) => camera.speedLimitKmh == null,
       ),
+      DrivingSimulationScenario.sidePass => _firstCameraWhere(
+        pack,
+        (camera) => camera.speedLimitKmh != null,
+      ),
+      DrivingSimulationScenario.lateralApproach => _firstCameraWhere(
+        pack,
+        (camera) => camera.speedLimitKmh != null,
+      ),
+      DrivingSimulationScenario.turnAway => _firstCameraWhere(
+        pack,
+        (camera) => camera.speedLimitKmh != null,
+      ),
+      DrivingSimulationScenario.gpsWeak => _firstCameraWhere(
+        pack,
+        (camera) => camera.speedLimitKmh != null,
+      ),
     };
   }
 
@@ -532,6 +818,18 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     TrafficCamera camera,
     DrivingSimulationScenario scenario,
   ) {
+    if (scenario == DrivingSimulationScenario.sidePass) {
+      return _simulatedSidePassStream(camera);
+    }
+    if (scenario == DrivingSimulationScenario.lateralApproach) {
+      return _simulatedLateralApproachStream(camera);
+    }
+    if (scenario == DrivingSimulationScenario.turnAway) {
+      return _simulatedTurnAwayStream(camera);
+    }
+    if (scenario == DrivingSimulationScenario.gpsWeak) {
+      return _simulatedGpsWeakStream(camera);
+    }
     final now = DateTime.now().toUtc();
     final metersSouth = [520.0, 390.0, 290.0, 95.0, 45.0];
     final reported = camera.speedLimitKmh ?? 60;
@@ -544,6 +842,16 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         reported - 6.0,
       ],
       DrivingSimulationScenario.unknownSpeed => [48.0, 58.0, 68.0, 78.0, 70.0],
+      DrivingSimulationScenario.sidePass => [46.0, 52.0, 58.0, 56.0, 50.0],
+      DrivingSimulationScenario.lateralApproach => [
+        52.0,
+        56.0,
+        60.0,
+        64.0,
+        58.0,
+      ],
+      DrivingSimulationScenario.turnAway => [52.0, 56.0, 60.0, 58.0, 54.0],
+      DrivingSimulationScenario.gpsWeak => [0.0, 0.0, 0.0, 0.0, 0.0],
     };
     final points = [
       for (var index = 0; index < metersSouth.length; index += 1)
@@ -561,4 +869,170 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       (index) => points[index],
     ).take(points.length);
   }
+
+  Stream<DrivingPoint> _simulatedLateralApproachStream(TrafficCamera camera) {
+    final now = DateTime.now().toUtc();
+    const steps = [
+      _RadarDemoStep(
+        distanceMeters: 560,
+        relativeBearingDegrees: 65,
+        speedKmh: 50,
+      ),
+      _RadarDemoStep(
+        distanceMeters: 500,
+        relativeBearingDegrees: 65,
+        speedKmh: 52,
+      ),
+      _RadarDemoStep(
+        distanceMeters: 380,
+        relativeBearingDegrees: 20,
+        speedKmh: 56,
+      ),
+      _RadarDemoStep(
+        distanceMeters: 260,
+        relativeBearingDegrees: 14,
+        speedKmh: 60,
+      ),
+      _RadarDemoStep(
+        distanceMeters: 140,
+        relativeBearingDegrees: 8,
+        speedKmh: 64,
+      ),
+      _RadarDemoStep(
+        distanceMeters: 60,
+        relativeBearingDegrees: 0,
+        speedKmh: 58,
+      ),
+    ];
+    final points = [
+      for (var index = 0; index < steps.length; index += 1)
+        _pointWithCameraAtRelativeBearing(
+          camera: camera,
+          step: steps[index],
+          recordedAt: now.add(Duration(seconds: index * 20)),
+        ),
+    ];
+    return Stream<DrivingPoint>.periodic(
+      const Duration(milliseconds: 800),
+      (index) => points[index],
+    ).take(points.length);
+  }
+
+  Stream<DrivingPoint> _simulatedTurnAwayStream(TrafficCamera camera) {
+    final now = DateTime.now().toUtc();
+    const steps = [
+      _RadarDemoStep(
+        distanceMeters: 480,
+        relativeBearingDegrees: 8,
+        speedKmh: 52,
+      ),
+      _RadarDemoStep(
+        distanceMeters: 300,
+        relativeBearingDegrees: 4,
+        speedKmh: 56,
+      ),
+      _RadarDemoStep(
+        distanceMeters: 220,
+        relativeBearingDegrees: 0,
+        speedKmh: 60,
+      ),
+      _RadarDemoStep(
+        distanceMeters: 260,
+        relativeBearingDegrees: -82,
+        speedKmh: 58,
+      ),
+      _RadarDemoStep(
+        distanceMeters: 360,
+        relativeBearingDegrees: -112,
+        speedKmh: 54,
+      ),
+    ];
+    final points = [
+      for (var index = 0; index < steps.length; index += 1)
+        _pointWithCameraAtRelativeBearing(
+          camera: camera,
+          step: steps[index],
+          recordedAt: now.add(Duration(seconds: index * 20)),
+        ),
+    ];
+    return Stream<DrivingPoint>.periodic(
+      const Duration(milliseconds: 800),
+      (index) => points[index],
+    ).take(points.length);
+  }
+
+  DrivingPoint _pointWithCameraAtRelativeBearing({
+    required TrafficCamera camera,
+    required _RadarDemoStep step,
+    required DateTime recordedAt,
+  }) {
+    final bearingRadians = step.relativeBearingDegrees * math.pi / 180;
+    final northMeters = math.cos(bearingRadians) * step.distanceMeters;
+    final eastMeters = math.sin(bearingRadians) * step.distanceMeters;
+    final metersPerLongitude =
+        111320.0 * math.cos(camera.latitude * math.pi / 180);
+    return DrivingPoint(
+      latitude: camera.latitude - northMeters / 111320.0,
+      longitude: camera.longitude - eastMeters / metersPerLongitude,
+      accuracyMeters: 12,
+      speedKmh: step.speedKmh,
+      headingDegrees: 0,
+      recordedAt: recordedAt,
+    );
+  }
+
+  Stream<DrivingPoint> _simulatedSidePassStream(TrafficCamera camera) {
+    final now = DateTime.now().toUtc();
+    const sideOffsetMeters = 400.0;
+    final routeLongitude = camera.longitude - sideOffsetMeters / 110650;
+    final metersSouth = [520.0, 260.0, 0.0, -260.0, -520.0];
+    final speeds = [46.0, 52.0, 58.0, 56.0, 50.0];
+    final points = [
+      for (var index = 0; index < metersSouth.length; index += 1)
+        DrivingPoint(
+          latitude: camera.latitude - metersSouth[index] / 111320,
+          longitude: routeLongitude,
+          accuracyMeters: 12,
+          speedKmh: speeds[index],
+          headingDegrees: 0,
+          recordedAt: now.add(Duration(seconds: index * 20)),
+        ),
+    ];
+    return Stream<DrivingPoint>.periodic(
+      const Duration(milliseconds: 800),
+      (index) => points[index],
+    ).take(points.length);
+  }
+
+  Stream<DrivingPoint> _simulatedGpsWeakStream(TrafficCamera camera) {
+    final now = DateTime.now().toUtc();
+    final metersSouth = [480.0, 360.0, 250.0, 160.0, 90.0];
+    final points = [
+      for (var index = 0; index < metersSouth.length; index += 1)
+        DrivingPoint(
+          latitude: camera.latitude - metersSouth[index] / 111320,
+          longitude: camera.longitude,
+          accuracyMeters: 95,
+          speedKmh: 0,
+          headingDegrees: 0,
+          recordedAt: now.add(Duration(seconds: index * 20)),
+        ),
+    ];
+    return Stream<DrivingPoint>.periodic(
+      const Duration(milliseconds: 800),
+      (index) => points[index],
+    ).take(points.length);
+  }
+}
+
+class _RadarDemoStep {
+  const _RadarDemoStep({
+    required this.distanceMeters,
+    required this.relativeBearingDegrees,
+    required this.speedKmh,
+  });
+
+  final double distanceMeters;
+  final double relativeBearingDegrees;
+  final double speedKmh;
 }

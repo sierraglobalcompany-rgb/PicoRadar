@@ -35,8 +35,11 @@ double bearingDegrees({
 }
 
 double angleDifferenceDegrees(double a, double b) {
-  final diff = ((a - b + 540) % 360) - 180;
-  return diff.abs();
+  return signedAngleDeltaDegrees(a, b).abs();
+}
+
+double signedAngleDeltaDegrees(double fromDegrees, double toDegrees) {
+  return ((toDegrees - fromDegrees + 540) % 360) - 180;
 }
 
 double _radians(double degrees) => degrees * math.pi / 180;

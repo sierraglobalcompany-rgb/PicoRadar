@@ -7,6 +7,21 @@ const _soundKey = 'driving.alert.sound';
 const _vibrationKey = 'driving.alert.vibration';
 const _customThresholdsKey = 'driving.alert.customThresholds';
 const _hudMirrorKey = 'driving.hud.mirror';
+const _targetingConeKey = 'driving.alert.targetingConeDegrees';
+const _cameraVisualizationModeKey = 'driving.camera.visualizationMode';
+
+const allowedCameraTargetingConeDegrees = [45, 90, 180, 360];
+
+enum CameraVisualizationMode {
+  auto('Automático', 'Usa mapa si está disponible y radar sin conexión.'),
+  radar('Radar', 'Siempre local, sin Internet ni tiles.'),
+  map('Mapa', 'Prefiere mapa real y cae a radar si falla.');
+
+  const CameraVisualizationMode(this.label, this.description);
+
+  final String label;
+  final String description;
+}
 
 class DrivingPreferences {
   const DrivingPreferences({
@@ -16,6 +31,8 @@ class DrivingPreferences {
     required this.vibrationEnabled,
     required this.customThresholdsMeters,
     required this.hudMirrorEnabled,
+    required this.cameraTargetingConeDegrees,
+    required this.cameraVisualizationMode,
   });
 
   final DrivingAlertProfile profile;
@@ -24,6 +41,8 @@ class DrivingPreferences {
   final bool vibrationEnabled;
   final List<int> customThresholdsMeters;
   final bool hudMirrorEnabled;
+  final int cameraTargetingConeDegrees;
+  final CameraVisualizationMode cameraVisualizationMode;
 
   List<int> get activeThresholdsMeters {
     return profile == DrivingAlertProfile.custom
@@ -38,6 +57,8 @@ class DrivingPreferences {
     bool? vibrationEnabled,
     List<int>? customThresholdsMeters,
     bool? hudMirrorEnabled,
+    int? cameraTargetingConeDegrees,
+    CameraVisualizationMode? cameraVisualizationMode,
   }) {
     return DrivingPreferences(
       profile: profile ?? this.profile,
@@ -47,6 +68,10 @@ class DrivingPreferences {
       customThresholdsMeters:
           customThresholdsMeters ?? this.customThresholdsMeters,
       hudMirrorEnabled: hudMirrorEnabled ?? this.hudMirrorEnabled,
+      cameraTargetingConeDegrees:
+          cameraTargetingConeDegrees ?? this.cameraTargetingConeDegrees,
+      cameraVisualizationMode:
+          cameraVisualizationMode ?? this.cameraVisualizationMode,
     );
   }
 }
@@ -58,6 +83,8 @@ const defaultDrivingPreferences = DrivingPreferences(
   vibrationEnabled: true,
   customThresholdsMeters: [500, 300, 100],
   hudMirrorEnabled: false,
+  cameraTargetingConeDegrees: 90,
+  cameraVisualizationMode: CameraVisualizationMode.auto,
 );
 
 Future<DrivingPreferences> loadDrivingPreferences(
@@ -77,6 +104,12 @@ Future<DrivingPreferences> loadDrivingPreferences(
     vibrationEnabled: await preferences.getBool(_vibrationKey) ?? true,
     customThresholdsMeters: customThresholds,
     hudMirrorEnabled: await preferences.getBool(_hudMirrorKey) ?? false,
+    cameraTargetingConeDegrees: _parseTargetingConeDegrees(
+      await preferences.getInt(_targetingConeKey),
+    ),
+    cameraVisualizationMode: _parseCameraVisualizationMode(
+      await preferences.getString(_cameraVisualizationModeKey),
+    ),
   );
 }
 
@@ -89,10 +122,28 @@ Future<void> saveDrivingPreferences(
   await preferences.setBool(_soundKey, value.soundEnabled);
   await preferences.setBool(_vibrationKey, value.vibrationEnabled);
   await preferences.setBool(_hudMirrorKey, value.hudMirrorEnabled);
+  await preferences.setInt(_targetingConeKey, value.cameraTargetingConeDegrees);
+  await preferences.setString(
+    _cameraVisualizationModeKey,
+    value.cameraVisualizationMode.name,
+  );
   await preferences.setString(
     _customThresholdsKey,
     value.customThresholdsMeters.join(','),
   );
+}
+
+CameraVisualizationMode _parseCameraVisualizationMode(String? value) {
+  return CameraVisualizationMode.values.firstWhere(
+    (mode) => mode.name == value,
+    orElse: () => defaultDrivingPreferences.cameraVisualizationMode,
+  );
+}
+
+int _parseTargetingConeDegrees(int? value) {
+  return allowedCameraTargetingConeDegrees.contains(value)
+      ? value!
+      : defaultDrivingPreferences.cameraTargetingConeDegrees;
 }
 
 List<int> _parseCustomThresholds(String? value) {

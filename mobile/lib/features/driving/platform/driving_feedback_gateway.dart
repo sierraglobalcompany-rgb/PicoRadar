@@ -8,6 +8,8 @@ abstract class DrivingFeedbackGateway {
   Future<void> vibrate();
 
   Future<void> setKeepScreenOn(bool enabled);
+
+  Future<void> stopOngoingFeedback();
 }
 
 class PlatformDrivingFeedbackGateway implements DrivingFeedbackGateway {
@@ -37,6 +39,15 @@ class PlatformDrivingFeedbackGateway implements DrivingFeedbackGateway {
       await _channel.invokeMethod<void>('speakDrivingAlert', {
         'message': message,
       });
+    } on MissingPluginException {
+      return;
+    }
+  }
+
+  @override
+  Future<void> stopOngoingFeedback() async {
+    try {
+      await _channel.invokeMethod<void>('stopDrivingFeedback');
     } on MissingPluginException {
       return;
     }

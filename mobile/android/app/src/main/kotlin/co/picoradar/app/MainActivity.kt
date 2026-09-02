@@ -69,6 +69,10 @@ class MainActivity : FlutterActivity() {
                     }
                     result.success(null)
                 }
+                "stopDrivingFeedback" -> {
+                    tts?.stop()
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }

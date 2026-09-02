@@ -58,12 +58,11 @@ class DrivingAlertEngine {
     DateTime? now,
   }) {
     final currentInstant = now ?? this.now ?? DateTime.now().toUtc();
+    _closeLostEpisodes(currentInstant);
     if (match == null || !match.approaching || speedKmh < 5) {
-      _closeLostEpisodes(currentInstant);
       return null;
     }
     if (match.distanceMeters > cameraAwarenessRadiusMeters) {
-      _closeLostEpisodes(currentInstant);
       return null;
     }
     final camera = match.camera;

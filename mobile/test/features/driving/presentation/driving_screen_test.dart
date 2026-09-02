@@ -1,15 +1,21 @@
 import 'dart:async';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/features/driving/application/driving_controller.dart';
 import 'package:picoradar/features/driving/data/camera_pack_loader.dart';
+import 'package:picoradar/features/driving/data/driving_preferences.dart';
 import 'package:picoradar/features/driving/domain/camera_matcher.dart';
 import 'package:picoradar/features/driving/domain/traffic_camera.dart';
 import 'package:picoradar/features/driving/platform/driving_feedback_gateway.dart';
 import 'package:picoradar/features/driving/platform/driving_location_gateway.dart';
+import 'package:picoradar/features/driving/presentation/driving_map_episode.dart';
 import 'package:picoradar/features/driving/presentation/driving_screen.dart';
 import 'package:picoradar/features/location/platform/device_location_gateway.dart';
 import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
@@ -17,6 +23,8 @@ import 'package:picoradar/features/vehicle_status/platform/external_launcher.dar
 import '../../../test_app_harness.dart';
 
 void main() {
+  setUp(CameraMapEpisodeCache.resetForTesting);
+
   testWidgets('shows the driving start surface without requesting GPS', (
     tester,
   ) async {
@@ -30,6 +38,9 @@ void main() {
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
+          drivingMapConfigProvider.overrideWithValue(
+            _testMapConfig(tileProvider: _OnePixelTileProvider()),
+          ),
         ],
         child: const MaterialApp(home: DrivingScreen()),
       ),
@@ -37,7 +48,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('ready-speed-coverage')), findsOneWidget);
+    expect(find.textContaining('cámaras disponibles'), findsOneWidget);
+    expect(find.textContaining('fuente oficial'), findsOneWidget);
+    expect(find.textContaining('Base de cámaras actualizada'), findsOneWidget);
     expect(find.byKey(const ValueKey('start-driving')), findsOneWidget);
+    expect(find.byKey(const ValueKey('debug-driving-route')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('debug-driving-route-gps-weak')),
+      findsNothing,
+    );
+    expect(find.textContaining('2026-08-31T'), findsNothing);
     expect(find.textContaining('No se guarda recorrido'), findsOneWidget);
     expect(gateway.requestPermissionCalls, 0);
   });
@@ -67,13 +87,84 @@ void main() {
     expect(gateway.requestPermissionCalls, 1);
   });
 
-  testWidgets('settings expose custom thresholds from the approved set', (
+  testWidgets(
+    'settings expose camera visualization, cone, and alert controls',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+            cameraPackProvider.overrideWith((ref) async => _emptyPack()),
+            drivingLocationGatewayProvider.overrideWithValue(_IdleGateway()),
+            drivingFeedbackGatewayProvider.overrideWithValue(
+              _NoopDrivingFeedbackGateway(),
+            ),
+            drivingMapConfigProvider.overrideWithValue(
+              _testMapConfig(tileProvider: _OnePixelTileProvider()),
+            ),
+          ],
+          child: const MaterialApp(home: DrivingScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Alertas'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Visualización de cámara'), findsOneWidget);
+      expect(find.text('Automático'), findsOneWidget);
+      expect(find.text('Radar'), findsOneWidget);
+      expect(find.text('Mapa'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('driving-visualization-auto')),
+        findsOneWidget,
+      );
+      expect(find.text('Ángulo de detección'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('driving-cone-preview-90')),
+        findsOneWidget,
+      );
+      expect(find.text('45°'), findsOneWidget);
+      expect(find.text('90°'), findsOneWidget);
+      expect(find.text('180°'), findsOneWidget);
+      expect(find.text('360°'), findsOneWidget);
+      for (final degrees in [45, 90, 180, 360]) {
+        await tester.tap(find.text('$degrees°'));
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(ValueKey('driving-cone-preview-$degrees')),
+          findsOneWidget,
+        );
+      }
+
+      await tester.ensureVisible(find.text('Personalizado'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Personalizado'));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('custom-alert-500')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('custom-alert-500')), findsOneWidget);
+      expect(find.byKey(const ValueKey('custom-alert-400')), findsOneWidget);
+      expect(find.byKey(const ValueKey('custom-alert-300')), findsOneWidget);
+      expect(find.byKey(const ValueKey('custom-alert-200')), findsOneWidget);
+      expect(find.byKey(const ValueKey('custom-alert-100')), findsOneWidget);
+      expect(find.byKey(const ValueKey('custom-alert-50')), findsOneWidget);
+      expect(find.text('250 m'), findsNothing);
+      expect(find.textContaining('Datos ANSV'), findsOneWidget);
+    },
+  );
+
+  testWidgets('camera visualization preference persists from settings', (
     tester,
   ) async {
+    final preferences = MemoryPreferences();
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          appPreferencesProvider.overrideWithValue(preferences),
           cameraPackProvider.overrideWith((ref) async => _emptyPack()),
           drivingLocationGatewayProvider.overrideWithValue(_IdleGateway()),
           drivingFeedbackGatewayProvider.overrideWithValue(
@@ -87,17 +178,18 @@ void main() {
 
     await tester.tap(find.byTooltip('Alertas'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Personalizado'));
+    await tester.tap(find.text('Radar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('180°'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Guardar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guardar'));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('custom-alert-500')), findsOneWidget);
-    expect(find.byKey(const ValueKey('custom-alert-400')), findsOneWidget);
-    expect(find.byKey(const ValueKey('custom-alert-300')), findsOneWidget);
-    expect(find.byKey(const ValueKey('custom-alert-200')), findsOneWidget);
-    expect(find.byKey(const ValueKey('custom-alert-100')), findsOneWidget);
-    expect(find.byKey(const ValueKey('custom-alert-50')), findsOneWidget);
-    expect(find.text('250 m'), findsNothing);
-    expect(find.textContaining('Datos ANSV'), findsOneWidget);
+    final loaded = await loadDrivingPreferences(preferences);
+    expect(loaded.cameraVisualizationMode, CameraVisualizationMode.radar);
+    expect(loaded.cameraTargetingConeDegrees, 180);
   });
 
   testWidgets('normal HUD is not mirrored', (tester) async {
@@ -141,6 +233,9 @@ void main() {
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
+          drivingMapConfigProvider.overrideWithValue(
+            _testMapConfig(tileProvider: _OnePixelTileProvider()),
+          ),
         ],
         child: const MaterialApp(home: DrivingScreen()),
       ),
@@ -152,9 +247,101 @@ void main() {
     gateway.add(_point(latitude: 6.239, seconds: 0));
     await tester.pump();
     gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cámara detectada'), findsOneWidget);
+    expect(find.textContaining('Operando'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('driving-camera-alert-panel')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('driving-mini-map')), findsOneWidget);
+    expect(find.byKey(const ValueKey('driving-real-mini-map')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('driving-map-user-marker')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('driving-map-camera-marker')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('OpenStreetMap'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('driving-map-offline-fallback')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('alert panel stays hidden without an active target camera', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0));
     await tester.pump();
 
-    expect(find.text('Fotodetección en operación'), findsOneWidget);
+    expect(find.byKey(const ValueKey('driving-state-chip')), findsOneWidget);
+    expect(find.text('Sin cámara objetivo'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('driving-camera-alert-panel')),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('driving-mini-map')), findsNothing);
+  });
+
+  testWidgets('low-confidence lateral target does not show the rich panel', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    final lateralPoint = _point(latitude: 6.241, seconds: 20, speedKmh: 52);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith(
+            (ref) async => _pack(
+              cameraLatitude: 6.241 + _northDegrees(500, 65),
+              cameraLongitude: -75.57 + _eastDegrees(6.241, 500, 65),
+            ),
+          ),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 0, speedKmh: 50));
+    await tester.pump();
+    gateway.add(lateralPoint);
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('driving-camera-alert-panel')),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('driving-mini-map')), findsNothing);
   });
 
   testWidgets('legacy camera without operation status uses generic wording', (
@@ -185,8 +372,8 @@ void main() {
     gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 0));
     await tester.pump();
 
-    expect(find.text('Fotodetección'), findsOneWidget);
-    expect(find.text('Fotodetección en operación'), findsNothing);
+    expect(find.text('Cámara detectada'), findsOneWidget);
+    expect(find.textContaining('Operando'), findsNothing);
   });
 
   testWidgets('known camera speed shows sign, distance, status, and delta', (
@@ -219,17 +406,71 @@ void main() {
     expect(find.byKey(const ValueKey('camera-speed-sign')), findsOneWidget);
     expect(find.byKey(const ValueKey('camera-distance-pill')), findsOneWidget);
     expect(
+      find.byKey(const ValueKey('driving-camera-alert-icon-urgent')),
+      findsOneWidget,
+    );
+    expect(
       find.byKey(const ValueKey('driving-camera-address')),
       findsOneWidget,
     );
-    expect(find.text('60 km/h'), findsWidgets);
-    expect(find.textContaining('Reduce velocidad'), findsOneWidget);
+    expect(find.text('60'), findsOneWidget);
+    expect(find.text('Vel. Max.'), findsOneWidget);
+    expect(find.text('ANSV'), findsNothing);
+    expect(find.textContaining('Velocidad máxima'), findsNothing);
+    expect(find.byKey(const ValueKey('camera-speed-pill')), findsNothing);
+    expect(find.text('Velocidad reportada'), findsNothing);
+    expect(find.text('60 km/h · ANSV'), findsNothing);
+    expect(find.textContaining('Reduce velocidad'), findsNothing);
     expect(find.textContaining('300 m ·'), findsNothing);
     expect(
       find.byKey(const ValueKey('driving-overspeed-delta')),
       findsOneWidget,
     );
     expect(find.text('+10 km/h'), findsOneWidget);
+  });
+
+  testWidgets('within reported speed keeps alert visually non-urgent', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 48));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 54));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('driving-camera-alert-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('driving-camera-alert-icon-camera')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('driving-camera-alert-icon-urgent')),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('driving-overspeed-delta')), findsNothing);
+    expect(find.byKey(const ValueKey('camera-speed-sign')), findsOneWidget);
+    expect(find.text('Vel. Max.'), findsOneWidget);
+    expect(find.text('ANSV'), findsNothing);
   });
 
   testWidgets(
@@ -247,6 +488,9 @@ void main() {
             drivingFeedbackGatewayProvider.overrideWithValue(
               _NoopDrivingFeedbackGateway(),
             ),
+            drivingMapConfigProvider.overrideWithValue(
+              _testMapConfig(tileProvider: _OnePixelTileProvider()),
+            ),
           ],
           child: const MaterialApp(home: DrivingScreen()),
         ),
@@ -261,12 +505,539 @@ void main() {
       await tester.pump();
 
       expect(find.byKey(const ValueKey('camera-speed-sign')), findsNothing);
-      expect(find.text('No publicada'), findsOneWidget);
+      expect(find.byKey(const ValueKey('camera-speed-pill')), findsNothing);
+      expect(find.text('Velocidad reportada'), findsNothing);
+      expect(find.text('No publicada por ANSV'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('driving-camera-address')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('camera-authority-row')),
+        findsOneWidget,
+      );
       expect(find.textContaining('Reduce velocidad'), findsNothing);
+      expect(find.textContaining('Velocidad máxima'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('driving-camera-alert-icon-camera')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('driving-camera-alert-icon-urgent')),
+        findsNothing,
+      );
       expect(
         find.byKey(const ValueKey('driving-overspeed-delta')),
         findsNothing,
       );
+    },
+  );
+
+  testWidgets('dismiss button hides the panel for the current camera episode', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 50));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 70));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('driving-camera-alert-panel')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('driving-camera-dismiss-action')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('driving-camera-alert-panel')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('driving-camera-dismissed')),
+      findsOneWidget,
+    );
+
+    gateway.add(_point(latitude: 6.242, seconds: 21, speedKmh: 68));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('driving-camera-alert-panel')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('swipe down dismisses the active camera panel', (tester) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 50));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 70));
+    await tester.pump();
+
+    await tester.drag(
+      find.byKey(const ValueKey('driving-camera-alert-header')),
+      const Offset(0, 220),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('driving-camera-alert-panel')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('driving-camera-dismissed')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('minor downward movement does not dismiss the alert panel', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 50));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 70));
+    await tester.pump();
+
+    await tester.drag(
+      find.byKey(const ValueKey('driving-camera-alert-header')),
+      const Offset(0, 20),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(
+      find.byKey(const ValueKey('driving-camera-alert-panel')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('forced offline fallback shows radar without hiding alert', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+          drivingMapConfigProvider.overrideWithValue(
+            _testMapConfig(forceOfflineFallback: true),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 50));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 54));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('driving-camera-alert-panel')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('driving-mini-map')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('driving-map-offline-fallback')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('driving-real-mini-map')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('driving-map-fallback-label')),
+      findsOneWidget,
+    );
+    expect(find.text('Sin conexión · Radar'), findsOneWidget);
+    expect(find.byType(TileLayer), findsNothing);
+  });
+
+  testWidgets(
+    'auto map tile error uses the real handler and latches radar for GPS updates',
+    (tester) async {
+      final gateway = _StreamingGateway();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+            cameraPackProvider.overrideWith((ref) async => _pack()),
+            drivingLocationGatewayProvider.overrideWithValue(gateway),
+            drivingFeedbackGatewayProvider.overrideWithValue(
+              _NoopDrivingFeedbackGateway(),
+            ),
+            drivingMapConfigProvider.overrideWithValue(
+              _testMapConfig(tileProvider: _NeverTileProvider()),
+            ),
+          ],
+          child: const MaterialApp(home: DrivingScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('start-driving')));
+      await tester.pump();
+      gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 50));
+      await tester.pump();
+      gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 54));
+      await tester.pump();
+      final tileLayer = tester.widget<TileLayer>(find.byType(TileLayer));
+      tileLayer.errorTileCallback!(
+        _testTileImage(),
+        Exception('controlled tile failure'),
+        StackTrace.current,
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey('driving-camera-alert-panel')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('driving-map-offline-fallback')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('driving-real-mini-map')), findsNothing);
+
+      gateway.add(_point(latitude: 6.2412, seconds: 45, speedKmh: 54));
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey('driving-map-offline-fallback')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('driving-real-mini-map')), findsNothing);
+    },
+  );
+
+  testWidgets('auto map timeout falls back to radar without blank exposure', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+          drivingMapConfigProvider.overrideWithValue(
+            _testMapConfig(tileProvider: _NeverTileProvider()),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 50));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 54));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('driving-map-offline-fallback')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('driving-real-mini-map')), findsOneWidget);
+
+    await tester.pump(drivingMapTileReadinessTimeout);
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('driving-map-offline-fallback')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('driving-real-mini-map')), findsNothing);
+  });
+
+  testWidgets(
+    'auto map timeout keeps original deadline across later GPS points',
+    (tester) async {
+      final gateway = _StreamingGateway();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+            cameraPackProvider.overrideWith((ref) async => _pack()),
+            drivingLocationGatewayProvider.overrideWithValue(gateway),
+            drivingFeedbackGatewayProvider.overrideWithValue(
+              _NoopDrivingFeedbackGateway(),
+            ),
+            drivingMapConfigProvider.overrideWithValue(
+              _testMapConfig(tileProvider: _NeverTileProvider()),
+            ),
+          ],
+          child: const MaterialApp(home: DrivingScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('start-driving')));
+      await tester.pump();
+      gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 50));
+      await tester.pump();
+      gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 54));
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey('driving-map-offline-fallback')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('driving-real-mini-map')),
+        findsOneWidget,
+      );
+
+      await tester.pump(const Duration(seconds: 1));
+      gateway.add(_point(latitude: 6.2412, seconds: 21, speedKmh: 54));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      gateway.add(_point(latitude: 6.2414, seconds: 22, speedKmh: 54));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 900));
+
+      expect(
+        find.byKey(const ValueKey('driving-map-offline-fallback')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('driving-real-mini-map')),
+        findsOneWidget,
+      );
+
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey('driving-map-offline-fallback')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('driving-real-mini-map')), findsNothing);
+
+      gateway.add(_point(latitude: 6.2416, seconds: 23, speedKmh: 54));
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('driving-map-offline-fallback')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('driving-real-mini-map')), findsNothing);
+    },
+  );
+
+  testWidgets('new camera episode starts a fresh controlled map timeout', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith(
+            (ref) async => _pack(
+              cameras: [
+                _camera(id: 'cam-1', latitude: 6.244),
+                _camera(id: 'cam-2', latitude: 6.249),
+              ],
+            ),
+          ),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+          drivingMapConfigProvider.overrideWithValue(
+            _testMapConfig(tileProvider: _NeverTileProvider()),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 50));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 54));
+    await tester.pump();
+    await tester.pump(drivingMapTileReadinessTimeout);
+    await tester.pump();
+    expect(find.byKey(const ValueKey('driving-real-mini-map')), findsNothing);
+
+    gateway.add(_point(latitude: 6.246, seconds: 45, speedKmh: 54));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('camera-panel-cam-2')), findsOneWidget);
+    expect(find.byKey(const ValueKey('driving-real-mini-map')), findsOneWidget);
+
+    await tester.pump(drivingMapTileReadinessTimeout);
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('driving-map-offline-fallback')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('driving-real-mini-map')), findsNothing);
+  });
+
+  testWidgets('radar visualization mode never builds a tile layer', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    final preferences = MemoryPreferences();
+    await saveDrivingPreferences(
+      preferences,
+      defaultDrivingPreferences.copyWith(
+        cameraVisualizationMode: CameraVisualizationMode.radar,
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(preferences),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 50));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 54));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('driving-camera-alert-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('driving-map-offline-fallback')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('driving-radar-cone-90')), findsOneWidget);
+    expect(find.byKey(const ValueKey('driving-real-mini-map')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('driving-map-fallback-label')),
+      findsNothing,
+    );
+    expect(find.byType(TileLayer), findsNothing);
+  });
+
+  testWidgets(
+    'map visualization mode forced fallback shows radar when configured',
+    (tester) async {
+      final gateway = _StreamingGateway();
+      final preferences = MemoryPreferences();
+      await saveDrivingPreferences(
+        preferences,
+        defaultDrivingPreferences.copyWith(
+          cameraVisualizationMode: CameraVisualizationMode.map,
+        ),
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appPreferencesProvider.overrideWithValue(preferences),
+            cameraPackProvider.overrideWith((ref) async => _pack()),
+            drivingLocationGatewayProvider.overrideWithValue(gateway),
+            drivingFeedbackGatewayProvider.overrideWithValue(
+              _NoopDrivingFeedbackGateway(),
+            ),
+            drivingMapConfigProvider.overrideWithValue(
+              _testMapConfig(forceOfflineFallback: true),
+            ),
+          ],
+          child: const MaterialApp(home: DrivingScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('start-driving')));
+      await tester.pump();
+      gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 50));
+      await tester.pump();
+      gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 54));
+      await tester.pump();
+
+      expect(
+        find.byKey(const ValueKey('driving-camera-alert-panel')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('driving-map-offline-fallback')),
+        findsOneWidget,
+      );
+      expect(find.text('Sin conexión · Radar'), findsOneWidget);
+      expect(find.byType(TileLayer), findsNothing);
     },
   );
 
@@ -305,7 +1076,12 @@ void main() {
     expect(find.byKey(const ValueKey('hud-camera-distance')), findsOneWidget);
     expect(find.byKey(const ValueKey('hud-camera-speed-sign')), findsOneWidget);
     expect(find.byKey(const ValueKey('hud-camera-address')), findsOneWidget);
+    expect(find.byKey(const ValueKey('driving-mini-map')), findsNothing);
+    expect(find.byKey(const ValueKey('driving-real-mini-map')), findsNothing);
+    expect(find.text('Vel. Max.'), findsOneWidget);
+    expect(find.text('ANSV'), findsNothing);
     expect(find.textContaining('Cámara'), findsOneWidget);
+    expect(find.text('Dentro del valor'), findsNothing);
   });
 
   testWidgets('camera detail sheet can render future B05 source fields', (
@@ -333,25 +1109,118 @@ void main() {
     await tester.pump();
     gateway.add(_point(latitude: 6.241, seconds: 20));
     await tester.pump();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('driving-camera-detail-action')),
+    );
+    await tester.pump();
     await tester.tap(
       find.byKey(const ValueKey('driving-camera-detail-action')),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(
       find.byKey(const ValueKey('driving-camera-detail-sheet')),
       findsOneWidget,
     );
     expect(find.text('Avenida 80'), findsWidgets);
-    expect(find.text('Secretaría de Movilidad de Medellín'), findsOneWidget);
+    expect(find.text('Secretaría de Movilidad de Medellín'), findsWidgets);
     expect(find.text('Cámara'), findsOneWidget);
     expect(find.text('Operando'), findsOneWidget);
     expect(find.text('Equipo 123'), findsOneWidget);
+    expect(find.text('Velocidad reportada por ANSV'), findsOneWidget);
+    expect(find.text('60 km/h'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('driving-camera-map-action-sheet')),
       findsOneWidget,
     );
   });
+
+  testWidgets('camera detail sheet preserves unknown ANSV speed truth', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith(
+            (ref) async => _pack(speedLimitKmh: null),
+          ),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20));
+    await tester.pump();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('driving-camera-detail-action')),
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey('driving-camera-detail-action')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Velocidad reportada por ANSV'), findsOneWidget);
+    expect(find.text('No publicada'), findsOneWidget);
+    expect(find.byKey(const ValueKey('camera-speed-sign')), findsNothing);
+  });
+
+  for (final textScale in const [1.0, 1.3, 2.0]) {
+    testWidgets('speed badge fits at text scale $textScale', (tester) async {
+      final gateway = _StreamingGateway();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+            cameraPackProvider.overrideWith((ref) async => _pack()),
+            drivingLocationGatewayProvider.overrideWithValue(gateway),
+            drivingFeedbackGatewayProvider.overrideWithValue(
+              _NoopDrivingFeedbackGateway(),
+            ),
+            drivingMapConfigProvider.overrideWithValue(
+              _testMapConfig(tileProvider: _OnePixelTileProvider()),
+            ),
+          ],
+          child: MaterialApp(
+            builder: (context, child) {
+              return MediaQuery(
+                data: MediaQuery.of(context)
+                    .copyWith(textScaler: TextScaler.linear(textScale)),
+                child: child!,
+              );
+            },
+            home: const DrivingScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('start-driving')));
+      await tester.pump();
+      gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 48));
+      await tester.pump();
+      gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 54));
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('camera-speed-sign')), findsOneWidget);
+      expect(find.text('Vel. Max.'), findsOneWidget);
+      expect(find.text('ANSV'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('camera map action opens Google Maps with camera coordinates', (
     tester,
@@ -379,6 +1248,10 @@ void main() {
     gateway.add(_point(latitude: 6.239, seconds: 0));
     await tester.pump();
     gateway.add(_point(latitude: 6.241, seconds: 20));
+    await tester.pump();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('driving-camera-map-action')),
+    );
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('driving-camera-map-action')));
     await tester.pump();
@@ -424,7 +1297,41 @@ void main() {
     expect(transform.transform.storage[0], 1);
     expect(find.byKey(const ValueKey('hud-camera-speed-sign')), findsNothing);
     expect(find.byKey(const ValueKey('hud-camera-distance')), findsOneWidget);
+    expect(find.byKey(const ValueKey('driving-mini-map')), findsNothing);
+    expect(find.byKey(const ValueKey('driving-real-mini-map')), findsNothing);
     expect(find.text('Velocidad no publicada'), findsOneWidget);
+  });
+
+  testWidgets('inactive lifecycle state does not stop an active session', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+          drivingMapConfigProvider.overrideWithValue(
+            _testMapConfig(forceOfflineFallback: true),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('stop-driving')), findsOneWidget);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('stop-driving')), findsOneWidget);
   });
 }
 
@@ -437,6 +1344,9 @@ class _NoopDrivingFeedbackGateway implements DrivingFeedbackGateway {
 
   @override
   Future<void> speak(String message) async {}
+
+  @override
+  Future<void> stopOngoingFeedback() async {}
 
   @override
   Future<void> vibrate() async {}
@@ -455,6 +1365,97 @@ class _FakeExternalLauncher implements ExternalLauncher {
   }
 }
 
+DrivingMapConfig _testMapConfig({
+  bool forceOfflineFallback = false,
+  TileProvider? tileProvider,
+}) {
+  return DrivingMapConfig(
+    tileUrlTemplate: 'https://tiles.test/{z}/{x}/{y}.png',
+    attributionLabel: 'OpenStreetMap contributors',
+    userAgentPackageName: 'co.picoradar.app.dev',
+    forceOfflineFallback: forceOfflineFallback,
+    tileProvider: tileProvider,
+  );
+}
+
+class _OnePixelTileProvider extends TileProvider {
+  @override
+  ImageProvider<Object> getImage(
+    TileCoordinates coordinates,
+    TileLayer options,
+  ) {
+    return const _ImmediateImageProvider();
+  }
+}
+
+TileImage _testTileImage() {
+  return TileImage(
+    vsync: const TestVSync(),
+    coordinates: const TileCoordinates(0, 0, 0),
+    imageProvider: const _NeverImageProvider(),
+    onLoadComplete: (_) {},
+    onLoadError: (_, _, _) {},
+    tileDisplay: const TileDisplay.instantaneous(),
+    errorImage: null,
+    cancelLoading: Completer<void>(),
+  );
+}
+
+class _NeverTileProvider extends TileProvider {
+  @override
+  ImageProvider<Object> getImage(
+    TileCoordinates coordinates,
+    TileLayer options,
+  ) {
+    return const _NeverImageProvider();
+  }
+}
+
+class _NeverImageProvider extends ImageProvider<_NeverImageProvider> {
+  const _NeverImageProvider();
+
+  @override
+  Future<_NeverImageProvider> obtainKey(ImageConfiguration configuration) {
+    return SynchronousFuture<_NeverImageProvider>(this);
+  }
+
+  @override
+  ImageStreamCompleter loadImage(
+    _NeverImageProvider key,
+    ImageDecoderCallback decode,
+  ) {
+    return OneFrameImageStreamCompleter(Completer<ImageInfo>().future);
+  }
+}
+
+class _ImmediateImageProvider extends ImageProvider<_ImmediateImageProvider> {
+  const _ImmediateImageProvider();
+
+  @override
+  Future<_ImmediateImageProvider> obtainKey(ImageConfiguration configuration) {
+    return SynchronousFuture<_ImmediateImageProvider>(this);
+  }
+
+  @override
+  ImageStreamCompleter loadImage(
+    _ImmediateImageProvider key,
+    ImageDecoderCallback decode,
+  ) {
+    return OneFrameImageStreamCompleter(_onePixelImage());
+  }
+}
+
+Future<ImageInfo> _onePixelImage() async {
+  final recorder = ui.PictureRecorder();
+  final canvas = ui.Canvas(recorder);
+  canvas.drawRect(
+    const ui.Rect.fromLTWH(0, 0, 1, 1),
+    ui.Paint()..color = const Color(0x00000000),
+  );
+  final image = await recorder.endRecording().toImage(1, 1);
+  return ImageInfo(image: image);
+}
+
 CameraPack _emptyPack() {
   return const CameraPack(
     source: CameraPackSource(
@@ -470,6 +1471,9 @@ CameraPack _emptyPack() {
 CameraPack _pack({
   int? speedLimitKmh = 60,
   String? operationStatus = 'Operando',
+  double cameraLatitude = 6.244,
+  double cameraLongitude = -75.57,
+  List<TrafficCamera>? cameras,
 }) {
   return CameraPack(
     source: const CameraPackSource(
@@ -478,27 +1482,60 @@ CameraPack _pack({
       dataUrl: 'https://fotodeteccion.ansv.gov.co/map/data/sast.json',
       fetchedAtUtc: '2026-08-31T00:00:00Z',
     ),
-    cameras: [
-      TrafficCamera(
-        id: 'cam-1',
-        department: 'ANTIOQUIA',
-        municipality: 'MEDELLIN',
-        jurisdiction: 'Municipal',
-        address: 'Avenida 80',
-        latitude: 6.244,
-        longitude: -75.57,
-        status: 'Aprobada',
-        technology: 'Camara',
-        kind: CameraKind.mixed,
-        speedLimitKmh: speedLimitKmh,
-        operationStatus: operationStatus,
-        trafficAuthority: 'Secretaría de Movilidad de Medellín',
-        installationType: 'Fija',
-        equipmentName: 'Equipo 123',
-        rawInfractionCodes: const ['C29'],
-      ),
-    ],
+    cameras:
+        cameras ??
+        [
+          _camera(
+            id: 'cam-1',
+            latitude: cameraLatitude,
+            longitude: cameraLongitude,
+            speedLimitKmh: speedLimitKmh,
+            operationStatus: operationStatus,
+          ),
+        ],
   );
+}
+
+TrafficCamera _camera({
+  required String id,
+  required double latitude,
+  double longitude = -75.57,
+  int? speedLimitKmh = 60,
+  String? operationStatus = 'Operando',
+}) {
+  return TrafficCamera(
+    id: id,
+    department: 'ANTIOQUIA',
+    municipality: 'MEDELLIN',
+    jurisdiction: 'Municipal',
+    address: 'Avenida 80',
+    latitude: latitude,
+    longitude: longitude,
+    status: 'Aprobada',
+    technology: 'Camara',
+    kind: CameraKind.mixed,
+    speedLimitKmh: speedLimitKmh,
+    operationStatus: operationStatus,
+    trafficAuthority: 'Secretaría de Movilidad de Medellín',
+    installationType: 'Fija',
+    equipmentName: 'Equipo 123',
+    rawInfractionCodes: const ['C29'],
+  );
+}
+
+double _northDegrees(double distanceMeters, double bearingDegrees) {
+  return math.cos(bearingDegrees * math.pi / 180) * distanceMeters / 111320.0;
+}
+
+double _eastDegrees(
+  double latitude,
+  double distanceMeters,
+  double bearingDegrees,
+) {
+  final metersPerLongitude = 111320.0 * math.cos(latitude * math.pi / 180);
+  return math.sin(bearingDegrees * math.pi / 180) *
+      distanceMeters /
+      metersPerLongitude;
 }
 
 DrivingPoint _point({
