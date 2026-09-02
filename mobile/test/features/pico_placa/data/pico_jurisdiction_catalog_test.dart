@@ -57,13 +57,15 @@ void main() {
     final records = (raw['records'] as List).cast<Map<String, Object?>>();
 
     expect(
-      records.singleWhere((entry) => entry['id'] == 'co-tol-ibague')
-          ['pendingReason'],
+      records.singleWhere(
+        (entry) => entry['id'] == 'co-tol-ibague',
+      )['pendingReason'],
       'CONDITIONAL_REGISTRATION_CITY_WINDOW_UNSUPPORTED',
     );
     expect(
-      records.singleWhere((entry) => entry['id'] == 'co-met-villavicencio')
-          ['pendingReason'],
+      records.singleWhere(
+        (entry) => entry['id'] == 'co-met-villavicencio',
+      )['pendingReason'],
       'CONDITIONAL_REGISTRATION_MODEL_EXEMPTION_UNSUPPORTED',
     );
   });
