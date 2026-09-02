@@ -119,10 +119,7 @@ CameraMatch? matchNearestCamera({
     }
 
     final score =
-        distance +
-        headingDiff * 4 +
-        crossTrack * 1.2 +
-        (approaching ? 0 : 120);
+        distance + headingDiff * 4 + crossTrack * 1.2 + (approaching ? 0 : 120);
     if (score < bestScore) {
       bestScore = score;
       best = CameraMatch(
