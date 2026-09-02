@@ -91,15 +91,17 @@ class CameraRegistryTest extends TestCase
         $camera = $this->draft();
         Camera::factory()->count(5000)->state(['jurisdiction_id' => $camera->jurisdiction_id, 'geographic_unit_id' => $camera->geographic_unit_id, 'source_id' => $camera->source_id, 'lat' => 10.0000000, 'lon' => -70.0000000])->create();
         $near = $this->draft(null, ['lat' => 4.7110500]);
-        $queries = [];
-        DB::listen(function ($query) use (&$queries): void {
-            if (str_contains($query->sql, '"lat" between') && str_contains($query->sql, '"lon" between')) {
-                $queries[] = $query->sql;
-            }
-        });
+        DB::flushQueryLog();
+        DB::enableQueryLog();
         $result = app(CameraDuplicateDetector::class)->candidates($camera, 25);
+        $queries = collect(DB::getQueryLog())->pluck('query')->filter(function (string $sql): bool {
+            $normalized = str_replace(['"', '`'], '', $sql);
+
+            return str_contains($normalized, 'lat') && str_contains($normalized, 'lon') && str_contains($normalized, 'between');
+        });
+        DB::disableQueryLog();
         $this->assertSame($near->id, $result[0]['camera']->id);
-        $this->assertNotEmpty($queries);
+        $this->assertNotEmpty($queries->all());
         $this->artisan('picoradar:cameras:integrity', ['--json' => true])->expectsOutputToContain('picoradar.camera-integrity.v1')->assertExitCode(0);
         $this->artisan('picoradar:cameras:readiness', ['--json' => true])->expectsOutputToContain('picoradar.camera-readiness.v1')->assertExitCode(0);
     }
