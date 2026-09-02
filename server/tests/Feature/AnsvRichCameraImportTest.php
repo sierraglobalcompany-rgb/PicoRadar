@@ -18,10 +18,13 @@ use App\Services\AnsvRichCameraImporter;
 use App\Services\CameraRegistryService;
 use App\Services\DatasetAuditLogger;
 use App\Services\GeographyImporter;
+use App\Services\SimpleXlsxReader;
 use Carbon\CarbonImmutable;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 use Tests\TestCase;
 
 class AnsvRichCameraImportTest extends TestCase
@@ -184,13 +187,13 @@ class AnsvRichCameraImportTest extends TestCase
             app(AnsvCameraRowNormalizer::class),
             app(DatasetAuditLogger::class),
             app(CameraRegistryService::class),
-            static fn (string $point) => throw new \RuntimeException($point),
+            static fn (string $point) => throw new RuntimeException($point),
         );
 
         try {
             $importer->importRows([$this->row()], str_repeat('f', 64), $this->fetchedAt);
             $this->fail('Expected injected failure.');
-        } catch (\RuntimeException) {
+        } catch (RuntimeException) {
             $this->assertSame(0, AnsvCameraImport::query()->count());
             $this->assertSame(0, AnsvCameraImportRow::query()->count());
             $this->assertSame(0, Camera::query()->count());
@@ -379,10 +382,257 @@ class AnsvRichCameraImportTest extends TestCase
         $this->assertSame(0, $result['featureServerReconciliation']['featureServerOnlyRows']);
     }
 
+    public function test_provided_missing_official_grid_json_fails_before_writes(): void
+    {
+        $xlsxPath = $this->fakeXlsxReader([$this->row()]);
+
+        $this->artisan('picoradar:ansv:cameras:import', [
+            'xlsx' => $xlsxPath,
+            '--snapshot-sha' => hash_file('sha256', $xlsxPath),
+            '--fetched-at' => $this->fetchedAt->toAtomString(),
+            '--official-grid-json' => $xlsxPath.'.missing.json',
+            '--json' => true,
+        ])->expectsOutputToContain('Official ANSV grid JSON file not found.')
+            ->assertFailed();
+
+        $this->assertSame(0, AnsvCameraImport::query()->count());
+        $this->assertSame(0, AnsvCameraImportRow::query()->count());
+        $this->assertSame(0, Camera::query()->count());
+    }
+
+    public function test_provided_invalid_official_grid_json_fails_before_writes(): void
+    {
+        $xlsxPath = $this->fakeXlsxReader([$this->row()]);
+        $gridPath = tempnam(sys_get_temp_dir(), 'ansv-grid-');
+        file_put_contents($gridPath, json_encode(['results' => 'not-a-list'], JSON_THROW_ON_ERROR));
+
+        $this->artisan('picoradar:ansv:cameras:import', [
+            'xlsx' => $xlsxPath,
+            '--snapshot-sha' => hash_file('sha256', $xlsxPath),
+            '--fetched-at' => $this->fetchedAt->toAtomString(),
+            '--official-grid-json' => $gridPath,
+            '--json' => true,
+        ])->expectsOutputToContain('Official ANSV grid JSON shape is invalid.')
+            ->assertFailed();
+
+        $this->assertSame(0, AnsvCameraImport::query()->count());
+        $this->assertSame(0, AnsvCameraImportRow::query()->count());
+        $this->assertSame(0, Camera::query()->count());
+    }
+
+    public function test_command_dry_run_does_not_write_geography_audit_or_camera_state(): void
+    {
+        $xlsxPath = $this->fakeXlsxReader([$this->row()]);
+        $before = $this->commandSideEffectCounts();
+
+        $this->artisan('picoradar:ansv:cameras:import', [
+            'xlsx' => $xlsxPath,
+            '--snapshot-sha' => hash_file('sha256', $xlsxPath),
+            '--fetched-at' => $this->fetchedAt->toAtomString(),
+            '--dry-run' => true,
+            '--json' => true,
+        ])->assertSuccessful();
+
+        $this->assertSame($before, $this->commandSideEffectCounts());
+    }
+
+    public function test_command_schema_validation_failure_rolls_back_geography_bootstrap(): void
+    {
+        $xlsxPath = $this->fakeXlsxReader([['Estado operación' => 'Operando']]);
+        $before = $this->commandSideEffectCounts();
+
+        $this->artisan('picoradar:ansv:cameras:import', [
+            'xlsx' => $xlsxPath,
+            '--snapshot-sha' => hash_file('sha256', $xlsxPath),
+            '--fetched-at' => $this->fetchedAt->toAtomString(),
+            '--json' => true,
+        ])->expectsOutputToContain('ANSV camera source is missing critical columns:')
+            ->assertFailed();
+
+        $this->assertSame($before, $this->commandSideEffectCounts());
+    }
+
+    public function test_command_importer_failure_after_bootstrap_rolls_back_all_writes(): void
+    {
+        $xlsxPath = $this->fakeXlsxReader([$this->row()]);
+        $this->app->instance(AnsvRichCameraImporter::class, new AnsvRichCameraImporter(
+            app(AnsvCameraRowNormalizer::class),
+            app(DatasetAuditLogger::class),
+            app(CameraRegistryService::class),
+            failureHook: function (string $point): void {
+                if ($point === 'after_rows') {
+                    throw new RuntimeException('Injected importer failure.');
+                }
+            },
+        ));
+        $before = $this->commandSideEffectCounts();
+
+        $this->artisan('picoradar:ansv:cameras:import', [
+            'xlsx' => $xlsxPath,
+            '--snapshot-sha' => hash_file('sha256', $xlsxPath),
+            '--fetched-at' => $this->fetchedAt->toAtomString(),
+            '--json' => true,
+        ])->expectsOutputToContain('Injected importer failure.')
+            ->assertFailed();
+
+        $this->assertSame($before, $this->commandSideEffectCounts());
+    }
+
+    public function test_command_dry_run_report_keeps_core_import_metrics(): void
+    {
+        $xlsxPath = $this->fakeXlsxReader([$this->row()]);
+        $snapshotSha = hash_file('sha256', $xlsxPath);
+
+        $exitCode = Artisan::call('picoradar:ansv:cameras:import', [
+            'xlsx' => $xlsxPath,
+            '--snapshot-sha' => $snapshotSha,
+            '--fetched-at' => $this->fetchedAt->toAtomString(),
+            '--dry-run' => true,
+            '--json' => true,
+        ]);
+        $payload = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
+
+        $this->assertSame(0, $exitCode);
+        $this->assertSame(1, $payload['rowCount']);
+        $this->assertSame(['Operando' => 1], $payload['statusCounts']);
+        $this->assertSame(1, $payload['activeCandidateCount']);
+        $this->assertSame($snapshotSha, $payload['snapshotSha']);
+        $this->assertTrue($payload['dryRun']);
+    }
+
+    public function test_snapshot_sha_option_must_match_xlsx_bytes(): void
+    {
+        $xlsxPath = $this->fakeXlsxReader([$this->row()]);
+
+        $this->artisan('picoradar:ansv:cameras:import', [
+            'xlsx' => $xlsxPath,
+            '--snapshot-sha' => str_repeat('0', 64),
+            '--fetched-at' => $this->fetchedAt->toAtomString(),
+            '--json' => true,
+        ])->expectsOutputToContain('ANSV source snapshot SHA-256 does not match the XLSX bytes.')
+            ->assertFailed();
+
+        $this->assertSame(0, AnsvCameraImport::query()->count());
+        $this->assertSame(0, AnsvCameraImportRow::query()->count());
+        $this->assertSame(0, Camera::query()->count());
+    }
+
+    public function test_snapshot_sha_option_defaults_to_xlsx_bytes(): void
+    {
+        $xlsxPath = $this->fakeXlsxReader([$this->row()]);
+
+        $this->artisan('picoradar:ansv:cameras:import', [
+            'xlsx' => $xlsxPath,
+            '--fetched-at' => $this->fetchedAt->toAtomString(),
+            '--json' => true,
+        ])->assertSuccessful();
+
+        $this->assertSame(hash_file('sha256', $xlsxPath), AnsvCameraImport::query()->sole()->snapshot_sha);
+    }
+
+    public function test_snapshot_sha_option_accepts_matching_value(): void
+    {
+        $xlsxPath = $this->fakeXlsxReader([$this->row()]);
+
+        $this->artisan('picoradar:ansv:cameras:import', [
+            'xlsx' => $xlsxPath,
+            '--snapshot-sha' => hash_file('sha256', $xlsxPath),
+            '--fetched-at' => $this->fetchedAt->toAtomString(),
+            '--json' => true,
+        ])->assertSuccessful();
+
+        $this->assertSame(1, AnsvCameraImport::query()->count());
+    }
+
+    public function test_snapshot_sha_option_rejects_invalid_format_before_writes(): void
+    {
+        $xlsxPath = $this->fakeXlsxReader([$this->row()]);
+
+        $this->artisan('picoradar:ansv:cameras:import', [
+            'xlsx' => $xlsxPath,
+            '--snapshot-sha' => 'not-a-sha',
+            '--fetched-at' => $this->fetchedAt->toAtomString(),
+            '--json' => true,
+        ])->expectsOutputToContain('ANSV source snapshot SHA-256 is invalid.')
+            ->assertFailed();
+
+        $this->assertSame(0, AnsvCameraImport::query()->count());
+        $this->assertSame(0, AnsvCameraImportRow::query()->count());
+        $this->assertSame(0, Camera::query()->count());
+    }
+
+    public function test_invalid_fetched_at_option_fails_before_writes(): void
+    {
+        $xlsxPath = $this->fakeXlsxReader([$this->row()]);
+
+        $this->artisan('picoradar:ansv:cameras:import', [
+            'xlsx' => $xlsxPath,
+            '--snapshot-sha' => hash_file('sha256', $xlsxPath),
+            '--fetched-at' => 'not-a-date',
+            '--json' => true,
+        ])->expectsOutputToContain('ANSV fetched-at timestamp is invalid.')
+            ->assertFailed();
+
+        $this->assertSame(0, AnsvCameraImport::query()->count());
+        $this->assertSame(0, AnsvCameraImportRow::query()->count());
+        $this->assertSame(0, Camera::query()->count());
+    }
+
+    public function test_future_fetched_at_option_fails_before_writes(): void
+    {
+        $xlsxPath = $this->fakeXlsxReader([$this->row()]);
+
+        $this->artisan('picoradar:ansv:cameras:import', [
+            'xlsx' => $xlsxPath,
+            '--snapshot-sha' => hash_file('sha256', $xlsxPath),
+            '--fetched-at' => CarbonImmutable::now()->addDays(2)->toAtomString(),
+            '--json' => true,
+        ])->expectsOutputToContain('ANSV fetched-at timestamp cannot be more than one day in the future.')
+            ->assertFailed();
+
+        $this->assertSame(0, AnsvCameraImport::query()->count());
+        $this->assertSame(0, AnsvCameraImportRow::query()->count());
+        $this->assertSame(0, Camera::query()->count());
+    }
+
     /** @param list<array<string, string|null>> $rows */
     private function import(array $rows, string $sha = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'): array
     {
         return app(AnsvRichCameraImporter::class)->importRows($rows, $sha, $this->fetchedAt);
+    }
+
+    /** @return array<string,int> */
+    private function commandSideEffectCounts(): array
+    {
+        return [
+            'geographic_units' => DB::table('geographic_units')->count(),
+            'jurisdictions' => DB::table('jurisdictions')->count(),
+            'jurisdiction_geographic_unit' => DB::table('jurisdiction_geographic_unit')->count(),
+            'audit_logs' => DB::table('audit_logs')->count(),
+            'camera_sources' => DB::table('camera_sources')->count(),
+            'ansv_camera_imports' => DB::table('ansv_camera_imports')->count(),
+            'ansv_camera_import_rows' => DB::table('ansv_camera_import_rows')->count(),
+            'cameras' => DB::table('cameras')->count(),
+        ];
+    }
+
+    /** @param list<array<string, string|null>> $rows */
+    private function fakeXlsxReader(array $rows): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'ansv-rich-');
+        file_put_contents($path, 'synthetic-xlsx-bytes');
+        $this->app->instance(SimpleXlsxReader::class, new class($rows) extends SimpleXlsxReader
+        {
+            /** @param list<array<string, string|null>> $rows */
+            public function __construct(private readonly array $rows) {}
+
+            public function rows(string $path): array
+            {
+                return $this->rows;
+            }
+        });
+
+        return $path;
     }
 
     /** @param array<string, string|null> $overrides */
