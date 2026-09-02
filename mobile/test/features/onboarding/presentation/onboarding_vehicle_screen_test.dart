@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:picoradar/app/app_providers.dart';
+import 'package:picoradar/features/apps_launcher/presentation/apps_screen.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/onboarding/data/registration_city_catalog.dart';
@@ -226,6 +227,87 @@ void main() {
     expect(await harness.repository.listVehicles(), hasLength(1));
   });
 
+  testWidgets('after saving can return to Apps without post-route setState', (
+    tester,
+  ) async {
+    await _openOnboardingWithReturnPath(tester, harness, '/apps');
+
+    await _completeOnboarding(tester, choiceKey: 'vehicle-choice-privateCar');
+
+    expect(find.text('Apps'), findsOneWidget);
+    expect(await harness.repository.listVehicles(), hasLength(1));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('returning to Apps preserves active vehicle after later save', (
+    tester,
+  ) async {
+    final active = await harness.repository.createVehicle(
+      plate: 'ACT001',
+      kind: VehicleKind.car,
+      serviceType: VehicleServiceType.private,
+      registrationCity: 'Bogota',
+    );
+    await harness.repository.setActiveVehicle(active.id);
+    await _openOnboardingWithReturnPath(tester, harness, '/apps');
+
+    await _completeOnboarding(
+      tester,
+      choiceKey: 'vehicle-choice-privateCar',
+      plate: 'NEW002',
+    );
+
+    final vehicles = await harness.repository.listVehicles();
+    expect(
+      vehicles.map((vehicle) => vehicle.plate),
+      containsAll(['ACT001', 'NEW002']),
+    );
+    expect(
+      await harness.preferences.getString(
+        VehicleRepository.activeVehiclePreferenceKey,
+      ),
+      active.id,
+    );
+    expect(find.text('Apps'), findsOneWidget);
+    expect(find.textContaining('ACT001'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('returning to Apps remains stable across 25 later saves', (
+    tester,
+  ) async {
+    final active = await harness.repository.createVehicle(
+      plate: 'ACT001',
+      kind: VehicleKind.car,
+      serviceType: VehicleServiceType.private,
+      registrationCity: 'Bogota',
+    );
+    await harness.repository.setActiveVehicle(active.id);
+
+    for (var i = 0; i < 25; i += 1) {
+      final plate = 'QA${(600 + i).toString()}';
+      await _openOnboardingWithReturnPath(tester, harness, '/apps');
+      await _completeOnboarding(
+        tester,
+        choiceKey: 'vehicle-choice-privateCar',
+        plate: plate,
+      );
+
+      final vehicles = await harness.repository.listVehicles();
+      expect(vehicles.map((vehicle) => vehicle.plate), contains(plate));
+      expect(
+        await harness.preferences.getString(
+          VehicleRepository.activeVehiclePreferenceKey,
+        ),
+        active.id,
+      );
+      expect(find.textContaining('ACT001'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+
+    expect(await harness.repository.listVehicles(), hasLength(26));
+  });
+
   testWidgets('empty garage opens onboarding', (tester) async {
     await harness.pump(tester);
 
@@ -266,6 +348,46 @@ Future<void> _openOnboarding(
         path: '/vehicle-onboarding',
         builder: (context, state) =>
             const OnboardingVehicleScreen(returnPath: '/'),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(harness.database),
+        appPreferencesProvider.overrideWithValue(harness.preferences),
+        registrationCityCatalogProvider.overrideWith(
+          (_) async => _testRegistrationCatalog,
+        ),
+      ],
+      child: MaterialApp.router(routerConfig: router),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openOnboardingWithReturnPath(
+  WidgetTester tester,
+  TestAppHarness harness,
+  String returnPath,
+) async {
+  final router = GoRouter(
+    initialLocation: '/vehicle-onboarding',
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) =>
+            const Scaffold(body: Center(child: Text('Inicio'))),
+      ),
+      GoRoute(
+        path: '/apps',
+        builder: (context, state) => const Scaffold(body: AppsScreen()),
+      ),
+      GoRoute(
+        path: '/vehicle-onboarding',
+        builder: (context, state) =>
+            OnboardingVehicleScreen(returnPath: returnPath),
       ),
     ],
   );

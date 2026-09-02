@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/shell/app_shell.dart';
@@ -135,6 +136,28 @@ void main() {
       );
     }
   });
+
+  testWidgets(
+    'Apps overlay module exposes one complete button semantics label',
+    (tester) async {
+      final semanticsHandle = tester.ensureSemantics();
+      try {
+        await _openApps(tester, harness);
+
+        final semantics = tester.getSemantics(
+          find.byKey(const ValueKey('app-module-tecnomecanica')),
+        );
+        expect(semantics.label, 'Tecnomecánica');
+        expect(
+          semantics.getSemanticsData().hasAction(SemanticsAction.tap),
+          isTrue,
+        );
+        expect(tester.takeException(), isNull);
+      } finally {
+        semanticsHandle.dispose();
+      }
+    },
+  );
 
   testWidgets('Apps overlay closes with toggle, scrim and Android Back', (
     tester,
@@ -488,6 +511,7 @@ void main() {
 
     expect(find.text('Seguro y asistencia'), findsOneWidget);
     expect(find.text('Tecnomecánica'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('text scale 2.0 keeps launcher readable', (tester) async {
@@ -495,7 +519,58 @@ void main() {
 
     expect(find.text('Seguro y asistencia'), findsOneWidget);
     expect(find.text('Tecnomecánica'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
+
+  testWidgets('primary Apps grid does not overflow on target phones', (
+    tester,
+  ) async {
+    const sizes = [Size(360, 800), Size(390, 844), Size(412, 915)];
+    const scales = [1.0, 1.5, 2.0];
+
+    for (final size in sizes) {
+      for (final scale in scales) {
+        await _pumpAppsScreenAtScale(tester, scale, size: size);
+
+        expect(find.byKey(const ValueKey('apps-primary-grid')), findsOneWidget);
+        for (final module in primaryModules) {
+          expect(
+            find.byKey(ValueKey('app-module-${module.id}')),
+            findsOneWidget,
+            reason: '${module.title} should remain in the 3x3 grid',
+          );
+          expect(find.text(module.title), findsOneWidget);
+        }
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'Apps overflow at ${size.width}x${size.height}, scale $scale',
+        );
+      }
+    }
+  });
+
+  testWidgets(
+    'primary module tile exposes one complete button semantics label',
+    (tester) async {
+      final semanticsHandle = tester.ensureSemantics();
+      try {
+        await _pumpAppsScreenAtScale(tester, 2.0, size: const Size(360, 800));
+
+        final semantics = tester.getSemantics(
+          find.byKey(const ValueKey('app-module-tecnomecanica')),
+        );
+        expect(semantics.label, 'Tecnomecánica');
+        expect(
+          semantics.getSemanticsData().hasAction(SemanticsAction.tap),
+          isTrue,
+        );
+        expect(tester.takeException(), isNull);
+      } finally {
+        semanticsHandle.dispose();
+      }
+    },
+  );
 }
 
 Future<void> _openApps(
@@ -559,13 +634,18 @@ Future<VehicleProfile> _createVehicle(
   );
 }
 
-Future<void> _pumpAppsScreenAtScale(WidgetTester tester, double scale) async {
+Future<void> _pumpAppsScreenAtScale(
+  WidgetTester tester,
+  double scale, {
+  Size size = const Size(390, 844),
+}) async {
   final vehicle = _vehicle(id: 'vehicle-1', plate: 'AAA111');
   await _pumpDirectAppsScreen(
     tester,
     vehicles: [vehicle],
     active: vehicle,
     scale: scale,
+    size: size,
   );
 }
 
@@ -574,8 +654,9 @@ Future<void> _pumpDirectAppsScreen(
   List<VehicleProfile> vehicles = const [],
   VehicleProfile? active,
   double scale = 1,
+  Size size = const Size(390, 844),
 }) async {
-  _usePortraitPhone(tester);
+  _usePortraitPhone(tester, size: size);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
@@ -593,9 +674,12 @@ Future<void> _pumpDirectAppsScreen(
   await tester.pumpAndSettle();
 }
 
-void _usePortraitPhone(WidgetTester tester) {
+void _usePortraitPhone(
+  WidgetTester tester, {
+  Size size = const Size(390, 844),
+}) {
   tester.view.devicePixelRatio = 1;
-  tester.view.physicalSize = const Size(390, 844);
+  tester.view.physicalSize = size;
   addTearDown(tester.view.resetDevicePixelRatio);
   addTearDown(tester.view.resetPhysicalSize);
 }
