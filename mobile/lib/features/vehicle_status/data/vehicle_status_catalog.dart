@@ -55,7 +55,7 @@ class VehicleTaxCalendar {
   final List<ImportantDate> importantDates;
 
   bool isCurrent(DateTime nowBogota) {
-    if (nowBogota.year > year) {
+    if (nowBogota.year != year) {
       return false;
     }
     return nowBogota.toUtc().isBefore(staleAfter.toUtc());
@@ -84,7 +84,7 @@ final bogotaTaxPortalLink = OfficialVehicleLink(
   id: 'bogota-tax-vehicles',
   title: 'Portal impuesto vehicular Bogotá',
   uri: 'https://www.haciendabogota.gov.co/es/impuestos/impuesto-sobre-vehiculos-automotores',
-  verifiedAt: DateTime.utc(2026, 8, 27),
+  verifiedAt: DateTime.utc(2026, 9, 3),
   sourceName: 'Secretaría Distrital de Hacienda',
   allowedHost: 'www.haciendabogota.gov.co',
 );
@@ -93,7 +93,7 @@ final antioquiaTaxPortalLink = OfficialVehicleLink(
   id: 'antioquia-tax-vehicles',
   title: 'Portal impuesto vehicular Antioquia',
   uri: 'https://www.vehiculosantioquia.com.co/impuestosweb/',
-  verifiedAt: DateTime.utc(2026, 8, 27),
+  verifiedAt: DateTime.utc(2026, 9, 3),
   sourceName: 'Gobernación de Antioquia',
   allowedHost: 'www.vehiculosantioquia.com.co',
 );
@@ -123,7 +123,7 @@ final vehicleTaxCalendars = [
     authorityId: 'bogota',
     authorityName: 'Bogotá - Secretaría Distrital de Hacienda',
     year: 2026,
-    verifiedAt: DateTime.utc(2026, 8, 27),
+    verifiedAt: DateTime.utc(2026, 9, 3),
     staleAfter: DateTime.utc(2027),
     portalLink: bogotaTaxPortalLink,
     importantDates: [
@@ -134,12 +134,12 @@ final vehicleTaxCalendars = [
       ),
       ImportantDate(
         date: DateTime(2026, 6, 12),
-        label: 'SPAC declaración inicial',
+        label: 'SPAC: declaración inicial, solo si elige pago por cuotas',
         kind: 'installmentInfo',
       ),
       ImportantDate(
         date: DateTime(2026, 7, 3),
-        label: 'SPAC cuota 1',
+        label: 'SPAC: cuota 1, si se acogió',
         kind: 'installmentInfo',
       ),
       ImportantDate(
@@ -149,12 +149,7 @@ final vehicleTaxCalendars = [
       ),
       ImportantDate(
         date: DateTime(2026, 9, 4),
-        label: 'SPAC cuota 2',
-        kind: 'installmentInfo',
-      ),
-      ImportantDate(
-        date: DateTime(2026, 7, 24),
-        label: 'Derechos de semaforización: consulta el portal oficial',
+        label: 'SPAC: cuota 2, si se acogió',
         kind: 'installmentInfo',
       ),
     ],
@@ -163,13 +158,13 @@ final vehicleTaxCalendars = [
     authorityId: 'antioquia',
     authorityName: 'Antioquia - Gobernación de Antioquia',
     year: 2026,
-    verifiedAt: DateTime.utc(2026, 8, 27),
+    verifiedAt: DateTime.utc(2026, 9, 3),
     staleAfter: DateTime.utc(2027),
     portalLink: antioquiaTaxPortalLink,
     importantDates: [
       ImportantDate(
         date: DateTime(2026, 4, 30),
-        label: 'Pronto pago',
+        label: 'Pronto pago; descuento según tipo de vehículo',
         kind: 'discountDeadline',
       ),
       ImportantDate(
@@ -194,10 +189,32 @@ VehicleTaxCalendar? taxCalendarByAuthority(String? authorityId) {
 }
 
 VehicleTaxCalendar? suggestTaxCalendar(String? registrationCity) {
-  final normalized = registrationCity?.trim().toLowerCase();
+  final normalized = _normalizeTaxAuthorityHint(registrationCity);
   return switch (normalized) {
-    'bogota' || 'bogotá' => taxCalendarByAuthority('bogota'),
-    'medellin' || 'medellín' => taxCalendarByAuthority('antioquia'),
+    'bogota' ||
+    'bogota dc' ||
+    'bogota bogota dc' => taxCalendarByAuthority('bogota'),
+    'medellin' || 'medellin antioquia' => taxCalendarByAuthority('antioquia'),
     _ => null,
   };
+}
+
+String _normalizeTaxAuthorityHint(String? value) {
+  final trimmed = value?.trim().toLowerCase();
+  if (trimmed == null || trimmed.isEmpty) {
+    return '';
+  }
+  final withoutMarks = trimmed
+      .replaceAll(RegExp('[áàäâã]'), 'a')
+      .replaceAll(RegExp('[éèëê]'), 'e')
+      .replaceAll(RegExp('[íìïî]'), 'i')
+      .replaceAll(RegExp('[óòöôõ]'), 'o')
+      .replaceAll(RegExp('[úùüû]'), 'u')
+      .replaceAll('ñ', 'n');
+  return withoutMarks
+      .replaceAll('-', ' ')
+      .replaceAll('.', '')
+      .replaceAll(',', ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
 }
