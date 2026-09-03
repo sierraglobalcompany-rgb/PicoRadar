@@ -107,6 +107,7 @@ class _FotomultasScreenState extends ConsumerState<FotomultasScreen> {
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
+      useRootNavigator: true,
       builder: (context) {
         return SafeArea(
           child: SingleChildScrollView(
@@ -129,6 +130,23 @@ class _FotomultasScreenState extends ConsumerState<FotomultasScreen> {
                     style: AppTextStyles.bodyStrong.copyWith(
                       color: AppColors.navy.withValues(alpha: 0.72),
                     ),
+                  ),
+                  const SizedBox(height: AppSpacing.m),
+                  FilledButton.icon(
+                    key: const ValueKey('fotomultas-detail-open-driving'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      this.context.go(AppRoute.drive.path);
+                    },
+                    icon: const Icon(Icons.drive_eta_outlined),
+                    label: const Text('Abrir Conducir'),
+                  ),
+                  const SizedBox(height: AppSpacing.s),
+                  OutlinedButton.icon(
+                    key: const ValueKey('fotomultas-open-source'),
+                    onPressed: () => _openSource(source),
+                    icon: const Icon(Icons.open_in_new),
+                    label: const Text('Abrir fuente ANSV'),
                   ),
                   const SizedBox(height: AppSpacing.m),
                   _DetailLine(
@@ -154,23 +172,6 @@ class _FotomultasScreenState extends ConsumerState<FotomultasScreen> {
                   _DetailLine(
                     label: 'Fecha del snapshot',
                     value: source.fetchedAtUtc,
-                  ),
-                  const SizedBox(height: AppSpacing.m),
-                  FilledButton.icon(
-                    key: const ValueKey('fotomultas-detail-open-driving'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      this.context.go(AppRoute.drive.path);
-                    },
-                    icon: const Icon(Icons.drive_eta_outlined),
-                    label: const Text('Abrir Conducir'),
-                  ),
-                  const SizedBox(height: AppSpacing.s),
-                  OutlinedButton.icon(
-                    key: const ValueKey('fotomultas-open-source'),
-                    onPressed: () => _openSource(source),
-                    icon: const Icon(Icons.open_in_new),
-                    label: const Text('Abrir fuente ANSV'),
                   ),
                 ],
               ),

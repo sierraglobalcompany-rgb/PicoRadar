@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:picoradar/app/router/app_routes.dart';
+import 'package:picoradar/app/shell/app_shell.dart';
+import 'package:picoradar/core/design_system/navigation.dart';
 import 'package:picoradar/features/driving/data/camera_pack_loader.dart';
 import 'package:picoradar/features/driving/domain/traffic_camera.dart';
 import 'package:picoradar/features/fotomultas/presentation/fotomultas_screen.dart';
@@ -216,6 +218,54 @@ void main() {
     expect(find.byKey(const ValueKey('drive-marker')), findsOneWidget);
   });
 
+  testWidgets('detail actions stay above the shell bottom navigation', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await _pumpScreenWithBottomNavigation(tester);
+    expect(find.byKey(const ValueKey('fotomultas-list')), findsOneWidget);
+
+    await tester.drag(find.byType(Scrollable).last, const Offset(0, -360));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byIcon(Icons.chevron_right_rounded).first);
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.drag(
+      find.byType(SingleChildScrollView).last,
+      const Offset(0, -120),
+      warnIfMissed: false,
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+
+    final bottomNavRect = tester.getRect(
+      find.byKey(const ValueKey('app-bottom-navigation')),
+    );
+    final drivingAction = find.byKey(
+      const ValueKey('fotomultas-detail-open-driving'),
+    );
+    final sourceAction = find.byKey(const ValueKey('fotomultas-open-source'));
+
+    expect(
+      find.byKey(const ValueKey('fotomultas-detail-sheet')),
+      findsOneWidget,
+    );
+    expect(drivingAction, findsOneWidget);
+    expect(sourceAction, findsOneWidget);
+    expect(tester.getRect(drivingAction).bottom, lessThan(bottomNavRect.top));
+    expect(tester.getRect(sourceAction).bottom, lessThan(bottomNavRect.top));
+    expect(
+      tester.hitTestOnBinding(tester.getCenter(drivingAction)).path,
+      isNotEmpty,
+    );
+    expect(
+      tester.hitTestOnBinding(tester.getCenter(sourceAction)).path,
+      isNotEmpty,
+    );
+  });
+
   testWidgets('target phones and text scales render without exceptions', (
     tester,
   ) async {
@@ -232,6 +282,38 @@ void main() {
       expect(tester.takeException(), isNull);
     }
   });
+}
+
+Future<void> _pumpScreenWithBottomNavigation(WidgetTester tester) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        cameraPackProvider.overrideWith((ref) => Future.value(_pack())),
+        externalLauncherProvider.overrideWithValue(_FakeExternalLauncher()),
+      ],
+      child: MaterialApp(
+        home: Scaffold(
+          body: const FotomultasScreen(),
+          bottomNavigationBar: AppBottomNav(
+            destinations: [
+              for (final tab in AppTab.values)
+                AppBottomNavDestination(
+                  label: tab.label,
+                  icon: tab.icon,
+                  selectedIcon: tab.selectedIcon,
+                  color: tab.color,
+                  keyName: tab.name,
+                ),
+            ],
+            currentIndex: AppTab.apps.index,
+            onSelect: (_) {},
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 300));
 }
 
 Future<void> _pumpScreen(
