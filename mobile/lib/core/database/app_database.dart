@@ -44,6 +44,29 @@ class VehicleObligations extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@TableIndex(name: 'maintenance_records_vehicle_id_idx', columns: {#vehicleId})
+@TableIndex(
+  name: 'maintenance_records_service_date_idx',
+  columns: {#serviceDate},
+)
+class MaintenanceRecords extends Table {
+  TextColumn get id => text()();
+  TextColumn get vehicleId =>
+      text().references(Vehicles, #id, onDelete: KeyAction.cascade)();
+  DateTimeColumn get serviceDate => dateTime()();
+  IntColumn get odometer => integer().nullable()();
+  TextColumn get type => text().withLength(min: 1, max: 64)();
+  TextColumn get description => text().withLength(min: 1, max: 500)();
+  IntColumn get costCents => integer().nullable()();
+  DateTimeColumn get nextServiceDate => dateTime().nullable()();
+  IntColumn get nextOdometer => integer().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 class NotificationPreferences extends Table {
   TextColumn get id => text()();
   BoolColumn get restrictionAlertsEnabled =>
@@ -98,6 +121,7 @@ class RestrictionCoverages extends Table {
   tables: [
     Vehicles,
     VehicleObligations,
+    MaintenanceRecords,
     NotificationPreferences,
     DatasetVersions,
     RestrictionCoverages,
@@ -107,7 +131,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'picoradar'));
 
-  static const currentSchemaVersion = 4;
+  static const currentSchemaVersion = 5;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -157,6 +181,11 @@ class AppDatabase extends _$AppDatabase {
         vehicleObligations.reminderEnabled,
       );
       from = 4;
+    }
+
+    if (from == 4) {
+      await migrator.createTable(maintenanceRecords);
+      from = 5;
     }
 
     if (from == to) {
