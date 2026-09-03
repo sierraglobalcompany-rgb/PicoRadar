@@ -10,6 +10,7 @@ import 'package:picoradar/features/apps_launcher/presentation/apps_launcher_pane
 import 'package:picoradar/features/apps_launcher/presentation/apps_screen.dart';
 import 'package:picoradar/features/apps_launcher/presentation/module_placeholder_screen.dart';
 import 'package:picoradar/features/cda/presentation/cda_finder_screen.dart';
+import 'package:picoradar/features/fotomultas/presentation/fotomultas_screen.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
@@ -112,7 +113,7 @@ void main() {
       ).map((module) => module.title),
       _visibleSecondaryTitles,
     );
-    expect(_hiddenModules, hasLength(10));
+    expect(_hiddenModules, hasLength(9));
     expect(
       visibleModules(primaryModules, const {}),
       isEmpty,
@@ -302,6 +303,17 @@ void main() {
     expect(find.text('Buscar CDA'), findsWidgets);
   });
 
+  testWidgets('Fotomultas opens the real camera explorer', (tester) async {
+    await _openApps(tester, harness);
+
+    await tester.tap(find.byKey(const ValueKey('app-module-fotomultas')));
+    await _pumpRoute(tester);
+
+    expect(find.byType(FotomultasScreen), findsOneWidget);
+    expect(find.text('Fotomultas'), findsWidgets);
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+  });
+
   testWidgets('unfinished modules are not visible from Apps', (tester) async {
     await _createVehicle(harness, plate: 'AAA111');
     await _openApps(tester, harness);
@@ -483,7 +495,7 @@ void main() {
         ...defaultModuleFeatureFlags,
         'module_soat_enabled': false,
       }),
-      hasLength(4),
+      hasLength(5),
     );
   });
 
@@ -560,7 +572,7 @@ void main() {
           expect(
             find.byKey(ValueKey('app-module-${module.id}')),
             findsOneWidget,
-            reason: '${module.title} should remain visible in K1',
+            reason: '${module.title} should remain visible in K2A',
           );
           expect(find.text(module.title), findsOneWidget);
         }
@@ -602,6 +614,7 @@ void main() {
 
 const _visiblePrimaryIds = [
   'pico',
+  'fotomultas',
   'soat',
   'tecnomecanica',
   'impuestos',
@@ -610,6 +623,7 @@ const _visiblePrimaryIds = [
 
 const _visiblePrimaryTitles = [
   'Pico y placa',
+  'Fotomultas',
   'SOAT',
   'Tecnomecánica',
   'Impuestos',
@@ -619,12 +633,7 @@ const _visiblePrimaryTitles = [
 const _visibleSecondaryIds = ['cda'];
 const _visibleSecondaryTitles = ['CDA'];
 
-const _hiddenPrimaryIds = [
-  'fotomultas',
-  'comparendos',
-  'documentos',
-  'defensa',
-];
+const _hiddenPrimaryIds = ['comparendos', 'documentos', 'defensa'];
 
 const _hiddenSecondaryIds = [
   'servicios',

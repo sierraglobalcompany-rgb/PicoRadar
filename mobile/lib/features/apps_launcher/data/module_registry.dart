@@ -9,7 +9,7 @@ final moduleFeatureFlagsProvider = Provider<Map<String, bool>>((ref) {
 
 const defaultModuleFeatureFlags = {
   'module_pico_enabled': true,
-  'module_fotomultas_enabled': false,
+  'module_fotomultas_enabled': true,
   'module_comparendos_enabled': false,
   'module_soat_enabled': true,
   'module_tecnomecanica_enabled': true,
