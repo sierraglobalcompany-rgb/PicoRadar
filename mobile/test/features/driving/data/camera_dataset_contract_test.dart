@@ -24,14 +24,41 @@ void main() {
 
       expect(dataset['schemaVersion'], 1);
       expect(dataset['datasetKey'], 'traffic_cameras');
-      expect(dataset['recordCount'], greaterThan(0));
+      expect(dataset['version'], '2026.08.31-ansv');
+      expect(dataset['recordCount'], 360);
+      expect(dataset['speedKnownCount'], 293);
+      expect(dataset['speedCoverage'], 0.8139);
+      expect(manifest['schemaVersion'], 1);
+      expect(manifest['datasetKey'], 'traffic_cameras');
+      expect(manifest['version'], '2026.08.31-ansv');
       expect(dataset['recordCount'], manifest['recordCount']);
       expect(dataset['speedKnownCount'], manifest['speedKnownCount']);
+      expect(dataset['speedCoverage'], manifest['speedCoverage']);
+      expect(manifest['asset']['path'], 'cameras_v1.json');
       expect(manifest['asset']['bytes'], datasetBytes.length);
       expect(manifest['asset']['sha256'], await _sha256Hex(datasetBytes));
+      expect(
+        manifest['sourceSnapshotSha256'],
+        dataset['source']['snapshotSha256'],
+      );
 
       final records = (dataset['records'] as List).cast<Map<String, dynamic>>();
       expect(records.length, dataset['recordCount']);
+      expect(
+        records.map((record) => record['cameraId']).toSet().length,
+        records.length,
+      );
+      expect(
+        records.map((record) => record['sourceRowId']).toSet().length,
+        records.length,
+      );
+      expect(
+        records.where(
+          (record) =>
+              record['sourceFetchedAt'] != dataset['source']['fetchedAt'],
+        ),
+        isEmpty,
+      );
       expect(
         records.where((record) => record['operationStatus'] != 'Operando'),
         isEmpty,
@@ -54,7 +81,23 @@ void main() {
       );
       expect(
         records.where(
-          (record) => record['lat'] is! num || record['lon'] is! num,
+          (record) =>
+              record['lat'] is! num ||
+              record['lon'] is! num ||
+              (record['lat'] as num) < -4.5 ||
+              (record['lat'] as num) > 13.5 ||
+              (record['lon'] as num) < -82.5 ||
+              (record['lon'] as num) > -66,
+        ),
+        isEmpty,
+      );
+      expect(
+        records.where(
+          (record) =>
+              record['reportedSpeedKmh'] != null &&
+              (record['reportedSpeedKmh'] is! int ||
+                  (record['reportedSpeedKmh'] as int) < 1 ||
+                  (record['reportedSpeedKmh'] as int) > 200),
         ),
         isEmpty,
       );
@@ -65,31 +108,51 @@ void main() {
         ),
         isEmpty,
       );
-
-      final first = records.first;
+      final asOf = DateTime.parse(manifest['freshness']['asOf'] as String);
       expect(
-        first.keys,
-        containsAll(<String>[
-          'cameraId',
-          'sourceRowId',
-          'sourceOfficialCode',
-          'lat',
-          'lon',
-          'municipality',
-          'department',
-          'address',
-          'trafficAuthority',
-          'jurisdiction',
-          'operationStatus',
-          'reportedSpeedKmh',
-          'technology',
-          'installationType',
-          'equipmentName',
-          'infractionCodes',
-          'sourceFetchedAt',
-          'validFrom',
-          'validUntil',
-        ]),
+        records.where(
+          (record) =>
+              record['validFrom'] != null &&
+              DateTime.parse(record['validFrom'] as String).isAfter(asOf),
+        ),
+        isEmpty,
+      );
+      expect(
+        records.where(
+          (record) =>
+              record['validUntil'] != null &&
+              DateTime.parse(record['validUntil'] as String).isBefore(asOf),
+        ),
+        isEmpty,
+      );
+
+      const requiredKeys = <String>{
+        'cameraId',
+        'sourceRowId',
+        'sourceOfficialCode',
+        'sourceRequestCode',
+        'lat',
+        'lon',
+        'municipality',
+        'department',
+        'address',
+        'trafficAuthority',
+        'jurisdiction',
+        'operationStatus',
+        'reportedSpeedKmh',
+        'technology',
+        'installationType',
+        'equipmentName',
+        'infractionCodes',
+        'sourceFetchedAt',
+        'validFrom',
+        'validUntil',
+      };
+      expect(
+        records.where(
+          (record) => !record.keys.toSet().containsAll(requiredKeys),
+        ),
+        isEmpty,
       );
     },
   );
