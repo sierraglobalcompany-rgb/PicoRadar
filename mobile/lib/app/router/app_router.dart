@@ -13,6 +13,7 @@ import '../../features/garage/presentation/vehicle_detail_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/onboarding/presentation/onboarding_vehicle_screen.dart';
 import '../../features/pico_placa/presentation/pico_detail_screen.dart';
+import '../../features/tramites/presentation/tramites_screen.dart';
 import '../../features/vehicle_status/presentation/vehicle_status_screen.dart';
 import 'app_routes.dart';
 import 'immersive_placeholder_screen.dart';
@@ -119,6 +120,9 @@ List<RouteBase> _tabRoutes(AppTab tab) {
             return ComparendosScreen(
               vehicleId: state.uri.queryParameters['vehicleId'],
             );
+          }
+          if (moduleId == 'tramites') {
+            return const TramitesScreen();
           }
           if (_vehicleStatusModules.contains(moduleId)) {
             return VehicleStatusScreen(

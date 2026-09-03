@@ -20,7 +20,7 @@ const defaultModuleFeatureFlags = {
   'module_cda_enabled': true,
   'module_servicios_enabled': false,
   'module_compra_venta_enabled': false,
-  'module_tramites_enabled': false,
+  'module_tramites_enabled': true,
   'module_peritajes_enabled': false,
   'module_talleres_enabled': false,
   'module_peajes_estado_vial_enabled': false,

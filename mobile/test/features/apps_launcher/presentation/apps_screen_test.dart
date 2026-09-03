@@ -16,6 +16,7 @@ import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/presentation/pico_detail_screen.dart';
+import 'package:picoradar/features/tramites/presentation/tramites_screen.dart';
 
 import '../../../test_app_harness.dart';
 
@@ -114,7 +115,7 @@ void main() {
       ).map((module) => module.title),
       _visibleSecondaryTitles,
     );
-    expect(_hiddenModules, hasLength(8));
+    expect(_hiddenModules, hasLength(7));
     expect(
       visibleModules(primaryModules, const {}),
       isEmpty,
@@ -274,18 +275,22 @@ void main() {
     expect(find.byType(PicoDetailScreen), findsOneWidget);
   });
 
-  testWidgets('Apps Más shows CDA only by default', (tester) async {
+  testWidgets('Apps Más shows CDA and Trámites by default', (tester) async {
     await _openApps(tester, harness);
     await tester.tap(find.text('Más'));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('app-secondary-cda')), findsOneWidget);
     expect(
+      find.byKey(const ValueKey('app-secondary-tramites')),
+      findsOneWidget,
+    );
+    expect(
       find.descendant(
         of: find.byKey(const ValueKey('apps-launcher-more-list')),
         matching: find.byType(ListTile),
       ),
-      findsOneWidget,
+      findsNWidgets(2),
     );
     for (final id in _hiddenSecondaryIds) {
       expect(find.byKey(ValueKey('app-secondary-$id')), findsNothing);
@@ -302,6 +307,19 @@ void main() {
 
     expect(find.byType(CdaFinderScreen), findsOneWidget);
     expect(find.text('Buscar CDA'), findsWidgets);
+  });
+
+  testWidgets('Apps Más opens the Trámites hub', (tester) async {
+    await _openApps(tester, harness);
+    await tester.tap(find.text('Más'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('app-secondary-tramites')));
+    await _pumpRoute(tester);
+
+    expect(find.byType(TramitesScreen), findsOneWidget);
+    expect(find.text('Trámites'), findsWidgets);
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
   });
 
   testWidgets('Fotomultas opens the real camera explorer', (tester) async {
@@ -647,15 +665,14 @@ const _visiblePrimaryTitles = [
   'Seguro y asistencia',
 ];
 
-const _visibleSecondaryIds = ['cda'];
-const _visibleSecondaryTitles = ['CDA'];
+const _visibleSecondaryIds = ['cda', 'tramites'];
+const _visibleSecondaryTitles = ['CDA', 'Trámites'];
 
 const _hiddenPrimaryIds = ['documentos', 'defensa'];
 
 const _hiddenSecondaryIds = [
   'servicios',
   'compra_venta',
-  'tramites',
   'peritajes',
   'talleres',
   'peajes_estado_vial',
