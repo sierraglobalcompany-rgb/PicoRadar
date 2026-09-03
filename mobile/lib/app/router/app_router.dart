@@ -5,6 +5,7 @@ import '../shell/app_shell.dart';
 import '../../features/apps_launcher/presentation/apps_screen.dart';
 import '../../features/apps_launcher/presentation/module_placeholder_screen.dart';
 import '../../features/cda/presentation/cda_finder_screen.dart';
+import '../../features/driving/presentation/driving_screen.dart';
 import '../../features/garage/presentation/garage_screen.dart';
 import '../../features/garage/presentation/vehicle_detail_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
@@ -66,6 +67,7 @@ StatefulShellBranch _rootBranch(AppTab tab) {
             AppTab.home => const HomeScreen(),
             AppTab.garage => const GarageScreen(),
             AppTab.apps => const AppsScreen(),
+            AppTab.drive => const DrivingScreen(),
             _ => RootPlaceholderScreen(tab: tab),
           };
         },

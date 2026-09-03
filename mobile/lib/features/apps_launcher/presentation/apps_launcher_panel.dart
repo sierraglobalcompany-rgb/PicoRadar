@@ -291,6 +291,8 @@ class _LauncherTile extends StatelessWidget {
       button: true,
       enabled: !disabled,
       label: module.title,
+      excludeSemantics: true,
+      onTap: () => onOpen(module),
       child: Material(
         color: AppColors.surface,
         shape: RoundedRectangleBorder(

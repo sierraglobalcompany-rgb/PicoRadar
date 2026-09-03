@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -147,25 +149,36 @@ class _PrimaryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scale = MediaQuery.textScalerOf(context).scale(1);
-    final aspectRatio = scale >= 1.8 ? 0.64 : (scale >= 1.4 ? 0.78 : 1.0);
-    return GridView.builder(
-      key: const ValueKey('apps-primary-grid'),
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: modules.length,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        mainAxisSpacing: AppSpacing.m,
-        crossAxisSpacing: AppSpacing.m,
-        childAspectRatio: aspectRatio,
-      ),
-      itemBuilder: (context, index) {
-        final module = modules[index];
-        return _ModuleTile(module: module, activeVehicle: activeVehicle);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final scale = MediaQuery.textScalerOf(context).scale(1);
+        final tileWidth = (constraints.maxWidth - (AppSpacing.m * 2)) / 3;
+        final tileHeight = _primaryTileHeight(tileWidth, scale);
+        return GridView.builder(
+          key: const ValueKey('apps-primary-grid'),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: modules.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: AppSpacing.m,
+            crossAxisSpacing: AppSpacing.m,
+            mainAxisExtent: tileHeight,
+          ),
+          itemBuilder: (context, index) {
+            final module = modules[index];
+            return _ModuleTile(module: module, activeVehicle: activeVehicle);
+          },
+        );
       },
     );
   }
+}
+
+double _primaryTileHeight(double tileWidth, double textScale) {
+  final normalizedScale = textScale.clamp(1.0, 2.0);
+  final scaleAllowance = 120 + ((normalizedScale - 1) * 48);
+  return math.max(tileWidth + 28, scaleAllowance);
 }
 
 class _SecondaryList extends StatelessWidget {
@@ -210,40 +223,81 @@ class _ModuleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      child: InkWell(
-        key: ValueKey('app-module-${module.id}'),
-        onTap: () => _openModule(context, module, activeVehicle),
+    return Semantics(
+      label: module.title,
+      button: true,
+      excludeSemantics: true,
+      onTap: () => _openModule(context, module, activeVehicle),
+      child: Material(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppRadius.card),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.m),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  module.icon,
-                  size: AppIconSize.l,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(height: AppSpacing.s),
-                Text(
-                  module.title,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ],
+        child: InkWell(
+          key: ValueKey('app-module-${module.id}'),
+          onTap: () => _openModule(context, module, activeVehicle),
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.s,
+                vertical: AppSpacing.m,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    module.icon,
+                    size: AppIconSize.l,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Expanded(child: _ModuleTitle(title: module.title)),
+                ],
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ModuleTitle extends StatelessWidget {
+  const _ModuleTitle({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodyMedium
+        ?.copyWith(fontWeight: FontWeight.w700, height: 1.08);
+    final isLongSingleWord = !title.contains(' ') && title.length >= 9;
+
+    if (isLongSingleWord) {
+      return Center(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.visible,
+            style: style,
+          ),
+        ),
+      );
+    }
+
+    return Center(
+      child: Text(
+        title,
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: style,
       ),
     );
   }

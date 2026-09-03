@@ -86,10 +86,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('tab-drive')));
     await tester.pumpAndSettle();
-    expect(
-      find.text('Modo de conduccion de alta concentracion.'),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('start-driving')), findsOneWidget);
   });
 
   testWidgets('indexed stack preserves branch state', (tester) async {

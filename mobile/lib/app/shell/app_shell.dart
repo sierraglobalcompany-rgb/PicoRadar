@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/design_system/app_components.dart';
 import '../../features/apps_launcher/presentation/apps_launcher_panel.dart';
+import '../../features/driving/application/driving_controller.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../app_providers.dart';
 import '../router/app_routes.dart';
@@ -82,6 +83,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final drivingHudActive = ref.watch(drivingHudActiveProvider);
     return PopScope(
       canPop: !_launcherOpen,
       onPopInvokedWithResult: (didPop, result) {
@@ -119,22 +121,24 @@ class _AppShellState extends ConsumerState<AppShell> {
             ],
           ],
         ),
-        bottomNavigationBar: AppBottomNav(
-          destinations: [
-            for (final tab in AppTab.values)
-              AppBottomNavDestination(
-                label: tab.label,
-                icon: tab.icon,
-                selectedIcon: tab.selectedIcon,
-                color: tab.color,
-                keyName: tab.name,
+        bottomNavigationBar: drivingHudActive
+            ? null
+            : AppBottomNav(
+                destinations: [
+                  for (final tab in AppTab.values)
+                    AppBottomNavDestination(
+                      label: tab.label,
+                      icon: tab.icon,
+                      selectedIcon: tab.selectedIcon,
+                      color: tab.color,
+                      keyName: tab.name,
+                    ),
+                ],
+                currentIndex: _launcherOpen
+                    ? AppTab.apps.index
+                    : widget.navigationShell.currentIndex,
+                onSelect: _selectTab,
               ),
-          ],
-          currentIndex: _launcherOpen
-              ? AppTab.apps.index
-              : widget.navigationShell.currentIndex,
-          onSelect: _selectTab,
-        ),
       ),
     );
   }

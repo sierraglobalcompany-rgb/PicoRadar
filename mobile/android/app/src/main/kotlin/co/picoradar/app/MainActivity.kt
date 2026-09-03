@@ -2,6 +2,8 @@ package co.picoradar.app
 
 import android.content.Context
 import android.net.Uri
+import android.speech.tts.TextToSpeech
+import android.view.WindowManager
 import androidx.glance.appwidget.updateAll
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -9,10 +11,20 @@ import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class MainActivity : FlutterActivity() {
+    private var tts: TextToSpeech? = null
+    private var ttsReady = false
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        tts = TextToSpeech(this) { status ->
+            ttsReady = status == TextToSpeech.SUCCESS
+            if (ttsReady) {
+                tts?.language = Locale("es", "CO")
+            }
+        }
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "co.picoradar.app/widget",
@@ -36,6 +48,41 @@ class MainActivity : FlutterActivity() {
             }
             result.success(null)
         }
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            "co.picoradar.app/driving",
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "speakDrivingAlert" -> {
+                    val message = call.argument<String>("message").orEmpty()
+                    if (ttsReady && message.isNotBlank()) {
+                        tts?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "driving-alert")
+                    }
+                    result.success(null)
+                }
+                "setKeepScreenOn" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    if (enabled) {
+                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    } else {
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    }
+                    result.success(null)
+                }
+                "stopDrivingFeedback" -> {
+                    tts?.stop()
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        tts?.stop()
+        tts?.shutdown()
+        tts = null
+        super.onDestroy()
     }
 
     companion object {

@@ -465,6 +465,7 @@ class _OnboardingVehicleScreenState
       _error = null;
     });
 
+    var navigatedAway = false;
     try {
       final repository = ref.read(vehicleRepositoryProvider);
       final year = _yearController.text.trim().isEmpty
@@ -515,6 +516,8 @@ class _OnboardingVehicleScreenState
       ref.invalidate(vehicleListProvider);
 
       if (mounted) {
+        setState(() => _saving = false);
+        navigatedAway = true;
         context.go(widget.returnPath ?? AppRoute.home.path);
       }
     } on VehicleRepositoryException catch (error) {
@@ -526,7 +529,7 @@ class _OnboardingVehicleScreenState
         setState(() => _error = 'El año debe ser numérico.');
       }
     } finally {
-      if (mounted) {
+      if (mounted && !navigatedAway) {
         setState(() => _saving = false);
       }
     }
