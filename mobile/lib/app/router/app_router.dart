@@ -6,6 +6,7 @@ import '../../features/apps_launcher/presentation/apps_screen.dart';
 import '../../features/apps_launcher/presentation/module_placeholder_screen.dart';
 import '../../features/cda/presentation/cda_finder_screen.dart';
 import '../../features/driving/presentation/driving_screen.dart';
+import '../../features/fotomultas/presentation/fotomultas_screen.dart';
 import '../../features/garage/presentation/garage_screen.dart';
 import '../../features/garage/presentation/vehicle_detail_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
@@ -110,6 +111,9 @@ List<RouteBase> _tabRoutes(AppTab tab) {
         path: 'module/:id',
         builder: (context, state) {
           final moduleId = state.pathParameters['id']!;
+          if (moduleId == 'fotomultas') {
+            return const FotomultasScreen();
+          }
           if (_vehicleStatusModules.contains(moduleId)) {
             return VehicleStatusScreen(
               moduleId: moduleId,
