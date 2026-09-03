@@ -4,8 +4,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/app_module.dart';
 
 final moduleFeatureFlagsProvider = Provider<Map<String, bool>>((ref) {
-  return const {};
+  return defaultModuleFeatureFlags;
 });
+
+const defaultModuleFeatureFlags = {
+  'module_pico_enabled': true,
+  'module_fotomultas_enabled': false,
+  'module_comparendos_enabled': false,
+  'module_soat_enabled': true,
+  'module_tecnomecanica_enabled': true,
+  'module_impuestos_enabled': true,
+  'module_documentos_enabled': false,
+  'module_seguro_asistencia_enabled': true,
+  'module_defensa_enabled': false,
+  'module_cda_enabled': true,
+  'module_servicios_enabled': false,
+  'module_compra_venta_enabled': false,
+  'module_tramites_enabled': false,
+  'module_peritajes_enabled': false,
+  'module_talleres_enabled': false,
+  'module_peajes_estado_vial_enabled': false,
+};
 
 const primaryModules = [
   AppModule(
@@ -148,7 +167,7 @@ List<AppModule> visibleModules(
   return modules
       .where((module) {
         final key = module.featureFlagKey;
-        return key == null || (flags[key] ?? true);
+        return key != null && flags[key] == true;
       })
       .toList(growable: false);
 }

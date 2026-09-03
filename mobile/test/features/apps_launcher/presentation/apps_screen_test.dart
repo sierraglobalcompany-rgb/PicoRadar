@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/shell/app_shell.dart';
 import 'package:picoradar/features/apps_launcher/data/module_registry.dart';
+import 'package:picoradar/features/apps_launcher/domain/app_module.dart';
 import 'package:picoradar/features/apps_launcher/presentation/apps_launcher_panel.dart';
 import 'package:picoradar/features/apps_launcher/presentation/apps_screen.dart';
 import 'package:picoradar/features/apps_launcher/presentation/module_placeholder_screen.dart';
@@ -39,6 +40,7 @@ void main() {
   });
 
   test('primary modules keep the approved 1 to 9 order', () {
+    expect(primaryModules, hasLength(9));
     expect(primaryModules.map((module) => module.title), [
       'Pico y placa',
       'Fotomultas',
@@ -53,6 +55,7 @@ void main() {
   });
 
   test('secondary modules keep the approved order', () {
+    expect(secondaryModules, hasLength(7));
     expect(secondaryModules.map((module) => module.title), [
       'CDA',
       'Servicios',
@@ -94,6 +97,29 @@ void main() {
     );
   });
 
+  test('default Apps visibility hides unfinished modules fail-closed', () {
+    expect(
+      visibleModules(
+        primaryModules,
+        defaultModuleFeatureFlags,
+      ).map((module) => module.title),
+      _visiblePrimaryTitles,
+    );
+    expect(
+      visibleModules(
+        secondaryModules,
+        defaultModuleFeatureFlags,
+      ).map((module) => module.title),
+      _visibleSecondaryTitles,
+    );
+    expect(_hiddenModules, hasLength(10));
+    expect(
+      visibleModules(primaryModules, const {}),
+      isEmpty,
+      reason: 'unknown flags must not expose unfinished modules',
+    );
+  });
+
   testWidgets('Apps center action opens overlay above Home', (tester) async {
     await _openApps(tester, harness);
 
@@ -115,11 +141,12 @@ void main() {
       find.byKey(const ValueKey('apps-launcher-primary-grid')),
       findsOneWidget,
     );
-    for (final module in primaryModules) {
-      expect(find.byKey(ValueKey('app-module-${module.id}')), findsOneWidget);
+    for (final id in _visiblePrimaryIds) {
+      expect(find.byKey(ValueKey('app-module-$id')), findsOneWidget);
     }
-    for (final module in secondaryModules) {
-      expect(find.byKey(ValueKey('app-secondary-${module.id}')), findsNothing);
+    for (final id in _hiddenModuleIds) {
+      expect(find.byKey(ValueKey('app-module-$id')), findsNothing);
+      expect(find.byKey(ValueKey('app-secondary-$id')), findsNothing);
     }
 
     await tester.tap(find.text('Más'));
@@ -129,11 +156,12 @@ void main() {
       find.byKey(const ValueKey('apps-launcher-more-list')),
       findsOneWidget,
     );
-    for (final module in secondaryModules) {
-      expect(
-        find.byKey(ValueKey('app-secondary-${module.id}')),
-        findsOneWidget,
-      );
+    for (final id in _visibleSecondaryIds) {
+      expect(find.byKey(ValueKey('app-secondary-$id')), findsOneWidget);
+    }
+    for (final id in _hiddenModuleIds) {
+      expect(find.byKey(ValueKey('app-module-$id')), findsNothing);
+      expect(find.byKey(ValueKey('app-secondary-$id')), findsNothing);
     }
   });
 
@@ -244,23 +272,22 @@ void main() {
     expect(find.byType(PicoDetailScreen), findsOneWidget);
   });
 
-  testWidgets('Peajes y estado vial opens the Viaje tab', (tester) async {
+  testWidgets('Apps Más shows CDA only by default', (tester) async {
     await _openApps(tester, harness);
     await tester.tap(find.text('Más'));
     await tester.pumpAndSettle();
 
-    final shortcut = find.byKey(
-      const ValueKey('app-secondary-peajes_estado_vial'),
+    expect(find.byKey(const ValueKey('app-secondary-cda')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('apps-launcher-more-list')),
+        matching: find.byType(ListTile),
+      ),
+      findsOneWidget,
     );
-    await tester.drag(
-      find.byKey(const ValueKey('apps-launcher-more-list')),
-      const Offset(0, -240),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(shortcut.last);
-    await _pumpRoute(tester);
-
-    expect(find.text('Planeacion de ruta sin mapa propio.'), findsOneWidget);
+    for (final id in _hiddenSecondaryIds) {
+      expect(find.byKey(ValueKey('app-secondary-$id')), findsNothing);
+    }
   });
 
   testWidgets('Apps Más opens the official CDA finder', (tester) async {
@@ -275,33 +302,20 @@ void main() {
     expect(find.text('Buscar CDA'), findsWidgets);
   });
 
-  testWidgets('unimplemented modules open one neutral placeholder', (
-    tester,
-  ) async {
+  testWidgets('unfinished modules are not visible from Apps', (tester) async {
     await _createVehicle(harness, plate: 'AAA111');
     await _openApps(tester, harness);
 
-    await tester.tap(find.byKey(const ValueKey('app-module-comparendos')));
-    await _pumpRoute(tester);
-
-    expect(find.byType(ModulePlaceholderScreen), findsOneWidget);
-    expect(find.text('Próximamente'), findsOneWidget);
-    expect(
-      find.text('Este módulo estará disponible en una próxima etapa.'),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('Documentos and Defensa remain placeholders', (tester) async {
-    await _createVehicle(harness, plate: 'AAA111');
-
-    await _openModuleFromApps(tester, harness, 'documentos');
-    expect(find.byType(ModulePlaceholderScreen), findsOneWidget);
-    expect(find.text('Documentos'), findsWidgets);
-
-    await _openModuleFromApps(tester, harness, 'defensa');
-    expect(find.byType(ModulePlaceholderScreen), findsOneWidget);
-    expect(find.text('Defensa'), findsWidgets);
+    for (final id in _hiddenPrimaryIds) {
+      expect(find.byKey(ValueKey('app-module-$id')), findsNothing);
+    }
+    await tester.tap(find.text('Más'));
+    await tester.pumpAndSettle();
+    for (final id in _hiddenSecondaryIds) {
+      expect(find.byKey(ValueKey('app-secondary-$id')), findsNothing);
+    }
+    expect(find.text('Próximamente'), findsNothing);
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
   });
 
   testWidgets('C13 vehicle status modules open real screens', (tester) async {
@@ -430,21 +444,22 @@ void main() {
     expect(find.text('Agregar vehículo'), findsOneWidget);
   });
 
-  testWidgets('module without vehicle requirement opens without guard', (
-    tester,
-  ) async {
-    await _openApps(tester, harness);
+  testWidgets(
+    'visible module without vehicle requirement opens without guard',
+    (tester) async {
+      await _openApps(tester, harness);
 
-    await tester.tap(find.byKey(const ValueKey('app-module-fotomultas')));
-    await _pumpRoute(tester);
+      await tester.tap(find.byKey(const ValueKey('app-module-pico')));
+      await _pumpRoute(tester);
 
-    expect(find.byType(ModulePlaceholderScreen), findsOneWidget);
-    expect(find.text('Próximamente'), findsOneWidget);
-    expect(
-      find.text('Agrega un vehículo para usar esta función.'),
-      findsNothing,
-    );
-  });
+      expect(find.byType(PicoDetailScreen), findsOneWidget);
+      expect(find.byType(ModulePlaceholderScreen), findsNothing);
+      expect(
+        find.text('Agrega un vehículo para usar esta función.'),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets('hidden feature flag compacts the grid without a gap', (
     tester,
@@ -452,7 +467,10 @@ void main() {
     await _openApps(
       tester,
       harness,
-      moduleFeatureFlags: {'module_soat_enabled': false},
+      moduleFeatureFlags: {
+        ...defaultModuleFeatureFlags,
+        'module_soat_enabled': false,
+      },
     );
 
     expect(find.byKey(const ValueKey('app-module-soat')), findsNothing);
@@ -461,8 +479,11 @@ void main() {
       findsOneWidget,
     );
     expect(
-      visibleModules(primaryModules, {'module_soat_enabled': false}),
-      hasLength(8),
+      visibleModules(primaryModules, {
+        ...defaultModuleFeatureFlags,
+        'module_soat_enabled': false,
+      }),
+      hasLength(4),
     );
   });
 
@@ -533,13 +554,19 @@ void main() {
         await _pumpAppsScreenAtScale(tester, scale, size: size);
 
         expect(find.byKey(const ValueKey('apps-primary-grid')), findsOneWidget);
-        for (final module in primaryModules) {
+        for (final module in primaryModules.where(
+          (module) => _visiblePrimaryIds.contains(module.id),
+        )) {
           expect(
             find.byKey(ValueKey('app-module-${module.id}')),
             findsOneWidget,
-            reason: '${module.title} should remain in the 3x3 grid',
+            reason: '${module.title} should remain visible in K1',
           );
           expect(find.text(module.title), findsOneWidget);
+        }
+        for (final id in _hiddenModuleIds) {
+          expect(find.byKey(ValueKey('app-module-$id')), findsNothing);
+          expect(find.byKey(ValueKey('app-secondary-$id')), findsNothing);
         }
         expect(
           tester.takeException(),
@@ -572,6 +599,50 @@ void main() {
     },
   );
 }
+
+const _visiblePrimaryIds = [
+  'pico',
+  'soat',
+  'tecnomecanica',
+  'impuestos',
+  'seguro_asistencia',
+];
+
+const _visiblePrimaryTitles = [
+  'Pico y placa',
+  'SOAT',
+  'Tecnomecánica',
+  'Impuestos',
+  'Seguro y asistencia',
+];
+
+const _visibleSecondaryIds = ['cda'];
+const _visibleSecondaryTitles = ['CDA'];
+
+const _hiddenPrimaryIds = [
+  'fotomultas',
+  'comparendos',
+  'documentos',
+  'defensa',
+];
+
+const _hiddenSecondaryIds = [
+  'servicios',
+  'compra_venta',
+  'tramites',
+  'peritajes',
+  'talleres',
+  'peajes_estado_vial',
+];
+
+const _hiddenModuleIds = [..._hiddenPrimaryIds, ..._hiddenSecondaryIds];
+
+List<AppModule> get _hiddenModules => [
+  ...primaryModules.where((module) => _hiddenPrimaryIds.contains(module.id)),
+  ...secondaryModules.where(
+    (module) => _hiddenSecondaryIds.contains(module.id),
+  ),
+];
 
 Future<void> _openApps(
   WidgetTester tester,
