@@ -69,6 +69,26 @@ void main() {
     expect(find.byKey(const ValueKey('comparendos-go-garage')), findsOneWidget);
   });
 
+  testWidgets('invalid explicit vehicleId fails closed without another plate', (
+    tester,
+  ) async {
+    final vehicle = _vehicle(id: 'vehicle-a', plate: 'AAA111');
+
+    await _pumpScreen(
+      tester,
+      vehicles: [vehicle],
+      active: vehicle,
+      vehicleId: 'missing-vehicle',
+    );
+
+    expect(
+      find.byKey(const ValueKey('comparendos-no-vehicle')),
+      findsOneWidget,
+    );
+    expect(find.text('AAA111'), findsNothing);
+    expect(find.byKey(const ValueKey('comparendos-copy-plate')), findsNothing);
+  });
+
   testWidgets('shows plate type and registration city when present', (
     tester,
   ) async {
@@ -210,6 +230,29 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('dispose during delayed local note write does not throw', (
+    tester,
+  ) async {
+    final pendingWrite = Completer<void>();
+    final preferences = _DelayedSetStringPreferences(pendingWrite.future);
+    _preferences = preferences;
+    final vehicle = _vehicle(id: 'vehicle-a');
+
+    await _pumpScreen(tester, vehicles: [vehicle], active: vehicle);
+    await tester.tap(find.byKey(const ValueKey('comparendos-mark-checked')));
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox.shrink());
+
+    pendingWrite.complete();
+    await tester.pump();
+
+    expect(
+      await preferences.getString('comparendos.last_checked.vehicle-a'),
+      '2026-09-03',
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('last checked persistence stays per vehicle', (tester) async {
@@ -358,5 +401,17 @@ class _FakeExternalLauncher implements ExternalLauncher {
   Future<bool> openExternal(String uri) async {
     opened.add(uri);
     return openResult;
+  }
+}
+
+class _DelayedSetStringPreferences extends MemoryPreferences {
+  _DelayedSetStringPreferences(this.delay);
+
+  final Future<void> delay;
+
+  @override
+  Future<void> setString(String key, String value) async {
+    values[key] = value;
+    await delay;
   }
 }

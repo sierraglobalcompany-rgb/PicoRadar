@@ -132,7 +132,7 @@ class _ComparendosContent extends ConsumerWidget {
               const SizedBox(height: AppSpacing.l),
               FilledButton.tonalIcon(
                 key: const ValueKey('comparendos-mark-checked'),
-                onPressed: () => _markCheckedToday(ref, vehicle.id),
+                onPressed: () => _markCheckedToday(context, ref, vehicle.id),
                 icon: const Icon(Icons.today_outlined),
                 label: const Text('Marcar que consulté hoy'),
               ),
@@ -184,11 +184,17 @@ class _ComparendosContent extends ConsumerWidget {
     }
   }
 
-  Future<void> _markCheckedToday(WidgetRef ref, String vehicleId) async {
+  Future<void> _markCheckedToday(
+    BuildContext context,
+    WidgetRef ref,
+    String vehicleId,
+  ) async {
     final date = _formatBogotaDate(ref.read(bogotaNowProvider));
-    await ref
-        .read(appPreferencesProvider)
-        .setString(_lastCheckedKey(vehicleId), date);
+    final preferences = ref.read(appPreferencesProvider);
+    await preferences.setString(_lastCheckedKey(vehicleId), date);
+    if (!context.mounted) {
+      return;
+    }
     ref.invalidate(_lastCheckedProvider(vehicleId));
   }
 }
