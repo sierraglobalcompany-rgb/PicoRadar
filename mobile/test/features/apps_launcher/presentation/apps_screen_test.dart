@@ -389,7 +389,9 @@ void main() {
     await _openModuleFromApps(tester, harness, 'impuestos');
     expect(find.text('Impuestos'), findsWidgets);
     expect(
-      find.text('No calculamos ni estimamos el impuesto.'),
+      find.text(
+        'PicoRadar no calcula el impuesto, no consulta deuda y no confirma si está pagado.',
+      ),
       findsOneWidget,
     );
     expect(find.byType(ModulePlaceholderScreen), findsNothing);

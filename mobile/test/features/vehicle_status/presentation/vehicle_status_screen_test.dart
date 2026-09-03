@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/home/data/home_banner_config.dart';
@@ -454,17 +457,207 @@ void main() {
   testWidgets('tax screen suggests only verified authority without estimates', (
     tester,
   ) async {
-    await _createVehicle(harness, plate: 'MED123', city: 'Medellin');
+    await _createVehicle(harness, plate: 'MED123', city: 'Medellín, Antioquia');
 
     await _openModule(tester, harness, 'impuestos');
 
     expect(
-      find.text('No calculamos ni estimamos el impuesto.'),
+      find.text(
+        'PicoRadar no calcula el impuesto, no consulta deuda y no confirma si está pagado.',
+      ),
       findsOneWidget,
     );
     expect(find.text('Antioquia - Gobernación de Antioquia'), findsWidgets);
+    expect(find.text('Fuente: Gobernación de Antioquia'), findsOneWidget);
+    expect(find.text('Calendario: 2026'), findsOneWidget);
+    expect(find.text('Revisado: 3 sep 2026'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('official-link-antioquia-tax-vehicles')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('official-link-bogota-tax-vehicles')),
+      findsNothing,
+    );
     expect(find.textContaining('avaluo'), findsNothing);
     expect(find.textContaining('tarifa'), findsNothing);
+    expect(find.textContaining('debes \$'), findsNothing);
+    expect(find.textContaining('saldo'), findsNothing);
+    expect(find.textContaining('deuda consultada'), findsNothing);
+    expect(find.textContaining('paz y salvo'), findsNothing);
+    expect(find.textContaining('liquidación calculada'), findsNothing);
+  });
+
+  testWidgets(
+    'tax screen keeps unsupported city manual until authority selected',
+    (tester) async {
+      await _createVehicle(harness, plate: 'BEL123', city: 'Bello');
+
+      await _openModule(tester, harness, 'impuestos');
+
+      expect(
+        find.text(
+          'Selecciona la entidad tributaria correspondiente a la matrícula.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('official-link-bogota-tax-vehicles')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('official-link-antioquia-tax-vehicles')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets('tax authority selection persists without replacing saved data', (
+    tester,
+  ) async {
+    final vehicle = await _createVehicle(
+      harness,
+      plate: 'TAX123',
+      city: 'Cali',
+    );
+    await VehicleObligationStore(harness.database).upsert(
+      vehicleId: vehicle.id,
+      type: VehicleObligationType.tax,
+      startDate: DateTime(2026, 1, 2),
+      dueDate: DateTime(2026, 7, 24),
+      details: const {'source': 'manual-note'},
+      reminderEnabled: true,
+    );
+
+    await _openModule(tester, harness, 'impuestos');
+    await tester.tap(find.byKey(const ValueKey('tax-authority-field')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.text('Bogotá - Secretaría Distrital de Hacienda').last,
+    );
+    await _pumpNavigation(tester);
+
+    final saved = await VehicleObligationStore(harness.database)
+        .get(vehicle.id, VehicleObligationType.tax);
+    expect(saved?.startDate, DateTime(2026, 1, 2));
+    expect(saved?.dueDate, DateTime(2026, 7, 24));
+    expect(saved?.reminderEnabled, isTrue);
+    expect(saved?.details['source'], 'manual-note');
+    expect(saved?.details['authorityId'], 'bogota');
+  });
+
+  testWidgets('tax authority selection tolerates dispose during async write', (
+    tester,
+  ) async {
+    final vehicle = await _createVehicle(
+      harness,
+      plate: 'ASY123',
+      city: 'Cali',
+    );
+    final release = Completer<void>();
+    final store = _DelayingObligationStore(harness.database, release);
+
+    await _openModule(
+      tester,
+      harness,
+      'impuestos',
+      wrap: (child) => ProviderScope(
+        overrides: [vehicleObligationStoreProvider.overrideWithValue(store)],
+        child: child,
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('tax-authority-field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Antioquia - Gobernación de Antioquia').last);
+    await tester.pump();
+    expect(store.upsertStarted, isTrue);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    release.complete();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    final saved = await VehicleObligationStore(harness.database)
+        .get(vehicle.id, VehicleObligationType.tax);
+    expect(saved?.details['authorityId'], 'antioquia');
+  });
+
+  testWidgets('tax portal failure is visible to the user', (tester) async {
+    await _createVehicle(harness, plate: 'BOG123', city: 'Bogotá D.C.');
+    final launcher = _CapturingLauncher(openResult: false);
+
+    await _openModule(tester, harness, 'impuestos', externalLauncher: launcher);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('official-link-bogota-tax-vehicles')),
+      280,
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey('official-link-bogota-tax-vehicles')),
+    );
+    await tester.pump();
+
+    expect(launcher.openedUris, [
+      'https://www.haciendabogota.gov.co/es/impuestos/impuesto-sobre-vehiculos-automotores',
+    ]);
+    expect(find.text('No pudimos abrir el portal oficial.'), findsOneWidget);
+  });
+
+  testWidgets(
+    'tax dates show past today and upcoming states without semaforizacion',
+    (tester) async {
+      harness.now = DateTime(2026, 7, 24, 10);
+      await _createVehicle(harness, plate: 'BOG123', city: 'Bogota DC');
+
+      await _openModule(tester, harness, 'impuestos');
+
+      expect(find.text('Ya pasó · Pronto pago 10%'), findsOneWidget);
+      expect(find.text('Hoy · Fecha límite ordinaria'), findsOneWidget);
+      expect(
+        find.text('Próxima · SPAC: cuota 2, si se acogió'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('semaforización'), findsNothing);
+    },
+  );
+
+  testWidgets('tax screen tolerates K2D responsive text scales', (
+    tester,
+  ) async {
+    for (final viewport in [
+      (name: '360x800', size: const Size(360, 800), scale: 1.0),
+      (name: '360x800 textScale 2.0', size: const Size(360, 800), scale: 2.0),
+      (name: '390x844 textScale 1.5', size: const Size(390, 844), scale: 1.5),
+      (name: '412x915 textScale 2.0', size: const Size(412, 915), scale: 2.0),
+    ]) {
+      await _createVehicle(
+        harness,
+        plate: _plateForViewport(viewport.name),
+        city: 'Bogotá D.C.',
+      );
+      await _openModule(
+        tester,
+        harness,
+        'impuestos',
+        size: viewport.size,
+        textScaleFactor: viewport.scale,
+      );
+      expect(
+        find.byKey(const ValueKey('tax-authority-field')),
+        findsOneWidget,
+        reason: viewport.name,
+      );
+      expect(
+        find.byKey(const ValueKey('official-link-bogota-tax-vehicles')),
+        findsOneWidget,
+        reason: viewport.name,
+      );
+      expect(tester.takeException(), isNull, reason: viewport.name);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+      await harness.dispose();
+      harness = TestAppHarness();
+    }
   });
 }
 
@@ -492,6 +685,7 @@ Future<void> _openModule(
   HomeBannerCampaign? homeBannerCampaignOverride,
   Size size = const Size(390, 844),
   double textScaleFactor = 1,
+  Widget Function(Widget child)? wrap,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -516,6 +710,7 @@ Future<void> _openModule(
     childOverride: MaterialApp(
       home: VehicleStatusScreen(moduleId: moduleId, vehicleId: null),
     ),
+    wrap: wrap,
   );
   await _pumpNavigation(tester);
 }
@@ -549,6 +744,9 @@ String _plateForViewport(String name) {
 }
 
 class _CapturingLauncher implements ExternalLauncher {
+  _CapturingLauncher({this.openResult = true});
+
+  final bool openResult;
   final calledPhones = <String>[];
   final openedUris = <String>[];
 
@@ -561,7 +759,35 @@ class _CapturingLauncher implements ExternalLauncher {
   @override
   Future<bool> openExternal(String uri) async {
     openedUris.add(uri);
-    return true;
+    return openResult;
+  }
+}
+
+class _DelayingObligationStore extends VehicleObligationStore {
+  _DelayingObligationStore(super.database, this.release);
+
+  final Completer<void> release;
+  bool upsertStarted = false;
+
+  @override
+  Future<VehicleObligation> upsert({
+    required String vehicleId,
+    required VehicleObligationType type,
+    DateTime? startDate,
+    DateTime? dueDate,
+    Map<String, String> details = const {},
+    bool reminderEnabled = true,
+  }) async {
+    upsertStarted = true;
+    await release.future;
+    return super.upsert(
+      vehicleId: vehicleId,
+      type: type,
+      startDate: startDate,
+      dueDate: dueDate,
+      details: details,
+      reminderEnabled: reminderEnabled,
+    );
   }
 }
 

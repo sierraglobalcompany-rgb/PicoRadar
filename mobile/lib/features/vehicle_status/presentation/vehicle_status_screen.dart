@@ -365,7 +365,9 @@ class _TaxPanel extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('No calculamos ni estimamos el impuesto.'),
+          const Text(
+            'PicoRadar no calcula el impuesto, no consulta deuda y no confirma si está pagado.',
+          ),
           const SizedBox(height: AppSpacing.m),
           DropdownButtonFormField<String>(
             key: const ValueKey('tax-authority-field'),
@@ -383,14 +385,23 @@ class _TaxPanel extends ConsumerWidget {
               if (value == null) {
                 return;
               }
-              await ref
-                  .read(vehicleObligationStoreProvider)
-                  .upsert(
-                    vehicleId: vehicle.id,
-                    type: VehicleObligationType.tax,
-                    details: {'authorityId': value},
-                    reminderEnabled: false,
-                  );
+              final store = ref.read(vehicleObligationStoreProvider);
+              final currentObligation = obligation;
+              final details = Map<String, String>.of(
+                currentObligation?.details ?? const {},
+              );
+              details['authorityId'] = value;
+              await store.upsert(
+                vehicleId: vehicle.id,
+                type: VehicleObligationType.tax,
+                startDate: currentObligation?.startDate,
+                dueDate: currentObligation?.dueDate,
+                details: details,
+                reminderEnabled: currentObligation?.reminderEnabled ?? false,
+              );
+              if (!context.mounted) {
+                return;
+              }
               ref.invalidate(
                 vehicleObligationProvider((
                   vehicle.id,
@@ -403,7 +414,7 @@ class _TaxPanel extends ConsumerWidget {
           const SizedBox(height: AppSpacing.m),
           if (calendar == null)
             const Text(
-              'Todavía no tenemos calendario local verificado para esta matrícula.',
+              'Selecciona la entidad tributaria correspondiente a la matrícula.',
             )
           else ...[
             Text(
@@ -411,18 +422,41 @@ class _TaxPanel extends ConsumerWidget {
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: AppSpacing.s),
-            Text(
-              current
-                  ? 'Calendario oficial disponible ${calendar.year}.'
-                  : 'Calendario pendiente de actualización.',
-            ),
+            Text('Fuente: ${calendar.portalLink.sourceName}'),
+            Text('Calendario: ${calendar.year}'),
+            Text('Revisado: ${_formatReviewDate(calendar.verifiedAt)}'),
             if (!current)
               const Text(
-                'Consulta el calendario actualizado en el portal oficial.',
+                'Calendario pendiente de actualización. Verifica el portal oficial.',
               ),
             const SizedBox(height: AppSpacing.m),
             for (final date in calendar.importantDates)
-              _TextLine(label: date.label, value: formatFullDate(date.date)),
+              _TextLine(
+                label:
+                    '${_taxDateStatus(date.date, nowBogota)} · ${date.label}',
+                value: formatFullDate(date.date),
+              ),
+            const SizedBox(height: AppSpacing.m),
+            OutlinedButton.icon(
+              key: ValueKey('official-link-${calendar.portalLink.id}'),
+              onPressed: () async {
+                final opened = await ref
+                    .read(externalLauncherProvider)
+                    .openExternal(calendar.portalLink.uri);
+                if (!context.mounted || opened) {
+                  return;
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('No pudimos abrir el portal oficial.'),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.open_in_new),
+              label: Text(
+                'Abrir portal oficial de ${_taxPortalName(calendar)}',
+              ),
+            ),
           ],
         ],
       ),
@@ -444,9 +478,6 @@ class _OfficialActions extends ConsumerWidget {
       VehicleObligationType.insurance => fasecoldaAutomovilesLink,
       VehicleObligationType.tax => null,
     };
-    final taxLinks = type == VehicleObligationType.tax
-        ? vehicleTaxCalendars.map((calendar) => calendar.portalLink).toList()
-        : const <OfficialVehicleLink>[];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -456,16 +487,6 @@ class _OfficialActions extends ConsumerWidget {
             onPressed: () => launcher.openExternal(link.uri),
             icon: const Icon(Icons.open_in_new),
             label: Text('${link.title} · ${link.sourceName}'),
-          ),
-        for (final taxLink in taxLinks)
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.s),
-            child: OutlinedButton.icon(
-              key: ValueKey('official-link-${taxLink.id}'),
-              onPressed: () => launcher.openExternal(taxLink.uri),
-              icon: const Icon(Icons.open_in_new),
-              label: Text('${taxLink.title} · ${taxLink.sourceName}'),
-            ),
           ),
         if (type == VehicleObligationType.rtm)
           Padding(
@@ -952,4 +973,42 @@ String formatFullDate(DateTime date) {
     'diciembre',
   ];
   return '${date.day} de ${months[date.month - 1]} de ${date.year}';
+}
+
+String _formatReviewDate(DateTime date) {
+  const months = [
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'may',
+    'jun',
+    'jul',
+    'ago',
+    'sep',
+    'oct',
+    'nov',
+    'dic',
+  ];
+  return '${date.day} ${months[date.month - 1]} ${date.year}';
+}
+
+String _taxDateStatus(DateTime date, DateTime nowBogota) {
+  final target = DateTime(date.year, date.month, date.day);
+  final today = DateTime(nowBogota.year, nowBogota.month, nowBogota.day);
+  if (target == today) {
+    return 'Hoy';
+  }
+  if (target.isBefore(today)) {
+    return 'Ya pasó';
+  }
+  return 'Próxima';
+}
+
+String _taxPortalName(VehicleTaxCalendar calendar) {
+  return switch (calendar.authorityId) {
+    'bogota' => 'Bogotá',
+    'antioquia' => 'Antioquia',
+    _ => calendar.authorityName,
+  };
 }
