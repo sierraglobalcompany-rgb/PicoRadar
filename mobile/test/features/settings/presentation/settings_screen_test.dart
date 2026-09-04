@@ -140,6 +140,41 @@ void main() {
     expect(find.text('Permiso del sistema: activo.'), findsNothing);
   });
 
+  testWidgets('refreshes system notification truth after screen remount', (
+    tester,
+  ) async {
+    scheduler.areEnabledResult = true;
+    final container = ProviderContainer(
+      overrides: [
+        appPreferencesProvider.overrideWithValue(preferences),
+        picoNotificationSchedulerProvider.overrideWithValue(scheduler),
+        externalLauncherProvider.overrideWithValue(launcher),
+        privateVehicleDocumentStoreProvider.overrideWithValue(documentStore),
+        vehicleAssociatedDataCleanerProvider.overrideWithValue(
+          _FakeVehicleDataCleaner(),
+        ),
+        cameraDatasetDiagnosticProvider.overrideWithValue(
+          const AsyncValue.data(
+            CameraDatasetDiagnostic(version: 'test-cameras', count: 2),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await _pumpSettingsWithContainer(tester, container);
+    expect(find.text('Permiso del sistema: activo.'), findsOneWidget);
+    expect(scheduler.areEnabledCalls, 1);
+
+    await _unmountContainer(tester, container);
+    scheduler.areEnabledResult = false;
+
+    await _pumpSettingsWithContainer(tester, container);
+    expect(find.text('Permiso del sistema: desactivado.'), findsOneWidget);
+    expect(find.text('Permiso del sistema: activo.'), findsNothing);
+    expect(scheduler.areEnabledCalls, 2);
+  });
+
   testWidgets(
     'unknown system notification state stays prudent before request',
     (tester) async {
@@ -498,6 +533,110 @@ void main() {
     },
   );
 
+  testWidgets(
+    'active vehicle private data cleanup refreshes cached providers after dispose',
+    (tester) async {
+      final activeVehicle = _vehicle(id: 'vehicle-1', plate: 'ABC123');
+      final documentStore = _FakeDocumentStore()
+        ..putDocument(
+          vehicleId: activeVehicle.id,
+          documentType: PrivateVehicleDocumentType.soat,
+          originalName: 'soat.pdf',
+        );
+      final defenseStore = _MemoryDefenseCaseStore();
+      await defenseStore.createCase(
+        DefenseCaseDraft(
+          vehicleId: activeVehicle.id,
+          reference: 'CMP-001',
+          authority: 'Secretaria de Movilidad',
+          incidentDate: DateTime.utc(2026, 9, 3),
+          facts: 'Hechos del expediente.',
+        ),
+      );
+      final cleanupMayFinish = Completer<void>();
+      final cleaner = _DelayedDeletingVehicleDataCleaner(
+        documentStore: documentStore,
+        defenseCaseStore: defenseStore,
+        preferences: preferences,
+        delay: cleanupMayFinish.future,
+      );
+      final container = ProviderContainer(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(preferences),
+          picoNotificationSchedulerProvider.overrideWithValue(scheduler),
+          externalLauncherProvider.overrideWithValue(launcher),
+          privateVehicleDocumentStoreProvider.overrideWithValue(documentStore),
+          defenseCaseStoreProvider.overrideWithValue(defenseStore),
+          vehicleAssociatedDataCleanerProvider.overrideWithValue(cleaner),
+          activeVehicleProvider.overrideWithValue(
+            AsyncValue.data(activeVehicle),
+          ),
+          cameraDatasetDiagnosticProvider.overrideWithValue(
+            const AsyncValue.data(
+              CameraDatasetDiagnostic(version: 'test-cameras', count: 2),
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      expect(
+        await container.read(vehicleDocumentsProvider(activeVehicle.id).future),
+        hasLength(1),
+      );
+      expect(
+        await container.read(
+          privateVehicleDocumentProvider((
+            activeVehicle.id,
+            PrivateVehicleDocumentType.soat,
+          )).future,
+        ),
+        isNotNull,
+      );
+      expect(
+        await container.read(defenseCasesProvider(activeVehicle.id).future),
+        hasLength(1),
+      );
+
+      await _pumpSettingsWithContainer(tester, container);
+      await _tapVisible(
+        tester,
+        find.byKey(
+          const ValueKey('settings-delete-active-vehicle-private-data'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Eliminar'));
+      await tester.pump();
+
+      await _unmountContainer(tester, container);
+      cleanupMayFinish.complete();
+      await tester.pump();
+      await tester.idle();
+      await tester.pump();
+
+      expect(cleaner.deletedVehicleIds, [activeVehicle.id]);
+      expect(tester.takeException(), isNull);
+      expect(
+        await container.read(vehicleDocumentsProvider(activeVehicle.id).future),
+        isEmpty,
+      );
+      expect(
+        await container.read(
+          privateVehicleDocumentProvider((
+            activeVehicle.id,
+            PrivateVehicleDocumentType.soat,
+          )).future,
+        ),
+        isNull,
+      );
+      expect(
+        await container.read(defenseCasesProvider(activeVehicle.id).future),
+        isEmpty,
+      );
+    },
+  );
+
   testWidgets('does not use context after active vehicle wait is disposed', (
     tester,
   ) async {
@@ -795,6 +934,34 @@ Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
   await tester.tap(finder);
 }
 
+Future<void> _pumpSettingsWithContainer(
+  WidgetTester tester,
+  ProviderContainer container,
+) async {
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(home: SettingsScreen(onChangeAvatar: () {})),
+    ),
+  );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 100));
+}
+
+Future<void> _unmountContainer(
+  WidgetTester tester,
+  ProviderContainer container,
+) async {
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: const SizedBox.shrink(),
+    ),
+  );
+  await tester.pump();
+  await tester.pump();
+}
+
 VehicleProfile _vehicle({required String id, required String plate}) {
   return VehicleProfile(
     id: id,
@@ -937,6 +1104,23 @@ class _DeletingVehicleDataCleaner extends VehicleAssociatedDataCleaner {
   @override
   Future<void> deleteForVehicle(String vehicleId) async {
     deletedVehicleIds.add(vehicleId);
+    await super.deleteForVehicle(vehicleId);
+  }
+}
+
+class _DelayedDeletingVehicleDataCleaner extends _DeletingVehicleDataCleaner {
+  _DelayedDeletingVehicleDataCleaner({
+    required super.documentStore,
+    required super.defenseCaseStore,
+    required super.preferences,
+    required this.delay,
+  });
+
+  final Future<void> delay;
+
+  @override
+  Future<void> deleteForVehicle(String vehicleId) async {
+    await delay;
     await super.deleteForVehicle(vehicleId);
   }
 }

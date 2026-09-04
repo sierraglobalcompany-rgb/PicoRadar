@@ -24,7 +24,7 @@ const sicPersonalDataGuideUrl =
     'https://sedeelectronica.sic.gov.co/noticias/sic-expide-guia-para-el-correcto-tratamiento-de-las-fotografias-como-datos-personales';
 
 final settingsNotificationStatusProvider =
-    FutureProvider<SettingsNotificationStatus>((ref) async {
+    FutureProvider.autoDispose<SettingsNotificationStatus>((ref) async {
       final alertPreferencesFuture = ref.watch(
         picoAlertPreferencesProvider.future,
       );
@@ -307,6 +307,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
     final activeVehicleFuture = ref.read(activeVehicleProvider.future);
     final cleaner = ref.read(vehicleAssociatedDataCleanerProvider);
+    final providerContainer = ProviderScope.containerOf(context, listen: false);
 
     await _runAction(
       key: 'vehicle-private-data',
@@ -326,14 +327,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ];
         final defenseCases = defenseCasesProvider(vehicleId);
         await cleaner.deleteForVehicle(vehicleId);
-        if (!mounted) {
-          return;
-        }
-        ref.invalidate(vehicleDocumentList);
+        providerContainer.invalidate(vehicleDocumentList);
         for (final provider in privateVehicleDocuments) {
-          ref.invalidate(provider);
+          providerContainer.invalidate(provider);
         }
-        ref.invalidate(defenseCases);
+        providerContainer.invalidate(defenseCases);
       },
     );
   }
