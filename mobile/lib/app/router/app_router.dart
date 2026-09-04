@@ -6,18 +6,21 @@ import '../../features/apps_launcher/presentation/apps_screen.dart';
 import '../../features/apps_launcher/presentation/module_placeholder_screen.dart';
 import '../../features/cda/presentation/cda_finder_screen.dart';
 import '../../features/comparendos/presentation/comparendos_screen.dart';
+import '../../features/documents/presentation/documents_screen.dart';
 import '../../features/driving/presentation/driving_screen.dart';
 import '../../features/fotomultas/presentation/fotomultas_screen.dart';
 import '../../features/garage/presentation/garage_screen.dart';
 import '../../features/garage/presentation/vehicle_detail_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/maintenance/presentation/maintenance_screen.dart';
 import '../../features/onboarding/presentation/onboarding_vehicle_screen.dart';
 import '../../features/pico_placa/presentation/pico_detail_screen.dart';
+import '../../features/services/presentation/services_screen.dart';
 import '../../features/tramites/presentation/tramites_screen.dart';
+import '../../features/trip/presentation/trip_screen.dart';
 import '../../features/vehicle_status/presentation/vehicle_status_screen.dart';
 import 'app_routes.dart';
 import 'immersive_placeholder_screen.dart';
-import 'root_placeholder_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -70,8 +73,8 @@ StatefulShellBranch _rootBranch(AppTab tab) {
             AppTab.home => const HomeScreen(),
             AppTab.garage => const GarageScreen(),
             AppTab.apps => const AppsScreen(),
+            AppTab.trip => const TripScreen(),
             AppTab.drive => const DrivingScreen(),
-            _ => RootPlaceholderScreen(tab: tab),
           };
         },
         routes: _tabRoutes(tab),
@@ -123,6 +126,19 @@ List<RouteBase> _tabRoutes(AppTab tab) {
           }
           if (moduleId == 'tramites') {
             return const TramitesScreen();
+          }
+          if (moduleId == 'documentos') {
+            return DocumentsScreen(state.uri.queryParameters['vehicleId']);
+          }
+          if (moduleId == 'servicios') {
+            return ServicesScreen(onOpenCda: () => context.push('/apps/cda'));
+          }
+          if (moduleId == 'talleres') {
+            final vehicleId = state.uri.queryParameters['vehicleId'];
+            if (vehicleId == null || vehicleId.trim().isEmpty) {
+              return const DocumentsScreen(null);
+            }
+            return MaintenanceScreen(vehicleId: vehicleId);
           }
           if (_vehicleStatusModules.contains(moduleId)) {
             return VehicleStatusScreen(

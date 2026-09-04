@@ -11,12 +11,16 @@ import 'package:picoradar/features/apps_launcher/presentation/apps_screen.dart';
 import 'package:picoradar/features/apps_launcher/presentation/module_placeholder_screen.dart';
 import 'package:picoradar/features/cda/presentation/cda_finder_screen.dart';
 import 'package:picoradar/features/comparendos/presentation/comparendos_screen.dart';
+import 'package:picoradar/features/documents/presentation/documents_screen.dart';
 import 'package:picoradar/features/fotomultas/presentation/fotomultas_screen.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
+import 'package:picoradar/features/maintenance/presentation/maintenance_screen.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/presentation/pico_detail_screen.dart';
+import 'package:picoradar/features/services/presentation/services_screen.dart';
 import 'package:picoradar/features/tramites/presentation/tramites_screen.dart';
+import 'package:picoradar/features/trip/presentation/trip_screen.dart';
 
 import '../../../test_app_harness.dart';
 
@@ -115,7 +119,7 @@ void main() {
       ).map((module) => module.title),
       _visibleSecondaryTitles,
     );
-    expect(_hiddenModules, hasLength(7));
+    expect(_hiddenModules, hasLength(3));
     expect(
       visibleModules(primaryModules, const {}),
       isEmpty,
@@ -220,7 +224,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('apps-launcher-overlay')), findsNothing);
-    expect(find.text('Planeacion de ruta sin mapa propio.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('trip-screen')), findsOneWidget);
+    expect(
+      find.text('PicoRadar no calcula rutas, ETA ni peajes en esta versión.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('P02 Apps opens and closes repeatedly from main branches', (
@@ -275,22 +283,20 @@ void main() {
     expect(find.byType(PicoDetailScreen), findsOneWidget);
   });
 
-  testWidgets('Apps Más shows CDA and Trámites by default', (tester) async {
+  testWidgets('Apps Más shows implemented modules by default', (tester) async {
     await _openApps(tester, harness);
     await tester.tap(find.text('Más'));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('app-secondary-cda')), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('app-secondary-tramites')),
-      findsOneWidget,
-    );
+    for (final id in _visibleSecondaryIds) {
+      expect(find.byKey(ValueKey('app-secondary-$id')), findsOneWidget);
+    }
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('apps-launcher-more-list')),
         matching: find.byType(ListTile),
       ),
-      findsNWidgets(2),
+      findsNWidgets(_visibleSecondaryIds.length),
     );
     for (final id in _hiddenSecondaryIds) {
       expect(find.byKey(ValueKey('app-secondary-$id')), findsNothing);
@@ -322,6 +328,31 @@ void main() {
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
   });
 
+  testWidgets('Apps Más opens the Services hub', (tester) async {
+    await _openSecondaryModuleFromApps(tester, harness, 'servicios');
+
+    expect(find.byType(ServicesScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('services-screen')), findsOneWidget);
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+  });
+
+  testWidgets('Apps Más opens Maintenance with active vehicle', (tester) async {
+    await _createVehicle(harness, plate: 'TLL123');
+    await _openSecondaryModuleFromApps(tester, harness, 'talleres');
+
+    expect(find.byType(MaintenanceScreen), findsOneWidget);
+    expect(find.text('Talleres y mantenimiento'), findsWidgets);
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+  });
+
+  testWidgets('Apps Más opens Trip from Peajes y estado vial', (tester) async {
+    await _openSecondaryModuleFromApps(tester, harness, 'peajes_estado_vial');
+
+    expect(find.byType(TripScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('trip-screen')), findsOneWidget);
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+  });
+
   testWidgets('Fotomultas opens the real camera explorer', (tester) async {
     await _openApps(tester, harness);
 
@@ -344,6 +375,14 @@ void main() {
 
     expect(find.byType(ComparendosScreen), findsOneWidget);
     expect(find.text('CMP123'), findsOneWidget);
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+  });
+
+  testWidgets('Documentos opens the encrypted vehicle wallet', (tester) async {
+    await _createVehicle(harness, plate: 'DOC123');
+    await _openModuleFromApps(tester, harness, 'documentos', settle: false);
+
+    expect(find.byType(DocumentsScreen), findsOneWidget);
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
   });
 
@@ -530,7 +569,7 @@ void main() {
         ...defaultModuleFeatureFlags,
         'module_soat_enabled': false,
       }),
-      hasLength(6),
+      hasLength(7),
     );
   });
 
@@ -654,6 +693,7 @@ const _visiblePrimaryIds = [
   'soat',
   'tecnomecanica',
   'impuestos',
+  'documentos',
   'seguro_asistencia',
 ];
 
@@ -664,21 +704,28 @@ const _visiblePrimaryTitles = [
   'SOAT',
   'Tecnomecánica',
   'Impuestos',
+  'Documentos',
   'Seguro y asistencia',
 ];
 
-const _visibleSecondaryIds = ['cda', 'tramites'];
-const _visibleSecondaryTitles = ['CDA', 'Trámites'];
-
-const _hiddenPrimaryIds = ['documentos', 'defensa'];
-
-const _hiddenSecondaryIds = [
+const _visibleSecondaryIds = [
+  'cda',
   'servicios',
-  'compra_venta',
-  'peritajes',
+  'tramites',
   'talleres',
   'peajes_estado_vial',
 ];
+const _visibleSecondaryTitles = [
+  'CDA',
+  'Servicios',
+  'Trámites',
+  'Talleres',
+  'Peajes y estado vial',
+];
+
+const _hiddenPrimaryIds = ['defensa'];
+
+const _hiddenSecondaryIds = ['compra_venta', 'peritajes'];
 
 const _hiddenModuleIds = [..._hiddenPrimaryIds, ..._hiddenSecondaryIds];
 
@@ -727,10 +774,29 @@ Future<void> _pumpPicoRoute(WidgetTester tester) async {
 Future<void> _openModuleFromApps(
   WidgetTester tester,
   TestAppHarness harness,
+  String moduleId, {
+  bool settle = true,
+}) async {
+  await _openApps(tester, harness);
+  final module = find.byKey(ValueKey('app-module-$moduleId'));
+  await tester.ensureVisible(module);
+  await tester.tap(module);
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await _pumpRoute(tester);
+  }
+}
+
+Future<void> _openSecondaryModuleFromApps(
+  WidgetTester tester,
+  TestAppHarness harness,
   String moduleId,
 ) async {
   await _openApps(tester, harness);
-  final module = find.byKey(ValueKey('app-module-$moduleId'));
+  await tester.tap(find.text('Más'));
+  await tester.pumpAndSettle();
+  final module = find.byKey(ValueKey('app-secondary-$moduleId'));
   await tester.ensureVisible(module);
   await tester.tap(module);
   await tester.pumpAndSettle();

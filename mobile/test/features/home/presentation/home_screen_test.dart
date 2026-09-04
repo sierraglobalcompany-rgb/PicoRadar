@@ -1981,7 +1981,7 @@ void main() {
       await _goToShellPico(tester);
       await tester.tap(find.byKey(const ValueKey('tab-trip')));
       await _pumpAsyncHome(tester);
-      expect(find.text('Planeacion de ruta sin mapa propio.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('trip-screen')), findsOneWidget);
       expect(find.byKey(const ValueKey('pico-city-screen')), findsNothing);
 
       await _goToShellPico(tester);
