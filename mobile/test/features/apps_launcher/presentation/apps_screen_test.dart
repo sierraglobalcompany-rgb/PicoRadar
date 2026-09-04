@@ -2,21 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/shell/app_shell.dart';
 import 'package:picoradar/features/apps_launcher/data/module_registry.dart';
 import 'package:picoradar/features/apps_launcher/domain/app_module.dart';
-import 'package:picoradar/features/apps_launcher/presentation/apps_launcher_panel.dart';
 import 'package:picoradar/features/apps_launcher/presentation/apps_screen.dart';
 import 'package:picoradar/features/apps_launcher/presentation/module_placeholder_screen.dart';
 import 'package:picoradar/features/cda/presentation/cda_finder_screen.dart';
 import 'package:picoradar/features/comparendos/presentation/comparendos_screen.dart';
+import 'package:picoradar/features/documents/presentation/documents_screen.dart';
 import 'package:picoradar/features/fotomultas/presentation/fotomultas_screen.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
+import 'package:picoradar/features/maintenance/presentation/maintenance_screen.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/presentation/pico_detail_screen.dart';
+import 'package:picoradar/features/services/presentation/services_screen.dart';
 import 'package:picoradar/features/tramites/presentation/tramites_screen.dart';
+import 'package:picoradar/features/trip/presentation/trip_screen.dart';
 
 import '../../../test_app_harness.dart';
 
@@ -71,32 +75,43 @@ void main() {
   });
 
   test('launcher destinations append vehicleId only when required', () {
+    expect(appModuleLocation(primaryModules.first, 'vehicle-b'), '/apps/pico');
     expect(
-      appsLauncherLocation(primaryModules.first, 'vehicle-b'),
-      '/apps/pico',
-    );
-    expect(
-      appsLauncherLocation(
+      appModuleLocation(
         primaryModules.singleWhere((module) => module.id == 'soat'),
         'vehicle-b',
       ),
       '/apps/module/soat?vehicleId=vehicle-b',
     );
     expect(
-      appsLauncherLocation(
+      appModuleLocation(
         secondaryModules.singleWhere((module) => module.id == 'cda'),
         'vehicle-b',
       ),
       '/apps/cda',
     );
     expect(
-      appsLauncherLocation(
+      appModuleLocation(
         secondaryModules.singleWhere(
           (module) => module.id == 'peajes_estado_vial',
         ),
         'vehicle-b',
       ),
       '/trip',
+    );
+    expect(
+      appModuleLocation(
+        secondaryModules.singleWhere((module) => module.id == 'talleres'),
+        null,
+      ),
+      '/apps/module/talleres',
+    );
+    expect(
+      appModuleLocation(
+        secondaryModules.singleWhere((module) => module.id == 'talleres'),
+        ' vehicle-b ',
+      ),
+      '/apps/module/talleres?vehicleId=vehicle-b',
     );
   });
 
@@ -115,7 +130,7 @@ void main() {
       ).map((module) => module.title),
       _visibleSecondaryTitles,
     );
-    expect(_hiddenModules, hasLength(7));
+    expect(_hiddenModules, hasLength(3));
     expect(
       visibleModules(primaryModules, const {}),
       isEmpty,
@@ -220,7 +235,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('apps-launcher-overlay')), findsNothing);
-    expect(find.text('Planeacion de ruta sin mapa propio.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('trip-screen')), findsOneWidget);
+    expect(
+      find.text('PicoRadar no calcula rutas, ETA ni peajes en esta versión.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('P02 Apps opens and closes repeatedly from main branches', (
@@ -275,22 +294,20 @@ void main() {
     expect(find.byType(PicoDetailScreen), findsOneWidget);
   });
 
-  testWidgets('Apps Más shows CDA and Trámites by default', (tester) async {
+  testWidgets('Apps Más shows implemented modules by default', (tester) async {
     await _openApps(tester, harness);
     await tester.tap(find.text('Más'));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('app-secondary-cda')), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('app-secondary-tramites')),
-      findsOneWidget,
-    );
+    for (final id in _visibleSecondaryIds) {
+      expect(find.byKey(ValueKey('app-secondary-$id')), findsOneWidget);
+    }
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('apps-launcher-more-list')),
         matching: find.byType(ListTile),
       ),
-      findsNWidgets(2),
+      findsNWidgets(_visibleSecondaryIds.length),
     );
     for (final id in _hiddenSecondaryIds) {
       expect(find.byKey(ValueKey('app-secondary-$id')), findsNothing);
@@ -322,6 +339,36 @@ void main() {
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
   });
 
+  testWidgets('Apps Más opens the Services hub', (tester) async {
+    await _openSecondaryModuleFromApps(tester, harness, 'servicios');
+
+    expect(find.byType(ServicesScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('services-screen')), findsOneWidget);
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+  });
+
+  testWidgets('Apps Más opens Maintenance with active vehicle', (tester) async {
+    await _createVehicle(harness, plate: 'TLL123');
+    await _openSecondaryModuleFromApps(tester, harness, 'talleres');
+
+    expect(find.byType(MaintenanceScreen), findsOneWidget);
+    expect(find.text('Talleres y mantenimiento'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('maintenance-missing-vehicle')),
+      findsNothing,
+    );
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+    expect(find.byType(DocumentsScreen), findsNothing);
+  });
+
+  testWidgets('Apps Más opens Trip from Peajes y estado vial', (tester) async {
+    await _openSecondaryModuleFromApps(tester, harness, 'peajes_estado_vial');
+
+    expect(find.byType(TripScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('trip-screen')), findsOneWidget);
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+  });
+
   testWidgets('Fotomultas opens the real camera explorer', (tester) async {
     await _openApps(tester, harness);
 
@@ -345,6 +392,76 @@ void main() {
     expect(find.byType(ComparendosScreen), findsOneWidget);
     expect(find.text('CMP123'), findsOneWidget);
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
+  });
+
+  testWidgets('Documentos opens the encrypted vehicle wallet', (tester) async {
+    await _createVehicle(harness, plate: 'DOC123');
+    await _openModuleFromApps(tester, harness, 'documentos', settle: false);
+
+    expect(find.byType(DocumentsScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('documents-go-garage')), findsNothing);
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+  });
+
+  testWidgets('direct Apps route sends active vehicle to Documentos', (
+    tester,
+  ) async {
+    final vehicle = await _createVehicle(harness, plate: 'DIR123');
+    String? routedVehicleId;
+    await harness.repository.setActiveVehicle(vehicle.id);
+    await _pumpRoutedAppsLocation(
+      tester,
+      harness,
+      '/apps',
+      onDocumentsVehicleId: (vehicleId) => routedVehicleId = vehicleId,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('app-module-documentos')));
+    await _pumpRoute(tester);
+
+    expect(routedVehicleId, vehicle.id);
+    expect(find.byType(DocumentsScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('documents-go-garage')), findsNothing);
+  });
+
+  testWidgets('direct Apps route sends active vehicle to Talleres', (
+    tester,
+  ) async {
+    final vehicle = await _createVehicle(harness, plate: 'TDR123');
+    String? routedVehicleId;
+    await harness.repository.setActiveVehicle(vehicle.id);
+    await _pumpRoutedAppsLocation(
+      tester,
+      harness,
+      '/apps',
+      onMaintenanceVehicleId: (vehicleId) => routedVehicleId = vehicleId,
+    );
+
+    await tester.ensureVisible(find.text('Más para tu vehículo'));
+    await tester.tap(find.byKey(const ValueKey('app-secondary-talleres')));
+    await _pumpRoute(tester);
+
+    expect(routedVehicleId, vehicle.id);
+    expect(find.byType(MaintenanceScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('maintenance-empty')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('maintenance-missing-vehicle')),
+      findsNothing,
+    );
+    expect(find.byType(DocumentsScreen), findsNothing);
+  });
+
+  testWidgets('Talleres route without vehicle renders maintenance guard', (
+    tester,
+  ) async {
+    await _pumpRoutedAppsLocation(tester, harness, '/apps/module/talleres');
+
+    expect(find.byType(MaintenanceScreen), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('maintenance-missing-vehicle')),
+      findsOneWidget,
+    );
+    expect(find.byType(DocumentsScreen), findsNothing);
   });
 
   testWidgets('unfinished modules are not visible from Apps', (tester) async {
@@ -530,7 +647,7 @@ void main() {
         ...defaultModuleFeatureFlags,
         'module_soat_enabled': false,
       }),
-      hasLength(6),
+      hasLength(7),
     );
   });
 
@@ -654,6 +771,7 @@ const _visiblePrimaryIds = [
   'soat',
   'tecnomecanica',
   'impuestos',
+  'documentos',
   'seguro_asistencia',
 ];
 
@@ -664,21 +782,28 @@ const _visiblePrimaryTitles = [
   'SOAT',
   'Tecnomecánica',
   'Impuestos',
+  'Documentos',
   'Seguro y asistencia',
 ];
 
-const _visibleSecondaryIds = ['cda', 'tramites'];
-const _visibleSecondaryTitles = ['CDA', 'Trámites'];
-
-const _hiddenPrimaryIds = ['documentos', 'defensa'];
-
-const _hiddenSecondaryIds = [
+const _visibleSecondaryIds = [
+  'cda',
   'servicios',
-  'compra_venta',
-  'peritajes',
+  'tramites',
   'talleres',
   'peajes_estado_vial',
 ];
+const _visibleSecondaryTitles = [
+  'CDA',
+  'Servicios',
+  'Trámites',
+  'Talleres',
+  'Peajes y estado vial',
+];
+
+const _hiddenPrimaryIds = ['defensa'];
+
+const _hiddenSecondaryIds = ['compra_venta', 'peritajes'];
 
 const _hiddenModuleIds = [..._hiddenPrimaryIds, ..._hiddenSecondaryIds];
 
@@ -727,10 +852,29 @@ Future<void> _pumpPicoRoute(WidgetTester tester) async {
 Future<void> _openModuleFromApps(
   WidgetTester tester,
   TestAppHarness harness,
+  String moduleId, {
+  bool settle = true,
+}) async {
+  await _openApps(tester, harness);
+  final module = find.byKey(ValueKey('app-module-$moduleId'));
+  await tester.ensureVisible(module);
+  await tester.tap(module);
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await _pumpRoute(tester);
+  }
+}
+
+Future<void> _openSecondaryModuleFromApps(
+  WidgetTester tester,
+  TestAppHarness harness,
   String moduleId,
 ) async {
   await _openApps(tester, harness);
-  final module = find.byKey(ValueKey('app-module-$moduleId'));
+  await tester.tap(find.text('Más'));
+  await tester.pumpAndSettle();
+  final module = find.byKey(ValueKey('app-secondary-$moduleId'));
   await tester.ensureVisible(module);
   await tester.tap(module);
   await tester.pumpAndSettle();
@@ -763,6 +907,61 @@ Future<void> _pumpAppsScreenAtScale(
     scale: scale,
     size: size,
   );
+}
+
+Future<void> _pumpRoutedAppsLocation(
+  WidgetTester tester,
+  TestAppHarness harness,
+  String initialLocation, {
+  ValueChanged<String?>? onDocumentsVehicleId,
+  ValueChanged<String?>? onMaintenanceVehicleId,
+}) async {
+  _usePortraitPhone(tester);
+  final router = GoRouter(
+    initialLocation: initialLocation,
+    routes: [
+      GoRoute(
+        path: '/apps',
+        builder: (context, state) => const AppsScreen(),
+        routes: [
+          GoRoute(
+            path: 'module/:id',
+            builder: (context, state) {
+              final moduleId = state.pathParameters['id']!;
+              if (moduleId == 'documentos') {
+                final vehicleId = state.uri.queryParameters['vehicleId'];
+                onDocumentsVehicleId?.call(vehicleId);
+                return DocumentsScreen(vehicleId);
+              }
+              if (moduleId == 'talleres') {
+                final vehicleId = state.uri.queryParameters['vehicleId'];
+                onMaintenanceVehicleId?.call(vehicleId);
+                return MaintenanceScreen(vehicleId: vehicleId);
+              }
+              return ModulePlaceholderScreen(
+                moduleId: moduleId,
+                category: state.uri.queryParameters['category'],
+              );
+            },
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/garage',
+        builder: (context, state) => const SizedBox.shrink(),
+      ),
+      GoRoute(
+        path: '/onboarding/vehicle',
+        builder: (context, state) => const SizedBox.shrink(),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+  await harness.pump(
+    tester,
+    childOverride: MaterialApp.router(routerConfig: router),
+  );
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pumpDirectAppsScreen(

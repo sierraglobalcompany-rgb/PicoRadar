@@ -82,7 +82,11 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('tab-trip')));
     await tester.pumpAndSettle();
-    expect(find.text('Planeacion de ruta sin mapa propio.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('trip-screen')), findsOneWidget);
+    expect(
+      find.text('PicoRadar no calcula rutas, ETA ni peajes en esta versión.'),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const ValueKey('tab-drive')));
     await tester.pumpAndSettle();
@@ -94,9 +98,12 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('tab-trip')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('state-button-trip')));
-    await tester.pumpAndSettle();
-    expect(find.text('Estado local 1'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('trip-destination-field')),
+      'Medellin',
+    );
+    await tester.pump();
+    expect(find.text('Medellin'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('tab-apps')));
     await tester.pumpAndSettle();
@@ -107,7 +114,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('tab-trip')));
     await tester.pumpAndSettle();
-    expect(find.text('Estado local 1'), findsOneWidget);
+    expect(find.text('Medellin'), findsOneWidget);
   });
 
   testWidgets('home does not show the scaffold immersive action', (

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:picoradar/features/documents/presentation/documents_screen.dart';
 import 'package:picoradar/features/garage/data/garage_favorites.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
@@ -260,10 +261,9 @@ void main() {
       await _tapVisible(
         tester,
         find.byKey(const ValueKey('garage-action-documents')),
+        settle: false,
       );
-      await tester.pumpAndSettle();
-      expect(find.text('Documentos'), findsWidgets);
-      expect(find.text('Próximamente'), findsOneWidget);
+      expect(find.byType(DocumentsScreen), findsOneWidget);
       expect(
         (await harness.repository.getActiveVehicle())?.id,
         seeded.active.id,
@@ -712,11 +712,20 @@ Future<void> _openDetailAndReturn(
   await tester.pumpAndSettle();
 }
 
-Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+Future<void> _tapVisible(
+  WidgetTester tester,
+  Finder finder, {
+  bool settle = true,
+}) async {
   await tester.ensureVisible(finder);
   await tester.pumpAndSettle();
   await tester.tap(finder);
-  await tester.pumpAndSettle();
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+  }
 }
 
 Future<void> _pumpPicoRoute(WidgetTester tester) async {

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../app/router/app_routes.dart';
 import '../../../app/theme/app_tokens.dart';
 import '../data/module_registry.dart';
 import '../domain/app_module.dart';
@@ -95,7 +94,7 @@ class _AppsLauncherPanelState extends ConsumerState<AppsLauncherPanel> {
       await _showVehicleGuard(context);
       return;
     }
-    widget.onNavigate(appsLauncherLocation(module, widget.vehicleId));
+    widget.onNavigate(appModuleLocation(module, widget.vehicleId));
   }
 
   Future<void> _showVehicleGuard(BuildContext rootContext) {
@@ -123,20 +122,6 @@ class _AppsLauncherPanelState extends ConsumerState<AppsLauncherPanel> {
       ),
     );
   }
-}
-
-String appsLauncherLocation(AppModule module, String? vehicleId) {
-  if (!module.requiresVehicle ||
-      vehicleId == null ||
-      module.destination == AppRoute.trip.path) {
-    return module.destination;
-  }
-  final uri = Uri.parse(module.destination);
-  return uri
-      .replace(
-        queryParameters: {...uri.queryParameters, 'vehicleId': vehicleId},
-      )
-      .toString();
 }
 
 class _DragHandle extends StatelessWidget {

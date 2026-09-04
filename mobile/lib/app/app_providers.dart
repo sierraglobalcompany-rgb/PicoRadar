@@ -1,12 +1,15 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../core/database/app_database.dart' hide VehicleObligation;
+import '../core/database/app_database.dart'
+    hide MaintenanceRecord, VehicleObligation;
 import '../core/storage/app_preferences.dart';
 import '../features/garage/data/garage_favorites.dart';
 import '../features/garage/data/vehicle_profile.dart';
 import '../features/garage/data/vehicle_repository.dart';
 import '../features/home/data/home_banner_config.dart';
+import '../features/maintenance/data/maintenance_record.dart';
+import '../features/maintenance/data/maintenance_repository.dart';
 import '../features/vehicle_status/data/vehicle_obligation_store.dart';
 import '../features/vehicle_status/data/private_vehicle_document_store.dart';
 import '../features/vehicle_status/domain/vehicle_obligation.dart';
@@ -125,6 +128,15 @@ final picoNotificationSchedulerProvider = Provider<PicoNotificationScheduler>((
 final vehicleObligationStoreProvider = Provider<VehicleObligationStore>((ref) {
   return VehicleObligationStore(ref.watch(appDatabaseProvider));
 });
+
+final maintenanceRepositoryProvider = Provider<MaintenanceRepository>((ref) {
+  return MaintenanceRepository(database: ref.watch(appDatabaseProvider));
+});
+
+final maintenanceRecordsProvider =
+    FutureProvider.family<List<MaintenanceRecord>, String>((ref, vehicleId) {
+      return ref.watch(maintenanceRepositoryProvider).listByVehicle(vehicleId);
+    });
 
 final privateVehicleDocumentStoreProvider =
     Provider<PrivateVehicleDocumentStore>((ref) {
