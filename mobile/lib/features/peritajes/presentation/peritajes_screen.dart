@@ -135,6 +135,28 @@ class _PeritajesScreenState extends ConsumerState<PeritajesScreen> {
   }
 
   Future<void> _deleteDraft(String vehicleId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Borrar borrador'),
+        content: const Text(
+          'Se eliminará el borrador local de peritaje y se limpiará el formulario.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) {
+      return;
+    }
     if (!_beginOperation()) {
       return;
     }
@@ -159,7 +181,7 @@ class _PeritajesScreenState extends ConsumerState<PeritajesScreen> {
   }
 
   void _openDocuments(String vehicleId) {
-    context.go(
+    context.push(
       Uri(
         path: '/apps/module/documentos',
         queryParameters: {'vehicleId': vehicleId},
@@ -176,13 +198,19 @@ class _PeritajesScreenState extends ConsumerState<PeritajesScreen> {
       category: 'peritaje vehicular',
       city: vehicle.registrationCity ?? '',
     );
-    final opened = await launcher.openExternal(uri.toString());
-    if (!mounted || opened) {
+    try {
+      final opened = await launcher.openExternal(uri.toString());
+      if (!mounted || opened) {
+        return;
+      }
+      _showSnackBar('No pudimos abrir Google Maps.');
+    } catch (_) {
+      if (mounted) {
+        _showSnackBar('No pudimos abrir Google Maps.');
+      }
+    } finally {
       _endOperation();
-      return;
     }
-    _showSnackBar('No pudimos abrir Google Maps.');
-    _endOperation();
   }
 
   bool _beginOperation() {
