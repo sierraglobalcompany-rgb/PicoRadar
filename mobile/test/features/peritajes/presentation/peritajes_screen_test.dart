@@ -1,0 +1,347 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:picoradar/app/app_providers.dart';
+import 'package:picoradar/app/theme/app_theme.dart';
+import 'package:picoradar/core/storage/app_preferences.dart';
+import 'package:picoradar/features/garage/data/vehicle_profile.dart';
+import 'package:picoradar/features/peritajes/data/peritajes_draft_store.dart';
+import 'package:picoradar/features/peritajes/domain/peritajes_checklist.dart';
+import 'package:picoradar/features/peritajes/presentation/peritajes_screen.dart';
+import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
+
+void main() {
+  testWidgets('requires an existing vehicle and shows required copy', (
+    tester,
+  ) async {
+    await _pumpPeritajes(
+      tester,
+      vehicleId: 'vehicle-1',
+      vehicles: [_vehicle()],
+    );
+
+    expect(find.byKey(const ValueKey('peritajes-screen')), findsOneWidget);
+    expect(find.text('Checklist de revisión'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('peritajes-warning-copy')),
+      findsOneWidget,
+    );
+    expect(find.text(peritajesProfessionalInspectionWarning), findsOneWidget);
+    for (final item in peritajesChecklistItems) {
+      expect(find.text(peritajesChecklistLabel(item)), findsOneWidget);
+    }
+
+    await _pumpPeritajes(tester, vehicleId: null, vehicles: [_vehicle()]);
+    expect(find.byKey(const ValueKey('peritajes-go-garage')), findsOneWidget);
+
+    await _pumpPeritajes(tester, vehicleId: 'missing', vehicles: [_vehicle()]);
+    expect(find.byKey(const ValueKey('peritajes-go-garage')), findsOneWidget);
+  });
+
+  testWidgets('saves, restores and deletes a local draft per vehicle', (
+    tester,
+  ) async {
+    final preferences = _MemoryPreferences();
+    await _pumpPeritajes(
+      tester,
+      vehicleId: 'vehicle-1',
+      vehicles: [_vehicle()],
+      preferences: preferences,
+    );
+
+    await _tapVisible(
+      tester,
+      const ValueKey('peritajes-check-identidad y documentos'),
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('peritajes-notes-field')),
+      'Revisar golpe en puerta izquierda.',
+    );
+    await _tapVisible(tester, const ValueKey('peritajes-save-draft'));
+    await tester.pump();
+
+    final saved = preferences.values['peritajes.draft.v1.vehicle-1'];
+    expect(saved, isA<String>());
+    expect(saved as String, contains('identidad y documentos'));
+    expect(saved, contains('Revisar golpe en puerta izquierda.'));
+
+    await _tapVisible(
+      tester,
+      const ValueKey('peritajes-check-identidad y documentos'),
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('peritajes-notes-field')),
+      'Texto temporal',
+    );
+    await _tapVisible(tester, const ValueKey('peritajes-restore-draft'));
+    await tester.pump();
+
+    expect(_tileValue(tester, 'identidad y documentos'), isTrue);
+    expect(find.text('Revisar golpe en puerta izquierda.'), findsOneWidget);
+
+    await _tapVisible(tester, const ValueKey('peritajes-delete-draft'));
+    await tester.pump();
+
+    expect(
+      preferences.values.containsKey('peritajes.draft.v1.vehicle-1'),
+      isFalse,
+    );
+    expect(_tileValue(tester, 'identidad y documentos'), isFalse);
+    expect(find.text('Revisar golpe en puerta izquierda.'), findsNothing);
+  });
+
+  testWidgets('restore is explicit and scoped to the selected vehicle', (
+    tester,
+  ) async {
+    final preferences = _MemoryPreferences();
+    final store = PeritajesDraftStore(preferences);
+    await store.saveDraft(
+      'vehicle-1',
+      PeritajesDraft(
+        checkedItems: const {'motor/transmision'},
+        notes: 'Compresión pendiente.',
+        updatedAt: DateTime(2026),
+      ),
+    );
+
+    await _pumpPeritajes(
+      tester,
+      vehicleId: 'vehicle-1',
+      vehicles: [_vehicle()],
+      preferences: preferences,
+    );
+
+    expect(_tileValue(tester, 'motor/transmision'), isFalse);
+    expect(find.text('Compresión pendiente.'), findsNothing);
+
+    await _tapVisible(tester, const ValueKey('peritajes-restore-draft'));
+    await tester.pump();
+
+    expect(_tileValue(tester, 'motor/transmision'), isTrue);
+    expect(find.text('Compresión pendiente.'), findsOneWidget);
+
+    await _pumpPeritajes(
+      tester,
+      vehicleId: 'vehicle-2',
+      vehicles: [_vehicle(id: 'vehicle-2', plate: 'DEF456')],
+      preferences: preferences,
+    );
+    await _tapVisible(tester, const ValueKey('peritajes-restore-draft'));
+    await tester.pump();
+
+    expect(_tileValue(tester, 'motor/transmision'), isFalse);
+    expect(find.text('Compresión pendiente.'), findsNothing);
+  });
+
+  testWidgets('opens Documentos with the current vehicle', (tester) async {
+    await _pumpPeritajes(
+      tester,
+      vehicleId: 'vehicle-1',
+      vehicles: [_vehicle()],
+    );
+
+    await _tapVisible(tester, const ValueKey('peritajes-open-documents'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('documents vehicleId=vehicle-1'), findsOneWidget);
+  });
+
+  testWidgets('searches peritaje vehicular in Google Maps', (tester) async {
+    final launcher = _FakeExternalLauncher();
+    await _pumpPeritajes(
+      tester,
+      vehicleId: 'vehicle-1',
+      vehicles: [_vehicle(registrationCity: 'Medellín')],
+      launcher: launcher,
+    );
+
+    await _tapVisible(tester, const ValueKey('peritajes-search-maps'));
+    await tester.pump();
+
+    final opened = Uri.parse(launcher.openedUris.single);
+    expect(opened.scheme, 'https');
+    expect(opened.host, 'www.google.com');
+    expect(opened.path, '/maps/search/');
+    expect(opened.queryParameters, {
+      'api': '1',
+      'query': 'peritaje vehicular Medellín',
+    });
+  });
+
+  testWidgets('launcher failure and dispose during launch are controlled', (
+    tester,
+  ) async {
+    final launcher = _FakeExternalLauncher(openResult: false);
+    await _pumpPeritajes(
+      tester,
+      vehicleId: 'vehicle-1',
+      vehicles: [_vehicle(registrationCity: 'Cali')],
+      launcher: launcher,
+    );
+
+    await _tapVisible(tester, const ValueKey('peritajes-search-maps'));
+    await tester.pump();
+
+    expect(find.text('No pudimos abrir Google Maps.'), findsOneWidget);
+
+    final pendingOpen = Completer<bool>();
+    await _pumpPeritajes(
+      tester,
+      vehicleId: 'vehicle-1',
+      vehicles: [_vehicle(registrationCity: 'Cali')],
+      launcher: _FakeExternalLauncher(pendingOpen: pendingOpen),
+    );
+
+    await _tapVisible(tester, const ValueKey('peritajes-search-maps'));
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox.shrink());
+    pendingOpen.complete(false);
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('No pudimos abrir Google Maps.'), findsNothing);
+  });
+}
+
+Future<void> _pumpPeritajes(
+  WidgetTester tester, {
+  required String? vehicleId,
+  required List<VehicleProfile> vehicles,
+  _MemoryPreferences? preferences,
+  ExternalLauncher? launcher,
+}) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(390, 844);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  addTearDown(tester.view.resetPhysicalSize);
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pump();
+
+  final router = GoRouter(
+    initialLocation: '/peritajes',
+    routes: [
+      GoRoute(
+        path: '/peritajes',
+        builder: (context, state) => PeritajesScreen(vehicleId),
+      ),
+      GoRoute(
+        path: '/garage',
+        builder: (context, state) => const Scaffold(body: Text('garage')),
+      ),
+      GoRoute(
+        path: '/apps/module/documentos',
+        builder: (context, state) => Scaffold(
+          body: Text(
+            'documents vehicleId=${state.uri.queryParameters['vehicleId']}',
+          ),
+        ),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        vehicleListProvider.overrideWithValue(AsyncValue.data(vehicles)),
+        appPreferencesProvider.overrideWithValue(
+          preferences ?? _MemoryPreferences(),
+        ),
+        externalLauncherProvider.overrideWithValue(
+          launcher ?? _FakeExternalLauncher(),
+        ),
+      ],
+      child: MaterialApp.router(
+        theme: buildPicoRadarTheme(),
+        routerConfig: router,
+      ),
+    ),
+  );
+  await tester.pump();
+}
+
+bool? _tileValue(WidgetTester tester, String item) {
+  return tester
+      .widget<CheckboxListTile>(find.byKey(ValueKey('peritajes-check-$item')))
+      .value;
+}
+
+Future<void> _tapVisible(WidgetTester tester, ValueKey<String> key) async {
+  final finder = find.byKey(key);
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
+  await tester.pump(const Duration(milliseconds: 300));
+}
+
+VehicleProfile _vehicle({
+  String id = 'vehicle-1',
+  String plate = 'ABC123',
+  String? registrationCity,
+}) {
+  return VehicleProfile(
+    id: id,
+    plate: plate,
+    kind: VehicleKind.car,
+    serviceType: VehicleServiceType.private,
+    registrationCity: registrationCity,
+    createdAt: DateTime(2026),
+    updatedAt: DateTime(2026),
+  );
+}
+
+class _MemoryPreferences implements AppPreferences {
+  final values = <String, Object?>{};
+
+  @override
+  Future<bool?> getBool(String key) async => values[key] as bool?;
+
+  @override
+  Future<int?> getInt(String key) async => values[key] as int?;
+
+  @override
+  Future<String?> getString(String key) async => values[key] as String?;
+
+  @override
+  Future<void> remove(String key) async {
+    values.remove(key);
+  }
+
+  @override
+  Future<void> setBool(String key, bool value) async {
+    values[key] = value;
+  }
+
+  @override
+  Future<void> setInt(String key, int value) async {
+    values[key] = value;
+  }
+
+  @override
+  Future<void> setString(String key, String value) async {
+    values[key] = value;
+  }
+}
+
+class _FakeExternalLauncher implements ExternalLauncher {
+  _FakeExternalLauncher({this.openResult = true, this.pendingOpen});
+
+  final bool openResult;
+  final Completer<bool>? pendingOpen;
+  final openedUris = <String>[];
+
+  @override
+  Future<bool> callPhone(String phone) async => true;
+
+  @override
+  Future<bool> openExternal(String uri) {
+    openedUris.add(uri);
+    final completer = pendingOpen;
+    if (completer != null) {
+      return completer.future;
+    }
+    return Future.value(openResult);
+  }
+}
