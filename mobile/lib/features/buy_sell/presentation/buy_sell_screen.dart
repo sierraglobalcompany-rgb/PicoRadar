@@ -36,6 +36,7 @@ class _BuySellScreenState extends ConsumerState<BuySellScreen> {
   var _mode = BuySellMode.buy;
   var _checkedItems = <String>{};
   bool _restoring = true;
+  bool _busy = false;
 
   @override
   void initState() {
@@ -90,6 +91,7 @@ class _BuySellScreenState extends ConsumerState<BuySellScreen> {
                     const SizedBox(height: AppSpacing.l),
                     _DraftActions(
                       restoring: _restoring,
+                      busy: _busy,
                       onSave: _saveDraft,
                       onRestore: () => _restoreDraft(silent: false),
                       onDelete: _deleteDraft,
@@ -124,49 +126,136 @@ class _BuySellScreenState extends ConsumerState<BuySellScreen> {
   }
 
   Future<void> _restoreDraft({required bool silent}) async {
-    setState(() => _restoring = true);
-    final draft = await loadBuySellDraft(ref.read(appPreferencesProvider));
+    if (_busy) {
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _restoring = true;
+    });
+    final preferences = ref.read(appPreferencesProvider);
+    BuySellDraft? draft;
+    var failed = false;
+    try {
+      draft = await loadBuySellDraft(preferences);
+    } catch (_) {
+      failed = true;
+    }
     if (!mounted) {
       return;
     }
-    if (draft != null) {
-      setState(() {
+    setState(() {
+      if (draft != null) {
         _mode = draft.mode;
         _candidatePlateController.text = draft.candidatePlate;
         _cityController.text = draft.city;
         _notesController.text = draft.notes;
         _checkedItems = draft.checkedItems;
-        _restoring = false;
-      });
-      if (!silent) {
-        _showSnackBar('Borrador restaurado.');
       }
+      _restoring = false;
+      _busy = false;
+    });
+    if (failed) {
+      _showSnackBar('No se pudo restaurar el borrador.');
       return;
     }
-    setState(() => _restoring = false);
-    if (!silent) {
-      _showSnackBar('No hay borrador guardado.');
+    if (silent) {
+      return;
     }
+    _showSnackBar(
+      draft == null ? 'No hay borrador guardado.' : 'Borrador restaurado.',
+    );
   }
 
   Future<void> _saveDraft() async {
-    await saveBuySellDraft(ref.read(appPreferencesProvider), _currentDraft());
-    if (mounted) {
+    if (_busy) {
+      return;
+    }
+    setState(() => _busy = true);
+    final preferences = ref.read(appPreferencesProvider);
+    try {
+      await saveBuySellDraft(preferences, _currentDraft());
+      if (!mounted) {
+        return;
+      }
       _showSnackBar('Borrador guardado en este dispositivo.');
+    } catch (_) {
+      if (mounted) {
+        _showSnackBar('No se pudo guardar el borrador.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
   Future<void> _deleteDraft() async {
-    await deleteBuySellDraft(ref.read(appPreferencesProvider));
-    if (mounted) {
+    if (_busy) {
+      return;
+    }
+    setState(() => _busy = true);
+    final preferences = ref.read(appPreferencesProvider);
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Eliminar borrador'),
+          content: const Text(
+            'Esta accion borra el borrador guardado en este dispositivo.',
+          ),
+          actions: [
+            TextButton(
+              key: const ValueKey('buy-sell-delete-cancel'),
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              key: const ValueKey('buy-sell-delete-confirm'),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Eliminar'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted || confirmed != true) {
+        return;
+      }
+      await deleteBuySellDraft(preferences);
+      if (!mounted) {
+        return;
+      }
       _showSnackBar('Borrador eliminado.');
+    } catch (_) {
+      if (mounted) {
+        _showSnackBar('No se pudo eliminar el borrador.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
   Future<void> _copySummary() async {
-    await Clipboard.setData(ClipboardData(text: _summaryText()));
-    if (mounted) {
+    if (_busy) {
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await Clipboard.setData(ClipboardData(text: _summaryText()));
+      if (!mounted) {
+        return;
+      }
       _showSnackBar('Resumen copiado.');
+    } catch (_) {
+      if (mounted) {
+        _showSnackBar('No se pudo copiar el resumen.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -258,6 +347,9 @@ class _BuySellScreenState extends ConsumerState<BuySellScreen> {
   }
 
   void _showSnackBar(String message) {
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
   }
@@ -477,6 +569,7 @@ class _DraftForm extends StatelessWidget {
 class _DraftActions extends StatelessWidget {
   const _DraftActions({
     required this.restoring,
+    required this.busy,
     required this.onSave,
     required this.onRestore,
     required this.onDelete,
@@ -484,6 +577,7 @@ class _DraftActions extends StatelessWidget {
   });
 
   final bool restoring;
+  final bool busy;
   final VoidCallback onSave;
   final VoidCallback onRestore;
   final VoidCallback onDelete;
@@ -497,25 +591,25 @@ class _DraftActions extends StatelessWidget {
       children: [
         FilledButton.icon(
           key: const ValueKey('buy-sell-save-draft'),
-          onPressed: onSave,
+          onPressed: busy ? null : onSave,
           icon: const Icon(Icons.save_outlined),
           label: const Text('Guardar borrador'),
         ),
         OutlinedButton.icon(
           key: const ValueKey('buy-sell-restore-draft'),
-          onPressed: restoring ? null : onRestore,
+          onPressed: busy || restoring ? null : onRestore,
           icon: const Icon(Icons.restore_outlined),
           label: const Text('Restaurar'),
         ),
         TextButton.icon(
           key: const ValueKey('buy-sell-delete-draft'),
-          onPressed: onDelete,
+          onPressed: busy ? null : onDelete,
           icon: const Icon(Icons.delete_outline),
           label: const Text('Eliminar'),
         ),
         OutlinedButton.icon(
           key: const ValueKey('buy-sell-copy-summary'),
-          onPressed: onCopy,
+          onPressed: busy ? null : onCopy,
           icon: const Icon(Icons.copy_outlined),
           label: const Text('Copiar resumen'),
         ),

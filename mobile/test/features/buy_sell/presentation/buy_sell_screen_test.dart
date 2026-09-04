@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/theme/app_theme.dart';
+import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/features/buy_sell/data/buy_sell_draft.dart';
 import 'package:picoradar/features/buy_sell/presentation/buy_sell_screen.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
@@ -17,6 +19,91 @@ late MemoryPreferences _preferences;
 void main() {
   setUp(() {
     _preferences = MemoryPreferences();
+  });
+
+  test('malformed JSON removes the draft key and returns null', () async {
+    await _preferences.setString(buySellDraftPreferenceKey, '{bad json');
+
+    final draft = await loadBuySellDraft(_preferences);
+
+    expect(draft, isNull);
+    expect(await _preferences.getString(buySellDraftPreferenceKey), isNull);
+  });
+
+  test('wrong field type removes the draft key and returns null', () async {
+    await _preferences.setString(
+      buySellDraftPreferenceKey,
+      jsonEncode({
+        'version': 1,
+        'mode': 'buy',
+        'candidatePlate': 123,
+        'city': 'Cali',
+        'notes': '',
+        'checkedItems': ['Revisar comparendos y obligaciones.'],
+      }),
+    );
+
+    final draft = await loadBuySellDraft(_preferences);
+
+    expect(draft, isNull);
+    expect(await _preferences.getString(buySellDraftPreferenceKey), isNull);
+  });
+
+  test('non-string checklist removes the draft key and returns null', () async {
+    await _preferences.setString(
+      buySellDraftPreferenceKey,
+      jsonEncode({
+        'version': 1,
+        'mode': 'sell',
+        'candidatePlate': 'ABC123',
+        'city': 'Cali',
+        'notes': '',
+        'checkedItems': ['Preparar comparendos y obligaciones.', 7],
+      }),
+    );
+
+    final draft = await loadBuySellDraft(_preferences);
+
+    expect(draft, isNull);
+    expect(await _preferences.getString(buySellDraftPreferenceKey), isNull);
+  });
+
+  test('invalid mode removes the draft key and returns null', () async {
+    await _preferences.setString(
+      buySellDraftPreferenceKey,
+      jsonEncode({
+        'version': 1,
+        'mode': 'lease',
+        'candidatePlate': 'ABC123',
+        'city': 'Cali',
+        'notes': '',
+        'checkedItems': <String>[],
+      }),
+    );
+
+    final draft = await loadBuySellDraft(_preferences);
+
+    expect(draft, isNull);
+    expect(await _preferences.getString(buySellDraftPreferenceKey), isNull);
+  });
+
+  test('incompatible version removes the draft key and returns null', () async {
+    await _preferences.setString(
+      buySellDraftPreferenceKey,
+      jsonEncode({
+        'version': 2,
+        'mode': 'buy',
+        'candidatePlate': 'ABC123',
+        'city': 'Cali',
+        'notes': '',
+        'checkedItems': <String>[],
+      }),
+    );
+
+    final draft = await loadBuySellDraft(_preferences);
+
+    expect(draft, isNull);
+    expect(await _preferences.getString(buySellDraftPreferenceKey), isNull);
   });
 
   testWidgets('shows buy mode by default and keeps mandatory warning', (
@@ -122,7 +209,7 @@ void main() {
     expect(find.text('Borrador restaurado.'), findsOneWidget);
   });
 
-  testWidgets('delete removes the local draft without clearing current form', (
+  testWidgets('delete cancel keeps the draft and confirm removes it', (
     tester,
   ) async {
     await _preferences.setString(
@@ -138,6 +225,18 @@ void main() {
     await _pumpScreen(tester, activeVehicle: _vehicle());
 
     await _tapVisible(tester, const ValueKey('buy-sell-delete-draft'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Eliminar borrador'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('buy-sell-delete-cancel')));
+    await tester.pumpAndSettle();
+
+    expect(await _preferences.getString(buySellDraftPreferenceKey), isNotNull);
+    expect(find.text('ABC123'), findsOneWidget);
+
+    await _tapVisible(tester, const ValueKey('buy-sell-delete-draft'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('buy-sell-delete-confirm')));
     await tester.pumpAndSettle();
 
     expect(await _preferences.getString(buySellDraftPreferenceKey), isNull);
@@ -184,6 +283,141 @@ void main() {
     expect(clipboardText, contains('[x] Revisar comparendos y obligaciones.'));
     expect(clipboardText, contains(buySellMandatoryCopy));
     expect(find.text('Resumen copiado.'), findsOneWidget);
+  });
+
+  testWidgets('malformed draft does not throw on open and removes key', (
+    tester,
+  ) async {
+    await _preferences.setString(buySellDraftPreferenceKey, '{bad json');
+
+    await _pumpScreen(tester, activeVehicle: _vehicle());
+
+    expect(tester.takeException(), isNull);
+    expect(await _preferences.getString(buySellDraftPreferenceKey), isNull);
+    final restoreButton = tester.widget<OutlinedButton>(
+      find.byKey(const ValueKey('buy-sell-restore-draft')),
+    );
+    expect(restoreButton.onPressed, isNotNull);
+  });
+
+  testWidgets('restore storage failure is visible and not stuck', (
+    tester,
+  ) async {
+    final preferences = _FailingPreferences(failGetString: true);
+
+    await _pumpScreen(
+      tester,
+      activeVehicle: _vehicle(),
+      preferences: preferences,
+    );
+
+    expect(find.text('No se pudo restaurar el borrador.'), findsOneWidget);
+    final restoreButton = tester.widget<OutlinedButton>(
+      find.byKey(const ValueKey('buy-sell-restore-draft')),
+    );
+    expect(restoreButton.onPressed, isNotNull);
+  });
+
+  testWidgets('save storage failure is visible', (tester) async {
+    final preferences = _FailingPreferences(failSetString: true);
+
+    await _pumpScreen(
+      tester,
+      activeVehicle: _vehicle(),
+      preferences: preferences,
+    );
+
+    await _tapVisible(tester, const ValueKey('buy-sell-save-draft'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No se pudo guardar el borrador.'), findsOneWidget);
+  });
+
+  testWidgets('clipboard failure is visible', (tester) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') {
+            throw PlatformException(code: 'clipboard-failed');
+          }
+          return null;
+        });
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+    await _pumpScreen(tester, activeVehicle: _vehicle());
+
+    await _tapVisible(tester, const ValueKey('buy-sell-copy-summary'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No se pudo copiar el resumen.'), findsOneWidget);
+  });
+
+  testWidgets('draft actions run one operation at a time', (tester) async {
+    final preferences = _DelayedSetPreferences();
+    await _pumpScreen(
+      tester,
+      activeVehicle: _vehicle(),
+      preferences: preferences,
+    );
+
+    await _tapVisible(tester, const ValueKey('buy-sell-save-draft'));
+    await tester.pump();
+
+    final saveButton = tester.widget<FilledButton>(
+      find.byKey(const ValueKey('buy-sell-save-draft')),
+    );
+    final restoreButton = tester.widget<OutlinedButton>(
+      find.byKey(const ValueKey('buy-sell-restore-draft')),
+    );
+    final deleteButton = tester.widget<TextButton>(
+      find.byKey(const ValueKey('buy-sell-delete-draft')),
+    );
+    final copyButton = tester.widget<OutlinedButton>(
+      find.byKey(const ValueKey('buy-sell-copy-summary')),
+    );
+    expect(saveButton.onPressed, isNull);
+    expect(restoreButton.onPressed, isNull);
+    expect(deleteButton.onPressed, isNull);
+    expect(copyButton.onPressed, isNull);
+
+    preferences.completeSet();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Borrador guardado en este dispositivo.'), findsOneWidget);
+  });
+
+  testWidgets('dispose during restore does not throw', (tester) async {
+    final preferences = _DelayedGetPreferences();
+    await _pumpScreen(
+      tester,
+      activeVehicle: _vehicle(),
+      preferences: preferences,
+      settleInitialRestore: false,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    preferences.completeGet(null);
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('dispose during save does not throw', (tester) async {
+    final preferences = _DelayedSetPreferences();
+    await _pumpScreen(
+      tester,
+      activeVehicle: _vehicle(),
+      preferences: preferences,
+    );
+
+    await _tapVisible(tester, const ValueKey('buy-sell-save-draft'));
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox.shrink());
+    preferences.completeSet();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('vehicle actions are disabled without an active vehicle', (
@@ -266,8 +500,10 @@ Future<void> _pumpScreen(
   ValueChanged<VehicleProfile>? onOpenTramites,
   ValueChanged<VehicleProfile>? onOpenPeritajes,
   ValueChanged<VehicleProfile>? onOpenDocuments,
+  AppPreferences? preferences,
   Size size = const Size(430, 2000),
   double textScale = 1,
+  bool settleInitialRestore = true,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -276,7 +512,7 @@ Future<void> _pumpScreen(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        appPreferencesProvider.overrideWithValue(_preferences),
+        appPreferencesProvider.overrideWithValue(preferences ?? _preferences),
         activeVehicleProvider.overrideWithValue(AsyncValue.data(activeVehicle)),
       ],
       child: MaterialApp(
@@ -294,7 +530,9 @@ Future<void> _pumpScreen(
     ),
   );
   await tester.pump();
-  await tester.pump(const Duration(milliseconds: 300));
+  if (settleInitialRestore) {
+    await tester.pump(const Duration(milliseconds: 300));
+  }
 }
 
 VehicleProfile _vehicle({
@@ -322,3 +560,53 @@ const _vehicleActionKeys = [
   'buy-sell-open-peritajes',
   'buy-sell-open-documents',
 ];
+
+class _FailingPreferences extends MemoryPreferences {
+  _FailingPreferences({this.failGetString = false, this.failSetString = false});
+
+  final bool failGetString;
+  final bool failSetString;
+
+  @override
+  Future<String?> getString(String key) async {
+    if (failGetString) {
+      throw StateError('getString failed');
+    }
+    return super.getString(key);
+  }
+
+  @override
+  Future<void> setString(String key, String value) async {
+    if (failSetString) {
+      throw StateError('setString failed');
+    }
+    await super.setString(key, value);
+  }
+}
+
+class _DelayedGetPreferences extends MemoryPreferences {
+  final _getCompleter = Completer<String?>();
+
+  @override
+  Future<String?> getString(String key) => _getCompleter.future;
+
+  void completeGet(String? value) {
+    _getCompleter.complete(value);
+  }
+}
+
+class _DelayedSetPreferences extends MemoryPreferences {
+  final _setCompleter = Completer<void>();
+
+  @override
+  Future<void> setString(String key, String value) async {
+    await _setCompleter.future;
+    await super.setString(key, value);
+  }
+
+  void completeSet() {
+    if (!_setCompleter.isCompleted) {
+      _setCompleter.complete();
+    }
+  }
+}
