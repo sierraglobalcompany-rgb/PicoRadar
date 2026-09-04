@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/design_system/branding.dart';
+import '../router/app_routes.dart';
 import '../../features/pico_placa/data/pico_preferences.dart';
 import '../../features/visual_assets/presentation/visual_asset_widgets.dart';
 import '../theme/app_tokens.dart';
@@ -53,7 +56,7 @@ class PicoRadarAppHeader extends StatelessWidget {
   }
 }
 
-class _UserControls extends StatelessWidget {
+class _UserControls extends ConsumerWidget {
   const _UserControls({
     required this.alertPreferences,
     required this.bellKey,
@@ -66,13 +69,18 @@ class _UserControls extends StatelessWidget {
   final VoidCallback onNotificationsPressed;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const _CircularHeaderControl(
+        _CircularHeaderControl(
           key: ValueKey('picoradar-avatar-control'),
-          child: HomeAvatarButton(embedded: true, visualSize: 40),
+          child: HomeAvatarButton(
+            embedded: true,
+            visualSize: 40,
+            semanticsLabel: 'Abrir avatar y ajustes',
+            onTap: () => _showUserMenu(context, ref),
+          ),
         ),
         const SizedBox(width: AppSpacing.s),
         _CircularHeaderControl(
@@ -84,6 +92,52 @@ class _UserControls extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _showUserMenu(BuildContext context, WidgetRef ref) {
+    return showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.l,
+              0,
+              AppSpacing.l,
+              AppSpacing.l,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  key: const ValueKey('header-change-avatar'),
+                  leading: const Icon(Icons.face_outlined),
+                  title: const Text('Cambiar avatar'),
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    if (context.mounted) {
+                      await showAvatarPicker(context, ref);
+                    }
+                  },
+                ),
+                ListTile(
+                  key: const ValueKey('header-open-settings'),
+                  leading: const Icon(Icons.settings_outlined),
+                  title: const Text('Configuración'),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    if (context.mounted) {
+                      context.push(AppRoute.settings.path);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -12,11 +12,15 @@ class HomeAvatarButton extends ConsumerWidget {
   const HomeAvatarButton({
     this.embedded = false,
     this.visualSize = 40,
+    this.onTap,
+    this.semanticsLabel = 'Cambiar avatar',
     super.key,
   });
 
   final bool embedded;
   final double visualSize;
+  final VoidCallback? onTap;
+  final String semanticsLabel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -28,7 +32,7 @@ class HomeAvatarButton extends ConsumerWidget {
         final asset = items.assetById(selectedId) ?? items.defaultAsset;
         return Semantics(
           button: true,
-          label: 'Cambiar avatar',
+          label: semanticsLabel,
           child: Material(
             color: embedded ? Colors.transparent : AppColors.surface,
             shape: const CircleBorder(),
@@ -40,7 +44,7 @@ class HomeAvatarButton extends ConsumerWidget {
             child: InkWell(
               key: const ValueKey('home-avatar-button'),
               customBorder: const CircleBorder(),
-              onTap: () => showAvatarPicker(context, ref),
+              onTap: onTap ?? () => showAvatarPicker(context, ref),
               child: SizedBox(
                 width: 48,
                 height: 48,
