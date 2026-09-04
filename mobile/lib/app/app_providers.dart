@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/database/app_database.dart'
     hide MaintenanceRecord, VehicleObligation;
 import '../core/storage/app_preferences.dart';
+import '../features/defense/application/defense_case_providers.dart';
+import '../features/garage/application/vehicle_associated_data_cleaner.dart';
 import '../features/garage/data/garage_favorites.dart';
 import '../features/garage/data/vehicle_profile.dart';
 import '../features/garage/data/vehicle_repository.dart';
@@ -23,6 +25,7 @@ import '../features/pico_placa/data/restriction_store.dart';
 import '../features/pico_placa/domain/bogota_time.dart';
 import '../features/pico_placa/platform/pico_notifications.dart';
 import '../features/pico_placa/platform/pico_widget_bridge.dart';
+import '../features/peritajes/data/peritajes_draft_store.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   final database = AppDatabase();
@@ -141,6 +144,17 @@ final maintenanceRecordsProvider =
 final privateVehicleDocumentStoreProvider =
     Provider<PrivateVehicleDocumentStore>((ref) {
       return PrivateVehicleDocumentStore();
+    });
+
+final vehicleAssociatedDataCleanerProvider =
+    Provider<VehicleAssociatedDataCleaner>((ref) {
+      final preferences = ref.watch(appPreferencesProvider);
+      return VehicleAssociatedDataCleaner(
+        documentStore: ref.watch(privateVehicleDocumentStoreProvider),
+        defenseCaseStore: ref.watch(defenseCaseStoreProvider),
+        peritajesDraftStore: PeritajesDraftStore(preferences),
+        preferences: preferences,
+      );
     });
 
 final vehicleDocumentGatewayProvider = Provider<VehicleDocumentGateway>((ref) {

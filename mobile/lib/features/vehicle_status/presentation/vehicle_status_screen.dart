@@ -277,9 +277,8 @@ class _DetailPanel extends ConsumerWidget {
                   padding: const EdgeInsets.only(top: AppSpacing.s),
                   child: OutlinedButton.icon(
                     key: ValueKey('call-${phone.$1}'),
-                    onPressed: () => ref
-                        .read(externalLauncherProvider)
-                        .callPhone(details[phone.$1]!),
+                    onPressed: () =>
+                        _callStatusPhone(context, ref, details[phone.$1]!),
                     icon: const Icon(Icons.call),
                     label: Text('Llamar ${phone.$2}'),
                   ),
@@ -439,19 +438,12 @@ class _TaxPanel extends ConsumerWidget {
             const SizedBox(height: AppSpacing.m),
             OutlinedButton.icon(
               key: ValueKey('official-link-${calendar.portalLink.id}'),
-              onPressed: () async {
-                final opened = await ref
-                    .read(externalLauncherProvider)
-                    .openExternal(calendar.portalLink.uri);
-                if (!context.mounted || opened) {
-                  return;
-                }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('No pudimos abrir el portal oficial.'),
-                  ),
-                );
-              },
+              onPressed: () => _openStatusExternal(
+                context,
+                ref,
+                calendar.portalLink.uri,
+                'No pudimos abrir el portal oficial.',
+              ),
               icon: const Icon(Icons.open_in_new),
               label: Text(
                 'Abrir portal oficial de ${_taxPortalName(calendar)}',
@@ -471,7 +463,6 @@ class _OfficialActions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final launcher = ref.watch(externalLauncherProvider);
     final link = switch (type) {
       VehicleObligationType.soat ||
       VehicleObligationType.rtm => runtVehicleByPlateLink,
@@ -484,7 +475,12 @@ class _OfficialActions extends ConsumerWidget {
         if (link != null)
           OutlinedButton.icon(
             key: ValueKey('official-link-${link.id}'),
-            onPressed: () => launcher.openExternal(link.uri),
+            onPressed: () => _openStatusExternal(
+              context,
+              ref,
+              link.uri,
+              'No pudimos abrir el portal oficial.',
+            ),
             icon: const Icon(Icons.open_in_new),
             label: Text('${link.title} · ${link.sourceName}'),
           ),
@@ -501,6 +497,46 @@ class _OfficialActions extends ConsumerWidget {
       ],
     );
   }
+}
+
+Future<void> _callStatusPhone(
+  BuildContext context,
+  WidgetRef ref,
+  String phone,
+) async {
+  final launcher = ref.read(externalLauncherProvider);
+  var opened = false;
+  try {
+    opened = await launcher.callPhone(phone);
+  } catch (_) {
+    opened = false;
+  }
+  if (!context.mounted || opened) {
+    return;
+  }
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('No pudimos iniciar la llamada.')),
+  );
+}
+
+Future<void> _openStatusExternal(
+  BuildContext context,
+  WidgetRef ref,
+  String url,
+  String failureMessage,
+) async {
+  final launcher = ref.read(externalLauncherProvider);
+  var opened = false;
+  try {
+    opened = await launcher.openExternal(url);
+  } catch (_) {
+    opened = false;
+  }
+  if (!context.mounted || opened) {
+    return;
+  }
+  ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text(failureMessage)));
 }
 
 class _Panel extends StatelessWidget {

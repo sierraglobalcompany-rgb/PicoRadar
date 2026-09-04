@@ -1263,6 +1263,78 @@ void main() {
     expect(uri.queryParameters['query'], '6.244,-75.57');
   });
 
+  testWidgets('camera map action reports launcher failure', (tester) async {
+    final gateway = _StreamingGateway();
+    final launcher = _FakeExternalLauncher(openResult: false);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+          externalLauncherProvider.overrideWithValue(launcher),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20));
+    await tester.pump();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('driving-camera-map-action')),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('driving-camera-map-action')));
+    await tester.pump();
+
+    expect(find.text('No pudimos abrir Google Maps.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('camera map action reports launcher exception', (tester) async {
+    final gateway = _StreamingGateway();
+    final launcher = _FakeExternalLauncher(throwOnOpen: true);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+          externalLauncherProvider.overrideWithValue(launcher),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20));
+    await tester.pump();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('driving-camera-map-action')),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('driving-camera-map-action')));
+    await tester.pump();
+
+    expect(find.text('No pudimos abrir Google Maps.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('HUD with unknown speed omits the speed sign', (tester) async {
     final gateway = _StreamingGateway();
     await tester.pumpWidget(
@@ -1353,6 +1425,10 @@ class _NoopDrivingFeedbackGateway implements DrivingFeedbackGateway {
 }
 
 class _FakeExternalLauncher implements ExternalLauncher {
+  _FakeExternalLauncher({this.openResult = true, this.throwOnOpen = false});
+
+  final bool openResult;
+  final bool throwOnOpen;
   final opened = <String>[];
 
   @override
@@ -1360,8 +1436,11 @@ class _FakeExternalLauncher implements ExternalLauncher {
 
   @override
   Future<bool> openExternal(String uri) async {
+    if (throwOnOpen) {
+      throw StateError('launcher failed');
+    }
     opened.add(uri);
-    return true;
+    return openResult;
   }
 }
 

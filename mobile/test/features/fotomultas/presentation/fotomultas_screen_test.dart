@@ -199,6 +199,20 @@ void main() {
     await tester.pump();
 
     expect(find.text('No pudimos abrir la fuente ANSV.'), findsOneWidget);
+
+    final throwingLauncher = _FakeExternalLauncher(throwOnOpen: true);
+    await _pumpScreen(
+      tester,
+      launcher: throwingLauncher,
+      size: const Size(390, 1200),
+    );
+    await tester.tap(find.byKey(const ValueKey('fotomultas-camera-known-bog')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('fotomultas-open-source')));
+    await tester.pump();
+
+    expect(find.text('No pudimos abrir la fuente ANSV.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('main CTA and detail CTA open Conducir', (tester) async {
@@ -438,9 +452,10 @@ TrafficCamera _camera({
 }
 
 class _FakeExternalLauncher implements ExternalLauncher {
-  _FakeExternalLauncher({this.openResult = true});
+  _FakeExternalLauncher({this.openResult = true, this.throwOnOpen = false});
 
   final bool openResult;
+  final bool throwOnOpen;
   final openedUris = <String>[];
 
   @override
@@ -448,6 +463,9 @@ class _FakeExternalLauncher implements ExternalLauncher {
 
   @override
   Future<bool> openExternal(String uri) async {
+    if (throwOnOpen) {
+      throw StateError('launcher failed');
+    }
     openedUris.add(uri);
     return openResult;
   }

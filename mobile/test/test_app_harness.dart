@@ -14,11 +14,14 @@ import 'package:picoradar/app/startup/startup_gate.dart';
 import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/features/apps_launcher/data/module_registry.dart';
+import 'package:picoradar/features/defense/data/defense_case_store.dart';
+import 'package:picoradar/features/garage/application/vehicle_associated_data_cleaner.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/home/data/home_banner_config.dart';
 import 'package:picoradar/features/location/application/location_controller.dart';
 import 'package:picoradar/features/location/platform/device_location_gateway.dart';
+import 'package:picoradar/features/peritajes/data/peritajes_draft_store.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
 import 'package:picoradar/features/vehicle_status/data/private_vehicle_document_store.dart';
 import 'package:picoradar/features/vehicle_status/platform/obligation_notifications.dart';
@@ -71,6 +74,7 @@ class TestAppHarness {
     Map<String, bool> moduleFeatureFlags = const {},
     ExternalLauncher? externalLauncher,
     VehicleDocumentGateway? documentGateway,
+    VehicleAssociatedDataCleaner? vehicleAssociatedDataCleaner,
     DeviceLocationGateway? deviceLocationGateway,
     PrivateVehicleDocumentStore? documentStoreOverride,
     List<VehicleProfile>? vehicleListOverride,
@@ -111,6 +115,9 @@ class TestAppHarness {
         ),
         privateVehicleDocumentStoreProvider.overrideWithValue(
           documentStoreOverride ?? documentStore,
+        ),
+        vehicleAssociatedDataCleanerProvider.overrideWithValue(
+          vehicleAssociatedDataCleaner ?? _NoOpVehicleAssociatedDataCleaner(),
         ),
         vehicleDocumentGatewayProvider.overrideWithValue(
           documentGateway ?? _FakeVehicleDocumentGateway(),
@@ -169,6 +176,19 @@ class TestAppHarness {
       documentRoot.deleteSync(recursive: true);
     }
   }
+}
+
+class _NoOpVehicleAssociatedDataCleaner extends VehicleAssociatedDataCleaner {
+  _NoOpVehicleAssociatedDataCleaner()
+    : super(
+        documentStore: PrivateVehicleDocumentStore(),
+        defenseCaseStore: DefenseCaseStore(),
+        peritajesDraftStore: PeritajesDraftStore(MemoryPreferences()),
+        preferences: MemoryPreferences(),
+      );
+
+  @override
+  Future<void> deleteForVehicle(String vehicleId) async {}
 }
 
 class _FakePicoNotificationScheduler extends PicoNotificationScheduler {

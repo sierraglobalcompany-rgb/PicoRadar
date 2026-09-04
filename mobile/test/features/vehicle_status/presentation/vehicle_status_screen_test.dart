@@ -162,6 +162,23 @@ void main() {
     ]);
   });
 
+  testWidgets('SOAT official RUNT exception is visible', (tester) async {
+    await _createVehicle(harness, plate: 'AAA111');
+    final launcher = _CapturingLauncher(throwOnOpen: true);
+
+    await _openModule(tester, harness, 'soat', externalLauncher: launcher);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('owner-runt-soat')),
+      280,
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('owner-runt-soat')));
+    await tester.pump();
+
+    expect(find.text('No pudimos abrir RUNT.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('vehicle selector changes only local screen context', (
     tester,
   ) async {
@@ -422,6 +439,35 @@ void main() {
     },
   );
 
+  testWidgets('owner sponsored banner launcher exception is visible', (
+    tester,
+  ) async {
+    await _createVehicle(harness, plate: 'BAN123');
+    final launcher = _CapturingLauncher(throwOnOpen: true);
+
+    await _openModule(
+      tester,
+      harness,
+      'soat',
+      externalLauncher: launcher,
+      overrideHomeBannerCampaign: true,
+      homeBannerCampaignOverride: _bannerCampaign(
+        kind: HomeBannerKind.sponsored,
+        targetUrl: 'https://sponsor.example/soat',
+      ),
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('owner-sponsored-soat')),
+      280,
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('owner-sponsored-soat')));
+    await tester.pump();
+
+    expect(find.text('No pudimos abrir el enlace.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('insurance assistance phones can be launched by user action', (
     tester,
   ) async {
@@ -452,6 +498,67 @@ void main() {
 
     expect(launcher.calledPhones, ['601 111 1111']);
     expect(normalizePhoneForTel(launcher.calledPhones.single), '6011111111');
+  });
+
+  testWidgets('insurance assistance phone failure is visible', (tester) async {
+    final vehicle = await _createVehicle(harness, plate: 'AAA111');
+    await VehicleObligationStore(harness.database).upsert(
+      vehicleId: vehicle.id,
+      type: VehicleObligationType.insurance,
+      dueDate: DateTime(2026, 12, 31),
+      details: const {
+        'providerName': 'Allianz Colombia',
+        'policyNumber': 'VOL-1',
+        'assistancePhone': '601 111 1111',
+      },
+    );
+    final launcher = _CapturingLauncher(callResult: false);
+
+    await _openModule(
+      tester,
+      harness,
+      'seguro_asistencia',
+      externalLauncher: launcher,
+    );
+    final callButton = find.byKey(const ValueKey('call-assistancePhone'));
+    await tester.drag(find.byType(ListView), const Offset(0, -260));
+    await _pumpNavigation(tester);
+    await tester.tap(callButton);
+    await tester.pump();
+
+    expect(find.text('No pudimos iniciar la llamada.'), findsOneWidget);
+  });
+
+  testWidgets('insurance assistance phone exception is visible', (
+    tester,
+  ) async {
+    final vehicle = await _createVehicle(harness, plate: 'AAA111');
+    await VehicleObligationStore(harness.database).upsert(
+      vehicleId: vehicle.id,
+      type: VehicleObligationType.insurance,
+      dueDate: DateTime(2026, 12, 31),
+      details: const {
+        'providerName': 'Allianz Colombia',
+        'policyNumber': 'VOL-1',
+        'assistancePhone': '601 111 1111',
+      },
+    );
+    final launcher = _CapturingLauncher(throwOnCall: true);
+
+    await _openModule(
+      tester,
+      harness,
+      'seguro_asistencia',
+      externalLauncher: launcher,
+    );
+    final callButton = find.byKey(const ValueKey('call-assistancePhone'));
+    await tester.drag(find.byType(ListView), const Offset(0, -260));
+    await _pumpNavigation(tester);
+    await tester.tap(callButton);
+    await tester.pump();
+
+    expect(find.text('No pudimos iniciar la llamada.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('tax screen suggests only verified authority without estimates', (
@@ -603,6 +710,25 @@ void main() {
     expect(find.text('No pudimos abrir el portal oficial.'), findsOneWidget);
   });
 
+  testWidgets('tax portal exception is visible to the user', (tester) async {
+    await _createVehicle(harness, plate: 'BOG123', city: 'Bogotá D.C.');
+    final launcher = _CapturingLauncher(throwOnOpen: true);
+
+    await _openModule(tester, harness, 'impuestos', externalLauncher: launcher);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('official-link-bogota-tax-vehicles')),
+      280,
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey('official-link-bogota-tax-vehicles')),
+    );
+    await tester.pump();
+
+    expect(find.text('No pudimos abrir el portal oficial.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'tax dates show past today and upcoming states without semaforizacion',
     (tester) async {
@@ -744,20 +870,34 @@ String _plateForViewport(String name) {
 }
 
 class _CapturingLauncher implements ExternalLauncher {
-  _CapturingLauncher({this.openResult = true});
+  _CapturingLauncher({
+    this.openResult = true,
+    this.callResult = true,
+    this.throwOnOpen = false,
+    this.throwOnCall = false,
+  });
 
   final bool openResult;
+  final bool callResult;
+  final bool throwOnOpen;
+  final bool throwOnCall;
   final calledPhones = <String>[];
   final openedUris = <String>[];
 
   @override
   Future<bool> callPhone(String phone) async {
+    if (throwOnCall) {
+      throw StateError('launcher failed');
+    }
     calledPhones.add(phone);
-    return true;
+    return callResult;
   }
 
   @override
   Future<bool> openExternal(String uri) async {
+    if (throwOnOpen) {
+      throw StateError('launcher failed');
+    }
     openedUris.add(uri);
     return openResult;
   }

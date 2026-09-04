@@ -34,21 +34,21 @@ Minimum reviewed sources covered by this audit:
 
 ## External Launcher Matrix
 
-This matrix documents all current production launcher call sites. K7-C does not edit production code, so rows marked `GAP` are explicit follow-up concerns, not hidden waivers.
+This matrix documents all current production launcher call sites after K7 integration. Every visible external handoff handles a false launcher result or thrown launcher exception with visible user feedback.
 
 | Call site | Surface | False result | Throw result | K7-C status |
 |---|---|---|---|---|
-| `lib/features/cda/presentation/cda_finder_screen.dart` | CDA details: Google Maps, Waze, official RUNT/MinTransporte source | Not awaited; no visible failure message | Not caught | GAP |
-| `lib/features/comparendos/presentation/comparendos_screen.dart` | SIMIT and territorial comparendos links | Controlled visible snackbar | Not caught | GAP |
+| `lib/features/cda/presentation/cda_finder_screen.dart` | CDA details: Google Maps, Waze, official RUNT/MinTransporte source | Controlled visible snackbar | Controlled visible snackbar | PASS |
+| `lib/features/comparendos/presentation/comparendos_screen.dart` | SIMIT and territorial comparendos links | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/defense/presentation/defense_screen.dart` | SIMIT, Corte C-038/20, Corte C-321/22 | Controlled visible snackbar | Controlled visible snackbar | PASS |
-| `lib/features/fotomultas/presentation/fotomultas_screen.dart` | ANSV source from camera pack | Controlled visible snackbar | Not caught | GAP |
-| `lib/features/driving/presentation/driving_screen.dart` | Camera Google Maps handoff | Not awaited; no visible failure message | Not caught | GAP |
+| `lib/features/fotomultas/presentation/fotomultas_screen.dart` | ANSV source from camera pack | Controlled visible snackbar | Controlled visible snackbar | PASS |
+| `lib/features/driving/presentation/driving_screen.dart` | Camera Google Maps handoff | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/services/presentation/services_screen.dart` | Google Maps service searches | Controlled visible snackbar | Controlled visible snackbar | PASS |
-| `lib/features/vehicle_status/presentation/vehicle_status_screen.dart` | Phone actions, tax calendar portal, official status links | Not consistently surfaced | Not caught | GAP |
-| `lib/features/trip/application/trip_services.dart` | Google Maps route, Waze route, INVÍAS road status | Presentation tests cover false result | Throw handling is not fully asserted by K7-C | PARTIAL |
+| `lib/features/vehicle_status/presentation/vehicle_status_screen.dart` | Phone actions, tax calendar portal, official status links | Controlled visible snackbar | Controlled visible snackbar | PASS |
+| `lib/features/trip/application/trip_services.dart` | Google Maps route, Waze route, INVÍAS road status | Controlled visible snackbar in presentation | Controlled visible snackbar in presentation | PASS |
 | `lib/features/peritajes/presentation/peritajes_screen.dart` | Google Maps peritaje search | Controlled visible snackbar | Controlled visible snackbar | PASS |
-| `lib/features/vehicle_status/presentation/soat_rtm_owner_content.dart` | RUNT vehicle link and document/open-source handoffs | Not consistently surfaced | Not caught | GAP |
-| `lib/features/tramites/presentation/tramites_screen.dart` | Medellín/Bogotá official trámite portals | Controlled visible snackbar | Not caught | GAP |
+| `lib/features/vehicle_status/presentation/soat_rtm_owner_content.dart` | RUNT vehicle link and document/open-source handoffs | Controlled visible snackbar | Controlled visible snackbar | PASS |
+| `lib/features/tramites/presentation/tramites_screen.dart` | Medellín/Bogotá official trámite portals | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/settings/presentation/settings_screen.dart` | ANSV, SIMIT, INVÍAS, SIC links | Controlled visible snackbar | Controlled visible snackbar | PASS |
 
 ## Destructive Local Actions
@@ -70,4 +70,4 @@ Risk: `logStartupMarker` accepts a free-form `extra` string. Future production c
 
 ## Result
 
-K7-C adds audit gates and documents remaining functional risks without changing production behavior. The audit does not claim release readiness for launcher exception handling gaps, physical Android QA, or full C29 hardening.
+K7-C adds audit gates and K7 integration closes the documented launcher exception handling gaps. This audit does not claim release readiness for physical Android QA or full C29 hardening.

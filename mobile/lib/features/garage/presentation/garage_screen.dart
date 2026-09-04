@@ -353,17 +353,28 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
     }
 
     final repository = ref.read(vehicleRepositoryProvider);
+    final preferences = ref.read(appPreferencesProvider);
+    final cleaner = ref.read(vehicleAssociatedDataCleanerProvider);
     final activeBeforeDelete = await repository.getActiveVehicle();
     final wasActive = activeBeforeDelete?.id == vehicle.id;
+    try {
+      await cleaner.deleteForVehicle(vehicle.id);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No pudimos limpiar los datos asociados. Inténtalo de nuevo.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
     await repository.deleteVehicle(vehicle.id);
-    final favorites = await loadGarageFavoriteVehicleIds(
-      ref.read(appPreferencesProvider),
-    );
+    final favorites = await loadGarageFavoriteVehicleIds(preferences);
     if (favorites.remove(vehicle.id)) {
-      await saveGarageFavoriteVehicleIds(
-        ref.read(appPreferencesProvider),
-        favorites,
-      );
+      await saveGarageFavoriteVehicleIds(preferences, favorites);
     }
 
     if (wasActive) {

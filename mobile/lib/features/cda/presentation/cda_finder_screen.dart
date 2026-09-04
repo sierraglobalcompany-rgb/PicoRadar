@@ -371,33 +371,36 @@ class _CdaResultCard extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.m),
                   FilledButton.icon(
                     key: const ValueKey('cda-open-directions'),
-                    onPressed: () {
-                      ref
-                          .read(externalLauncherProvider)
-                          .openExternal(_googleMapsSearchUrl(entry));
-                    },
+                    onPressed: () => _openExternal(
+                      context,
+                      ref,
+                      _googleMapsSearchUrl(entry),
+                      'No pudimos abrir Google Maps.',
+                    ),
                     icon: const Icon(Icons.directions),
                     label: const Text('Cómo llegar'),
                   ),
                   const SizedBox(height: AppSpacing.s),
                   OutlinedButton.icon(
                     key: const ValueKey('cda-open-waze'),
-                    onPressed: () {
-                      ref
-                          .read(externalLauncherProvider)
-                          .openExternal(_wazeSearchUrl(entry));
-                    },
+                    onPressed: () => _openExternal(
+                      context,
+                      ref,
+                      _wazeSearchUrl(entry),
+                      'No pudimos abrir Waze.',
+                    ),
                     icon: const Icon(Icons.navigation_outlined),
                     label: const Text('Abrir en Waze'),
                   ),
                   const SizedBox(height: AppSpacing.s),
                   OutlinedButton.icon(
                     key: const ValueKey('cda-open-source'),
-                    onPressed: () {
-                      ref
-                          .read(externalLauncherProvider)
-                          .openExternal(sourceUrl);
-                    },
+                    onPressed: () => _openExternal(
+                      context,
+                      ref,
+                      sourceUrl,
+                      'No pudimos abrir la fuente oficial.',
+                    ),
                     icon: const Icon(Icons.open_in_new),
                     label: const Text('Abrir fuente oficial'),
                   ),
@@ -408,6 +411,26 @@ class _CdaResultCard extends ConsumerWidget {
         );
       },
     );
+  }
+
+  Future<void> _openExternal(
+    BuildContext context,
+    WidgetRef ref,
+    String url,
+    String failureMessage,
+  ) async {
+    final launcher = ref.read(externalLauncherProvider);
+    var opened = false;
+    try {
+      opened = await launcher.openExternal(url);
+    } catch (_) {
+      opened = false;
+    }
+    if (!context.mounted || opened) {
+      return;
+    }
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(failureMessage)));
   }
 }
 

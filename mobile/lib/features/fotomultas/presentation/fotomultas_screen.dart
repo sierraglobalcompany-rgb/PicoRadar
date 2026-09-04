@@ -183,14 +183,19 @@ class _FotomultasScreenState extends ConsumerState<FotomultasScreen> {
   }
 
   Future<void> _openSource(CameraPackSource source) async {
-    final opened = await ref
-        .read(externalLauncherProvider)
-        .openExternal(source.pageUrl);
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No pudimos abrir la fuente ANSV.')),
-      );
+    final launcher = ref.read(externalLauncherProvider);
+    var opened = false;
+    try {
+      opened = await launcher.openExternal(source.pageUrl);
+    } catch (_) {
+      opened = false;
     }
+    if (!mounted || opened) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('No pudimos abrir la fuente ANSV.')),
+    );
   }
 }
 

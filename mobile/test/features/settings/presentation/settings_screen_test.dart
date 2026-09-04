@@ -5,7 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
+import 'package:picoradar/features/defense/data/defense_case_store.dart';
+import 'package:picoradar/features/garage/application/vehicle_associated_data_cleaner.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
+import 'package:picoradar/features/peritajes/data/peritajes_draft_store.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
 import 'package:picoradar/features/settings/presentation/settings_screen.dart';
@@ -50,6 +53,10 @@ void main() {
     expect(find.text('Fuentes'), findsOneWidget);
     expect(find.text('Soporte'), findsOneWidget);
     expect(find.text('Borrar todo'), findsNothing);
+    expect(
+      find.text('Borrar archivos y expedientes del vehículo activo'),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const ValueKey('settings-change-avatar')));
     await tester.pump();
@@ -211,6 +218,109 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('No hay vehículo activo para limpiar.'), findsOneWidget);
+  });
+
+  testWidgets('cleans active vehicle private data only after confirmation', (
+    tester,
+  ) async {
+    final activeVehicle = _vehicle(id: 'vehicle-1', plate: 'ABC123');
+    final cleaner = _FakeVehicleDataCleaner();
+
+    await _pumpSettings(
+      tester,
+      preferences: preferences,
+      scheduler: scheduler,
+      launcher: launcher,
+      documentStore: documentStore,
+      vehicleAssociatedDataCleaner: cleaner,
+      activeVehicle: activeVehicle,
+      onChangeAvatar: () {},
+    );
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('settings-delete-active-vehicle-private-data')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Borrar archivos y expedientes del vehículo activo'),
+      findsWidgets,
+    );
+    expect(find.textContaining('No se borrará el vehículo'), findsOneWidget);
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+    expect(cleaner.deletedVehicleIds, isEmpty);
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('settings-delete-active-vehicle-private-data')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Eliminar'));
+    await tester.pumpAndSettle();
+
+    expect(cleaner.deletedVehicleIds, ['vehicle-1']);
+    expect(
+      find.text('Archivos y expedientes del vehículo activo eliminados.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('ABC123'), findsNothing);
+  });
+
+  testWidgets('active vehicle private data cleanup handles missing vehicle', (
+    tester,
+  ) async {
+    final cleaner = _FakeVehicleDataCleaner();
+
+    await _pumpSettings(
+      tester,
+      preferences: preferences,
+      scheduler: scheduler,
+      launcher: launcher,
+      documentStore: documentStore,
+      vehicleAssociatedDataCleaner: cleaner,
+      activeVehicleFuture: Future<VehicleProfile?>.value(),
+      onChangeAvatar: () {},
+    );
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('settings-delete-active-vehicle-private-data')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Eliminar'));
+    await tester.pumpAndSettle();
+
+    expect(cleaner.deletedVehicleIds, isEmpty);
+    expect(find.text('No hay vehículo activo para limpiar.'), findsOneWidget);
+  });
+
+  testWidgets('active vehicle private data cleanup failure is visible', (
+    tester,
+  ) async {
+    final cleaner = _FakeVehicleDataCleaner()..fail = true;
+
+    await _pumpSettings(
+      tester,
+      preferences: preferences,
+      scheduler: scheduler,
+      launcher: launcher,
+      documentStore: documentStore,
+      vehicleAssociatedDataCleaner: cleaner,
+      activeVehicle: _vehicle(id: 'vehicle-1', plate: 'ABC123'),
+      onChangeAvatar: () {},
+    );
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('settings-delete-active-vehicle-private-data')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Eliminar'));
+    await tester.pumpAndSettle();
+
+    expect(cleaner.deletedVehicleIds, ['vehicle-1']);
+    expect(find.text('No pudimos completar la acción.'), findsOneWidget);
   });
 
   testWidgets('does not use context after active vehicle wait is disposed', (
@@ -452,6 +562,7 @@ Future<void> _pumpSettings(
   required _FakeDocumentStore documentStore,
   required VoidCallback onChangeAvatar,
   VoidCallback? onConfigureNotifications,
+  VehicleAssociatedDataCleaner? vehicleAssociatedDataCleaner,
   VehicleProfile? activeVehicle,
   Future<VehicleProfile?>? activeVehicleFuture,
   CameraDatasetDiagnostic cameraDatasetDiagnostic =
@@ -472,6 +583,9 @@ Future<void> _pumpSettings(
         picoNotificationSchedulerProvider.overrideWithValue(scheduler),
         externalLauncherProvider.overrideWithValue(launcher),
         privateVehicleDocumentStoreProvider.overrideWithValue(documentStore),
+        vehicleAssociatedDataCleanerProvider.overrideWithValue(
+          vehicleAssociatedDataCleaner ?? _FakeVehicleDataCleaner(),
+        ),
         if (activeVehicleFuture != null)
           activeVehicleProvider.overrideWith((ref) => activeVehicleFuture),
         if (activeVehicle != null)
@@ -515,6 +629,27 @@ VehicleProfile _vehicle({required String id, required String plate}) {
     createdAt: DateTime.utc(2026, 9, 3),
     updatedAt: DateTime.utc(2026, 9, 3),
   );
+}
+
+class _FakeVehicleDataCleaner extends VehicleAssociatedDataCleaner {
+  _FakeVehicleDataCleaner()
+    : super(
+        documentStore: PrivateVehicleDocumentStore(),
+        defenseCaseStore: DefenseCaseStore(),
+        peritajesDraftStore: PeritajesDraftStore(MemoryPreferences()),
+        preferences: MemoryPreferences(),
+      );
+
+  final deletedVehicleIds = <String>[];
+  var fail = false;
+
+  @override
+  Future<void> deleteForVehicle(String vehicleId) async {
+    deletedVehicleIds.add(vehicleId);
+    if (fail) {
+      throw StateError('cleanup failed');
+    }
+  }
 }
 
 class _FakePicoNotificationScheduler extends PicoNotificationScheduler {

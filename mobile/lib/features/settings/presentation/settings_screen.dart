@@ -177,6 +177,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         label: 'Borrar nota de Comparendos',
                         onPressed: _deleteComparendosNote,
                       ),
+                      const SizedBox(height: AppSpacing.s),
+                      _ActionButton(
+                        valueKey: 'settings-delete-active-vehicle-private-data',
+                        busy: _busyActionKey == 'vehicle-private-data',
+                        icon: Icons.no_encryption_gmailerrorred_outlined,
+                        label:
+                            'Borrar archivos y expedientes del vehículo activo',
+                        onPressed: _deleteActiveVehiclePrivateData,
+                      ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.l),
@@ -282,6 +291,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       key: 'trip',
       successMessage: 'Borrador de Viaje eliminado.',
       action: store.deleteDraft,
+    );
+  }
+
+  Future<void> _deleteActiveVehiclePrivateData() async {
+    final confirmed = await _confirmDestructiveAction(
+      title: 'Borrar archivos y expedientes del vehículo activo',
+      message: 'Se eliminarán documentos cifrados, temporales del visor, expedientes de Defensa, borrador de Peritajes y nota de Comparendos del vehículo activo. No se borrará el vehículo, mantenimiento ni obligaciones.',
+    );
+    if (!confirmed || !mounted) {
+      return;
+    }
+    final activeVehicleFuture = ref.read(activeVehicleProvider.future);
+    final cleaner = ref.read(vehicleAssociatedDataCleanerProvider);
+
+    await _runAction(
+      key: 'vehicle-private-data',
+      successMessage: 'Archivos y expedientes del vehículo activo eliminados.',
+      action: () async {
+        final activeVehicle = await activeVehicleFuture;
+        final vehicleId = activeVehicle?.id.trim();
+        if (vehicleId == null || vehicleId.isEmpty) {
+          throw const _SettingsActionMessage(
+            'No hay vehículo activo para limpiar.',
+          );
+        }
+        await cleaner.deleteForVehicle(vehicleId);
+      },
     );
   }
 

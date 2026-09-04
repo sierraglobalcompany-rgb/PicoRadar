@@ -124,6 +124,39 @@ void main() {
     }
   });
 
+  testWidgets('shows Google Maps Waze and INVÍAS launch exceptions', (
+    tester,
+  ) async {
+    for (final failureCase in [
+      (key: 'trip-open-google-maps', message: 'No pudimos abrir Google Maps.'),
+      (key: 'trip-open-waze', message: 'No pudimos abrir Waze.'),
+      (key: 'trip-open-invias', message: 'No pudimos abrir INVÍAS.'),
+    ]) {
+      final failingLauncher = _FakeExternalLauncher()..throwOnOpen = true;
+      await _pumpScreen(
+        tester,
+        preferences: preferences,
+        launcher: failingLauncher,
+        size: const Size(390, 1000),
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('trip-origin-field')),
+        'Bogotá',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('trip-destination-field')),
+        'Medellín',
+      );
+
+      await _tapByKey(tester, failureCase.key);
+
+      expect(find.text(failureCase.message), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    }
+  });
+
   testWidgets('saves local draft with active vehicle and checklist only', (
     tester,
   ) async {
@@ -395,12 +428,16 @@ VehicleProfile _vehicle({
 class _FakeExternalLauncher implements ExternalLauncher {
   final opened = <String>[];
   var openResult = true;
+  var throwOnOpen = false;
 
   @override
   Future<bool> callPhone(String phone) async => true;
 
   @override
   Future<bool> openExternal(String uri) async {
+    if (throwOnOpen) {
+      throw StateError('launcher failed');
+    }
     opened.add(uri);
     return openResult;
   }

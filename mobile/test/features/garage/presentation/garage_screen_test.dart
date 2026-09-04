@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/features/apps_launcher/presentation/module_placeholder_screen.dart';
 import 'package:picoradar/features/documents/presentation/documents_screen.dart';
+import 'package:picoradar/features/defense/data/defense_case_store.dart';
+import 'package:picoradar/features/garage/application/vehicle_associated_data_cleaner.dart';
 import 'package:picoradar/features/garage/data/garage_favorites.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/maintenance/presentation/maintenance_screen.dart';
+import 'package:picoradar/features/peritajes/data/peritajes_draft_store.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/presentation/pico_detail_screen.dart';
 import 'package:picoradar/features/visual_assets/presentation/visual_asset_widgets.dart';
+import 'package:picoradar/features/vehicle_status/data/private_vehicle_document_store.dart';
 import 'package:picoradar/features/vehicle_status/data/vehicle_obligation_store.dart';
 import 'package:picoradar/features/vehicle_status/domain/vehicle_obligation.dart';
 
@@ -379,6 +384,60 @@ void main() {
     },
   );
 
+  testWidgets(
+    'delete action cleans associated private data before vehicle row',
+    (tester) async {
+      final seeded = await _seedThreeVehicles(harness);
+      final cleaner = _RecordingVehicleDataCleaner();
+
+      await _openGarage(tester, harness, vehicleAssociatedDataCleaner: cleaner);
+      await _focusNewestVehicle(tester);
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('garage-action-delete')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('garage-confirm-delete-vehicle')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(cleaner.deletedVehicleIds, [seeded.newest.id]);
+      expect(await harness.repository.getVehicle(seeded.newest.id), isNull);
+      expect(
+        (await harness.repository.getActiveVehicle())?.id,
+        seeded.active.id,
+      );
+    },
+  );
+
+  testWidgets('delete action keeps vehicle when associated cleanup fails', (
+    tester,
+  ) async {
+    final seeded = await _seedThreeVehicles(harness);
+    final cleaner = _RecordingVehicleDataCleaner()..fail = true;
+
+    await _openGarage(tester, harness, vehicleAssociatedDataCleaner: cleaner);
+    await _focusNewestVehicle(tester);
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('garage-action-delete')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('garage-confirm-delete-vehicle')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(cleaner.deletedVehicleIds, [seeded.newest.id]);
+    expect(
+      find.text('No pudimos limpiar los datos asociados. Inténtalo de nuevo.'),
+      findsOneWidget,
+    );
+    expect(await harness.repository.getVehicle(seeded.newest.id), isNotNull);
+    expect((await harness.repository.getActiveVehicle())?.id, seeded.active.id);
+  });
+
   testWidgets('add vehicle opens existing onboarding', (tester) async {
     await _openGarage(tester, harness);
     await tester.tap(find.byKey(const ValueKey('garage-add-vehicle')).first);
@@ -651,6 +710,7 @@ Future<void> _openGarage(
   Size size = const Size(390, 844),
   double textScaleFactor = 1,
   bool boundedSettle = false,
+  VehicleAssociatedDataCleaner? vehicleAssociatedDataCleaner,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -658,7 +718,10 @@ Future<void> _openGarage(
   addTearDown(tester.view.resetDevicePixelRatio);
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-  await harness.pump(tester);
+  await harness.pump(
+    tester,
+    vehicleAssociatedDataCleaner: vehicleAssociatedDataCleaner,
+  );
   await tester.tap(find.byKey(const ValueKey('tab-garage')));
   if (boundedSettle) {
     await tester.pump();
@@ -666,6 +729,60 @@ Future<void> _openGarage(
     await tester.pump(const Duration(seconds: 1));
   } else {
     await tester.pumpAndSettle();
+  }
+}
+
+class _RecordingVehicleDataCleaner extends VehicleAssociatedDataCleaner {
+  _RecordingVehicleDataCleaner()
+    : super(
+        documentStore: PrivateVehicleDocumentStore(),
+        defenseCaseStore: DefenseCaseStore(),
+        peritajesDraftStore: PeritajesDraftStore(_MemoryPreferences()),
+        preferences: _MemoryPreferences(),
+      );
+
+  final deletedVehicleIds = <String>[];
+  var fail = false;
+
+  @override
+  Future<void> deleteForVehicle(String vehicleId) async {
+    deletedVehicleIds.add(vehicleId);
+    if (fail) {
+      throw StateError('cleanup failed');
+    }
+  }
+}
+
+class _MemoryPreferences implements AppPreferences {
+  final values = <String, Object?>{};
+
+  @override
+  Future<bool?> getBool(String key) async => values[key] as bool?;
+
+  @override
+  Future<int?> getInt(String key) async => values[key] as int?;
+
+  @override
+  Future<String?> getString(String key) async => values[key] as String?;
+
+  @override
+  Future<void> remove(String key) async {
+    values.remove(key);
+  }
+
+  @override
+  Future<void> setBool(String key, bool value) async {
+    values[key] = value;
+  }
+
+  @override
+  Future<void> setInt(String key, int value) async {
+    values[key] = value;
+  }
+
+  @override
+  Future<void> setString(String key, String value) async {
+    values[key] = value;
   }
 }
 

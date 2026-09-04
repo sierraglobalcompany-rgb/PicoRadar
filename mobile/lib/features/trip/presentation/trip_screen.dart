@@ -147,13 +147,19 @@ class _TripScreenState extends ConsumerState<TripScreen> {
       return;
     }
     final navigation = ref.read(tripExternalNavigationProvider);
-    final opened = await navigation.openGoogleMaps(
-      origin: _originController.text,
-      destination: _destinationController.text,
-    );
-    if (!opened && mounted) {
-      _showSnackBar('No pudimos abrir Google Maps.');
+    var opened = false;
+    try {
+      opened = await navigation.openGoogleMaps(
+        origin: _originController.text,
+        destination: _destinationController.text,
+      );
+    } catch (_) {
+      opened = false;
     }
+    if (!mounted || opened) {
+      return;
+    }
+    _showSnackBar('No pudimos abrir Google Maps.');
   }
 
   Future<void> _openWaze() async {
@@ -161,20 +167,32 @@ class _TripScreenState extends ConsumerState<TripScreen> {
       return;
     }
     final navigation = ref.read(tripExternalNavigationProvider);
-    final opened = await navigation.openWaze(
-      destination: _destinationController.text,
-    );
-    if (!opened && mounted) {
-      _showSnackBar('No pudimos abrir Waze.');
+    var opened = false;
+    try {
+      opened = await navigation.openWaze(
+        destination: _destinationController.text,
+      );
+    } catch (_) {
+      opened = false;
     }
+    if (!mounted || opened) {
+      return;
+    }
+    _showSnackBar('No pudimos abrir Waze.');
   }
 
   Future<void> _openInvias() async {
     final navigation = ref.read(tripExternalNavigationProvider);
-    final opened = await navigation.openInviasRoadStatus();
-    if (!opened && mounted) {
-      _showSnackBar('No pudimos abrir INVÍAS.');
+    var opened = false;
+    try {
+      opened = await navigation.openInviasRoadStatus();
+    } catch (_) {
+      opened = false;
     }
+    if (!mounted || opened) {
+      return;
+    }
+    _showSnackBar('No pudimos abrir INVÍAS.');
   }
 
   void _setChecklistItem(TripChecklistItem item, bool selected) {

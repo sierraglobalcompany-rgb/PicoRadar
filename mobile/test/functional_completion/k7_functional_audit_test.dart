@@ -15,7 +15,6 @@ import 'package:picoradar/features/defense/presentation/defense_screen.dart';
 import 'package:picoradar/features/driving/data/driving_preferences.dart';
 import 'package:picoradar/features/driving/domain/driving_alert_engine.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
-import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/peritajes/data/peritajes_draft_store.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
 import 'package:picoradar/features/settings/presentation/settings_screen.dart';
@@ -27,7 +26,7 @@ import '../test_app_harness.dart';
 
 void main() {
   group('K7-C functional audit documentation gate', () {
-    test('records required source coverage and launcher gaps', () {
+    test('records required source coverage and launcher matrix', () {
       final report = File('../docs/qa/K7_FUNCTIONAL_AUDIT.md');
 
       expect(report.existsSync(), isTrue);
@@ -74,64 +73,72 @@ void main() {
         isFalse,
       );
       expect(
-        preferences.values.containsKey(peritajesDraftPreferenceKey('vehicle-a')),
+        preferences.values.containsKey(
+          peritajesDraftPreferenceKey('vehicle-a'),
+        ),
         isFalse,
       );
     });
 
-    test('corrupt driving preferences fall back to conservative defaults', () async {
-      final preferences = MemoryPreferences()
-        ..values['driving.alert.profile'] = 'turbo'
-        ..values['driving.alert.voice'] = false
-        ..values['driving.alert.sound'] = false
-        ..values['driving.alert.vibration'] = false
-        ..values['driving.alert.customThresholds'] = '999,abc,-10'
-        ..values['driving.hud.mirror'] = true
-        ..values['driving.alert.targetingConeDegrees'] = 271
-        ..values['driving.camera.visualizationMode'] = 'satellite';
+    test(
+      'corrupt driving preferences fall back to conservative defaults',
+      () async {
+        final preferences = MemoryPreferences()
+          ..values['driving.alert.profile'] = 'turbo'
+          ..values['driving.alert.voice'] = false
+          ..values['driving.alert.sound'] = false
+          ..values['driving.alert.vibration'] = false
+          ..values['driving.alert.customThresholds'] = '999,abc,-10'
+          ..values['driving.hud.mirror'] = true
+          ..values['driving.alert.targetingConeDegrees'] = 271
+          ..values['driving.camera.visualizationMode'] = 'satellite';
 
-      final loaded = await loadDrivingPreferences(preferences);
+        final loaded = await loadDrivingPreferences(preferences);
 
-      expect(loaded.profile, DrivingAlertProfile.normal);
-      expect(loaded.customThresholdsMeters, [500, 300, 100]);
-      expect(loaded.cameraTargetingConeDegrees, 90);
-      expect(loaded.cameraVisualizationMode, CameraVisualizationMode.auto);
-      expect(loaded.voiceEnabled, isFalse);
-      expect(loaded.soundEnabled, isFalse);
-      expect(loaded.vibrationEnabled, isFalse);
-      expect(loaded.hudMirrorEnabled, isTrue);
-    });
+        expect(loaded.profile, DrivingAlertProfile.normal);
+        expect(loaded.customThresholdsMeters, [500, 300, 100]);
+        expect(loaded.cameraTargetingConeDegrees, 90);
+        expect(loaded.cameraVisualizationMode, CameraVisualizationMode.auto);
+        expect(loaded.voiceEnabled, isFalse);
+        expect(loaded.soundEnabled, isFalse);
+        expect(loaded.vibrationEnabled, isFalse);
+        expect(loaded.hudMirrorEnabled, isTrue);
+      },
+    );
   });
 
   group('K7-C privacy and source gates', () {
-    test('diagnostic text contains no plate vehicle id coordinates or facts', () {
-      final text = settingsDiagnosticText(
-        schemaVersion: 4,
-        cameraDataset: const CameraDatasetDiagnostic(
-          version: 'cameras_v1',
-          count: 123,
-        ),
-      );
+    test(
+      'diagnostic text contains no plate vehicle id coordinates or facts',
+      () {
+        final text = settingsDiagnosticText(
+          schemaVersion: 4,
+          cameraDataset: const CameraDatasetDiagnostic(
+            version: 'cameras_v1',
+            count: 123,
+          ),
+        );
 
-      expect(text, contains('schemaVersion=4'));
-      expect(text, contains('cameraDatasetVersion=cameras_v1'));
-      for (final forbidden in [
-        'ABC123',
-        'vehicle-a',
-        '6.244',
-        '-75.57',
-        'hechos del caso',
-        'placa',
-        'plate',
-        'vehicleId',
-        'latitude',
-        'longitude',
-        'coordinates',
-        'facts',
-      ]) {
-        expect(text, isNot(contains(forbidden)));
-      }
-    });
+        expect(text, contains('schemaVersion=4'));
+        expect(text, contains('cameraDatasetVersion=cameras_v1'));
+        for (final forbidden in [
+          'ABC123',
+          'vehicle-a',
+          '6.244',
+          '-75.57',
+          'hechos del caso',
+          'placa',
+          'plate',
+          'vehicleId',
+          'latitude',
+          'longitude',
+          'coordinates',
+          'facts',
+        ]) {
+          expect(text, isNot(contains(forbidden)));
+        }
+      },
+    );
 
     test('official sources use HTTPS and expected hosts', () {
       final expectedHosts = <String, Set<String>>{
@@ -215,7 +222,7 @@ void main() {
           harness,
           appModuleLocation(module, vehicle.id),
         );
-        await tester.pumpAndSettle();
+        await _pumpAuditFrame(tester);
 
         expect(
           find.byType(ModulePlaceholderScreen),
@@ -237,13 +244,16 @@ void main() {
       }
 
       await tester.tap(find.byKey(const ValueKey('tab-apps')));
-      await tester.pumpAndSettle();
+      await _pumpAuditFrame(tester);
       expect(
         find.byKey(const ValueKey('apps-launcher-overlay')),
         findsOneWidget,
       );
       for (final module in primaryModules) {
-        expect(find.byKey(ValueKey('app-module-${module.id}')), findsOneWidget);
+        expect(
+          find.byKey(ValueKey('app-module-${module.id}'), skipOffstage: false),
+          findsOneWidget,
+        );
       }
       expect(tester.takeException(), isNull);
     });
@@ -263,7 +273,7 @@ void main() {
       );
 
       await _tapSettingsAction(tester, 'settings-delete-trip-draft');
-      expect(find.text('Borrar borrador de Viaje'), findsOneWidget);
+      expect(_dialogText('Borrar borrador de Viaje'), findsOneWidget);
       await tester.tap(find.text('Cancelar'));
       await tester.pumpAndSettle();
       expect(await preferences.getString(tripDraftPreferenceKey), isNotNull);
@@ -274,7 +284,7 @@ void main() {
       expect(await preferences.getString(tripDraftPreferenceKey), isNull);
 
       await _tapSettingsAction(tester, 'settings-delete-comparendos-note');
-      expect(find.text('Borrar nota de Comparendos'), findsOneWidget);
+      expect(_dialogText('Borrar nota de Comparendos'), findsOneWidget);
       await tester.tap(find.text('Cancelar'));
       await tester.pumpAndSettle();
       expect(
@@ -291,6 +301,19 @@ void main() {
       );
     });
   });
+}
+
+Finder _dialogText(String text) {
+  return find.descendant(
+    of: find.byType(AlertDialog),
+    matching: find.text(text),
+  );
+}
+
+Future<void> _pumpAuditFrame(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 350));
+  await tester.pump(const Duration(seconds: 1));
 }
 
 List<String> _externalLauncherCallSites() {

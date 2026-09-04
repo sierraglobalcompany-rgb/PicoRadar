@@ -192,12 +192,19 @@ class _TramitesScreenState extends ConsumerState<TramitesScreen> {
   }
 
   Future<void> _openOfficial(String url) async {
-    final opened = await ref.read(externalLauncherProvider).openExternal(url);
-    if (!opened && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No pudimos abrir el portal oficial.')),
-      );
+    final launcher = ref.read(externalLauncherProvider);
+    var opened = false;
+    try {
+      opened = await launcher.openExternal(url);
+    } catch (_) {
+      opened = false;
     }
+    if (!mounted || opened) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('No pudimos abrir el portal oficial.')),
+    );
   }
 }
 

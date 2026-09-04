@@ -311,146 +311,151 @@ class _DrivingDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     final active = state.isActive;
     if (active) {
-      return ColoredBox(
-        color: const Color(0xFF071622),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.l,
-              AppSpacing.m,
-              AppSpacing.l,
-              AppSpacing.m,
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final hasAlertSpace =
-                    state.showCameraAlertPanel ||
-                    state.dismissedCameraId != null;
-                final motionDuration = _motionDuration(
-                  context,
-                  const Duration(milliseconds: 320),
-                );
-                final gaugeHeight = hasAlertSpace
-                    ? (constraints.maxHeight * 0.48)
-                          .clamp(282.0, 344.0)
-                          .toDouble()
-                    : math.max(360.0, constraints.maxHeight - 168);
-                return Column(
-                  children: [
-                    _DrivingTopBar(
-                      state: state,
-                      onHud: onHud,
-                      onMirrorHud: onMirrorHud,
-                    ),
-                    AnimatedContainer(
-                      duration: motionDuration,
-                      curve: Curves.easeOutCubic,
-                      height: gaugeHeight,
-                      child: LayoutBuilder(
-                        builder: (context, gaugeConstraints) {
-                          final showSpeedBadge =
-                              state.showCameraAlertPanel &&
-                              state.reportedCameraSpeedKmh != null;
-                          final diameter = math.min(
-                            showSpeedBadge
-                                ? 288.0
-                                : hasAlertSpace
-                                ? 270.0
-                                : 316.0,
-                            math.min(
-                              gaugeConstraints.maxWidth * 0.88,
-                              gaugeConstraints.maxHeight * 0.98,
-                            ),
-                          );
-                          if (showSpeedBadge) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF071622),
+        body: ColoredBox(
+          color: const Color(0xFF071622),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.l,
+                AppSpacing.m,
+                AppSpacing.l,
+                AppSpacing.m,
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final hasAlertSpace =
+                      state.showCameraAlertPanel ||
+                      state.dismissedCameraId != null;
+                  final motionDuration = _motionDuration(
+                    context,
+                    const Duration(milliseconds: 320),
+                  );
+                  final gaugeHeight = hasAlertSpace
+                      ? (constraints.maxHeight * 0.48)
+                            .clamp(282.0, 344.0)
+                            .toDouble()
+                      : math.max(360.0, constraints.maxHeight - 168);
+                  return Column(
+                    children: [
+                      _DrivingTopBar(
+                        state: state,
+                        onHud: onHud,
+                        onMirrorHud: onMirrorHud,
+                      ),
+                      AnimatedContainer(
+                        duration: motionDuration,
+                        curve: Curves.easeOutCubic,
+                        height: gaugeHeight,
+                        child: LayoutBuilder(
+                          builder: (context, gaugeConstraints) {
+                            final showSpeedBadge =
+                                state.showCameraAlertPanel &&
+                                state.reportedCameraSpeedKmh != null;
+                            final diameter = math.min(
+                              showSpeedBadge
+                                  ? 288.0
+                                  : hasAlertSpace
+                                  ? 270.0
+                                  : 316.0,
+                              math.min(
+                                gaugeConstraints.maxWidth * 0.88,
+                                gaugeConstraints.maxHeight * 0.98,
+                              ),
+                            );
+                            if (showSpeedBadge) {
+                              return Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  AnimatedAlign(
+                                    duration: motionDuration,
+                                    curve: Curves.easeOutCubic,
+                                    alignment: const Alignment(0, -0.05),
+                                    child: _SpeedGauge(
+                                      key: const ValueKey(
+                                        'driving-speed-gauge',
+                                      ),
+                                      state: state,
+                                      diameter: diameter,
+                                      speedFontSize: math.max(
+                                        88.0,
+                                        diameter * 0.46,
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 102,
+                                    right: 0,
+                                    child: _GaugeSpeedLimitBadge(
+                                      speedKmh: state.reportedCameraSpeedKmh!,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
                             return Stack(
                               clipBehavior: Clip.none,
                               children: [
                                 AnimatedAlign(
                                   duration: motionDuration,
                                   curve: Curves.easeOutCubic,
-                                  alignment: const Alignment(0, -0.05),
+                                  alignment: hasAlertSpace
+                                      ? Alignment.topCenter
+                                      : Alignment.center,
                                   child: _SpeedGauge(
                                     key: const ValueKey('driving-speed-gauge'),
                                     state: state,
                                     diameter: diameter,
                                     speedFontSize: math.max(
-                                      88.0,
-                                      diameter * 0.46,
+                                      72.0,
+                                      diameter * 0.42,
                                     ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 102,
-                                  right: 0,
-                                  child: _GaugeSpeedLimitBadge(
-                                    speedKmh: state.reportedCameraSpeedKmh!,
                                   ),
                                 ),
                               ],
                             );
-                          }
-                          return Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              AnimatedAlign(
-                                duration: motionDuration,
-                                curve: Curves.easeOutCubic,
-                                alignment: hasAlertSpace
-                                    ? Alignment.topCenter
-                                    : Alignment.center,
-                                child: _SpeedGauge(
-                                  key: const ValueKey('driving-speed-gauge'),
-                                  state: state,
-                                  diameter: diameter,
-                                  speedFontSize: math.max(
-                                    72.0,
-                                    diameter * 0.42,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    if (hasAlertSpace)
-                      Flexible(
-                        child: LayoutBuilder(
-                          builder: (context, alertConstraints) {
-                            return SingleChildScrollView(
-                              physics: const ClampingScrollPhysics(),
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  minHeight: alertConstraints.maxHeight,
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    _CameraAlertSwitcher(state: state),
-                                  ],
-                                ),
-                              ),
-                            );
                           },
                         ),
-                      )
-                    else
-                      const Spacer(),
-                    const SizedBox(height: AppSpacing.s),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        key: const ValueKey('stop-driving'),
-                        onPressed: onStop,
-                        icon: const Icon(Icons.stop),
-                        label: const Text('Finalizar'),
                       ),
-                    ),
-                  ],
-                );
-              },
+                      const SizedBox(height: AppSpacing.xs),
+                      if (hasAlertSpace)
+                        Flexible(
+                          child: LayoutBuilder(
+                            builder: (context, alertConstraints) {
+                              return SingleChildScrollView(
+                                physics: const ClampingScrollPhysics(),
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minHeight: alertConstraints.maxHeight,
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      _CameraAlertSwitcher(state: state),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        )
+                      else
+                        const Spacer(),
+                      const SizedBox(height: AppSpacing.s),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          key: const ValueKey('stop-driving'),
+                          onPressed: onStop,
+                          icon: const Icon(Icons.stop),
+                          label: const Text('Finalizar'),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -951,7 +956,8 @@ class _CameraPanel extends ConsumerWidget {
                       IconButton.filled(
                         key: const ValueKey('driving-camera-map-action'),
                         tooltip: 'Cómo llegar',
-                        onPressed: () => _openCameraMap(ref, match.camera),
+                        onPressed: () =>
+                            _openCameraMap(context, ref, match.camera),
                         iconSize: 16,
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.white.withValues(alpha: 0.1),
@@ -1064,7 +1070,7 @@ class _CameraPanel extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.xs),
                   OutlinedButton.icon(
                     key: const ValueKey('driving-camera-map-action-sheet'),
-                    onPressed: () => _openCameraMap(ref, camera),
+                    onPressed: () => _openCameraMap(context, ref, camera),
                     icon: const Icon(Icons.near_me_outlined),
                     label: const Text('Ver en Google Maps'),
                   ),
@@ -1083,10 +1089,24 @@ class _CameraPanel extends ConsumerWidget {
     );
   }
 
-  Future<void> _openCameraMap(WidgetRef ref, TrafficCamera camera) async {
-    await ref
-        .read(externalLauncherProvider)
-        .openExternal(_cameraMapUri(camera).toString());
+  Future<void> _openCameraMap(
+    BuildContext context,
+    WidgetRef ref,
+    TrafficCamera camera,
+  ) async {
+    final launcher = ref.read(externalLauncherProvider);
+    var opened = false;
+    try {
+      opened = await launcher.openExternal(_cameraMapUri(camera).toString());
+    } catch (_) {
+      opened = false;
+    }
+    if (!context.mounted || opened) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('No pudimos abrir Google Maps.')),
+    );
   }
 }
 

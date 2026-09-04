@@ -177,11 +177,18 @@ class _ComparendosContent extends ConsumerWidget {
     String url,
     String failureMessage,
   ) async {
-    final opened = await ref.read(externalLauncherProvider).openExternal(url);
-    if (!opened && context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(failureMessage)));
+    final launcher = ref.read(externalLauncherProvider);
+    var opened = false;
+    try {
+      opened = await launcher.openExternal(url);
+    } catch (_) {
+      opened = false;
     }
+    if (!context.mounted || opened) {
+      return;
+    }
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(failureMessage)));
   }
 
   Future<void> _markCheckedToday(
