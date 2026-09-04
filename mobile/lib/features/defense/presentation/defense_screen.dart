@@ -311,18 +311,54 @@ class _DefenseCaseCard extends ConsumerWidget {
   }
 
   Future<void> _copySummary(BuildContext context) async {
-    await Clipboard.setData(
-      ClipboardData(
-        text: buildDefenseCaseNeutralSummary(
-          defenseCase: defenseCase,
-          vehicle: vehicle,
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Copiar expediente'),
+        content: const Text(
+          'El resumen saldra del almacenamiento cifrado de PicoRadar y quedara en el portapapeles del sistema.',
         ),
+        actions: [
+          TextButton(
+            key: const ValueKey('defense-copy-cancel'),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            key: const ValueKey('defense-copy-confirm'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Copiar'),
+          ),
+        ],
       ),
     );
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Resumen neutral copiado.')));
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    final copied = await _copyTextToClipboard(
+      buildDefenseCaseNeutralSummary(defenseCase: defenseCase, vehicle: vehicle),
+    );
+    if (!context.mounted) {
+      return;
+    }
+    final message = copied
+        ? 'Resumen neutral copiado.'
+        : 'No pudimos copiar el resumen al portapapeles.';
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<bool> _copyTextToClipboard(String text) async {
+    try {
+      final result = await SystemChannels.platform.invokeMethod<Object?>(
+        'Clipboard.setData',
+        <String, dynamic>{'text': text},
+      );
+      return result != false;
+    } on Object {
+      return false;
     }
   }
 }
@@ -574,7 +610,13 @@ class _OfficialLinksCard extends ConsumerWidget {
     String url,
     String failureMessage,
   ) async {
-    final opened = await ref.read(externalLauncherProvider).openExternal(url);
+    final launcher = ref.read(externalLauncherProvider);
+    var opened = false;
+    try {
+      opened = await launcher.openExternal(url);
+    } on Object {
+      opened = false;
+    }
     if (!opened && context.mounted) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(failureMessage)));
