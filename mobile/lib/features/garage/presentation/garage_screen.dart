@@ -13,6 +13,7 @@ import '../../../core/storage/app_preferences.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../pico_placa/data/pico_preferences.dart';
 import '../../visual_assets/presentation/visual_asset_widgets.dart';
+import '../application/vehicle_associated_data_cleaner.dart';
 import '../data/garage_favorites.dart';
 import '../data/vehicle_profile.dart';
 import '../data/vehicle_repository.dart';
@@ -344,35 +345,47 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('¿Eliminar este vehículo?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(vehicle.plate),
-              const SizedBox(height: AppSpacing.m),
-              const Text(
-                'Se eliminarán el vehículo y sus datos locales asociados:\n'
-                'mantenimientos, obligaciones, documentos cifrados,\n'
-                'expedientes de Defensa, borrador de Peritajes y nota de Comparendos.\n'
-                'Esta acción no se puede deshacer.',
+        var confirming = false;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('¿Eliminar este vehículo?'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(vehicle.plate),
+                  const SizedBox(height: AppSpacing.m),
+                  const Text(
+                    'Se eliminarán el vehículo y sus datos locales asociados:\n'
+                    'mantenimientos, obligaciones, documentos cifrados,\n'
+                    'expedientes de Defensa, borrador de Peritajes y nota de Comparendos.\n'
+                    'Esta acción no se puede deshacer.',
+                  ),
+                ],
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              key: const ValueKey('garage-confirm-delete-vehicle'),
-              onPressed: _deletingVehicleId == null
-                  ? () => Navigator.of(context).pop(true)
-                  : null,
-              child: const Text('Eliminar'),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: confirming
+                      ? null
+                      : () => Navigator.of(context).pop(false),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  key: const ValueKey('garage-confirm-delete-vehicle'),
+                  onPressed: confirming || _deletingVehicleId != null
+                      ? null
+                      : () {
+                          setDialogState(() {
+                            confirming = true;
+                          });
+                          Navigator.of(context).pop(true);
+                        },
+                  child: const Text('Eliminar'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -451,10 +464,13 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
       );
     }
 
-    final favorites = await loadGarageFavoriteVehicleIds(preferences);
+    final favoritesBeforeDelete = await loadGarageFavoriteVehicleIds(
+      preferences,
+    );
+    final updatedFavorites = {...favoritesBeforeDelete};
     try {
-      if (favorites.remove(vehicle.id)) {
-        await saveGarageFavoriteVehicleIds(preferences, favorites);
+      if (updatedFavorites.remove(vehicle.id)) {
+        await saveGarageFavoriteVehicleIds(preferences, updatedFavorites);
       }
     } catch (_) {
       throw const _GarageDeleteFailure(
@@ -486,11 +502,35 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
     try {
       await repository.deleteVehicle(vehicle.id);
     } catch (_) {
+      await _restoreGarageSelectionState(
+        repository: repository,
+        preferences: preferences,
+        activeVehicleId: activeBeforeDelete?.id,
+        favoriteIds: favoritesBeforeDelete,
+      );
       throw const _GarageDeleteFailure(
         'Los datos privados se limpiaron, pero no pudimos eliminar el vehículo. Inténtalo de nuevo.',
       );
     }
     return repository.listVehicles();
+  }
+
+  Future<void> _restoreGarageSelectionState({
+    required VehicleRepository repository,
+    required AppPreferences preferences,
+    required String? activeVehicleId,
+    required Set<String> favoriteIds,
+  }) async {
+    try {
+      await saveGarageFavoriteVehicleIds(preferences, favoriteIds);
+      if (activeVehicleId == null) {
+        await repository.clearActiveVehicle();
+      } else {
+        await repository.setActiveVehicle(activeVehicleId);
+      }
+    } catch (_) {
+      return;
+    }
   }
 }
 

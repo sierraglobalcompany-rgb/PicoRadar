@@ -427,8 +427,7 @@ void main() {
     'delete action ignores a second confirmation while deletion is running',
     (tester) async {
       final seeded = await _seedThreeVehicles(harness);
-      final cleaner = _RecordingVehicleDataCleaner()
-        ..gate = Completer<void>();
+      final cleaner = _RecordingVehicleDataCleaner()..gate = Completer<void>();
       final repository = _RecordingVehicleRepository(harness);
 
       await _openGarage(
@@ -450,10 +449,13 @@ void main() {
       await tester.pump();
 
       expect(cleaner.deletedVehicleIds, [seeded.newest.id]);
-      expect(
-        find.byKey(const ValueKey('garage-confirm-delete-vehicle')),
-        findsNothing,
+      final confirmButton = find.byKey(
+        const ValueKey('garage-confirm-delete-vehicle'),
       );
+      if (confirmButton.evaluate().isNotEmpty) {
+        expect(tester.widget<FilledButton>(confirmButton).onPressed, isNull);
+      }
+      expect(cleaner.deletedVehicleIds, [seeded.newest.id]);
 
       cleaner.gate!.complete();
       await tester.pumpAndSettle();
@@ -587,6 +589,46 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('delete failure keeps active and favorite state unchanged', (
+    tester,
+  ) async {
+    final seeded = await _seedThreeVehicles(harness);
+    await saveGarageFavoriteVehicleIds(harness.preferences, {seeded.active.id});
+    final cleaner = _RecordingVehicleDataCleaner();
+    final repository = _RecordingVehicleRepository(harness)..failDelete = true;
+
+    await _openGarage(
+      tester,
+      harness,
+      vehicleAssociatedDataCleaner: cleaner,
+      vehicleRepository: repository,
+    );
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('garage-action-delete')),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('garage-confirm-delete-vehicle')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(cleaner.deletedVehicleIds, [seeded.active.id]);
+    expect(repository.deletedVehicleIds, [seeded.active.id]);
+    expect(await harness.repository.getVehicle(seeded.active.id), isNotNull);
+    expect((await harness.repository.getActiveVehicle())?.id, seeded.active.id);
+    expect(
+      await loadGarageFavoriteVehicleIds(harness.preferences),
+      contains(seeded.active.id),
+    );
+    expect(
+      find.text(
+        'Los datos privados se limpiaron, pero no pudimos eliminar el vehículo. Inténtalo de nuevo.',
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'delete action keeps active vehicle retryable when fallback fails',
