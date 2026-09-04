@@ -202,6 +202,116 @@ void main() {
     },
   );
 
+  test('deleteForVehicle removes only that vehicle metadata files and viewer cache', () async {
+    final targetSoat = File('${root.path}/target-soat.pdf');
+    final targetRtm = File('${root.path}/target-rtm.pdf');
+    final otherSoat = File('${root.path}/other-soat.pdf');
+    await targetSoat.writeAsBytes([1, 1, 1]);
+    await targetRtm.writeAsBytes([2, 2, 2]);
+    await otherSoat.writeAsBytes([3, 3, 3]);
+
+    final targetSoatMetadata = await store.importDocument(
+      vehicleId: 'vehicle-1',
+      documentType: PrivateVehicleDocumentType.soat,
+      source: targetSoat,
+      originalName: 'target-soat.pdf',
+      mimeType: 'application/pdf',
+    );
+    final targetRtmMetadata = await store.importDocument(
+      vehicleId: 'vehicle-1',
+      documentType: PrivateVehicleDocumentType.rtm,
+      source: targetRtm,
+      originalName: 'target-rtm.pdf',
+      mimeType: 'application/pdf',
+    );
+    final otherMetadata = await store.importDocument(
+      vehicleId: 'vehicle-2',
+      documentType: PrivateVehicleDocumentType.soat,
+      source: otherSoat,
+      originalName: 'other-soat.pdf',
+      mimeType: 'application/pdf',
+    );
+    final targetViewer = File(
+      '${root.path}/vehicle_document_viewer/${targetSoatMetadata.documentId}/target-soat.pdf',
+    );
+    final otherViewer = File(
+      '${root.path}/vehicle_document_viewer/${otherMetadata.documentId}/other-soat.pdf',
+    );
+    await targetViewer.parent.create(recursive: true);
+    await targetViewer.writeAsBytes([1, 1, 1]);
+    await otherViewer.parent.create(recursive: true);
+    await otherViewer.writeAsBytes([3, 3, 3]);
+
+    await store.deleteForVehicle('vehicle-1');
+    await store.deleteForVehicle('vehicle-1');
+
+    expect(await store.listForVehicle('vehicle-1'), isEmpty);
+    expect(
+      (await store.listForVehicle('vehicle-2')).single.documentId,
+      'doc-0003',
+    );
+    expect(
+      await File(
+        '${root.path}/vehicle_documents/${targetSoatMetadata.encryptedRelativePath}',
+      ).exists(),
+      isFalse,
+    );
+    expect(
+      await File(
+        '${root.path}/vehicle_documents/${targetRtmMetadata.encryptedRelativePath}',
+      ).exists(),
+      isFalse,
+    );
+    expect(
+      await File(
+        '${root.path}/vehicle_documents/${otherMetadata.encryptedRelativePath}',
+      ).exists(),
+      isTrue,
+    );
+    expect(await targetViewer.exists(), isFalse);
+    expect(await otherViewer.exists(), isTrue);
+  });
+
+  test(
+    'deleteForVehicle can be retried after an index write failure',
+    () async {
+      final source = File('${root.path}/source.pdf');
+      await source.writeAsBytes([1, 2, 3]);
+      final metadata = await store.importDocument(
+        vehicleId: 'vehicle-1',
+        documentType: PrivateVehicleDocumentType.soat,
+        source: source,
+        originalName: 'source.pdf',
+        mimeType: 'application/pdf',
+      );
+      final failingStore = PrivateVehicleDocumentStore(
+        rootDirectory: () async => root,
+        cacheDirectory: () async => root,
+        masterKey: () async => SecretKey(List<int>.filled(32, 9)),
+        fileCrypto: _AlwaysFailingIndexCrypto(),
+      );
+
+      await expectLater(
+        failingStore.deleteForVehicle('vehicle-1'),
+        throwsStateError,
+      );
+      expect(
+        (await store.listForVehicle('vehicle-1')).single.documentId,
+        metadata.documentId,
+      );
+
+      await store.deleteForVehicle('vehicle-1');
+
+      expect(await store.listForVehicle('vehicle-1'), isEmpty);
+      expect(
+        await File(
+          '${root.path}/vehicle_documents/${metadata.encryptedRelativePath}',
+        ).exists(),
+        isFalse,
+      );
+    },
+  );
+
   test('rolls back failed replacement index writes without deleting previous copy', () async {
     final first = File('${root.path}/first.pdf');
     final second = File('${root.path}/second.pdf');
@@ -654,6 +764,13 @@ class _FailingIndexCrypto extends FileCrypto {
       throw StateError('index write failed');
     }
     return super.encryptBytes(plaintext, key);
+  }
+}
+
+class _AlwaysFailingIndexCrypto extends FileCrypto {
+  @override
+  Future<Uint8List> encryptBytes(List<int> plaintext, SecretKey key) {
+    throw StateError('index write failed');
   }
 }
 
