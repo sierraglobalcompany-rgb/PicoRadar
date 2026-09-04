@@ -490,7 +490,7 @@ class PrivateVehicleDocumentStore {
         continue;
       }
       await for (final entity in vehicleRoot.list()) {
-        if (entity is File && entity.path.contains('.delete-')) {
+        if (entity is File && _hasStagedDeleteSuffix(entity.path)) {
           final original = File(_originalPathForStagedDelete(entity.path));
           if (referencedPaths.contains(
             _normalizedPath(original.absolute.path),
@@ -589,6 +589,14 @@ class PrivateVehicleDocumentStore {
   }
 
   static String _normalizedPath(String path) => path.replaceAll('\\', '/');
+
+  static bool _hasStagedDeleteSuffix(String path) {
+    return RegExp(r'\.delete-\d+-\d+$').hasMatch(_baseName(path));
+  }
+
+  static String _baseName(String path) {
+    return path.replaceAll('\\', '/').split('/').last;
+  }
 
   static String _originalPathForStagedDelete(String stagedPath) {
     final markerIndex = stagedPath.lastIndexOf('.delete-');

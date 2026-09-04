@@ -376,6 +376,52 @@ void main() {
     ]);
   });
 
+  test('deleteForVehicle ignores delete marker in normal vehicle path segment', () async {
+    const vehicleId = 'vehicle.delete-1';
+    final targetSource = File('${root.path}/target.pdf');
+    await targetSource.writeAsBytes([6, 7, 8]);
+    final targetMetadata = await store.importDocument(
+      vehicleId: vehicleId,
+      documentType: PrivateVehicleDocumentType.soat,
+      source: targetSource,
+      originalName: 'target.pdf',
+      mimeType: 'application/pdf',
+    );
+    final encrypted = File(
+      '${root.path}/vehicle_documents/${targetMetadata.encryptedRelativePath}',
+    );
+    expect(await encrypted.exists(), isTrue);
+    expect(await (await store.decryptForView(targetMetadata)).readAsBytes(), [
+      6,
+      7,
+      8,
+    ]);
+
+    final failingStore = PrivateVehicleDocumentStore(
+      rootDirectory: () async => root,
+      cacheDirectory: () async => root,
+      masterKey: () async => SecretKey(List<int>.filled(32, 9)),
+      fileCrypto: _AlwaysFailingIndexCrypto(),
+    );
+
+    await expectLater(
+      failingStore.deleteForVehicle(vehicleId),
+      throwsStateError,
+    );
+
+    final remainingTarget = await store.get(
+      vehicleId: vehicleId,
+      documentType: PrivateVehicleDocumentType.soat,
+    );
+    expect(remainingTarget?.documentId, targetMetadata.documentId);
+    expect(await encrypted.exists(), isTrue);
+    expect(await (await store.decryptForView(targetMetadata)).readAsBytes(), [
+      6,
+      7,
+      8,
+    ]);
+  });
+
   test(
     'deleteForVehicle restores staged source when retry index write fails',
     () async {
@@ -391,7 +437,7 @@ void main() {
       final encrypted = File(
         '${root.path}/vehicle_documents/${metadata.encryptedRelativePath}',
       );
-      final staged = File('${encrypted.path}.delete-interrupted');
+      final staged = File('${encrypted.path}.delete-1780000000000000-0');
       await encrypted.rename(staged.path);
       expect(await encrypted.exists(), isFalse);
       expect(await staged.exists(), isTrue);
