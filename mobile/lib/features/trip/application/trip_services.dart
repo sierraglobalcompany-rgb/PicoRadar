@@ -3,14 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/app_providers.dart';
 import '../../vehicle_status/platform/external_launcher.dart';
 import '../data/trip_draft_store.dart';
-import '../domain/trip_draft.dart';
 
 final tripDraftStoreProvider = Provider<TripDraftStore>((ref) {
   return TripDraftStore(ref.watch(appPreferencesProvider));
-});
-
-final tripDraftProvider = FutureProvider<TripDraft?>((ref) {
-  return ref.watch(tripDraftStoreProvider).loadDraft();
 });
 
 final tripExternalNavigationProvider = Provider<TripExternalNavigation>((ref) {

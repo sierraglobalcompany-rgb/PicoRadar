@@ -222,12 +222,16 @@ class _TripFields extends StatelessWidget {
           OutlinedButton.icon(
             key: const ValueKey('trip-date-button'),
             onPressed: () async {
+              final range = _datePickerRange(selectedDate);
               final selected = await showDatePicker(
                 context: context,
                 initialDate: selectedDate,
-                firstDate: DateTime(2026),
-                lastDate: DateTime(2035, 12, 31),
+                firstDate: range.firstDate,
+                lastDate: range.lastDate,
               );
+              if (!context.mounted) {
+                return;
+              }
               if (selected != null) {
                 onDateChanged(DateUtils.dateOnly(selected));
               }
@@ -345,6 +349,26 @@ String _formatDate(DateTime date) {
   final month = date.month.toString().padLeft(2, '0');
   final day = date.day.toString().padLeft(2, '0');
   return '${date.year}-$month-$day';
+}
+
+_TripDatePickerRange _datePickerRange(DateTime selectedDate) {
+  final currentYear = DateTime.now().year;
+  final selectedYear = selectedDate.year;
+  final firstYear = selectedYear < currentYear ? selectedYear : currentYear;
+  final lastYear = selectedYear > currentYear + 10
+      ? selectedYear
+      : currentYear + 10;
+  return _TripDatePickerRange(
+    firstDate: DateTime(firstYear),
+    lastDate: DateTime(lastYear, 12, 31),
+  );
+}
+
+class _TripDatePickerRange {
+  const _TripDatePickerRange({required this.firstDate, required this.lastDate});
+
+  final DateTime firstDate;
+  final DateTime lastDate;
 }
 
 String _vehicleType(VehicleProfile vehicle) {

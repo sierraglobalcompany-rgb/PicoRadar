@@ -70,7 +70,8 @@ class _TripScreenState extends ConsumerState<TripScreen> {
   }
 
   Future<void> _restoreDraft() async {
-    final draft = await ref.read(tripDraftStoreProvider).loadDraft();
+    final store = ref.read(tripDraftStoreProvider);
+    final draft = await store.loadDraft();
     if (!mounted || draft == null) {
       return;
     }
@@ -87,16 +88,47 @@ class _TripScreenState extends ConsumerState<TripScreen> {
     if (!_validateTripFields()) {
       return;
     }
-    await ref.read(tripDraftStoreProvider).saveDraft(_draft(activeVehicle?.id));
+    final store = ref.read(tripDraftStoreProvider);
+    await store.saveDraft(_draft(activeVehicle?.id));
     if (!mounted) {
       return;
     }
-    ref.invalidate(tripDraftProvider);
     _showSnackBar('Borrador guardado en este dispositivo.');
   }
 
   Future<void> _deleteDraft() async {
-    await ref.read(tripDraftStoreProvider).deleteDraft();
+    final store = ref.read(tripDraftStoreProvider);
+    final savedDraft = await store.loadDraft();
+    if (!mounted) {
+      return;
+    }
+    if (savedDraft != null) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Borrar borrador'),
+          content: const Text(
+            'Se eliminará el borrador guardado en este dispositivo.',
+          ),
+          actions: [
+            TextButton(
+              key: const ValueKey('trip-delete-cancel'),
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              key: const ValueKey('trip-delete-confirm'),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Borrar'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted || confirmed != true) {
+        return;
+      }
+    }
+    await store.deleteDraft();
     if (!mounted) {
       return;
     }
@@ -107,7 +139,6 @@ class _TripScreenState extends ConsumerState<TripScreen> {
       _completedChecklist = {};
       _draftRestored = false;
     });
-    ref.invalidate(tripDraftProvider);
     _showSnackBar('Borrador eliminado.');
   }
 
@@ -115,12 +146,11 @@ class _TripScreenState extends ConsumerState<TripScreen> {
     if (!_validateTripFields()) {
       return;
     }
-    final opened = await ref
-        .read(tripExternalNavigationProvider)
-        .openGoogleMaps(
-          origin: _originController.text,
-          destination: _destinationController.text,
-        );
+    final navigation = ref.read(tripExternalNavigationProvider);
+    final opened = await navigation.openGoogleMaps(
+      origin: _originController.text,
+      destination: _destinationController.text,
+    );
     if (!opened && mounted) {
       _showSnackBar('No pudimos abrir Google Maps.');
     }
@@ -130,18 +160,18 @@ class _TripScreenState extends ConsumerState<TripScreen> {
     if (!_validateTripFields()) {
       return;
     }
-    final opened = await ref
-        .read(tripExternalNavigationProvider)
-        .openWaze(destination: _destinationController.text);
+    final navigation = ref.read(tripExternalNavigationProvider);
+    final opened = await navigation.openWaze(
+      destination: _destinationController.text,
+    );
     if (!opened && mounted) {
       _showSnackBar('No pudimos abrir Waze.');
     }
   }
 
   Future<void> _openInvias() async {
-    final opened = await ref
-        .read(tripExternalNavigationProvider)
-        .openInviasRoadStatus();
+    final navigation = ref.read(tripExternalNavigationProvider);
+    final opened = await navigation.openInviasRoadStatus();
     if (!opened && mounted) {
       _showSnackBar('No pudimos abrir INVÍAS.');
     }
