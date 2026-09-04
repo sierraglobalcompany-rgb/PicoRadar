@@ -9,11 +9,14 @@ import '../../../app/theme/app_tokens.dart';
 import '../../../core/design_system/actions_and_badges.dart';
 import '../../../core/design_system/branding.dart';
 import '../../../core/design_system/surfaces.dart';
+import '../../../core/storage/app_preferences.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../pico_placa/data/pico_preferences.dart';
 import '../../visual_assets/presentation/visual_asset_widgets.dart';
+import '../application/vehicle_associated_data_cleaner.dart';
 import '../data/garage_favorites.dart';
 import '../data/vehicle_profile.dart';
+import '../data/vehicle_repository.dart';
 import 'vehicle_display.dart';
 
 enum GarageFilter { all, favorites, active }
@@ -113,6 +116,7 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
   GarageFilter _filter = GarageFilter.all;
   late PageController _controller;
   String? _focusedVehicleId;
+  String? _deletingVehicleId;
 
   @override
   void initState() {
@@ -219,7 +223,11 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
                     const SizedBox(height: AppSpacing.s),
                     _AddVehicleCard(onTap: _addVehicle),
                     const SizedBox(height: AppSpacing.xs),
-                    _GarageActions(vehicle: focused, onDelete: _confirmDelete),
+                    _GarageActions(
+                      vehicle: focused,
+                      deleteInProgress: _deletingVehicleId != null,
+                      onDelete: _confirmDelete,
+                    ),
                   ],
                 ],
               ),
@@ -327,77 +335,252 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
   }
 
   Future<void> _confirmDelete(VehicleProfile vehicle) async {
+    if (_deletingVehicleId != null) {
+      return;
+    }
+    final repository = ref.read(vehicleRepositoryProvider);
+    final preferences = ref.read(appPreferencesProvider);
+    final cleaner = ref.read(vehicleAssociatedDataCleanerProvider);
+    final messenger = ScaffoldMessenger.maybeOf(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('¿Eliminar este vehículo?'),
-          content: Text(vehicle.plate),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              key: const ValueKey('garage-confirm-delete-vehicle'),
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Eliminar'),
-            ),
-          ],
+        var confirming = false;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('¿Eliminar este vehículo?'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(vehicle.plate),
+                  const SizedBox(height: AppSpacing.m),
+                  const Text(
+                    'Se eliminarán el vehículo y sus datos locales asociados:\n'
+                    'mantenimientos, obligaciones, documentos cifrados,\n'
+                    'expedientes de Defensa, borrador de Peritajes y nota de Comparendos.\n'
+                    'Esta acción no se puede deshacer.',
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: confirming
+                      ? null
+                      : () => Navigator.of(context).pop(false),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  key: const ValueKey('garage-confirm-delete-vehicle'),
+                  onPressed: confirming || _deletingVehicleId != null
+                      ? null
+                      : () {
+                          setDialogState(() {
+                            confirming = true;
+                          });
+                          Navigator.of(context).pop(true);
+                        },
+                  child: const Text('Eliminar'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
 
-    if (confirmed != true) {
+    if (!mounted || confirmed != true || _deletingVehicleId != null) {
       return;
     }
 
-    final repository = ref.read(vehicleRepositoryProvider);
-    final preferences = ref.read(appPreferencesProvider);
-    final cleaner = ref.read(vehicleAssociatedDataCleanerProvider);
-    final activeBeforeDelete = await repository.getActiveVehicle();
-    final wasActive = activeBeforeDelete?.id == vehicle.id;
+    setState(() {
+      _deletingVehicleId = vehicle.id;
+    });
+
+    late final _GarageDeleteResult result;
     try {
-      await cleaner.deleteForVehicle(vehicle.id);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'No pudimos limpiar los datos asociados. Inténtalo de nuevo.',
-            ),
-          ),
-        );
+      result = await _deleteVehicleAndAssociatedData(
+        repository: repository,
+        preferences: preferences,
+        cleaner: cleaner,
+        vehicle: vehicle,
+      );
+    } on _GarageDeleteFailure catch (failure) {
+      if (!mounted) {
+        return;
       }
+      setState(() {
+        _deletingVehicleId = null;
+      });
+      messenger?.showSnackBar(SnackBar(content: Text(failure.message)));
+      return;
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _deletingVehicleId = null;
+      });
+      messenger?.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No pudimos completar la eliminación. Inténtalo de nuevo.',
+          ),
+        ),
+      );
       return;
     }
-    await repository.deleteVehicle(vehicle.id);
-    final favorites = await loadGarageFavoriteVehicleIds(preferences);
-    if (favorites.remove(vehicle.id)) {
-      await saveGarageFavoriteVehicleIds(preferences, favorites);
-    }
 
-    if (wasActive) {
-      final remaining = await repository.listVehicles();
-      if (remaining.isNotEmpty) {
-        await repository.setActiveVehicle(remaining.first.id);
-      } else {
-        await repository.clearActiveVehicle();
-      }
+    if (!mounted) {
+      return;
     }
-
     ref.invalidate(activeVehicleProvider);
     ref.invalidate(vehicleListProvider);
     ref.invalidate(garageFavoriteVehicleIdsProvider);
     ref.invalidate(obligationNotificationSyncProvider);
-    if (!mounted) {
+    setState(() {
+      _deletingVehicleId = null;
+      _focusedVehicleId = _initialFocusedId(
+        result.remainingVehicles,
+        widget.activeId,
+      );
+    });
+    final message = result.message;
+    if (message != null) {
+      messenger?.showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  Future<_GarageDeleteResult> _deleteVehicleAndAssociatedData({
+    required VehicleRepository repository,
+    required AppPreferences preferences,
+    required VehicleAssociatedDataCleaner cleaner,
+    required VehicleProfile vehicle,
+  }) async {
+    final activeBeforeDelete = await repository.getActiveVehicle();
+    final wasActive = activeBeforeDelete?.id == vehicle.id;
+    final vehiclesBeforeDelete = wasActive
+        ? await repository.listVehicles()
+        : const <VehicleProfile>[];
+    try {
+      await cleaner.deleteForVehicle(vehicle.id);
+    } catch (_) {
+      throw const _GarageDeleteFailure(
+        'No pudimos limpiar los datos asociados. Inténtalo de nuevo.',
+      );
+    }
+
+    final favoritesBeforeDelete = await loadGarageFavoriteVehicleIds(
+      preferences,
+    );
+    final updatedFavorites = {...favoritesBeforeDelete};
+    try {
+      if (updatedFavorites.remove(vehicle.id)) {
+        await saveGarageFavoriteVehicleIds(preferences, updatedFavorites);
+      }
+    } catch (_) {
+      throw const _GarageDeleteFailure(
+        'No pudimos completar la eliminación. Inténtalo de nuevo.',
+      );
+    }
+
+    if (wasActive) {
+      VehicleProfile? fallback;
+      for (final candidate in vehiclesBeforeDelete) {
+        if (candidate.id != vehicle.id) {
+          fallback = candidate;
+          break;
+        }
+      }
+      try {
+        if (fallback == null) {
+          await repository.clearActiveVehicle();
+        } else {
+          await repository.setActiveVehicle(fallback.id);
+        }
+      } catch (_) {
+        throw const _GarageDeleteFailure(
+          'No pudimos completar la eliminación. Inténtalo de nuevo.',
+        );
+      }
+    }
+
+    try {
+      await repository.deleteVehicle(vehicle.id);
+    } catch (_) {
+      final rowStillExists = await repository.getVehicle(vehicle.id) != null;
+      if (rowStillExists) {
+        await _restoreGarageSelectionState(
+          repository: repository,
+          preferences: preferences,
+          activeVehicleId: activeBeforeDelete?.id,
+          favoriteIds: favoritesBeforeDelete,
+        );
+        throw const _GarageDeleteFailure(
+          'Los datos privados se limpiaron, pero no pudimos eliminar el vehículo. Inténtalo de nuevo.',
+        );
+      }
+      return _GarageDeleteResult(
+        remainingVehicles: await _finishDeletedVehicleSelectionState(
+          repository,
+          vehicle.id,
+        ),
+        message: 'El vehículo se eliminó, pero no pudimos completar algunos ajustes locales.',
+      );
+    }
+    return _GarageDeleteResult(
+      remainingVehicles: await repository.listVehicles(),
+    );
+  }
+
+  Future<void> _restoreGarageSelectionState({
+    required VehicleRepository repository,
+    required AppPreferences preferences,
+    required String? activeVehicleId,
+    required Set<String> favoriteIds,
+  }) async {
+    try {
+      await saveGarageFavoriteVehicleIds(preferences, favoriteIds);
+      if (activeVehicleId == null) {
+        await repository.clearActiveVehicle();
+      } else {
+        await repository.setActiveVehicle(activeVehicleId);
+      }
+    } catch (_) {
       return;
     }
-    final remaining = await repository.listVehicles();
-    setState(() {
-      _focusedVehicleId = _initialFocusedId(remaining, widget.activeId);
-    });
   }
+
+  Future<List<VehicleProfile>> _finishDeletedVehicleSelectionState(
+    VehicleRepository repository,
+    String deletedVehicleId,
+  ) async {
+    final remainingVehicles = await repository.listVehicles();
+    final activeVehicle = await repository.getActiveVehicle();
+    if (activeVehicle?.id == deletedVehicleId ||
+        (activeVehicle == null && remainingVehicles.isNotEmpty)) {
+      try {
+        await repository.setActiveVehicle(remainingVehicles.first.id);
+      } catch (_) {
+        return remainingVehicles;
+      }
+    }
+    return repository.listVehicles();
+  }
+}
+
+class _GarageDeleteFailure implements Exception {
+  const _GarageDeleteFailure(this.message);
+
+  final String message;
+}
+
+class _GarageDeleteResult {
+  const _GarageDeleteResult({required this.remainingVehicles, this.message});
+
+  final List<VehicleProfile> remainingVehicles;
+  final String? message;
 }
 
 class _GarageHeader extends StatelessWidget {
@@ -1089,9 +1272,14 @@ class _AddVehicleCard extends StatelessWidget {
 }
 
 class _GarageActions extends StatelessWidget {
-  const _GarageActions({required this.vehicle, required this.onDelete});
+  const _GarageActions({
+    required this.vehicle,
+    required this.deleteInProgress,
+    required this.onDelete,
+  });
 
   final VehicleProfile vehicle;
+  final bool deleteInProgress;
   final ValueChanged<VehicleProfile> onDelete;
 
   @override
@@ -1142,7 +1330,7 @@ class _GarageActions extends StatelessWidget {
               icon: Icons.delete_outline,
               label: 'Eliminar',
               danger: true,
-              onTap: () => onDelete(vehicle),
+              onTap: deleteInProgress ? null : () => onDelete(vehicle),
             ),
           ],
         );
@@ -1174,12 +1362,20 @@ class _QuickAction extends StatelessWidget {
   final String keyName;
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final bool danger;
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? AppColors.red : AppColors.navy;
+    final enabled = onTap != null;
+    final Color color;
+    if (!enabled) {
+      color = AppColors.navy.withValues(alpha: 0.32);
+    } else if (danger) {
+      color = AppColors.red;
+    } else {
+      color = AppColors.navy;
+    }
     return SizedBox(
       width: width,
       height: height,
