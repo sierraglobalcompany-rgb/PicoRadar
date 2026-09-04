@@ -17,10 +17,8 @@ import '../../vehicle_status/platform/external_launcher.dart';
 const ansvFotodeteccionUrl =
     'https://fotodeteccion.ansv.gov.co/ubicaciones-aprobadas.html';
 const simitSourceUrl = 'https://www.simit.org.co/';
-const inviasRoadStatusSourceUrl =
-    'https://www.invias.gov.co/publicaciones/4217/estado-de-la-red-vial/';
-const sicConsumerGuideUrl =
-    'https://sedeelectronica.sic.gov.co/temas/proteccion-al-consumidor/derechos-y-deberes/fallas-en-un-producto';
+const sicPersonalDataGuideUrl =
+    'https://sedeelectronica.sic.gov.co/noticias/sic-expide-guia-para-el-correcto-tratamiento-de-las-fotografias-como-datos-personales';
 
 final settingsNotificationStatusProvider =
     FutureProvider<SettingsNotificationStatus>((ref) async {
@@ -169,12 +167,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         busy: _busyActionKey == 'trip',
                         icon: Icons.route_outlined,
                         label: 'Borrar borrador de Viaje',
-                        onPressed: () => _runAction(
-                          key: 'trip',
-                          successMessage: 'Borrador de Viaje eliminado.',
-                          action: () =>
-                              ref.read(tripDraftStoreProvider).deleteDraft(),
-                        ),
+                        onPressed: _deleteTripDraft,
                       ),
                       const SizedBox(height: AppSpacing.s),
                       _ActionButton(
@@ -248,22 +241,72 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _deleteComparendosNote() async {
+    final confirmed = await _confirmDestructiveAction(
+      title: 'Borrar nota de Comparendos',
+      message:
+          'La nota local del vehículo activo se eliminará de este dispositivo.',
+    );
+    if (!confirmed || !mounted) {
+      return;
+    }
+    final preferences = ref.read(appPreferencesProvider);
+    final activeVehicleFuture = ref.read(activeVehicleProvider.future);
+
     await _runAction(
       key: 'comparendos',
       successMessage: 'Nota de Comparendos eliminada del vehículo activo.',
       action: () async {
-        final activeVehicle = await ref.read(activeVehicleProvider.future);
+        final activeVehicle = await activeVehicleFuture;
         final vehicleId = activeVehicle?.id.trim();
         if (vehicleId == null || vehicleId.isEmpty) {
           throw const _SettingsActionMessage(
             'No hay vehículo activo para limpiar.',
           );
         }
-        await ref
-            .read(appPreferencesProvider)
-            .remove('comparendos.last_checked.$vehicleId');
+        await preferences.remove('comparendos.last_checked.$vehicleId');
       },
     );
+  }
+
+  Future<void> _deleteTripDraft() async {
+    final confirmed = await _confirmDestructiveAction(
+      title: 'Borrar borrador de Viaje',
+      message: 'El borrador local de Viaje se eliminará de este dispositivo.',
+    );
+    if (!confirmed || !mounted) {
+      return;
+    }
+    final store = ref.read(tripDraftStoreProvider);
+
+    await _runAction(
+      key: 'trip',
+      successMessage: 'Borrador de Viaje eliminado.',
+      action: store.deleteDraft,
+    );
+  }
+
+  Future<bool> _confirmDestructiveAction({
+    required String title,
+    required String message,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 
   Future<void> _runAction({
@@ -296,7 +339,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       schemaVersion: AppDatabase.currentSchemaVersion,
       cameraDataset: diagnostic,
     );
-    await Clipboard.setData(ClipboardData(text: text));
+    try {
+      await Clipboard.setData(ClipboardData(text: text));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No pudimos copiar el diagnóstico.')),
+        );
+      }
+      return;
+    }
     if (!mounted) {
       return;
     }
@@ -348,12 +400,12 @@ const settingsSourceLinks = [
   SettingsSourceLink(
     label: 'INVÍAS',
     description: 'Estado oficial de la red vial nacional.',
-    url: inviasRoadStatusSourceUrl,
+    url: inviasRoadStatusUrl,
   ),
   SettingsSourceLink(
-    label: 'Guía SIC consumidor',
-    description: 'Garantías, fallas e incumplimiento.',
-    url: sicConsumerGuideUrl,
+    label: 'Guía SIC de datos personales',
+    description: 'Tratamiento correcto de fotografías como datos personales.',
+    url: sicPersonalDataGuideUrl,
   ),
 ];
 
@@ -486,9 +538,13 @@ class _SourceButton extends ConsumerWidget {
     return OutlinedButton.icon(
       key: ValueKey('settings-source-${source.label}'),
       onPressed: () async {
-        final opened = await ref
-            .read(externalLauncherProvider)
-            .openExternal(source.url);
+        final launcher = ref.read(externalLauncherProvider);
+        bool opened;
+        try {
+          opened = await launcher.openExternal(source.url);
+        } catch (_) {
+          opened = false;
+        }
         if (!opened && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('No pudimos abrir ${source.label}.')),
