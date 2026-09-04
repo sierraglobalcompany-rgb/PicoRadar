@@ -396,5 +396,5 @@ Future<void> _openModule(
     context.go(AppRoute.trip.path);
     return;
   }
-  context.push(module.destination);
+  context.push(appModuleLocation(module, activeVehicle?.id));
 }

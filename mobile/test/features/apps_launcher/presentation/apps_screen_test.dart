@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/shell/app_shell.dart';
 import 'package:picoradar/features/apps_launcher/data/module_registry.dart';
 import 'package:picoradar/features/apps_launcher/domain/app_module.dart';
-import 'package:picoradar/features/apps_launcher/presentation/apps_launcher_panel.dart';
 import 'package:picoradar/features/apps_launcher/presentation/apps_screen.dart';
 import 'package:picoradar/features/apps_launcher/presentation/module_placeholder_screen.dart';
 import 'package:picoradar/features/cda/presentation/cda_finder_screen.dart';
@@ -75,32 +75,43 @@ void main() {
   });
 
   test('launcher destinations append vehicleId only when required', () {
+    expect(appModuleLocation(primaryModules.first, 'vehicle-b'), '/apps/pico');
     expect(
-      appsLauncherLocation(primaryModules.first, 'vehicle-b'),
-      '/apps/pico',
-    );
-    expect(
-      appsLauncherLocation(
+      appModuleLocation(
         primaryModules.singleWhere((module) => module.id == 'soat'),
         'vehicle-b',
       ),
       '/apps/module/soat?vehicleId=vehicle-b',
     );
     expect(
-      appsLauncherLocation(
+      appModuleLocation(
         secondaryModules.singleWhere((module) => module.id == 'cda'),
         'vehicle-b',
       ),
       '/apps/cda',
     );
     expect(
-      appsLauncherLocation(
+      appModuleLocation(
         secondaryModules.singleWhere(
           (module) => module.id == 'peajes_estado_vial',
         ),
         'vehicle-b',
       ),
       '/trip',
+    );
+    expect(
+      appModuleLocation(
+        secondaryModules.singleWhere((module) => module.id == 'talleres'),
+        null,
+      ),
+      '/apps/module/talleres',
+    );
+    expect(
+      appModuleLocation(
+        secondaryModules.singleWhere((module) => module.id == 'talleres'),
+        ' vehicle-b ',
+      ),
+      '/apps/module/talleres?vehicleId=vehicle-b',
     );
   });
 
@@ -342,7 +353,12 @@ void main() {
 
     expect(find.byType(MaintenanceScreen), findsOneWidget);
     expect(find.text('Talleres y mantenimiento'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('maintenance-missing-vehicle')),
+      findsNothing,
+    );
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
+    expect(find.byType(DocumentsScreen), findsNothing);
   });
 
   testWidgets('Apps Más opens Trip from Peajes y estado vial', (tester) async {
@@ -383,7 +399,69 @@ void main() {
     await _openModuleFromApps(tester, harness, 'documentos', settle: false);
 
     expect(find.byType(DocumentsScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('documents-go-garage')), findsNothing);
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
+  });
+
+  testWidgets('direct Apps route sends active vehicle to Documentos', (
+    tester,
+  ) async {
+    final vehicle = await _createVehicle(harness, plate: 'DIR123');
+    String? routedVehicleId;
+    await harness.repository.setActiveVehicle(vehicle.id);
+    await _pumpRoutedAppsLocation(
+      tester,
+      harness,
+      '/apps',
+      onDocumentsVehicleId: (vehicleId) => routedVehicleId = vehicleId,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('app-module-documentos')));
+    await _pumpRoute(tester);
+
+    expect(routedVehicleId, vehicle.id);
+    expect(find.byType(DocumentsScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('documents-go-garage')), findsNothing);
+  });
+
+  testWidgets('direct Apps route sends active vehicle to Talleres', (
+    tester,
+  ) async {
+    final vehicle = await _createVehicle(harness, plate: 'TDR123');
+    String? routedVehicleId;
+    await harness.repository.setActiveVehicle(vehicle.id);
+    await _pumpRoutedAppsLocation(
+      tester,
+      harness,
+      '/apps',
+      onMaintenanceVehicleId: (vehicleId) => routedVehicleId = vehicleId,
+    );
+
+    await tester.ensureVisible(find.text('Más para tu vehículo'));
+    await tester.tap(find.byKey(const ValueKey('app-secondary-talleres')));
+    await _pumpRoute(tester);
+
+    expect(routedVehicleId, vehicle.id);
+    expect(find.byType(MaintenanceScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('maintenance-empty')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('maintenance-missing-vehicle')),
+      findsNothing,
+    );
+    expect(find.byType(DocumentsScreen), findsNothing);
+  });
+
+  testWidgets('Talleres route without vehicle renders maintenance guard', (
+    tester,
+  ) async {
+    await _pumpRoutedAppsLocation(tester, harness, '/apps/module/talleres');
+
+    expect(find.byType(MaintenanceScreen), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('maintenance-missing-vehicle')),
+      findsOneWidget,
+    );
+    expect(find.byType(DocumentsScreen), findsNothing);
   });
 
   testWidgets('unfinished modules are not visible from Apps', (tester) async {
@@ -829,6 +907,61 @@ Future<void> _pumpAppsScreenAtScale(
     scale: scale,
     size: size,
   );
+}
+
+Future<void> _pumpRoutedAppsLocation(
+  WidgetTester tester,
+  TestAppHarness harness,
+  String initialLocation, {
+  ValueChanged<String?>? onDocumentsVehicleId,
+  ValueChanged<String?>? onMaintenanceVehicleId,
+}) async {
+  _usePortraitPhone(tester);
+  final router = GoRouter(
+    initialLocation: initialLocation,
+    routes: [
+      GoRoute(
+        path: '/apps',
+        builder: (context, state) => const AppsScreen(),
+        routes: [
+          GoRoute(
+            path: 'module/:id',
+            builder: (context, state) {
+              final moduleId = state.pathParameters['id']!;
+              if (moduleId == 'documentos') {
+                final vehicleId = state.uri.queryParameters['vehicleId'];
+                onDocumentsVehicleId?.call(vehicleId);
+                return DocumentsScreen(vehicleId);
+              }
+              if (moduleId == 'talleres') {
+                final vehicleId = state.uri.queryParameters['vehicleId'];
+                onMaintenanceVehicleId?.call(vehicleId);
+                return MaintenanceScreen(vehicleId: vehicleId);
+              }
+              return ModulePlaceholderScreen(
+                moduleId: moduleId,
+                category: state.uri.queryParameters['category'],
+              );
+            },
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/garage',
+        builder: (context, state) => const SizedBox.shrink(),
+      ),
+      GoRoute(
+        path: '/onboarding/vehicle',
+        builder: (context, state) => const SizedBox.shrink(),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+  await harness.pump(
+    tester,
+    childOverride: MaterialApp.router(routerConfig: router),
+  );
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pumpDirectAppsScreen(

@@ -17,3 +17,23 @@ class AppModule {
   final String destination;
   final String? featureFlagKey;
 }
+
+String appModuleLocation(AppModule module, String? vehicleId) {
+  final normalizedVehicleId = vehicleId?.trim();
+  if (!module.requiresVehicle ||
+      normalizedVehicleId == null ||
+      normalizedVehicleId.isEmpty ||
+      module.destination == '/trip') {
+    return module.destination;
+  }
+
+  final uri = Uri.parse(module.destination);
+  return uri
+      .replace(
+        queryParameters: {
+          ...uri.queryParameters,
+          'vehicleId': normalizedVehicleId,
+        },
+      )
+      .toString();
+}

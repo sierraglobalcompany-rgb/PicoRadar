@@ -134,11 +134,9 @@ List<RouteBase> _tabRoutes(AppTab tab) {
             return ServicesScreen(onOpenCda: () => context.push('/apps/cda'));
           }
           if (moduleId == 'talleres') {
-            final vehicleId = state.uri.queryParameters['vehicleId'];
-            if (vehicleId == null || vehicleId.trim().isEmpty) {
-              return const DocumentsScreen(null);
-            }
-            return MaintenanceScreen(vehicleId: vehicleId);
+            return MaintenanceScreen(
+              vehicleId: state.uri.queryParameters['vehicleId'],
+            );
           }
           if (_vehicleStatusModules.contains(moduleId)) {
             return VehicleStatusScreen(
