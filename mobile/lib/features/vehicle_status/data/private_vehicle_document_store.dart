@@ -280,6 +280,34 @@ class PrivateVehicleDocumentStore {
     });
   }
 
+  Future<void> deleteForVehicle(String vehicleId) async {
+    final requestedVehicleId = vehicleId.trim();
+    if (requestedVehicleId.isEmpty) {
+      return;
+    }
+
+    await _runMutation(() async {
+      final documents = await _readIndex();
+      final targetDocuments = [
+        for (final document in documents)
+          if (document.vehicleId == requestedVehicleId) document,
+      ];
+      if (targetDocuments.isEmpty) {
+        return;
+      }
+
+      for (final document in targetDocuments) {
+        await purgeViewerCache(metadata: document);
+        await _deleteEncryptedFile(document);
+      }
+
+      await _writeIndex([
+        for (final document in documents)
+          if (document.vehicleId != requestedVehicleId) document,
+      ]);
+    });
+  }
+
   Future<void> purgeViewerCache({
     PrivateVehicleDocumentMetadata? metadata,
   }) async {
