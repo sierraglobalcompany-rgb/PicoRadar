@@ -10,8 +10,11 @@ import '../../../app/router/app_routes.dart';
 import '../../../app/theme/app_tokens.dart';
 import '../../../core/database/app_database.dart';
 import '../../driving/data/camera_pack_loader.dart';
+import '../../defense/application/defense_case_providers.dart';
+import '../../documents/presentation/documents_screen.dart';
 import '../../pico_placa/data/pico_preferences.dart';
 import '../../trip/application/trip_services.dart';
+import '../../vehicle_status/data/private_vehicle_document_store.dart';
 import '../../vehicle_status/platform/external_launcher.dart';
 
 const ansvFotodeteccionUrl =
@@ -21,15 +24,15 @@ const sicPersonalDataGuideUrl =
     'https://sedeelectronica.sic.gov.co/noticias/sic-expide-guia-para-el-correcto-tratamiento-de-las-fotografias-como-datos-personales';
 
 final settingsNotificationStatusProvider =
-    FutureProvider<SettingsNotificationStatus>((ref) async {
-      final alertPreferences = await ref.watch(
+    FutureProvider.autoDispose<SettingsNotificationStatus>((ref) async {
+      final alertPreferencesFuture = ref.watch(
         picoAlertPreferencesProvider.future,
       );
+      final scheduler = ref.watch(picoNotificationSchedulerProvider);
+      final alertPreferences = await alertPreferencesFuture;
       bool? osNotificationsEnabled;
       try {
-        osNotificationsEnabled = await ref
-            .watch(picoNotificationSchedulerProvider)
-            .areNotificationsEnabled();
+        osNotificationsEnabled = await scheduler.areNotificationsEnabled();
       } on MissingPluginException {
         osNotificationsEnabled = null;
       }
@@ -304,6 +307,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
     final activeVehicleFuture = ref.read(activeVehicleProvider.future);
     final cleaner = ref.read(vehicleAssociatedDataCleanerProvider);
+    final providerContainer = ProviderScope.containerOf(context, listen: false);
 
     await _runAction(
       key: 'vehicle-private-data',
@@ -316,7 +320,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             'No hay vehículo activo para limpiar.',
           );
         }
+        final vehicleDocumentList = vehicleDocumentsProvider(vehicleId);
+        final privateVehicleDocuments = [
+          for (final type in PrivateVehicleDocumentType.values)
+            privateVehicleDocumentProvider((vehicleId, type)),
+        ];
+        final defenseCases = defenseCasesProvider(vehicleId);
         await cleaner.deleteForVehicle(vehicleId);
+        providerContainer.invalidate(vehicleDocumentList);
+        for (final provider in privateVehicleDocuments) {
+          providerContainer.invalidate(provider);
+        }
+        providerContainer.invalidate(defenseCases);
       },
     );
   }
@@ -511,17 +526,19 @@ class _NotificationStatusSummary extends StatelessWidget {
   }
 
   String _permissionLabel(SettingsNotificationStatus status) {
-    if (status.osNotificationsEnabled == true ||
-        status.alertPreferences.permissionGranted) {
-      return 'Permiso del sistema: activo.';
-    }
-    if (status.alertPreferences.permissionRequested) {
-      return 'Permiso del sistema: denegado o desactivado.';
-    }
     if (status.osNotificationsEnabled == false) {
       return 'Permiso del sistema: desactivado.';
     }
-    return 'Permiso del sistema: sin solicitar desde Ajustes.';
+    if (status.osNotificationsEnabled == true) {
+      return 'Permiso del sistema: activo.';
+    }
+    if (status.alertPreferences.permissionGranted) {
+      return 'Permiso del sistema: no disponible; último estado local: activo.';
+    }
+    if (status.alertPreferences.permissionRequested) {
+      return 'Permiso del sistema: no disponible; último estado local: desactivado.';
+    }
+    return 'Permiso del sistema: no disponible; no se ha solicitado desde Ajustes.';
   }
 
   String _alertsLabel(PicoAlertPreferences preferences) {
