@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -251,7 +252,220 @@ void main() {
       ).exists(),
       isFalse,
     );
+
+    final next = File('${root.path}/next.pdf');
+    await next.writeAsBytes([9, 9, 9]);
+    final nextMetadata = await failingStore.importDocument(
+      vehicleId: 'vehicle-1',
+      documentType: PrivateVehicleDocumentType.rtm,
+      source: next,
+      originalName: 'next.pdf',
+      mimeType: 'application/pdf',
+    );
+
+    expect(nextMetadata.documentId, 'failed-replacement');
+    expect(
+      (await store.get(
+        vehicleId: 'vehicle-1',
+        documentType: PrivateVehicleDocumentType.rtm,
+      ))?.documentId,
+      nextMetadata.documentId,
+    );
   });
+
+  test(
+    'serializes concurrent imports without losing encrypted index entries',
+    () async {
+      final first = File('${root.path}/first.pdf');
+      final second = File('${root.path}/second.pdf');
+      await first.writeAsBytes([1, 2, 3]);
+      await second.writeAsBytes([4, 5, 6]);
+      final blockingCrypto = _BlockingIndexCrypto();
+      final mutatingStore = PrivateVehicleDocumentStore(
+        rootDirectory: () async => root,
+        cacheDirectory: () async => root,
+        masterKey: () async => SecretKey(List<int>.filled(32, 9)),
+        fileCrypto: blockingCrypto,
+        idGenerator: () => 'concurrent-${(++ids).toString().padLeft(4, '0')}',
+        now: () => DateTime.utc(2026, 8, 30, 12),
+      );
+
+      final importA = mutatingStore.importDocument(
+        vehicleId: 'vehicle-1',
+        documentType: PrivateVehicleDocumentType.soat,
+        source: first,
+        originalName: 'first.pdf',
+        mimeType: 'application/pdf',
+      );
+      await blockingCrypto.firstIndexWrite.future;
+      final importB = mutatingStore.importDocument(
+        vehicleId: 'vehicle-1',
+        documentType: PrivateVehicleDocumentType.rtm,
+        source: second,
+        originalName: 'second.pdf',
+        mimeType: 'application/pdf',
+      );
+      await pumpEventQueue();
+
+      blockingCrypto.releaseFirstIndexWrite();
+      await blockingCrypto.secondIndexWrite.future;
+      blockingCrypto.releaseSecondIndexWrite();
+      final results = await Future.wait([importA, importB]);
+
+      final documents = await mutatingStore.listForVehicle('vehicle-1');
+      expect(documents.map((item) => item.documentType), [
+        PrivateVehicleDocumentType.soat,
+        PrivateVehicleDocumentType.rtm,
+      ]);
+      expect(documents.map((item) => item.documentId), [
+        results[0].documentId,
+        results[1].documentId,
+      ]);
+      expect(await _orphanedEncryptedDocuments(root, documents), isEmpty);
+      expect(
+        await (await mutatingStore.decryptForView(documents[0])).readAsBytes(),
+        [1, 2, 3],
+      );
+      expect(
+        await (await mutatingStore.decryptForView(documents[1])).readAsBytes(),
+        [4, 5, 6],
+      );
+    },
+  );
+
+  test('concurrent replace and delete preserve unrelated metadata', () async {
+    final soat = File('${root.path}/soat.pdf');
+    final rtm = File('${root.path}/rtm.pdf');
+    final other = File('${root.path}/other.pdf');
+    final replacement = File('${root.path}/replacement.pdf');
+    await soat.writeAsBytes([1]);
+    await rtm.writeAsBytes([2]);
+    await other.writeAsBytes([3]);
+    await replacement.writeAsBytes([4]);
+
+    await store.importDocument(
+      vehicleId: 'vehicle-1',
+      documentType: PrivateVehicleDocumentType.soat,
+      source: soat,
+      originalName: 'soat.pdf',
+      mimeType: 'application/pdf',
+    );
+    final rtmMetadata = await store.importDocument(
+      vehicleId: 'vehicle-1',
+      documentType: PrivateVehicleDocumentType.rtm,
+      source: rtm,
+      originalName: 'rtm.pdf',
+      mimeType: 'application/pdf',
+    );
+    final otherMetadata = await store.importDocument(
+      vehicleId: 'vehicle-1',
+      documentType: PrivateVehicleDocumentType.other,
+      source: other,
+      originalName: 'other.pdf',
+      mimeType: 'application/pdf',
+    );
+
+    final blockingCrypto = _BlockingIndexCrypto();
+    final mutatingStore = PrivateVehicleDocumentStore(
+      rootDirectory: () async => root,
+      cacheDirectory: () async => root,
+      masterKey: () async => SecretKey(List<int>.filled(32, 9)),
+      fileCrypto: blockingCrypto,
+      idGenerator: () => 'replacement-soat',
+      now: () => DateTime.utc(2026, 8, 30, 12, 1),
+    );
+
+    final replace = mutatingStore.replaceDocument(
+      vehicleId: 'vehicle-1',
+      documentType: PrivateVehicleDocumentType.soat,
+      source: replacement,
+      originalName: 'soat-new.pdf',
+      mimeType: 'application/pdf',
+    );
+    await blockingCrypto.firstIndexWrite.future;
+    final delete = mutatingStore.delete(rtmMetadata);
+
+    blockingCrypto.releaseFirstIndexWrite();
+    await blockingCrypto.secondIndexWrite.future;
+    blockingCrypto.releaseSecondIndexWrite();
+    await Future.wait<Object?>([replace, delete]);
+
+    expect(
+      (await store.get(
+        vehicleId: 'vehicle-1',
+        documentType: PrivateVehicleDocumentType.soat,
+      ))?.originalName,
+      'soat-new.pdf',
+    );
+    expect(
+      await store.get(
+        vehicleId: 'vehicle-1',
+        documentType: PrivateVehicleDocumentType.rtm,
+      ),
+      isNull,
+    );
+    expect(
+      (await store.get(
+        vehicleId: 'vehicle-1',
+        documentType: PrivateVehicleDocumentType.other,
+      ))?.documentId,
+      otherMetadata.documentId,
+    );
+    expect(
+      await _orphanedEncryptedDocuments(
+        root,
+        await store.listForVehicle('vehicle-1'),
+      ),
+      isEmpty,
+    );
+  });
+
+  test(
+    'post-commit replacement cleanup failure does not fail logical success',
+    () async {
+      final key = SecretKey(List<int>.filled(32, 9));
+      final index = File('${root.path}/vehicle_documents/index_v1.prcf');
+      await index.parent.create(recursive: true);
+      await index.writeAsBytes(
+        await FileCrypto().encryptBytes(
+          utf8.encode(
+            jsonEncode([
+              {
+                'documentId': 'legacy-soat',
+                'vehicleId': 'vehicle-1',
+                'documentType': 'soat',
+                'originalName': 'legacy.pdf',
+                'mimeType': 'application/pdf',
+                'importedAt': '2026-08-30T12:00:00.000Z',
+                'encryptedRelativePath': '../unsafe.prcf',
+              },
+            ]),
+          ),
+          key,
+        ),
+      );
+      final replacement = File('${root.path}/replacement.pdf');
+      await replacement.writeAsBytes([7, 7, 7]);
+
+      final metadata = await store.replaceDocument(
+        vehicleId: 'vehicle-1',
+        documentType: PrivateVehicleDocumentType.soat,
+        source: replacement,
+        originalName: 'replacement.pdf',
+        mimeType: 'application/pdf',
+      );
+
+      expect(metadata.originalName, 'replacement.pdf');
+      expect(
+        (await store.get(
+          vehicleId: 'vehicle-1',
+          documentType: PrivateVehicleDocumentType.soat,
+        ))?.documentId,
+        metadata.documentId,
+      );
+      expect(await _orphanedEncryptedDocuments(root, [metadata]), isEmpty);
+    },
+  );
 
   test('purges index temp file when index rename fails', () async {
     final blockedIndex = Directory(
@@ -442,3 +656,72 @@ class _FailingIndexCrypto extends FileCrypto {
     return super.encryptBytes(plaintext, key);
   }
 }
+
+class _BlockingIndexCrypto extends FileCrypto {
+  final firstIndexWrite = Completer<void>();
+  final secondIndexWrite = Completer<void>();
+  final _releaseFirst = Completer<void>();
+  final _releaseSecond = Completer<void>();
+  var indexWrites = 0;
+
+  @override
+  Future<Uint8List> encryptBytes(List<int> plaintext, SecretKey key) async {
+    if (_isIndexPayload(plaintext)) {
+      indexWrites += 1;
+      if (indexWrites == 1) {
+        firstIndexWrite.complete();
+        await _releaseFirst.future;
+      } else if (indexWrites == 2) {
+        secondIndexWrite.complete();
+        await _releaseSecond.future;
+      }
+    }
+    return super.encryptBytes(plaintext, key);
+  }
+
+  void releaseFirstIndexWrite() {
+    if (!_releaseFirst.isCompleted) {
+      _releaseFirst.complete();
+    }
+  }
+
+  void releaseSecondIndexWrite() {
+    if (!_releaseSecond.isCompleted) {
+      _releaseSecond.complete();
+    }
+  }
+
+  bool _isIndexPayload(List<int> plaintext) {
+    try {
+      return jsonDecode(utf8.decode(plaintext)) is List;
+    } catch (_) {
+      return false;
+    }
+  }
+}
+
+Future<List<File>> _orphanedEncryptedDocuments(
+  Directory root,
+  List<PrivateVehicleDocumentMetadata> metadata,
+) async {
+  final storeRoot = Directory('${root.path}/vehicle_documents');
+  final docsRoot = Directory('${storeRoot.path}/docs');
+  if (!await docsRoot.exists()) {
+    return const [];
+  }
+  final referenced = {
+    for (final item in metadata)
+      _normalizedPath(
+        File('${storeRoot.path}/${item.encryptedRelativePath}').absolute.path,
+      ),
+  };
+  return [
+    await for (final entity in docsRoot.list(recursive: true))
+      if (entity is File &&
+          entity.path.endsWith('.prcf') &&
+          !referenced.contains(_normalizedPath(entity.absolute.path)))
+        entity,
+  ];
+}
+
+String _normalizedPath(String path) => path.replaceAll('\\', '/');

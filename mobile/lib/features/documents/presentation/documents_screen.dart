@@ -38,6 +38,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
   PrivateVehicleDocumentType _selectedType =
       PrivateVehicleDocumentType.trafficLicense;
   String? _visibleError;
+  bool _isBusy = false;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +62,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
             documents: metadata,
             selectedType: _selectedType,
             visibleError: _visibleError,
+            isBusy: _isBusy,
             onTypeChanged: (value) => setState(() {
               _selectedType = value;
               _visibleError = null;
@@ -75,6 +77,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
             documents: const [],
             selectedType: _selectedType,
             visibleError: 'No se pudo leer la billetera cifrada. Puedes reemplazar el archivo afectado.',
+            isBusy: _isBusy,
             onTypeChanged: (value) => setState(() => _selectedType = value),
             onAttach: _attachDocument,
             onView: _viewDocument,
@@ -92,26 +95,32 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
     if (vehicleId == null || vehicleId.isEmpty) {
       return;
     }
+    if (!_beginOperation()) {
+      return;
+    }
     final gateway = ref.read(vehicleDocumentGatewayProvider);
+    final store = ref.read(privateVehicleDocumentStoreProvider);
     try {
       final picked = await gateway.pickDocument();
+      if (!mounted) {
+        return;
+      }
       if (picked == null) {
         return;
       }
-      await ref
-          .read(privateVehicleDocumentStoreProvider)
-          .replaceDocument(
-            vehicleId: vehicleId,
-            documentType: type,
-            source: picked.file,
-            originalName: picked.originalName,
-            mimeType: picked.mimeType,
-          );
+      await store.replaceDocument(
+        vehicleId: vehicleId,
+        documentType: type,
+        source: picked.file,
+        originalName: picked.originalName,
+        mimeType: picked.mimeType,
+      );
+      if (!mounted) {
+        return;
+      }
       ref.invalidate(vehicleDocumentsProvider(vehicleId));
       ref.invalidate(privateVehicleDocumentProvider((vehicleId, type)));
-      if (mounted) {
-        setState(() => _visibleError = null);
-      }
+      setState(() => _visibleError = null);
     } catch (_) {
       if (mounted) {
         setState(
@@ -120,43 +129,68 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
         );
       }
     } finally {
-      await gateway.clearTemporaryFiles();
+      try {
+        await gateway.clearTemporaryFiles();
+      } catch (_) {
+        // Best-effort privacy cleanup must not surface after cancel/navigation.
+      } finally {
+        _endOperation();
+      }
     }
   }
 
   Future<void> _viewDocument(PrivateVehicleDocumentMetadata metadata) async {
+    if (!_beginOperation()) {
+      return;
+    }
+    final store = ref.read(privateVehicleDocumentStoreProvider);
+    final gateway = ref.read(vehicleDocumentGatewayProvider);
     try {
-      final file = await ref
-          .read(privateVehicleDocumentStoreProvider)
-          .decryptForView(metadata);
-      final opened = await ref
-          .read(vehicleDocumentGatewayProvider)
-          .openDocument(file);
+      final file = await store.decryptForView(metadata);
+      if (!mounted) {
+        await _purgeViewerCacheQuietly(store, metadata);
+        return;
+      }
+      final opened = await gateway.openDocument(file);
+      if (!mounted) {
+        await _purgeViewerCacheQuietly(store, metadata);
+        return;
+      }
       if (!opened) {
-        await ref
-            .read(privateVehicleDocumentStoreProvider)
-            .purgeViewerCache(metadata: metadata);
+        await _purgeViewerCacheQuietly(store, metadata);
         throw const FileSystemException('External document viewer failed.');
       }
-      if (mounted) {
-        setState(() => _visibleError = null);
-      }
+      setState(() => _visibleError = null);
     } catch (_) {
-      await ref
-          .read(privateVehicleDocumentStoreProvider)
-          .purgeViewerCache(metadata: metadata);
+      await _purgeViewerCacheQuietly(store, metadata);
       if (mounted) {
         setState(
           () => _visibleError =
               'No se pudo abrir la copia cifrada. Puedes reemplazarla.',
         );
       }
+    } finally {
+      _endOperation();
     }
   }
 
   Future<void> _deleteDocument(PrivateVehicleDocumentMetadata metadata) async {
+    if (_isBusy) {
+      return;
+    }
+    final store = ref.read(privateVehicleDocumentStoreProvider);
+    final confirmed = await _confirmDeleteDocument(metadata);
+    if (!mounted || !confirmed) {
+      return;
+    }
+    if (!_beginOperation()) {
+      return;
+    }
     try {
-      await ref.read(privateVehicleDocumentStoreProvider).delete(metadata);
+      await store.delete(metadata);
+      if (!mounted) {
+        return;
+      }
       ref.invalidate(vehicleDocumentsProvider(metadata.vehicleId));
       ref.invalidate(
         privateVehicleDocumentProvider((
@@ -164,9 +198,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
           metadata.documentType,
         )),
       );
-      if (mounted) {
-        setState(() => _visibleError = null);
-      }
+      setState(() => _visibleError = null);
     } catch (_) {
       if (mounted) {
         setState(
@@ -174,6 +206,61 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen> {
               'No se pudo eliminar la copia local. Intenta de nuevo.',
         );
       }
+    } finally {
+      _endOperation();
+    }
+  }
+
+  bool _beginOperation() {
+    if (_isBusy || !mounted) {
+      return false;
+    }
+    setState(() => _isBusy = true);
+    return true;
+  }
+
+  void _endOperation() {
+    if (!mounted) {
+      return;
+    }
+    setState(() => _isBusy = false);
+  }
+
+  Future<bool> _confirmDeleteDocument(
+    PrivateVehicleDocumentMetadata metadata,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar copia local'),
+        content: Text(
+          '¿Eliminar ${metadata.documentType.label} (${metadata.originalName}) de este dispositivo?',
+        ),
+        actions: [
+          TextButton(
+            key: const ValueKey('documents-delete-cancel'),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            key: const ValueKey('documents-delete-confirm'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
+  Future<void> _purgeViewerCacheQuietly(
+    PrivateVehicleDocumentStore store,
+    PrivateVehicleDocumentMetadata metadata,
+  ) async {
+    try {
+      await store.purgeViewerCache(metadata: metadata);
+    } catch (_) {
+      return;
     }
   }
 }
@@ -184,6 +271,7 @@ class _DocumentsContent extends StatelessWidget {
     required this.documents,
     required this.selectedType,
     required this.visibleError,
+    required this.isBusy,
     required this.onTypeChanged,
     required this.onAttach,
     required this.onView,
@@ -194,6 +282,7 @@ class _DocumentsContent extends StatelessWidget {
   final List<PrivateVehicleDocumentMetadata> documents;
   final PrivateVehicleDocumentType selectedType;
   final String? visibleError;
+  final bool isBusy;
   final ValueChanged<PrivateVehicleDocumentType> onTypeChanged;
   final ValueChanged<PrivateVehicleDocumentType> onAttach;
   final ValueChanged<PrivateVehicleDocumentMetadata> onView;
@@ -256,16 +345,19 @@ class _DocumentsContent extends StatelessWidget {
                         for (final type in PrivateVehicleDocumentType.values)
                           Text(type.label, overflow: TextOverflow.ellipsis),
                       ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          onTypeChanged(value);
-                        }
-                      },
+                      onChanged: isBusy
+                          ? null
+                          : (value) {
+                              if (value != null) {
+                                onTypeChanged(value);
+                              }
+                            },
                     ),
                     const SizedBox(height: AppSpacing.m),
                     _SelectedDocumentCard(
                       type: selectedType,
                       metadata: selected,
+                      isBusy: isBusy,
                       onAttach: () => onAttach(selectedType),
                       onView: selected == null ? null : () => onView(selected),
                       onDelete: selected == null
@@ -279,6 +371,7 @@ class _DocumentsContent extends StatelessWidget {
                       _DocumentRow(
                         type: type,
                         metadata: byType[type],
+                        isBusy: isBusy,
                         onAttach: () => onAttach(type),
                         onView: byType[type] == null
                             ? null
@@ -369,6 +462,7 @@ class _SelectedDocumentCard extends StatelessWidget {
   const _SelectedDocumentCard({
     required this.type,
     required this.metadata,
+    required this.isBusy,
     required this.onAttach,
     required this.onView,
     required this.onDelete,
@@ -376,6 +470,7 @@ class _SelectedDocumentCard extends StatelessWidget {
 
   final PrivateVehicleDocumentType type;
   final PrivateVehicleDocumentMetadata? metadata;
+  final bool isBusy;
   final VoidCallback onAttach;
   final VoidCallback? onView;
   final VoidCallback? onDelete;
@@ -413,21 +508,21 @@ class _SelectedDocumentCard extends StatelessWidget {
                         ? 'documents-replace-${type.value}'
                         : 'documents-import-${type.value}',
                   ),
-                  onPressed: onAttach,
+                  onPressed: isBusy ? null : onAttach,
                   icon: Icon(hasDocument ? Icons.swap_horiz : Icons.add),
                   label: Text(hasDocument ? 'Reemplazar' : 'Adjuntar'),
                 ),
                 if (hasDocument)
                   OutlinedButton.icon(
                     key: ValueKey('documents-open-${type.value}'),
-                    onPressed: onView,
+                    onPressed: isBusy ? null : onView,
                     icon: const Icon(Icons.visibility_outlined),
                     label: const Text('Ver'),
                   ),
                 if (hasDocument)
                   TextButton.icon(
                     key: ValueKey('documents-delete-${type.value}'),
-                    onPressed: onDelete,
+                    onPressed: isBusy ? null : onDelete,
                     icon: const Icon(Icons.delete_outline),
                     label: const Text('Eliminar'),
                   ),
@@ -444,6 +539,7 @@ class _DocumentRow extends StatelessWidget {
   const _DocumentRow({
     required this.type,
     required this.metadata,
+    required this.isBusy,
     required this.onAttach,
     required this.onView,
     required this.onDelete,
@@ -451,6 +547,7 @@ class _DocumentRow extends StatelessWidget {
 
   final PrivateVehicleDocumentType type;
   final PrivateVehicleDocumentMetadata? metadata;
+  final bool isBusy;
   final VoidCallback onAttach;
   final VoidCallback? onView;
   final VoidCallback? onDelete;
@@ -471,6 +568,7 @@ class _DocumentRow extends StatelessWidget {
         trailing: hasDocument
             ? PopupMenuButton<_DocumentAction>(
                 key: ValueKey('documents-menu-${type.value}'),
+                enabled: !isBusy,
                 onSelected: (action) {
                   switch (action) {
                     case _DocumentAction.open:
@@ -502,7 +600,7 @@ class _DocumentRow extends StatelessWidget {
             : IconButton(
                 key: ValueKey('documents-row-import-${type.value}'),
                 tooltip: 'Adjuntar',
-                onPressed: onAttach,
+                onPressed: isBusy ? null : onAttach,
                 icon: const Icon(Icons.add_circle_outline),
               ),
       ),
