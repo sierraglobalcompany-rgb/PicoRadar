@@ -398,9 +398,9 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
       _deletingVehicleId = vehicle.id;
     });
 
-    late final List<VehicleProfile> remaining;
+    late final _GarageDeleteResult result;
     try {
-      remaining = await _deleteVehicleAndAssociatedData(
+      result = await _deleteVehicleAndAssociatedData(
         repository: repository,
         preferences: preferences,
         cleaner: cleaner,
@@ -441,11 +441,18 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
     ref.invalidate(obligationNotificationSyncProvider);
     setState(() {
       _deletingVehicleId = null;
-      _focusedVehicleId = _initialFocusedId(remaining, widget.activeId);
+      _focusedVehicleId = _initialFocusedId(
+        result.remainingVehicles,
+        widget.activeId,
+      );
     });
+    final message = result.message;
+    if (message != null) {
+      messenger?.showSnackBar(SnackBar(content: Text(message)));
+    }
   }
 
-  Future<List<VehicleProfile>> _deleteVehicleAndAssociatedData({
+  Future<_GarageDeleteResult> _deleteVehicleAndAssociatedData({
     required VehicleRepository repository,
     required AppPreferences preferences,
     required VehicleAssociatedDataCleaner cleaner,
@@ -502,17 +509,29 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
     try {
       await repository.deleteVehicle(vehicle.id);
     } catch (_) {
-      await _restoreGarageSelectionState(
-        repository: repository,
-        preferences: preferences,
-        activeVehicleId: activeBeforeDelete?.id,
-        favoriteIds: favoritesBeforeDelete,
-      );
-      throw const _GarageDeleteFailure(
-        'Los datos privados se limpiaron, pero no pudimos eliminar el vehículo. Inténtalo de nuevo.',
+      final rowStillExists = await repository.getVehicle(vehicle.id) != null;
+      if (rowStillExists) {
+        await _restoreGarageSelectionState(
+          repository: repository,
+          preferences: preferences,
+          activeVehicleId: activeBeforeDelete?.id,
+          favoriteIds: favoritesBeforeDelete,
+        );
+        throw const _GarageDeleteFailure(
+          'Los datos privados se limpiaron, pero no pudimos eliminar el vehículo. Inténtalo de nuevo.',
+        );
+      }
+      return _GarageDeleteResult(
+        remainingVehicles: await _finishDeletedVehicleSelectionState(
+          repository,
+          vehicle.id,
+        ),
+        message: 'El vehículo se eliminó, pero no pudimos completar algunos ajustes locales.',
       );
     }
-    return repository.listVehicles();
+    return _GarageDeleteResult(
+      remainingVehicles: await repository.listVehicles(),
+    );
   }
 
   Future<void> _restoreGarageSelectionState({
@@ -532,12 +551,36 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
       return;
     }
   }
+
+  Future<List<VehicleProfile>> _finishDeletedVehicleSelectionState(
+    VehicleRepository repository,
+    String deletedVehicleId,
+  ) async {
+    final remainingVehicles = await repository.listVehicles();
+    final activeVehicle = await repository.getActiveVehicle();
+    if (activeVehicle?.id == deletedVehicleId ||
+        (activeVehicle == null && remainingVehicles.isNotEmpty)) {
+      try {
+        await repository.setActiveVehicle(remainingVehicles.first.id);
+      } catch (_) {
+        return remainingVehicles;
+      }
+    }
+    return repository.listVehicles();
+  }
 }
 
 class _GarageDeleteFailure implements Exception {
   const _GarageDeleteFailure(this.message);
 
   final String message;
+}
+
+class _GarageDeleteResult {
+  const _GarageDeleteResult({required this.remainingVehicles, this.message});
+
+  final List<VehicleProfile> remainingVehicles;
+  final String? message;
 }
 
 class _GarageHeader extends StatelessWidget {

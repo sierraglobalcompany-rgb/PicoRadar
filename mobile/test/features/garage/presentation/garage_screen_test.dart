@@ -631,6 +631,55 @@ void main() {
   });
 
   testWidgets(
+    'post-row delete failure does not restore selection to deleted vehicle',
+    (tester) async {
+      final seeded = await _seedThreeVehicles(harness);
+      await saveGarageFavoriteVehicleIds(harness.preferences, {
+        seeded.active.id,
+      });
+      final cleaner = _RecordingVehicleDataCleaner();
+      final repository = _RecordingVehicleRepository(harness)
+        ..throwAfterDelete = true;
+
+      await _openGarage(
+        tester,
+        harness,
+        vehicleAssociatedDataCleaner: cleaner,
+        vehicleRepository: repository,
+      );
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('garage-action-delete')),
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('garage-confirm-delete-vehicle')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(cleaner.deletedVehicleIds, [seeded.active.id]);
+      expect(repository.deletedVehicleIds, [seeded.active.id]);
+      expect(await harness.repository.getVehicle(seeded.active.id), isNull);
+      final activeAfterDelete = await harness.repository.getActiveVehicle();
+      expect(activeAfterDelete?.id, isNot(seeded.active.id));
+      expect({
+        seeded.oldest.id,
+        seeded.newest.id,
+      }, contains(activeAfterDelete?.id));
+      expect(
+        await loadGarageFavoriteVehicleIds(harness.preferences),
+        isNot(contains(seeded.active.id)),
+      );
+      expect(
+        find.text(
+          'El vehículo se eliminó, pero no pudimos completar algunos ajustes locales.',
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'delete action keeps active vehicle retryable when fallback fails',
     (tester) async {
       final seeded = await _seedThreeVehicles(harness);
@@ -1004,6 +1053,7 @@ class _RecordingVehicleRepository extends VehicleRepository {
   final deletedVehicleIds = <String>[];
   var failDelete = false;
   var failSetActive = false;
+  var throwAfterDelete = false;
 
   @override
   Future<void> deleteVehicle(String id) async {
@@ -1012,6 +1062,9 @@ class _RecordingVehicleRepository extends VehicleRepository {
       throw StateError('delete failed');
     }
     await super.deleteVehicle(id);
+    if (throwAfterDelete) {
+      throw StateError('delete post-row failure');
+    }
   }
 
   @override
