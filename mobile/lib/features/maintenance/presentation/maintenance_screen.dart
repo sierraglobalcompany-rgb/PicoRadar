@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/theme/app_tokens.dart';
@@ -9,26 +10,62 @@ import '../data/maintenance_record.dart';
 class MaintenanceScreen extends ConsumerWidget {
   const MaintenanceScreen({required this.vehicleId, super.key});
 
-  final String vehicleId;
+  final String? vehicleId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final records = ref.watch(maintenanceRecordsProvider(vehicleId));
+    final normalizedVehicleId = vehicleId?.trim();
+    if (normalizedVehicleId == null || normalizedVehicleId.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Talleres y mantenimiento')),
+        body: const SafeArea(child: _MissingMaintenanceVehicleState()),
+      );
+    }
+
+    final vehicles = ref.watch(vehicleListProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Talleres y mantenimiento')),
-      floatingActionButton: FloatingActionButton.extended(
-        key: const ValueKey('maintenance-add'),
-        onPressed: () => _openEditor(context, ref),
-        icon: const Icon(Icons.add),
-        label: const Text('Agregar'),
+      floatingActionButton: vehicles.maybeWhen(
+        data: (items) =>
+            items.any((vehicle) => vehicle.id == normalizedVehicleId)
+            ? FloatingActionButton.extended(
+                key: const ValueKey('maintenance-add'),
+                onPressed: () => _openEditor(context, ref, normalizedVehicleId),
+                icon: const Icon(Icons.add),
+                label: const Text('Agregar'),
+              )
+            : null,
+        orElse: () => null,
       ),
       body: SafeArea(
-        child: records.when(
-          data: (items) => _MaintenanceList(
-            records: items,
-            onEdit: (record) => _openEditor(context, ref, record: record),
-            onDelete: (record) => _deleteRecord(context, ref, record),
-          ),
+        child: vehicles.when(
+          data: (items) {
+            final vehicleExists = items.any(
+              (vehicle) => vehicle.id == normalizedVehicleId,
+            );
+            if (!vehicleExists) {
+              return const _MissingMaintenanceVehicleState();
+            }
+
+            final records = ref.watch(
+              maintenanceRecordsProvider(normalizedVehicleId),
+            );
+            return records.when(
+              data: (items) => _MaintenanceList(
+                records: items,
+                onEdit: (record) => _openEditor(
+                  context,
+                  ref,
+                  normalizedVehicleId,
+                  record: record,
+                ),
+                onDelete: (record) =>
+                    _deleteRecord(context, ref, normalizedVehicleId, record),
+              ),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stackTrace) => _MaintenanceError(error: error),
+            );
+          },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stackTrace) => _MaintenanceError(error: error),
         ),
@@ -38,25 +75,34 @@ class MaintenanceScreen extends ConsumerWidget {
 
   Future<void> _openEditor(
     BuildContext context,
-    WidgetRef ref, {
+    WidgetRef ref,
+    String vehicleId, {
     MaintenanceRecord? record,
   }) async {
-    await showModalBottomSheet<void>(
+    final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
+      useRootNavigator: true,
       builder: (context) {
         return _MaintenanceEditorSheet(vehicleId: vehicleId, record: record);
       },
     );
-    ref.invalidate(maintenanceRecordsProvider(vehicleId));
+    if (!context.mounted) {
+      return;
+    }
+    if (saved == true) {
+      ref.invalidate(maintenanceRecordsProvider(vehicleId));
+    }
   }
 
   Future<void> _deleteRecord(
     BuildContext context,
     WidgetRef ref,
+    String vehicleId,
     MaintenanceRecord record,
   ) async {
+    final repository = ref.read(maintenanceRepositoryProvider);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -78,8 +124,78 @@ class MaintenanceScreen extends ConsumerWidget {
     if (confirmed != true) {
       return;
     }
-    await ref.read(maintenanceRepositoryProvider).delete(record.id);
+    if (!context.mounted) {
+      return;
+    }
+    try {
+      await repository.delete(record.id);
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No pudimos eliminar el mantenimiento. Intenta de nuevo.',
+          ),
+        ),
+      );
+      return;
+    }
+    if (!context.mounted) {
+      return;
+    }
     ref.invalidate(maintenanceRecordsProvider(vehicleId));
+  }
+}
+
+class _MissingMaintenanceVehicleState extends StatelessWidget {
+  const _MissingMaintenanceVehicleState();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      key: const ValueKey('maintenance-missing-vehicle'),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.l,
+        AppSpacing.l,
+        AppSpacing.l,
+        96,
+      ),
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(AppRadius.card),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.l),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.car_repair, color: AppColors.teal),
+                const SizedBox(height: AppSpacing.m),
+                Text('Talleres y mantenimiento', style: AppTextStyles.h2),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Elige un vehículo del Garaje para registrar servicios y próximos mantenimientos.',
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.navy.withValues(alpha: 0.72),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.l),
+                FilledButton(
+                  key: const ValueKey('maintenance-go-garage'),
+                  onPressed: () => context.go('/garage'),
+                  child: const Text('Ir a Garaje'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -285,6 +401,7 @@ class _MaintenanceEditorSheetState
   late final TextEditingController _odometerController;
   late final TextEditingController _costController;
   late final TextEditingController _nextOdometerController;
+  var _saving = false;
 
   @override
   void initState() {
@@ -343,7 +460,7 @@ class _MaintenanceEditorSheetState
             const SizedBox(height: AppSpacing.m),
             OutlinedButton.icon(
               key: const ValueKey('maintenance-service-date'),
-              onPressed: () => _pickServiceDate(context),
+              onPressed: _saving ? null : () => _pickServiceDate(context),
               icon: const Icon(Icons.calendar_month),
               label: Text('Fecha: ${_formatDate(_serviceDate)}'),
             ),
@@ -384,7 +501,7 @@ class _MaintenanceEditorSheetState
             const SizedBox(height: AppSpacing.s),
             OutlinedButton.icon(
               key: const ValueKey('maintenance-next-date'),
-              onPressed: () => _pickNextServiceDate(context),
+              onPressed: _saving ? null : () => _pickNextServiceDate(context),
               icon: const Icon(Icons.event_repeat),
               label: Text(
                 _nextServiceDate == null
@@ -405,9 +522,14 @@ class _MaintenanceEditorSheetState
             const SizedBox(height: AppSpacing.l),
             FilledButton.icon(
               key: const ValueKey('maintenance-save'),
-              onPressed: _save,
-              icon: const Icon(Icons.check),
-              label: const Text('Guardar'),
+              onPressed: _saving ? null : _save,
+              icon: _saving
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.check),
+              label: Text(_saving ? 'Guardando' : 'Guardar'),
             ),
           ],
         ),
@@ -422,6 +544,9 @@ class _MaintenanceEditorSheetState
       firstDate: DateTime(1990),
       lastDate: DateTime(DateTime.now().year + 1, 12, 31),
     );
+    if (!mounted) {
+      return;
+    }
     if (picked != null) {
       setState(() => _serviceDate = picked);
     }
@@ -434,12 +559,18 @@ class _MaintenanceEditorSheetState
       firstDate: DateTime(1990),
       lastDate: DateTime(DateTime.now().year + 10, 12, 31),
     );
+    if (!mounted) {
+      return;
+    }
     if (picked != null) {
       setState(() => _nextServiceDate = picked);
     }
   }
 
   Future<void> _save() async {
+    if (_saving) {
+      return;
+    }
     final type = _typeController.text.trim();
     final description = _descriptionController.text.trim();
     if (type.isEmpty || description.isEmpty) {
@@ -451,34 +582,52 @@ class _MaintenanceEditorSheetState
 
     final repository = ref.read(maintenanceRepositoryProvider);
     final record = widget.record;
-    final costPesos = _optionalInt(_costController.text);
-    if (record == null) {
-      await repository.create(
-        vehicleId: widget.vehicleId,
-        serviceDate: _serviceDate,
-        type: type,
-        description: description,
-        odometer: _optionalInt(_odometerController.text),
-        costCents: costPesos == null ? null : costPesos * 100,
-        nextServiceDate: _nextServiceDate,
-        nextOdometer: _optionalInt(_nextOdometerController.text),
+    setState(() => _saving = true);
+    try {
+      final odometer = _optionalInt(_odometerController.text);
+      final costPesos = _optionalInt(_costController.text);
+      final nextOdometer = _optionalInt(_nextOdometerController.text);
+      if (record == null) {
+        await repository.create(
+          vehicleId: widget.vehicleId,
+          serviceDate: _serviceDate,
+          type: type,
+          description: description,
+          odometer: odometer,
+          costCents: costPesos == null ? null : costPesos * 100,
+          nextServiceDate: _nextServiceDate,
+          nextOdometer: nextOdometer,
+        );
+      } else {
+        await repository.edit(
+          id: record.id,
+          serviceDate: _serviceDate,
+          type: type,
+          description: description,
+          odometer: odometer,
+          costCents: costPesos == null ? null : costPesos * 100,
+          nextServiceDate: _nextServiceDate,
+          nextOdometer: nextOdometer,
+        );
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No pudimos guardar el mantenimiento. Intenta de nuevo.',
+          ),
+        ),
       );
-    } else {
-      await repository.edit(
-        id: record.id,
-        serviceDate: _serviceDate,
-        type: type,
-        description: description,
-        odometer: _optionalInt(_odometerController.text),
-        costCents: costPesos == null ? null : costPesos * 100,
-        nextServiceDate: _nextServiceDate,
-        nextOdometer: _optionalInt(_nextOdometerController.text),
-      );
+      return;
     }
-    ref.invalidate(maintenanceRecordsProvider(widget.vehicleId));
-    if (mounted) {
-      Navigator.of(context).pop();
+    if (!mounted) {
+      return;
     }
+    Navigator.of(context).pop(true);
   }
 }
 
