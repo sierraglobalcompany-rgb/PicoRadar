@@ -337,7 +337,10 @@ class _DefenseCaseCard extends ConsumerWidget {
     }
 
     final copied = await _copyTextToClipboard(
-      buildDefenseCaseNeutralSummary(defenseCase: defenseCase, vehicle: vehicle),
+      buildDefenseCaseNeutralSummary(
+        defenseCase: defenseCase,
+        vehicle: vehicle,
+      ),
     );
     if (!context.mounted) {
       return;
@@ -345,9 +348,8 @@ class _DefenseCaseCard extends ConsumerWidget {
     final message = copied
         ? 'Resumen neutral copiado.'
         : 'No pudimos copiar el resumen al portapapeles.';
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<bool> _copyTextToClipboard(String text) async {
