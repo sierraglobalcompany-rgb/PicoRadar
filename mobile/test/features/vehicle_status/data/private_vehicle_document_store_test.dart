@@ -312,6 +312,214 @@ void main() {
     },
   );
 
+  test('deleteForVehicle preserves decryptable documents when index write fails', () async {
+    final targetSource = File('${root.path}/target.pdf');
+    final otherSource = File('${root.path}/other.pdf');
+    await targetSource.writeAsBytes([1, 2, 3]);
+    await otherSource.writeAsBytes([4, 5, 6]);
+    final targetMetadata = await store.importDocument(
+      vehicleId: 'vehicle-1',
+      documentType: PrivateVehicleDocumentType.soat,
+      source: targetSource,
+      originalName: 'target.pdf',
+      mimeType: 'application/pdf',
+    );
+    final otherMetadata = await store.importDocument(
+      vehicleId: 'vehicle-2',
+      documentType: PrivateVehicleDocumentType.soat,
+      source: otherSource,
+      originalName: 'other.pdf',
+      mimeType: 'application/pdf',
+    );
+    expect(await (await store.decryptForView(targetMetadata)).readAsBytes(), [
+      1,
+      2,
+      3,
+    ]);
+
+    final failingStore = PrivateVehicleDocumentStore(
+      rootDirectory: () async => root,
+      cacheDirectory: () async => root,
+      masterKey: () async => SecretKey(List<int>.filled(32, 9)),
+      fileCrypto: _AlwaysFailingIndexCrypto(),
+    );
+
+    await expectLater(
+      failingStore.deleteForVehicle('vehicle-1'),
+      throwsStateError,
+    );
+
+    final remainingTarget = await store.get(
+      vehicleId: 'vehicle-1',
+      documentType: PrivateVehicleDocumentType.soat,
+    );
+    expect(remainingTarget?.documentId, targetMetadata.documentId);
+    expect(
+      await File(
+        '${root.path}/vehicle_documents/${targetMetadata.encryptedRelativePath}',
+      ).exists(),
+      isTrue,
+    );
+    expect(await (await store.decryptForView(targetMetadata)).readAsBytes(), [
+      1,
+      2,
+      3,
+    ]);
+    expect(
+      (await store.listForVehicle('vehicle-2')).single.documentId,
+      otherMetadata.documentId,
+    );
+    expect(await (await store.decryptForView(otherMetadata)).readAsBytes(), [
+      4,
+      5,
+      6,
+    ]);
+  });
+
+  test('deleteForVehicle ignores delete marker in normal vehicle path segment', () async {
+    const vehicleId = 'vehicle.delete-1';
+    final targetSource = File('${root.path}/target.pdf');
+    await targetSource.writeAsBytes([6, 7, 8]);
+    final targetMetadata = await store.importDocument(
+      vehicleId: vehicleId,
+      documentType: PrivateVehicleDocumentType.soat,
+      source: targetSource,
+      originalName: 'target.pdf',
+      mimeType: 'application/pdf',
+    );
+    final encrypted = File(
+      '${root.path}/vehicle_documents/${targetMetadata.encryptedRelativePath}',
+    );
+    expect(await encrypted.exists(), isTrue);
+    expect(await (await store.decryptForView(targetMetadata)).readAsBytes(), [
+      6,
+      7,
+      8,
+    ]);
+
+    final failingStore = PrivateVehicleDocumentStore(
+      rootDirectory: () async => root,
+      cacheDirectory: () async => root,
+      masterKey: () async => SecretKey(List<int>.filled(32, 9)),
+      fileCrypto: _AlwaysFailingIndexCrypto(),
+    );
+
+    await expectLater(
+      failingStore.deleteForVehicle(vehicleId),
+      throwsStateError,
+    );
+
+    final remainingTarget = await store.get(
+      vehicleId: vehicleId,
+      documentType: PrivateVehicleDocumentType.soat,
+    );
+    expect(remainingTarget?.documentId, targetMetadata.documentId);
+    expect(await encrypted.exists(), isTrue);
+    expect(await (await store.decryptForView(targetMetadata)).readAsBytes(), [
+      6,
+      7,
+      8,
+    ]);
+  });
+
+  test(
+    'deleteForVehicle restores staged source when retry index write fails',
+    () async {
+      final source = File('${root.path}/source.pdf');
+      await source.writeAsBytes([9, 8, 7]);
+      final metadata = await store.importDocument(
+        vehicleId: 'vehicle-1',
+        documentType: PrivateVehicleDocumentType.soat,
+        source: source,
+        originalName: 'source.pdf',
+        mimeType: 'application/pdf',
+      );
+      final encrypted = File(
+        '${root.path}/vehicle_documents/${metadata.encryptedRelativePath}',
+      );
+      final staged = File('${encrypted.path}.delete-1780000000000000-0');
+      await encrypted.rename(staged.path);
+      expect(await encrypted.exists(), isFalse);
+      expect(await staged.exists(), isTrue);
+
+      final failingStore = PrivateVehicleDocumentStore(
+        rootDirectory: () async => root,
+        cacheDirectory: () async => root,
+        masterKey: () async => SecretKey(List<int>.filled(32, 9)),
+        fileCrypto: _AlwaysFailingIndexCrypto(),
+      );
+
+      await expectLater(
+        failingStore.deleteForVehicle('vehicle-1'),
+        throwsStateError,
+      );
+
+      expect(
+        (await store.get(
+          vehicleId: 'vehicle-1',
+          documentType: PrivateVehicleDocumentType.soat,
+        ))?.documentId,
+        metadata.documentId,
+      );
+      expect(await encrypted.exists(), isTrue);
+      expect(await staged.exists(), isFalse);
+      expect(await (await store.decryptForView(metadata)).readAsBytes(), [
+        9,
+        8,
+        7,
+      ]);
+    },
+  );
+
+  test('deleteForVehicle failed mutation does not poison next retry', () async {
+    final source = File('${root.path}/source.pdf');
+    await source.writeAsBytes([1, 3, 5]);
+    final failingCrypto = _FailNextIndexCrypto();
+    final retryStore = PrivateVehicleDocumentStore(
+      rootDirectory: () async => root,
+      cacheDirectory: () async => root,
+      masterKey: () async => SecretKey(List<int>.filled(32, 9)),
+      fileCrypto: failingCrypto,
+      idGenerator: () => 'retry-doc',
+      now: () => DateTime.utc(2026, 8, 30, 12),
+    );
+    final metadata = await retryStore.importDocument(
+      vehicleId: 'vehicle-1',
+      documentType: PrivateVehicleDocumentType.soat,
+      source: source,
+      originalName: 'source.pdf',
+      mimeType: 'application/pdf',
+    );
+    final encrypted = File(
+      '${root.path}/vehicle_documents/${metadata.encryptedRelativePath}',
+    );
+
+    failingCrypto.failNextIndexWrite = true;
+    await expectLater(
+      retryStore.deleteForVehicle('vehicle-1'),
+      throwsStateError,
+    );
+
+    expect(
+      (await retryStore.get(
+        vehicleId: 'vehicle-1',
+        documentType: PrivateVehicleDocumentType.soat,
+      ))?.documentId,
+      metadata.documentId,
+    );
+    expect(await encrypted.exists(), isTrue);
+    expect(await (await retryStore.decryptForView(metadata)).readAsBytes(), [
+      1,
+      3,
+      5,
+    ]);
+
+    await retryStore.deleteForVehicle('vehicle-1');
+
+    expect(await retryStore.listForVehicle('vehicle-1'), isEmpty);
+    expect(await encrypted.exists(), isFalse);
+  });
+
   test('rolls back failed replacement index writes without deleting previous copy', () async {
     final first = File('${root.path}/first.pdf');
     final second = File('${root.path}/second.pdf');
@@ -771,6 +979,27 @@ class _AlwaysFailingIndexCrypto extends FileCrypto {
   @override
   Future<Uint8List> encryptBytes(List<int> plaintext, SecretKey key) {
     throw StateError('index write failed');
+  }
+}
+
+class _FailNextIndexCrypto extends FileCrypto {
+  var failNextIndexWrite = false;
+
+  @override
+  Future<Uint8List> encryptBytes(List<int> plaintext, SecretKey key) {
+    if (failNextIndexWrite && _isIndexPayload(plaintext)) {
+      failNextIndexWrite = false;
+      throw StateError('index write failed');
+    }
+    return super.encryptBytes(plaintext, key);
+  }
+
+  bool _isIndexPayload(List<int> plaintext) {
+    try {
+      return jsonDecode(utf8.decode(plaintext)) is List;
+    } catch (_) {
+      return false;
+    }
   }
 }
 

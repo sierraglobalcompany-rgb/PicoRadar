@@ -143,6 +143,69 @@ void main() {
     );
     expect(await preferences.getString(tripDraftPreferenceKey), 'keep-trip');
   });
+
+  test(
+    'document cleanup failure preserves associated data until retry succeeds',
+    () async {
+      final source = File('${root.path}/target.pdf');
+      await source.writeAsBytes([1, 2, 3]);
+      final document = await documentStore.importDocument(
+        vehicleId: 'vehicle-1',
+        documentType: PrivateVehicleDocumentType.soat,
+        source: source,
+        originalName: 'target.pdf',
+        mimeType: 'application/pdf',
+      );
+      final caseSummary = await defenseCaseStore.createCase(
+        _caseDraft('vehicle-1', 'Objetivo'),
+      );
+      final draft = PeritajesDraft(
+        checkedItems: const {'luces'},
+        notes: 'Pendiente.',
+        updatedAt: DateTime.utc(2026, 9, 4),
+      );
+      await peritajesDraftStore.saveDraft('vehicle-1', draft);
+      await preferences.setString(
+        'comparendos.last_checked.vehicle-1',
+        '2026-09-04',
+      );
+      final retryCleaner = VehicleAssociatedDataCleaner(
+        documentStore: _FailOnceDeleteDocumentStore(documentStore),
+        defenseCaseStore: defenseCaseStore,
+        peritajesDraftStore: peritajesDraftStore,
+        preferences: preferences,
+      );
+
+      await expectLater(
+        retryCleaner.deleteForVehicle('vehicle-1'),
+        throwsStateError,
+      );
+
+      expect(
+        (await documentStore.listForVehicle('vehicle-1')).single.documentId,
+        document.documentId,
+      );
+      expect(
+        (await defenseCaseStore.listForVehicle('vehicle-1')).single.id,
+        caseSummary.id,
+      );
+      expect(await peritajesDraftStore.loadDraft('vehicle-1'), isNotNull);
+      expect(
+        await preferences.getString('comparendos.last_checked.vehicle-1'),
+        '2026-09-04',
+      );
+
+      await retryCleaner.deleteForVehicle('vehicle-1');
+
+      expect(await documentStore.listForVehicle('vehicle-1'), isEmpty);
+      expect(await defenseCaseStore.listForVehicle('vehicle-1'), isEmpty);
+      expect(await peritajesDraftStore.loadDraft('vehicle-1'), isNull);
+      expect(
+        await preferences.getString('comparendos.last_checked.vehicle-1'),
+        isNull,
+      );
+    },
+  );
 }
 
 DefenseCaseDraft _caseDraft(String vehicleId, String facts) {
@@ -186,5 +249,21 @@ class _MemoryPreferences implements AppPreferences {
   @override
   Future<void> setString(String key, String value) async {
     values[key] = value;
+  }
+}
+
+class _FailOnceDeleteDocumentStore extends PrivateVehicleDocumentStore {
+  _FailOnceDeleteDocumentStore(this.delegate);
+
+  final PrivateVehicleDocumentStore delegate;
+  var calls = 0;
+
+  @override
+  Future<void> deleteForVehicle(String vehicleId) {
+    calls += 1;
+    if (calls == 1) {
+      throw StateError('document cleanup failed');
+    }
+    return delegate.deleteForVehicle(vehicleId);
   }
 }
