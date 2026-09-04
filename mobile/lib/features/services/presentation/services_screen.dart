@@ -1,23 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/theme/app_tokens.dart';
 import '../../cda/presentation/cda_finder_screen.dart';
+import '../../vehicle_status/platform/external_launcher.dart';
 import '../data/google_maps_service_search.dart';
 
-typedef ServicesUriLauncher = Future<bool> Function(Uri uri);
-
 class ServicesScreen extends ConsumerStatefulWidget {
-  const ServicesScreen({
-    super.key,
-    this.onOpenCda,
-    ServicesUriLauncher? openExternalSearch,
-  }) : openExternalSearch = openExternalSearch ?? _launchExternalSearch;
+  const ServicesScreen({super.key, this.onOpenCda});
 
   final VoidCallback? onOpenCda;
-  final ServicesUriLauncher openExternalSearch;
 
   @override
   ConsumerState<ServicesScreen> createState() => _ServicesScreenState();
@@ -154,9 +147,9 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
       return;
     }
 
-    final opened = await widget.openExternalSearch(
-      googleMapsServiceSearchUri(category: category, city: city),
-    );
+    final launcher = ref.read(externalLauncherProvider);
+    final uri = googleMapsServiceSearchUri(category: category, city: city);
+    final opened = await launcher.openExternal(uri.toString());
     if (!mounted || opened) {
       return;
     }
@@ -218,6 +211,7 @@ class _ServiceActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
+      excludeSemantics: true,
       label: title,
       child: Material(
         key: ValueKey(keyName),
@@ -328,7 +322,3 @@ const _externalActions = [
     icon: Icons.car_repair_outlined,
   ),
 ];
-
-Future<bool> _launchExternalSearch(Uri uri) {
-  return launchUrl(uri, mode: LaunchMode.externalApplication);
-}

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +7,7 @@ import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/theme/app_theme.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/services/presentation/services_screen.dart';
+import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
 void main() {
   testWidgets('prefills city from active vehicle and keeps required copy', (
@@ -34,16 +37,13 @@ void main() {
   testWidgets('editable city is used only for the current external search', (
     tester,
   ) async {
-    final opened = <Uri>[];
+    final launcher = _FakeExternalLauncher();
     final vehicle = _vehicle(registrationCity: 'Bogotá D. C.');
 
     await _pumpServices(
       tester,
       activeVehicle: vehicle,
-      openExternalSearch: (uri) async {
-        opened.add(uri);
-        return true;
-      },
+      externalLauncher: launcher,
     );
 
     await tester.enterText(
@@ -54,26 +54,42 @@ void main() {
     await tester.pump();
 
     expect(vehicle.registrationCity, 'Bogotá D. C.');
-    expect(opened.single.scheme, 'https');
-    expect(opened.single.host, 'www.google.com');
-    expect(opened.single.path, '/maps/search/');
-    expect(opened.single.queryParameters, {
-      'api': '1',
-      'query': 'grúa 24 horas Chía',
-    });
+    final opened = Uri.parse(launcher.openedUris.single);
+    expect(opened.scheme, 'https');
+    expect(opened.host, 'www.google.com');
+    expect(opened.path, '/maps/search/');
+    expect(opened.queryParameters, {'api': '1', 'query': 'grúa 24 horas Chía'});
+  });
+
+  testWidgets('edited city is not overwritten by later vehicle updates', (
+    tester,
+  ) async {
+    await _pumpServices(
+      tester,
+      activeVehicle: _vehicle(registrationCity: 'Medellín'),
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('services-city-field')),
+      'Chía',
+    );
+    await _pumpServices(
+      tester,
+      activeVehicle: _vehicle(registrationCity: 'Bogotá'),
+    );
+
+    expect(find.text('Chía'), findsOneWidget);
+    expect(find.text('Bogotá'), findsNothing);
   });
 
   testWidgets('service searches use only Google Maps official search URLs', (
     tester,
   ) async {
-    final opened = <Uri>[];
+    final launcher = _FakeExternalLauncher();
     await _pumpServices(
       tester,
       activeVehicle: _vehicle(registrationCity: 'Cali'),
-      openExternalSearch: (uri) async {
-        opened.add(uri);
-        return true;
-      },
+      externalLauncher: launcher,
     );
 
     for (final key in [
@@ -90,59 +106,92 @@ void main() {
     }
 
     expect(
-      opened.map((uri) => uri.toString()),
+      launcher.openedUris,
       everyElement(
         startsWith('https://www.google.com/maps/search/?api=1&query='),
       ),
     );
-    expect(opened.map((uri) => uri.queryParameters['query']), [
-      'grúa 24 horas Cali',
-      'batería Cali',
-      'llantas Cali',
-      'taller mecánico Cali',
-    ]);
+    expect(
+      launcher.openedUris.map((uri) {
+        return Uri.parse(uri).queryParameters['query'];
+      }),
+      [
+        'grúa 24 horas Cali',
+        'batería Cali',
+        'llantas Cali',
+        'taller mecánico Cali',
+      ],
+    );
   });
 
   testWidgets('CDA action stays inside PicoRadar and does not launch search', (
     tester,
   ) async {
     var cdaOpened = false;
-    final opened = <Uri>[];
+    final launcher = _FakeExternalLauncher();
     await _pumpServices(
       tester,
       activeVehicle: _vehicle(registrationCity: 'Bogotá'),
       onOpenCda: () => cdaOpened = true,
-      openExternalSearch: (uri) async {
-        opened.add(uri);
-        return true;
-      },
+      externalLauncher: launcher,
     );
 
     await tester.tap(find.byKey(const ValueKey('services-open-cda')));
     await tester.pump();
 
     expect(cdaOpened, isTrue);
-    expect(opened, isEmpty);
+    expect(launcher.openedUris, isEmpty);
   });
 
   testWidgets('empty city blocks external search without GPS fallback', (
     tester,
   ) async {
-    final opened = <Uri>[];
+    final launcher = _FakeExternalLauncher();
     await _pumpServices(
       tester,
       activeVehicle: _vehicle(registrationCity: null),
-      openExternalSearch: (uri) async {
-        opened.add(uri);
-        return true;
-      },
+      externalLauncher: launcher,
     );
 
     await tester.tap(find.byKey(const ValueKey('services-search-battery')));
     await tester.pump();
 
-    expect(opened, isEmpty);
+    expect(launcher.openedUris, isEmpty);
     expect(find.text('Ingresa una ciudad para buscar.'), findsOneWidget);
+  });
+
+  testWidgets('launcher failure shows a controlled message', (tester) async {
+    final launcher = _FakeExternalLauncher(openResult: false);
+    await _pumpServices(
+      tester,
+      activeVehicle: _vehicle(registrationCity: 'Cali'),
+      externalLauncher: launcher,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('services-search-battery')));
+    await tester.pump();
+
+    expect(launcher.openedUris, hasLength(1));
+    expect(find.text('No pudimos abrir Google Maps.'), findsOneWidget);
+  });
+
+  testWidgets('dispose during launch does not touch UI or ref', (tester) async {
+    final pendingOpen = Completer<bool>();
+    final launcher = _FakeExternalLauncher(pendingOpen: pendingOpen);
+    await _pumpServices(
+      tester,
+      activeVehicle: _vehicle(registrationCity: 'Cali'),
+      externalLauncher: launcher,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('services-search-battery')));
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox.shrink());
+    pendingOpen.complete(false);
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('No pudimos abrir Google Maps.'), findsNothing);
   });
 
   testWidgets('services screen tolerates phone viewports and text scale', (
@@ -181,19 +230,19 @@ Future<void> _pumpServices(
   WidgetTester tester, {
   required VehicleProfile? activeVehicle,
   VoidCallback? onOpenCda,
-  ServicesUriLauncher? openExternalSearch,
+  ExternalLauncher? externalLauncher,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         activeVehicleProvider.overrideWithValue(AsyncValue.data(activeVehicle)),
+        externalLauncherProvider.overrideWithValue(
+          externalLauncher ?? _FakeExternalLauncher(),
+        ),
       ],
       child: MaterialApp(
         theme: buildPicoRadarTheme(),
-        home: ServicesScreen(
-          onOpenCda: onOpenCda,
-          openExternalSearch: openExternalSearch,
-        ),
+        home: ServicesScreen(onOpenCda: onOpenCda),
       ),
     ),
   );
@@ -210,4 +259,27 @@ VehicleProfile _vehicle({required String? registrationCity}) {
     createdAt: DateTime(2026),
     updatedAt: DateTime(2026),
   );
+}
+
+class _FakeExternalLauncher implements ExternalLauncher {
+  _FakeExternalLauncher({this.openResult = true, this.pendingOpen});
+
+  final bool openResult;
+  final Completer<bool>? pendingOpen;
+  final openedUris = <String>[];
+  final calledPhones = <String>[];
+
+  @override
+  Future<bool> callPhone(String phone) async {
+    calledPhones.add(phone);
+    return true;
+  }
+
+  @override
+  Future<bool> openExternal(String uri) {
+    openedUris.add(uri);
+    final completer = pendingOpen;
+    if (completer != null) return completer.future;
+    return Future.value(openResult);
+  }
 }
