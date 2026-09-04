@@ -84,6 +84,41 @@ void main() {
     expect(launcher.openedUris.single, contains('CDA+Bogot'));
     expect(launcher.openedUris.single, contains('Colombia'));
   });
+
+  testWidgets('detail sheet reports external launcher failures', (
+    tester,
+  ) async {
+    await _pumpScreen(
+      tester,
+      launcher: _FakeExternalLauncher(openResult: false),
+      size: const Size(390, 1200),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('cda-detail-cda-bog')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('cda-open-directions')));
+    await tester.pump();
+
+    expect(find.text('No pudimos abrir Google Maps.'), findsOneWidget);
+  });
+
+  testWidgets('detail sheet reports external launcher exceptions', (
+    tester,
+  ) async {
+    await _pumpScreen(
+      tester,
+      launcher: _FakeExternalLauncher(throwOnOpen: true),
+      size: const Size(390, 1200),
+    );
+    await tester.tap(find.byKey(const ValueKey('cda-detail-cda-bog')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('cda-open-waze')));
+    await tester.tap(find.byKey(const ValueKey('cda-open-waze')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No pudimos abrir Waze.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 Future<void> _pumpScreen(
@@ -231,6 +266,10 @@ class _FakeLocationGateway implements DeviceLocationGateway {
 }
 
 class _FakeExternalLauncher implements ExternalLauncher {
+  _FakeExternalLauncher({this.openResult = true, this.throwOnOpen = false});
+
+  final bool openResult;
+  final bool throwOnOpen;
   final openedUris = <String>[];
   final calledPhones = <String>[];
 
@@ -242,7 +281,10 @@ class _FakeExternalLauncher implements ExternalLauncher {
 
   @override
   Future<bool> openExternal(String uri) async {
+    if (throwOnOpen) {
+      throw StateError('launcher failed');
+    }
     openedUris.add(uri);
-    return true;
+    return openResult;
   }
 }

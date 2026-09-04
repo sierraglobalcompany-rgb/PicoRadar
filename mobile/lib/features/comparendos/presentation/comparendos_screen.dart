@@ -15,7 +15,7 @@ const _medellinUrl =
     'https://www.medellin.gov.co/es/tramites-y-servicios/consulta-de-comparendos-electronicos/';
 const _bogotaUrl = 'https://www.movilidadbogota.gov.co/node/15670';
 
-final _lastCheckedProvider = FutureProvider.family<String?, String>((
+final comparendosLastCheckedProvider = FutureProvider.family<String?, String>((
   ref,
   vehicleId,
 ) {
@@ -68,7 +68,7 @@ class _ComparendosContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final lastChecked = ref.watch(_lastCheckedProvider(vehicle.id));
+    final lastChecked = ref.watch(comparendosLastCheckedProvider(vehicle.id));
     final cityLink = _territorialLink(vehicle.registrationCity);
 
     return SingleChildScrollView(
@@ -177,11 +177,18 @@ class _ComparendosContent extends ConsumerWidget {
     String url,
     String failureMessage,
   ) async {
-    final opened = await ref.read(externalLauncherProvider).openExternal(url);
-    if (!opened && context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(failureMessage)));
+    final launcher = ref.read(externalLauncherProvider);
+    var opened = false;
+    try {
+      opened = await launcher.openExternal(url);
+    } catch (_) {
+      opened = false;
     }
+    if (!context.mounted || opened) {
+      return;
+    }
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(failureMessage)));
   }
 
   Future<void> _markCheckedToday(
@@ -195,7 +202,7 @@ class _ComparendosContent extends ConsumerWidget {
     if (!context.mounted) {
       return;
     }
-    ref.invalidate(_lastCheckedProvider(vehicleId));
+    ref.invalidate(comparendosLastCheckedProvider(vehicleId));
   }
 }
 

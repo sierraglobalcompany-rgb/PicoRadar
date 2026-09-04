@@ -572,9 +572,12 @@ class _OfficialCheckCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return OutlinedButton.icon(
       key: ValueKey('owner-runt-${type.value}'),
-      onPressed: () => ref
-          .read(externalLauncherProvider)
-          .openExternal(runtVehicleByPlateLink.uri),
+      onPressed: () => _openOwnerExternal(
+        context,
+        ref,
+        runtVehicleByPlateLink.uri,
+        'No pudimos abrir RUNT.',
+      ),
       icon: const Icon(Icons.open_in_new),
       label: const Text('Consultar en RUNT'),
     );
@@ -660,9 +663,12 @@ class _CommercialBannerBody extends ConsumerWidget {
         child: InkWell(
           onTap: target == null
               ? null
-              : () => ref
-                    .read(externalLauncherProvider)
-                    .openExternal(target.toString()),
+              : () => _openOwnerExternal(
+                  context,
+                  ref,
+                  target.toString(),
+                  'No pudimos abrir el enlace.',
+                ),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.m),
             child: Row(
@@ -733,6 +739,26 @@ class _BannerLabel extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> _openOwnerExternal(
+  BuildContext context,
+  WidgetRef ref,
+  String url,
+  String failureMessage,
+) async {
+  final launcher = ref.read(externalLauncherProvider);
+  var opened = false;
+  try {
+    opened = await launcher.openExternal(url);
+  } catch (_) {
+    opened = false;
+  }
+  if (!context.mounted || opened) {
+    return;
+  }
+  ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text(failureMessage)));
 }
 
 class _SoftCard extends StatelessWidget {

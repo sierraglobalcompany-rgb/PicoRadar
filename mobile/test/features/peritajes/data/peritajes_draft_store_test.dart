@@ -45,6 +45,24 @@ void main() {
     expect(await store.loadDraft('vehicle-1'), isNull);
     expect(preferences.values, isNot(contains('peritajes.draft.v1.vehicle-1')));
   });
+
+  test('deleteDraft is idempotent and keeps other vehicle drafts', () async {
+    final preferences = _MemoryPreferences();
+    final store = PeritajesDraftStore(preferences);
+    final draft = PeritajesDraft(
+      checkedItems: const {'llantas'},
+      notes: 'Validar desgaste.',
+      updatedAt: DateTime.utc(2026, 9, 4),
+    );
+    await store.saveDraft('vehicle-1', draft);
+    await store.saveDraft('vehicle-2', draft);
+
+    await store.deleteDraft('vehicle-1');
+    await store.deleteDraft('vehicle-1');
+
+    expect(await store.loadDraft('vehicle-1'), isNull);
+    expect(await store.loadDraft('vehicle-2'), isNotNull);
+  });
 }
 
 class _MemoryPreferences implements AppPreferences {

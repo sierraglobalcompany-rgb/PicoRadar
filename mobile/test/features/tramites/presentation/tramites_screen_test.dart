@@ -149,6 +149,21 @@ void main() {
     expect(find.text('No pudimos abrir el portal oficial.'), findsOneWidget);
   });
 
+  testWidgets('launch exception shows the approved message', (tester) async {
+    await _pumpScreen(
+      tester,
+      launcher: _FakeExternalLauncher(throwOnOpen: true),
+    );
+    await _selectCity(tester, 'Bogotá');
+    await _openCard(tester, 'bogota', 'certificado');
+
+    await tester.tap(find.byKey(const ValueKey('tramites-open-official')));
+    await tester.pump();
+
+    expect(find.text('No pudimos abrir el portal oficial.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('does not require a vehicle or automatic location', (
     tester,
   ) async {
@@ -280,9 +295,10 @@ void _expectProcedureOrder(WidgetTester tester, String city) {
 }
 
 class _FakeExternalLauncher implements ExternalLauncher {
-  _FakeExternalLauncher({this.openResult = true});
+  _FakeExternalLauncher({this.openResult = true, this.throwOnOpen = false});
 
   final bool openResult;
+  final bool throwOnOpen;
   final opened = <String>[];
 
   @override
@@ -290,6 +306,9 @@ class _FakeExternalLauncher implements ExternalLauncher {
 
   @override
   Future<bool> openExternal(String uri) async {
+    if (throwOnOpen) {
+      throw StateError('launcher failed');
+    }
     opened.add(uri);
     return openResult;
   }

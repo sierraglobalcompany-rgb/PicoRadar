@@ -130,6 +130,25 @@ class DefenseCaseStore {
     });
   }
 
+  Future<void> deleteForVehicle(String vehicleId) {
+    final requestedVehicleId = vehicleId.trim();
+    if (requestedVehicleId.isEmpty) {
+      return Future<void>.value();
+    }
+
+    return _runMutation(() async {
+      final cases = await _readIndex();
+      final next = [
+        for (final item in cases)
+          if (item.vehicleId != requestedVehicleId) item,
+      ];
+      if (next.length == cases.length) {
+        return;
+      }
+      await _writeIndex(next);
+    });
+  }
+
   Future<List<DefenseCase>> _readIndex() async {
     final indexFile = await _indexFile();
     if (!await indexFile.exists()) {

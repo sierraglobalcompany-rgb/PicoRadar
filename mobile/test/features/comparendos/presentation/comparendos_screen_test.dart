@@ -158,6 +158,23 @@ void main() {
     expect(find.text('No pudimos abrir SIMIT.'), findsOneWidget);
   });
 
+  testWidgets('shows SIMIT launch exception visibly', (tester) async {
+    _launcher.throwOnOpen = true;
+    final vehicle = _vehicle();
+
+    await _pumpScreen(
+      tester,
+      vehicles: [vehicle],
+      active: vehicle,
+      launcher: _launcher,
+    );
+    await tester.tap(find.byKey(const ValueKey('comparendos-open-simit')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No pudimos abrir SIMIT.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('opens Medellín territorial URL for Medellín vehicles', (
     tester,
   ) async {
@@ -392,6 +409,7 @@ VehicleProfile _vehicle({
 
 class _FakeExternalLauncher implements ExternalLauncher {
   var openResult = true;
+  var throwOnOpen = false;
   final opened = <String>[];
 
   @override
@@ -399,6 +417,9 @@ class _FakeExternalLauncher implements ExternalLauncher {
 
   @override
   Future<bool> openExternal(String uri) async {
+    if (throwOnOpen) {
+      throw StateError('launcher failed');
+    }
     opened.add(uri);
     return openResult;
   }

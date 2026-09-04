@@ -103,6 +103,61 @@ void main() {
     },
   );
 
+  test(
+    'deleteForVehicle removes only matching cases and is idempotent',
+    () async {
+      final first = await store.createCase(
+        _draft(vehicleId: 'vehicle-1', facts: 'Caso uno'),
+      );
+      final second = await store.createCase(
+        _draft(vehicleId: 'vehicle-1', facts: 'Caso dos'),
+      );
+      final other = await store.createCase(
+        _draft(vehicleId: 'vehicle-2', facts: 'Otro vehiculo'),
+      );
+
+      await store.deleteForVehicle('vehicle-1');
+      await store.deleteForVehicle('vehicle-1');
+
+      expect(await store.listForVehicle('vehicle-1'), isEmpty);
+      expect((await store.listForVehicle('vehicle-2')).single.id, other.id);
+      final encrypted = await _indexFile(root).readAsBytes();
+      final encryptedText = String.fromCharCodes(encrypted);
+      expect(encryptedText, isNot(contains(first.id)));
+      expect(encryptedText, isNot(contains(second.id)));
+      expect(encryptedText, isNot(contains('Caso uno')));
+      expect(encryptedText, isNot(contains('Caso dos')));
+    },
+  );
+
+  test('deleteForVehicle waits behind an in-flight mutation', () async {
+    final crypto = _BlockingIndexCrypto();
+    final serializedStore = DefenseCaseStore(
+      rootDirectory: () async => root,
+      masterKey: () async => SecretKey(List<int>.filled(32, 11)),
+      fileCrypto: crypto,
+      idGenerator: () => 'queued-${(++ids).toString().padLeft(4, '0')}',
+      now: () => DateTime.utc(2026, 9, 3, 8),
+    );
+
+    final create = serializedStore.createCase(_draft(facts: 'Primero'));
+    await crypto.firstIndexWrite.future;
+    final delete = serializedStore.deleteForVehicle('vehicle-1');
+
+    await expectLater(
+      crypto.secondIndexWrite.future.timeout(const Duration(milliseconds: 40)),
+      throwsA(isA<TimeoutException>()),
+    );
+
+    crypto.releaseFirstIndexWrite();
+    await crypto.secondIndexWrite.future;
+    crypto.releaseSecondIndexWrite();
+
+    await create;
+    await delete;
+    expect(await serializedStore.listForVehicle('vehicle-1'), isEmpty);
+  });
+
   test('rolls back a failed index write atomically', () async {
     final original = await store.createCase(_draft(facts: 'Version original'));
     final failingStore = DefenseCaseStore(

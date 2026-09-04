@@ -280,6 +280,55 @@ class PrivateVehicleDocumentStore {
     });
   }
 
+  Future<void> deleteForVehicle(String vehicleId) async {
+    final requestedVehicleId = vehicleId.trim();
+    if (requestedVehicleId.isEmpty) {
+      return;
+    }
+
+    await _runMutation(() async {
+      final root = await _storeRoot();
+      final documents = await _readIndex();
+      final targetDocuments = [
+        for (final document in documents)
+          if (document.vehicleId == requestedVehicleId) document,
+      ];
+      await _resolveStagedVehicleDeletes(
+        root,
+        requestedVehicleId,
+        targetDocuments,
+      );
+      if (targetDocuments.isEmpty) {
+        return;
+      }
+
+      final stagedDeletes = <_StagedEncryptedDocumentDelete>[];
+      try {
+        final stamp = _now().microsecondsSinceEpoch;
+        for (final document in targetDocuments) {
+          await purgeViewerCache(metadata: document);
+          final stagedDelete = await _stageEncryptedFileDelete(
+            document,
+            '$stamp-${stagedDeletes.length}',
+          );
+          if (stagedDelete != null) {
+            stagedDeletes.add(stagedDelete);
+          }
+        }
+
+        await _writeIndex([
+          for (final document in documents)
+            if (document.vehicleId != requestedVehicleId) document,
+        ]);
+      } catch (_) {
+        await _restoreStagedEncryptedFileDeletes(stagedDeletes);
+        rethrow;
+      }
+
+      await _deleteStagedEncryptedFiles(stagedDeletes);
+    });
+  }
+
   Future<void> purgeViewerCache({
     PrivateVehicleDocumentMetadata? metadata,
   }) async {
@@ -381,6 +430,84 @@ class PrivateVehicleDocumentStore {
     }
   }
 
+  Future<_StagedEncryptedDocumentDelete?> _stageEncryptedFileDelete(
+    PrivateVehicleDocumentMetadata metadata,
+    String suffix,
+  ) async {
+    final file = await _encryptedFile(metadata);
+    if (!await file.exists()) {
+      return null;
+    }
+    final staged = File('${file.path}.delete-$suffix');
+    await file.rename(staged.path);
+    return _StagedEncryptedDocumentDelete(original: file, staged: staged);
+  }
+
+  Future<void> _restoreStagedEncryptedFileDeletes(
+    List<_StagedEncryptedDocumentDelete> stagedDeletes,
+  ) async {
+    for (final stagedDelete in stagedDeletes.reversed) {
+      if (await stagedDelete.staged.exists() &&
+          !await stagedDelete.original.exists()) {
+        await stagedDelete.staged.rename(stagedDelete.original.path);
+      }
+    }
+  }
+
+  Future<void> _deleteStagedEncryptedFiles(
+    List<_StagedEncryptedDocumentDelete> stagedDeletes,
+  ) async {
+    for (final stagedDelete in stagedDeletes) {
+      if (await stagedDelete.staged.exists()) {
+        await stagedDelete.staged.delete();
+      }
+    }
+  }
+
+  Future<void> _resolveStagedVehicleDeletes(
+    Directory root,
+    String vehicleId,
+    List<PrivateVehicleDocumentMetadata> indexedDocuments,
+  ) async {
+    final docsRoot = Directory('${root.path}/docs');
+    if (!await docsRoot.exists()) {
+      return;
+    }
+    final referencedPaths = {
+      for (final document in indexedDocuments)
+        _normalizedPath(
+          File(
+            '${root.path}/${_checkedRelativePath(document.encryptedRelativePath)}',
+          ).absolute.path,
+        ),
+    };
+    final vehiclePathSegment = _safePathSegment(vehicleId);
+    for (final type in PrivateVehicleDocumentType.values) {
+      final vehicleRoot = Directory(
+        '${docsRoot.path}/${type.value}/$vehiclePathSegment',
+      );
+      if (!await vehicleRoot.exists()) {
+        continue;
+      }
+      await for (final entity in vehicleRoot.list()) {
+        if (entity is File && _hasStagedDeleteSuffix(entity.path)) {
+          final original = File(_originalPathForStagedDelete(entity.path));
+          if (referencedPaths.contains(
+            _normalizedPath(original.absolute.path),
+          )) {
+            if (await original.exists()) {
+              await entity.delete();
+            } else {
+              await entity.rename(original.path);
+            }
+          } else {
+            await entity.delete();
+          }
+        }
+      }
+    }
+  }
+
   Future<void> _tryDeleteEncryptedFile(
     PrivateVehicleDocumentMetadata metadata,
   ) async {
@@ -461,6 +588,24 @@ class PrivateVehicleDocumentStore {
     return normalized;
   }
 
+  static String _normalizedPath(String path) => path.replaceAll('\\', '/');
+
+  static bool _hasStagedDeleteSuffix(String path) {
+    return RegExp(r'\.delete-\d+-\d+$').hasMatch(_baseName(path));
+  }
+
+  static String _baseName(String path) {
+    return path.replaceAll('\\', '/').split('/').last;
+  }
+
+  static String _originalPathForStagedDelete(String stagedPath) {
+    final markerIndex = stagedPath.lastIndexOf('.delete-');
+    if (markerIndex < 0) {
+      return stagedPath;
+    }
+    return stagedPath.substring(0, markerIndex);
+  }
+
   static Future<void> _tryDeleteFile(File file) async {
     try {
       if (await file.exists()) {
@@ -486,4 +631,14 @@ class PrivateVehicleDocumentStore {
     final bytes = List<int>.generate(16, (_) => random.nextInt(256));
     return bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
   }
+}
+
+class _StagedEncryptedDocumentDelete {
+  const _StagedEncryptedDocumentDelete({
+    required this.original,
+    required this.staged,
+  });
+
+  final File original;
+  final File staged;
 }
