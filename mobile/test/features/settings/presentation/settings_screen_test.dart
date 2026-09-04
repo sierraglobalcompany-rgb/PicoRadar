@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
+import 'package:picoradar/features/comparendos/presentation/comparendos_screen.dart';
 import 'package:picoradar/features/defense/application/defense_case_providers.dart';
 import 'package:picoradar/features/defense/data/defense_case.dart';
 import 'package:picoradar/features/defense/data/defense_case_store.dart';
@@ -455,6 +456,8 @@ void main() {
         defenseCaseStore: defenseStore,
         preferences: preferences,
       );
+      preferences.values['comparendos.last_checked.${activeVehicle.id}'] =
+          '2026-09-03';
       final container = ProviderContainer(
         overrides: [
           appPreferencesProvider.overrideWithValue(preferences),
@@ -491,6 +494,12 @@ void main() {
       expect(
         await container.read(defenseCasesProvider(activeVehicle.id).future),
         hasLength(1),
+      );
+      expect(
+        await container.read(
+          comparendosLastCheckedProvider(activeVehicle.id).future,
+        ),
+        '2026-09-03',
       );
 
       await tester.pumpWidget(
@@ -529,6 +538,12 @@ void main() {
       expect(
         await container.read(defenseCasesProvider(activeVehicle.id).future),
         isEmpty,
+      );
+      expect(
+        await container.read(
+          comparendosLastCheckedProvider(activeVehicle.id).future,
+        ),
+        isNull,
       );
     },
   );

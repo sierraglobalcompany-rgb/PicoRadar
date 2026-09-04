@@ -9,6 +9,7 @@ import '../../../app/app_providers.dart';
 import '../../../app/router/app_routes.dart';
 import '../../../app/theme/app_tokens.dart';
 import '../../../core/database/app_database.dart';
+import '../../comparendos/presentation/comparendos_screen.dart';
 import '../../driving/data/camera_pack_loader.dart';
 import '../../defense/application/defense_case_providers.dart';
 import '../../documents/presentation/documents_screen.dart';
@@ -327,6 +328,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ];
         final defenseCases = defenseCasesProvider(vehicleId);
         await cleaner.deleteForVehicle(vehicleId);
+        providerContainer.invalidate(comparendosLastCheckedProvider(vehicleId));
         providerContainer.invalidate(vehicleDocumentList);
         for (final provider in privateVehicleDocuments) {
           providerContainer.invalidate(provider);
