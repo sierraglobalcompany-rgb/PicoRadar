@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../shell/app_shell.dart';
 import '../../features/apps_launcher/presentation/apps_screen.dart';
 import '../../features/apps_launcher/presentation/module_placeholder_screen.dart';
+import '../../features/buy_sell/presentation/buy_sell_screen.dart';
 import '../../features/cda/presentation/cda_finder_screen.dart';
 import '../../features/comparendos/presentation/comparendos_screen.dart';
+import '../../features/defense/presentation/defense_screen.dart';
 import '../../features/documents/presentation/documents_screen.dart';
 import '../../features/driving/presentation/driving_screen.dart';
 import '../../features/fotomultas/presentation/fotomultas_screen.dart';
@@ -14,10 +16,13 @@ import '../../features/garage/presentation/vehicle_detail_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/maintenance/presentation/maintenance_screen.dart';
 import '../../features/onboarding/presentation/onboarding_vehicle_screen.dart';
+import '../../features/peritajes/presentation/peritajes_screen.dart';
 import '../../features/pico_placa/presentation/pico_detail_screen.dart';
 import '../../features/services/presentation/services_screen.dart';
+import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/tramites/presentation/tramites_screen.dart';
 import '../../features/trip/presentation/trip_screen.dart';
+import '../../features/visual_assets/presentation/visual_asset_widgets.dart';
 import '../../features/vehicle_status/presentation/vehicle_status_screen.dart';
 import 'app_routes.dart';
 import 'immersive_placeholder_screen.dart';
@@ -58,6 +63,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoute.immersivePreview.path,
         builder: (context, state) => const ImmersivePlaceholderScreen(),
+      ),
+      GoRoute(
+        path: AppRoute.settings.path,
+        builder: (context, state) => Consumer(
+          builder: (context, widgetRef, child) => SettingsScreen(
+            onChangeAvatar: () => showAvatarPicker(context, widgetRef),
+            onConfigureNotifications: () => context.go(AppRoute.home.path),
+          ),
+        ),
       ),
     ],
   );
@@ -129,6 +143,37 @@ List<RouteBase> _tabRoutes(AppTab tab) {
           }
           if (moduleId == 'documentos') {
             return DocumentsScreen(state.uri.queryParameters['vehicleId']);
+          }
+          if (moduleId == 'defensa') {
+            return DefenseScreen(
+              vehicleId: state.uri.queryParameters['vehicleId'],
+            );
+          }
+          if (moduleId == 'peritajes') {
+            return PeritajesScreen(state.uri.queryParameters['vehicleId']);
+          }
+          if (moduleId == 'compra_venta') {
+            return BuySellScreen(
+              onOpenComparendos: (vehicle) => context.push(
+                Uri(
+                  path: '/apps/module/comparendos',
+                  queryParameters: {'vehicleId': vehicle.id},
+                ).toString(),
+              ),
+              onOpenTramites: (_) => context.push('/apps/module/tramites'),
+              onOpenPeritajes: (vehicle) => context.push(
+                Uri(
+                  path: '/apps/module/peritajes',
+                  queryParameters: {'vehicleId': vehicle.id},
+                ).toString(),
+              ),
+              onOpenDocuments: (vehicle) => context.push(
+                Uri(
+                  path: '/apps/module/documentos',
+                  queryParameters: {'vehicleId': vehicle.id},
+                ).toString(),
+              ),
+            );
           }
           if (moduleId == 'servicios') {
             return ServicesScreen(onOpenCda: () => context.push('/apps/cda'));

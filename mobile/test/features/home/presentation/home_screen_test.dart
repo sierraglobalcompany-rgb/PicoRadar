@@ -410,6 +410,17 @@ void main() {
       await tester.pump();
       await tester.tap(find.byKey(const ValueKey('home-avatar-button')));
       await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('header-change-avatar')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('header-open-settings')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('header-change-avatar')));
+      await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('avatar-picker-grid')), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('avatar-option-avatar_004')));
@@ -425,6 +436,29 @@ void main() {
         find.byKey(const ValueKey('home-avatar-image-avatar_004')),
         findsOneWidget,
       );
+    });
+
+    testWidgets('avatar menu opens Settings without adding a header button', (
+      tester,
+    ) async {
+      await _readyHome(harness, plate: 'ABC124');
+      await _pumpHomeApp(tester, harness);
+
+      expect(
+        find.byKey(const ValueKey('picoradar-avatar-control')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('picoradar-bell-control')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('home-avatar-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('header-open-settings')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('settings-route'), findsOneWidget);
     });
 
     testWidgets('vehicle detail picker stores override and auto reset', (
@@ -2154,6 +2188,10 @@ Future<void> _pumpHomeApp(WidgetTester tester, TestAppHarness harness) async {
             VehicleDetailScreen(vehicleId: state.pathParameters['id']!),
       ),
       GoRoute(path: '/drive', builder: (context, state) => const Text('drive')),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const Text('settings-route'),
+      ),
       GoRoute(
         path: '/apps/module/:id',
         builder: (context, state) => Text(

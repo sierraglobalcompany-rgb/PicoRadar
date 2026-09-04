@@ -5,17 +5,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/shell/app_shell.dart';
+import 'package:picoradar/features/buy_sell/presentation/buy_sell_screen.dart';
 import 'package:picoradar/features/apps_launcher/data/module_registry.dart';
 import 'package:picoradar/features/apps_launcher/domain/app_module.dart';
 import 'package:picoradar/features/apps_launcher/presentation/apps_screen.dart';
 import 'package:picoradar/features/apps_launcher/presentation/module_placeholder_screen.dart';
 import 'package:picoradar/features/cda/presentation/cda_finder_screen.dart';
 import 'package:picoradar/features/comparendos/presentation/comparendos_screen.dart';
+import 'package:picoradar/features/defense/presentation/defense_screen.dart';
 import 'package:picoradar/features/documents/presentation/documents_screen.dart';
 import 'package:picoradar/features/fotomultas/presentation/fotomultas_screen.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/maintenance/presentation/maintenance_screen.dart';
+import 'package:picoradar/features/peritajes/presentation/peritajes_screen.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/presentation/pico_detail_screen.dart';
 import 'package:picoradar/features/services/presentation/services_screen.dart';
@@ -115,7 +118,7 @@ void main() {
     );
   });
 
-  test('default Apps visibility hides unfinished modules fail-closed', () {
+  test('default Apps visibility exposes all Wave2 modules fail-closed', () {
     expect(
       visibleModules(
         primaryModules,
@@ -130,7 +133,7 @@ void main() {
       ).map((module) => module.title),
       _visibleSecondaryTitles,
     );
-    expect(_hiddenModules, hasLength(3));
+    expect(_hiddenModules, isEmpty);
     expect(
       visibleModules(primaryModules, const {}),
       isEmpty,
@@ -344,6 +347,33 @@ void main() {
 
     expect(find.byType(ServicesScreen), findsOneWidget);
     expect(find.byKey(const ValueKey('services-screen')), findsOneWidget);
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+  });
+
+  testWidgets('Apps opens Defensa with active vehicle', (tester) async {
+    await _createVehicle(harness, plate: 'DEF123');
+    await _openModuleFromApps(tester, harness, 'defensa', settle: false);
+    await _pumpUntil(tester, find.byKey(const ValueKey('defense-screen')));
+
+    expect(find.byType(DefenseScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('defense-screen')), findsOneWidget);
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+  });
+
+  testWidgets('Apps Más opens Compra/Venta', (tester) async {
+    await _openSecondaryModuleFromApps(tester, harness, 'compra_venta');
+
+    expect(find.byType(BuySellScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('buy-sell-screen')), findsOneWidget);
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+  });
+
+  testWidgets('Apps Más opens Peritajes with active vehicle', (tester) async {
+    await _createVehicle(harness, plate: 'PER123');
+    await _openSecondaryModuleFromApps(tester, harness, 'peritajes');
+
+    expect(find.byType(PeritajesScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('peritajes-screen')), findsOneWidget);
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
   });
 
@@ -647,7 +677,7 @@ void main() {
         ...defaultModuleFeatureFlags,
         'module_soat_enabled': false,
       }),
-      hasLength(7),
+      hasLength(8),
     );
   });
 
@@ -773,6 +803,7 @@ const _visiblePrimaryIds = [
   'impuestos',
   'documentos',
   'seguro_asistencia',
+  'defensa',
 ];
 
 const _visiblePrimaryTitles = [
@@ -784,26 +815,31 @@ const _visiblePrimaryTitles = [
   'Impuestos',
   'Documentos',
   'Seguro y asistencia',
+  'Defensa',
 ];
 
 const _visibleSecondaryIds = [
   'cda',
   'servicios',
+  'compra_venta',
   'tramites',
+  'peritajes',
   'talleres',
   'peajes_estado_vial',
 ];
 const _visibleSecondaryTitles = [
   'CDA',
   'Servicios',
+  'Compra/Venta',
   'Trámites',
+  'Peritajes',
   'Talleres',
   'Peajes y estado vial',
 ];
 
-const _hiddenPrimaryIds = ['defensa'];
+const _hiddenPrimaryIds = <String>[];
 
-const _hiddenSecondaryIds = ['compra_venta', 'peritajes'];
+const _hiddenSecondaryIds = <String>[];
 
 const _hiddenModuleIds = [..._hiddenPrimaryIds, ..._hiddenSecondaryIds];
 
@@ -876,6 +912,16 @@ Future<void> _openSecondaryModuleFromApps(
   await tester.pumpAndSettle();
   final module = find.byKey(ValueKey('app-secondary-$moduleId'));
   await tester.ensureVisible(module);
+  await tester.pumpAndSettle();
+  final viewportHeight =
+      tester.view.physicalSize.height / tester.view.devicePixelRatio;
+  if (tester.getCenter(module).dy > viewportHeight - 96) {
+    await tester.drag(
+      find.byKey(const ValueKey('apps-launcher-more-list')),
+      const Offset(0, -120),
+    );
+    await tester.pumpAndSettle();
+  }
   await tester.tap(module);
   await tester.pumpAndSettle();
 }
