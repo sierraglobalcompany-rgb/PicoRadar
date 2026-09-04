@@ -23,7 +23,7 @@ void main() {
       await db.close();
     });
 
-    test('creates schema version 4 with vehicle status fields', () async {
+    test('creates schema version 5 with maintenance records', () async {
       expect(db.schemaVersion, AppDatabase.currentSchemaVersion);
 
       await db
@@ -69,15 +69,31 @@ void main() {
               reminderEnabled: const Value(true),
             ),
           );
+      await db
+          .into(db.maintenanceRecords)
+          .insert(
+            MaintenanceRecordsCompanion.insert(
+              id: 'maintenance-1',
+              vehicleId: 'vehicle-1',
+              serviceDate: DateTime(2026, 8, 20),
+              type: 'Cambio de aceite',
+              description: 'Aceite y filtros.',
+              odometer: const Value(45000),
+              costCents: const Value(18000000),
+              nextServiceDate: Value(DateTime(2027, 2, 20)),
+              nextOdometer: const Value(55000),
+            ),
+          );
 
       expect(await db.select(db.vehicles).get(), hasLength(1));
       expect(await db.select(db.notificationPreferences).get(), hasLength(1));
       expect(await db.select(db.datasetVersions).get(), hasLength(1));
       expect(await db.select(db.vehicleObligations).get(), hasLength(1));
+      expect(await db.select(db.maintenanceRecords).get(), hasLength(1));
       expect(await db.select(db.restrictionCoverages).get(), isEmpty);
     });
 
-    test('migrates schema v1 to v2 preserving existing vehicles', () async {
+    test('migrates schema v1 to v5 preserving existing vehicles', () async {
       final tempDir = await Directory.systemTemp.createTemp(
         'picoradar_migration_',
       );
@@ -93,7 +109,7 @@ void main() {
             .get();
         await migrated.close();
 
-        expect(version.single.data['user_version'], 4);
+        expect(version.single.data['user_version'], 5);
         expect(vehicles, hasLength(1));
         expect(vehicles.single.id, 'vehicle-1');
         expect(vehicles.single.plate, 'ABC123');
@@ -111,7 +127,7 @@ void main() {
     });
 
     test(
-      'migrates schema v2 to v3 preserving vehicles and adding coverages',
+      'migrates schema v2 to v5 preserving vehicles and adding coverages',
       () async {
         final tempDir = await Directory.systemTemp.createTemp(
           'picoradar_migration_v2_',
@@ -131,7 +147,7 @@ void main() {
               .get();
           await migrated.close();
 
-          expect(version.single.data['user_version'], 4);
+          expect(version.single.data['user_version'], 5);
           expect(vehicles, hasLength(1));
           expect(vehicles.single.id, 'vehicle-1');
           expect(vehicles.single.plate, 'ABC123');
@@ -143,7 +159,7 @@ void main() {
     );
 
     test(
-      'migrates schema v3 to v4 preserving local data and defaults',
+      'migrates schema v3 to v5 preserving local data and defaults',
       () async {
         final tempDir = await Directory.systemTemp.createTemp(
           'picoradar_migration_v3_',
@@ -166,7 +182,7 @@ void main() {
               .get();
           await migrated.close();
 
-          expect(version.single.data['user_version'], 4);
+          expect(version.single.data['user_version'], 5);
           expect(vehicles, hasLength(1));
           expect(vehicles.single.plate, 'ABC123');
           expect(coverages, hasLength(1));
@@ -177,6 +193,43 @@ void main() {
           expect(obligations.single.startDate, isNull);
           expect(obligations.single.detailsJson, isNull);
           expect(obligations.single.reminderEnabled, isTrue);
+        } finally {
+          await _deleteTempDir(tempDir);
+        }
+      },
+    );
+
+    test(
+      'migrates schema v4 to v5 preserving vehicles and obligations',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'picoradar_migration_v4_',
+        );
+        final dbPath = '${tempDir.path}${Platform.pathSeparator}app.sqlite';
+
+        try {
+          _createLegacyV4Database(dbPath);
+
+          final migrated = AppDatabase(NativeDatabase(File(dbPath)));
+          final vehicles = await migrated.select(migrated.vehicles).get();
+          final obligations = await migrated
+              .select(migrated.vehicleObligations)
+              .get();
+          final maintenanceRecords = await migrated
+              .select(migrated.maintenanceRecords)
+              .get();
+          final version = await migrated
+              .customSelect('PRAGMA user_version')
+              .get();
+          await migrated.close();
+
+          expect(version.single.data['user_version'], 5);
+          expect(vehicles, hasLength(1));
+          expect(vehicles.single.plate, 'ABC123');
+          expect(obligations, hasLength(1));
+          expect(obligations.single.id, 'vehicle-1:soat');
+          expect(obligations.single.reminderEnabled, isTrue);
+          expect(maintenanceRecords, isEmpty);
         } finally {
           await _deleteTempDir(tempDir);
         }
@@ -208,9 +261,47 @@ void main() {
             ),
         throwsException,
       );
+
+      await expectLater(
+        db
+            .into(db.maintenanceRecords)
+            .insert(
+              MaintenanceRecordsCompanion.insert(
+                id: 'orphan-maintenance',
+                vehicleId: 'missing-vehicle',
+                serviceDate: DateTime(2026, 8, 20),
+                type: 'Aceite',
+                description: 'Cambio de aceite.',
+              ),
+            ),
+        throwsException,
+      );
     });
 
-    test('reopens schema 4 without destroying existing local data', () async {
+    test('cascades maintenance records when deleting a vehicle', () async {
+      await db
+          .into(db.vehicles)
+          .insert(VehiclesCompanion.insert(id: 'vehicle-1', plate: 'ABC123'));
+      await db
+          .into(db.maintenanceRecords)
+          .insert(
+            MaintenanceRecordsCompanion.insert(
+              id: 'maintenance-1',
+              vehicleId: 'vehicle-1',
+              serviceDate: DateTime(2026, 8, 20),
+              type: 'Aceite',
+              description: 'Cambio de aceite.',
+            ),
+          );
+
+      await (db.delete(
+        db.vehicles,
+      )..where((row) => row.id.equals('vehicle-1'))).go();
+
+      expect(await db.select(db.maintenanceRecords).get(), isEmpty);
+    });
+
+    test('reopens schema 5 without destroying existing local data', () async {
       final tempDir = await Directory.systemTemp.createTemp('picoradar_db_');
       final dbPath = '${tempDir.path}${Platform.pathSeparator}app.sqlite';
 
@@ -232,6 +323,26 @@ void main() {
       }
     });
   });
+}
+
+void _createLegacyV4Database(String path) {
+  _createLegacyV3Database(path);
+  final sqlite = sqlite3.open(path);
+
+  try {
+    sqlite.execute(
+      'ALTER TABLE vehicle_obligations ADD COLUMN start_date INTEGER NULL',
+    );
+    sqlite.execute(
+      'ALTER TABLE vehicle_obligations ADD COLUMN details_json TEXT NULL',
+    );
+    sqlite.execute(
+      'ALTER TABLE vehicle_obligations ADD COLUMN reminder_enabled INTEGER NOT NULL DEFAULT 1',
+    );
+    sqlite.execute('PRAGMA user_version = 4');
+  } finally {
+    sqlite.close();
+  }
 }
 
 void _createLegacyV2Database(String path) {
