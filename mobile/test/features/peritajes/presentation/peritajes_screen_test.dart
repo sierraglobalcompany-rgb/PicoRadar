@@ -41,9 +41,7 @@ void main() {
     expect(find.byKey(const ValueKey('peritajes-go-garage')), findsOneWidget);
   });
 
-  testWidgets('saves, restores and deletes a local draft per vehicle', (
-    tester,
-  ) async {
+  testWidgets('saves and restores a local draft per vehicle', (tester) async {
     final preferences = _MemoryPreferences();
     await _pumpPeritajes(
       tester,
@@ -81,16 +79,90 @@ void main() {
 
     expect(_tileValue(tester, 'identidad y documentos'), isTrue);
     expect(find.text('Revisar golpe en puerta izquierda.'), findsOneWidget);
+  });
+
+  testWidgets('canceling draft delete leaves storage and form unchanged', (
+    tester,
+  ) async {
+    final preferences = _MemoryPreferences();
+    final store = PeritajesDraftStore(preferences);
+    await store.saveDraft(
+      'vehicle-1',
+      PeritajesDraft(
+        checkedItems: const {'identidad y documentos'},
+        notes: 'Borrador existente.',
+        updatedAt: DateTime(2026),
+      ),
+    );
+
+    await _pumpPeritajes(
+      tester,
+      vehicleId: 'vehicle-1',
+      vehicles: [_vehicle()],
+      preferences: preferences,
+    );
+    await _tapVisible(
+      tester,
+      const ValueKey('peritajes-check-identidad y documentos'),
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('peritajes-notes-field')),
+      'Texto en edición.',
+    );
 
     await _tapVisible(tester, const ValueKey('peritajes-delete-draft'));
-    await tester.pump();
+    expect(find.text('Borrar borrador'), findsOneWidget);
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+
+    expect(
+      preferences.values.containsKey('peritajes.draft.v1.vehicle-1'),
+      isTrue,
+    );
+    expect(_tileValue(tester, 'identidad y documentos'), isTrue);
+    expect(find.text('Texto en edición.'), findsOneWidget);
+  });
+
+  testWidgets('confirming draft delete clears storage and form', (
+    tester,
+  ) async {
+    final preferences = _MemoryPreferences();
+    final store = PeritajesDraftStore(preferences);
+    await store.saveDraft(
+      'vehicle-1',
+      PeritajesDraft(
+        checkedItems: const {'identidad y documentos'},
+        notes: 'Borrador existente.',
+        updatedAt: DateTime(2026),
+      ),
+    );
+
+    await _pumpPeritajes(
+      tester,
+      vehicleId: 'vehicle-1',
+      vehicles: [_vehicle()],
+      preferences: preferences,
+    );
+    await _tapVisible(
+      tester,
+      const ValueKey('peritajes-check-identidad y documentos'),
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('peritajes-notes-field')),
+      'Texto en edición.',
+    );
+
+    await _tapVisible(tester, const ValueKey('peritajes-delete-draft'));
+    expect(find.text('Borrar borrador'), findsOneWidget);
+    await tester.tap(find.text('Eliminar'));
+    await tester.pumpAndSettle();
 
     expect(
       preferences.values.containsKey('peritajes.draft.v1.vehicle-1'),
       isFalse,
     );
     expect(_tileValue(tester, 'identidad y documentos'), isFalse);
-    expect(find.text('Revisar golpe en puerta izquierda.'), findsNothing);
+    expect(find.text('Texto en edición.'), findsNothing);
   });
 
   testWidgets('restore is explicit and scoped to the selected vehicle', (
@@ -136,8 +208,10 @@ void main() {
     expect(find.text('Compresión pendiente.'), findsNothing);
   });
 
-  testWidgets('opens Documentos with the current vehicle', (tester) async {
-    await _pumpPeritajes(
+  testWidgets('opens Documentos with push and back returns to Peritajes', (
+    tester,
+  ) async {
+    final router = await _pumpPeritajes(
       tester,
       vehicleId: 'vehicle-1',
       vehicles: [_vehicle()],
@@ -147,6 +221,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('documents vehicleId=vehicle-1'), findsOneWidget);
+
+    router.pop();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('peritajes-screen')), findsOneWidget);
   });
 
   testWidgets('searches peritaje vehicular in Google Maps', (tester) async {
@@ -171,9 +250,7 @@ void main() {
     });
   });
 
-  testWidgets('launcher failure and dispose during launch are controlled', (
-    tester,
-  ) async {
+  testWidgets('launcher false shows a visible error', (tester) async {
     final launcher = _FakeExternalLauncher(openResult: false);
     await _pumpPeritajes(
       tester,
@@ -186,7 +263,46 @@ void main() {
     await tester.pump();
 
     expect(find.text('No pudimos abrir Google Maps.'), findsOneWidget);
+  });
 
+  testWidgets('launcher exception shows a visible error', (tester) async {
+    await _pumpPeritajes(
+      tester,
+      vehicleId: 'vehicle-1',
+      vehicles: [_vehicle(registrationCity: 'Cali')],
+      launcher: _FakeExternalLauncher(throwOnOpen: true),
+    );
+
+    await _tapVisible(tester, const ValueKey('peritajes-search-maps'));
+    await tester.pump();
+
+    expect(find.text('No pudimos abrir Google Maps.'), findsOneWidget);
+  });
+
+  testWidgets('busy state resets after launcher failure', (tester) async {
+    final pendingOpen = Completer<bool>();
+    await _pumpPeritajes(
+      tester,
+      vehicleId: 'vehicle-1',
+      vehicles: [_vehicle(registrationCity: 'Cali')],
+      launcher: _FakeExternalLauncher(pendingOpen: pendingOpen),
+    );
+
+    await _tapVisible(tester, const ValueKey('peritajes-search-maps'));
+    await tester.pump();
+
+    expect(_actionCardEnabled(tester, 'peritajes-search-maps'), isFalse);
+
+    pendingOpen.complete(false);
+    await tester.pumpAndSettle();
+
+    expect(_actionCardEnabled(tester, 'peritajes-search-maps'), isTrue);
+    expect(find.text('No pudimos abrir Google Maps.'), findsOneWidget);
+  });
+
+  testWidgets('dispose during launch does not update UI or throw', (
+    tester,
+  ) async {
     final pendingOpen = Completer<bool>();
     await _pumpPeritajes(
       tester,
@@ -206,7 +322,7 @@ void main() {
   });
 }
 
-Future<void> _pumpPeritajes(
+Future<GoRouter> _pumpPeritajes(
   WidgetTester tester, {
   required String? vehicleId,
   required List<VehicleProfile> vehicles,
@@ -260,12 +376,21 @@ Future<void> _pumpPeritajes(
     ),
   );
   await tester.pump();
+  return router;
 }
 
 bool? _tileValue(WidgetTester tester, String item) {
   return tester
       .widget<CheckboxListTile>(find.byKey(ValueKey('peritajes-check-$item')))
       .value;
+}
+
+bool _actionCardEnabled(WidgetTester tester, String keyName) {
+  final tile = find.descendant(
+    of: find.byKey(ValueKey(keyName)),
+    matching: find.byType(ListTile),
+  );
+  return tester.widget<ListTile>(tile).enabled;
 }
 
 Future<void> _tapVisible(WidgetTester tester, ValueKey<String> key) async {
@@ -326,10 +451,15 @@ class _MemoryPreferences implements AppPreferences {
 }
 
 class _FakeExternalLauncher implements ExternalLauncher {
-  _FakeExternalLauncher({this.openResult = true, this.pendingOpen});
+  _FakeExternalLauncher({
+    this.openResult = true,
+    this.pendingOpen,
+    this.throwOnOpen = false,
+  });
 
   final bool openResult;
   final Completer<bool>? pendingOpen;
+  final bool throwOnOpen;
   final openedUris = <String>[];
 
   @override
@@ -338,6 +468,9 @@ class _FakeExternalLauncher implements ExternalLauncher {
   @override
   Future<bool> openExternal(String uri) {
     openedUris.add(uri);
+    if (throwOnOpen) {
+      return Future.error(StateError('launcher failed'));
+    }
     final completer = pendingOpen;
     if (completer != null) {
       return completer.future;
