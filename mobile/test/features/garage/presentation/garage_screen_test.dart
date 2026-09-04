@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/features/apps_launcher/presentation/module_placeholder_screen.dart';
 import 'package:picoradar/features/documents/presentation/documents_screen.dart';
@@ -8,6 +12,7 @@ import 'package:picoradar/features/defense/data/defense_case_store.dart';
 import 'package:picoradar/features/garage/application/vehicle_associated_data_cleaner.dart';
 import 'package:picoradar/features/garage/data/garage_favorites.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
+import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/maintenance/presentation/maintenance_screen.dart';
 import 'package:picoradar/features/peritajes/data/peritajes_draft_store.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
@@ -344,6 +349,40 @@ void main() {
   });
 
   testWidgets(
+    'delete dialog cancel shows full local-data copy and performs no mutations',
+    (tester) async {
+      final seeded = await _seedThreeVehicles(harness);
+      final cleaner = _RecordingVehicleDataCleaner();
+
+      await _openGarage(tester, harness, vehicleAssociatedDataCleaner: cleaner);
+      await _focusNewestVehicle(tester);
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('garage-action-delete')),
+      );
+
+      expect(find.text('¿Eliminar este vehículo?'), findsOneWidget);
+      expect(find.text(seeded.newest.plate), findsWidgets);
+      expect(
+        find.text(
+          'Se eliminarán el vehículo y sus datos locales asociados:\n'
+          'mantenimientos, obligaciones, documentos cifrados,\n'
+          'expedientes de Defensa, borrador de Peritajes y nota de Comparendos.\n'
+          'Esta acción no se puede deshacer.',
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+
+      expect(cleaner.deletedVehicleIds, isEmpty);
+      expect(await harness.repository.getVehicle(seeded.newest.id), isNotNull);
+      expect(await harness.repository.getVehicle(seeded.active.id), isNotNull);
+    },
+  );
+
+  testWidgets(
     'delete action removes focused only and active fallback stays deterministic',
     (tester) async {
       final seeded = await _seedThreeVehicles(harness);
@@ -381,6 +420,47 @@ void main() {
         (await harness.repository.getActiveVehicle())?.id,
         seeded.oldest.id,
       );
+    },
+  );
+
+  testWidgets(
+    'delete action ignores a second confirmation while deletion is running',
+    (tester) async {
+      final seeded = await _seedThreeVehicles(harness);
+      final cleaner = _RecordingVehicleDataCleaner()
+        ..gate = Completer<void>();
+      final repository = _RecordingVehicleRepository(harness);
+
+      await _openGarage(
+        tester,
+        harness,
+        vehicleAssociatedDataCleaner: cleaner,
+        vehicleRepository: repository,
+      );
+      await _focusNewestVehicle(tester);
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('garage-action-delete')),
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('garage-confirm-delete-vehicle')),
+      );
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('garage-action-delete')));
+      await tester.pump();
+
+      expect(cleaner.deletedVehicleIds, [seeded.newest.id]);
+      expect(
+        find.byKey(const ValueKey('garage-confirm-delete-vehicle')),
+        findsNothing,
+      );
+
+      cleaner.gate!.complete();
+      await tester.pumpAndSettle();
+
+      expect(repository.deletedVehicleIds, [seeded.newest.id]);
+      expect(await harness.repository.getVehicle(seeded.newest.id), isNull);
+      expect(tester.takeException(), isNull);
     },
   );
 
@@ -437,6 +517,114 @@ void main() {
     expect(await harness.repository.getVehicle(seeded.newest.id), isNotNull);
     expect((await harness.repository.getActiveVehicle())?.id, seeded.active.id);
   });
+
+  testWidgets('delete action is safe if screen disposes during cleanup', (
+    tester,
+  ) async {
+    final seeded = await _seedThreeVehicles(harness);
+    final cleaner = _RecordingVehicleDataCleaner()..gate = Completer<void>();
+    final repository = _RecordingVehicleRepository(harness);
+
+    await _openGarage(
+      tester,
+      harness,
+      vehicleAssociatedDataCleaner: cleaner,
+      vehicleRepository: repository,
+    );
+    await _focusNewestVehicle(tester);
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('garage-action-delete')),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('garage-confirm-delete-vehicle')),
+    );
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+
+    cleaner.gate!.complete();
+    await tester.pumpAndSettle();
+
+    expect(cleaner.deletedVehicleIds, [seeded.newest.id]);
+    expect(repository.deletedVehicleIds, [seeded.newest.id]);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'delete action reports repository failure after private cleanup',
+    (tester) async {
+      final seeded = await _seedThreeVehicles(harness);
+      final cleaner = _RecordingVehicleDataCleaner();
+      final repository = _RecordingVehicleRepository(harness)
+        ..failDelete = true;
+
+      await _openGarage(
+        tester,
+        harness,
+        vehicleAssociatedDataCleaner: cleaner,
+        vehicleRepository: repository,
+      );
+      await _focusNewestVehicle(tester);
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('garage-action-delete')),
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('garage-confirm-delete-vehicle')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(cleaner.deletedVehicleIds, [seeded.newest.id]);
+      expect(repository.deletedVehicleIds, [seeded.newest.id]);
+      expect(
+        find.text(
+          'Los datos privados se limpiaron, pero no pudimos eliminar el vehículo. Inténtalo de nuevo.',
+        ),
+        findsOneWidget,
+      );
+      expect(await harness.repository.getVehicle(seeded.newest.id), isNotNull);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'delete action keeps active vehicle retryable when fallback fails',
+    (tester) async {
+      final seeded = await _seedThreeVehicles(harness);
+      final cleaner = _RecordingVehicleDataCleaner();
+      final repository = _RecordingVehicleRepository(harness)
+        ..failSetActive = true;
+
+      await _openGarage(
+        tester,
+        harness,
+        vehicleAssociatedDataCleaner: cleaner,
+        vehicleRepository: repository,
+      );
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('garage-action-delete')),
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('garage-confirm-delete-vehicle')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(cleaner.deletedVehicleIds, [seeded.active.id]);
+      expect(repository.deletedVehicleIds, isEmpty);
+      expect(await harness.repository.getVehicle(seeded.active.id), isNotNull);
+      expect(
+        (await harness.repository.getActiveVehicle())?.id,
+        seeded.active.id,
+      );
+      expect(
+        find.text('No pudimos completar la eliminación. Inténtalo de nuevo.'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('add vehicle opens existing onboarding', (tester) async {
     await _openGarage(tester, harness);
@@ -711,6 +899,7 @@ Future<void> _openGarage(
   double textScaleFactor = 1,
   bool boundedSettle = false,
   VehicleAssociatedDataCleaner? vehicleAssociatedDataCleaner,
+  VehicleRepository? vehicleRepository,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -721,6 +910,14 @@ Future<void> _openGarage(
   await harness.pump(
     tester,
     vehicleAssociatedDataCleaner: vehicleAssociatedDataCleaner,
+    wrap: vehicleRepository == null
+        ? null
+        : (app) => ProviderScope(
+            overrides: [
+              vehicleRepositoryProvider.overrideWithValue(vehicleRepository),
+            ],
+            child: app,
+          ),
   );
   await tester.tap(find.byKey(const ValueKey('tab-garage')));
   if (boundedSettle) {
@@ -742,6 +939,7 @@ class _RecordingVehicleDataCleaner extends VehicleAssociatedDataCleaner {
       );
 
   final deletedVehicleIds = <String>[];
+  Completer<void>? gate;
   var fail = false;
 
   @override
@@ -750,6 +948,36 @@ class _RecordingVehicleDataCleaner extends VehicleAssociatedDataCleaner {
     if (fail) {
       throw StateError('cleanup failed');
     }
+    final activeGate = gate;
+    if (activeGate != null) {
+      await activeGate.future;
+    }
+  }
+}
+
+class _RecordingVehicleRepository extends VehicleRepository {
+  _RecordingVehicleRepository(TestAppHarness harness)
+    : super(database: harness.database, preferences: harness.preferences);
+
+  final deletedVehicleIds = <String>[];
+  var failDelete = false;
+  var failSetActive = false;
+
+  @override
+  Future<void> deleteVehicle(String id) async {
+    deletedVehicleIds.add(id);
+    if (failDelete) {
+      throw StateError('delete failed');
+    }
+    await super.deleteVehicle(id);
+  }
+
+  @override
+  Future<void> setActiveVehicle(String id) async {
+    if (failSetActive) {
+      throw StateError('active fallback failed');
+    }
+    await super.setActiveVehicle(id);
   }
 }
 
