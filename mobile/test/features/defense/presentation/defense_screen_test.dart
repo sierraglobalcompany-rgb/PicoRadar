@@ -124,13 +124,15 @@ void main() {
     expect(await _store.listForVehicle(vehicle.id), isEmpty);
   });
 
-  testWidgets('copies neutral summary with mandatory prudent copy', (
+  testWidgets('copy warning cancel and confirm guard clipboard handoff', (
     tester,
   ) async {
     var clipboardText = '';
+    var clipboardWrites = 0;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, (call) async {
           if (call.method == 'Clipboard.setData') {
+            clipboardWrites += 1;
             clipboardText = (call.arguments as Map)['text'] as String;
           }
           return null;
@@ -149,8 +151,30 @@ void main() {
     await tester.ensureVisible(copyButton);
     await tester.pump();
     await tester.tap(copyButton);
+    await _pumpDialog(tester);
+
+    expect(find.text('Copiar expediente'), findsOneWidget);
+    expect(
+      find.text(
+        'El resumen saldra del almacenamiento cifrado de PicoRadar y quedara en el portapapeles del sistema.',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('defense-copy-cancel')));
     await _pumpAsyncUi(tester);
 
+    expect(clipboardWrites, 0);
+    expect(find.text('Resumen neutral copiado.'), findsNothing);
+
+    await tester.ensureVisible(copyButton);
+    await tester.pump();
+    await tester.tap(copyButton);
+    await _pumpDialog(tester);
+    await tester.tap(find.byKey(const ValueKey('defense-copy-confirm')));
+    await _pumpAsyncUi(tester);
+
+    expect(clipboardWrites, 1);
     expect(clipboardText, startsWith(defensePrudentDisclaimer));
     expect(clipboardText, contains('Vehiculo: ABC123'));
     expect(clipboardText, contains('Solo organizo mis hechos.'));
@@ -163,6 +187,72 @@ void main() {
       isNot(contains(['gana', 'ras'].join())),
     );
     expect(find.text('Resumen neutral copiado.'), findsOneWidget);
+  });
+
+  testWidgets('clipboard exception is visible without success claim', (
+    tester,
+  ) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') {
+            throw PlatformException(code: 'clipboard-denied');
+          }
+          return null;
+        });
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+    final vehicle = _vehicle();
+    final created = await _store.createCase(_draft(vehicleId: vehicle.id));
+
+    await _pumpScreen(tester, vehicles: [vehicle], active: vehicle);
+    final copyButton = find.byKey(ValueKey('defense-copy-${created.id}'));
+    await tester.ensureVisible(copyButton);
+    await tester.pump();
+    await tester.tap(copyButton);
+    await _pumpDialog(tester);
+    await tester.tap(find.byKey(const ValueKey('defense-copy-confirm')));
+    await _pumpAsyncUi(tester);
+
+    expect(
+      find.text('No pudimos copiar el resumen al portapapeles.'),
+      findsOneWidget,
+    );
+    expect(find.text('Resumen neutral copiado.'), findsNothing);
+  });
+
+  testWidgets('clipboard false is visible without success claim', (
+    tester,
+  ) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') {
+            return false;
+          }
+          return null;
+        });
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+    final vehicle = _vehicle();
+    final created = await _store.createCase(_draft(vehicleId: vehicle.id));
+
+    await _pumpScreen(tester, vehicles: [vehicle], active: vehicle);
+    final copyButton = find.byKey(ValueKey('defense-copy-${created.id}'));
+    await tester.ensureVisible(copyButton);
+    await tester.pump();
+    await tester.tap(copyButton);
+    await _pumpDialog(tester);
+    await tester.tap(find.byKey(const ValueKey('defense-copy-confirm')));
+    await _pumpAsyncUi(tester);
+
+    expect(
+      find.text('No pudimos copiar el resumen al portapapeles.'),
+      findsOneWidget,
+    );
+    expect(find.text('Resumen neutral copiado.'), findsNothing);
   });
 
   testWidgets('opens SIMIT and Corte links through external launcher', (
@@ -181,6 +271,62 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('defense-open-c321')));
 
     expect(_launcher.opened, [defenseSimitUrl, defenseC038Url, defenseC321Url]);
+  });
+
+  testWidgets('launcher false shows visible message', (tester) async {
+    final vehicle = _vehicle();
+    _launcher.openResult = false;
+
+    await _pumpScreen(
+      tester,
+      vehicles: [vehicle],
+      active: vehicle,
+      launcher: _launcher,
+    );
+    await tester.tap(find.byKey(const ValueKey('defense-open-simit')));
+    await _pumpAsyncUi(tester);
+
+    expect(_launcher.opened, [defenseSimitUrl]);
+    expect(find.text('No pudimos abrir SIMIT.'), findsOneWidget);
+  });
+
+  testWidgets('launcher exception shows visible message', (tester) async {
+    final vehicle = _vehicle();
+    _launcher.openError = StateError('launcher failed');
+
+    await _pumpScreen(
+      tester,
+      vehicles: [vehicle],
+      active: vehicle,
+      launcher: _launcher,
+    );
+    await tester.tap(find.byKey(const ValueKey('defense-open-c038')));
+    await _pumpAsyncUi(tester);
+
+    expect(_launcher.opened, [defenseC038Url]);
+    expect(find.text('No pudimos abrir C-038/20.'), findsOneWidget);
+  });
+
+  testWidgets('dispose during launcher is lifecycle safe', (tester) async {
+    final vehicle = _vehicle();
+    final pendingOpen = Completer<void>();
+    _launcher.delay = pendingOpen.future;
+
+    await _pumpScreen(
+      tester,
+      vehicles: [vehicle],
+      active: vehicle,
+      launcher: _launcher,
+    );
+    await tester.tap(find.byKey(const ValueKey('defense-open-c321')));
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox.shrink());
+
+    pendingOpen.complete();
+    await tester.pump();
+
+    expect(_launcher.opened, [defenseC321Url]);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('dispose during delayed save is lifecycle safe', (tester) async {
@@ -354,6 +500,8 @@ DefenseCaseDraft _draft({
 
 class _FakeExternalLauncher implements ExternalLauncher {
   var openResult = true;
+  Object? openError;
+  Future<void>? delay;
   final opened = <String>[];
 
   @override
@@ -362,6 +510,14 @@ class _FakeExternalLauncher implements ExternalLauncher {
   @override
   Future<bool> openExternal(String uri) async {
     opened.add(uri);
+    final pending = delay;
+    if (pending != null) {
+      await pending;
+    }
+    final error = openError;
+    if (error != null) {
+      throw error;
+    }
     return openResult;
   }
 }
