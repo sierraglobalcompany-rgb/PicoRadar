@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:picoradar/features/apps_launcher/presentation/module_placeholder_screen.dart';
 import 'package:picoradar/features/documents/presentation/documents_screen.dart';
 import 'package:picoradar/features/garage/data/garage_favorites.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
+import 'package:picoradar/features/maintenance/presentation/maintenance_screen.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/presentation/pico_detail_screen.dart';
 import 'package:picoradar/features/visual_assets/presentation/visual_asset_widgets.dart';
@@ -234,7 +237,7 @@ void main() {
   );
 
   testWidgets(
-    'root actions use focused vehicle and keep truthful placeholders',
+    'root actions navigate with focused vehicle and avoid dead CTAs',
     (tester) async {
       final seeded = await _seedThreeVehicles(harness);
 
@@ -248,22 +251,46 @@ void main() {
 
       await _tapVisible(
         tester,
-        find.byKey(const ValueKey('garage-action-maintenance')),
-      );
-      expect(
-        find.byKey(const ValueKey('garage-maintenance-soon-sheet')),
-        findsOneWidget,
-      );
-      expect(find.textContaining('próximamente'), findsWidgets);
-      await tester.tap(find.text('Entendido'));
-      await tester.pumpAndSettle();
-
-      await _tapVisible(
-        tester,
         find.byKey(const ValueKey('garage-action-documents')),
         settle: false,
       );
-      expect(find.byType(DocumentsScreen), findsOneWidget);
+      final documents = tester.widget<DocumentsScreen>(
+        find.byType(DocumentsScreen),
+      );
+      expect(documents.vehicleId, focused.id);
+      expect(find.byKey(const ValueKey('documents-go-garage')), findsNothing);
+      expect(find.byType(ModulePlaceholderScreen), findsNothing);
+      expect(
+        (await harness.repository.getActiveVehicle())?.id,
+        seeded.active.id,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('tab-garage')));
+      await tester.pumpAndSettle();
+      await _focusNewestVehicle(tester);
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('garage-action-maintenance')),
+        settle: false,
+      );
+      final maintenance = tester.widget<MaintenanceScreen>(
+        find.byType(MaintenanceScreen),
+      );
+      expect(maintenance.vehicleId, focused.id);
+      expect(find.byKey(const ValueKey('maintenance-empty')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('maintenance-missing-vehicle')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('garage-maintenance-soon-sheet')),
+        findsNothing,
+      );
+      expect(
+        find.textContaining(RegExp('próximamente|proximamente')),
+        findsNothing,
+      );
+      expect(find.byType(ModulePlaceholderScreen), findsNothing);
       expect(
         (await harness.repository.getActiveVehicle())?.id,
         seeded.active.id,
@@ -282,6 +309,34 @@ void main() {
       expect(find.text(focused.plate), findsOneWidget);
     },
   );
+
+  testWidgets('module routes from Garage fail closed for invalid vehicleId', (
+    tester,
+  ) async {
+    final seeded = await _seedThreeVehicles(harness);
+
+    await _openGarage(tester, harness);
+    await _goTo(tester, '/apps/module/documentos?vehicleId=missing');
+
+    expect(find.byType(DocumentsScreen), findsOneWidget);
+    expect(find.byKey(const ValueKey('documents-go-garage')), findsOneWidget);
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+    expect((await harness.repository.getActiveVehicle())?.id, seeded.active.id);
+
+    await _goTo(tester, '/apps/module/talleres?vehicleId=missing');
+
+    expect(find.byType(MaintenanceScreen), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('maintenance-missing-vehicle')),
+      findsOneWidget,
+    );
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+    expect(
+      find.textContaining(RegExp('próximamente|proximamente')),
+      findsNothing,
+    );
+    expect((await harness.repository.getActiveVehicle())?.id, seeded.active.id);
+  });
 
   testWidgets(
     'delete action removes focused only and active fallback stays deterministic',
@@ -612,6 +667,14 @@ Future<void> _openGarage(
   } else {
     await tester.pumpAndSettle();
   }
+}
+
+Future<void> _goTo(WidgetTester tester, String location) async {
+  final context = tester.element(
+    find.byKey(const ValueKey('app-bottom-navigation')),
+  );
+  GoRouter.of(context).go(location);
+  await tester.pumpAndSettle();
 }
 
 Future<void> _focusNewestVehicle(WidgetTester tester) async {
