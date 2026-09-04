@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +9,7 @@ import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
 import 'package:picoradar/features/settings/presentation/settings_screen.dart';
+import 'package:picoradar/features/trip/application/trip_services.dart';
 import 'package:picoradar/features/vehicle_status/data/private_vehicle_document_store.dart';
 import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
@@ -114,7 +117,9 @@ void main() {
     expect(find.text('No subimos GPS al servidor.'), findsOneWidget);
   });
 
-  testWidgets('runs only real local cleanup actions', (tester) async {
+  testWidgets('runs only real local cleanup actions after confirmation', (
+    tester,
+  ) async {
     final activeVehicle = _vehicle(id: 'vehicle-1', plate: 'ABC123');
     preferences.values['trip.draft.v1'] =
         '{"origin":"A","destination":"B",'
@@ -143,6 +148,18 @@ void main() {
       find.byKey(const ValueKey('settings-delete-trip-draft')),
     );
     await tester.pumpAndSettle();
+    expect(find.text('Borrar borrador de Viaje'), findsWidgets);
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+    expect(preferences.values.containsKey('trip.draft.v1'), isTrue);
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('settings-delete-trip-draft')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Eliminar'));
+    await tester.pumpAndSettle();
     expect(preferences.values.containsKey('trip.draft.v1'), isFalse);
 
     await _tapVisible(
@@ -150,11 +167,110 @@ void main() {
       find.byKey(const ValueKey('settings-delete-comparendos-note')),
     );
     await tester.pumpAndSettle();
+    expect(find.text('Borrar nota de Comparendos'), findsWidgets);
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+    expect(
+      preferences.values.containsKey('comparendos.last_checked.vehicle-1'),
+      isTrue,
+    );
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('settings-delete-comparendos-note')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Eliminar'));
+    await tester.pumpAndSettle();
     expect(
       preferences.values.containsKey('comparendos.last_checked.vehicle-1'),
       isFalse,
     );
     expect(find.textContaining('ABC123'), findsNothing);
+  });
+
+  testWidgets('shows no active vehicle message for Comparendos cleanup', (
+    tester,
+  ) async {
+    await _pumpSettings(
+      tester,
+      preferences: preferences,
+      scheduler: scheduler,
+      launcher: launcher,
+      documentStore: documentStore,
+      activeVehicleFuture: Future<VehicleProfile?>.value(),
+      onChangeAvatar: () {},
+    );
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('settings-delete-comparendos-note')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Eliminar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No hay vehículo activo para limpiar.'), findsOneWidget);
+  });
+
+  testWidgets('does not use context after active vehicle wait is disposed', (
+    tester,
+  ) async {
+    final activeVehicle = _vehicle(id: 'vehicle-1', plate: 'ABC123');
+    final completer = Completer<VehicleProfile?>();
+    preferences.values['comparendos.last_checked.vehicle-1'] = '2026-09-03';
+
+    await _pumpSettings(
+      tester,
+      preferences: preferences,
+      scheduler: scheduler,
+      launcher: launcher,
+      documentStore: documentStore,
+      activeVehicleFuture: completer.future,
+      onChangeAvatar: () {},
+    );
+
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('settings-delete-comparendos-note')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Eliminar'));
+    await tester.pump();
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    completer.complete(activeVehicle);
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(
+      preferences.values.containsKey('comparendos.last_checked.vehicle-1'),
+      isFalse,
+    );
+  });
+
+  test('uses exact official source metadata', () {
+    expect(ansvFotodeteccionUrl, endsWith('/ubicaciones-aprobadas.html'));
+    expect(simitSourceUrl, 'https://www.simit.org.co/');
+    expect(
+      sicPersonalDataGuideUrl,
+      'https://sedeelectronica.sic.gov.co/noticias/sic-expide-guia-para-el-correcto-tratamiento-de-las-fotografias-como-datos-personales',
+    );
+
+    final sicSource = settingsSourceLinks.singleWhere(
+      (source) => source.label == 'Guía SIC de datos personales',
+    );
+    expect(sicSource.url, sicPersonalDataGuideUrl);
+    expect(sicSource.description, contains('fotografías'));
+    expect(
+      settingsSourceLinks.where((source) => source.label.contains('SIC')),
+      hasLength(1),
+    );
+
+    final inviasSource = settingsSourceLinks.singleWhere(
+      (source) => source.label == 'INVÍAS',
+    );
+    expect(inviasSource.url, inviasRoadStatusUrl);
   });
 
   testWidgets('opens official source URLs', (tester) async {
@@ -176,9 +292,51 @@ void main() {
     expect(launcher.opened, [
       ansvFotodeteccionUrl,
       simitSourceUrl,
-      inviasRoadStatusSourceUrl,
-      sicConsumerGuideUrl,
+      inviasRoadStatusUrl,
+      sicPersonalDataGuideUrl,
     ]);
+  });
+
+  testWidgets('shows visible message when source launcher returns false', (
+    tester,
+  ) async {
+    launcher.openResult = false;
+
+    await _pumpSettings(
+      tester,
+      preferences: preferences,
+      scheduler: scheduler,
+      launcher: launcher,
+      documentStore: documentStore,
+      onChangeAvatar: () {},
+    );
+
+    await tester.ensureVisible(find.text('SIMIT'));
+    await tester.tap(find.text('SIMIT'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No pudimos abrir SIMIT.'), findsOneWidget);
+  });
+
+  testWidgets('shows visible message when source launcher throws', (
+    tester,
+  ) async {
+    launcher.openException = Exception('launcher failed');
+
+    await _pumpSettings(
+      tester,
+      preferences: preferences,
+      scheduler: scheduler,
+      launcher: launcher,
+      documentStore: documentStore,
+      onChangeAvatar: () {},
+    );
+
+    await tester.ensureVisible(find.text('SIMIT'));
+    await tester.tap(find.text('SIMIT'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No pudimos abrir SIMIT.'), findsOneWidget);
   });
 
   testWidgets('copies non-sensitive diagnostic only', (tester) async {
@@ -223,6 +381,41 @@ void main() {
     expect(clipboardText, isNot(contains('device')));
   });
 
+  testWidgets('shows visible message when diagnostic copy throws', (
+    tester,
+  ) async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') {
+            throw PlatformException(code: 'copy_failed');
+          }
+          return null;
+        });
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
+    await _pumpSettings(
+      tester,
+      preferences: preferences,
+      scheduler: scheduler,
+      launcher: launcher,
+      documentStore: documentStore,
+      cameraDatasetDiagnostic: const CameraDatasetDiagnostic(
+        version: '2026.08.31-ansv',
+        count: 360,
+      ),
+      onChangeAvatar: () {},
+    );
+
+    await tester.ensureVisible(find.text('Copiar diagnóstico'));
+    await tester.tap(find.byKey(const ValueKey('settings-copy-diagnostic')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No pudimos copiar el diagnóstico.'), findsOneWidget);
+  });
+
   testWidgets('phone viewports do not overflow', (tester) async {
     const cases = [
       (Size(360, 800), 1.0),
@@ -260,6 +453,7 @@ Future<void> _pumpSettings(
   required VoidCallback onChangeAvatar,
   VoidCallback? onConfigureNotifications,
   VehicleProfile? activeVehicle,
+  Future<VehicleProfile?>? activeVehicleFuture,
   CameraDatasetDiagnostic cameraDatasetDiagnostic =
       const CameraDatasetDiagnostic(version: 'test-cameras', count: 2),
   Size size = const Size(390, 844),
@@ -278,6 +472,8 @@ Future<void> _pumpSettings(
         picoNotificationSchedulerProvider.overrideWithValue(scheduler),
         externalLauncherProvider.overrideWithValue(launcher),
         privateVehicleDocumentStoreProvider.overrideWithValue(documentStore),
+        if (activeVehicleFuture != null)
+          activeVehicleProvider.overrideWith((ref) => activeVehicleFuture),
         if (activeVehicle != null)
           activeVehicleProvider.overrideWithValue(
             AsyncValue.data(activeVehicle),
@@ -342,12 +538,17 @@ class _FakePicoNotificationScheduler extends PicoNotificationScheduler {
 class _FakeExternalLauncher implements ExternalLauncher {
   final opened = <String>[];
   bool openResult = true;
+  Object? openException;
 
   @override
   Future<bool> callPhone(String phone) async => true;
 
   @override
   Future<bool> openExternal(String uri) async {
+    final exception = openException;
+    if (exception != null) {
+      throw exception;
+    }
     opened.add(uri);
     return openResult;
   }
