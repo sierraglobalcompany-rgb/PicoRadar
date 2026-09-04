@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -111,6 +112,7 @@ class PrivateVehicleDocumentStore {
   final FileCrypto _fileCrypto;
   final DateTime Function() _now;
   final DocumentIdGenerator _idGenerator;
+  Future<void> _mutationTail = Future<void>.value();
 
   Future<PrivateVehicleDocumentMetadata?> get({
     required String vehicleId,
@@ -175,58 +177,63 @@ class PrivateVehicleDocumentStore {
       );
     }
 
-    final root = await _storeRoot();
-    final current = await get(vehicleId: vehicleId, documentType: documentType);
-    if (current != null) {
-      await purgeViewerCache(metadata: current);
-    }
-    final documentId = _idGenerator();
-    final vehiclePathSegment = _safePathSegment(vehicleId);
-    final relativePath =
-        'docs/${documentType.value}/$vehiclePathSegment/$documentId.prcf';
-    final destination = File('${root.path}/$relativePath');
-    final key = await _masterKey();
-    var indexCommitted = false;
-    try {
-      await _fileCrypto.encryptFile(
-        source: source,
-        destination: destination,
-        key: key,
-      );
-
-      final metadata = PrivateVehicleDocumentMetadata(
-        documentId: documentId,
+    return _runMutation(() async {
+      final root = await _storeRoot();
+      final current = await get(
         vehicleId: vehicleId,
         documentType: documentType,
-        originalName: _safeName(
-          originalName.isEmpty ? source.path : originalName,
-        ),
-        mimeType: mimeType.trim().isEmpty
-            ? _mimeForExtension(extension)
-            : mimeType,
-        importedAt: _now().toUtc(),
-        encryptedRelativePath: relativePath,
       );
-      final documents = await _readIndex();
-      final next = [
-        for (final document in documents)
-          if (document.vehicleId != vehicleId ||
-              document.documentType != documentType)
-            document,
-        metadata,
-      ];
-      await _writeIndex(next);
-      indexCommitted = true;
       if (current != null) {
-        await _deleteEncryptedFile(current);
+        await purgeViewerCache(metadata: current);
       }
-      return metadata;
-    } catch (_) {
-      if (!indexCommitted && await destination.exists()) {
-        await destination.delete();
+      final documentId = _idGenerator();
+      final vehiclePathSegment = _safePathSegment(vehicleId);
+      final relativePath =
+          'docs/${documentType.value}/$vehiclePathSegment/$documentId.prcf';
+      final destination = File('${root.path}/$relativePath');
+      final key = await _masterKey();
+      var indexCommitted = false;
+      try {
+        await _fileCrypto.encryptFile(
+          source: source,
+          destination: destination,
+          key: key,
+        );
+
+        final metadata = PrivateVehicleDocumentMetadata(
+          documentId: documentId,
+          vehicleId: vehicleId,
+          documentType: documentType,
+          originalName: _safeName(
+            originalName.isEmpty ? source.path : originalName,
+          ),
+          mimeType: mimeType.trim().isEmpty
+              ? _mimeForExtension(extension)
+              : mimeType,
+          importedAt: _now().toUtc(),
+          encryptedRelativePath: relativePath,
+        );
+        final documents = await _readIndex();
+        final next = [
+          for (final document in documents)
+            if (document.vehicleId != vehicleId ||
+                document.documentType != documentType)
+              document,
+          metadata,
+        ];
+        await _writeIndex(next);
+        indexCommitted = true;
+        if (current != null) {
+          await _tryDeleteEncryptedFile(current);
+        }
+        return metadata;
+      } catch (_) {
+        if (!indexCommitted && await destination.exists()) {
+          await destination.delete();
+        }
+        rethrow;
       }
-      rethrow;
-    }
+    });
   }
 
   Future<PrivateVehicleDocumentMetadata> replaceDocument({
@@ -262,13 +269,15 @@ class PrivateVehicleDocumentStore {
   }
 
   Future<void> delete(PrivateVehicleDocumentMetadata metadata) async {
-    final documents = await _readIndex();
-    await _writeIndex([
-      for (final document in documents)
-        if (document.documentId != metadata.documentId) document,
-    ]);
-    await _deleteEncryptedFile(metadata);
-    await purgeViewerCache(metadata: metadata);
+    await _runMutation(() async {
+      final documents = await _readIndex();
+      await _writeIndex([
+        for (final document in documents)
+          if (document.documentId != metadata.documentId) document,
+      ]);
+      await _deleteEncryptedFile(metadata);
+      await purgeViewerCache(metadata: metadata);
+    });
   }
 
   Future<void> purgeViewerCache({
@@ -370,6 +379,30 @@ class PrivateVehicleDocumentStore {
     if (await file.exists()) {
       await file.delete();
     }
+  }
+
+  Future<void> _tryDeleteEncryptedFile(
+    PrivateVehicleDocumentMetadata metadata,
+  ) async {
+    try {
+      await _deleteEncryptedFile(metadata);
+    } catch (_) {
+      return;
+    }
+  }
+
+  Future<T> _runMutation<T>(Future<T> Function() action) {
+    final previous = _mutationTail;
+    final gate = Completer<void>();
+    _mutationTail = gate.future;
+    return (() async {
+      await previous;
+      try {
+        return await action();
+      } finally {
+        gate.complete();
+      }
+    })();
   }
 
   Future<Directory> _storeRoot() async {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -141,6 +142,30 @@ void main() {
     );
     await _pumpFrames(tester);
 
+    expect(find.text('Eliminar copia local'), findsOneWidget);
+    expect(
+      find.text(
+        '¿Eliminar Licencia de tránsito (licencia-nueva.pdf) de este dispositivo?',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('documents-delete-cancel')));
+    await _pumpFrames(tester);
+    expect(
+      await _store.get(
+        vehicleId: vehicle.id,
+        documentType: PrivateVehicleDocumentType.trafficLicense,
+      ),
+      isNotNull,
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('documents-delete-traffic_license')),
+    );
+    await _pumpFrames(tester);
+    await tester.tap(find.byKey(const ValueKey('documents-delete-confirm')));
+    await _pumpFrames(tester);
+
     expect(
       await _store.get(
         vehicleId: vehicle.id,
@@ -149,6 +174,79 @@ void main() {
       isNull,
     );
   });
+
+  testWidgets('ignores document actions while an operation is busy', (
+    tester,
+  ) async {
+    final picked = File('${root.path}/picked.pdf');
+    picked.writeAsBytesSync([7, 8, 9]);
+    final gateway = _DelayedPickDocumentGateway();
+
+    await _pumpDocuments(tester, gateway: gateway);
+    await tester.tap(
+      find.byKey(const ValueKey('documents-import-traffic_license')),
+    );
+    await tester.pump();
+
+    expect(gateway.pickCalls, 1);
+    final button = tester.widget<FilledButton>(
+      find.byKey(const ValueKey('documents-import-traffic_license')),
+    );
+    expect(button.onPressed, isNull);
+
+    gateway.completePick(
+      PickedVehicleDocument(
+        file: picked,
+        originalName: 'licencia.pdf',
+        mimeType: 'application/pdf',
+      ),
+    );
+    await _pumpFrames(tester);
+
+    expect(gateway.clearTemporaryFileCalls, 1);
+    expect(
+      (await _store.get(
+        vehicleId: vehicle.id,
+        documentType: PrivateVehicleDocumentType.trafficLicense,
+      ))?.originalName,
+      'licencia.pdf',
+    );
+  });
+
+  testWidgets(
+    'late picker result after leaving screen is cleaned and ignored',
+    (tester) async {
+      final picked = File('${root.path}/late.pdf');
+      picked.writeAsBytesSync([7, 8, 9]);
+      final gateway = _DelayedPickDocumentGateway();
+
+      await _pumpDocuments(tester, gateway: gateway);
+      await tester.tap(
+        find.byKey(const ValueKey('documents-import-traffic_license')),
+      );
+      await tester.pump();
+      await tester.pumpWidget(const SizedBox.shrink());
+
+      gateway.completePick(
+        PickedVehicleDocument(
+          file: picked,
+          originalName: 'late.pdf',
+          mimeType: 'application/pdf',
+        ),
+      );
+      await _pumpFrames(tester);
+
+      expect(gateway.clearTemporaryFileCalls, 1);
+      expect(
+        await _store.get(
+          vehicleId: vehicle.id,
+          documentType: PrivateVehicleDocumentType.trafficLicense,
+        ),
+        isNull,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('viewer handoff purges plaintext after failed open', (
     tester,
@@ -466,6 +564,7 @@ class _FakeDocumentGateway implements VehicleDocumentGateway {
   final PickedVehicleDocument? pickedDocument;
   final bool openResult;
   final openedFiles = <File>[];
+  var pickCalls = 0;
   var clearTemporaryFileCalls = 0;
 
   @override
@@ -480,5 +579,38 @@ class _FakeDocumentGateway implements VehicleDocumentGateway {
   }
 
   @override
-  Future<PickedVehicleDocument?> pickDocument() async => pickedDocument;
+  Future<PickedVehicleDocument?> pickDocument() async {
+    pickCalls += 1;
+    return pickedDocument;
+  }
+}
+
+class _DelayedPickDocumentGateway implements VehicleDocumentGateway {
+  final _picked = Completer<PickedVehicleDocument?>();
+  final openedFiles = <File>[];
+  var pickCalls = 0;
+  var clearTemporaryFileCalls = 0;
+
+  @override
+  Future<void> clearTemporaryFiles() async {
+    clearTemporaryFileCalls += 1;
+  }
+
+  @override
+  Future<bool> openDocument(File file) async {
+    openedFiles.add(file);
+    return true;
+  }
+
+  @override
+  Future<PickedVehicleDocument?> pickDocument() {
+    pickCalls += 1;
+    return _picked.future;
+  }
+
+  void completePick(PickedVehicleDocument? pickedDocument) {
+    if (!_picked.isCompleted) {
+      _picked.complete(pickedDocument);
+    }
+  }
 }
