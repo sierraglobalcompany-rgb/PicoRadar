@@ -1109,7 +1109,8 @@ class _GarageActions extends StatelessWidget {
               keyName: 'garage-action-maintenance',
               icon: Icons.build_outlined,
               label: 'Mantenimiento',
-              onTap: () => _showMaintenanceSoon(context),
+              onTap: () =>
+                  context.push(_vehicleModuleLocation('talleres', vehicle.id)),
             ),
             const SizedBox(width: actionGap),
             _QuickAction(
@@ -1119,7 +1120,7 @@ class _GarageActions extends StatelessWidget {
               icon: Icons.folder_copy_outlined,
               label: 'Documentos',
               onTap: () => context.push(
-                '/apps/module/documentos?vehicleId=${vehicle.id}',
+                _vehicleModuleLocation('documentos', vehicle.id),
               ),
             ),
             const SizedBox(width: actionGap),
@@ -1137,38 +1138,13 @@ class _GarageActions extends StatelessWidget {
       },
     );
   }
+}
 
-  void _showMaintenanceSoon(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Column(
-              key: const ValueKey('garage-maintenance-soon-sheet'),
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Mantenimiento', style: AppTextStyles.h1),
-                const SizedBox(height: AppSpacing.s),
-                const Text(
-                  'Mantenimiento estará disponible próximamente para registrar aceite, revisiones y servicios.',
-                ),
-                const SizedBox(height: AppSpacing.l),
-                PrimaryButton(
-                  label: 'Entendido',
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
+String _vehicleModuleLocation(String moduleId, String vehicleId) {
+  return Uri(
+    path: '/apps/module/$moduleId',
+    queryParameters: {'vehicleId': vehicleId},
+  ).toString();
 }
 
 class _QuickAction extends StatelessWidget {
