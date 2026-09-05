@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Enums\GeographicUnitLevel;
-use App\Http\Controllers\Api\TripPreviewController;
 use App\Models\GeographicUnit;
 use App\Services\TollGuruTripPreview;
 use App\Support\GeographicNameNormalizer;
@@ -16,7 +15,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 use Tests\Unit\TollGuruTripPreviewTest;
@@ -34,10 +32,6 @@ class TripPreviewTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // The parent owns production routing; use its real route once it is integrated.
-        if (! collect(Route::getRoutes())->contains(fn ($route): bool => $route->uri() === 'api/v1/trips/preview')) {
-            Route::post('/api/v1/trips/preview', TripPreviewController::class);
-        }
         $this->travelTo(now()->setDate(2026, 9, 5)->setTime(12, 0)->utc());
         $this->fakeProvider([self::ENDPOINT => fn () => Http::response(TollGuruTripPreviewTest::providerFixture())]);
         config([
