@@ -18,6 +18,7 @@ import 'package:picoradar/features/garage/presentation/vehicle_detail_screen.dar
 import 'package:picoradar/features/home/presentation/home_screen.dart';
 import 'package:picoradar/features/location/application/location_controller.dart';
 import 'package:picoradar/features/location/data/location_preferences.dart';
+import 'package:picoradar/features/location/domain/jurisdiction_location_resolver.dart';
 import 'package:picoradar/features/location/platform/device_location_gateway.dart';
 import 'package:picoradar/features/pico_placa/data/pico_jurisdiction_catalog.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
@@ -201,6 +202,146 @@ void main() {
         find.byKey(const ValueKey('home-location-satellite-lock')),
         findsNothing,
       );
+    });
+
+    testWidgets('fresh GPS expires without interaction or another GPS read', (
+      tester,
+    ) async {
+      var visualNow = harness.now.toUtc();
+      final gateway = _FakeDeviceLocationGateway()
+        ..permission = DeviceLocationPermission.granted
+        ..point = const DeviceLocationPoint(
+          latitude: 4.7110,
+          longitude: -74.0721,
+          accuracyMeters: 80,
+        );
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-ant-medellin',
+      );
+      await harness.preferences.setString(
+        locationModePreferenceKey,
+        LocationMode.gpsAuto.value,
+      );
+      await _pumpHome(
+        tester,
+        harness,
+        deviceLocationGateway: gateway,
+        homeGpsClock: () => visualNow,
+      );
+      expect(_satelliteColor(tester), AppColors.green);
+      final permissionCalls = gateway.checkPermissionCalls;
+      final requestCalls = gateway.requestPermissionCalls;
+      final positionCalls = gateway.positionCalls;
+
+      visualNow = visualNow.add(locationRefreshTtl);
+      await tester.pump(locationRefreshTtl);
+
+      expect(_satelliteColor(tester), AppColors.blue.withValues(alpha: 0.72));
+      expect(
+        find.bySemanticsLabel(RegExp('Estado GPS desconocido')),
+        findsOneWidget,
+      );
+      expect(gateway.checkPermissionCalls, permissionCalls);
+      expect(gateway.requestPermissionCalls, requestCalls);
+      expect(gateway.positionCalls, positionCalls);
+    });
+
+    testWidgets('new detected sample replaces the pending visual expiry', (
+      tester,
+    ) async {
+      var visualNow = harness.now.toUtc();
+      final gateway = _FakeDeviceLocationGateway()
+        ..permission = DeviceLocationPermission.granted
+        ..point = const DeviceLocationPoint(
+          latitude: 4.7110,
+          longitude: -74.0721,
+          accuracyMeters: 80,
+        );
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-ant-medellin',
+      );
+      await harness.preferences.setString(
+        locationModePreferenceKey,
+        LocationMode.gpsAuto.value,
+      );
+      await _pumpHome(
+        tester,
+        harness,
+        deviceLocationGateway: gateway,
+        homeGpsClock: () => visualNow,
+        currentInstantClock: () => visualNow,
+      );
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(HomeScreen)),
+      );
+
+      visualNow = visualNow.add(const Duration(minutes: 10));
+      await tester.pump(const Duration(minutes: 10));
+      container.invalidate(currentInstantProvider);
+      await container
+          .read(locationStateProvider.notifier)
+          .refreshGps(requestPermission: false, force: true);
+      await _pumpAsyncHome(tester);
+      expect(_satelliteColor(tester), AppColors.green);
+      final permissionCalls = gateway.checkPermissionCalls;
+      final requestCalls = gateway.requestPermissionCalls;
+      final positionCalls = gateway.positionCalls;
+
+      visualNow = visualNow.add(const Duration(minutes: 10));
+      await tester.pump(const Duration(minutes: 10));
+      expect(_satelliteColor(tester), AppColors.green);
+
+      visualNow = visualNow.add(const Duration(minutes: 10));
+      await tester.pump(const Duration(minutes: 10));
+      expect(_satelliteColor(tester), AppColors.blue.withValues(alpha: 0.72));
+      expect(gateway.checkPermissionCalls, permissionCalls);
+      expect(gateway.requestPermissionCalls, requestCalls);
+      expect(gateway.positionCalls, positionCalls);
+    });
+
+    testWidgets('disposing Home cancels pending visual GPS expiry', (
+      tester,
+    ) async {
+      var visualNow = harness.now.toUtc();
+      final gateway = _FakeDeviceLocationGateway()
+        ..permission = DeviceLocationPermission.granted
+        ..point = const DeviceLocationPoint(
+          latitude: 4.7110,
+          longitude: -74.0721,
+          accuracyMeters: 80,
+        );
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-ant-medellin',
+      );
+      await harness.preferences.setString(
+        locationModePreferenceKey,
+        LocationMode.gpsAuto.value,
+      );
+      await _pumpHome(
+        tester,
+        harness,
+        deviceLocationGateway: gateway,
+        homeGpsClock: () => visualNow,
+      );
+      expect(_satelliteColor(tester), AppColors.green);
+      final permissionCalls = gateway.checkPermissionCalls;
+      final requestCalls = gateway.requestPermissionCalls;
+      final positionCalls = gateway.positionCalls;
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      visualNow = visualNow.add(locationRefreshTtl);
+      await tester.pump(locationRefreshTtl);
+
+      expect(tester.takeException(), isNull);
+      expect(gateway.checkPermissionCalls, permissionCalls);
+      expect(gateway.requestPermissionCalls, requestCalls);
+      expect(gateway.positionCalls, positionCalls);
     });
 
     testWidgets('revoked GPS on resume replaces stale detected state', (
@@ -2393,6 +2534,7 @@ Future<void> _pumpHome(
   Widget Function(Widget child)? wrap,
   DeviceLocationGateway? deviceLocationGateway,
   DateTime Function()? homeGpsClock,
+  DateTime Function()? currentInstantClock,
 }) async {
   await _pump(
     tester,
@@ -2406,6 +2548,7 @@ Future<void> _pumpHome(
     wrap: wrap,
     deviceLocationGateway: deviceLocationGateway,
     homeGpsClock: homeGpsClock,
+    currentInstantClock: currentInstantClock,
   );
 }
 
@@ -2617,6 +2760,7 @@ Future<void> _pump(
   Widget Function(Widget child)? wrap,
   DeviceLocationGateway? deviceLocationGateway,
   DateTime Function()? homeGpsClock,
+  DateTime Function()? currentInstantClock,
 }) async {
   await _installWidgetChannelMock(tester, harness, viewportSize: viewportSize);
   if (textScaleFactor != null) {
@@ -2628,6 +2772,7 @@ Future<void> _pump(
     child: MaterialApp(home: child),
     deviceLocationGateway: deviceLocationGateway,
     homeGpsClock: homeGpsClock,
+    currentInstantClock: currentInstantClock,
   );
   await tester.pumpWidget(wrap == null ? app : wrap(app));
   await _pumpAsyncHome(tester);
@@ -2638,6 +2783,7 @@ Widget _providerScope(
   required Widget child,
   DeviceLocationGateway? deviceLocationGateway,
   DateTime Function()? homeGpsClock,
+  DateTime Function()? currentInstantClock,
 }) {
   return ProviderScope(
     overrides: [
@@ -2660,7 +2806,9 @@ Widget _providerScope(
         _FakePicoNotificationScheduler(),
       ),
       bogotaNowProvider.overrideWithValue(harness.now),
-      currentInstantProvider.overrideWithValue(harness.now.toUtc()),
+      currentInstantProvider.overrideWith(
+        (ref) => (currentInstantClock ?? () => harness.now.toUtc())().toUtc(),
+      ),
       homeGpsClockProvider.overrideWithValue(
         homeGpsClock ?? () => harness.now.toUtc(),
       ),
@@ -3047,6 +3195,14 @@ class _FakePicoNotificationScheduler extends PicoNotificationScheduler {
 
   @override
   Future<void> cancelObligationNotifications() async {}
+}
+
+Color? _satelliteColor(WidgetTester tester) {
+  return tester
+      .widget<Icon>(
+        find.byKey(const ValueKey('home-location-satellite-status')),
+      )
+      .color;
 }
 
 class _FakeDeviceLocationGateway implements DeviceLocationGateway {

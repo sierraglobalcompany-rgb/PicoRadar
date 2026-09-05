@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -576,6 +577,8 @@ class _HomeLocationCardState extends ConsumerState<_HomeLocationCard>
     with WidgetsBindingObserver {
   _HomeGpsAvailability _gpsAvailability = _HomeGpsAvailability.unknown;
   int _gpsProbeGeneration = 0;
+  Timer? _gpsExpiryTimer;
+  DateTime? _scheduledGpsExpiryAt;
 
   @override
   void initState() {
@@ -589,6 +592,7 @@ class _HomeLocationCardState extends ConsumerState<_HomeLocationCard>
   @override
   void dispose() {
     _gpsProbeGeneration += 1;
+    _gpsExpiryTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -662,6 +666,7 @@ class _HomeLocationCardState extends ConsumerState<_HomeLocationCard>
       locationState: state,
       now: ref.watch(homeGpsClockProvider)(),
     );
+    _scheduleGpsVisualExpiry(state);
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     final compactText = textScale >= 1.4;
     final iconSize = compactText ? 22.0 : 24.0;
@@ -755,6 +760,36 @@ class _HomeLocationCardState extends ConsumerState<_HomeLocationCard>
         );
       },
     );
+  }
+
+  void _scheduleGpsVisualExpiry(LocationState? state) {
+    final now = ref.read(homeGpsClockProvider)().toUtc();
+    final lastRefresh = state?.lastGpsRefreshAt;
+    final expiryAt =
+        _gpsAvailability == _HomeGpsAvailability.available &&
+            state?.mode == LocationMode.gpsAuto &&
+            state?.refreshStatus == LocationRefreshStatus.detected &&
+            lastRefresh != null &&
+            !lastRefresh.isAfter(now)
+        ? lastRefresh.add(locationRefreshTtl)
+        : null;
+    if (expiryAt == _scheduledGpsExpiryAt &&
+        (_gpsExpiryTimer?.isActive ?? false)) {
+      return;
+    }
+    _gpsExpiryTimer?.cancel();
+    _gpsExpiryTimer = null;
+    _scheduledGpsExpiryAt = expiryAt;
+    if (expiryAt == null || !expiryAt.isAfter(now)) {
+      return;
+    }
+    _gpsExpiryTimer = Timer(expiryAt.difference(now), () {
+      if (!mounted || _scheduledGpsExpiryAt != expiryAt) {
+        return;
+      }
+      _scheduledGpsExpiryAt = null;
+      setState(() {});
+    });
   }
 }
 
