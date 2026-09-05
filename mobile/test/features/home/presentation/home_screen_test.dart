@@ -132,6 +132,86 @@ void main() {
       expect(locationSize.width, greaterThanOrEqualTo(184));
     });
 
+    for (final viewport in <({Size size, double textScale})>[
+      (size: const Size(360, 800), textScale: 1.5),
+      (size: const Size(360, 800), textScale: 2),
+      (size: const Size(390, 844), textScale: 1.5),
+      (size: const Size(390, 844), textScale: 2),
+      (size: const Size(412, 915), textScale: 1.5),
+      (size: const Size(412, 915), textScale: 2),
+    ]) {
+      testWidgets(
+        'location keeps full Medellín at ${viewport.size.width.toInt()} '
+        'text scale ${viewport.textScale}',
+        (tester) async {
+          await _readyHome(
+            harness,
+            plate: 'ABC124',
+            jurisdictionId: 'co-ant-medellin',
+          );
+
+          await _pumpHome(
+            tester,
+            harness,
+            viewportSize: viewport.size,
+            textScaleFactor: viewport.textScale,
+          );
+
+          final card = find.byKey(const ValueKey('home-location-card'));
+          final city = find.descendant(
+            of: card,
+            matching: find.text('Medellín'),
+          );
+          final cityWidget = tester.widget<Text>(city);
+          final cardRect = tester.getRect(card);
+          final cityRect = tester.getRect(city);
+
+          expect(cityWidget.overflow, isNot(TextOverflow.ellipsis));
+          expect(cityRect.left, greaterThanOrEqualTo(cardRect.left));
+          expect(cityRect.right, lessThanOrEqualTo(cardRect.right));
+          expect(cityRect.top, greaterThanOrEqualTo(cardRect.top));
+          expect(cityRect.bottom, lessThanOrEqualTo(cardRect.bottom));
+          expect(
+            find.byKey(const ValueKey('home-location-satellite-status')),
+            findsOneWidget,
+          );
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+
+    testWidgets('long location label wraps at 360 and text scale 2', (
+      tester,
+    ) async {
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-san-bucaramanga-metro',
+      );
+
+      await _pumpHome(
+        tester,
+        harness,
+        viewportSize: const Size(360, 800),
+        textScaleFactor: 2,
+      );
+
+      final card = find.byKey(const ValueKey('home-location-card'));
+      final city = find.descendant(
+        of: card,
+        matching: find.text('Área metropolitana de Bucaramanga'),
+      );
+      final cityWidget = tester.widget<Text>(city);
+      final cardRect = tester.getRect(card);
+      final cityRect = tester.getRect(city);
+
+      expect(cityWidget.maxLines, greaterThanOrEqualTo(2));
+      expect(cityWidget.overflow, isNot(TextOverflow.ellipsis));
+      expect(cityRect.right, lessThanOrEqualTo(cardRect.right));
+      expect(cityRect.bottom, lessThanOrEqualTo(cardRect.bottom));
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('location sheet switches manual jurisdiction from Home', (
       tester,
     ) async {
@@ -3013,6 +3093,10 @@ HomeVehicleSnapshot _snapshot(String id, RestrictionDayStatus status) {
 const _jurisdictions = [
   RestrictionJurisdiction(id: 'co-dc-bogota', name: 'Bogotá'),
   RestrictionJurisdiction(id: 'co-ant-medellin', name: 'Medellín'),
+  RestrictionJurisdiction(
+    id: 'co-san-bucaramanga-metro',
+    name: 'Área metropolitana de Bucaramanga',
+  ),
 ];
 
 const _medellinWindows = [

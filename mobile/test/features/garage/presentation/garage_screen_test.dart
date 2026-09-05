@@ -866,6 +866,102 @@ void main() {
     expect((await harness.repository.getActiveVehicle())?.id, seeded.active.id);
   });
 
+  testWidgets('quick actions stay three columns at text scale 1', (
+    tester,
+  ) async {
+    await _seedThreeVehicles(harness);
+    await _openGarage(tester, harness);
+
+    final maintenance = find.byKey(const ValueKey('garage-action-maintenance'));
+    final documents = find.byKey(const ValueKey('garage-action-documents'));
+    final delete = find.byKey(const ValueKey('garage-action-delete'));
+
+    expect(tester.getTopLeft(maintenance).dy, tester.getTopLeft(documents).dy);
+    expect(tester.getTopLeft(documents).dy, tester.getTopLeft(delete).dy);
+    expect(
+      tester.getTopLeft(maintenance).dx,
+      lessThan(tester.getTopLeft(documents).dx),
+    );
+    expect(
+      tester.getTopLeft(documents).dx,
+      lessThan(tester.getTopLeft(delete).dx),
+    );
+  });
+
+  for (final viewport in <({Size size, double textScale})>[
+    (size: const Size(360, 800), textScale: 1.5),
+    (size: const Size(360, 800), textScale: 2),
+    (size: const Size(390, 844), textScale: 1.5),
+    (size: const Size(390, 844), textScale: 2),
+    (size: const Size(412, 915), textScale: 1.5),
+    (size: const Size(412, 915), textScale: 2),
+  ]) {
+    testWidgets(
+      'quick action labels remain readable at ${viewport.size.width.toInt()} '
+      'text scale ${viewport.textScale}',
+      (tester) async {
+        await _seedThreeVehicles(harness);
+        await _openGarage(
+          tester,
+          harness,
+          size: viewport.size,
+          textScaleFactor: viewport.textScale,
+        );
+
+        final actions = <({String key, String label})>[
+          (key: 'garage-action-maintenance', label: 'Mantenimiento'),
+          (key: 'garage-action-documents', label: 'Documentos'),
+          (key: 'garage-action-delete', label: 'Eliminar'),
+        ];
+        for (final action in actions) {
+          final actionFinder = find.byKey(ValueKey(action.key));
+          final labelFinder = find.descendant(
+            of: actionFinder,
+            matching: find.text(action.label),
+          );
+          final label = tester.widget<Text>(labelFinder);
+          final actionRect = tester.getRect(actionFinder);
+          final labelRect = tester.getRect(labelFinder);
+
+          expect(label.softWrap, isTrue, reason: action.label);
+          expect(
+            label.overflow,
+            isNot(TextOverflow.fade),
+            reason: action.label,
+          );
+          expect(labelRect.left, greaterThanOrEqualTo(actionRect.left));
+          expect(labelRect.right, lessThanOrEqualTo(actionRect.right));
+          expect(labelRect.top, greaterThanOrEqualTo(actionRect.top));
+          expect(labelRect.bottom, lessThanOrEqualTo(actionRect.bottom));
+        }
+
+        final maintenanceTop = tester
+            .getTopLeft(find.byKey(const ValueKey('garage-action-maintenance')))
+            .dy;
+        final documentsTop = tester
+            .getTopLeft(find.byKey(const ValueKey('garage-action-documents')))
+            .dy;
+        final deleteTop = tester
+            .getTopLeft(find.byKey(const ValueKey('garage-action-delete')))
+            .dy;
+        expect(maintenanceTop, lessThan(documentsTop));
+        expect(documentsTop, lessThan(deleteTop));
+        expect(
+          tester
+              .getTopLeft(find.byKey(const ValueKey('garage-add-vehicle')))
+              .dy,
+          greaterThan(
+            tester
+                .getBottomLeft(
+                  find.byKey(const ValueKey('garage-quick-actions')),
+                )
+                .dy,
+          ),
+        );
+      },
+    );
+  }
+
   testWidgets('Garage V2 viewports and text scales do not overflow', (
     tester,
   ) async {

@@ -1218,7 +1218,11 @@ class _AddVehicleCard extends StatelessWidget {
           key: const ValueKey('garage-add-vehicle'),
           onTap: onTap,
           child: SizedBox(
-            height: textScale <= 1.25 ? _garageAddVehicleHeight : 132,
+            height: textScale <= 1.25
+                ? _garageAddVehicleHeight
+                : textScale >= 1.8
+                ? 160
+                : 132,
             child: CustomPaint(
               painter: _DashedBorderPainter(
                 color: AppColors.blue.withValues(alpha: 0.38),
@@ -1302,13 +1306,51 @@ class _GarageActions extends StatelessWidget {
         final textScale = MediaQuery.textScalerOf(context).scale(1);
         const actionGap = 4.0;
         final itemWidth = (constraints.maxWidth - (actionGap * 2)) / 3;
-        final itemHeight = textScale <= 1.25 ? _garageActionHeight : 124.0;
+        if (textScale > 1.25) {
+          final accessibleActionHeight = textScale >= 1.8 ? 96.0 : 72.0;
+          return Column(
+            key: const ValueKey('garage-quick-actions'),
+            children: [
+              _QuickAction(
+                width: constraints.maxWidth,
+                height: accessibleActionHeight,
+                keyName: 'garage-action-maintenance',
+                icon: Icons.build_outlined,
+                label: 'Mantenimiento',
+                onTap: () => context.push(
+                  _vehicleModuleLocation('talleres', vehicle.id),
+                ),
+              ),
+              const SizedBox(height: actionGap),
+              _QuickAction(
+                width: constraints.maxWidth,
+                height: accessibleActionHeight,
+                keyName: 'garage-action-documents',
+                icon: Icons.folder_copy_outlined,
+                label: 'Documentos',
+                onTap: () => context.push(
+                  _vehicleModuleLocation('documentos', vehicle.id),
+                ),
+              ),
+              const SizedBox(height: actionGap),
+              _QuickAction(
+                width: constraints.maxWidth,
+                height: accessibleActionHeight,
+                keyName: 'garage-action-delete',
+                icon: Icons.delete_outline,
+                label: 'Eliminar',
+                danger: true,
+                onTap: deleteInProgress ? null : () => onDelete(vehicle),
+              ),
+            ],
+          );
+        }
         return Row(
           key: const ValueKey('garage-quick-actions'),
           children: [
             _QuickAction(
               width: itemWidth,
-              height: itemHeight,
+              height: _garageActionHeight,
               keyName: 'garage-action-maintenance',
               icon: Icons.build_outlined,
               label: 'Mantenimiento',
@@ -1318,7 +1360,7 @@ class _GarageActions extends StatelessWidget {
             const SizedBox(width: actionGap),
             _QuickAction(
               width: itemWidth,
-              height: itemHeight,
+              height: _garageActionHeight,
               keyName: 'garage-action-documents',
               icon: Icons.folder_copy_outlined,
               label: 'Documentos',
@@ -1329,7 +1371,7 @@ class _GarageActions extends StatelessWidget {
             const SizedBox(width: actionGap),
             _QuickAction(
               width: itemWidth,
-              height: itemHeight,
+              height: _garageActionHeight,
               keyName: 'garage-action-delete',
               icon: Icons.delete_outline,
               label: 'Eliminar',
@@ -1404,9 +1446,9 @@ class _QuickAction extends StatelessWidget {
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     label,
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.fade,
+                    maxLines: 2,
+                    softWrap: true,
+                    overflow: TextOverflow.visible,
                     textAlign: TextAlign.center,
                     style: AppTextStyles.caption.copyWith(
                       fontSize: 10,

@@ -670,7 +670,6 @@ class _HomeLocationCardState extends ConsumerState<_HomeLocationCard>
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     final compactText = textScale >= 1.4;
     final iconSize = compactText ? 22.0 : 24.0;
-    final height = compactText ? 64.0 : 48.0;
     final screenWidth = MediaQuery.sizeOf(context).width;
 
     return LayoutBuilder(
@@ -678,6 +677,7 @@ class _HomeLocationCardState extends ConsumerState<_HomeLocationCard>
         final cardWidth = _locationCardWidth(
           screenWidth: screenWidth,
           availableWidth: constraints.maxWidth,
+          accessibleText: compactText,
         );
         return Align(
           alignment: Alignment.centerLeft,
@@ -698,9 +698,13 @@ class _HomeLocationCardState extends ConsumerState<_HomeLocationCard>
                   key: const ValueKey('home-location-card'),
                   onTap: _openLocationSettings,
                   child: Container(
-                    height: height,
-                    padding: const EdgeInsets.symmetric(
+                    height: compactText ? null : 48,
+                    constraints: BoxConstraints(
+                      minHeight: compactText ? 64 : 48,
+                    ),
+                    padding: EdgeInsets.symmetric(
                       horizontal: AppSpacing.m,
+                      vertical: compactText ? AppSpacing.s : 0,
                     ),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(AppRadius.card),
@@ -725,8 +729,10 @@ class _HomeLocationCardState extends ConsumerState<_HomeLocationCard>
                             children: [
                               Text(
                                 city ?? 'Sin ciudad',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                                maxLines: compactText ? 3 : 1,
+                                overflow: compactText
+                                    ? TextOverflow.visible
+                                    : TextOverflow.ellipsis,
                                 style: AppTextStyles.bodyStrong.copyWith(
                                   color: AppColors.navy,
                                   fontSize: compactText ? 15 : 15.5,
@@ -871,7 +877,11 @@ class _HomeSatelliteStatus extends StatelessWidget {
 double _locationCardWidth({
   required double screenWidth,
   required double availableWidth,
+  required bool accessibleText,
 }) {
+  if (accessibleText) {
+    return availableWidth;
+  }
   final targetWidth = switch (screenWidth) {
     < 380 => 212.0,
     < 400 => 220.0,
