@@ -706,6 +706,20 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('focus helper selects the newest identity in reordered results', (
+    tester,
+  ) async {
+    final seeded = await _seedThreeVehicles(harness);
+    await _openGarage(
+      tester,
+      harness,
+      vehicleListOverride: [seeded.newest, seeded.oldest, seeded.active],
+    );
+    await _focusNewestVehicle(tester);
+    _expectGarageInfoPanel(tester, seeded.newest);
+    expect((await harness.repository.getActiveVehicle())?.id, seeded.active.id);
+  });
+
   testWidgets(
     'delete action reports repository failure after private cleanup',
     (tester) async {
@@ -1254,6 +1268,7 @@ Future<void> _openGarage(
   bool boundedSettle = false,
   VehicleAssociatedDataCleaner? vehicleAssociatedDataCleaner,
   VehicleRepository? vehicleRepository,
+  List<VehicleProfile>? vehicleListOverride,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -1264,6 +1279,7 @@ Future<void> _openGarage(
   await harness.pump(
     tester,
     vehicleAssociatedDataCleaner: vehicleAssociatedDataCleaner,
+    vehicleListOverride: vehicleListOverride,
     wrap: vehicleRepository == null
         ? null
         : (app) => ProviderScope(
@@ -1381,21 +1397,28 @@ Future<void> _goTo(WidgetTester tester, String location) async {
 }
 
 Future<void> _focusNewestVehicle(WidgetTester tester) async {
+  final target = find.descendant(
+    of: find.byKey(const ValueKey('garage-info-panel')),
+    matching: find.text('XYZ789'),
+  );
   await tester.ensureVisible(
     find.byKey(const ValueKey('garage-vehicle-carousel')),
   );
   await tester.pumpAndSettle();
-  for (var attempt = 0; attempt < 3; attempt += 1) {
-    if (find.text('3 de 3').evaluate().isNotEmpty) {
-      break;
+  // The repository order can change when fixture creation crosses a second.
+  for (final offset in const [Offset(-520, 0), Offset(520, 0)]) {
+    for (var attempt = 0; attempt < 3; attempt += 1) {
+      if (target.evaluate().isNotEmpty) {
+        return;
+      }
+      await tester.drag(
+        find.byKey(const ValueKey('garage-vehicle-carousel')),
+        offset,
+      );
+      await tester.pumpAndSettle();
     }
-    await tester.drag(
-      find.byKey(const ValueKey('garage-vehicle-carousel')),
-      const Offset(-520, 0),
-    );
-    await tester.pumpAndSettle();
   }
-  expect(find.text('3 de 3'), findsOneWidget);
+  expect(target, findsOneWidget);
 }
 
 void _expectGarageInfoPanel(WidgetTester tester, VehicleProfile vehicle) {
