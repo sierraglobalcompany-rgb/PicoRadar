@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/native.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,6 +14,9 @@ import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_store.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_rule.dart';
 import 'package:picoradar/features/trip/data/trip_draft_store.dart';
+import 'package:picoradar/features/trip/application/trip_services.dart';
+import 'package:picoradar/features/trip/data/trip_plan_client.dart';
+import 'package:picoradar/features/trip/domain/trip_plan.dart';
 import 'package:picoradar/features/trip/data/trip_municipality_catalog.dart';
 import 'package:picoradar/features/trip/domain/trip_draft.dart';
 import 'package:picoradar/features/trip/presentation/trip_screen.dart';
@@ -47,6 +51,173 @@ void main() {
     launcher = _FakeExternalLauncher();
   });
 
+  testWidgets('VIAJE-R1 immutable request single flight cancel and stale response', (tester) async {
+    final client = _PendingPlanClient();
+    await TripDraftStore(preferences).saveDraft(TripDraft(
+      origin: 'Bogotá', destination: 'Medellín', date: DateTime(2026, 9, 5), departureMinute: 1410,
+    ));
+    await _pumpScreen(tester, preferences: preferences, activeVehicle: _vehicle(), planClient: client);
+    expect(client.requests, isEmpty);
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    expect(client.requests, hasLength(1));
+    expect(client.requests.single.departureUtc, DateTime.utc(2026, 9, 6, 4, 30));
+    expect(client.requests.single.origin.code, '11001');
+    await tester.enterText(find.byKey(const ValueKey('trip-destination-field')), 'Cali');
+    await tester.pump();
+    expect(client.tokens.single!.isCancelled, isTrue);
+    expect(client.requests.single.destination.municipality, 'Medellín');
+    client.completions.single.complete(_testPlan(client.requests.single));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('trip-plan-result')), findsNothing);
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    expect(client.requests, hasLength(2));
+    _pressButtonByKey(tester, 'trip-cancel-preview');
+    await tester.pump();
+    expect(client.tokens.last!.isCancelled, isTrue);
+    client.completions.last.complete(_testPlan(client.requests.last));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('trip-plan-result')), findsNothing);
+  });
+
+  testWidgets('VIAJE-R1 network error keeps local origin and no arrival verdict', (tester) async {
+    final client = _PendingPlanClient();
+    await TripDraftStore(preferences).saveDraft(TripDraft(
+      origin: 'Bogotá', destination: 'Medellín', date: DateTime(2026, 9, 5), departureMinute: 600,
+    ));
+    await _pumpScreen(tester, preferences: preferences, activeVehicle: _vehicle(), planClient: client);
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    client.completions.single.completeError(const TripPlanFailure('network'));
+    await tester.pumpAndSettle();
+    expect(find.text('No pudimos conectar. Puedes volver a consultar.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('trip-origin-instant')), findsOneWidget);
+    expect(find.text('Destino / llegada: no disponible hasta obtener una ruta.'), findsOneWidget);
+    expect(client.requests, hasLength(1));
+  });
+
+  testWidgets('VIAJE-R1 dispose cancels pending preview', (tester) async {
+    final client = _PendingPlanClient();
+    await TripDraftStore(preferences).saveDraft(TripDraft(
+      origin: 'Bogotá', destination: 'Medellín', date: DateTime(2026, 9, 5), departureMinute: 600,
+    ));
+    await _pumpScreen(tester, preferences: preferences, activeVehicle: _vehicle(), planClient: client);
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(client.tokens.single!.isCancelled, isTrue);
+    client.completions.single.complete(_testPlan(client.requests.single));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('VIAJE-R1 old draft requires explicit time confirmation', (tester) async {
+    await TripDraftStore(preferences).saveDraft(TripDraft(
+      origin: 'Bogotá', destination: 'Medellín', date: DateTime(2026, 9, 5),
+    ));
+    await _pumpScreen(tester, preferences: preferences, activeVehicle: _vehicle());
+    await _tapByKey(tester, 'trip-preview');
+    expect(find.text('Confirma la hora de salida.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('trip-plan-result')), findsNothing);
+  });
+
+  testWidgets('VIAJE-R1 physical confirmation required and resets on vehicle change', (tester) async {
+    final client = _PendingPlanClient();
+    final active = _vehicle();
+    final other = _vehicle(id: 'other', plate: 'ZZZ999');
+    await TripDraftStore(preferences).saveDraft(TripDraft(
+      origin: 'Bogotá', destination: 'Medellín', date: DateTime(2026, 9, 5), departureMinute: 600,
+    ));
+    await _pumpScreen(tester, preferences: preferences, activeVehicle: active, vehicles: [active, other], planClient: client);
+    await _tapByKey(tester, 'trip-preview');
+    expect(client.requests, isEmpty);
+    expect(find.text('Confirma las características del vehículo.'), findsOneWidget);
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    await _tapByKey(tester, 'trip-select-vehicle');
+    await tester.tap(find.text('Particular · ZZZ999'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<CheckboxListTile>(find.byKey(const ValueKey('trip-standard-vehicle'))).value, isFalse);
+    await _tapByKey(tester, 'trip-preview');
+    expect(client.requests, isEmpty);
+  });
+
+  testWidgets('VIAJE-R1 selecting route updates arrival restriction without remote query', (tester) async {
+    final client = _PendingPlanClient();
+    await TripDraftStore(preferences).saveDraft(TripDraft(
+      origin: 'Bogotá', destination: 'Medellín', date: DateTime(2026, 9, 5), departureMinute: 1410,
+    ));
+    await _pumpScreen(tester, preferences: preferences, activeVehicle: _vehicle(), planClient: client);
+    final container = ProviderScope.containerOf(tester.element(find.byType(TripScreen)));
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    final request = client.requests.single;
+    final first = _testPlan(request);
+    client.completions.single.complete(TripPlan(requestId: first.requestId, generatedAtUtc: first.generatedAtUtc,
+      provider: first.provider, attribution: first.attribution, origin: first.origin, destination: first.destination,
+      routes: [first.routes.single, TripRouteOption(id: 'slow', summary: 'Ruta lenta', distanceMeters: 600000,
+        durationSeconds: 43200, timeBasis: 'static', tolls: TripTolls(coverage: TripTollCoverage.unknown, vehicleCategory: 'car'))]));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('trip-destination-instant-test-route')), findsOneWidget);
+    await _tapByKey(tester, 'trip-select-route-slow');
+    expect(find.byKey(const ValueKey('trip-destination-instant-test-route')), findsNothing);
+    expect(find.byKey(const ValueKey('trip-destination-instant-slow')), findsOneWidget);
+    final evaluation = await container.read(tripInstantRestrictionProvider((municipality: request.destination,
+      vehicle: request.vehicle, instantUtc: DateTime.utc(2026, 9, 6, 16, 30))).future);
+    expect(evaluation.evaluatedAtUtc, DateTime.utc(2026, 9, 6, 16, 30));
+    expect(client.requests, hasLength(1));
+    expect(find.byKey(const ValueKey('trip-toll-details-slow')), findsOneWidget);
+  });
+
+  testWidgets('VIAJE-R1 mismatched request ID cannot become current plan', (tester) async {
+    final client = _PendingPlanClient();
+    await TripDraftStore(preferences).saveDraft(TripDraft(origin: 'Bogotá', destination: 'Medellín',
+      date: DateTime(2026, 9, 5), departureMinute: 600));
+    await _pumpScreen(tester, preferences: preferences, activeVehicle: _vehicle(), planClient: client);
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    final request = client.requests.single;
+    client.completions.single.complete(_testPlan(TripPlanRequest(requestId: 'different',
+      origin: request.origin, destination: request.destination, vehicle: request.vehicle, departureUtc: request.departureUtc)));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('trip-plan-result')), findsNothing);
+    expect(find.textContaining('no devolvió un plan verificable'), findsOneWidget);
+  });
+
+  testWidgets('VIAJE-R1 validates exact municipalities and same city inline', (tester) async {
+    await _pumpScreen(tester, preferences: preferences, activeVehicle: _vehicle());
+    await tester.enterText(find.byKey(const ValueKey('trip-origin-field')), 'Barbosa');
+    await tester.enterText(find.byKey(const ValueKey('trip-destination-field')), 'xyz');
+    await _tapByKey(tester, 'trip-preview');
+    expect(find.text('Elige municipio y departamento de las sugerencias.'), findsNWidgets(2));
+    await tester.enterText(find.byKey(const ValueKey('trip-origin-field')), 'Bogotá');
+    await tester.enterText(find.byKey(const ValueKey('trip-destination-field')), 'bogota');
+    await _tapByKey(tester, 'trip-preview');
+    expect(find.text('Elige otro municipio: no se ha definido un trayecto urbano.'), findsOneWidget);
+  });
+
+  for (final size in [const Size(360, 800), const Size(390, 844), const Size(412, 915)]) {
+    for (final scale in [1.0, 1.5, 2.0]) {
+      testWidgets('VIAJE-R1 CTA with keyboard $size scale $scale', (tester) async {
+        await _pumpScreen(tester, preferences: preferences, size: size, textScale: scale);
+        await tester.showKeyboard(find.byKey(const ValueKey('trip-destination-field')));
+        tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+        addTearDown(tester.view.resetViewInsets);
+        await tester.pump();
+        expect(MediaQuery.viewInsetsOf(tester.element(find.byType(TripScreen))).bottom, 300);
+        await _tapByKey(tester, 'trip-preview');
+        expect(find.text('Ingresa el origen.'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   testWidgets('shows basic trip planner copy and checklist', (tester) async {
     await _pumpScreen(tester, preferences: preferences);
 
@@ -55,7 +226,7 @@ void main() {
     expect(find.text('Viaje'), findsNothing);
     expect(
       find.text('PicoRadar no calcula rutas, ETA ni peajes en esta versión.'),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.text(
@@ -63,7 +234,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('Opcional para este borrador.'), findsOneWidget);
+    expect(find.text('Selecciona un vehículo para consultar el plan.'), findsOneWidget);
     expect(find.text('Revisé Pico y placa'), findsOneWidget);
     expect(find.text('Revisé SOAT'), findsOneWidget);
     expect(find.text('Revisé tecnomecánica'), findsOneWidget);
@@ -798,6 +969,7 @@ Future<void> _pumpScreen(
   List<VehicleProfile>? vehicles,
   List<VehicleProfile> Function()? vehicleListBuilder,
   RestrictionStore? restrictionStore,
+  TripPlanClient? planClient,
   Size size = const Size(390, 844),
   double textScale = 1,
   bool settle = true,
@@ -815,6 +987,7 @@ Future<void> _pumpScreen(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        if (planClient != null) tripPlanClientProvider.overrideWithValue(planClient),
         appPreferencesProvider.overrideWithValue(preferences),
         activeVehicleProvider.overrideWith((ref) async => activeVehicle),
         vehicleListProvider.overrideWith(
@@ -836,10 +1009,11 @@ Future<void> _pumpScreen(
         ),
       ],
       child: MaterialApp(
-        home: MediaQuery(
-          data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
-          child: const TripScreen(),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
         ),
+        home: const TripScreen(),
       ),
     ),
   );
@@ -882,6 +1056,31 @@ VehicleProfile _vehicle({
     updatedAt: DateTime(2026),
   );
 }
+
+class _PendingPlanClient implements TripPlanClient {
+  final requests = <TripPlanRequest>[];
+  final tokens = <CancelToken?>[];
+  final completions = <Completer<TripPlan>>[];
+
+  @override
+  Future<TripPlan> preview(TripPlanRequest request, {CancelToken? cancelToken}) {
+    requests.add(request);
+    tokens.add(cancelToken);
+    final pending = Completer<TripPlan>();
+    completions.add(pending);
+    return pending.future;
+  }
+}
+
+TripPlan _testPlan(TripPlanRequest request) => TripPlan(
+  requestId: request.requestId, generatedAtUtc: DateTime.utc(2026, 9, 5, 12),
+  provider: 'Test only', attribution: 'Test only',
+  origin: const TripResolvedPoint(label: 'Referencia origen', latitude: 4.7, longitude: -74.1),
+  destination: const TripResolvedPoint(label: 'Referencia destino', latitude: 6.2, longitude: -75.5),
+  routes: [TripRouteOption(id: 'test-route', summary: 'Ruta de prueba', distanceMeters: 420000,
+    durationSeconds: 36000, timeBasis: 'static',
+    tolls: TripTolls(coverage: TripTollCoverage.unknown, vehicleCategory: 'car'))],
+);
 
 class _FakeExternalLauncher implements ExternalLauncher {
   final opened = <String>[];
