@@ -249,11 +249,18 @@ final class TollGuruTripPreview
         if (! $this->label($address, 512) || ! $this->colombiaPoint($lat, $lng)) {
             throw new DomainException('invalid_upstream');
         }
-        // Exact address components avoid accepting a homonym or substring municipality.
+        // Canonical names may contain commas (BOGOTA, D.C.). Match the complete
+        // ordered component sequence; municipality/department must not share a match.
         $parts = array_map(GeographicNameNormalizer::normalize(...), explode(',', $address));
-        if (! in_array(GeographicNameNormalizer::normalize($requested['municipality']), $parts, true)
-            || ! in_array(GeographicNameNormalizer::normalize($requested['department']), $parts, true)
-            || ! in_array('colombia', $parts, true)) {
+        $expected = array_map(GeographicNameNormalizer::normalize(...), explode(',', $requested['municipality'].','.$requested['department'].',Colombia'));
+        $matches = false;
+        for ($start = 0; $start <= count($parts) - count($expected); $start++) {
+            if (array_slice($parts, $start, count($expected)) === $expected) {
+                $matches = true;
+                break;
+            }
+        }
+        if (! $matches) {
             throw new DomainException('invalid_upstream');
         }
 
