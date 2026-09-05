@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:cryptography/cryptography.dart';
@@ -23,12 +24,19 @@ import 'package:picoradar/features/location/application/location_controller.dart
 import 'package:picoradar/features/location/platform/device_location_gateway.dart';
 import 'package:picoradar/features/peritajes/data/peritajes_draft_store.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
+import 'package:picoradar/features/trip/data/trip_municipality_catalog.dart';
 import 'package:picoradar/features/vehicle_status/data/private_vehicle_document_store.dart';
 import 'package:picoradar/features/vehicle_status/platform/obligation_notifications.dart';
 import 'package:picoradar/features/vehicle_status/platform/vehicle_document_gateway.dart';
 import 'package:picoradar/features/vehicle_status/presentation/vehicle_status_screen.dart';
 
 class TestAppHarness {
+  // Load the real asset outside rootBundle's isolate work in fake-async tests.
+  static final tripCatalog = TripMunicipalityCatalog.fromJson(
+    jsonDecode(File(tripMunicipalityCatalogAssetPath).readAsStringSync())
+        as Map<String, Object?>,
+  );
+
   TestAppHarness()
     : database = _createDatabase(),
       preferences = MemoryPreferences(),
@@ -107,6 +115,9 @@ class TestAppHarness {
       overrides: [
         appDatabaseProvider.overrideWithValue(database),
         appPreferencesProvider.overrideWithValue(preferences),
+        tripMunicipalityCatalogProvider.overrideWithValue(
+          AsyncValue.data(tripCatalog),
+        ),
         picoNotificationSchedulerProvider.overrideWithValue(
           _FakePicoNotificationScheduler(),
         ),

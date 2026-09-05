@@ -1154,24 +1154,6 @@ Future<void> _focusNewestVehicle(WidgetTester tester) async {
   expect(find.text('3 de 3'), findsOneWidget);
 }
 
-Future<void> _focusOldestVehicle(WidgetTester tester) async {
-  await tester.ensureVisible(
-    find.byKey(const ValueKey('garage-vehicle-carousel')),
-  );
-  await tester.pumpAndSettle();
-  for (var attempt = 0; attempt < 3; attempt += 1) {
-    if (find.text('1 de 3').evaluate().isNotEmpty) {
-      break;
-    }
-    await tester.drag(
-      find.byKey(const ValueKey('garage-vehicle-carousel')),
-      const Offset(520, 0),
-    );
-    await tester.pumpAndSettle();
-  }
-  expect(find.text('1 de 3'), findsOneWidget);
-}
-
 void _expectGarageInfoPanel(WidgetTester tester, VehicleProfile vehicle) {
   final panel = find.byKey(const ValueKey('garage-info-panel'));
   expect(

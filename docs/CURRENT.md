@@ -1,5 +1,12 @@
 # PicoRadar Current State
 
+## V01A owner feedback (pending review, not merged)
+
+Base: `70d663e969f69624e2dfde228a9ac85633373982`. Branch: `integration/V01A-owner-feedback`.
+Bounded Home/Garage/onboarding, Pico/Driving and local Trip adjustments follow the original 43 owner decisions. The separate Trip geography asset derives from the official B02 DANE fixture; it does not replace the RUNT registration catalog or claim complete national coverage.
+The five redesign families in `docs/design/V01A_OWNER_FEEDBACK.md` are proposals, not approved designs. Remaining visual polish belongs to V01B. F01 toll pricing and F02 manual camera updates are researched contracts, not implemented integrations; P07 real PDF picker import remains unverified. The Driving legal notice is informational text pending legal review before publication.
+No backend, schema, dependency, permission, deployment or automatic merge is part of V01A. Physical QA and CI results are recorded in the V01A handoff rather than inferred from this scope note.
+
 Fecha de recuperacion R00: 2026-08-27. Base auditada: `main` en `0905d394b0379665e4a9dd343045072582d976a0`.
 
 ## Invariantes vigentes

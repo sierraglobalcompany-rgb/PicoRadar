@@ -27,6 +27,7 @@ import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.
 import 'package:picoradar/features/pico_placa/domain/restriction_rule.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
 import 'package:picoradar/features/pico_placa/presentation/pico_detail_screen.dart';
+import 'package:picoradar/features/trip/data/trip_municipality_catalog.dart';
 import 'package:picoradar/features/vehicle_status/data/vehicle_obligation_store.dart';
 import 'package:picoradar/features/vehicle_status/domain/vehicle_obligation.dart';
 import 'package:picoradar/features/vehicle_status/platform/obligation_notifications.dart';
@@ -1957,11 +1958,8 @@ void main() {
       );
       await _pumpAsyncHome(tester);
 
-      final weekList = tester.widget<ListView>(
-        find.descendant(
-          of: find.byKey(const ValueKey('pico-city-week-list')),
-          matching: find.byType(ListView),
-        ),
+      final weekList = tester.widget<SingleChildScrollView>(
+        find.byKey(const ValueKey('pico-city-week-list')),
       );
       expect(weekList.scrollDirection, Axis.horizontal);
       expect(
@@ -2014,18 +2012,37 @@ void main() {
 
       await _pumpDetail(tester, harness);
 
+      expect(find.text('Rotación vigente'), findsOneWidget);
+      expect(find.text('5 · 8'), findsWidgets);
+
+      await tester.scrollUntilVisible(
+        find.text('Cómo aplica'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('Cómo aplica'), findsOneWidget);
       expect(find.text('ÚLTIMO DÍGITO'), findsOneWidget);
       expect(find.text('Horario no publicado'), findsNothing);
       expect(find.text('05:00-20:00'), findsWidgets);
-      expect(find.text('Rotación vigente'), findsOneWidget);
-      expect(find.text('5 · 8'), findsWidgets);
+
+      await tester.scrollUntilVisible(
+        find
+            .byKey(const ValueKey('pico-city-category-motorcycles'))
+            .hitTestable(),
+        -200,
+        scrollable: find.byType(Scrollable).first,
+      );
 
       await tester.tap(
         find.byKey(const ValueKey('pico-city-category-motorcycles')),
       );
       await _pumpAsyncHome(tester);
 
+      await tester.scrollUntilVisible(
+        find.text('Cómo aplica'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('PRIMER NÚMERO'), findsOneWidget);
       expect(find.text('5 · 8'), findsWidgets);
     });
@@ -2045,6 +2062,11 @@ void main() {
       await _pumpAsyncHome(tester);
 
       expect(find.text('Taxis'), findsWidgets);
+      await tester.scrollUntilVisible(
+        find.text('Cómo aplica'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(
         find.text('Cobertura aún no disponible para esta ciudad.'),
         findsOneWidget,
@@ -2789,6 +2811,9 @@ Widget _providerScope(
     overrides: [
       appDatabaseProvider.overrideWithValue(harness.database),
       appPreferencesProvider.overrideWithValue(harness.preferences),
+      tripMunicipalityCatalogProvider.overrideWithValue(
+        AsyncValue.data(TestAppHarness.tripCatalog),
+      ),
       bundledRestrictionsProvider.overrideWith((ref) async {}),
       restrictionJurisdictionsProvider.overrideWith(
         (ref) async => _jurisdictions,

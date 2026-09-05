@@ -144,12 +144,12 @@ void main() {
       final expectedHosts = <String, Set<String>>{
         'ANSV Fotodetección': {'fotodeteccion.ansv.gov.co'},
         'SIMIT': {'www.simit.org.co'},
-        'INVÍAS': {'www.invias.gov.co'},
+        'INVÍAS': {'hermes2.invias.gov.co'},
         'Guía SIC de datos personales': {'sedeelectronica.sic.gov.co'},
         'Defensa SIMIT': {'www.simit.org.co'},
         'C-038/20': {'www.corteconstitucional.gov.co'},
         'C-321/22': {'www.corteconstitucional.gov.co'},
-        'Viaje INVÍAS': {'www.invias.gov.co'},
+        'Viaje INVÍAS': {'hermes2.invias.gov.co'},
         'Google Maps route': {'www.google.com'},
         'Waze route': {'waze.com'},
       };
