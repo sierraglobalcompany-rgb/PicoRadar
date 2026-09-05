@@ -267,7 +267,8 @@ TripTolls _tolls(Object? value, String category) {
     final absent = charges.where((c) => c.amountMinor == null).length;
     final positive = charges.where((c) => (c.amountMinor ?? 0) > 0).length;
     if (stations != null && stations < charges.length ||
-        payable != null && (stations == null || payable > stations)) {
+        payable != null &&
+            (stations == null || payable > stations || payable < positive)) {
       throw const FormatException();
     }
     switch (coverage) {

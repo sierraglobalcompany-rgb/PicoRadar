@@ -64,6 +64,23 @@ void main() {
   });
 
   test(
+    'partial positive subtotal cannot claim zero payable occurrences',
+    () async {
+      final tolls = adapter.body['routes'][0]['tolls'];
+      tolls['coverage'] = 'partial';
+      tolls['totalMinor'] = null;
+      tolls['subtotalMinor'] = 1200000;
+      tolls['missingRates'] = 1;
+      tolls['charges'].add({'name': 'Unknown station', 'amountMinor': null});
+      tolls['stationCount'] = 2;
+      tolls['payableCount'] = 0;
+      final route = (await client.preview(_request())).routes.single;
+      expect(route.distanceMeters, 400000);
+      expect(route.tolls.coverage, TripTollCoverage.unknown);
+    },
+  );
+
+  test(
     'overall deadline closes a slow continuous body without retry',
     () async {
       final stream = StreamController<Uint8List>();
