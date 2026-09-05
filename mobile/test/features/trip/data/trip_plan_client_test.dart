@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -21,6 +22,77 @@ void main() {
     );
   });
   tearDown(() => dio.close(force: true));
+
+  test(
+    'contradictory payable counts preserve route but invalidate tolls',
+    () async {
+      for (final count in [0, 2]) {
+        adapter.body = _plan();
+        adapter.body['routes'][0]['tolls']['stationCount'] = 2;
+        adapter.body['routes'][0]['tolls']['payableCount'] = count;
+        expect(
+          (await client.preview(_request())).routes.single.tolls.coverage,
+          TripTollCoverage.unknown,
+        );
+      }
+      adapter.body = _plan();
+      final tolls = adapter.body['routes'][0]['tolls'];
+      tolls['coverage'] = 'no_charge_confirmed';
+      tolls['totalMinor'] = 0;
+      tolls['charges'] = [];
+      tolls['stationCount'] = 1;
+      tolls['payableCount'] = 1;
+      expect(
+        (await client.preview(_request())).routes.single.tolls.coverage,
+        TripTollCoverage.unknown,
+      );
+    },
+  );
+
+  test('unconfirmed vehicle never reaches adapter', () async {
+    await expectLater(
+      client.preview(_request(confirmed: false)),
+      throwsA(
+        isA<TripPlanFailure>().having(
+          (e) => e.code,
+          'code',
+          'unsupported_vehicle',
+        ),
+      ),
+    );
+    expect(adapter.calls, 0);
+  });
+
+  test(
+    'overall deadline closes a slow continuous body without retry',
+    () async {
+      final stream = StreamController<Uint8List>();
+      adapter.stream = stream.stream;
+      final ticks = Timer.periodic(
+        const Duration(milliseconds: 20),
+        (_) => stream.add(Uint8List.fromList([32])),
+      );
+      final bounded = TripPlanClient(
+        dio: dio,
+        baseUri: Uri.parse('https://api.example.test'),
+        operationTimeout: const Duration(milliseconds: 100),
+      );
+      try {
+        await expectLater(
+          bounded.preview(_request()),
+          throwsA(
+            isA<TripPlanFailure>().having((e) => e.code, 'code', 'timeout'),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(adapter.closed, isTrue);
+        expect(adapter.calls, 1);
+      } finally {
+        ticks.cancel();
+        unawaited(stream.close());
+      }
+    },
+  );
 
   test(
     'only explicit safe fields leave phone; UTC and route identity retained',
@@ -151,7 +223,7 @@ void main() {
   });
 }
 
-TripPlanRequest _request() => TripPlanRequest(
+TripPlanRequest _request({bool confirmed = true}) => TripPlanRequest(
   requestId: 'request-1',
   origin: const TripMunicipality(
     code: '05001',
@@ -172,7 +244,7 @@ TripPlanRequest _request() => TripPlanRequest(
     updatedAt: DateTime.utc(2026),
   ),
   departureUtc: DateTime.utc(2026, 9, 7, 4),
-  standardVehicleConfirmed: true,
+  standardVehicleConfirmed: confirmed,
 );
 Map<String, dynamic> _plan() => {
   'requestId': 'request-1',
@@ -218,6 +290,8 @@ Map<String, dynamic> _plan() => {
 };
 
 class _Adapter implements HttpClientAdapter {
+  Stream<Uint8List>? stream;
+  bool closed = false;
   Map<String, dynamic> body = _plan();
   int status = 200;
   int calls = 0;
@@ -230,6 +304,9 @@ class _Adapter implements HttpClientAdapter {
   ) async {
     calls++;
     last = options;
+    if (stream != null) {
+      return ResponseBody(stream!, status, onClose: () => closed = true);
+    }
     return ResponseBody.fromString(
       jsonEncode(body),
       status,

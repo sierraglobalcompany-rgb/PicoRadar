@@ -123,9 +123,13 @@ class TripContent extends StatelessWidget {
                     key: const ValueKey('trip-standard-vehicle'),
                     contentPadding: EdgeInsets.zero,
                     controlAffinity: ListTileControlAffinity.leading,
-                    title: const Text('Vehículo de 2 ejes, sin remolque ni modificaciones'),
+                    title: const Text(
+                      'Vehículo de 2 ejes, sin remolque ni modificaciones',
+                    ),
                     value: standardVehicleConfirmed,
-                    onChanged: selectedVehicle == null ? null : (value) => onStandardVehicleChanged(value ?? false),
+                    onChanged: selectedVehicle == null
+                        ? null
+                        : (value) => onStandardVehicleChanged(value ?? false),
                   ),
                   if (vehicleError != null) _FieldError(vehicleError!),
                   const SizedBox(height: AppSpacing.l),
@@ -151,7 +155,11 @@ class TripContent extends StatelessWidget {
                     key: const ValueKey('trip-preview'),
                     onPressed: isPlanning ? null : onPreview,
                     icon: const Icon(Icons.route_outlined),
-                    label: Text(isPlanning ? 'Consultando plan de viaje' : 'Ver plan de viaje'),
+                    label: Text(
+                      isPlanning
+                          ? 'Consultando plan de viaje'
+                          : 'Ver plan de viaje',
+                    ),
                   ),
                   if (isPlanning) ...[
                     const SizedBox(height: AppSpacing.s),
@@ -164,7 +172,9 @@ class TripContent extends StatelessWidget {
                     ),
                   ],
                   const SizedBox(height: AppSpacing.s),
-                  const Text('Al consultar se envían municipios, salida y categoría al servicio de rutas. La placa permanece en este dispositivo.'),
+                  const Text(
+                    'Al consultar se envían municipios, salida y categoría al servicio de rutas. La placa permanece en este dispositivo.',
+                  ),
                   if (planError != null) ...[
                     const SizedBox(height: AppSpacing.m),
                     Semantics(liveRegion: true, child: _FieldError(planError!)),
@@ -178,7 +188,9 @@ class TripContent extends StatelessWidget {
                   const SizedBox(height: AppSpacing.m),
                   instantRestrictions,
                   const SizedBox(height: AppSpacing.l),
-                  const Text('Vista previa por fecha, sin evaluar la hora de llegada.'),
+                  const Text(
+                    'Vista previa por fecha, sin evaluar la hora de llegada.',
+                  ),
                   _RestrictionSummary(
                     date: selectedDate,
                     origin: originRestriction,
@@ -435,17 +447,25 @@ class _TripFields extends StatelessWidget {
               final minute = departureMinute;
               final selected = await showTimePicker(
                 context: context,
-                initialTime: minute == null ? const TimeOfDay(hour: 8, minute: 0)
-                  : TimeOfDay(hour: minute ~/ 60, minute: minute % 60),
+                initialTime: minute == null
+                    ? const TimeOfDay(hour: 8, minute: 0)
+                    : TimeOfDay(hour: minute ~/ 60, minute: minute % 60),
                 builder: (context, child) => MediaQuery(
-                  data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true), child: child!,
+                  data: MediaQuery.of(context)
+                      .copyWith(alwaysUse24HourFormat: true),
+                  child: child!,
                 ),
               );
-              if (context.mounted && selected != null) onTimeChanged(selected.hour * 60 + selected.minute);
+              if (context.mounted && selected != null) {
+                onTimeChanged(selected.hour * 60 + selected.minute);
+              }
             },
             icon: const Icon(Icons.schedule),
-            label: Text(departureMinute == null ? 'Hora de salida · Confirmar'
-              : 'Hora de salida · ${_minuteLabel(departureMinute!)}'),
+            label: Text(
+              departureMinute == null
+                  ? 'Hora de salida · Confirmar'
+                  : 'Hora de salida · ${_minuteLabel(departureMinute!)}',
+            ),
           ),
           const Text('Hora de Colombia (America/Bogota)'),
           if (timeError != null) _FieldError(timeError!),
@@ -616,9 +636,13 @@ class _ExternalNotice extends StatelessWidget {
               style: AppTextStyles.body,
             ),
             const SizedBox(height: AppSpacing.s),
-            const Text('Google Maps y Waze pueden recalcular el recorrido y cambiar los tiempos y peajes. La alternativa seleccionada no se conserva en el enlace.'),
+            const Text(
+              'Google Maps y Waze pueden recalcular el recorrido y cambiar los tiempos y peajes. La alternativa seleccionada no se conserva en el enlace.',
+            ),
             const SizedBox(height: AppSpacing.s),
-            const Text('INVÍAS es una fuente vial separada; sus cierres no están confirmados en este plan.'),
+            const Text(
+              'INVÍAS es una fuente vial separada; sus cierres no están confirmados en este plan.',
+            ),
             if (draftRestored) ...[
               const SizedBox(height: AppSpacing.s),
               Text(
@@ -665,10 +689,14 @@ class _FieldError extends StatelessWidget {
   const _FieldError(this.message);
   final String message;
   @override
-  Widget build(BuildContext context) => Text(message, style: TextStyle(color: Theme.of(context).colorScheme.error));
+  Widget build(BuildContext context) => Text(
+    message,
+    style: TextStyle(color: Theme.of(context).colorScheme.error),
+  );
 }
 
-String _minuteLabel(int value) => '${(value ~/ 60).toString().padLeft(2, '0')}:${(value % 60).toString().padLeft(2, '0')}';
+String _minuteLabel(int value) =>
+    '${(value ~/ 60).toString().padLeft(2, '0')}:${(value % 60).toString().padLeft(2, '0')}';
 
 String _formatDate(DateTime date) {
   final month = date.month.toString().padLeft(2, '0');

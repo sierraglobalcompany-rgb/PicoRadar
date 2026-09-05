@@ -89,16 +89,19 @@ class _TripScreenState extends ConsumerState<TripScreen> {
                       catalog: catalog,
                     ),
                     loading: () => const _LoadingPane(),
-                    error: (error, stackTrace) =>
-                        const _ErrorPane(message: 'No pudimos cargar los municipios.'),
+                    error: (error, stackTrace) => const _ErrorPane(
+                      message: 'No pudimos cargar los municipios.',
+                    ),
                   ),
                   loading: () => const _LoadingPane(),
-                  error: (error, stackTrace) =>
-                      const _ErrorPane(message: 'No pudimos cargar los vehículos.'),
+                  error: (error, stackTrace) => const _ErrorPane(
+                    message: 'No pudimos cargar los vehículos.',
+                  ),
                 ),
                 loading: () => const _LoadingPane(),
-                error: (error, stackTrace) =>
-                    const _ErrorPane(message: 'No pudimos cargar el vehículo activo.'),
+                error: (error, stackTrace) => const _ErrorPane(
+                  message: 'No pudimos cargar el vehículo activo.',
+                ),
               ),
       ),
     );
@@ -122,12 +125,17 @@ class _TripScreenState extends ConsumerState<TripScreen> {
         _destinationMunicipality ??
         catalog.findExact(_destinationController.text);
     final date = DateUtils.dateOnly(_selectedDate);
-    final departureUtc = _departureMinute == null ? null : bogotaScheduledTime(
-      date: date, minuteOfDay: _departureMinute!,
-    ).toUtc();
+    final departureUtc = _departureMinute == null
+        ? null
+        : bogotaScheduledTime(
+            date: date,
+            minuteOfDay: _departureMinute!,
+          ).toUtc();
     final currentPlan = _plan;
     final currentRequest = _request;
-    final selectedRoute = currentPlan?.routes.where((route) => route.id == _selectedRouteId).firstOrNull;
+    final selectedRoute = currentPlan?.routes
+        .where((route) => route.id == _selectedRouteId)
+        .firstOrNull;
     final originRestriction = ref.watch(
       tripRestrictionProvider((
         municipality: origin,
@@ -157,7 +165,8 @@ class _TripScreenState extends ConsumerState<TripScreen> {
       destinationError: _destinationError,
       timeError: _timeError,
       vehicleError: _vehicleError,
-      standardVehicleConfirmed: selectedVehicle != null && _confirmedVehicleId == selectedVehicle.id,
+      standardVehicleConfirmed:
+          selectedVehicle != null && _confirmedVehicleId == selectedVehicle.id,
       onStandardVehicleChanged: (value) => setState(() {
         _invalidatePlan();
         _confirmedVehicleId = value ? selectedVehicle?.id : null;
@@ -172,27 +181,64 @@ class _TripScreenState extends ConsumerState<TripScreen> {
       planError: _planError,
       onPreview: () => _preview(catalog, selectedVehicle),
       onCancelPreview: () => setState(_invalidatePlan),
-      planResult: currentPlan != null && currentRequest != null && selectedRoute != null
-        ? TripPlanResult(request: currentRequest, plan: currentPlan,
-            selectedRouteId: selectedRoute.id,
-            onRouteSelected: (id) => setState(() => _selectedRouteId = id), onSource: _openSource)
-        : null,
-      instantRestrictions: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        if (departureUtc != null)
-          TripInstantEndpoint(key: const ValueKey('trip-origin-instant'), label: 'Origen / salida',
-            instantUtc: departureUtc, onSource: _openSource,
-            evaluation: ref.watch(tripInstantRestrictionProvider((municipality: origin, vehicle: selectedVehicle, instantUtc: departureUtc))))
-        else const Text('Origen / salida: confirma la hora para evaluar ese instante.'),
-        const SizedBox(height: AppSpacing.m),
-        if (selectedRoute != null && currentRequest != null)
-          TripInstantEndpoint(key: ValueKey('trip-destination-instant-${selectedRoute.id}'), label: 'Destino / llegada aproximada',
-            instantUtc: selectedRoute.arrivalUtc(currentRequest.departureUtc), onSource: _openSource,
-            evaluation: ref.watch(tripInstantRestrictionProvider((municipality: currentRequest.destination,
-              vehicle: currentRequest.vehicle, instantUtc: selectedRoute.arrivalUtc(currentRequest.departureUtc)))))
-        else const Text('Destino / llegada: no disponible hasta obtener una ruta.'),
-        const SizedBox(height: AppSpacing.s),
-        const Text('Se evalúan solo los dos extremos. La llegada al destino no indica la hora de entrada a una zona restringida. Revisa los horarios: la llegada es aproximada.'),
-      ]),
+      planResult:
+          currentPlan != null && currentRequest != null && selectedRoute != null
+          ? TripPlanResult(
+              request: currentRequest,
+              plan: currentPlan,
+              selectedRouteId: selectedRoute.id,
+              onRouteSelected: (id) => setState(() => _selectedRouteId = id),
+              onSource: _openSource,
+            )
+          : null,
+      instantRestrictions: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (departureUtc != null)
+            TripInstantEndpoint(
+              key: const ValueKey('trip-origin-instant'),
+              label: 'Origen / salida',
+              instantUtc: departureUtc,
+              onSource: _openSource,
+              evaluation: ref.watch(
+                tripInstantRestrictionProvider((
+                  municipality: origin,
+                  vehicle: selectedVehicle,
+                  instantUtc: departureUtc,
+                )),
+              ),
+            )
+          else
+            const Text(
+              'Origen / salida: confirma la hora para evaluar ese instante.',
+            ),
+          const SizedBox(height: AppSpacing.m),
+          if (selectedRoute != null && currentRequest != null)
+            TripInstantEndpoint(
+              key: ValueKey('trip-destination-instant-${selectedRoute.id}'),
+              label: 'Destino / llegada aproximada',
+              instantUtc: selectedRoute.arrivalUtc(currentRequest.departureUtc),
+              onSource: _openSource,
+              evaluation: ref.watch(
+                tripInstantRestrictionProvider((
+                  municipality: currentRequest.destination,
+                  vehicle: currentRequest.vehicle,
+                  instantUtc: selectedRoute.arrivalUtc(
+                    currentRequest.departureUtc,
+                  ),
+                )),
+              ),
+            )
+          else
+            const Text(
+              'Destino / llegada: no disponible hasta obtener una ruta.',
+            ),
+          const SizedBox(height: AppSpacing.s),
+          const Text(
+            'Se evalúan solo los dos extremos. La llegada al destino no indica la hora de entrada a una zona restringida. Revisa los horarios: la llegada es aproximada.',
+          ),
+        ],
+      ),
       completedChecklist: _completedChecklist,
       vehicles: vehicles,
       selectedVehicle: missingRestoredVehicle ? null : selectedVehicle,
@@ -214,23 +260,30 @@ class _TripScreenState extends ConsumerState<TripScreen> {
         _restoredVehicleId = null;
       }),
       onOriginChanged: (_) => setState(() {
-        _invalidatePlan(); _originMunicipality = null; _originError = null;
+        _invalidatePlan();
+        _originMunicipality = null;
+        _originError = null;
       }),
       onDestinationChanged: (_) => setState(() {
-        _invalidatePlan(); _destinationMunicipality = null; _destinationError = null;
+        _invalidatePlan();
+        _destinationMunicipality = null;
+        _destinationError = null;
       }),
       onOriginSelected: (municipality) => setState(() {
-        _invalidatePlan(); _originError = null;
+        _invalidatePlan();
+        _originError = null;
         _originMunicipality = municipality;
         _originController.text = municipality.displayName;
       }),
       onDestinationSelected: (municipality) => setState(() {
-        _invalidatePlan(); _destinationError = null;
+        _invalidatePlan();
+        _destinationError = null;
         _destinationMunicipality = municipality;
         _destinationController.text = municipality.displayName;
       }),
       onDateChanged: (value) => setState(() {
-        _invalidatePlan(); _selectedDate = value;
+        _invalidatePlan();
+        _selectedDate = value;
       }),
       onChecklistChanged: _setChecklistItem,
       onSaveDraft: () => _saveDraft(
@@ -397,8 +450,12 @@ class _TripScreenState extends ConsumerState<TripScreen> {
     var opened = false;
     try {
       opened = await navigation.openGoogleMaps(
-        origin: _plan == null ? _originController.text : '${_plan!.origin.latitude},${_plan!.origin.longitude}',
-        destination: _plan == null ? _destinationController.text : '${_plan!.destination.latitude},${_plan!.destination.longitude}',
+        origin: _plan == null
+            ? _originController.text
+            : '${_plan!.origin.latitude},${_plan!.origin.longitude}',
+        destination: _plan == null
+            ? _destinationController.text
+            : '${_plan!.destination.latitude},${_plan!.destination.longitude}',
       );
     } catch (_) {
       opened = false;
@@ -417,7 +474,9 @@ class _TripScreenState extends ConsumerState<TripScreen> {
     var opened = false;
     try {
       opened = await navigation.openWaze(
-        destination: _plan == null ? _destinationController.text : '${_plan!.destination.latitude},${_plan!.destination.longitude}',
+        destination: _plan == null
+            ? _destinationController.text
+            : '${_plan!.destination.latitude},${_plan!.destination.longitude}',
       );
     } catch (_) {
       opened = false;
@@ -483,27 +542,58 @@ class _TripScreenState extends ConsumerState<TripScreen> {
     _planError = null;
   }
 
-  Future<void> _preview(TripMunicipalityCatalog catalog, VehicleProfile? vehicle) async {
+  Future<void> _preview(
+    TripMunicipalityCatalog catalog,
+    VehicleProfile? vehicle,
+  ) async {
     if (_cancelToken != null) return;
-    final origin = _originMunicipality ?? catalog.findExact(_originController.text);
-    final destination = _destinationMunicipality ?? catalog.findExact(_destinationController.text);
+    final origin =
+        _originMunicipality ?? catalog.findExact(_originController.text);
+    final destination =
+        _destinationMunicipality ??
+        catalog.findExact(_destinationController.text);
     setState(() {
-      _originError = _originController.text.trim().isEmpty ? 'Ingresa el origen.'
-        : origin == null ? 'Elige municipio y departamento de las sugerencias.' : null;
-      _destinationError = _destinationController.text.trim().isEmpty ? 'Ingresa el destino.'
-        : destination == null ? 'Elige municipio y departamento de las sugerencias.'
-        : origin?.code == destination.code ? 'Elige otro municipio: no se ha definido un trayecto urbano.' : null;
-      _timeError = _departureMinute == null ? 'Confirma la hora de salida.' : null;
-      _vehicleError = vehicle == null ? 'Selecciona un vehículo para este viaje.'
-        : _confirmedVehicleId != vehicle.id ? 'Confirma las características del vehículo.' : null;
+      _originError = _originController.text.trim().isEmpty
+          ? 'Ingresa el origen.'
+          : origin == null
+          ? 'Elige municipio y departamento de las sugerencias.'
+          : null;
+      _destinationError = _destinationController.text.trim().isEmpty
+          ? 'Ingresa el destino.'
+          : destination == null
+          ? 'Elige municipio y departamento de las sugerencias.'
+          : origin?.code == destination.code
+          ? 'Elige otro municipio: no se ha definido un trayecto urbano.'
+          : null;
+      _timeError = _departureMinute == null
+          ? 'Confirma la hora de salida.'
+          : null;
+      _vehicleError = vehicle == null
+          ? 'Selecciona un vehículo para este viaje.'
+          : _confirmedVehicleId != vehicle.id
+          ? 'Confirma las características del vehículo.'
+          : null;
     });
-    if (_originError != null || _destinationError != null || _timeError != null || _vehicleError != null) return;
+    if (_originError != null ||
+        _destinationError != null ||
+        _timeError != null ||
+        _vehicleError != null) {
+      return;
+    }
     FocusScope.of(context).unfocus();
     final request = TripPlanRequest(
-      requestId: List.generate(16, (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0')).join(),
-      origin: origin!, destination: destination!, vehicle: vehicle!,
+      requestId: List.generate(
+        16,
+        (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+      ).join(),
+      origin: origin!,
+      destination: destination!,
+      vehicle: vehicle!,
       standardVehicleConfirmed: true,
-      departureUtc: bogotaScheduledTime(date: _selectedDate, minuteOfDay: _departureMinute!).toUtc(),
+      departureUtc: bogotaScheduledTime(
+        date: _selectedDate,
+        minuteOfDay: _departureMinute!,
+      ).toUtc(),
     );
     final token = CancelToken();
     setState(() {
@@ -515,26 +605,40 @@ class _TripScreenState extends ConsumerState<TripScreen> {
     });
     final generation = _generation;
     try {
-      final plan = await ref.read(tripPlanClientProvider).preview(request, cancelToken: token);
+      final plan = await ref
+          .read(tripPlanClientProvider)
+          .preview(request, cancelToken: token);
       if (!mounted || generation != _generation || token.isCancelled) return;
-      if (plan.requestId != request.requestId || plan.routes.isEmpty) throw const TripPlanFailure('invalid_upstream');
+      if (plan.requestId != request.requestId || plan.routes.isEmpty) {
+        throw const TripPlanFailure('invalid_upstream');
+      }
       setState(() {
         _plan = plan;
-        _selectedRouteId = (plan.routes.toList()..sort((a, b) => a.durationSeconds.compareTo(b.durationSeconds))).first.id;
+        _selectedRouteId =
+            (plan.routes.toList()..sort(
+                  (a, b) => a.durationSeconds.compareTo(b.durationSeconds),
+                ))
+                .first
+                .id;
         _cancelToken = null;
       });
     } catch (error) {
       if (!mounted || generation != _generation || token.isCancelled) return;
       setState(() {
         _cancelToken = null;
-        _planError = tripPlanErrorText(error is TripPlanFailure ? error.code : 'network');
+        _planError = tripPlanErrorText(
+          error is TripPlanFailure ? error.code : 'network',
+        );
       });
     }
   }
 
   Future<void> _openSource(String url) async {
     final uri = Uri.tryParse(url);
-    if (uri == null || uri.scheme != 'https' || uri.host.isEmpty || uri.userInfo.isNotEmpty) {
+    if (uri == null ||
+        uri.scheme != 'https' ||
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty) {
       _showSnackBar('Fuente no disponible.');
       return;
     }

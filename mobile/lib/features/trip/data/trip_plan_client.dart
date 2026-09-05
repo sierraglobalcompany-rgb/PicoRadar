@@ -20,15 +20,34 @@ final tripPlanClientProvider = Provider<TripPlanClient>((ref) {
 });
 
 class TripPlanClient {
-  TripPlanClient({required Dio dio, Uri? baseUri})
-    : _dio = dio,
-      _baseUri = baseUri;
+  TripPlanClient({
+    required this._dio,
+    this._baseUri,
+    this._operationTimeout = const Duration(seconds: 30),
+  });
   final Dio _dio;
   final Uri? _baseUri;
+  final Duration _operationTimeout;
 
   Future<TripPlan> preview(
     TripPlanRequest request, {
     CancelToken? cancelToken,
+  }) {
+    final operationToken = CancelToken();
+    if (cancelToken?.isCancelled ?? false) operationToken.cancel();
+    cancelToken?.whenCancel.then((_) => operationToken.cancel());
+    return _preview(request, cancelToken: operationToken).timeout(
+      _operationTimeout,
+      onTimeout: () {
+        operationToken.cancel();
+        throw const TripPlanFailure('timeout');
+      },
+    );
+  }
+
+  Future<TripPlan> _preview(
+    TripPlanRequest request, {
+    required CancelToken cancelToken,
   }) async {
     final base = _baseUri;
     if (base == null ||
@@ -64,12 +83,14 @@ class TripPlanClient {
         await for (final chunk in body.stream.timeout(
           const Duration(seconds: 25),
         )) {
-          if (bytes.length + chunk.length > 262144)
+          if (bytes.length + chunk.length > 262144) {
             throw const FormatException();
+          }
           bytes.addAll(chunk);
         }
       } finally {
-        body.close();
+        // Dio's public cancellation path closes its response and subscription.
+        cancelToken.cancel();
       }
       final decoded = jsonDecode(utf8.decode(bytes));
       if (decoded is! Map<String, dynamic>) throw const FormatException();
@@ -123,8 +144,9 @@ String _safeCode(Object? code, int? status) {
 
 TripPlan _parsePlan(Map<String, dynamic> json, String category) {
   final rows = json['routes'];
-  if (rows is! List || rows.isEmpty || rows.length > 3)
+  if (rows is! List || rows.isEmpty || rows.length > 3) {
     throw const FormatException();
+  }
   final routes = <TripRouteOption>[];
   final ids = <String>{};
   for (final raw in rows) {
@@ -132,8 +154,9 @@ TripPlan _parsePlan(Map<String, dynamic> json, String category) {
     final id = _text(row['id']);
     if (!ids.add(id)) throw const FormatException();
     final basis = _text(row['timeBasis']);
-    if (!const {'static', 'traffic'}.contains(basis))
+    if (!const {'static', 'traffic'}.contains(basis)) {
       throw const FormatException();
+    }
     routes.add(
       TripRouteOption(
         id: id,
@@ -174,8 +197,9 @@ TripResolvedPoint _point(Object? value) {
       !lat.isFinite ||
       !lon.isFinite ||
       lat.abs() > 90 ||
-      lon.abs() > 180)
+      lon.abs() > 180) {
     throw const FormatException();
+  }
   return TripResolvedPoint(
     label: _text(json['label']),
     latitude: lat.toDouble(),
@@ -188,8 +212,9 @@ TripTolls _tolls(Object? value, String category) {
     final json = _object(value);
     if (json['currency'] != 'COP' ||
         json['vehicleCategory'] != category ||
-        json['paymentMethod'] != 'cash')
+        json['paymentMethod'] != 'cash') {
       throw const FormatException();
+    }
     final coverage = switch (json['coverage']) {
       'complete' => TripTollCoverage.complete,
       'partial' => TripTollCoverage.partial,
@@ -212,16 +237,18 @@ TripTolls _tolls(Object? value, String category) {
             uri.host.isEmpty ||
             uri.userInfo.isNotEmpty ||
             uri.hasQuery ||
-            uri.hasFragment)
+            uri.hasFragment) {
           throw const FormatException();
+        }
         safeSource = uri.toString();
       }
       final effective = row['effectiveAt'];
       if (effective != null &&
           (effective is! String ||
               !RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(effective) ||
-              DateTime.tryParse(effective) == null))
+              DateTime.tryParse(effective) == null)) {
         throw const FormatException();
+      }
       charges.add(
         TripTollCharge(
           name: _text(row['name']),
@@ -238,30 +265,37 @@ TripTolls _tolls(Object? value, String category) {
     final payable = _optionalInteger(json['payableCount'], maximum: 500);
     final sum = charges.fold<int>(0, (s, c) => s + (c.amountMinor ?? 0));
     final absent = charges.where((c) => c.amountMinor == null).length;
+    final positive = charges.where((c) => (c.amountMinor ?? 0) > 0).length;
     if (stations != null && stations < charges.length ||
-        payable != null && (stations == null || payable > stations))
+        payable != null && (stations == null || payable > stations)) {
       throw const FormatException();
+    }
     switch (coverage) {
       case TripTollCoverage.complete:
         if (charges.isEmpty ||
+            (payable != null && payable != positive) ||
             absent != 0 ||
             missing != 0 ||
             total != sum ||
-            subtotal != null)
+            subtotal != null) {
           throw const FormatException();
+        }
       case TripTollCoverage.partial:
         if (total != null ||
             subtotal != sum ||
             missing < absent ||
-            missing == 0)
+            missing == 0) {
           throw const FormatException();
+        }
       case TripTollCoverage.noChargeConfirmed:
         if (total != 0 ||
+            (payable != null && payable != 0) ||
             subtotal != null ||
             missing != 0 ||
             absent != 0 ||
-            sum != 0)
+            sum != 0) {
           throw const FormatException();
+        }
       case TripTollCoverage.unknown:
       case TripTollCoverage.unsupportedVehicle:
         if (total != null || subtotal != null) throw const FormatException();
@@ -298,14 +332,16 @@ String _text(Object? value, {int maximum = 400}) {
   if (value is! String ||
       value.trim().isEmpty ||
       value.length > maximum ||
-      RegExp(r'[\x00-\x1F]').hasMatch(value))
+      RegExp(r'[\x00-\x1F]').hasMatch(value)) {
     throw const FormatException();
+  }
   return value.trim();
 }
 
 int _integer(Object? value, {int minimum = 0, int maximum = 1000000000000}) {
-  if (value is! int || value < minimum || value > maximum)
+  if (value is! int || value < minimum || value > maximum) {
     throw const FormatException();
+  }
   return value;
 }
 

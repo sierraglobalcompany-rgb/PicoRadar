@@ -73,48 +73,47 @@ typedef TripInstantRestrictionQuery = ({
 });
 
 final tripInstantRestrictionProvider =
-    FutureProvider.family<TripEndpointRestriction, TripInstantRestrictionQuery>((
-      ref,
-      query,
-    ) async {
-      final instantUtc = query.instantUtc.toUtc();
-      final nowUtc = ref.watch(currentInstantProvider).toUtc();
-      final municipality = query.municipality;
-      final vehicle = query.vehicle;
-      final jurisdictionId = municipality?.jurisdictionId;
-      var ruleSet = const RestrictionRuleSet(
-        coverageKnown: false,
-        dataIsStale: false,
-        rules: [],
-      );
-      if (vehicle != null &&
-          jurisdictionId != null &&
-          jurisdictionId.isNotEmpty) {
-        final store = ref.watch(restrictionStoreProvider);
-        try {
-          ruleSet = await store.loadCoverage(
-            jurisdictionId,
-            vehicle.kind,
-            vehicle.serviceType,
-            nowUtc,
-          );
-        } on Object {
-          return TripEndpointRestriction(
-            status: RestrictionDayStatus.unknown,
-            instantStatus: RestrictionStatus.unknown,
-            reason: 'load_error',
-            evaluatedAtUtc: instantUtc,
-          );
+    FutureProvider.family<TripEndpointRestriction, TripInstantRestrictionQuery>(
+      (ref, query) async {
+        final instantUtc = query.instantUtc.toUtc();
+        final nowUtc = ref.watch(currentInstantProvider).toUtc();
+        final municipality = query.municipality;
+        final vehicle = query.vehicle;
+        final jurisdictionId = municipality?.jurisdictionId;
+        var ruleSet = const RestrictionRuleSet(
+          coverageKnown: false,
+          dataIsStale: false,
+          rules: [],
+        );
+        if (vehicle != null &&
+            jurisdictionId != null &&
+            jurisdictionId.isNotEmpty) {
+          final store = ref.watch(restrictionStoreProvider);
+          try {
+            ruleSet = await store.loadCoverage(
+              jurisdictionId,
+              vehicle.kind,
+              vehicle.serviceType,
+              nowUtc,
+            );
+          } on Object {
+            return TripEndpointRestriction(
+              status: RestrictionDayStatus.unknown,
+              instantStatus: RestrictionStatus.unknown,
+              reason: 'load_error',
+              evaluatedAtUtc: instantUtc,
+            );
+          }
         }
-      }
-      return evaluateTripRestriction(
-        ruleSet: ruleSet,
-        municipality: municipality,
-        vehicle: vehicle,
-        instantUtc: instantUtc,
-        nowUtc: nowUtc,
-      );
-    });
+        return evaluateTripRestriction(
+          ruleSet: ruleSet,
+          municipality: municipality,
+          vehicle: vehicle,
+          instantUtc: instantUtc,
+          nowUtc: nowUtc,
+        );
+      },
+    );
 
 class TripExternalNavigation {
   const TripExternalNavigation(this._launcher);

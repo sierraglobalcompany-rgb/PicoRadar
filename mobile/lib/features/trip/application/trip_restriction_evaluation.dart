@@ -58,14 +58,18 @@ TripEndpointRestriction evaluateTripRestriction({
   final today = bogotaWallClock(nowUtc.toUtc());
   final day = DateTime(local.year, local.month, local.day);
   final isFutureDay = day.isAfter(DateTime(today.year, today.month, today.day));
-  final rules = ruleSet.rules.where((rule) {
-    return rule.jurisdictionId == jurisdictionId &&
-        rule.vehicleKinds.contains(vehicle.kind) &&
-        rule.serviceTypes.contains(vehicle.serviceType);
-  }).toList(growable: false);
-  final coverageSource = ruleSet.sourceUrls.firstOrNull ??
+  final rules = ruleSet.rules
+      .where((rule) {
+        return rule.jurisdictionId == jurisdictionId &&
+            rule.vehicleKinds.contains(vehicle.kind) &&
+            rule.serviceTypes.contains(vehicle.serviceType);
+      })
+      .toList(growable: false);
+  final coverageSource =
+      ruleSet.sourceUrls.firstOrNull ??
       rules.map((rule) => rule.sourceUrl).whereType<String>().firstOrNull;
-  final coverageVerifiedAt = ruleSet.verifiedAt ??
+  final coverageVerifiedAt =
+      ruleSet.verifiedAt ??
       rules.map((rule) => rule.verifiedAt).whereType<DateTime>().firstOrNull;
   final staleAfter = ruleSet.staleAfter;
   final String? coverageReason;
@@ -86,7 +90,9 @@ TripEndpointRestriction evaluateTripRestriction({
     final stale = coverageReason == 'stale_data';
     return TripEndpointRestriction(
       status: stale ? RestrictionDayStatus.stale : RestrictionDayStatus.unknown,
-      instantStatus: stale ? RestrictionStatus.stale : RestrictionStatus.unknown,
+      instantStatus: stale
+          ? RestrictionStatus.stale
+          : RestrictionStatus.unknown,
       sourceUrl: coverageSource,
       verifiedAt: coverageVerifiedAt,
       reason: coverageReason,
@@ -127,35 +133,43 @@ TripEndpointRestriction evaluateTripRestriction({
   final instantEvaluation = at(local);
   // Schedule, digit and holiday mismatches mean allowed only within validity.
   // An explicitly empty, known coverage is the dataset's no-restriction case.
-  final validAtInstant = rules.isEmpty || rules.any((rule) {
-    return !local.isBefore(rule.validFrom) &&
-        (rule.validUntil == null || !local.isAfter(rule.validUntil!));
-  });
+  final validAtInstant =
+      rules.isEmpty ||
+      rules.any((rule) {
+        return !local.isBefore(rule.validFrom) &&
+            (rule.validUntil == null || !local.isAfter(rule.validUntil!));
+      });
   final gapReason = !validAtInstant
       ? isFutureDay
-          ? 'future_coverage'
-          : rules.every((rule) =>
-                rule.validUntil != null && local.isAfter(rule.validUntil!))
-          ? 'stale_data'
-          : 'no_coverage'
+            ? 'future_coverage'
+            : rules.every(
+                (rule) =>
+                    rule.validUntil != null && local.isAfter(rule.validUntil!),
+              )
+            ? 'stale_data'
+            : 'no_coverage'
       : null;
   final instantStatus = gapReason == 'stale_data'
       ? RestrictionStatus.stale
       : gapReason != null
       ? RestrictionStatus.unknown
       : instantEvaluation.status;
-  final reason = gapReason ?? switch (instantStatus) {
-    RestrictionStatus.unknown => 'no_coverage',
-    RestrictionStatus.stale => 'stale_data',
-    _ => dayEvaluation.status == RestrictionDayStatus.unknown
-        ? 'no_coverage'
-        : null,
-  };
-  final status = gapReason != null &&
+  final reason =
+      gapReason ??
+      switch (instantStatus) {
+        RestrictionStatus.unknown => 'no_coverage',
+        RestrictionStatus.stale => 'stale_data',
+        _ =>
+          dayEvaluation.status == RestrictionDayStatus.unknown
+              ? 'no_coverage'
+              : null,
+      };
+  final status =
+      gapReason != null &&
           dayEvaluation.status != RestrictionDayStatus.restricted
       ? gapReason == 'stale_data'
-          ? RestrictionDayStatus.stale
-          : RestrictionDayStatus.unknown
+            ? RestrictionDayStatus.stale
+            : RestrictionDayStatus.unknown
       : dayEvaluation.status;
 
   // The day evaluator may retain coverage metadata from its first interval.
@@ -163,14 +177,24 @@ TripEndpointRestriction evaluateTripRestriction({
   final firstWindow = dayEvaluation.effectiveWindows.firstOrNull;
   final dayRule = firstWindow == null
       ? null
-      : at(bogotaWallClock(bogotaScheduledTime(
-          date: day,
-          minuteOfDay: firstWindow.startMinute,
-        )));
-  final source = instantEvaluation.sourceUrl ??
-      dayRule?.sourceUrl ?? dayEvaluation.sourceUrl ?? coverageSource;
-  final verifiedAt = instantEvaluation.verifiedAt ??
-      dayRule?.verifiedAt ?? dayEvaluation.verifiedAt ?? coverageVerifiedAt;
+      : at(
+          bogotaWallClock(
+            bogotaScheduledTime(
+              date: day,
+              minuteOfDay: firstWindow.startMinute,
+            ),
+          ),
+        );
+  final source =
+      instantEvaluation.sourceUrl ??
+      dayRule?.sourceUrl ??
+      dayEvaluation.sourceUrl ??
+      coverageSource;
+  final verifiedAt =
+      instantEvaluation.verifiedAt ??
+      dayRule?.verifiedAt ??
+      dayEvaluation.verifiedAt ??
+      coverageVerifiedAt;
   return TripEndpointRestriction(
     status: status,
     instantStatus: instantStatus,

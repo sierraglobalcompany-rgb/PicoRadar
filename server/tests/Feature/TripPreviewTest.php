@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Enums\GeographicUnitLevel;
-use App\Http\Controllers\Api\TripPreviewController;
 use App\Models\GeographicUnit;
 use App\Services\TollGuruTripPreview;
 use App\Support\GeographicNameNormalizer;
@@ -34,10 +33,6 @@ class TripPreviewTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        // The parent owns production routing; use its real route once it is integrated.
-        if (! collect(Route::getRoutes())->contains(fn ($route): bool => $route->uri() === 'api/v1/trips/preview')) {
-            Route::post('/api/v1/trips/preview', TripPreviewController::class);
-        }
         $this->travelTo(now()->setDate(2026, 9, 5)->setTime(12, 0)->utc());
         $this->fakeProvider([self::ENDPOINT => fn () => Http::response(TollGuruTripPreviewTest::providerFixture())]);
         config([
@@ -73,6 +68,20 @@ class TripPreviewTest extends TestCase
     {
         $this->postJson('/api/v1/trips/preview', $this->request())
             ->assertStatus(503)->assertExactJson(['error' => ['code' => 'not_configured']]);
+        Http::assertNothingSent();
+    }
+
+    public function test_production_route_is_registered_and_throttled_without_account(): void
+    {
+        $route = Route::getRoutes()->getByName('api.v1.trips.preview');
+        $this->assertNotNull($route);
+        $this->assertSame('api/v1/trips/preview', $route->uri());
+        $this->assertContains('throttle:trips-preview', $route->gatherMiddleware());
+        for ($i = 0; $i < 6; $i++) {
+            $this->postJson('/api/v1/trips/preview', $this->request())->assertStatus(503);
+        }
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertStatus(429)->assertExactJson(['error' => ['code' => 'quota']]);
         Http::assertNothingSent();
     }
 
