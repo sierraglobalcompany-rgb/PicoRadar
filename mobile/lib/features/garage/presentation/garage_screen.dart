@@ -618,6 +618,9 @@ class _GarageFilterSegment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final visualHeight = textScale <= 1.25
+        ? _garageFilterVisualHeight
+        : _garageFilterVisualHeight * textScale;
     return LayoutBuilder(
       builder: (context, constraints) {
         final targetWidth = textScale <= 1.25
@@ -628,7 +631,7 @@ class _GarageFilterSegment extends StatelessWidget {
           child: SizedBox(
             key: const ValueKey('garage-filter-segment'),
             width: targetWidth,
-            height: 48,
+            height: visualHeight + 2,
             child: Center(
               child: Material(
                 color: AppColors.surface,
@@ -637,7 +640,7 @@ class _GarageFilterSegment extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppRadius.chip),
                 clipBehavior: Clip.antiAlias,
                 child: Container(
-                  height: _garageFilterVisualHeight,
+                  height: visualHeight,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(AppRadius.chip),
                     border: Border.all(
@@ -707,7 +710,9 @@ class _GarageFilterButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final foreground = selected ? Colors.white : AppColors.navy;
+    final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.25;
     return Expanded(
+      flex: largeText ? (value == GarageFilter.favorites ? 4 : 3) : 1,
       child: Semantics(
         button: true,
         selected: selected,
@@ -721,17 +726,18 @@ class _GarageFilterButton extends StatelessWidget {
             child: InkWell(
               onTap: () => onChanged(value),
               child: Center(
-                child: Row(
+                child: Flex(
+                  direction: largeText ? Axis.vertical : Axis.horizontal,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(icon, size: 18, color: foreground),
-                    const SizedBox(width: AppSpacing.s),
+                    SizedBox(
+                      width: largeText ? 0 : AppSpacing.s,
+                      height: largeText ? AppSpacing.xs : 0,
+                    ),
                     Flexible(
                       child: Text(
                         label,
-                        maxLines: 1,
-                        softWrap: false,
-                        overflow: TextOverflow.fade,
                         style: AppTextStyles.caption.copyWith(
                           color: foreground,
                           fontWeight: FontWeight.w800,
@@ -1105,8 +1111,6 @@ class _InfoCell extends StatelessWidget {
                 children: [
                   Text(
                     field.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.caption.copyWith(
                       fontSize: 10.5,
                       height: 1.05,
@@ -1125,8 +1129,6 @@ class _InfoCell extends StatelessWidget {
                         : null,
                     child: Text(
                       field.value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.bodyStrong.copyWith(
                         fontSize: 13.5,
                         height: 1.05,
@@ -1168,9 +1170,9 @@ class _MakeActivePill extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'Hacer activo',
-      child: SizedBox(
+      child: ConstrainedBox(
         key: const ValueKey('garage-action-make-active'),
-        height: 32,
+        constraints: const BoxConstraints(minHeight: 32),
         child: Material(
           color: AppColors.teal.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(AppRadius.chip),
@@ -1182,9 +1184,6 @@ class _MakeActivePill extends StatelessWidget {
               child: Center(
                 child: Text(
                   'Hacer activo',
-                  maxLines: 1,
-                  softWrap: false,
-                  overflow: TextOverflow.fade,
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.teal,
                     fontWeight: FontWeight.w800,

@@ -168,6 +168,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       const SizedBox(height: AppSpacing.s),
                       _ActionButton(
                         valueKey: 'settings-delete-trip-draft',
+                        destructive: true,
                         busy: _busyActionKey == 'trip',
                         icon: Icons.route_outlined,
                         label: 'Borrar borrador de Viaje',
@@ -176,6 +177,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       const SizedBox(height: AppSpacing.s),
                       _ActionButton(
                         valueKey: 'settings-delete-comparendos-note',
+                        destructive: true,
                         busy: _busyActionKey == 'comparendos',
                         icon: Icons.fact_check_outlined,
                         label: 'Borrar nota de Comparendos',
@@ -184,6 +186,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       const SizedBox(height: AppSpacing.s),
                       _ActionButton(
                         valueKey: 'settings-delete-active-vehicle-private-data',
+                        destructive: true,
                         busy: _busyActionKey == 'vehicle-private-data',
                         icon: Icons.no_encryption_gmailerrorred_outlined,
                         label:
@@ -503,7 +506,14 @@ class _SettingsSection extends StatelessWidget {
               children: [
                 Icon(icon, color: AppColors.teal),
                 const SizedBox(width: AppSpacing.s),
-                Expanded(child: Text(title, style: AppTextStyles.h2)),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: MediaQuery.textScalerOf(context).scale(1) > 1.25
+                        ? AppTextStyles.h2.copyWith(fontSize: 18)
+                        : AppTextStyles.h2,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.m),
@@ -626,6 +636,7 @@ class _ActionButton extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onPressed,
+    this.destructive = false,
   });
 
   final String valueKey;
@@ -633,11 +644,18 @@ class _ActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
+  final bool destructive;
 
   @override
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       key: ValueKey(valueKey),
+      style: destructive
+          ? OutlinedButton.styleFrom(
+              foregroundColor: AppColors.red,
+              side: const BorderSide(color: AppColors.red),
+            )
+          : null,
       onPressed: busy ? null : onPressed,
       icon: busy
           ? const SizedBox.square(
