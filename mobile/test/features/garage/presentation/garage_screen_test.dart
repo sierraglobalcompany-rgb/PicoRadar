@@ -706,19 +706,22 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('focus helper selects the newest identity in reordered results', (
-    tester,
-  ) async {
-    final seeded = await _seedThreeVehicles(harness);
-    await _openGarage(
+  for (final targetIndex in [0, 1, 2]) {
+    testWidgets('focus helper selects newest identity at index $targetIndex', (
       tester,
-      harness,
-      vehicleListOverride: [seeded.newest, seeded.oldest, seeded.active],
-    );
-    await _focusNewestVehicle(tester);
-    _expectGarageInfoPanel(tester, seeded.newest);
-    expect((await harness.repository.getActiveVehicle())?.id, seeded.active.id);
-  });
+    ) async {
+      final seeded = await _seedThreeVehicles(harness);
+      final order = [seeded.active, seeded.oldest]
+        ..insert(targetIndex, seeded.newest);
+      await _openGarage(tester, harness, vehicleListOverride: order);
+      await _focusNewestVehicle(tester);
+      _expectGarageInfoPanel(tester, seeded.newest);
+      expect(
+        (await harness.repository.getActiveVehicle())?.id,
+        seeded.active.id,
+      );
+    });
+  }
 
   testWidgets(
     'delete action reports repository failure after private cleanup',
@@ -1405,15 +1408,24 @@ Future<void> _focusNewestVehicle(WidgetTester tester) async {
     find.byKey(const ValueKey('garage-vehicle-carousel')),
   );
   await tester.pumpAndSettle();
+  final carousel = find.byKey(const ValueKey('garage-vehicle-carousel'));
+  final pageView = find.descendant(
+    of: carousel,
+    matching: find.byType(PageView),
+  );
+  final pageWidth =
+      tester.getSize(pageView).width *
+      tester.widget<PageView>(pageView).controller!.viewportFraction;
   // The repository order can change when fixture creation crosses a second.
-  for (final offset in const [Offset(-520, 0), Offset(520, 0)]) {
+  for (final direction in [-1, 1]) {
     for (var attempt = 0; attempt < 3; attempt += 1) {
       if (target.evaluate().isNotEmpty) {
         return;
       }
-      await tester.drag(
-        find.byKey(const ValueKey('garage-vehicle-carousel')),
-        offset,
+      await tester.timedDrag(
+        carousel,
+        Offset(direction * pageWidth, 0),
+        const Duration(milliseconds: 500),
       );
       await tester.pumpAndSettle();
     }
