@@ -13,6 +13,8 @@ import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_store.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_rule.dart';
+import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.dart';
+import 'package:picoradar/features/pico_placa/domain/restriction_engine.dart';
 import 'package:picoradar/features/trip/data/trip_draft_store.dart';
 import 'package:picoradar/features/trip/application/trip_services.dart';
 import 'package:picoradar/features/trip/data/trip_plan_client.dart';
@@ -49,6 +51,70 @@ void main() {
   setUp(() {
     preferences = MemoryPreferences();
     launcher = _FakeExternalLauncher();
+  });
+
+  testWidgets('VIAJE-R1 review6 resume refreshes both local endpoints without paid call', (tester) async {
+    final client = _PendingPlanClient();
+    var expired = false;
+    await TripDraftStore(preferences).saveDraft(TripDraft(
+      origin: 'Bogotá', destination: 'Medellín', date: DateTime(2026, 9, 5), departureMinute: 600,
+    ));
+    await _pumpScreen(tester, preferences: preferences, activeVehicle: _vehicle(), planClient: client,
+      instantRestriction: (_) => TripEndpointRestriction(
+        status: expired ? RestrictionDayStatus.stale : RestrictionDayStatus.allowed,
+        instantStatus: expired ? RestrictionStatus.stale : RestrictionStatus.allowed,
+        reason: expired ? 'stale_data' : null,
+      ));
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    client.completions.single.complete(_testPlan(client.requests.single));
+    await tester.pumpAndSettle();
+    expect(find.text('Sin restricción a la hora evaluada'), findsNWidgets(2));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    expired = true;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(client.requests, hasLength(1));
+    expect(find.text('Sin restricción a la hora evaluada'), findsNothing);
+    expect(find.text('Información desactualizada'), findsNWidgets(2));
+    expect(find.byKey(const ValueKey('trip-plan-result')), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(client.requests, hasLength(1));
+  });
+
+  testWidgets('VIAJE-R1 review6 explicit reconsult refreshes local status only on CTA', (tester) async {
+    final client = _PendingPlanClient();
+    var expired = false;
+    await TripDraftStore(preferences).saveDraft(TripDraft(
+      origin: 'Bogotá', destination: 'Medellín', date: DateTime(2026, 9, 5), departureMinute: 600,
+    ));
+    await _pumpScreen(tester, preferences: preferences, activeVehicle: _vehicle(), planClient: client,
+      instantRestriction: (_) => TripEndpointRestriction(
+        status: expired ? RestrictionDayStatus.stale : RestrictionDayStatus.allowed,
+        instantStatus: expired ? RestrictionStatus.stale : RestrictionStatus.allowed,
+        reason: expired ? 'stale_data' : null,
+      ));
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    client.completions.single.completeError(const TripPlanFailure('network'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sin restricción a la hora evaluada'), findsOneWidget);
+    expired = true;
+    await tester.pump();
+    expect(client.requests, hasLength(1));
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    expect(client.requests, hasLength(2));
+    client.completions.last.completeError(const TripPlanFailure('network'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sin restricción a la hora evaluada'), findsNothing);
+    expect(find.text('Información desactualizada'), findsOneWidget);
   });
 
   testWidgets(
@@ -1187,6 +1253,7 @@ Future<void> _pumpScreen(
   List<VehicleProfile> Function()? vehicleListBuilder,
   RestrictionStore? restrictionStore,
   TripPlanClient? planClient,
+  TripEndpointRestriction Function(TripInstantRestrictionQuery)? instantRestriction,
   Size size = const Size(390, 844),
   double textScale = 1,
   bool settle = true,
@@ -1204,6 +1271,8 @@ Future<void> _pumpScreen(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        if (instantRestriction != null)
+          tripInstantRestrictionProvider.overrideWith((ref, query) async => instantRestriction(query)),
         if (planClient != null)
           tripPlanClientProvider.overrideWithValue(planClient),
         appPreferencesProvider.overrideWithValue(preferences),
