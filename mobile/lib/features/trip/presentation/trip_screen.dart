@@ -8,6 +8,7 @@ import '../../../app/theme/app_tokens.dart';
 import '../../garage/data/vehicle_profile.dart';
 import '../application/trip_services.dart';
 import '../domain/trip_draft.dart';
+import '../data/trip_municipality_catalog.dart';
 import 'trip_screen_content.dart';
 
 class TripScreen extends ConsumerStatefulWidget {
@@ -24,6 +25,12 @@ class _TripScreenState extends ConsumerState<TripScreen> {
   var _selectedDate = DateUtils.dateOnly(DateTime.now());
   var _completedChecklist = <TripChecklistItem>{};
   var _draftRestored = false;
+  var _draftLoadComplete = false;
+  Object? _draftLoadError;
+  String? _selectedVehicleId;
+  String? _restoredVehicleId;
+  TripMunicipality? _originMunicipality;
+  TripMunicipality? _destinationMunicipality;
 
   @override
   void initState() {
@@ -41,50 +48,193 @@ class _TripScreenState extends ConsumerState<TripScreen> {
   @override
   Widget build(BuildContext context) {
     final activeVehicle = ref.watch(activeVehicleProvider);
+    final vehicles = ref.watch(vehicleListProvider);
+    final municipalities = ref.watch(tripMunicipalityCatalogProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Viaje')),
+      appBar: AppBar(title: const Text('Planea tu viaje')),
       body: SafeArea(
-        child: activeVehicle.when(
-          data: (vehicle) => TripContent(
-            formKey: _formKey,
-            originController: _originController,
-            destinationController: _destinationController,
-            selectedDate: _selectedDate,
-            completedChecklist: _completedChecklist,
-            activeVehicle: vehicle,
-            draftRestored: _draftRestored,
-            onDateChanged: (date) => setState(() => _selectedDate = date),
-            onChecklistChanged: _setChecklistItem,
-            onSaveDraft: () => _saveDraft(vehicle),
-            onDeleteDraft: _deleteDraft,
-            onGoogleMaps: _openGoogleMaps,
-            onWaze: _openWaze,
-            onInvias: _openInvias,
-          ),
-          loading: () => const _LoadingPane(),
-          error: (error, stackTrace) => _ErrorPane(message: error.toString()),
-        ),
+        child: !_draftLoadComplete
+            ? _draftLoadError == null
+                  ? const _LoadingPane()
+                  : _DraftLoadErrorPane(onRetry: _retryDraftLoad)
+            : activeVehicle.when(
+                data: (active) => vehicles.when(
+                  data: (items) => municipalities.when(
+                    data: (catalog) => _buildContent(
+                      activeVehicle: active,
+                      vehicles: items,
+                      catalog: catalog,
+                    ),
+                    loading: () => const _LoadingPane(),
+                    error: (error, stackTrace) =>
+                        _ErrorPane(message: error.toString()),
+                  ),
+                  loading: () => const _LoadingPane(),
+                  error: (error, stackTrace) =>
+                      _ErrorPane(message: error.toString()),
+                ),
+                loading: () => const _LoadingPane(),
+                error: (error, stackTrace) =>
+                    _ErrorPane(message: error.toString()),
+              ),
       ),
     );
   }
 
+  Widget _buildContent({
+    required VehicleProfile? activeVehicle,
+    required List<VehicleProfile> vehicles,
+    required TripMunicipalityCatalog catalog,
+  }) {
+    final selectedVehicle = _selectedVehicle(vehicles, activeVehicle);
+    final origin =
+        _originMunicipality ?? catalog.findExact(_originController.text);
+    final destination =
+        _destinationMunicipality ??
+        catalog.findExact(_destinationController.text);
+    final date = DateUtils.dateOnly(_selectedDate);
+    final originRestriction = ref.watch(
+      tripRestrictionProvider((
+        municipality: origin,
+        vehicle: selectedVehicle,
+        date: date,
+      )),
+    );
+    final destinationRestriction = ref.watch(
+      tripRestrictionProvider((
+        municipality: destination,
+        vehicle: selectedVehicle,
+        date: date,
+      )),
+    );
+    final requestedVehicleId = _selectedVehicleId ?? _restoredVehicleId;
+    final missingRestoredVehicle =
+        requestedVehicleId != null &&
+        !vehicles.any((vehicle) => vehicle.id == requestedVehicleId);
+
+    return TripContent(
+      formKey: _formKey,
+      originController: _originController,
+      destinationController: _destinationController,
+      selectedDate: date,
+      completedChecklist: _completedChecklist,
+      vehicles: vehicles,
+      selectedVehicle: missingRestoredVehicle ? null : selectedVehicle,
+      restoredVehicleMissing: missingRestoredVehicle,
+      originSuggestions: _originMunicipality == null
+          ? catalog.search(_originController.text)
+          : const [],
+      destinationSuggestions: _destinationMunicipality == null
+          ? catalog.search(_destinationController.text)
+          : const [],
+      originRestriction: originRestriction,
+      destinationRestriction: destinationRestriction,
+      draftRestored: _draftRestored,
+      onVehicleChanged: (id) => setState(() {
+        _selectedVehicleId = id;
+        _restoredVehicleId = null;
+      }),
+      onOriginChanged: (_) => setState(() => _originMunicipality = null),
+      onDestinationChanged: (_) =>
+          setState(() => _destinationMunicipality = null),
+      onOriginSelected: (municipality) => setState(() {
+        _originMunicipality = municipality;
+        _originController.text = municipality.displayName;
+      }),
+      onDestinationSelected: (municipality) => setState(() {
+        _destinationMunicipality = municipality;
+        _destinationController.text = municipality.displayName;
+      }),
+      onDateChanged: (value) => setState(() => _selectedDate = value),
+      onChecklistChanged: _setChecklistItem,
+      onSaveDraft: () => _saveDraft(
+        selectedVehicle,
+        vehicleSelectionRequired: missingRestoredVehicle,
+      ),
+      onDeleteDraft: _deleteDraft,
+      onGoogleMaps: _openGoogleMaps,
+      onWaze: _openWaze,
+      onInvias: _openInvias,
+    );
+  }
+
+  VehicleProfile? _selectedVehicle(
+    List<VehicleProfile> vehicles,
+    VehicleProfile? activeVehicle,
+  ) {
+    final requestedId = _selectedVehicleId ?? _restoredVehicleId;
+    if (requestedId != null) {
+      for (final vehicle in vehicles) {
+        if (vehicle.id == requestedId) {
+          return vehicle;
+        }
+      }
+      return null;
+    }
+    if (activeVehicle == null) {
+      return null;
+    }
+    for (final vehicle in vehicles) {
+      if (vehicle.id == activeVehicle.id) {
+        return vehicle;
+      }
+    }
+    return null;
+  }
+
   Future<void> _restoreDraft() async {
     final store = ref.read(tripDraftStoreProvider);
-    final draft = await store.loadDraft();
-    if (!mounted || draft == null) {
+    TripDraft? draft;
+    try {
+      draft = await store.loadDraft();
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _draftLoadError = error;
+        _draftLoadComplete = false;
+      });
+      return;
+    }
+    if (!mounted) {
       return;
     }
     setState(() {
+      _draftLoadError = null;
+      _draftLoadComplete = true;
+      if (draft == null) {
+        return;
+      }
       _originController.text = draft.origin;
       _destinationController.text = draft.destination;
       _selectedDate = DateUtils.dateOnly(draft.date);
       _completedChecklist = draft.completedChecklist;
       _draftRestored = true;
+      _restoredVehicleId = draft.activeVehicleId;
+      _selectedVehicleId = null;
+      _originMunicipality = null;
+      _destinationMunicipality = null;
     });
   }
 
-  Future<void> _saveDraft(VehicleProfile? activeVehicle) async {
+  void _retryDraftLoad() {
+    setState(() {
+      _draftLoadError = null;
+      _draftLoadComplete = false;
+    });
+    unawaited(_restoreDraft());
+  }
+
+  Future<void> _saveDraft(
+    VehicleProfile? activeVehicle, {
+    required bool vehicleSelectionRequired,
+  }) async {
+    if (vehicleSelectionRequired) {
+      _showSnackBar('Selecciona un vehículo para este viaje.');
+      return;
+    }
     if (!_validateTripFields()) {
       return;
     }
@@ -138,6 +288,10 @@ class _TripScreenState extends ConsumerState<TripScreen> {
       _selectedDate = DateUtils.dateOnly(DateTime.now());
       _completedChecklist = {};
       _draftRestored = false;
+      _selectedVehicleId = null;
+      _restoredVehicleId = null;
+      _originMunicipality = null;
+      _destinationMunicipality = null;
     });
     _showSnackBar('Borrador eliminado.');
   }
@@ -248,6 +402,34 @@ class _ErrorPane extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.xl),
       child: Text(message),
+    );
+  }
+}
+
+class _DraftLoadErrorPane extends StatelessWidget {
+  const _DraftLoadErrorPane({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('No pudimos cargar el borrador local.'),
+            const SizedBox(height: AppSpacing.m),
+            FilledButton.icon(
+              key: const ValueKey('trip-retry-draft-load'),
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

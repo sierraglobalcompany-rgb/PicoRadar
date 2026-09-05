@@ -1,20 +1,41 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:picoradar/app/app_providers.dart';
+import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
+import 'package:picoradar/features/garage/data/vehicle_repository.dart';
+import 'package:picoradar/features/pico_placa/data/restriction_store.dart';
+import 'package:picoradar/features/pico_placa/domain/restriction_rule.dart';
 import 'package:picoradar/features/trip/data/trip_draft_store.dart';
+import 'package:picoradar/features/trip/data/trip_municipality_catalog.dart';
 import 'package:picoradar/features/trip/domain/trip_draft.dart';
 import 'package:picoradar/features/trip/presentation/trip_screen.dart';
 import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
 import '../../../test_app_harness.dart';
 
+late TripMunicipalityCatalog _tripCatalog;
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late MemoryPreferences preferences;
   late _FakeExternalLauncher launcher;
+
+  setUpAll(() async {
+    final raw = await rootBundle.loadString(tripMunicipalityCatalogAssetPath);
+    _tripCatalog = TripMunicipalityCatalog.fromJson(
+      jsonDecode(raw) as Map<String, Object?>,
+    );
+  });
+
+  tearDownAll(_FakeTripRestrictionStore.closeDatabase);
 
   setUp(() {
     preferences = MemoryPreferences();
@@ -26,6 +47,7 @@ void main() {
 
     expect(find.byKey(const ValueKey('trip-screen')), findsOneWidget);
     expect(find.text('Planea tu viaje'), findsOneWidget);
+    expect(find.text('Viaje'), findsNothing);
     expect(
       find.text('PicoRadar no calcula rutas, ETA ni peajes en esta versión.'),
       findsOneWidget,
@@ -54,6 +76,401 @@ void main() {
     );
 
     expect(find.text('Particular · ABC123'), findsOneWidget);
+  });
+
+  testWidgets('offers local municipality matches only after three letters', (
+    tester,
+  ) async {
+    await _pumpScreen(tester, preferences: preferences);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('trip-origin-field')),
+      'bo',
+    );
+    await tester.pump();
+
+    expect(find.text('Bogotá, D.C. · Bogotá, D.C.'), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('trip-origin-field')),
+      'bog',
+    );
+    await tester.pump();
+
+    expect(find.text('Bogotá, D.C. · Bogotá, D.C.'), findsOneWidget);
+  });
+
+  testWidgets(
+    'municipality search ignores accents and disambiguates homonyms',
+    (tester) async {
+      await _pumpScreen(
+        tester,
+        preferences: preferences,
+        size: const Size(390, 1000),
+      );
+
+      await tester.enterText(
+        find.byKey(const ValueKey('trip-destination-field')),
+        'union',
+      );
+      await tester.pump();
+
+      expect(find.text('La Unión · Antioquia'), findsOneWidget);
+      expect(find.text('La Unión · Nariño'), findsOneWidget);
+    },
+  );
+
+  testWidgets('deleted draft vehicle requires an explicit new selection', (
+    tester,
+  ) async {
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(2026, 9, 5),
+        activeVehicleId: 'deleted-vehicle',
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: _vehicle(id: 'active-vehicle', plate: 'ACT123'),
+      vehicles: [_vehicle(id: 'active-vehicle', plate: 'ACT123')],
+    );
+
+    expect(
+      find.text('El vehículo del borrador ya no está disponible.'),
+      findsOneWidget,
+    );
+    expect(find.text('Particular · ACT123'), findsNothing);
+    expect(find.byKey(const ValueKey('trip-select-vehicle')), findsOneWidget);
+
+    await _tapByKey(tester, 'trip-save-draft');
+
+    expect(
+      find.text('Selecciona un vehículo para este viaje.'),
+      findsOneWidget,
+    );
+    expect(
+      (await TripDraftStore(preferences).loadDraft())?.activeVehicleId,
+      'deleted-vehicle',
+    );
+  });
+
+  testWidgets(
+    'trip vehicle selection leaves the global active vehicle intact',
+    (tester) async {
+      final active = _vehicle(id: 'vehicle-a', plate: 'AAA123');
+      final tripVehicle = _vehicle(
+        id: 'vehicle-b',
+        plate: 'BBB223',
+        serviceType: VehicleServiceType.taxi,
+      );
+      await preferences.setString(
+        VehicleRepository.activeVehiclePreferenceKey,
+        active.id,
+      );
+      await _pumpScreen(
+        tester,
+        preferences: preferences,
+        activeVehicle: active,
+        vehicles: [active, tripVehicle],
+        size: const Size(390, 1000),
+      );
+
+      await _tapByKey(tester, 'trip-select-vehicle');
+      await tester.tap(find.text('Taxi · BBB223'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('trip-origin-field')),
+        'Bogotá',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('trip-destination-field')),
+        'Medellín',
+      );
+      await _tapByKey(tester, 'trip-save-draft');
+
+      expect(
+        await preferences.getString(
+          VehicleRepository.activeVehiclePreferenceKey,
+        ),
+        active.id,
+      );
+      expect(
+        (await TripDraftStore(preferences).loadDraft())?.activeVehicleId,
+        tripVehicle.id,
+      );
+      expect(find.text('Taxi · BBB223'), findsOneWidget);
+    },
+  );
+
+  testWidgets('evaluates origin and destination independently for one date', (
+    tester,
+  ) async {
+    final store = _FakeTripRestrictionStore();
+    addTearDown(store.dispose);
+    final vehicle = _vehicle(id: 'vehicle-a', plate: 'ABC123');
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(2026, 9, 5),
+        activeVehicleId: vehicle.id,
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: vehicle,
+      vehicles: [vehicle],
+      restrictionStore: store,
+      size: const Size(390, 1000),
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey('trip-origin-field')),
+      'bog',
+    );
+    await tester.pump();
+    await tester.tap(find.text('Bogotá, D.C. · Bogotá, D.C.'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('trip-destination-field')),
+      'med',
+    );
+    await tester.pump();
+    await tester.tap(find.text('Medellín · Antioquia'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Origen · No circula'), findsOneWidget);
+    expect(find.text('Destino · Sin información vigente'), findsOneWidget);
+    expect(find.text('Consultado para 2026-09-05'), findsNWidgets(2));
+    expect(
+      store.loadedJurisdictions,
+      unorderedEquals(['co-dc-bogota', 'co-ant-medellin']),
+    );
+  });
+
+  testWidgets('date outside rule coverage is stale rather than unrestricted', (
+    tester,
+  ) async {
+    final store = _FakeTripRestrictionStore();
+    addTearDown(store.dispose);
+    final vehicle = _vehicle(id: 'vehicle-a', plate: 'ABC123');
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(2027, 1, 2),
+        activeVehicleId: vehicle.id,
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: vehicle,
+      vehicles: [vehicle],
+      restrictionStore: store,
+      size: const Size(390, 1000),
+    );
+
+    expect(find.text('Origen · Información desactualizada'), findsOneWidget);
+    expect(find.text('https://example.test/bogota-source'), findsOneWidget);
+    expect(find.text('Origen · Sin restricción para ese día'), findsNothing);
+  });
+
+  testWidgets('known stale coverage retains its first source URL', (
+    tester,
+  ) async {
+    final store = _FakeTripRestrictionStore(dataIsStale: true);
+    addTearDown(store.dispose);
+    final vehicle = _vehicle(id: 'vehicle-a', plate: 'ABC123');
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(2026, 9, 5),
+        activeVehicleId: vehicle.id,
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: vehicle,
+      vehicles: [vehicle],
+      restrictionStore: store,
+      size: const Size(390, 1000),
+    );
+
+    expect(find.text('Origen · Información desactualizada'), findsOneWidget);
+    expect(find.text('https://example.test/bogota-source'), findsOneWidget);
+  });
+
+  testWidgets('ambiguous legacy municipality requires department selection', (
+    tester,
+  ) async {
+    final store = _FakeTripRestrictionStore();
+    addTearDown(store.dispose);
+    final vehicle = _vehicle(id: 'vehicle-a', plate: 'ABC123');
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Barbosa',
+        destination: 'Bogotá',
+        date: DateTime(2026, 9, 5),
+        activeVehicleId: vehicle.id,
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: vehicle,
+      vehicles: [vehicle],
+      restrictionStore: store,
+      size: const Size(390, 1000),
+    );
+
+    expect(find.text('Barbosa · Antioquia'), findsOneWidget);
+    expect(find.text('Barbosa · Santander'), findsOneWidget);
+    expect(store.loadedJurisdictions, ['co-dc-bogota']);
+  });
+
+  testWidgets('selected homonym keeps department through save and restore', (
+    tester,
+  ) async {
+    final vehicle = _vehicle(id: 'vehicle-a', plate: 'ABC123');
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: vehicle,
+      vehicles: [vehicle],
+      size: const Size(390, 1000),
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('trip-origin-field')),
+      'barb',
+    );
+    await tester.pump();
+    await tester.tap(find.text('Barbosa · Santander'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('trip-destination-field')),
+      'Bogotá',
+    );
+    await _tapByKey(tester, 'trip-save-draft');
+
+    expect(
+      (await TripDraftStore(preferences).loadDraft())?.origin,
+      'Barbosa · Santander',
+    );
+
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: vehicle,
+      vehicles: [vehicle],
+      size: const Size(390, 1000),
+    );
+
+    final originField = tester.widget<TextFormField>(
+      find.byKey(const ValueKey('trip-origin-field')),
+    );
+    expect(originField.controller?.text, 'Barbosa · Santander');
+    expect(find.text('Barbosa · Antioquia'), findsNothing);
+  });
+
+  testWidgets('waits for draft identity before showing the active vehicle', (
+    tester,
+  ) async {
+    final delayedPreferences = _DelayedPreferences()
+      ..values[tripDraftPreferenceKey] = '{"origin":"Bogotá","destination":"Medellín","date":"2026-09-05","activeVehicleId":"deleted-vehicle","completedChecklist":[]}'
+      ..pauseLoad();
+    final active = _vehicle(id: 'active-vehicle', plate: 'ACT123');
+    final store = _FakeTripRestrictionStore();
+    addTearDown(store.dispose);
+
+    await _pumpScreen(
+      tester,
+      preferences: delayedPreferences,
+      activeVehicle: active,
+      vehicles: [active],
+      restrictionStore: store,
+      settle: false,
+    );
+
+    expect(find.text('Particular · ACT123'), findsNothing);
+    expect(find.byKey(const ValueKey('trip-loading')), findsOneWidget);
+    expect(store.loadedJurisdictions, isEmpty);
+
+    delayedPreferences.completeLoad();
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('El vehículo del borrador ya no está disponible.'),
+      findsOneWidget,
+    );
+    expect(find.text('Particular · ACT123'), findsNothing);
+  });
+
+  testWidgets('draft read failure offers an explicit retry', (tester) async {
+    final failingPreferences = _FailingReadPreferences();
+
+    await _pumpScreen(tester, preferences: failingPreferences);
+
+    expect(find.text('No pudimos cargar el borrador local.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('trip-retry-draft-load')), findsOneWidget);
+
+    failingPreferences.throwOnRead = false;
+    await tester.tap(find.byKey(const ValueKey('trip-retry-draft-load')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('trip-screen')), findsOneWidget);
+  });
+
+  testWidgets('deleted selected trip vehicle must be selected again', (
+    tester,
+  ) async {
+    final active = _vehicle(id: 'vehicle-a', plate: 'AAA123');
+    final selected = _vehicle(id: 'vehicle-b', plate: 'BBB223');
+    var availableVehicles = [active, selected];
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: active,
+      vehicleListBuilder: () => availableVehicles,
+      size: const Size(390, 1000),
+    );
+
+    await _tapByKey(tester, 'trip-select-vehicle');
+    await tester.tap(find.text('Particular · BBB223'));
+    await tester.pumpAndSettle();
+
+    availableVehicles = [active];
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(TripScreen)),
+    );
+    container.invalidate(vehicleListProvider);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('El vehículo del borrador ya no está disponible.'),
+      findsOneWidget,
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('trip-origin-field')),
+      'Bogotá',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('trip-destination-field')),
+      'Medellín',
+    );
+    await _tapByKey(tester, 'trip-save-draft');
+
+    expect(
+      find.text('Selecciona un vehículo para este viaje.'),
+      findsOneWidget,
+    );
+    expect(await TripDraftStore(preferences).loadDraft(), isNull);
   });
 
   testWidgets('validates required origin and destination before navigation', (
@@ -88,8 +505,15 @@ void main() {
     expect(launcher.opened, [
       'https://www.google.com/maps/dir/?api=1&origin=Bogot%C3%A1&destination=Medell%C3%ADn&travelmode=driving',
       'https://waze.com/ul?q=Medell%C3%ADn&navigate=yes',
-      'https://www.invias.gov.co/index.php/informacion-institucional/2-uncategorised/57-estado-de-la-red-vial',
+      'https://hermes2.invias.gov.co/SIV/',
     ]);
+  });
+
+  testWidgets('does not present an unknown toll total as zero', (tester) async {
+    await _pumpScreen(tester, preferences: preferences);
+
+    expect(find.text(r'$0'), findsNothing);
+    expect(find.textContaining('0 peajes'), findsNothing);
   });
 
   testWidgets('shows Google Maps Waze and INVÍAS launch failures', (
@@ -275,7 +699,7 @@ void main() {
       ..values[tripDraftPreferenceKey] = '{"origin":"Cali","destination":"Pereira","date":"2026-09-05","completedChecklist":["soat"]}'
       ..pauseLoad();
 
-    await _pumpScreen(tester, preferences: delayedPreferences);
+    await _pumpScreen(tester, preferences: delayedPreferences, settle: false);
     await tester.pumpWidget(const SizedBox.shrink());
 
     delayedPreferences.completeLoad();
@@ -352,8 +776,11 @@ void main() {
 
 Future<void> _tapByKey(WidgetTester tester, String key) async {
   final finder = find.byKey(ValueKey(key));
-  await Scrollable.ensureVisible(tester.element(finder), alignment: 0.5);
   await tester.pumpAndSettle();
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+  final hitTest = tester.hitTestOnBinding(tester.getCenter(finder));
+  expect(hitTest.path, isNotEmpty, reason: '$key must be hit-testable');
   await tester.tap(finder);
   await tester.pumpAndSettle();
 }
@@ -363,9 +790,19 @@ Future<void> _pumpScreen(
   required MemoryPreferences preferences,
   _FakeExternalLauncher? launcher,
   VehicleProfile? activeVehicle,
+  List<VehicleProfile>? vehicles,
+  List<VehicleProfile> Function()? vehicleListBuilder,
+  RestrictionStore? restrictionStore,
   Size size = const Size(390, 844),
   double textScale = 1,
+  bool settle = true,
 }) async {
+  final ownedRestrictionStore = restrictionStore == null
+      ? _FakeTripRestrictionStore()
+      : null;
+  if (ownedRestrictionStore != null) {
+    addTearDown(ownedRestrictionStore.dispose);
+  }
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
   addTearDown(tester.view.resetDevicePixelRatio);
@@ -375,6 +812,20 @@ Future<void> _pumpScreen(
       overrides: [
         appPreferencesProvider.overrideWithValue(preferences),
         activeVehicleProvider.overrideWith((ref) async => activeVehicle),
+        vehicleListProvider.overrideWith(
+          (ref) async =>
+              vehicleListBuilder?.call() ??
+              vehicles ??
+              (activeVehicle == null
+                  ? const <VehicleProfile>[]
+                  : <VehicleProfile>[activeVehicle]),
+        ),
+        restrictionStoreProvider.overrideWithValue(
+          restrictionStore ?? ownedRestrictionStore!,
+        ),
+        tripMunicipalityCatalogProvider.overrideWith(
+          (ref) async => _tripCatalog,
+        ),
         externalLauncherProvider.overrideWithValue(
           launcher ?? _FakeExternalLauncher(),
         ),
@@ -388,7 +839,9 @@ Future<void> _pumpScreen(
     ),
   );
   await tester.pump();
-  await tester.pump(const Duration(milliseconds: 300));
+  if (settle) {
+    await tester.pumpAndSettle();
+  }
 }
 
 String _formatTestDate(DateTime date) {
@@ -441,6 +894,65 @@ class _FakeExternalLauncher implements ExternalLauncher {
     opened.add(uri);
     return openResult;
   }
+}
+
+class _FakeTripRestrictionStore extends RestrictionStore {
+  factory _FakeTripRestrictionStore({bool dataIsStale = false}) {
+    return _FakeTripRestrictionStore._(_database, dataIsStale: dataIsStale);
+  }
+
+  static final AppDatabase _database = AppDatabase(NativeDatabase.memory());
+
+  _FakeTripRestrictionStore._(super.database, {required this.dataIsStale});
+
+  final bool dataIsStale;
+  final loadedJurisdictions = <String>[];
+
+  @override
+  Future<RestrictionRuleSet> loadCoverage(
+    String jurisdictionId,
+    VehicleKind vehicleKind,
+    VehicleServiceType serviceType,
+    DateTime now,
+  ) async {
+    loadedJurisdictions.add(jurisdictionId);
+    if (jurisdictionId != 'co-dc-bogota') {
+      return const RestrictionRuleSet(
+        coverageKnown: false,
+        dataIsStale: false,
+        rules: [],
+      );
+    }
+    return RestrictionRuleSet(
+      coverageKnown: true,
+      dataIsStale: dataIsStale,
+      rules: [
+        RestrictionRule(
+          id: 'bogota-test-rule',
+          jurisdictionId: jurisdictionId,
+          priority: 100,
+          effect: RestrictionEffect.restrict,
+          validFrom: DateTime(2026),
+          vehicleKinds: const {VehicleKind.car},
+          serviceTypes: const {VehicleServiceType.private},
+          weekdays: const {DateTime.saturday},
+          digitPosition: RestrictionDigitPosition.lastNumeric,
+          digits: const {3},
+          timeWindows: const [
+            RestrictionTimeWindow(startMinute: 360, endMinute: 540),
+          ],
+          appliesOnHolidays: true,
+        ),
+      ],
+      verifiedAt: DateTime(2026, 9, 1),
+      staleAfter: DateTime.utc(2026, 10, 1, 5),
+      sourceUrls: const ['https://example.test/bogota-source'],
+    );
+  }
+
+  Future<void> dispose() async {}
+
+  static Future<void> closeDatabase() => _database.close();
 }
 
 class _DelayedPreferences extends MemoryPreferences {
@@ -497,5 +1009,17 @@ class _DelayedPreferences extends MemoryPreferences {
       await gate.future;
     }
     return super.remove(key);
+  }
+}
+
+class _FailingReadPreferences extends MemoryPreferences {
+  var throwOnRead = true;
+
+  @override
+  Future<String?> getString(String key) async {
+    if (throwOnRead && key == tripDraftPreferenceKey) {
+      throw StateError('test read failure');
+    }
+    return super.getString(key);
   }
 }

@@ -88,15 +88,12 @@ void main() {
       );
     });
 
-    test('builds Waze and INVÍAS URLs', () {
+    test('builds Waze and uses the verified INVÍAS SIV destination', () {
       expect(
         wazeTripUrl(destination: 'Medellín'),
         'https://waze.com/ul?q=Medell%C3%ADn&navigate=yes',
       );
-      expect(
-        inviasRoadStatusUrl,
-        'https://www.invias.gov.co/index.php/informacion-institucional/2-uncategorised/57-estado-de-la-red-vial',
-      );
+      expect(inviasRoadStatusUrl, 'https://hermes2.invias.gov.co/SIV/');
     });
   });
 }

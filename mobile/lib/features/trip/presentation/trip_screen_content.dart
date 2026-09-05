@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_tokens.dart';
 import '../../garage/data/vehicle_profile.dart';
 import '../../garage/presentation/vehicle_display.dart';
+import '../../pico_placa/domain/restriction_day_evaluation.dart';
+import '../application/trip_services.dart';
+import '../data/trip_municipality_catalog.dart';
 import '../domain/trip_draft.dart';
 
 class TripContent extends StatelessWidget {
@@ -12,8 +16,19 @@ class TripContent extends StatelessWidget {
     required this.destinationController,
     required this.selectedDate,
     required this.completedChecklist,
-    required this.activeVehicle,
+    required this.vehicles,
+    required this.selectedVehicle,
+    required this.restoredVehicleMissing,
+    required this.originSuggestions,
+    required this.destinationSuggestions,
+    required this.originRestriction,
+    required this.destinationRestriction,
     required this.draftRestored,
+    required this.onVehicleChanged,
+    required this.onOriginChanged,
+    required this.onDestinationChanged,
+    required this.onOriginSelected,
+    required this.onDestinationSelected,
     required this.onDateChanged,
     required this.onChecklistChanged,
     required this.onSaveDraft,
@@ -29,8 +44,19 @@ class TripContent extends StatelessWidget {
   final TextEditingController destinationController;
   final DateTime selectedDate;
   final Set<TripChecklistItem> completedChecklist;
-  final VehicleProfile? activeVehicle;
+  final List<VehicleProfile> vehicles;
+  final VehicleProfile? selectedVehicle;
+  final bool restoredVehicleMissing;
+  final List<TripMunicipality> originSuggestions;
+  final List<TripMunicipality> destinationSuggestions;
+  final AsyncValue<TripEndpointRestriction> originRestriction;
+  final AsyncValue<TripEndpointRestriction> destinationRestriction;
   final bool draftRestored;
+  final ValueChanged<String> onVehicleChanged;
+  final ValueChanged<String> onOriginChanged;
+  final ValueChanged<String> onDestinationChanged;
+  final ValueChanged<TripMunicipality> onOriginSelected;
+  final ValueChanged<TripMunicipality> onDestinationSelected;
   final ValueChanged<DateTime> onDateChanged;
   final void Function(TripChecklistItem item, bool selected) onChecklistChanged;
   final VoidCallback onSaveDraft;
@@ -59,8 +85,6 @@ class TripContent extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Planea tu viaje', style: AppTextStyles.h1),
-                  const SizedBox(height: AppSpacing.s),
                   Text(
                     'PicoRadar no calcula rutas, ETA ni peajes en esta versión.',
                     key: const ValueKey('trip-local-limits-copy'),
@@ -69,13 +93,30 @@ class TripContent extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.l),
-                  _VehicleCard(vehicle: activeVehicle),
+                  _VehicleCard(
+                    vehicles: vehicles,
+                    vehicle: selectedVehicle,
+                    restoredVehicleMissing: restoredVehicleMissing,
+                    onChanged: onVehicleChanged,
+                  ),
                   const SizedBox(height: AppSpacing.l),
                   _TripFields(
                     originController: originController,
                     destinationController: destinationController,
                     selectedDate: selectedDate,
+                    originSuggestions: originSuggestions,
+                    destinationSuggestions: destinationSuggestions,
+                    onOriginChanged: onOriginChanged,
+                    onDestinationChanged: onDestinationChanged,
+                    onOriginSelected: onOriginSelected,
+                    onDestinationSelected: onDestinationSelected,
                     onDateChanged: onDateChanged,
+                  ),
+                  const SizedBox(height: AppSpacing.l),
+                  _RestrictionSummary(
+                    date: selectedDate,
+                    origin: originRestriction,
+                    destination: destinationRestriction,
                   ),
                   const SizedBox(height: AppSpacing.l),
                   _ChecklistCard(
@@ -136,9 +177,17 @@ class TripContent extends StatelessWidget {
 }
 
 class _VehicleCard extends StatelessWidget {
-  const _VehicleCard({required this.vehicle});
+  const _VehicleCard({
+    required this.vehicles,
+    required this.vehicle,
+    required this.restoredVehicleMissing,
+    required this.onChanged,
+  });
 
+  final List<VehicleProfile> vehicles;
   final VehicleProfile? vehicle;
+  final bool restoredVehicleMissing;
+  final ValueChanged<String> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -158,10 +207,15 @@ class _VehicleCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Vehículo activo', style: AppTextStyles.bodyStrong),
+                Text(
+                  'Vehículo para este viaje',
+                  style: AppTextStyles.bodyStrong,
+                ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  current == null
+                  restoredVehicleMissing
+                      ? 'El vehículo del borrador ya no está disponible.'
+                      : current == null
                       ? 'Opcional para este borrador.'
                       : '${_vehicleType(current)} · ${current.plate}',
                   key: const ValueKey('trip-active-vehicle'),
@@ -172,9 +226,40 @@ class _VehicleCard extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(width: AppSpacing.s),
+          IconButton.outlined(
+            key: const ValueKey('trip-select-vehicle'),
+            tooltip: 'Elegir vehículo para este viaje',
+            onPressed: vehicles.isEmpty
+                ? null
+                : () => _showVehicleSelector(context),
+            icon: const Icon(Icons.swap_horiz),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _showVehicleSelector(BuildContext context) async {
+    final selectedId = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (final item in vehicles)
+              ListTile(
+                title: Text('${_vehicleType(item)} · ${item.plate}'),
+                selected: item.id == vehicle?.id,
+                onTap: () => Navigator.of(context).pop(item.id),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (selectedId != null) {
+      onChanged(selectedId);
+    }
   }
 }
 
@@ -183,12 +268,24 @@ class _TripFields extends StatelessWidget {
     required this.originController,
     required this.destinationController,
     required this.selectedDate,
+    required this.originSuggestions,
+    required this.destinationSuggestions,
+    required this.onOriginChanged,
+    required this.onDestinationChanged,
+    required this.onOriginSelected,
+    required this.onDestinationSelected,
     required this.onDateChanged,
   });
 
   final TextEditingController originController;
   final TextEditingController destinationController;
   final DateTime selectedDate;
+  final List<TripMunicipality> originSuggestions;
+  final List<TripMunicipality> destinationSuggestions;
+  final ValueChanged<String> onOriginChanged;
+  final ValueChanged<String> onDestinationChanged;
+  final ValueChanged<TripMunicipality> onOriginSelected;
+  final ValueChanged<TripMunicipality> onDestinationSelected;
   final ValueChanged<DateTime> onDateChanged;
 
   @override
@@ -200,6 +297,7 @@ class _TripFields extends StatelessWidget {
           TextFormField(
             key: const ValueKey('trip-origin-field'),
             controller: originController,
+            onChanged: onOriginChanged,
             textInputAction: TextInputAction.next,
             decoration: const InputDecoration(
               labelText: 'Origen',
@@ -207,16 +305,27 @@ class _TripFields extends StatelessWidget {
             ),
             validator: _requiredField('Ingresa el origen.'),
           ),
+          _MunicipalitySuggestions(
+            field: 'origin',
+            suggestions: originSuggestions,
+            onSelected: onOriginSelected,
+          ),
           const SizedBox(height: AppSpacing.m),
           TextFormField(
             key: const ValueKey('trip-destination-field'),
             controller: destinationController,
+            onChanged: onDestinationChanged,
             textInputAction: TextInputAction.done,
             decoration: const InputDecoration(
               labelText: 'Destino',
               prefixIcon: Icon(Icons.place_outlined),
             ),
             validator: _requiredField('Ingresa el destino.'),
+          ),
+          _MunicipalitySuggestions(
+            field: 'destination',
+            suggestions: destinationSuggestions,
+            onSelected: onDestinationSelected,
           ),
           const SizedBox(height: AppSpacing.m),
           OutlinedButton.icon(
@@ -239,6 +348,108 @@ class _TripFields extends StatelessWidget {
             icon: const Icon(Icons.calendar_today_outlined),
             label: Text('Fecha · ${_formatDate(selectedDate)}'),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MunicipalitySuggestions extends StatelessWidget {
+  const _MunicipalitySuggestions({
+    required this.field,
+    required this.suggestions,
+    required this.onSelected,
+  });
+
+  final String field;
+  final List<TripMunicipality> suggestions;
+  final ValueChanged<TripMunicipality> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    if (suggestions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      key: ValueKey('trip-$field-suggestions'),
+      children: [
+        const SizedBox(height: AppSpacing.xs),
+        for (final municipality in suggestions)
+          Material(
+            type: MaterialType.transparency,
+            child: ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              title: Text(municipality.displayName),
+              onTap: () => onSelected(municipality),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _RestrictionSummary extends StatelessWidget {
+  const _RestrictionSummary({
+    required this.date,
+    required this.origin,
+    required this.destination,
+  });
+
+  final DateTime date;
+  final AsyncValue<TripEndpointRestriction> origin;
+  final AsyncValue<TripEndpointRestriction> destination;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Pico y placa', style: AppTextStyles.h2),
+          const SizedBox(height: AppSpacing.s),
+          _RestrictionEndpoint(label: 'Origen', date: date, evaluation: origin),
+          const SizedBox(height: AppSpacing.m),
+          _RestrictionEndpoint(
+            label: 'Destino',
+            date: date,
+            evaluation: destination,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RestrictionEndpoint extends StatelessWidget {
+  const _RestrictionEndpoint({
+    required this.label,
+    required this.date,
+    required this.evaluation,
+  });
+
+  final String label;
+  final DateTime date;
+  final AsyncValue<TripEndpointRestriction> evaluation;
+
+  @override
+  Widget build(BuildContext context) {
+    return evaluation.when(
+      loading: () => Text('$label · Consultando'),
+      error: (error, stackTrace) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$label · Sin información vigente'),
+          const Text('Fuente de reglas no disponible.'),
+          Text('Consultado para ${_formatDate(date)}'),
+        ],
+      ),
+      data: (result) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$label · ${_restrictionLabel(result.status)}'),
+          Text(result.sourceUrl ?? 'Fuente de reglas no disponible.'),
+          Text('Consultado para ${_formatDate(date)}'),
         ],
       ),
     );
@@ -378,5 +589,14 @@ String _vehicleType(VehicleProfile vehicle) {
   return switch (vehicle.serviceType) {
     VehicleServiceType.taxi => 'Taxi',
     VehicleServiceType.private => 'Particular',
+  };
+}
+
+String _restrictionLabel(RestrictionDayStatus status) {
+  return switch (status) {
+    RestrictionDayStatus.allowed => 'Sin restricción para ese día',
+    RestrictionDayStatus.restricted => 'No circula',
+    RestrictionDayStatus.unknown => 'Sin información vigente',
+    RestrictionDayStatus.stale => 'Información desactualizada',
   };
 }
