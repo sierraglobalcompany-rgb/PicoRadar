@@ -58,6 +58,23 @@ void main() {
           expect(heading.didExceedMaxLines, isFalse);
           expect(metrics.height, lessThanOrEqualTo(heading.size.height + 0.1));
           metrics.dispose();
+          for (final label in ['Comprar', 'Vender']) {
+            final choice = find.text(label);
+            await tester.ensureVisible(choice);
+            await tester.pumpAndSettle();
+            final paragraph = tester.renderObject<RenderParagraph>(choice);
+            final boxes = paragraph.getBoxesForSelection(
+              TextSelection(baseOffset: 0, extentOffset: label.length),
+            );
+            expect(boxes, isNotEmpty);
+            expect(
+              boxes.map((box) => box.top).toSet(),
+              hasLength(1),
+              reason:
+                  '$label must not leave an orphan letter at enlarged scale',
+            );
+            expect(choice.hitTestable(), findsOneWidget);
+          }
           tester.view.viewInsets = const FakeViewPadding(bottom: 300);
           addTearDown(tester.view.resetViewInsets);
           await tester.pumpAndSettle();

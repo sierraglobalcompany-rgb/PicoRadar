@@ -489,6 +489,9 @@ class _DraftForm extends StatelessWidget {
           children: [
             SegmentedButton<BuySellMode>(
               key: const ValueKey('buy-sell-mode'),
+              direction: MediaQuery.textScalerOf(context).scale(1) > 1.25
+                  ? Axis.vertical
+                  : Axis.horizontal,
               segments: const [
                 ButtonSegment(
                   value: BuySellMode.buy,
