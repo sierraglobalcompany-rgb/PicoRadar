@@ -2234,9 +2234,18 @@ void main() {
         find.byKey(const ValueKey('pico-city-status-co-dc-bogota')),
         findsOneWidget,
       );
-      expect(find.text('Carros, Motos · Cobertura vigente'), findsOneWidget);
       expect(
-        find.text('Carros, Motos, Taxis · Cobertura vigente'),
+        find.descendant(
+          of: find.byKey(const ValueKey('pico-city-option-co-ant-medellin')),
+          matching: find.text('Carros, Motos · Cobertura vigente'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('pico-city-option-co-dc-bogota')),
+          matching: find.text('Carros, Motos, Taxis · Cobertura vigente'),
+        ),
         findsOneWidget,
       );
       expect(find.text('Próximamente'), findsWidgets);
