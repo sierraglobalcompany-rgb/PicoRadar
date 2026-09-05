@@ -22,10 +22,9 @@ enum OnboardingVehicleChoice {
     serviceType: VehicleServiceType.private,
     icon: Icons.directions_car,
     subtypeOptions: [
-      SubtypeOption('car_hatchback', 'Automóvil / hatchback'),
+      SubtypeOption('car_hatchback', 'Coupé / Hatchback'),
       SubtypeOption('car_sedan', 'Sedán'),
-      SubtypeOption('car_coupe', 'Coupé'),
-      SubtypeOption('car_suv', 'SUV / crossover'),
+      SubtypeOption('car_suv', 'Camioneta / SUV'),
       SubtypeOption('car_pickup', 'Pick-up'),
       SubtypeOption('car_van', 'Van'),
     ],
@@ -130,28 +129,53 @@ class _OnboardingVehicleScreenState
   Widget build(BuildContext context) {
     final step = _choice == null ? 1 : 2;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Editar vehículo' : 'Agregar vehículo'),
-        leading: IconButton(
-          key: const ValueKey('onboarding-back'),
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go(widget.returnPath ?? AppRoute.home.path);
-            }
-          },
-          icon: const Icon(Icons.arrow_back),
-          tooltip: 'Volver',
+    return PopScope(
+      canPop: !_saving && (_choice == null || _isEditing),
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && !_saving && _choice != null && !_isEditing) {
+          _returnToChoice();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(_isEditing ? 'Editar vehículo' : 'Agregar vehículo'),
+          leading: IconButton(
+            key: const ValueKey('onboarding-back'),
+            onPressed: _handleBack,
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Volver',
+          ),
+        ),
+        body: SafeArea(
+          child: !_loadedInitialState
+              ? const Center(child: CircularProgressIndicator())
+              : _buildBody(context, step),
         ),
       ),
-      body: SafeArea(
-        child: !_loadedInitialState
-            ? const Center(child: CircularProgressIndicator())
-            : _buildBody(context, step),
-      ),
     );
+  }
+
+  void _handleBack() {
+    if (_saving) {
+      return;
+    }
+    if (_choice != null && !_isEditing) {
+      _returnToChoice();
+      return;
+    }
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(widget.returnPath ?? AppRoute.home.path);
+    }
+  }
+
+  void _returnToChoice() {
+    setState(() {
+      _choice = null;
+      _error = null;
+    });
+    _saveDraft();
   }
 
   Widget _buildBody(BuildContext context, int step) {
@@ -202,9 +226,11 @@ class _OnboardingVehicleScreenState
                     onTap: () {
                       setState(() {
                         _choice = option;
-                        _subtype = option == OnboardingVehicleChoice.taxi
-                            ? 'taxi'
-                            : null;
+                        if (option == OnboardingVehicleChoice.taxi) {
+                          _subtype = 'taxi';
+                        } else if (!_supportsSubtype(option, _subtype)) {
+                          _subtype = null;
+                        }
                         _error = null;
                       });
                       _saveDraft();
@@ -220,7 +246,12 @@ class _OnboardingVehicleScreenState
 
   Widget _buildFormStep(BuildContext context) {
     final choice = _choice!;
-    final subtypeOptions = choice.subtypeOptions;
+    final subtypeOptions = [
+      ...choice.subtypeOptions,
+      if (_subtype == 'car_coupe' &&
+          !choice.subtypeOptions.any((option) => option.value == _subtype))
+        const SubtypeOption('car_coupe', 'Coupé (anterior)'),
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -320,16 +351,7 @@ class _OnboardingVehicleScreenState
           children: [
             OutlinedButton.icon(
               key: const ValueKey('vehicle-back-to-choice'),
-              onPressed: _saving
-                  ? null
-                  : () {
-                      setState(() {
-                        _choice = null;
-                        _subtype = null;
-                        _error = null;
-                      });
-                      _saveDraft();
-                    },
+              onPressed: _saving ? null : _returnToChoice,
               icon: const Icon(Icons.arrow_back),
               label: const Text('Atrás'),
             ),
@@ -345,6 +367,15 @@ class _OnboardingVehicleScreenState
         ),
       ],
     );
+  }
+
+  bool _supportsSubtype(OnboardingVehicleChoice choice, String? subtype) {
+    if (subtype == null) {
+      return true;
+    }
+    return choice.subtypeOptions.any((option) => option.value == subtype) ||
+        (choice == OnboardingVehicleChoice.privateCar &&
+            subtype == 'car_coupe');
   }
 
   Future<void> _loadInitialState() async {

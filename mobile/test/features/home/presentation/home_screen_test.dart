@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -11,11 +12,13 @@ import 'package:picoradar/app/app.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/startup/startup_gate.dart';
 import 'package:picoradar/core/database/app_database.dart';
+import 'package:picoradar/app/theme/app_tokens.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/presentation/vehicle_detail_screen.dart';
 import 'package:picoradar/features/home/presentation/home_screen.dart';
 import 'package:picoradar/features/location/application/location_controller.dart';
 import 'package:picoradar/features/location/data/location_preferences.dart';
+import 'package:picoradar/features/location/domain/jurisdiction_location_resolver.dart';
 import 'package:picoradar/features/location/platform/device_location_gateway.dart';
 import 'package:picoradar/features/pico_placa/data/pico_jurisdiction_catalog.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
@@ -24,6 +27,7 @@ import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.
 import 'package:picoradar/features/pico_placa/domain/restriction_rule.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
 import 'package:picoradar/features/pico_placa/presentation/pico_detail_screen.dart';
+import 'package:picoradar/features/trip/data/trip_municipality_catalog.dart';
 import 'package:picoradar/features/vehicle_status/data/vehicle_obligation_store.dart';
 import 'package:picoradar/features/vehicle_status/domain/vehicle_obligation.dart';
 import 'package:picoradar/features/vehicle_status/platform/obligation_notifications.dart';
@@ -71,7 +75,7 @@ void main() {
       tester,
     ) async {
       final gateway = _FakeDeviceLocationGateway()
-        ..permission = DeviceLocationPermission.notRequested;
+        ..permission = DeviceLocationPermission.granted;
       await _readyHome(
         harness,
         plate: 'ABC124',
@@ -82,12 +86,12 @@ void main() {
 
       final locationCard = find.byKey(const ValueKey('home-location-card'));
       expect(locationCard, findsOneWidget);
-      expect(find.text('Ubicación'), findsOneWidget);
+      expect(find.text('Ubicación'), findsNothing);
       expect(find.text('Bogotá'), findsOneWidget);
       final locationSize = tester.getSize(locationCard);
-      expect(locationSize.height, 54);
-      expect(locationSize.width, lessThan(390 * 0.72));
-      expect(locationSize.width, greaterThan(390 * 0.60));
+      expect(locationSize.height, 48);
+      expect(locationSize.width, lessThanOrEqualTo(220));
+      expect(locationSize.width, greaterThanOrEqualTo(190));
       expect(
         tester.getTopLeft(locationCard).dy,
         lessThan(
@@ -96,9 +100,17 @@ void main() {
               .dy,
         ),
       );
-      expect(gateway.checkPermissionCalls, 0);
+      expect(gateway.checkPermissionCalls, 1);
       expect(gateway.requestPermissionCalls, 0);
       expect(gateway.positionCalls, 0);
+      expect(
+        find.byKey(const ValueKey('home-location-satellite-status')),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel(RegExp('Estado GPS desconocido')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('location card stays compact at small phone width', (
@@ -115,9 +127,89 @@ void main() {
       final locationSize = tester.getSize(
         find.byKey(const ValueKey('home-location-card')),
       );
-      expect(locationSize.height, 54);
-      expect(locationSize.width, lessThan(360 * 0.72));
-      expect(locationSize.width, greaterThan(360 * 0.60));
+      expect(locationSize.height, 48);
+      expect(locationSize.width, lessThanOrEqualTo(212));
+      expect(locationSize.width, greaterThanOrEqualTo(184));
+    });
+
+    for (final viewport in <({Size size, double textScale})>[
+      (size: const Size(360, 800), textScale: 1.5),
+      (size: const Size(360, 800), textScale: 2),
+      (size: const Size(390, 844), textScale: 1.5),
+      (size: const Size(390, 844), textScale: 2),
+      (size: const Size(412, 915), textScale: 1.5),
+      (size: const Size(412, 915), textScale: 2),
+    ]) {
+      testWidgets(
+        'location keeps full Medellín at ${viewport.size.width.toInt()} '
+        'text scale ${viewport.textScale}',
+        (tester) async {
+          await _readyHome(
+            harness,
+            plate: 'ABC124',
+            jurisdictionId: 'co-ant-medellin',
+          );
+
+          await _pumpHome(
+            tester,
+            harness,
+            viewportSize: viewport.size,
+            textScaleFactor: viewport.textScale,
+          );
+
+          final card = find.byKey(const ValueKey('home-location-card'));
+          final city = find.descendant(
+            of: card,
+            matching: find.text('Medellín'),
+          );
+          final cityWidget = tester.widget<Text>(city);
+          final cardRect = tester.getRect(card);
+          final cityRect = tester.getRect(city);
+
+          expect(cityWidget.overflow, isNot(TextOverflow.ellipsis));
+          expect(cityRect.left, greaterThanOrEqualTo(cardRect.left));
+          expect(cityRect.right, lessThanOrEqualTo(cardRect.right));
+          expect(cityRect.top, greaterThanOrEqualTo(cardRect.top));
+          expect(cityRect.bottom, lessThanOrEqualTo(cardRect.bottom));
+          expect(
+            find.byKey(const ValueKey('home-location-satellite-status')),
+            findsOneWidget,
+          );
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+
+    testWidgets('long location label wraps at 360 and text scale 2', (
+      tester,
+    ) async {
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-san-bucaramanga-metro',
+      );
+
+      await _pumpHome(
+        tester,
+        harness,
+        viewportSize: const Size(360, 800),
+        textScaleFactor: 2,
+      );
+
+      final card = find.byKey(const ValueKey('home-location-card'));
+      final city = find.descendant(
+        of: card,
+        matching: find.text('Área metropolitana de Bucaramanga'),
+      );
+      final cityWidget = tester.widget<Text>(city);
+      final cardRect = tester.getRect(card);
+      final cityRect = tester.getRect(city);
+
+      expect(cityWidget.maxLines, greaterThanOrEqualTo(2));
+      expect(cityWidget.overflow, isNot(TextOverflow.ellipsis));
+      expect(cityRect.right, lessThanOrEqualTo(cardRect.right));
+      expect(cityRect.bottom, lessThanOrEqualTo(cardRect.bottom));
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('location sheet switches manual jurisdiction from Home', (
@@ -180,9 +272,393 @@ void main() {
       final gpsCardSize = tester.getSize(
         find.byKey(const ValueKey('home-location-card')),
       );
-      expect(gpsCardSize.height, 54);
-      expect(gpsCardSize.width, lessThan(390 * 0.72));
-      expect(find.text('GPS activo'), findsOneWidget);
+      expect(gpsCardSize.height, 48);
+      expect(gpsCardSize.width, lessThanOrEqualTo(220));
+      expect(find.text('GPS activo'), findsNothing);
+      final satellite = tester.widget<Icon>(
+        find.byKey(const ValueKey('home-location-satellite-status')),
+      );
+      expect(satellite.color, AppColors.green);
+      expect(
+        find.byKey(const ValueKey('home-location-satellite-lock')),
+        findsNothing,
+      );
+    });
+
+    testWidgets('fresh GPS expires without interaction or another GPS read', (
+      tester,
+    ) async {
+      var visualNow = harness.now.toUtc();
+      final gateway = _FakeDeviceLocationGateway()
+        ..permission = DeviceLocationPermission.granted
+        ..point = const DeviceLocationPoint(
+          latitude: 4.7110,
+          longitude: -74.0721,
+          accuracyMeters: 80,
+        );
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-ant-medellin',
+      );
+      await harness.preferences.setString(
+        locationModePreferenceKey,
+        LocationMode.gpsAuto.value,
+      );
+      await _pumpHome(
+        tester,
+        harness,
+        deviceLocationGateway: gateway,
+        homeGpsClock: () => visualNow,
+      );
+      expect(_satelliteColor(tester), AppColors.green);
+      final permissionCalls = gateway.checkPermissionCalls;
+      final requestCalls = gateway.requestPermissionCalls;
+      final positionCalls = gateway.positionCalls;
+
+      visualNow = visualNow.add(locationRefreshTtl);
+      await tester.pump(locationRefreshTtl);
+
+      expect(_satelliteColor(tester), AppColors.blue.withValues(alpha: 0.72));
+      expect(
+        find.bySemanticsLabel(RegExp('Estado GPS desconocido')),
+        findsOneWidget,
+      );
+      expect(gateway.checkPermissionCalls, permissionCalls);
+      expect(gateway.requestPermissionCalls, requestCalls);
+      expect(gateway.positionCalls, positionCalls);
+    });
+
+    testWidgets('new detected sample replaces the pending visual expiry', (
+      tester,
+    ) async {
+      var visualNow = harness.now.toUtc();
+      final gateway = _FakeDeviceLocationGateway()
+        ..permission = DeviceLocationPermission.granted
+        ..point = const DeviceLocationPoint(
+          latitude: 4.7110,
+          longitude: -74.0721,
+          accuracyMeters: 80,
+        );
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-ant-medellin',
+      );
+      await harness.preferences.setString(
+        locationModePreferenceKey,
+        LocationMode.gpsAuto.value,
+      );
+      await _pumpHome(
+        tester,
+        harness,
+        deviceLocationGateway: gateway,
+        homeGpsClock: () => visualNow,
+        currentInstantClock: () => visualNow,
+      );
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(HomeScreen)),
+      );
+
+      visualNow = visualNow.add(const Duration(minutes: 10));
+      await tester.pump(const Duration(minutes: 10));
+      container.invalidate(currentInstantProvider);
+      await container
+          .read(locationStateProvider.notifier)
+          .refreshGps(requestPermission: false, force: true);
+      await _pumpAsyncHome(tester);
+      expect(_satelliteColor(tester), AppColors.green);
+      final permissionCalls = gateway.checkPermissionCalls;
+      final requestCalls = gateway.requestPermissionCalls;
+      final positionCalls = gateway.positionCalls;
+
+      visualNow = visualNow.add(const Duration(minutes: 10));
+      await tester.pump(const Duration(minutes: 10));
+      expect(_satelliteColor(tester), AppColors.green);
+
+      visualNow = visualNow.add(const Duration(minutes: 10));
+      await tester.pump(const Duration(minutes: 10));
+      expect(_satelliteColor(tester), AppColors.blue.withValues(alpha: 0.72));
+      expect(gateway.checkPermissionCalls, permissionCalls);
+      expect(gateway.requestPermissionCalls, requestCalls);
+      expect(gateway.positionCalls, positionCalls);
+    });
+
+    testWidgets('disposing Home cancels pending visual GPS expiry', (
+      tester,
+    ) async {
+      var visualNow = harness.now.toUtc();
+      final gateway = _FakeDeviceLocationGateway()
+        ..permission = DeviceLocationPermission.granted
+        ..point = const DeviceLocationPoint(
+          latitude: 4.7110,
+          longitude: -74.0721,
+          accuracyMeters: 80,
+        );
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-ant-medellin',
+      );
+      await harness.preferences.setString(
+        locationModePreferenceKey,
+        LocationMode.gpsAuto.value,
+      );
+      await _pumpHome(
+        tester,
+        harness,
+        deviceLocationGateway: gateway,
+        homeGpsClock: () => visualNow,
+      );
+      expect(_satelliteColor(tester), AppColors.green);
+      final permissionCalls = gateway.checkPermissionCalls;
+      final requestCalls = gateway.requestPermissionCalls;
+      final positionCalls = gateway.positionCalls;
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      visualNow = visualNow.add(locationRefreshTtl);
+      await tester.pump(locationRefreshTtl);
+
+      expect(tester.takeException(), isNull);
+      expect(gateway.checkPermissionCalls, permissionCalls);
+      expect(gateway.requestPermissionCalls, requestCalls);
+      expect(gateway.positionCalls, positionCalls);
+    });
+
+    testWidgets('revoked GPS on resume replaces stale detected state', (
+      tester,
+    ) async {
+      final gateway = _FakeDeviceLocationGateway()
+        ..permission = DeviceLocationPermission.granted
+        ..point = const DeviceLocationPoint(
+          latitude: 4.7110,
+          longitude: -74.0721,
+          accuracyMeters: 80,
+        );
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-ant-medellin',
+      );
+      await harness.preferences.setString(
+        locationModePreferenceKey,
+        LocationMode.gpsAuto.value,
+      );
+
+      await _pumpHome(tester, harness, deviceLocationGateway: gateway);
+      expect(
+        tester
+            .widget<Icon>(
+              find.byKey(const ValueKey('home-location-satellite-status')),
+            )
+            .color,
+        AppColors.green,
+      );
+
+      gateway.permission = DeviceLocationPermission.denied;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+
+      expect(gateway.requestPermissionCalls, 0);
+      expect(
+        tester
+            .widget<Icon>(
+              find.byKey(const ValueKey('home-location-satellite-status')),
+            )
+            .color,
+        AppColors.navy.withValues(alpha: 0.42),
+      );
+      expect(
+        find.byKey(const ValueKey('home-location-satellite-lock')),
+        findsOneWidget,
+      );
+      expect(find.bySemanticsLabel(RegExp('GPS desactivado')), findsOneWidget);
+    });
+
+    testWidgets('newer revoked probe wins over an older granted completion', (
+      tester,
+    ) async {
+      final gateway = _ControlledDeviceLocationGateway();
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-dc-bogota',
+      );
+
+      await _pumpHome(tester, harness, deviceLocationGateway: gateway);
+      expect(gateway.serviceChecks, hasLength(1));
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(gateway.serviceChecks, hasLength(2));
+
+      gateway.serviceChecks[1].complete(true);
+      await tester.pump();
+      expect(gateway.permissionChecks, hasLength(1));
+      gateway.permissionChecks[0].complete(DeviceLocationPermission.denied);
+      await tester.pump();
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('home-location-satellite-lock')),
+        findsOneWidget,
+      );
+
+      gateway.serviceChecks[0].complete(true);
+      await tester.pump();
+      expect(gateway.permissionChecks, hasLength(1));
+
+      expect(
+        find.byKey(const ValueKey('home-location-satellite-lock')),
+        findsOneWidget,
+      );
+      expect(gateway.requestPermissionCalls, 0);
+    });
+
+    testWidgets('pending lifecycle probe is harmless after Home is disposed', (
+      tester,
+    ) async {
+      final gateway = _ControlledDeviceLocationGateway();
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-dc-bogota',
+      );
+
+      await _pumpHome(tester, harness, deviceLocationGateway: gateway);
+      expect(gateway.serviceChecks, hasLength(1));
+      await tester.pumpWidget(const SizedBox.shrink());
+
+      gateway.serviceChecks.single.complete(true);
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(gateway.permissionChecks, isEmpty);
+      expect(gateway.requestPermissionCalls, 0);
+    });
+
+    testWidgets('sheet close reprobes disabled GPS after permission grant', (
+      tester,
+    ) async {
+      final gateway = _FakeDeviceLocationGateway()
+        ..permission = DeviceLocationPermission.denied
+        ..permissionAfterRequest = DeviceLocationPermission.granted
+        ..point = const DeviceLocationPoint(
+          latitude: 4.7110,
+          longitude: -74.0721,
+          accuracyMeters: 80,
+        );
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-ant-medellin',
+      );
+      await _pumpHome(tester, harness, deviceLocationGateway: gateway);
+      expect(
+        find.byKey(const ValueKey('home-location-satellite-lock')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('home-location-card')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('location-gps-auto-option')));
+      await tester.pumpAndSettle();
+
+      expect(gateway.requestPermissionCalls, 1);
+      expect(gateway.checkPermissionCalls, greaterThanOrEqualTo(3));
+      expect(
+        find.byKey(const ValueKey('home-location-satellite-lock')),
+        findsNothing,
+      );
+      expect(
+        tester
+            .widget<Icon>(
+              find.byKey(const ValueKey('home-location-satellite-status')),
+            )
+            .color,
+        AppColors.green,
+      );
+    });
+
+    testWidgets(
+      'old detected sample is neutral despite cached global instant',
+      (tester) async {
+        harness.now = DateTime.now().toUtc().subtract(const Duration(hours: 2));
+        final gateway = _FakeDeviceLocationGateway()
+          ..permission = DeviceLocationPermission.granted
+          ..point = const DeviceLocationPoint(
+            latitude: 4.7110,
+            longitude: -74.0721,
+            accuracyMeters: 80,
+          );
+        await _readyHome(
+          harness,
+          plate: 'ABC124',
+          jurisdictionId: 'co-ant-medellin',
+        );
+        await harness.preferences.setString(
+          locationModePreferenceKey,
+          LocationMode.gpsAuto.value,
+        );
+
+        await _pumpHome(
+          tester,
+          harness,
+          deviceLocationGateway: gateway,
+          homeGpsClock: DateTime.now,
+        );
+
+        expect(gateway.positionCalls, 1);
+        expect(gateway.requestPermissionCalls, 0);
+        expect(
+          tester
+              .widget<Icon>(
+                find.byKey(const ValueKey('home-location-satellite-status')),
+              )
+              .color,
+          AppColors.blue.withValues(alpha: 0.72),
+        );
+      },
+    );
+
+    testWidgets('future detected sample is never presented as current GPS', (
+      tester,
+    ) async {
+      harness.now = DateTime.now().toUtc().add(const Duration(hours: 2));
+      final gateway = _FakeDeviceLocationGateway()
+        ..permission = DeviceLocationPermission.granted
+        ..point = const DeviceLocationPoint(
+          latitude: 4.7110,
+          longitude: -74.0721,
+          accuracyMeters: 80,
+        );
+      await _readyHome(
+        harness,
+        plate: 'ABC124',
+        jurisdictionId: 'co-ant-medellin',
+      );
+      await harness.preferences.setString(
+        locationModePreferenceKey,
+        LocationMode.gpsAuto.value,
+      );
+
+      await _pumpHome(
+        tester,
+        harness,
+        deviceLocationGateway: gateway,
+        homeGpsClock: DateTime.now,
+      );
+
+      expect(gateway.requestPermissionCalls, 0);
+      expect(
+        tester
+            .widget<Icon>(
+              find.byKey(const ValueKey('home-location-satellite-status')),
+            )
+            .color,
+        AppColors.blue.withValues(alpha: 0.72),
+      );
     });
 
     testWidgets('resume TTL refresh does not request permission implicitly', (
@@ -1104,7 +1580,7 @@ void main() {
         findsNothing,
       );
       await tester.tap(find.byKey(const ValueKey('home-notification-bell')));
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
 
       expect(
         find.byKey(const ValueKey('home-notification-sheet')),
@@ -1112,6 +1588,24 @@ void main() {
       );
       expect(
         find.byKey(const ValueKey('home-enable-notifications')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('notification-sheet-close')),
+        findsOneWidget,
+      );
+
+      final close = find.byKey(const ValueKey('notification-sheet-close'));
+      await tester.ensureVisible(close);
+      await tester.tap(close);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('home-notification-sheet')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('home-compact-top-bar')),
         findsOneWidget,
       );
     });
@@ -1544,11 +2038,8 @@ void main() {
       );
       await _pumpAsyncHome(tester);
 
-      final weekList = tester.widget<ListView>(
-        find.descendant(
-          of: find.byKey(const ValueKey('pico-city-week-list')),
-          matching: find.byType(ListView),
-        ),
+      final weekList = tester.widget<SingleChildScrollView>(
+        find.byKey(const ValueKey('pico-city-week-list')),
       );
       expect(weekList.scrollDirection, Axis.horizontal);
       expect(
@@ -1601,18 +2092,37 @@ void main() {
 
       await _pumpDetail(tester, harness);
 
+      expect(find.text('Rotación vigente'), findsOneWidget);
+      expect(find.text('5 · 8'), findsWidgets);
+
+      await tester.scrollUntilVisible(
+        find.text('Cómo aplica'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('Cómo aplica'), findsOneWidget);
       expect(find.text('ÚLTIMO DÍGITO'), findsOneWidget);
       expect(find.text('Horario no publicado'), findsNothing);
       expect(find.text('05:00-20:00'), findsWidgets);
-      expect(find.text('Rotación vigente'), findsOneWidget);
-      expect(find.text('5 · 8'), findsWidgets);
+
+      await tester.scrollUntilVisible(
+        find
+            .byKey(const ValueKey('pico-city-category-motorcycles'))
+            .hitTestable(),
+        -200,
+        scrollable: find.byType(Scrollable).first,
+      );
 
       await tester.tap(
         find.byKey(const ValueKey('pico-city-category-motorcycles')),
       );
       await _pumpAsyncHome(tester);
 
+      await tester.scrollUntilVisible(
+        find.text('Cómo aplica'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('PRIMER NÚMERO'), findsOneWidget);
       expect(find.text('5 · 8'), findsWidgets);
     });
@@ -1632,6 +2142,11 @@ void main() {
       await _pumpAsyncHome(tester);
 
       expect(find.text('Taxis'), findsWidgets);
+      await tester.scrollUntilVisible(
+        find.text('Cómo aplica'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(
         find.text('Cobertura aún no disponible para esta ciudad.'),
         findsOneWidget,
@@ -1719,9 +2234,18 @@ void main() {
         find.byKey(const ValueKey('pico-city-status-co-dc-bogota')),
         findsOneWidget,
       );
-      expect(find.text('Carros, Motos · Cobertura vigente'), findsOneWidget);
       expect(
-        find.text('Carros, Motos, Taxis · Cobertura vigente'),
+        find.descendant(
+          of: find.byKey(const ValueKey('pico-city-option-co-ant-medellin')),
+          matching: find.text('Carros, Motos · Cobertura vigente'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('pico-city-option-co-dc-bogota')),
+          matching: find.text('Carros, Motos, Taxis · Cobertura vigente'),
+        ),
         findsOneWidget,
       );
       expect(find.text('Próximamente'), findsWidgets);
@@ -2120,6 +2644,8 @@ Future<void> _pumpHome(
   Widget? bottomNavigationBar,
   Widget Function(Widget child)? wrap,
   DeviceLocationGateway? deviceLocationGateway,
+  DateTime Function()? homeGpsClock,
+  DateTime Function()? currentInstantClock,
 }) async {
   await _pump(
     tester,
@@ -2132,6 +2658,8 @@ Future<void> _pumpHome(
     textScaleFactor: textScaleFactor,
     wrap: wrap,
     deviceLocationGateway: deviceLocationGateway,
+    homeGpsClock: homeGpsClock,
+    currentInstantClock: currentInstantClock,
   );
 }
 
@@ -2342,6 +2870,8 @@ Future<void> _pump(
   double? textScaleFactor,
   Widget Function(Widget child)? wrap,
   DeviceLocationGateway? deviceLocationGateway,
+  DateTime Function()? homeGpsClock,
+  DateTime Function()? currentInstantClock,
 }) async {
   await _installWidgetChannelMock(tester, harness, viewportSize: viewportSize);
   if (textScaleFactor != null) {
@@ -2352,6 +2882,8 @@ Future<void> _pump(
     harness,
     child: MaterialApp(home: child),
     deviceLocationGateway: deviceLocationGateway,
+    homeGpsClock: homeGpsClock,
+    currentInstantClock: currentInstantClock,
   );
   await tester.pumpWidget(wrap == null ? app : wrap(app));
   await _pumpAsyncHome(tester);
@@ -2361,11 +2893,16 @@ Widget _providerScope(
   TestAppHarness harness, {
   required Widget child,
   DeviceLocationGateway? deviceLocationGateway,
+  DateTime Function()? homeGpsClock,
+  DateTime Function()? currentInstantClock,
 }) {
   return ProviderScope(
     overrides: [
       appDatabaseProvider.overrideWithValue(harness.database),
       appPreferencesProvider.overrideWithValue(harness.preferences),
+      tripMunicipalityCatalogProvider.overrideWithValue(
+        AsyncValue.data(TestAppHarness.tripCatalog),
+      ),
       bundledRestrictionsProvider.overrideWith((ref) async {}),
       restrictionJurisdictionsProvider.overrideWith(
         (ref) async => _jurisdictions,
@@ -2383,7 +2920,12 @@ Widget _providerScope(
         _FakePicoNotificationScheduler(),
       ),
       bogotaNowProvider.overrideWithValue(harness.now),
-      currentInstantProvider.overrideWithValue(harness.now.toUtc()),
+      currentInstantProvider.overrideWith(
+        (ref) => (currentInstantClock ?? () => harness.now.toUtc())().toUtc(),
+      ),
+      homeGpsClockProvider.overrideWithValue(
+        homeGpsClock ?? () => harness.now.toUtc(),
+      ),
       startupReadinessProvider.overrideWith(
         (ref) async => const StartupReadiness(
           imageAssets: [],
@@ -2560,6 +3102,10 @@ HomeVehicleSnapshot _snapshot(String id, RestrictionDayStatus status) {
 const _jurisdictions = [
   RestrictionJurisdiction(id: 'co-dc-bogota', name: 'Bogotá'),
   RestrictionJurisdiction(id: 'co-ant-medellin', name: 'Medellín'),
+  RestrictionJurisdiction(
+    id: 'co-san-bucaramanga-metro',
+    name: 'Área metropolitana de Bucaramanga',
+  ),
 ];
 
 const _medellinWindows = [
@@ -2769,6 +3315,14 @@ class _FakePicoNotificationScheduler extends PicoNotificationScheduler {
   Future<void> cancelObligationNotifications() async {}
 }
 
+Color? _satelliteColor(WidgetTester tester) {
+  return tester
+      .widget<Icon>(
+        find.byKey(const ValueKey('home-location-satellite-status')),
+      )
+      .color;
+}
+
 class _FakeDeviceLocationGateway implements DeviceLocationGateway {
   bool serviceEnabled = true;
   DeviceLocationPermission permission = DeviceLocationPermission.granted;
@@ -2818,4 +3372,41 @@ class _FakeDeviceLocationGateway implements DeviceLocationGateway {
     openLocationSettingsCalls += 1;
     return true;
   }
+}
+
+class _ControlledDeviceLocationGateway implements DeviceLocationGateway {
+  final serviceChecks = <Completer<bool>>[];
+  final permissionChecks = <Completer<DeviceLocationPermission>>[];
+  int requestPermissionCalls = 0;
+
+  @override
+  Future<bool> isLocationServiceEnabled() {
+    final result = Completer<bool>();
+    serviceChecks.add(result);
+    return result.future;
+  }
+
+  @override
+  Future<DeviceLocationPermission> checkPermission() {
+    final result = Completer<DeviceLocationPermission>();
+    permissionChecks.add(result);
+    return result.future;
+  }
+
+  @override
+  Future<DeviceLocationPermission> requestPermission() async {
+    requestPermissionCalls += 1;
+    return DeviceLocationPermission.denied;
+  }
+
+  @override
+  Future<DeviceLocationResult> getCurrentPosition() async {
+    throw StateError('Position must not be requested by a status probe.');
+  }
+
+  @override
+  Future<bool> openAppSettings() async => true;
+
+  @override
+  Future<bool> openLocationSettings() async => true;
 }

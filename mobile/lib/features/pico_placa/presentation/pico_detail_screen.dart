@@ -333,9 +333,9 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
               jurisdiction: jurisdiction,
             ),
             const SizedBox(height: AppSpacing.m),
-            _RuleSummaryCard(summary: ruleSummary),
-            const SizedBox(height: AppSpacing.m),
             _RotationMatrixCard(rotation: rotation),
+            const SizedBox(height: AppSpacing.m),
+            _RuleSummaryCard(summary: ruleSummary),
             const SizedBox(height: AppSpacing.m),
             _WeekSchedule(
               jurisdiction: jurisdiction,
@@ -2204,7 +2204,10 @@ class _CityHero extends StatelessWidget {
                 Text(jurisdiction.name, style: AppTextStyles.caption),
                 const SizedBox(height: AppSpacing.xs),
                 _StatusPill(
-                  label: 'Hoy · ${_weekday(summary.date)} ${summary.date.day}',
+                  label: summary.status == RestrictionDayStatus.restricted
+                      ? 'No circula · Hoy · ${_weekday(summary.date)} '
+                            '${summary.date.day}'
+                      : 'Hoy · ${_weekday(summary.date)} ${summary.date.day}',
                   color: color,
                   icon: _statusIcon(summary.status),
                 ),
@@ -2396,6 +2399,7 @@ class _RotationRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _statusColor(row.status);
+    final useStackedLayout = MediaQuery.textScalerOf(context).scale(1) > 1.25;
     return Container(
       key: ValueKey('pico-city-rotation-row-$index'),
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
@@ -2404,35 +2408,41 @@ class _RotationRow extends StatelessWidget {
           bottom: BorderSide(color: AppColors.border.withValues(alpha: 0.7)),
         ),
       ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 92,
-            child: Text(
-              row.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.bodyStrong,
+      child: useStackedLayout
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(row.label, style: AppTextStyles.bodyStrong),
+                Text(
+                  _rotationDigits(row),
+                  style: AppTextStyles.bodyStrong.copyWith(color: color),
+                ),
+                Text(
+                  _compactWindows(row.windows),
+                  style: AppTextStyles.caption,
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                SizedBox(
+                  width: 92,
+                  child: Text(row.label, style: AppTextStyles.bodyStrong),
+                ),
+                const SizedBox(width: AppSpacing.s),
+                Expanded(
+                  child: Text(
+                    _rotationDigits(row),
+                    style: AppTextStyles.bodyStrong.copyWith(color: color),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s),
+                Text(
+                  _compactWindows(row.windows),
+                  style: AppTextStyles.caption,
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: AppSpacing.s),
-          Expanded(
-            child: Text(
-              _rotationDigits(row),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.bodyStrong.copyWith(color: color),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.s),
-          Text(
-            _compactWindows(row.windows),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.caption,
-          ),
-        ],
-      ),
     );
   }
 }
@@ -2463,26 +2473,28 @@ class _WeekSchedule extends StatelessWidget {
         children: [
           Text('Semana', style: AppTextStyles.h2),
           const SizedBox(height: AppSpacing.s),
-          SizedBox(
+          SingleChildScrollView(
             key: const ValueKey('pico-city-week-list'),
-            height: 118,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: days.length,
-              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.s),
-              itemBuilder: (context, index) {
-                final day = days[index];
-                return _WeekDayTile(
-                  index: index,
-                  isToday: _isSameDay(day, currentDate),
-                  summary: summarizeCityRestrictionDay(
-                    ruleSet: coverage.ruleSet,
-                    jurisdictionId: jurisdiction.id,
-                    category: coverage.category,
-                    date: day,
-                  ),
-                );
-              },
+            scrollDirection: Axis.horizontal,
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var index = 0; index < days.length; index += 1) ...[
+                    if (index > 0) const SizedBox(width: AppSpacing.s),
+                    _WeekDayTile(
+                      index: index,
+                      isToday: _isSameDay(days[index], currentDate),
+                      summary: summarizeCityRestrictionDay(
+                        ruleSet: coverage.ruleSet,
+                        jurisdictionId: jurisdiction.id,
+                        category: coverage.category,
+                        date: days[index],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.s),
@@ -2510,9 +2522,11 @@ class _WeekDayTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _statusColor(summary.status);
+    final textScale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0);
+    final tileWidth = 112 + ((textScale - 1) * 72);
     return Container(
       key: ValueKey('pico-city-week-day-$index'),
-      width: 78,
+      width: tileWidth,
       padding: const EdgeInsets.all(AppSpacing.s),
       decoration: BoxDecoration(
         color: isToday
@@ -2533,20 +2547,27 @@ class _WeekDayTile extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Icon(_statusIcon(summary.status), color: color, size: 18),
-          const Spacer(),
+          const SizedBox(height: AppSpacing.xs),
           Text(
-            _compactStatusText(summary.status),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            _weekStatusText(summary.status),
             style: AppTextStyles.caption.copyWith(
               fontSize: 11,
               fontWeight: FontWeight.w800,
             ),
           ),
+          if (summary.status == RestrictionDayStatus.restricted) ...[
+            const SizedBox(height: 2),
+            Text(
+              _digitsOrRule(summary),
+              style: AppTextStyles.caption.copyWith(
+                color: color,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+          const Spacer(),
           Text(
             _compactWindows(summary.effectiveWindows),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: AppTextStyles.caption.copyWith(fontSize: 10.5),
           ),
         ],
@@ -2761,12 +2782,7 @@ class _SourceCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            _sourceLabel(ruleSet),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.body,
-          ),
+          Text(_sourceLabel(ruleSet), style: AppTextStyles.body),
           if (ruleSet.verifiedAt != null)
             Text(
               'Verificado: ${_date(ruleSet.verifiedAt!)}',
@@ -2968,6 +2984,15 @@ String _compactStatusText(RestrictionDayStatus status) {
     RestrictionDayStatus.allowed => 'Libre',
     RestrictionDayStatus.unknown => 'Revisar',
     RestrictionDayStatus.stale => 'Actualizar',
+  };
+}
+
+String _weekStatusText(RestrictionDayStatus status) {
+  return switch (status) {
+    RestrictionDayStatus.restricted => 'No circula',
+    RestrictionDayStatus.allowed => 'Libre',
+    RestrictionDayStatus.unknown ||
+    RestrictionDayStatus.stale => 'Sin información vigente',
   };
 }
 

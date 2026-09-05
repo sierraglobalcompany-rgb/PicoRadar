@@ -23,6 +23,71 @@ import 'package:picoradar/features/vehicle_status/platform/external_launcher.dar
 import '../../../test_app_harness.dart';
 
 void main() {
+  test('live GPS stream error publishes location-unavailable state', () async {
+    final stages = <String>[];
+    final gateway = _ControlledErrorGateway(stages);
+    final feedback = _ObservedFeedbackGateway(stages);
+    final container = ProviderContainer(
+      overrides: [
+        appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+        cameraPackProvider.overrideWith((ref) async => _emptyPack()),
+        drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+      ],
+    );
+    ProviderSubscription<AsyncValue<DrivingState>>? subscription;
+
+    try {
+      await container.read(drivingControllerProvider.future);
+      final unavailable = Completer<DrivingState>();
+      subscription = container.listen<AsyncValue<DrivingState>>(
+        drivingControllerProvider,
+        (_, next) {
+          final value = next.asData?.value;
+          if (value != null) {
+            stages.add('state:${value.status.name}:${value.errorMessage}');
+          }
+          if (value?.status == DrivingSessionStatus.locationUnavailable &&
+              !unavailable.isCompleted) {
+            unavailable.complete(value);
+          }
+        },
+      );
+
+      await container.read(drivingControllerProvider.notifier).start();
+      await gateway.whenListening;
+      expect(
+        container.read(drivingControllerProvider).requireValue.status,
+        DrivingSessionStatus.active,
+      );
+
+      gateway.emitError();
+      final observed = await unavailable.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          final current = container.read(drivingControllerProvider);
+          throw TestFailure(
+            'Timed out waiting for locationUnavailable. '
+            'provider=$current; stages=$stages',
+          );
+        },
+      );
+
+      expect(observed.status, DrivingSessionStatus.locationUnavailable);
+      expect(
+        observed.errorMessage,
+        'No se pudo leer la ubicación en tiempo real.',
+      );
+      expect(stages, contains('stream:onCancel'));
+      expect(stages, contains('feedback:stop'));
+      expect(stages, contains('feedback:screen:false'));
+    } finally {
+      subscription?.close();
+      container.dispose();
+      await gateway.close();
+    }
+  });
+
   setUp(CameraMapEpisodeCache.resetForTesting);
 
   testWidgets('shows the driving start surface without requesting GPS', (
@@ -62,6 +127,48 @@ void main() {
     expect(gateway.requestPermissionCalls, 0);
   });
 
+  testWidgets('idle legal notice opens and closes without starting driving', (
+    tester,
+  ) async {
+    final gateway = _IdleGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _emptyPack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('driving-legal-notice-action')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('driving-legal-notice-sheet')),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('PicoRadar ofrece información de apoyo'),
+      findsOneWidget,
+    );
+    expect(gateway.requestPermissionCalls, 0);
+
+    await tester.tap(find.byKey(const ValueKey('driving-legal-notice-close')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('driving-legal-notice-sheet')),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('start-driving')), findsOneWidget);
+  });
+
   testWidgets('start button requests foreground GPS permission', (
     tester,
   ) async {
@@ -85,6 +192,33 @@ void main() {
     await tester.pump();
 
     expect(gateway.requestPermissionCalls, 1);
+    await tester.pumpAndSettle();
+    expect(
+      find.text('PicoRadar solo usa GPS mientras Conducir está activo.'),
+      findsOneWidget,
+    );
+    expect(find.text('Sin cámara objetivo'), findsNothing);
+  });
+
+  testWidgets('GPS stream failure message remains visible', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          drivingControllerProvider.overrideWith(
+            _LocationErrorDrivingController.new,
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('No se pudo leer la ubicación en tiempo real.'),
+      findsOneWidget,
+    );
+    expect(find.text('Sin cámara objetivo'), findsNothing);
   });
 
   testWidgets(
@@ -297,7 +431,7 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const ValueKey('driving-state-chip')), findsOneWidget);
-    expect(find.text('Sin cámara objetivo'), findsOneWidget);
+    expect(find.text('Sin cámara objetivo'), findsNothing);
     expect(
       find.byKey(const ValueKey('driving-camera-alert-panel')),
       findsNothing,
@@ -1679,4 +1813,76 @@ class _StreamingGateway implements DrivingLocationGateway {
   Future<DeviceLocationPermission> requestPermission() async {
     return DeviceLocationPermission.granted;
   }
+}
+
+class _ControlledErrorGateway implements DrivingLocationGateway {
+  _ControlledErrorGateway(this.stages);
+
+  final List<String> stages;
+  final Completer<void> _listening = Completer<void>();
+  late final StreamController<DrivingPoint> _controller =
+      StreamController<DrivingPoint>(
+        onListen: () {
+          stages.add('stream:onListen');
+          if (!_listening.isCompleted) _listening.complete();
+        },
+        onCancel: () {
+          stages.add('stream:onCancel');
+        },
+      );
+
+  Future<void> get whenListening => _listening.future.timeout(
+    const Duration(seconds: 5),
+    onTimeout: () => throw TestFailure(
+      'Timed out waiting for stream onListen. stages=$stages',
+    ),
+  );
+
+  void emitError() {
+    stages.add('stream:addError');
+    _controller.addError(StateError('GPS unavailable'));
+  }
+
+  Future<void> close() => _controller.close();
+
+  @override
+  Future<DeviceLocationPermission> checkPermission() async =>
+      DeviceLocationPermission.granted;
+
+  @override
+  Future<bool> isLocationServiceEnabled() async => true;
+
+  @override
+  Stream<DrivingPoint> positionStream() => _controller.stream;
+
+  @override
+  Future<DeviceLocationPermission> requestPermission() async =>
+      DeviceLocationPermission.granted;
+}
+
+class _ObservedFeedbackGateway extends _NoopDrivingFeedbackGateway {
+  _ObservedFeedbackGateway(this.stages);
+
+  final List<String> stages;
+
+  @override
+  Future<void> setKeepScreenOn(bool enabled) async {
+    stages.add('feedback:screen:$enabled');
+  }
+
+  @override
+  Future<void> stopOngoingFeedback() async {
+    stages.add('feedback:stop');
+  }
+}
+
+class _LocationErrorDrivingController extends DrivingController {
+  @override
+  Future<DrivingState> build() async => const DrivingState(
+    status: DrivingSessionStatus.locationUnavailable,
+    preferences: defaultDrivingPreferences,
+    cameraCount: 0,
+    cameraSpeedKnownCount: 0,
+    errorMessage: 'No se pudo leer la ubicación en tiempo real.',
+  );
 }

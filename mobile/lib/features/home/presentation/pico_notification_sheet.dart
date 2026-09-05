@@ -30,7 +30,17 @@ class PicoNotificationSheet extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Alertas', style: AppTextStyles.h1),
+              Row(
+                children: [
+                  Expanded(child: Text('Alertas', style: AppTextStyles.h1)),
+                  IconButton(
+                    key: const ValueKey('notification-sheet-close'),
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.close_rounded),
+                    tooltip: 'Cerrar',
+                  ),
+                ],
+              ),
               const SizedBox(height: AppSpacing.s),
               const Text('Recordatorios locales, sin cuenta ni servidor.'),
               const SizedBox(height: AppSpacing.l),

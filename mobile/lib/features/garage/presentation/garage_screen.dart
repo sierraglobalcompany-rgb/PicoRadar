@@ -208,6 +208,8 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
                         });
                       },
                       onFavorite: _toggleFavorite,
+                      onOpen: (vehicle) =>
+                          context.push('/garage/vehicle/${vehicle.id}'),
                     ),
                     const SizedBox(height: AppSpacing.s),
                     _CarouselIndicator(
@@ -221,13 +223,13 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
                       onMakeActive: _makeActive,
                     ),
                     const SizedBox(height: AppSpacing.s),
-                    _AddVehicleCard(onTap: _addVehicle),
-                    const SizedBox(height: AppSpacing.xs),
                     _GarageActions(
                       vehicle: focused,
                       deleteInProgress: _deletingVehicleId != null,
                       onDelete: _confirmDelete,
                     ),
+                    const SizedBox(height: AppSpacing.xs),
+                    _AddVehicleCard(onTap: _addVehicle),
                   ],
                 ],
               ),
@@ -775,6 +777,7 @@ class _GarageCarousel extends StatelessWidget {
     required this.controller,
     required this.onChanged,
     required this.onFavorite,
+    required this.onOpen,
   });
 
   final List<VehicleProfile> vehicles;
@@ -784,6 +787,7 @@ class _GarageCarousel extends StatelessWidget {
   final PageController controller;
   final ValueChanged<int> onChanged;
   final ValueChanged<VehicleProfile> onFavorite;
+  final ValueChanged<VehicleProfile> onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -809,6 +813,7 @@ class _GarageCarousel extends StatelessWidget {
               favorite: favoriteIds.contains(vehicle.id),
               focused: focused,
               onFavorite: () => onFavorite(vehicle),
+              onOpen: () => onOpen(vehicle),
             ),
           );
         },
@@ -824,6 +829,7 @@ class _GarageVehicleCard extends StatelessWidget {
     required this.favorite,
     required this.focused,
     required this.onFavorite,
+    required this.onOpen,
   });
 
   final VehicleProfile vehicle;
@@ -831,6 +837,7 @@ class _GarageVehicleCard extends StatelessWidget {
   final bool favorite;
   final bool focused;
   final VoidCallback onFavorite;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -843,90 +850,96 @@ class _GarageVehicleCard extends StatelessWidget {
       elevation: focused ? 8 : 2,
       shadowColor: AppColors.navy.withValues(alpha: 0.12),
       borderRadius: BorderRadius.circular(AppRadius.card),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(
-            color: active
-                ? AppColors.teal.withValues(alpha: 0.48)
-                : AppColors.border,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpen,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(
+              color: active
+                  ? AppColors.teal.withValues(alpha: 0.48)
+                  : AppColors.border,
+            ),
           ),
-        ),
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.m,
-                AppSpacing.s,
-                AppSpacing.m,
-                AppSpacing.s,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: VehicleVisualImage(
-                      vehicle: vehicle,
-                      cacheWidth: 420,
-                      fallbackBuilder: (_) =>
-                          Icon(vehicleIcon(vehicle), color: accent, size: 64),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    title,
-                    key: ValueKey('garage-vehicle-title-${vehicle.id}'),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.h2.copyWith(fontSize: 18),
-                  ),
-                  if (vehicle.year != null)
-                    Text(
-                      '${vehicle.year}',
-                      key: ValueKey('garage-vehicle-year-${vehicle.id}'),
-                      style: AppTextStyles.body.copyWith(
-                        color: AppColors.navy.withValues(alpha: 0.72),
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.m,
+                  AppSpacing.s,
+                  AppSpacing.m,
+                  AppSpacing.s,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: VehicleVisualImage(
+                        vehicle: vehicle,
+                        cacheWidth: 420,
+                        fallbackBuilder: (_) =>
+                            Icon(vehicleIcon(vehicle), color: accent, size: 64),
                       ),
                     ),
-                  const SizedBox(height: AppSpacing.xs),
-                  ColombianPlateBadge(plate: vehicle.plate),
-                ],
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      title,
+                      key: ValueKey('garage-vehicle-title-${vehicle.id}'),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.h2.copyWith(fontSize: 18),
+                    ),
+                    if (vehicle.year != null)
+                      Text(
+                        '${vehicle.year}',
+                        key: ValueKey('garage-vehicle-year-${vehicle.id}'),
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.navy.withValues(alpha: 0.72),
+                        ),
+                      ),
+                    const SizedBox(height: AppSpacing.xs),
+                    ColombianPlateBadge(plate: vehicle.plate),
+                  ],
+                ),
               ),
-            ),
-            Positioned(
-              top: AppSpacing.xs,
-              right: AppSpacing.xs,
-              child: Semantics(
-                button: true,
-                toggled: favorite,
-                label: favorite ? 'Quitar de favoritos' : 'Agregar a favoritos',
-                child: Tooltip(
-                  message: favorite
+              Positioned(
+                top: AppSpacing.xs,
+                right: AppSpacing.xs,
+                child: Semantics(
+                  button: true,
+                  toggled: favorite,
+                  label: favorite
                       ? 'Quitar de favoritos'
                       : 'Agregar a favoritos',
-                  child: SizedBox.square(
-                    dimension: 48,
-                    child: Center(
-                      child: Material(
-                        color: favorite
-                            ? AppColors.teal
-                            : AppColors.surface.withValues(alpha: 0.94),
-                        shape: const CircleBorder(),
-                        elevation: 2,
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          key: ValueKey('garage-favorite-${vehicle.id}'),
-                          customBorder: const CircleBorder(),
-                          onTap: onFavorite,
-                          child: SizedBox.square(
-                            dimension: 36,
-                            child: Icon(
-                              favorite
-                                  ? Icons.star_rounded
-                                  : Icons.star_border_rounded,
-                              color: favorite ? Colors.white : AppColors.navy,
-                              size: 20,
+                  child: Tooltip(
+                    message: favorite
+                        ? 'Quitar de favoritos'
+                        : 'Agregar a favoritos',
+                    child: SizedBox.square(
+                      dimension: 48,
+                      child: Center(
+                        child: Material(
+                          color: favorite
+                              ? AppColors.teal
+                              : AppColors.surface.withValues(alpha: 0.94),
+                          shape: const CircleBorder(),
+                          elevation: 2,
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            key: ValueKey('garage-favorite-${vehicle.id}'),
+                            customBorder: const CircleBorder(),
+                            onTap: onFavorite,
+                            child: SizedBox.square(
+                              dimension: 36,
+                              child: Icon(
+                                favorite
+                                    ? Icons.star_rounded
+                                    : Icons.star_border_rounded,
+                                color: favorite ? Colors.white : AppColors.navy,
+                                size: 20,
+                              ),
                             ),
                           ),
                         ),
@@ -935,8 +948,8 @@ class _GarageVehicleCard extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1205,7 +1218,11 @@ class _AddVehicleCard extends StatelessWidget {
           key: const ValueKey('garage-add-vehicle'),
           onTap: onTap,
           child: SizedBox(
-            height: textScale <= 1.25 ? _garageAddVehicleHeight : 132,
+            height: textScale <= 1.25
+                ? _garageAddVehicleHeight
+                : textScale >= 1.8
+                ? 160
+                : 132,
             child: CustomPaint(
               painter: _DashedBorderPainter(
                 color: AppColors.blue.withValues(alpha: 0.38),
@@ -1288,23 +1305,52 @@ class _GarageActions extends StatelessWidget {
       builder: (context, constraints) {
         final textScale = MediaQuery.textScalerOf(context).scale(1);
         const actionGap = 4.0;
-        final itemWidth = (constraints.maxWidth - (actionGap * 3)) / 4;
-        final itemHeight = textScale <= 1.25 ? _garageActionHeight : 124.0;
+        final itemWidth = (constraints.maxWidth - (actionGap * 2)) / 3;
+        if (textScale > 1.25) {
+          final accessibleActionHeight = textScale >= 1.8 ? 96.0 : 72.0;
+          return Column(
+            key: const ValueKey('garage-quick-actions'),
+            children: [
+              _QuickAction(
+                width: constraints.maxWidth,
+                height: accessibleActionHeight,
+                keyName: 'garage-action-maintenance',
+                icon: Icons.build_outlined,
+                label: 'Mantenimiento',
+                onTap: () => context.push(
+                  _vehicleModuleLocation('talleres', vehicle.id),
+                ),
+              ),
+              const SizedBox(height: actionGap),
+              _QuickAction(
+                width: constraints.maxWidth,
+                height: accessibleActionHeight,
+                keyName: 'garage-action-documents',
+                icon: Icons.folder_copy_outlined,
+                label: 'Documentos',
+                onTap: () => context.push(
+                  _vehicleModuleLocation('documentos', vehicle.id),
+                ),
+              ),
+              const SizedBox(height: actionGap),
+              _QuickAction(
+                width: constraints.maxWidth,
+                height: accessibleActionHeight,
+                keyName: 'garage-action-delete',
+                icon: Icons.delete_outline,
+                label: 'Eliminar',
+                danger: true,
+                onTap: deleteInProgress ? null : () => onDelete(vehicle),
+              ),
+            ],
+          );
+        }
         return Row(
           key: const ValueKey('garage-quick-actions'),
           children: [
             _QuickAction(
               width: itemWidth,
-              height: itemHeight,
-              keyName: 'garage-action-detail',
-              icon: Icons.description_outlined,
-              label: 'Detalle',
-              onTap: () => context.push('/garage/vehicle/${vehicle.id}'),
-            ),
-            const SizedBox(width: actionGap),
-            _QuickAction(
-              width: itemWidth,
-              height: itemHeight,
+              height: _garageActionHeight,
               keyName: 'garage-action-maintenance',
               icon: Icons.build_outlined,
               label: 'Mantenimiento',
@@ -1314,7 +1360,7 @@ class _GarageActions extends StatelessWidget {
             const SizedBox(width: actionGap),
             _QuickAction(
               width: itemWidth,
-              height: itemHeight,
+              height: _garageActionHeight,
               keyName: 'garage-action-documents',
               icon: Icons.folder_copy_outlined,
               label: 'Documentos',
@@ -1325,7 +1371,7 @@ class _GarageActions extends StatelessWidget {
             const SizedBox(width: actionGap),
             _QuickAction(
               width: itemWidth,
-              height: itemHeight,
+              height: _garageActionHeight,
               keyName: 'garage-action-delete',
               icon: Icons.delete_outline,
               label: 'Eliminar',
@@ -1400,9 +1446,9 @@ class _QuickAction extends StatelessWidget {
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     label,
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.fade,
+                    maxLines: 2,
+                    softWrap: true,
+                    overflow: TextOverflow.visible,
                     textAlign: TextAlign.center,
                     style: AppTextStyles.caption.copyWith(
                       fontSize: 10,
