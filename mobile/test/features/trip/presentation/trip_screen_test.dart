@@ -37,6 +37,11 @@ void main() {
 
   tearDownAll(_FakeTripRestrictionStore.closeDatabase);
 
+  testWidgets('VIAJE-R1 exposes an explicit plan CTA', (tester) async {
+    await _pumpScreen(tester, preferences: preferences);
+    expect(find.text('Ver plan de viaje'), findsOneWidget);
+  });
+
   setUp(() {
     preferences = MemoryPreferences();
     launcher = _FakeExternalLauncher();
