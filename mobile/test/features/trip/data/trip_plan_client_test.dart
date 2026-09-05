@@ -63,6 +63,43 @@ void main() {
     expect(adapter.calls, 0);
   });
 
+  test('departure window error retains only bounded server limit', () async {
+    adapter.status = 422;
+    adapter.body = {
+      'error': {
+        'code': 'departure_window',
+        'maxFutureDays': 7,
+        'message': 'private server text',
+      },
+    };
+    await expectLater(
+      client.preview(_request()),
+      throwsA(
+        isA<TripPlanFailure>()
+            .having((e) => e.code, 'code', 'departure_window')
+            .having((e) => e.maxFutureDays, 'days', 7),
+      ),
+    );
+    expect(adapter.calls, 1);
+  });
+
+  test(
+    'partial positive subtotal cannot claim zero payable occurrences',
+    () async {
+      final tolls = adapter.body['routes'][0]['tolls'];
+      tolls['coverage'] = 'partial';
+      tolls['totalMinor'] = null;
+      tolls['subtotalMinor'] = 1200000;
+      tolls['missingRates'] = 1;
+      tolls['charges'].add({'name': 'Unknown station', 'amountMinor': null});
+      tolls['stationCount'] = 2;
+      tolls['payableCount'] = 0;
+      final route = (await client.preview(_request())).routes.single;
+      expect(route.distanceMeters, 400000);
+      expect(route.tolls.coverage, TripTollCoverage.unknown);
+    },
+  );
+
   test(
     'overall deadline closes a slow continuous body without retry',
     () async {
