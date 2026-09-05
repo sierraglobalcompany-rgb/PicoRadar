@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/app_providers.dart';
@@ -72,11 +74,18 @@ typedef TripInstantRestrictionQuery = ({
   DateTime instantUtc,
 });
 
+final tripRestrictionClockProvider = Provider<DateTime Function()>((ref) {
+  return () => DateTime.now().toUtc();
+});
+
 final tripInstantRestrictionProvider =
-    FutureProvider.family<TripEndpointRestriction, TripInstantRestrictionQuery>(
+    FutureProvider.autoDispose.family<TripEndpointRestriction, TripInstantRestrictionQuery>(
       (ref, query) async {
         final instantUtc = query.instantUtc.toUtc();
-        final nowUtc = ref.watch(currentInstantProvider).toUtc();
+        final clock = ref.watch(tripRestrictionClockProvider);
+        final nowUtc = clock().toUtc();
+        Timer? expiryTimer;
+        ref.onDispose(() => expiryTimer?.cancel());
         final municipality = query.municipality;
         final vehicle = query.vehicle;
         final jurisdictionId = municipality?.jurisdictionId;
@@ -105,12 +114,26 @@ final tripInstantRestrictionProvider =
             );
           }
         }
+        // Local loading may cross the coverage deadline; re-read the clock.
+        final evaluatedNowUtc = clock().toUtc();
+        final staleAfter = ruleSet.staleAfter?.toUtc();
+        if (ref.mounted &&
+            ruleSet.coverageKnown &&
+            !ruleSet.dataIsStale &&
+            staleAfter != null &&
+            staleAfter.isAfter(evaluatedNowUtc)) {
+          expiryTimer = Timer(staleAfter.difference(evaluatedNowUtc), () {
+            if (ref.mounted) {
+              ref.invalidateSelf();
+            }
+          });
+        }
         return evaluateTripRestriction(
           ruleSet: ruleSet,
           municipality: municipality,
           vehicle: vehicle,
           instantUtc: instantUtc,
-          nowUtc: nowUtc,
+          nowUtc: evaluatedNowUtc,
         );
       },
     );
