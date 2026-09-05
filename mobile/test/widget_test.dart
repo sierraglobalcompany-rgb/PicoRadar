@@ -83,10 +83,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('tab-trip')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('trip-screen')), findsOneWidget);
-    expect(
-      find.text('PicoRadar no calcula rutas, ETA ni peajes en esta versión.'),
-      findsOneWidget,
-    );
+    expect(find.text('Ver plan de viaje'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('tab-drive')));
     await tester.pumpAndSettle();

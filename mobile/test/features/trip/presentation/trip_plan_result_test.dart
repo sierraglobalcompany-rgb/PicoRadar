@@ -11,23 +11,50 @@ import 'package:picoradar/features/trip/presentation/trip_plan_result.dart';
 
 void main() {
   for (final testCase in [
-    (RestrictionReasonCode.conflictingRules, 'Hay reglas en conflicto para este vehículo y horario.'),
-    (RestrictionReasonCode.unknownRegistrationOrigin, 'No se pudo determinar el origen de matrícula necesario para esta regla.'),
-    (RestrictionReasonCode.unknownRequiredPlateDigit, 'No se pudo determinar el dígito de placa necesario para esta regla.'),
+    (
+      RestrictionReasonCode.conflictingRules,
+      'Hay reglas en conflicto para este vehículo y horario.',
+    ),
+    (
+      RestrictionReasonCode.unknownRegistrationOrigin,
+      'No se pudo determinar el origen de matrícula necesario para esta regla.',
+    ),
+    (
+      RestrictionReasonCode.unknownRequiredPlateDigit,
+      'No se pudo determinar el dígito de placa necesario para esta regla.',
+    ),
   ]) {
-    testWidgets('VIAJE-R1 review8 explains ${testCase.$1} while keeping unknown', (tester) async {
-      await tester.pumpWidget(MaterialApp(home: Scaffold(body: TripInstantEndpoint(
-        label: 'Origen / salida', instantUtc: DateTime.utc(2026, 9, 5, 12), onSource: (_) {},
-        evaluation: AsyncData(TripEndpointRestriction(
-          status: RestrictionDayStatus.unknown, instantStatus: RestrictionStatus.unknown,
-          reason: 'no_coverage', engineReason: testCase.$1,
-        )),
-      ))));
-      expect(find.text('Estado a esta hora no disponible'), findsOneWidget);
-      expect(find.text(testCase.$2), findsOneWidget);
-      expect(find.text('Sin cobertura de reglas para este municipio y vehículo.'), findsNothing);
-      expect(find.text('Sin restricción a la hora evaluada'), findsNothing);
-    });
+    testWidgets(
+      'VIAJE-R1 review8 explains ${testCase.$1} while keeping unknown',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: TripInstantEndpoint(
+                label: 'Origen / salida',
+                instantUtc: DateTime.utc(2026, 9, 5, 12),
+                onSource: (_) {},
+                evaluation: AsyncData(
+                  TripEndpointRestriction(
+                    status: RestrictionDayStatus.unknown,
+                    instantStatus: RestrictionStatus.unknown,
+                    reason: 'no_coverage',
+                    engineReason: testCase.$1,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        expect(find.text('Estado a esta hora no disponible'), findsOneWidget);
+        expect(find.text(testCase.$2), findsOneWidget);
+        expect(
+          find.text('Sin cobertura de reglas para este municipio y vehículo.'),
+          findsNothing,
+        );
+        expect(find.text('Sin restricción a la hora evaluada'), findsNothing);
+      },
+    );
   }
 
   final request = TripPlanRequest(

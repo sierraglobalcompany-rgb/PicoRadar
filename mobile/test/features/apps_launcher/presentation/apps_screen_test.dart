@@ -239,10 +239,7 @@ void main() {
 
     expect(find.byKey(const ValueKey('apps-launcher-overlay')), findsNothing);
     expect(find.byKey(const ValueKey('trip-screen')), findsOneWidget);
-    expect(
-      find.text('PicoRadar no calcula rutas, ETA ni peajes en esta versión.'),
-      findsOneWidget,
-    );
+    expect(find.text('Ver plan de viaje'), findsOneWidget);
   });
 
   testWidgets('P02 Apps opens and closes repeatedly from main branches', (

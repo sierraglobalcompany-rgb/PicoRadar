@@ -30,11 +30,8 @@ typedef TripRestrictionQuery = ({
   DateTime date,
 });
 
-final tripRestrictionProvider =
-    FutureProvider.family<TripEndpointRestriction, TripRestrictionQuery>((
-      ref,
-      query,
-    ) async {
+final tripRestrictionProvider = FutureProvider.autoDispose
+    .family<TripEndpointRestriction, TripRestrictionQuery>((ref, query) async {
       final municipality = query.municipality;
       final vehicle = query.vehicle;
       final jurisdictionId = municipality?.jurisdictionId;
@@ -44,14 +41,26 @@ final tripRestrictionProvider =
           sourceUrl: null,
         );
       }
+      final clock = ref.watch(tripRestrictionClockProvider);
       final ruleSet = await ref
           .watch(restrictionStoreProvider)
           .loadCoverage(
             jurisdictionId,
             vehicle.kind,
             vehicle.serviceType,
-            ref.watch(bogotaNowProvider),
+            clock().toUtc(),
           );
+      final evaluatedNow = clock().toUtc();
+      _expireCoverage(ref, ruleSet, evaluatedNow);
+      if (ruleSet.dataIsStale ||
+          (ruleSet.staleAfter != null &&
+              !evaluatedNow.isBefore(ruleSet.staleAfter!.toUtc()))) {
+        return TripEndpointRestriction(
+          status: RestrictionDayStatus.stale,
+          sourceUrl: ruleSet.sourceUrls.firstOrNull,
+          reason: 'stale_data',
+        );
+      }
       final evaluation = evaluateRestrictionDay(
         ruleSet: ruleSet,
         jurisdictionId: jurisdictionId,
@@ -78,65 +87,68 @@ final tripRestrictionClockProvider = Provider<DateTime Function()>((ref) {
   return () => DateTime.now().toUtc();
 });
 
-final tripInstantRestrictionProvider =
-    FutureProvider.autoDispose.family<TripEndpointRestriction, TripInstantRestrictionQuery>(
-      (ref, query) async {
-        final instantUtc = query.instantUtc.toUtc();
-        final clock = ref.watch(tripRestrictionClockProvider);
-        final nowUtc = clock().toUtc();
-        Timer? expiryTimer;
-        ref.onDispose(() => expiryTimer?.cancel());
-        final municipality = query.municipality;
-        final vehicle = query.vehicle;
-        final jurisdictionId = municipality?.jurisdictionId;
-        var ruleSet = const RestrictionRuleSet(
-          coverageKnown: false,
-          dataIsStale: false,
-          rules: [],
-        );
-        if (vehicle != null &&
-            jurisdictionId != null &&
-            jurisdictionId.isNotEmpty) {
-          final store = ref.watch(restrictionStoreProvider);
-          try {
-            ruleSet = await store.loadCoverage(
-              jurisdictionId,
-              vehicle.kind,
-              vehicle.serviceType,
-              nowUtc,
-            );
-          } on Object {
-            return TripEndpointRestriction(
-              status: RestrictionDayStatus.unknown,
-              instantStatus: RestrictionStatus.unknown,
-              reason: 'load_error',
-              evaluatedAtUtc: instantUtc,
-            );
-          }
+final tripInstantRestrictionProvider = FutureProvider.autoDispose
+    .family<TripEndpointRestriction, TripInstantRestrictionQuery>((
+      ref,
+      query,
+    ) async {
+      final instantUtc = query.instantUtc.toUtc();
+      final clock = ref.watch(tripRestrictionClockProvider);
+      final nowUtc = clock().toUtc();
+      final municipality = query.municipality;
+      final vehicle = query.vehicle;
+      final jurisdictionId = municipality?.jurisdictionId;
+      var ruleSet = const RestrictionRuleSet(
+        coverageKnown: false,
+        dataIsStale: false,
+        rules: [],
+      );
+      if (vehicle != null &&
+          jurisdictionId != null &&
+          jurisdictionId.isNotEmpty) {
+        final store = ref.watch(restrictionStoreProvider);
+        try {
+          ruleSet = await store.loadCoverage(
+            jurisdictionId,
+            vehicle.kind,
+            vehicle.serviceType,
+            nowUtc,
+          );
+        } on Object {
+          return TripEndpointRestriction(
+            status: RestrictionDayStatus.unknown,
+            instantStatus: RestrictionStatus.unknown,
+            reason: 'load_error',
+            evaluatedAtUtc: instantUtc,
+          );
         }
-        // Local loading may cross the coverage deadline; re-read the clock.
-        final evaluatedNowUtc = clock().toUtc();
-        final staleAfter = ruleSet.staleAfter?.toUtc();
-        if (ref.mounted &&
-            ruleSet.coverageKnown &&
-            !ruleSet.dataIsStale &&
-            staleAfter != null &&
-            staleAfter.isAfter(evaluatedNowUtc)) {
-          expiryTimer = Timer(staleAfter.difference(evaluatedNowUtc), () {
-            if (ref.mounted) {
-              ref.invalidateSelf();
-            }
-          });
-        }
-        return evaluateTripRestriction(
-          ruleSet: ruleSet,
-          municipality: municipality,
-          vehicle: vehicle,
-          instantUtc: instantUtc,
-          nowUtc: evaluatedNowUtc,
-        );
-      },
-    );
+      }
+      // Local loading may cross the coverage deadline; re-read the clock.
+      final evaluatedNowUtc = clock().toUtc();
+      _expireCoverage(ref, ruleSet, evaluatedNowUtc);
+      return evaluateTripRestriction(
+        ruleSet: ruleSet,
+        municipality: municipality,
+        vehicle: vehicle,
+        instantUtc: instantUtc,
+        nowUtc: evaluatedNowUtc,
+      );
+    });
+
+void _expireCoverage(Ref ref, RestrictionRuleSet ruleSet, DateTime nowUtc) {
+  final deadline = ruleSet.staleAfter?.toUtc();
+  if (!ref.mounted ||
+      !ruleSet.coverageKnown ||
+      ruleSet.dataIsStale ||
+      deadline == null ||
+      !deadline.isAfter(nowUtc)) {
+    return;
+  }
+  final timer = Timer(deadline.difference(nowUtc), () {
+    if (ref.mounted) ref.invalidateSelf();
+  });
+  ref.onDispose(timer.cancel);
+}
 
 class TripExternalNavigation {
   const TripExternalNavigation(this._launcher);

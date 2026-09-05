@@ -340,17 +340,17 @@ String _restrictionReason(TripEndpointRestriction result) {
     }
   }
   return switch (result.reason) {
-  'missing_vehicle' =>
-    'Selecciona un vehículo disponible para evaluar su restricción.',
-  'ambiguous_municipality' =>
-    'Elige municipio y departamento para evaluar su restricción.',
-  'unmapped_jurisdiction' =>
-    'Municipio sin jurisdicción de restricciones vinculada.',
-  'no_coverage' => 'Sin cobertura de reglas para este municipio y vehículo.',
-  'stale_data' => 'La vigencia de los datos disponibles terminó.',
-  'future_coverage' => 'No hay reglas confirmadas para esta fecha futura.',
-  'load_error' => 'No se pudieron cargar las reglas locales.',
-  _ => 'No hay información suficiente para confirmar la restricción.',
+    'missing_vehicle' =>
+      'Selecciona un vehículo disponible para evaluar su restricción.',
+    'ambiguous_municipality' =>
+      'Elige municipio y departamento para evaluar su restricción.',
+    'unmapped_jurisdiction' =>
+      'Municipio sin jurisdicción de restricciones vinculada.',
+    'no_coverage' => 'Sin cobertura de reglas para este municipio y vehículo.',
+    'stale_data' => 'La vigencia de los datos disponibles terminó.',
+    'future_coverage' => 'No hay reglas confirmadas para esta fecha futura.',
+    'load_error' => 'No se pudieron cargar las reglas locales.',
+    _ => 'No hay información suficiente para confirmar la restricción.',
   };
 }
 

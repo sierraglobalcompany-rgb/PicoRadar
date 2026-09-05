@@ -1,11 +1,16 @@
 # PicoRadar Current State
 
-## V01A merged; V01B conservative polish pending review
+## V01B merged; VIAJE-R1 awaiting provider access
 
-V01A PR #53 was squash-merged as `c1010b5a2d23b2c3c4f8cf00874f4ecfd2780d44`, preserving the approved tree of `a61d77c1f16ecd0ae3c122f17bf5a423757679d6`. Post-merge Mobile CI run `33975562337` passed on that exact main SHA. V01B starts there on `integration/V01B-conservative-polish`; its bounded presentation polish remains pending review, not merged.
-Bounded Home/Garage/onboarding, Pico/Driving and local Trip adjustments follow the original 43 owner decisions. The separate Trip geography asset derives from the official B02 DANE fixture; it does not replace the RUNT registration catalog or claim complete national coverage.
-The five redesign families in `docs/design/V01A_OWNER_FEEDBACK.md` are proposals, not approved designs. Remaining visual polish belongs to V01B. F01 toll pricing and F02 manual camera updates are researched contracts, not implemented integrations; P07 real PDF picker import remains unverified. The Driving legal notice is informational text pending legal review before publication.
-No backend, schema, dependency, permission or deployment changes are part of V01A/V01B. The V01A merge was explicitly owner-authorized; V01B merge is not authorized. Physical QA and final V01B gates are recorded in their respective handoffs, not inferred from this scope note. KEEP and unselected REDESIGN compositions remain frozen; R11/S07 wait for owner composition choices. F01/F02, physical PDF import and road smoke retain separate gates.
+Owner-authorized PR #54 squash: `e9ef37511df3110ffb0fc006ef06be781df432ac`, parent `c1010b5a2d23b2c3c4f8cf00874f4ecfd2780d44`. It preserves the approved V01B HEAD `d84a1765224481e629ab60586e79da35b3cc9841` tree `3e3a6c05bf09c1b059262ba5cf311d3e6b348b6f`. Postmerge Mobile CI `33988444392` passed on that squash. Server CI did not trigger for the visual-only merge. This is bounded V01B approval, not approval of all 43 screens or historical P07/F01/F02 gates.
+
+`integration/VIAJE-R1-real-planner` starts at that exact squash. The 2026-09-05 owner instruction combines R12/S07/F01 into the existing Viaje flow: explicit plan CTA, vehicle-specific departure date/time, real route response presentation, COP toll breakdown and local origin/departure plus destination/ETA restrictions. S07 remains an alias, not a new module. Contract: `docs/contracts/VIAJE_R1.md`.
+
+The development-only Laravel bridge protects a fixed TollGuru endpoint with explicit access/license flags and conservative atomic global budget reservations. It is disabled by default, even with a key. No live access, spending, provider-data license or APK-accessible backend has been approved. Runtime fixtures are absent; missing configuration is an honest error while local restrictions remain usable. Tests with synthetic responses do not demonstrate live Colombian routes or current toll tariffs. Status remains `PARTIAL_WAITING_PROVIDER_ACCESS`; the Viaje PR must stay draft and unmerged until the separate live/physical gates are met.
+
+Only municipality endpoints, departure and technical vehicle category may leave the phone on the CTA. Plate/vehicle identity and restriction evaluation stay local. Responses/geometries are not persisted. Taxi toll mapping remains unsupported until verified; unknown counts/costs are not zero. No new dependency, schema, permission, account, public deployment or D02 work is authorized. The existing Trip geography asset stays distinct from the RUNT registration catalog.
+
+KEEP and other unselected REDESIGN decisions remain frozen. F02 manual camera updates, P07 actual PDF picker import, the historical external SOAT intent risk, Driving road smoke and prepublication legal review remain separate unresolved gates. Evidence for this lot is in its PR/CI and the explicitly requested `temp/VIAJE_R1/viaje_r1_handoff.zip`, not inferred from this state note.
 
 Fecha de recuperacion R00: 2026-08-27. Base auditada: `main` en `0905d394b0379665e4a9dd343045072582d976a0`.
 

@@ -65,6 +65,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (mounted && state == AppLifecycleState.resumed) {
       ref.invalidate(tripInstantRestrictionProvider);
+      ref.invalidate(tripRestrictionProvider);
     }
   }
 
@@ -559,6 +560,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
   ) async {
     if (_cancelToken != null) return;
     ref.invalidate(tripInstantRestrictionProvider);
+    ref.invalidate(tripRestrictionProvider);
     final origin =
         _originMunicipality ?? catalog.findExact(_originController.text);
     final destination =

@@ -347,50 +347,62 @@ void main() {
       await database.close();
     });
 
-    test('freshness clock advances for a new query in the same container', () async {
-      final vehicle = _vehicle();
-      nowUtc = DateTime.utc(2026, 10, 1, 4, 59, 58);
-      final first = await container.read(tripInstantRestrictionProvider((
-        municipality: _bogota,
-        vehicle: vehicle,
-        instantUtc: DateTime.utc(2026, 9, 7, 10),
-      )).future);
-      expect(first.instantStatus, RestrictionStatus.allowed);
+    test(
+      'freshness clock advances for a new query in the same container',
+      () async {
+        final vehicle = _vehicle();
+        nowUtc = DateTime.utc(2026, 10, 1, 4, 59, 58);
+        final first = await container.read(
+          tripInstantRestrictionProvider((
+            municipality: _bogota,
+            vehicle: vehicle,
+            instantUtc: DateTime.utc(2026, 9, 7, 10),
+          )).future,
+        );
+        expect(first.instantStatus, RestrictionStatus.allowed);
 
-      nowUtc = DateTime.utc(2026, 10, 1, 5);
-      final second = await container.read(tripInstantRestrictionProvider((
-        municipality: _bogota,
-        vehicle: vehicle,
-        instantUtc: DateTime.utc(2026, 9, 7, 10, 30),
-      )).future);
-      expect(second.instantStatus, RestrictionStatus.stale);
-      expect(second.reason, 'stale_data');
-      expect(store.loads.last.$4, DateTime.utc(2026, 10, 1, 5));
-      expect(remoteClientReads, 0);
-    });
+        nowUtc = DateTime.utc(2026, 10, 1, 5);
+        final second = await container.read(
+          tripInstantRestrictionProvider((
+            municipality: _bogota,
+            vehicle: vehicle,
+            instantUtc: DateTime.utc(2026, 9, 7, 10, 30),
+          )).future,
+        );
+        expect(second.instantStatus, RestrictionStatus.stale);
+        expect(second.reason, 'stale_data');
+        expect(store.loads.last.$4, DateTime.utc(2026, 10, 1, 5));
+        expect(remoteClientReads, 0);
+      },
+    );
 
-    test('reconsulting the same query refreshes freshness without HTTP', () async {
-      nowUtc = DateTime.utc(2026, 10, 1, 4, 59, 58);
-      final provider = tripInstantRestrictionProvider((
-        municipality: _bogota,
-        vehicle: _vehicle(),
-        instantUtc: DateTime.utc(2026, 9, 7, 10),
-      ));
-      final subscription = container.listen(provider, (_, _) {});
-      addTearDown(subscription.close);
-      final first = await container.read(provider.future);
-      expect(first.instantStatus, RestrictionStatus.allowed);
+    test(
+      'reconsulting the same query refreshes freshness without HTTP',
+      () async {
+        nowUtc = DateTime.utc(2026, 10, 1, 4, 59, 58);
+        final provider = tripInstantRestrictionProvider((
+          municipality: _bogota,
+          vehicle: _vehicle(),
+          instantUtc: DateTime.utc(2026, 9, 7, 10),
+        ));
+        final subscription = container.listen(provider, (_, _) {});
+        addTearDown(subscription.close);
+        final first = await container.read(provider.future);
+        expect(first.instantStatus, RestrictionStatus.allowed);
 
-      nowUtc = DateTime.utc(2026, 10, 1, 5);
-      container.invalidate(provider);
-      final refreshed = await container.read(provider.future);
-      expect(refreshed.instantStatus, RestrictionStatus.stale);
-      expect(refreshed.reason, 'stale_data');
-      expect(refreshed.evaluatedAtUtc, first.evaluatedAtUtc);
-      expect(remoteClientReads, 0);
-    });
+        nowUtc = DateTime.utc(2026, 10, 1, 5);
+        container.invalidate(provider);
+        final refreshed = await container.read(provider.future);
+        expect(refreshed.instantStatus, RestrictionStatus.stale);
+        expect(refreshed.reason, 'stale_data');
+        expect(refreshed.evaluatedAtUtc, first.evaluatedAtUtc);
+        expect(remoteClientReads, 0);
+      },
+    );
 
-    testWidgets('visible verdict expires at staleAfter without HTTP', (tester) async {
+    testWidgets('visible verdict expires at staleAfter without HTTP', (
+      tester,
+    ) async {
       nowUtc = DateTime.utc(2026, 10, 1, 4, 59, 58);
       final provider = tripInstantRestrictionProvider((
         municipality: _bogota,
@@ -403,8 +415,10 @@ void main() {
         expect(first.instantStatus, RestrictionStatus.allowed);
         nowUtc = DateTime.utc(2026, 10, 1, 4, 59, 59);
         await tester.pump(const Duration(seconds: 1));
-        expect(container.read(provider).requireValue.instantStatus,
-          RestrictionStatus.allowed);
+        expect(
+          container.read(provider).requireValue.instantStatus,
+          RestrictionStatus.allowed,
+        );
         expect(store.loads, hasLength(1));
 
         nowUtc = DateTime.utc(2026, 10, 1, 5);
@@ -423,38 +437,41 @@ void main() {
         expect(store.loads, hasLength(loadsAfterExpiry));
       } finally {
         subscription.close();
-        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 1));
       }
     });
 
-    testWidgets('unobserved query releases its expiry timer and cached verdict', (tester) async {
-      nowUtc = DateTime.utc(2026, 10, 1, 4, 59, 58);
-      final provider = tripInstantRestrictionProvider((
-        municipality: _bogota,
-        vehicle: _vehicle(),
-        instantUtc: DateTime.utc(2026, 9, 7, 10),
-      ));
-      final firstSubscription = container.listen(provider, (_, _) {});
-      final first = await container.read(provider.future);
-      expect(first.instantStatus, RestrictionStatus.allowed);
-      firstSubscription.close();
-      await tester.pump();
-      expect(container.exists(provider), isFalse);
+    testWidgets(
+      'unobserved query releases its expiry timer and cached verdict',
+      (tester) async {
+        nowUtc = DateTime.utc(2026, 10, 1, 4, 59, 58);
+        final provider = tripInstantRestrictionProvider((
+          municipality: _bogota,
+          vehicle: _vehicle(),
+          instantUtc: DateTime.utc(2026, 9, 7, 10),
+        ));
+        final firstSubscription = container.listen(provider, (_, _) {});
+        final first = await container.read(provider.future);
+        expect(first.instantStatus, RestrictionStatus.allowed);
+        firstSubscription.close();
+        await tester.pump(const Duration(milliseconds: 1));
+        expect(container.exists(provider), isFalse);
 
-      nowUtc = DateTime.utc(2026, 10, 1, 5);
-      await tester.pump(const Duration(seconds: 2));
-      expect(store.loads, hasLength(1));
-      final nextSubscription = container.listen(provider, (_, _) {});
-      try {
-        final reopened = await container.read(provider.future);
-        expect(reopened.instantStatus, RestrictionStatus.stale);
-        expect(reopened.reason, 'stale_data');
-        expect(remoteClientReads, 0);
-      } finally {
-        nextSubscription.close();
-        await tester.pump();
-      }
-    });
+        nowUtc = DateTime.utc(2026, 10, 1, 5);
+        await tester.pump(const Duration(seconds: 2));
+        expect(store.loads, hasLength(1));
+        final nextSubscription = container.listen(provider, (_, _) {});
+        try {
+          final reopened = await container.read(provider.future);
+          expect(reopened.instantStatus, RestrictionStatus.stale);
+          expect(reopened.reason, 'stale_data');
+          expect(remoteClientReads, 0);
+        } finally {
+          nextSubscription.close();
+          await tester.pump(const Duration(milliseconds: 1));
+        }
+      },
+    );
 
     test('local load crossing expiry cannot publish a fresh verdict', () async {
       nowUtc = DateTime.utc(2026, 10, 1, 4, 59, 58);
