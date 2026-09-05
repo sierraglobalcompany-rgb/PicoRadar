@@ -25,7 +25,8 @@ class TripScreen extends ConsumerStatefulWidget {
   ConsumerState<TripScreen> createState() => _TripScreenState();
 }
 
-class _TripScreenState extends ConsumerState<TripScreen> {
+class _TripScreenState extends ConsumerState<TripScreen>
+    with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   final _originController = TextEditingController();
   final _destinationController = TextEditingController();
@@ -56,11 +57,20 @@ class _TripScreenState extends ConsumerState<TripScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     unawaited(_restoreDraft());
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (mounted && state == AppLifecycleState.resumed) {
+      ref.invalidate(tripInstantRestrictionProvider);
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _invalidatePlan();
     _originController.dispose();
     _destinationController.dispose();
@@ -284,6 +294,7 @@ class _TripScreenState extends ConsumerState<TripScreen> {
       onDateChanged: (value) => setState(() {
         _invalidatePlan();
         _selectedDate = value;
+        _timeError = null;
       }),
       onChecklistChanged: _setChecklistItem,
       onSaveDraft: () => _saveDraft(
@@ -547,6 +558,7 @@ class _TripScreenState extends ConsumerState<TripScreen> {
     VehicleProfile? vehicle,
   ) async {
     if (_cancelToken != null) return;
+    ref.invalidate(tripInstantRestrictionProvider);
     final origin =
         _originMunicipality ?? catalog.findExact(_originController.text);
     final destination =
@@ -626,9 +638,14 @@ class _TripScreenState extends ConsumerState<TripScreen> {
       if (!mounted || generation != _generation || token.isCancelled) return;
       setState(() {
         _cancelToken = null;
-        _planError = tripPlanErrorText(
-          error is TripPlanFailure ? error.code : 'network',
-        );
+        if (error is TripPlanFailure && error.code == 'departure_window') {
+          _timeError =
+              'Elige una salida futura dentro de los próximos ${error.maxFutureDays ?? 30} días.';
+        } else {
+          _planError = tripPlanErrorText(
+            error is TripPlanFailure ? error.code : 'network',
+          );
+        }
       });
     }
   }

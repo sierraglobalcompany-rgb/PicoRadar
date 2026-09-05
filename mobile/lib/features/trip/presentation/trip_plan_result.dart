@@ -240,7 +240,10 @@ class TripInstantEndpoint extends StatelessWidget {
               Text(
                 'Horario restringido: ${result.windows.map((window) => '${_minute(window.startMinute)}–${_minute(window.endMinute)}').join(', ')}',
               ),
-            if (result.reason != null) Text(_restrictionReason(result.reason!)),
+            if (result.reason != null ||
+                (result.instantStatus == RestrictionStatus.unknown &&
+                    result.engineReason != null))
+              Text(_restrictionReason(result)),
             if (result.verifiedAt != null)
               Text(
                 'Fuente verificada: ${tripInstantLabel(result.verifiedAt!)}',
@@ -322,7 +325,21 @@ String _tollsText(TripTolls tolls) => switch (tolls.coverage) {
     'Categoría no soportada para tarifas de peajes',
 };
 
-String _restrictionReason(String reason) => switch (reason) {
+String _restrictionReason(TripEndpointRestriction result) {
+  if (result.instantStatus == RestrictionStatus.unknown &&
+      (result.reason == null || result.reason == 'no_coverage')) {
+    switch (result.engineReason) {
+      case RestrictionReasonCode.conflictingRules:
+        return 'Hay reglas en conflicto para este vehículo y horario.';
+      case RestrictionReasonCode.unknownRegistrationOrigin:
+        return 'No se pudo determinar el origen de matrícula necesario para esta regla.';
+      case RestrictionReasonCode.unknownRequiredPlateDigit:
+        return 'No se pudo determinar el dígito de placa necesario para esta regla.';
+      default:
+        break;
+    }
+  }
+  return switch (result.reason) {
   'missing_vehicle' =>
     'Selecciona un vehículo disponible para evaluar su restricción.',
   'ambiguous_municipality' =>
@@ -334,7 +351,8 @@ String _restrictionReason(String reason) => switch (reason) {
   'future_coverage' => 'No hay reglas confirmadas para esta fecha futura.',
   'load_error' => 'No se pudieron cargar las reglas locales.',
   _ => 'No hay información suficiente para confirmar la restricción.',
-};
+  };
+}
 
 String tripPlanErrorText(String code) => switch (code) {
   'validation' => 'Revisa municipios, fecha, hora y categoría del vehículo.',
