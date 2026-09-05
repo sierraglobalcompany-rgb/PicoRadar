@@ -148,6 +148,7 @@ class _PeritajesScreenState extends ConsumerState<PeritajesScreen> {
             child: const Text('Cancelar'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.red),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Eliminar'),
           ),
@@ -334,6 +335,9 @@ class _PeritajesContent extends StatelessWidget {
                         ),
                         TextButton.icon(
                           key: const ValueKey('peritajes-delete-draft'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.red,
+                          ),
                           onPressed: isBusy ? null : onDeleteDraft,
                           icon: const Icon(Icons.delete_outline),
                           label: const Text('Borrar'),
@@ -447,6 +451,8 @@ class _ActionCard extends StatelessWidget {
       button: true,
       excludeSemantics: true,
       label: title,
+      enabled: onTap != null,
+      onTap: onTap,
       child: Material(
         key: ValueKey(keyName),
         color: AppColors.surface,

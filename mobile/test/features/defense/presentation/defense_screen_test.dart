@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
+import 'package:picoradar/app/theme/app_theme.dart';
 import 'package:picoradar/features/defense/application/defense_case_providers.dart';
 import 'package:picoradar/features/defense/data/defense_case.dart';
 import 'package:picoradar/features/defense/data/defense_case_store.dart';
@@ -13,10 +14,14 @@ import 'package:picoradar/features/defense/presentation/defense_screen.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
+import '../../services/presentation/v01b_tools_test_font.dart';
+
 late _MemoryDefenseCaseStore _store;
 late _FakeExternalLauncher _launcher;
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(loadV01bToolsTestFont);
   var ids = 0;
 
   setUp(() {
@@ -27,6 +32,72 @@ void main() {
     );
     _launcher = _FakeExternalLauncher();
   });
+
+  for (final size in [
+    const Size(360, 800),
+    const Size(390, 844),
+    const Size(412, 915),
+  ]) {
+    for (final scale in [1.0, 1.5, 2.0]) {
+      testWidgets(
+        'V01B P09 sources have secondary visual emphasis $size/$scale',
+        (tester) async {
+          final vehicle = _vehicle();
+          await _pumpScreen(
+            tester,
+            vehicles: [vehicle],
+            active: vehicle,
+            launcher: _launcher,
+            size: size,
+            textScale: scale,
+            theme: buildPicoRadarTheme(),
+          );
+          final primary = find.byKey(const ValueKey('defense-create-case'));
+          await tester.ensureVisible(primary);
+          await tester.pumpAndSettle();
+          expect(primary.hitTestable(), findsOneWidget);
+          final primaryFill = tester
+              .widget<Material>(
+                find
+                    .descendant(of: primary, matching: find.byType(Material))
+                    .first,
+              )
+              .color;
+          for (final key in [
+            'defense-open-simit',
+            'defense-open-c038',
+            'defense-open-c321',
+          ]) {
+            final source = find.byKey(ValueKey(key));
+            await tester.ensureVisible(source);
+            await tester.pumpAndSettle();
+            expect(source.hitTestable(), findsOneWidget);
+            expect(tester.getSize(source).height, greaterThanOrEqualTo(44));
+            final sourceFill = tester
+                .widget<Material>(
+                  find
+                      .descendant(of: source, matching: find.byType(Material))
+                      .first,
+                )
+                .color;
+            expect(
+              sourceFill,
+              isNot(primaryFill),
+              reason: 'Official sources must not compete with creating a local case',
+            );
+            await tester.tap(source);
+            await tester.pumpAndSettle();
+            expect(tester.takeException(), isNull);
+          }
+          expect(_launcher.opened, [
+            defenseSimitUrl,
+            defenseC038Url,
+            defenseC321Url,
+          ]);
+        },
+      );
+    }
+  }
 
   testWidgets('requires a vehicle before exposing case actions', (
     tester,
@@ -391,6 +462,7 @@ Future<void> _pumpScreen(
   ExternalLauncher? launcher,
   Size size = const Size(390, 844),
   double textScale = 1,
+  ThemeData? theme,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -407,10 +479,13 @@ Future<void> _pumpScreen(
         ),
       ],
       child: MaterialApp(
-        home: MediaQuery(
-          data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
-          child: const DefenseScreen(),
+        theme: theme,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
         ),
+        home: const DefenseScreen(),
       ),
     ),
   );

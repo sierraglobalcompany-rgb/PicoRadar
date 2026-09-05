@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -13,7 +14,160 @@ import 'package:picoradar/features/peritajes/domain/peritajes_checklist.dart';
 import 'package:picoradar/features/peritajes/presentation/peritajes_screen.dart';
 import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
+import '../../services/presentation/v01b_tools_test_font.dart';
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(loadV01bToolsTestFont);
+  for (final size in [
+    const Size(360, 800),
+    const Size(390, 844),
+    const Size(412, 915),
+  ]) {
+    for (final scale in [1.0, 1.5, 2.0]) {
+      testWidgets(
+        'V01B X02 delete is visually distinct and cancel preserves draft $size/$scale',
+        (tester) async {
+          tester.platformDispatcher.textScaleFactorTestValue = scale;
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+          final preferences = _MemoryPreferences();
+          final store = PeritajesDraftStore(preferences);
+          await store.saveDraft(
+            'vehicle-1',
+            PeritajesDraft(
+              checkedItems: const {'identidad y documentos'},
+              notes: 'QA local',
+              updatedAt: DateTime(2026),
+            ),
+          );
+          await _pumpPeritajes(
+            tester,
+            vehicleId: 'vehicle-1',
+            vehicles: [_vehicle()],
+            preferences: preferences,
+            size: size,
+          );
+          await _tapVisible(tester, const ValueKey('peritajes-restore-draft'));
+          final before = preferences.values['peritajes.draft.v1.vehicle-1'];
+          final save = find.byKey(const ValueKey('peritajes-save-draft'));
+          final saveFill = tester
+              .widget<Material>(
+                find
+                    .descendant(of: save, matching: find.byType(Material))
+                    .first,
+              )
+              .color;
+          await _tapVisible(tester, const ValueKey('peritajes-delete-draft'));
+          final confirm = find.widgetWithText(FilledButton, 'Eliminar');
+          final cancel = find.widgetWithText(TextButton, 'Cancelar');
+          expect(confirm.hitTestable(), findsOneWidget);
+          expect(cancel.hitTestable(), findsOneWidget);
+          final confirmFill = tester
+              .widget<Material>(
+                find
+                    .descendant(of: confirm, matching: find.byType(Material))
+                    .first,
+              )
+              .color;
+          expect(
+            confirmFill,
+            isNot(saveFill),
+            reason: 'Deletion must be visually distinct from saving',
+          );
+          await tester.tap(cancel);
+          await tester.pumpAndSettle();
+          expect(preferences.values['peritajes.draft.v1.vehicle-1'], before);
+          expect(find.text('QA local'), findsOneWidget);
+          expect(_tileValue(tester, 'identidad y documentos'), isTrue);
+          expect(tester.takeException(), isNull);
+        },
+      );
+
+      testWidgets(
+        'V01B S05B actions expose working semantic taps $size/$scale',
+        (tester) async {
+          tester.platformDispatcher.textScaleFactorTestValue = scale;
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+          final semantics = tester.ensureSemantics();
+          try {
+            final launcher = _FakeExternalLauncher();
+            final preferences = _MemoryPreferences();
+            final router = await _pumpPeritajes(
+              tester,
+              vehicleId: 'vehicle-1',
+              vehicles: [_vehicle(registrationCity: 'Cali')],
+              launcher: launcher,
+              preferences: preferences,
+              size: size,
+            );
+            await _tapVisible(
+              tester,
+              const ValueKey('peritajes-check-identidad y documentos'),
+            );
+            final notes = find.byKey(const ValueKey('peritajes-notes-field'));
+            await tester.ensureVisible(notes);
+            await tester.pumpAndSettle();
+            await tester.enterText(notes, 'QA keyboard notes');
+            tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+            addTearDown(tester.view.resetViewInsets);
+            await tester.pumpAndSettle();
+            final save = find.byKey(const ValueKey('peritajes-save-draft'));
+            await tester.ensureVisible(save);
+            await tester.pumpAndSettle();
+            expect(save.hitTestable(), findsOneWidget);
+            expect(
+              tester.getRect(save).bottom,
+              lessThanOrEqualTo(size.height - 300),
+            );
+            await tester.tap(save);
+            await tester.pumpAndSettle();
+            final draft = await PeritajesDraftStore(preferences)
+                .loadDraft('vehicle-1');
+            expect(draft!.notes, 'QA keyboard notes');
+            expect(draft.checkedItems, {'identidad y documentos'});
+            tester.view.resetViewInsets();
+            tester.testTextInput.hide();
+            await tester.pumpAndSettle();
+            for (final entry in [
+              ('peritajes-open-documents', 'Abrir Documentos'),
+              ('peritajes-search-maps', 'Buscar peritaje vehicular'),
+            ]) {
+              final action = find.byKey(ValueKey(entry.$1));
+              await tester.ensureVisible(action);
+              await tester.pumpAndSettle();
+              expect(action.hitTestable(), findsOneWidget);
+              expect(tester.getSize(action).height, greaterThanOrEqualTo(44));
+              final node = tester.getSemantics(find.bySemanticsLabel(entry.$2));
+              expect(
+                node.getSemanticsData().hasAction(SemanticsAction.tap),
+                isTrue,
+                reason:
+                    '${entry.$1} must be activatable by assistive technology',
+              );
+              node.owner!.performAction(node.id, SemanticsAction.tap);
+              await tester.pumpAndSettle();
+              if (entry.$1 == 'peritajes-open-documents') {
+                expect(
+                  find.text('documents vehicleId=vehicle-1'),
+                  findsOneWidget,
+                );
+                router.pop();
+                await tester.pumpAndSettle();
+              }
+              expect(tester.takeException(), isNull);
+            }
+            expect(
+              Uri.parse(launcher.openedUris.single).queryParameters['query'],
+              'peritaje vehicular Cali',
+            );
+          } finally {
+            semantics.dispose();
+          }
+        },
+      );
+    }
+  }
+
   testWidgets('requires an existing vehicle and shows required copy', (
     tester,
   ) async {
@@ -328,9 +482,10 @@ Future<GoRouter> _pumpPeritajes(
   required List<VehicleProfile> vehicles,
   _MemoryPreferences? preferences,
   ExternalLauncher? launcher,
+  Size size = const Size(390, 844),
 }) async {
   tester.view.devicePixelRatio = 1;
-  tester.view.physicalSize = const Size(390, 844);
+  tester.view.physicalSize = size;
   addTearDown(tester.view.resetDevicePixelRatio);
   addTearDown(tester.view.resetPhysicalSize);
   await tester.pumpWidget(const SizedBox.shrink());

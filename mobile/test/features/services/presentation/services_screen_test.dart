@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
@@ -9,7 +11,120 @@ import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/services/presentation/services_screen.dart';
 import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
+import 'v01b_tools_test_font.dart';
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(loadV01bToolsTestFont);
+  for (final size in [
+    const Size(360, 800),
+    const Size(390, 844),
+    const Size(412, 915),
+  ]) {
+    for (final scale in [1.0, 1.5, 2.0]) {
+      testWidgets(
+        'V01B S02 repeated heading uses compact readable geometry $size/$scale',
+        (tester) async {
+          tester.view.devicePixelRatio = 1;
+          tester.view.physicalSize = size;
+          tester.platformDispatcher.textScaleFactorTestValue = scale;
+          addTearDown(tester.view.resetDevicePixelRatio);
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+          await _pumpServices(
+            tester,
+            activeVehicle: _vehicle(registrationCity: 'Cali'),
+          );
+          final heading = tester.renderObject<RenderParagraph>(
+            find.text('Servicios para tu vehículo'),
+          );
+          final metrics = TextPainter(
+            text: heading.text,
+            textDirection: heading.textDirection,
+            textScaler: heading.textScaler,
+          )..layout(maxWidth: heading.size.width);
+          if (scale == 1) {
+            expect(
+              metrics.computeLineMetrics(),
+              hasLength(1),
+              reason: 'Repeated heading should not push city/actions down with a second line at normal scale',
+            );
+          }
+          expect(heading.didExceedMaxLines, isFalse);
+          expect(metrics.height, lessThanOrEqualTo(heading.size.height + 0.1));
+          metrics.dispose();
+          final city = find.byKey(const ValueKey('services-city-field'));
+          await tester.ensureVisible(city);
+          await tester.pumpAndSettle();
+          expect(city.hitTestable(), findsOneWidget);
+          await tester.enterText(city, 'Pereira');
+          expect(find.text('Pereira'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        },
+      );
+
+      testWidgets(
+        'V01B S02 actions expose working semantic taps $size/$scale',
+        (tester) async {
+          tester.view.devicePixelRatio = 1;
+          tester.view.physicalSize = size;
+          tester.platformDispatcher.textScaleFactorTestValue = scale;
+          addTearDown(tester.view.resetDevicePixelRatio);
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+          final semantics = tester.ensureSemantics();
+          try {
+            final launcher = _FakeExternalLauncher();
+            var cdaOpens = 0;
+            await _pumpServices(
+              tester,
+              activeVehicle: _vehicle(registrationCity: 'Cali'),
+              externalLauncher: launcher,
+              onOpenCda: () => cdaOpens++,
+            );
+            for (final entry in [
+              ('services-open-cda', 'Abrir CDA dentro de PicoRadar'),
+              ('services-search-tow', 'Buscar grúa 24 horas'),
+              ('services-search-battery', 'Buscar batería'),
+              ('services-search-tires', 'Buscar llantas'),
+              ('services-search-mechanic', 'Buscar taller mecánico'),
+            ]) {
+              final action = find.byKey(ValueKey(entry.$1));
+              await tester.ensureVisible(action);
+              await tester.pumpAndSettle();
+              expect(action.hitTestable(), findsOneWidget);
+              expect(tester.getSize(action).height, greaterThanOrEqualTo(44));
+              final node = tester.getSemantics(find.bySemanticsLabel(entry.$2));
+              expect(
+                node.getSemanticsData().hasAction(SemanticsAction.tap),
+                isTrue,
+                reason:
+                    '${entry.$1} must be activatable by assistive technology',
+              );
+              node.owner!.performAction(node.id, SemanticsAction.tap);
+              await tester.pumpAndSettle();
+              expect(tester.takeException(), isNull);
+            }
+            expect(cdaOpens, 1);
+            expect(
+              launcher.openedUris.map(
+                (uri) => Uri.parse(uri).queryParameters['query'],
+              ),
+              [
+                'grúa 24 horas Cali',
+                'batería Cali',
+                'llantas Cali',
+                'taller mecánico Cali',
+              ],
+            );
+          } finally {
+            semantics.dispose();
+          }
+        },
+      );
+    }
+  }
+
   testWidgets('prefills city from active vehicle and keeps required copy', (
     tester,
   ) async {

@@ -176,7 +176,7 @@ class _ServicesHeader extends StatelessWidget {
           children: [
             Text(
               'Servicios para tu vehículo',
-              style: AppTextStyles.h1.copyWith(color: Colors.white),
+              style: AppTextStyles.h2.copyWith(color: Colors.white),
             ),
             const SizedBox(height: AppSpacing.s),
             Text(
@@ -213,6 +213,7 @@ class _ServiceActionCard extends StatelessWidget {
       button: true,
       excludeSemantics: true,
       label: title,
+      onTap: onTap,
       child: Material(
         key: ValueKey(keyName),
         color: Colors.white,
