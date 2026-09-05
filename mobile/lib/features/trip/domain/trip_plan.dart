@@ -8,6 +8,7 @@ class TripPlanRequest {
     required this.destination,
     required this.vehicle,
     required this.departureUtc,
+    this.standardVehicleConfirmed = false,
   });
 
   final String requestId;
@@ -15,8 +16,11 @@ class TripPlanRequest {
   final TripMunicipality destination;
   final VehicleProfile vehicle;
   final DateTime departureUtc;
+  final bool standardVehicleConfirmed;
 
-  String get vehicleCategory => vehicle.kind == VehicleKind.motorcycle
+  String get vehicleCategory => !standardVehicleConfirmed
+      ? 'unsupported_vehicle'
+      : vehicle.kind == VehicleKind.motorcycle
       ? 'motorcycle'
       : vehicle.serviceType == VehicleServiceType.taxi
       ? 'taxi'
@@ -106,6 +110,8 @@ class TripTolls {
     this.totalMinor,
     this.subtotalMinor,
     this.missingRates = 0,
+    this.stationCount,
+    this.payableCount,
     List<TripTollCharge> charges = const [],
   }) : charges = List.unmodifiable(charges);
   final TripTollCoverage coverage;
@@ -114,6 +120,8 @@ class TripTolls {
   final int? totalMinor;
   final int? subtotalMinor;
   final int missingRates;
+  final int? stationCount;
+  final int? payableCount;
   final List<TripTollCharge> charges;
 }
 
