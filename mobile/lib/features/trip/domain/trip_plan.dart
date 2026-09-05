@@ -139,8 +139,9 @@ class TripTollCharge {
 }
 
 class TripPlanFailure implements Exception {
-  const TripPlanFailure(this.code);
+  const TripPlanFailure(this.code, {this.maxFutureDays});
   final String code;
+  final int? maxFutureDays;
   @override
   String toString() => 'TripPlanFailure($code)';
 }

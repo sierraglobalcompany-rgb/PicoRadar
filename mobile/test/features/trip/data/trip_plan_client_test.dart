@@ -63,6 +63,26 @@ void main() {
     expect(adapter.calls, 0);
   });
 
+  test('departure window error retains only bounded server limit', () async {
+    adapter.status = 422;
+    adapter.body = {
+      'error': {
+        'code': 'departure_window',
+        'maxFutureDays': 7,
+        'message': 'private server text',
+      },
+    };
+    await expectLater(
+      client.preview(_request()),
+      throwsA(
+        isA<TripPlanFailure>()
+            .having((e) => e.code, 'code', 'departure_window')
+            .having((e) => e.maxFutureDays, 'days', 7),
+      ),
+    );
+    expect(adapter.calls, 1);
+  });
+
   test(
     'partial positive subtotal cannot claim zero payable occurrences',
     () async {

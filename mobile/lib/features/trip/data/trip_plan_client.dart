@@ -97,7 +97,13 @@ class TripPlanClient {
       if (response.statusCode != 200) {
         final error = decoded['error'];
         final code = error is Map ? error['code'] : null;
-        throw TripPlanFailure(_safeCode(code, response.statusCode));
+        final safeCode = _safeCode(code, response.statusCode);
+        throw TripPlanFailure(
+          safeCode,
+          maxFutureDays: safeCode == 'departure_window' && error is Map
+              ? _integer(error['maxFutureDays'], minimum: 1, maximum: 30)
+              : null,
+        );
       }
       final plan = _parsePlan(decoded, request.vehicleCategory);
       if (plan.requestId != request.requestId) throw const FormatException();
@@ -125,6 +131,7 @@ class TripPlanClient {
 String _safeCode(Object? code, int? status) {
   const allowed = {
     'validation',
+    'departure_window',
     'no_route',
     'unsupported_vehicle',
     'not_configured',
