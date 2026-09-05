@@ -282,6 +282,69 @@ class TollGuruTripPreviewTest extends TestCase
         $this->normalize($body);
     }
 
+    #[DataProvider('bogotaDirections')]
+    public function test_canonical_bogota_comma_sequence_resolves_in_both_directions(bool $reverse): void
+    {
+        [$request, $body] = self::bogotaFixture($reverse);
+        $plan = $this->normalize($body, $request);
+        $endpoint = $reverse ? 'origin' : 'destination';
+
+        $this->assertSame('11001', $request[$endpoint]['code']);
+        $this->assertSame($request[$endpoint]['municipality'].', '.$request[$endpoint]['department'], $plan[$endpoint]['label']);
+        $this->assertSame(4.711, $plan[$endpoint]['latitude']);
+        $this->assertSame(420000, $plan['routes'][0]['distanceMeters']);
+    }
+
+    public static function bogotaDirections(): array
+    {
+        return ['Bogota destination' => [false], 'Bogota origin' => [true]];
+    }
+
+    #[DataProvider('bogotaWrongAddresses')]
+    public function test_canonical_bogota_rejects_homonyms_wrong_department_and_broken_sequence(string $address): void
+    {
+        [$request, $body] = self::bogotaFixture(false);
+        $body['summary']['route'][1]['address'] = $address;
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('invalid_upstream');
+        $this->normalize($body, $request);
+    }
+
+    public static function bogotaWrongAddresses(): array
+    {
+        return [
+            'municipality substring' => ['Nuevo Bogota, D.C., Bogota, D.C., Colombia'],
+            'wrong department' => ['Bogota, D.C., Santander, Colombia'],
+            'department substring' => ['Bogota, D.C., Nuevo Bogota, D.C., Colombia'],
+            'noncontiguous name' => ['Bogota, Centro, D.C., Bogota, D.C., Colombia'],
+        ];
+    }
+
+    // Names come from the committed catalog; coordinates/road metrics remain synthetic.
+    public static function bogotaFixture(bool $reverse): array
+    {
+        $catalog = json_decode(file_get_contents(base_path('database/data/colombia_divipola_mgn_2025.json')), true, 512, JSON_THROW_ON_ERROR);
+        $municipality = collect($catalog['municipalities'])->firstWhere('code', '11001');
+        $department = collect($catalog['departments'])->firstWhere('code', '11');
+        $request = self::tripRequest();
+        $request['destination'] = ['code' => $municipality['code'], 'municipality' => $municipality['name'], 'department' => $department['name']];
+        $body = self::providerFixture();
+        $body['summary']['route'][1] = [
+            'location' => ['lat' => 4.711, 'lng' => -74.0721],
+            'address' => 'Calle 26, '.$municipality['name'].', '.$department['name'].', Colombia',
+        ];
+        $body['routes'][0]['summary']['distance']['value'] = 420000;
+        $body['routes'][0]['summary']['duration']['value'] = 28800;
+        $body['routes'][0]['polyline'] = 'gqbe@n}hlMnmjH{veH';
+        if ($reverse) {
+            [$request['origin'], $request['destination']] = [$request['destination'], $request['origin']];
+            $body['summary']['route'] = array_reverse($body['summary']['route']);
+            $body['routes'][0]['polyline'] = 'wbw[rebcMomjHzveH';
+        }
+
+        return [$request, $body];
+    }
+
     private function normalize(array $body, ?array $request = null): array
     {
         return app(TollGuruTripPreview::class)->normalizeResponse(json_encode($body, JSON_THROW_ON_ERROR), $request ?? self::tripRequest());

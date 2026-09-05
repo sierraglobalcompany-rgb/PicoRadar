@@ -172,8 +172,6 @@ class TripPreviewTest extends TestCase
             'wrong zone' => ['timeZone', 'America/New_York'],
             'missing UTC suffix' => ['departureUtc', '2026-09-06T04:30:00'],
             'invalid calendar date' => ['departureUtc', '2026-09-31T04:30:00Z'],
-            'past departure' => ['departureUtc', '2026-09-04T04:30:00Z'],
-            'unbounded future' => ['departureUtc', '2036-09-06T04:30:00Z'],
             'noncash' => ['paymentMethod', 'tag'],
             'unverified physical category' => ['vehicleCategory', 'truck'],
             'zero alternatives' => ['alternatives', 0],
@@ -465,6 +463,109 @@ class TripPreviewTest extends TestCase
         $this->fakeProvider([self::ENDPOINT => Http::response($body)]);
         $this->postJson('/api/v1/trips/preview', $this->request())
             ->assertStatus(502)->assertExactJson(['error' => ['code' => 'invalid_upstream']]);
+    }
+
+    #[DataProvider('bogotaDirections')]
+    public function test_catalog_bogota_endpoint_passes_controller_and_adapter_in_both_directions(bool $reverse): void
+    {
+        config(['trips.enabled' => true]);
+        [$request, $body] = TollGuruTripPreviewTest::bogotaFixture($reverse);
+        $endpoint = $reverse ? 'origin' : 'destination';
+        $country = GeographicUnit::query()->where('code', 'CO')->firstOrFail();
+        $department = $this->unit('11', $request[$endpoint]['department'], GeographicUnitLevel::Department, $country->id);
+        $this->unit('11001', $request[$endpoint]['municipality'], GeographicUnitLevel::Municipality, $department->id);
+        $this->fakeProvider([self::ENDPOINT => Http::response($body)]);
+
+        $this->postJson('/api/v1/trips/preview', $request)->assertOk()
+            ->assertJsonPath($endpoint.'.latitude', 4.711)
+            ->assertJsonPath('routes.0.distanceMeters', 420000);
+        $field = $reverse ? 'from' : 'to';
+        $address = $request[$endpoint]['municipality'].', '.$request[$endpoint]['department'].', Colombia';
+        Http::assertSent(fn (Request $sent): bool => $sent[$field]['address'] === $address);
+        Http::assertSentCount(1);
+    }
+
+    public static function bogotaDirections(): array
+    {
+        return ['Bogota destination' => [false], 'Bogota origin' => [true]];
+    }
+
+    #[DataProvider('bogotaWrongAddresses')]
+    public function test_catalog_bogota_rejects_provider_homonym_or_wrong_department(bool $reverse, string $address): void
+    {
+        config(['trips.enabled' => true]);
+        [$request, $body] = TollGuruTripPreviewTest::bogotaFixture($reverse);
+        $endpoint = $reverse ? 'origin' : 'destination';
+        $country = GeographicUnit::query()->where('code', 'CO')->firstOrFail();
+        $department = $this->unit('11', $request[$endpoint]['department'], GeographicUnitLevel::Department, $country->id);
+        $this->unit('11001', $request[$endpoint]['municipality'], GeographicUnitLevel::Municipality, $department->id);
+        $body['summary']['route'][$reverse ? 0 : 1]['address'] = $address;
+        $this->fakeProvider([self::ENDPOINT => Http::response($body)]);
+
+        $this->postJson('/api/v1/trips/preview', $request)->assertStatus(502)
+            ->assertExactJson(['error' => ['code' => 'invalid_upstream']]);
+        Http::assertSentCount(1);
+        $this->assertSame($this->ledger(1, 21, 300), Cache::store('database')->get(self::LEDGER));
+    }
+
+    public static function bogotaWrongAddresses(): array
+    {
+        return [
+            'destination wrong department' => [false, 'Bogota, D.C., Santander, Colombia'],
+            'origin homonym' => [true, 'Nuevo Bogota, D.C., Bogota, D.C., Colombia'],
+        ];
+    }
+
+    #[DataProvider('departureWindows')]
+    public function test_departure_window_reports_only_actual_bounded_days_without_spending(string $departure, int $configuredDays, int $expectedDays): void
+    {
+        config(['trips.enabled' => true, 'trips.max_future_days' => $configuredDays]);
+        $this->travelTo(now()->setTime(12, 0, 30));
+        $request = $this->request();
+        $request['departureUtc'] = $departure;
+
+        $this->postJson('/api/v1/trips/preview', $request)->assertStatus(422)
+            ->assertExactJson(['error' => ['code' => 'departure_window', 'maxFutureDays' => $expectedDays]]);
+        Http::assertNothingSent();
+        $this->assertSame($this->ledger(), Cache::store('database')->get(self::LEDGER));
+    }
+
+    public static function departureWindows(): array
+    {
+        return [
+            'restored past date' => ['2026-09-04T12:00:30Z', 30, 30],
+            'current minute already started' => ['2026-09-05T12:00:00Z', 30, 30],
+            'one microsecond before now' => ['2026-09-05T12:00:29.999999Z', 30, 30],
+            'day thirty one' => ['2026-10-06T12:00:30Z', 30, 30],
+            'one microsecond beyond upper bound' => ['2026-10-05T12:00:30.000001Z', 30, 30],
+            'configured seven day window' => ['2026-09-12T12:00:31Z', 7, 7],
+            'configured one day window' => ['2026-09-06T12:00:31Z', 1, 1],
+            'lower clamp' => ['2026-09-06T12:00:31Z', 0, 1],
+            'upper clamp' => ['2026-10-05T12:00:31Z', 99, 30],
+        ];
+    }
+
+    #[DataProvider('allowedDepartureBoundaries')]
+    public function test_departure_window_accepts_exact_boundaries_without_changing_departure(string $departure, int $days): void
+    {
+        config(['trips.enabled' => true, 'trips.max_future_days' => $days]);
+        $this->travelTo(now()->setTime(12, 0, 30));
+        $request = $this->request();
+        $request['departureUtc'] = $departure;
+
+        $this->postJson('/api/v1/trips/preview', $request)->assertOk();
+        Http::assertSent(fn (Request $sent): bool => $sent['departure_time'] === $departure);
+        Http::assertSentCount(1);
+    }
+
+    public static function allowedDepartureBoundaries(): array
+    {
+        return [
+            'now' => ['2026-09-05T12:00:30Z', 30],
+            'thirty days' => ['2026-10-05T12:00:30Z', 30],
+            'seven days' => ['2026-09-12T12:00:30Z', 7],
+            'one day' => ['2026-09-06T12:00:30Z', 1],
+        ];
     }
 
     private function request(): array

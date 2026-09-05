@@ -25,17 +25,21 @@ final class TripPreviewController
         } catch (DomainException $exception) {
             $code = $exception->getMessage();
             $status = match ($code) {
-                'validation', 'no_route', 'unsupported_vehicle' => 422,
+                'validation', 'departure_window', 'no_route', 'unsupported_vehicle' => 422,
                 'not_configured' => 503,
                 'quota' => 429,
                 'timeout' => 504,
                 default => 502,
             };
-            if (! in_array($code, ['validation', 'no_route', 'unsupported_vehicle', 'not_configured', 'quota', 'timeout', 'invalid_upstream', 'network'], true)) {
+            if (! in_array($code, ['validation', 'departure_window', 'no_route', 'unsupported_vehicle', 'not_configured', 'quota', 'timeout', 'invalid_upstream', 'network'], true)) {
                 $code = 'invalid_upstream';
             }
+            $error = ['code' => $code];
+            if ($code === 'departure_window') {
+                $error['maxFutureDays'] = $this->maxFutureDays();
+            }
 
-            return response()->json(['error' => ['code' => $code]], $status)->header('Cache-Control', 'no-store');
+            return response()->json(['error' => $error], $status)->header('Cache-Control', 'no-store');
         } catch (Throwable) {
             // Includes unavailable geography storage; never pass SQL/payloads to global logging.
             return response()->json(['error' => ['code' => 'not_configured']], 503)->header('Cache-Control', 'no-store');
@@ -66,10 +70,12 @@ final class TripPreviewController
         $format = str_contains($input['departureUtc'], '.') ? '!Y-m-d\TH:i:s.u\Z' : '!Y-m-d\TH:i:s\Z';
         $departure = DateTimeImmutable::createFromFormat($format, $input['departureUtc'], new \DateTimeZone('UTC'));
         $errors = DateTimeImmutable::getLastErrors();
-        if ($departure === false || ($errors !== false && ($errors['warning_count'] || $errors['error_count']))
-            || $departure->getTimestamp() < now()->timestamp
-            || $departure->getTimestamp() > now()->addDays(min(30, (int) config('trips.max_future_days', 30)))->timestamp) {
+        if ($departure === false || ($errors !== false && ($errors['warning_count'] || $errors['error_count']))) {
             throw new DomainException('validation');
+        }
+        $now = now()->utc();
+        if ($departure < $now || $departure > $now->copy()->addDays($this->maxFutureDays())) {
+            throw new DomainException('departure_window');
         }
         foreach (['origin', 'destination'] as $key) {
             $point = $input[$key];
@@ -97,6 +103,11 @@ final class TripPreviewController
         }
 
         return $input;
+    }
+
+    private function maxFutureDays(): int
+    {
+        return max(1, min(30, (int) config('trips.max_future_days', 30)));
     }
 
     private function exactKeys(mixed $value, array $keys): void
