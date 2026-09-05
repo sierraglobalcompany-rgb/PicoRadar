@@ -565,7 +565,7 @@ class _OfficialLinksCard extends ConsumerWidget {
               style: AppTextStyles.body,
             ),
             const SizedBox(height: AppSpacing.m),
-            FilledButton.icon(
+            OutlinedButton.icon(
               key: const ValueKey('defense-open-simit'),
               onPressed: () => _openExternal(
                 context,

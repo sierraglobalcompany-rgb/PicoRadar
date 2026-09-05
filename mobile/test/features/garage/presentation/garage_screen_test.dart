@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -23,8 +24,10 @@ import 'package:picoradar/features/vehicle_status/data/vehicle_obligation_store.
 import 'package:picoradar/features/vehicle_status/domain/vehicle_obligation.dart';
 
 import '../../../test_app_harness.dart';
+import '../../home/presentation/v01b_test_font.dart';
 
 void main() {
+  setUpAll(loadV01bTestFont);
   late TestAppHarness harness;
 
   setUp(() {
@@ -34,6 +37,151 @@ void main() {
   tearDown(() async {
     await harness.dispose();
   });
+
+  for (final size in const [Size(360, 800), Size(390, 844), Size(412, 915)]) {
+    for (final scale in const [1.0, 1.5, 2.0]) {
+      testWidgets('V01B Garage identity readable ${size.width} scale $scale', (
+        tester,
+      ) async {
+        await _createVehicle(
+          harness,
+          plate: 'ABC123',
+          city: 'Medellín, Antioquia',
+        );
+        await _openGarage(
+          tester,
+          harness,
+          size: size,
+          textScaleFactor: scale,
+          boundedSettle: true,
+        );
+        final panel = find.byKey(const ValueKey('garage-info-panel'));
+        await tester.ensureVisible(panel);
+        await tester.pump();
+        final clipped = <String>[];
+        for (final element
+            in find
+                .descendant(of: panel, matching: find.byType(RichText))
+                .evaluate()) {
+          final paragraph = element.renderObject! as RenderParagraph;
+          if (paragraph.didExceedMaxLines) {
+            clipped.add(paragraph.text.toPlainText());
+          }
+        }
+        expect(clipped, isEmpty, reason: 'Vehicle identity is clipped');
+        expect(find.text('Medellín, Antioquia').hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets(
+        'V01B Garage active action readable ${size.width} scale $scale',
+        (tester) async {
+          final seeded = await _seedThreeVehicles(harness);
+          await _openGarage(
+            tester,
+            harness,
+            size: size,
+            textScaleFactor: scale,
+            boundedSettle: true,
+          );
+          await _focusNewestVehicle(tester);
+          final action = find.byKey(
+            const ValueKey('garage-action-make-active'),
+          );
+          await tester.ensureVisible(action);
+          await tester.pump();
+          if (scale == 1) {
+            expect(tester.getSize(action).height, 32);
+          }
+          final paragraph = tester.renderObject<RenderParagraph>(
+            find.descendant(of: action, matching: find.text('Hacer activo')),
+          );
+          final boxes = paragraph.getBoxesForSelection(
+            const TextSelection(baseOffset: 0, extentOffset: 12),
+          );
+          expect(boxes, isNotEmpty);
+          for (final box in boxes) {
+            // Glyph selection bounds can round 0.125 logical pixels outward.
+            expect(
+              box.right,
+              lessThanOrEqualTo(paragraph.size.width + 0.5),
+              reason: 'Hacer activo fades before the end of its label',
+            );
+            expect(box.bottom, lessThanOrEqualTo(paragraph.size.height + 0.5));
+          }
+          expect(paragraph.didExceedMaxLines, isFalse);
+          expect(action.hitTestable(), findsOneWidget);
+          await tester.tap(action);
+          await tester.pumpAndSettle();
+          expect(
+            (await harness.repository.getActiveVehicle())?.id,
+            seeded.newest.id,
+          );
+          expect(tester.takeException(), isNull);
+        },
+      );
+      testWidgets('V01B Garage filters readable ${size.width} scale $scale', (
+        tester,
+      ) async {
+        await _seedThreeVehicles(harness);
+        await _openGarage(
+          tester,
+          harness,
+          size: size,
+          textScaleFactor: scale,
+          boundedSettle: true,
+        );
+        final segment = find.byKey(const ValueKey('garage-filter-segment'));
+        if (scale == 1) {
+          expect(tester.getSize(segment).height, 48);
+        }
+        for (final label in ['Favoritos', 'Activos', 'Todos']) {
+          final text = find.descendant(of: segment, matching: find.text(label));
+          final paragraph = tester.renderObject<RenderParagraph>(text);
+          final boxes = paragraph.getBoxesForSelection(
+            TextSelection(baseOffset: 0, extentOffset: label.length),
+          );
+          expect(boxes, isNotEmpty);
+          expect(
+            boxes.map((box) => box.top).toSet(),
+            hasLength(1),
+            reason: '$label must remain one complete word on one visual line',
+          );
+          for (final box in boxes) {
+            expect(
+              box.right,
+              lessThanOrEqualTo(paragraph.size.width + 0.5),
+              reason: '$label fades before the end of its label',
+            );
+            expect(box.bottom, lessThanOrEqualTo(paragraph.size.height + 0.5));
+            final bounds = tester.getRect(segment).inflate(0.5);
+            expect(
+              bounds.contains(
+                paragraph.localToGlobal(Offset(box.right, box.bottom)),
+              ),
+              isTrue,
+            );
+          }
+          expect(paragraph.didExceedMaxLines, isFalse);
+          expect(text.hitTestable(), findsOneWidget);
+          await tester.tap(text);
+          await tester.pumpAndSettle();
+          final semantics = tester.widgetList<Semantics>(
+            find.ancestor(of: text, matching: find.byType(Semantics)),
+          );
+          expect(
+            semantics.any(
+              (widget) =>
+                  widget.properties.label == label &&
+                  widget.properties.selected == true,
+            ),
+            isTrue,
+          );
+          expect(tester.takeException(), isNull);
+        }
+      });
+    }
+  }
 
   testWidgets('garage v2 shows owner structure and real vehicle data', (
     tester,
@@ -557,6 +705,23 @@ void main() {
     expect(repository.deletedVehicleIds, [seeded.newest.id]);
     expect(tester.takeException(), isNull);
   });
+
+  for (final targetIndex in [0, 1, 2]) {
+    testWidgets('focus helper selects newest identity at index $targetIndex', (
+      tester,
+    ) async {
+      final seeded = await _seedThreeVehicles(harness);
+      final order = [seeded.active, seeded.oldest]
+        ..insert(targetIndex, seeded.newest);
+      await _openGarage(tester, harness, vehicleListOverride: order);
+      await _focusNewestVehicle(tester);
+      _expectGarageInfoPanel(tester, seeded.newest);
+      expect(
+        (await harness.repository.getActiveVehicle())?.id,
+        seeded.active.id,
+      );
+    });
+  }
 
   testWidgets(
     'delete action reports repository failure after private cleanup',
@@ -1106,6 +1271,7 @@ Future<void> _openGarage(
   bool boundedSettle = false,
   VehicleAssociatedDataCleaner? vehicleAssociatedDataCleaner,
   VehicleRepository? vehicleRepository,
+  List<VehicleProfile>? vehicleListOverride,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -1116,6 +1282,7 @@ Future<void> _openGarage(
   await harness.pump(
     tester,
     vehicleAssociatedDataCleaner: vehicleAssociatedDataCleaner,
+    vehicleListOverride: vehicleListOverride,
     wrap: vehicleRepository == null
         ? null
         : (app) => ProviderScope(
@@ -1233,21 +1400,37 @@ Future<void> _goTo(WidgetTester tester, String location) async {
 }
 
 Future<void> _focusNewestVehicle(WidgetTester tester) async {
+  final target = find.descendant(
+    of: find.byKey(const ValueKey('garage-info-panel')),
+    matching: find.text('XYZ789'),
+  );
   await tester.ensureVisible(
     find.byKey(const ValueKey('garage-vehicle-carousel')),
   );
   await tester.pumpAndSettle();
-  for (var attempt = 0; attempt < 3; attempt += 1) {
-    if (find.text('3 de 3').evaluate().isNotEmpty) {
-      break;
+  final carousel = find.byKey(const ValueKey('garage-vehicle-carousel'));
+  final pageView = find.descendant(
+    of: carousel,
+    matching: find.byType(PageView),
+  );
+  final pageWidth =
+      tester.getSize(pageView).width *
+      tester.widget<PageView>(pageView).controller!.viewportFraction;
+  // The repository order can change when fixture creation crosses a second.
+  for (final direction in [-1, 1]) {
+    for (var attempt = 0; attempt < 3; attempt += 1) {
+      if (target.evaluate().isNotEmpty) {
+        return;
+      }
+      await tester.timedDrag(
+        carousel,
+        Offset(direction * pageWidth, 0),
+        const Duration(milliseconds: 500),
+      );
+      await tester.pumpAndSettle();
     }
-    await tester.drag(
-      find.byKey(const ValueKey('garage-vehicle-carousel')),
-      const Offset(-520, 0),
-    );
-    await tester.pumpAndSettle();
   }
-  expect(find.text('3 de 3'), findsOneWidget);
+  expect(target, findsOneWidget);
 }
 
 void _expectGarageInfoPanel(WidgetTester tester, VehicleProfile vehicle) {

@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
+import 'package:picoradar/app/theme/app_theme.dart';
 import 'package:picoradar/features/comparendos/presentation/comparendos_screen.dart';
 import 'package:picoradar/features/defense/application/defense_case_providers.dart';
 import 'package:picoradar/features/defense/data/defense_case.dart';
@@ -21,8 +23,10 @@ import 'package:picoradar/features/vehicle_status/data/private_vehicle_document_
 import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
 import '../../../test_app_harness.dart';
+import '../../home/presentation/v01b_test_font.dart';
 
 void main() {
+  setUpAll(loadV01bTestFont);
   late MemoryPreferences preferences;
   late _FakePicoNotificationScheduler scheduler;
   late _FakeExternalLauncher launcher;
@@ -881,6 +885,102 @@ void main() {
       expect(tester.takeException(), isNull);
     }
   });
+
+  for (final size in const [Size(360, 800), Size(390, 844), Size(412, 915)]) {
+    for (final scale in const [1.0, 1.5, 2.0]) {
+      testWidgets('V01B Settings title readable ${size.width} scale $scale', (
+        tester,
+      ) async {
+        await _pumpSettings(
+          tester,
+          preferences: preferences,
+          scheduler: scheduler,
+          launcher: launcher,
+          documentStore: documentStore,
+          onChangeAvatar: () {},
+          size: size,
+          textScale: scale,
+          theme: buildPicoRadarTheme(),
+        );
+        final title = find.text('Notificaciones');
+        await tester.ensureVisible(title);
+        final paragraph = tester.renderObject<RenderParagraph>(title);
+        final text = paragraph.text.toPlainText();
+        final lines = <double, String>{};
+        for (var offset = 0; offset < text.length; offset++) {
+          final boxes = paragraph.getBoxesForSelection(
+            TextSelection(baseOffset: offset, extentOffset: offset + 1),
+          );
+          for (final box in boxes) {
+            lines.update(
+              box.top,
+              (line) => '$line${text[offset]}',
+              ifAbsent: () => text[offset],
+            );
+          }
+        }
+        expect(
+          lines.values.every((line) => line.length > 1),
+          isTrue,
+          reason: 'Notification title leaves an isolated letter: $lines',
+        );
+        expect(paragraph.didExceedMaxLines, isFalse);
+        final configure = find.byKey(
+          const ValueKey('settings-go-home-notifications'),
+        );
+        await tester.ensureVisible(configure);
+        expect(configure.hitTestable(), findsOneWidget);
+        for (final key in [
+          'settings-purge-document-viewer',
+          'settings-delete-trip-draft',
+          'settings-delete-comparendos-note',
+          'settings-delete-active-vehicle-private-data',
+        ]) {
+          final action = find.byKey(ValueKey(key));
+          await tester.ensureVisible(action);
+          await tester.pump();
+          expect(action.hitTestable(), findsOneWidget);
+          expect(tester.getSize(action).height, greaterThanOrEqualTo(44));
+          for (final element
+              in find
+                  .descendant(of: action, matching: find.byType(RichText))
+                  .evaluate()) {
+            final rendered = element.renderObject! as RenderParagraph;
+            expect(rendered.didExceedMaxLines, isFalse);
+          }
+        }
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
+  testWidgets('V01B Settings deletion differs from cache maintenance', (
+    tester,
+  ) async {
+    await _pumpSettings(
+      tester,
+      preferences: preferences,
+      scheduler: scheduler,
+      launcher: launcher,
+      documentStore: documentStore,
+      onChangeAvatar: () {},
+      theme: buildPicoRadarTheme(),
+    );
+    final cache = find.byKey(const ValueKey('settings-purge-document-viewer'));
+    final deletion = find.byKey(const ValueKey('settings-delete-trip-draft'));
+    final cacheButton = tester.widget<OutlinedButton>(cache);
+    final deleteButton = tester.widget<OutlinedButton>(deletion);
+    expect(
+      deleteButton.style?.foregroundColor?.resolve({}),
+      isNot(cacheButton.style?.foregroundColor?.resolve({})),
+      reason: 'Destructive actions have the same appearance as cache upkeep',
+    );
+    await _tapVisible(tester, deletion);
+    await tester.pumpAndSettle();
+    expect(find.text('Cancelar'), findsOneWidget);
+    expect(find.text('Eliminar'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsOneWidget);
+  });
 }
 
 Future<void> _pumpSettings(
@@ -898,6 +998,7 @@ Future<void> _pumpSettings(
       const CameraDatasetDiagnostic(version: 'test-cameras', count: 2),
   Size size = const Size(390, 844),
   double textScale = 1.0,
+  ThemeData? theme,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
@@ -926,6 +1027,7 @@ Future<void> _pumpSettings(
         ),
       ],
       child: MaterialApp(
+        theme: theme,
         home: MediaQuery(
           data: MediaQueryData(
             size: size,

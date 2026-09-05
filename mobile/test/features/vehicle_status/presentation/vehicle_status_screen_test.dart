@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
+import 'package:picoradar/app/theme/app_theme.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/home/data/home_banner_config.dart';
@@ -15,8 +17,10 @@ import 'package:picoradar/features/vehicle_status/platform/vehicle_document_gate
 import 'package:picoradar/features/vehicle_status/presentation/vehicle_status_screen.dart';
 
 import '../../../test_app_harness.dart';
+import 'v01b_obligations_test_font.dart';
 
 void main() {
+  setUpAll(loadV01bObligationsTestFont);
   late TestAppHarness harness;
 
   setUp(() {
@@ -26,6 +30,252 @@ void main() {
   tearDown(() async {
     await harness.dispose();
   });
+
+  for (final size in const [Size(360, 800), Size(390, 844), Size(412, 915)]) {
+    for (final scale in [1.0, 1.5, 2.0]) {
+      testWidgets('V01B tax authority text fits $size scale $scale', (
+        tester,
+      ) async {
+        final vehicle = await _createVehicle(
+          harness,
+          plate: 'QA1234',
+          city: 'Bogota DC',
+        );
+        await _openModule(
+          tester,
+          harness,
+          'impuestos',
+          size: size,
+          textScaleFactor: scale,
+          productionTheme: true,
+        );
+        final authority = find.byKey(const ValueKey('tax-authority-field'));
+        await tester.ensureVisible(authority);
+        await tester.pump();
+        final text = find.descendant(
+          of: authority,
+          matching: find.byType(RichText),
+        );
+        for (final element in text.evaluate()) {
+          final paragraph = element.renderObject! as RenderParagraph;
+          final boxes = paragraph.getBoxesForSelection(
+            TextSelection(
+              baseOffset: 0,
+              extentOffset: paragraph.text.toPlainText().length,
+            ),
+          );
+          for (final box in boxes) {
+            if (paragraph.text.toPlainText() == 'Entidad tributaria') {
+              // The floating label is transformed, not clipped to its line box.
+              final field = tester.getRect(authority).inflate(0.1);
+              expect(
+                field.contains(paragraph.localToGlobal(box.toRect().topLeft)),
+                isTrue,
+              );
+              expect(
+                field.contains(
+                  paragraph.localToGlobal(box.toRect().bottomRight),
+                ),
+                isTrue,
+              );
+            } else {
+              expect(
+                box.bottom,
+                lessThanOrEqualTo(paragraph.size.height + 0.1),
+                reason: paragraph.text.toPlainText(),
+              );
+            }
+          }
+        }
+        expect(authority.hitTestable(), findsOneWidget);
+        await tester.tap(authority);
+        await tester.pumpAndSettle();
+        final option = find.text('Antioquia - Gobernación de Antioquia').last;
+        await tester.ensureVisible(option);
+        await tester.pumpAndSettle();
+        expect(option.hitTestable(), findsOneWidget);
+        await tester.tap(option);
+        await _pumpNavigation(tester);
+        final saved = await VehicleObligationStore(harness.database)
+            .get(vehicle.id, VehicleObligationType.tax);
+        expect(saved?.details['authorityId'], 'antioquia');
+        expect(tester.takeException(), isNull);
+      });
+      for (final type in [
+        VehicleObligationType.soat,
+        VehicleObligationType.rtm,
+      ]) {
+        testWidgets(
+          'V01B ${type.value} facts are readable $size scale $scale',
+          (tester) async {
+            final vehicle = await _createVehicle(harness, plate: 'QA1234');
+            await VehicleObligationStore(harness.database).upsert(
+              vehicleId: vehicle.id,
+              type: type,
+              dueDate: DateTime(2026, 12, 31),
+              details: type == VehicleObligationType.soat
+                  ? const {
+                      'insurerName': 'Seguros de prueba nombre completo',
+                      'policyNumber': 'QA-12345678901234567890',
+                    }
+                  : const {
+                      'cdaName': 'Centro de diagnostico de prueba completo',
+                      'certificateNumber': 'QA-12345678901234567890',
+                    },
+            );
+            await _openModule(
+              tester,
+              harness,
+              type == VehicleObligationType.soat ? 'soat' : 'tecnomecanica',
+              size: size,
+              textScaleFactor: scale,
+              productionTheme: true,
+            );
+            final hero = find.byKey(ValueKey('owner-hero-${type.value}'));
+            final paragraphs = find.descendant(
+              of: hero,
+              matching: find.byType(RichText),
+            );
+            for (final element in paragraphs.evaluate()) {
+              final paragraph = element.renderObject! as RenderParagraph;
+              expect(
+                paragraph.didExceedMaxLines,
+                isFalse,
+                reason: '${type.value}: ${paragraph.text.toPlainText()}',
+              );
+              final bounds = tester.getRect(hero).inflate(0.1);
+              for (final box in paragraph.getBoxesForSelection(
+                TextSelection(
+                  baseOffset: 0,
+                  extentOffset: paragraph.text.toPlainText().length,
+                ),
+              )) {
+                expect(
+                  bounds.contains(
+                    paragraph.localToGlobal(box.toRect().topLeft),
+                  ),
+                  isTrue,
+                  reason: paragraph.text.toPlainText(),
+                );
+                expect(
+                  bounds.contains(
+                    paragraph.localToGlobal(box.toRect().bottomRight),
+                  ),
+                  isTrue,
+                  reason: paragraph.text.toPlainText(),
+                );
+              }
+            }
+            expect(find.text('31 DIC 2026'), findsOneWidget);
+            expect(find.text('QA-12345678901234567890'), findsOneWidget);
+            await tester.ensureVisible(find.text('QA-12345678901234567890'));
+            await tester.pumpAndSettle();
+            expect(
+              find.text('QA-12345678901234567890').hitTestable(),
+              findsOneWidget,
+            );
+            expect(tester.takeException(), isNull);
+          },
+        );
+
+        testWidgets(
+          'V01B ${type.value} saved document CTA fits $size scale $scale',
+          (tester) async {
+            final vehicle = await _createVehicle(harness, plate: 'QA1234');
+            final isSoat = type == VehicleObligationType.soat;
+            await _openModule(
+              tester,
+              harness,
+              isSoat ? 'soat' : 'tecnomecanica',
+              size: size,
+              textScaleFactor: scale,
+              productionTheme: true,
+              documentMetadataOverride: PrivateVehicleDocumentMetadata(
+                documentId: 'qa-saved-copy',
+                vehicleId: vehicle.id,
+                documentType: isSoat
+                    ? PrivateVehicleDocumentType.soat
+                    : PrivateVehicleDocumentType.rtm,
+                originalName: 'qa.pdf',
+                mimeType: 'application/pdf',
+                importedAt: DateTime.utc(2026, 8, 30, 12),
+                encryptedRelativePath: 'docs/qa-saved-copy.prcf',
+              ),
+            );
+            final button = find.byKey(
+              ValueKey('owner-document-action-${type.value}'),
+            );
+            await tester.ensureVisible(button);
+            await tester.pumpAndSettle();
+            final label = find.descendant(
+              of: button,
+              matching: find.byType(Text),
+            );
+            expect(
+              find.descendant(
+                of: button,
+                matching: find.text(isSoat ? 'Ver SOAT' : 'Ver certificado'),
+              ),
+              findsOneWidget,
+            );
+            final surface = tester.getRect(
+              find.descendant(of: button, matching: find.byType(Material)),
+            );
+            final text = tester.getRect(label);
+            expect(tester.getSize(button).height, greaterThanOrEqualTo(44));
+            expect(text.top - surface.top, greaterThanOrEqualTo(4));
+            expect(surface.bottom - text.bottom, greaterThanOrEqualTo(4));
+            expect(button.hitTestable(), findsOneWidget);
+            final menu = find.byKey(
+              ValueKey('owner-document-menu-${type.value}'),
+            );
+            await tester.ensureVisible(menu);
+            await tester.pumpAndSettle();
+            expect(menu.hitTestable(), findsOneWidget);
+            await tester.tap(menu);
+            await tester.pumpAndSettle();
+            expect(find.text('Reemplazar').hitTestable(), findsOneWidget);
+            expect(find.text('Eliminar copia').hitTestable(), findsOneWidget);
+            expect(tester.takeException(), isNull);
+          },
+        );
+
+        testWidgets('V01B ${type.value} document CTA fits $size scale $scale', (
+          tester,
+        ) async {
+          await _createVehicle(harness, plate: 'QA1234');
+          await _openModule(
+            tester,
+            harness,
+            type == VehicleObligationType.soat ? 'soat' : 'tecnomecanica',
+            size: size,
+            textScaleFactor: scale,
+            productionTheme: true,
+          );
+          final button = find.byKey(
+            ValueKey('owner-document-action-${type.value}'),
+          );
+          await tester.ensureVisible(button);
+          await tester.pump();
+          final label = find.descendant(
+            of: button,
+            matching: find.byType(Text),
+          );
+          final material = find.descendant(
+            of: button,
+            matching: find.byType(Material),
+          );
+          final surface = tester.getRect(material);
+          final text = tester.getRect(label);
+          expect(tester.getSize(button).height, greaterThanOrEqualTo(44));
+          expect(text.top - surface.top, greaterThanOrEqualTo(4));
+          expect(surface.bottom - text.bottom, greaterThanOrEqualTo(4));
+          expect(button.hitTestable(), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
+  }
 
   testWidgets('SOAT can be saved locally and stays scoped to saved date', (
     tester,
@@ -811,6 +1061,7 @@ Future<void> _openModule(
   HomeBannerCampaign? homeBannerCampaignOverride,
   Size size = const Size(390, 844),
   double textScaleFactor = 1,
+  bool productionTheme = false,
   Widget Function(Widget child)? wrap,
 }) async {
   tester.view.devicePixelRatio = 1;
@@ -834,6 +1085,7 @@ Future<void> _openModule(
     overrideHomeBannerCampaign: overrideHomeBannerCampaign,
     homeBannerCampaignOverride: homeBannerCampaignOverride,
     childOverride: MaterialApp(
+      theme: productionTheme ? buildPicoRadarTheme() : null,
       home: VehicleStatusScreen(moduleId: moduleId, vehicleId: null),
     ),
     wrap: wrap,

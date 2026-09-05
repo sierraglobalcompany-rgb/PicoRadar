@@ -2,14 +2,18 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:picoradar/app/app_providers.dart';
+import 'package:picoradar/app/theme/app_theme.dart';
 import 'package:picoradar/features/documents/presentation/documents_screen.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/vehicle_status/data/private_vehicle_document_store.dart';
 import 'package:picoradar/features/vehicle_status/platform/vehicle_document_gateway.dart';
+
+import '../../vehicle_status/presentation/v01b_obligations_test_font.dart';
 
 late Directory root;
 late _MemoryDocumentStore _store;
@@ -17,6 +21,7 @@ late VehicleProfile vehicle;
 var ids = 0;
 
 void main() {
+  setUpAll(loadV01bObligationsTestFont);
   setUp(() {
     ids = 0;
     root = Directory.systemTemp.createTempSync('picoradar-documents-screen-');
@@ -36,6 +41,46 @@ void main() {
       root.deleteSync(recursive: true);
     }
   });
+
+  for (final size in const [Size(360, 800), Size(390, 844), Size(412, 915)]) {
+    for (final scale in [1.0, 1.5, 2.0]) {
+      testWidgets('V01B vehicle documents title readable $size scale $scale', (
+        tester,
+      ) async {
+        await _pumpDocuments(
+          tester,
+          size: size,
+          textScaleFactor: scale,
+          productionTheme: true,
+        );
+        final title = find.descendant(
+          of: find.text('Documentos vehiculares'),
+          matching: find.byType(RichText),
+        );
+        final paragraph = tester.renderObject<RenderParagraph>(title);
+        for (final selection in const [
+          TextSelection(baseOffset: 0, extentOffset: 10),
+          TextSelection(baseOffset: 11, extentOffset: 22),
+        ]) {
+          final word = paragraph.getBoxesForSelection(selection);
+          expect(
+            word.map((box) => box.top).toSet(),
+            hasLength(1),
+            reason: 'The vehicle-scoped title must not split words',
+          );
+        }
+        final attach = find.byKey(
+          const ValueKey('documents-row-import-traffic_license'),
+        );
+        await tester.ensureVisible(attach);
+        await tester.pump();
+        expect(attach.hitTestable(), findsOneWidget);
+        expect(tester.getSize(attach).height, greaterThanOrEqualTo(44));
+        expect(find.text(vehicleDocumentOfficialWarning), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
 
   testWidgets('shows vehicle-scoped documents and required private copy', (
     tester,
@@ -386,6 +431,7 @@ Future<void> _pumpDocuments(
   Size size = const Size(390, 844),
   double textScaleFactor = 1.0,
   bool enableGarageRoute = false,
+  bool productionTheme = false,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
@@ -407,7 +453,11 @@ Future<void> _pumpDocuments(
       : null;
   final appBuilder = _scaledBuilder(textScaleFactor);
   final child = router == null
-      ? MaterialApp(home: DocumentsScreen(vehicleId), builder: appBuilder)
+      ? MaterialApp(
+          theme: productionTheme ? buildPicoRadarTheme() : null,
+          home: DocumentsScreen(vehicleId),
+          builder: appBuilder,
+        )
       : MaterialApp.router(routerConfig: router, builder: appBuilder);
   await tester.pumpWidget(
     ProviderScope(

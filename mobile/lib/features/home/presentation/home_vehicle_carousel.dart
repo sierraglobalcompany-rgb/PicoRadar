@@ -259,8 +259,6 @@ class _TodayChip extends StatelessWidget {
           Flexible(
             child: Text(
               todayStatusText(status),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
               style: AppTextStyles.caption.copyWith(
                 fontSize: 12,
                 color: color,
@@ -551,8 +549,6 @@ class _TodaySummary extends StatelessWidget {
                 ),
                 Text(
                   detail,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption.copyWith(
                     fontSize: 10.8,
                     color: AppColors.navy.withValues(alpha: 0.78),

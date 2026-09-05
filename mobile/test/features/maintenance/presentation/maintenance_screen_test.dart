@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
+import 'package:picoradar/app/theme/app_theme.dart';
 import 'package:picoradar/core/database/app_database.dart'
     hide MaintenanceRecord;
 import 'package:picoradar/core/storage/app_preferences.dart';
@@ -13,7 +15,11 @@ import 'package:picoradar/features/maintenance/data/maintenance_record.dart';
 import 'package:picoradar/features/maintenance/data/maintenance_repository.dart';
 import 'package:picoradar/features/maintenance/presentation/maintenance_screen.dart';
 
+import '../../services/presentation/v01b_tools_test_font.dart';
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(loadV01bToolsTestFont);
   setUpAll(() {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   });
@@ -24,6 +30,7 @@ void main() {
     var nextId = 0;
 
     setUp(() async {
+      nextId = 0;
       database = AppDatabase(NativeDatabase.memory());
       repository = MaintenanceRepository(
         database: database,
@@ -40,6 +47,69 @@ void main() {
     tearDown(() async {
       await database.close();
     });
+
+    for (final size in [
+      const Size(360, 800),
+      const Size(390, 844),
+      const Size(412, 915),
+    ]) {
+      for (final scale in [1.0, 1.5, 2.0]) {
+        testWidgets(
+          'V01B S06 complete maintenance values remain readable $size/$scale',
+          (tester) async {
+            tester.view.devicePixelRatio = 1;
+            tester.view.physicalSize = size;
+            tester.platformDispatcher.textScaleFactorTestValue = scale;
+            addTearDown(tester.view.resetDevicePixelRatio);
+            addTearDown(tester.view.resetPhysicalSize);
+            addTearDown(
+              tester.platformDispatcher.clearTextScaleFactorTestValue,
+            );
+            await repository.create(
+              vehicleId: 'vehicle-1',
+              serviceDate: DateTime(2026, 9, 5),
+              type: 'Aceite',
+              description: 'Cambio de aceite y filtros',
+              odometer: 145000,
+              costCents: 18000000,
+              nextServiceDate: DateTime(2027, 12, 31),
+              nextOdometer: 150000,
+            );
+            await _pump(
+              tester,
+              database,
+              repository,
+              theme: buildPicoRadarTheme(),
+            );
+            for (final value in [
+              '145.000 km',
+              '\$180.000',
+              'Próximo: 31 DIC 2027',
+              'Próximo: 150.000 km',
+            ]) {
+              final label = find.text(value);
+              await tester.ensureVisible(label);
+              await tester.pumpAndSettle();
+              final paragraph = tester.renderObject<RenderParagraph>(label);
+              final fullText = TextPainter(
+                text: paragraph.text,
+                textDirection: paragraph.textDirection,
+                textScaler: paragraph.textScaler,
+              )..layout(maxWidth: paragraph.size.width);
+              expect(paragraph.didExceedMaxLines, isFalse, reason: value);
+              expect(
+                fullText.height,
+                lessThanOrEqualTo(paragraph.size.height + 0.1),
+                reason:
+                    '$value must paint completely, not clip inside its chip',
+              );
+              fullText.dispose();
+              expect(tester.takeException(), isNull);
+            }
+          },
+        );
+      }
+    }
 
     testWidgets('shows visible title and empty state', (tester) async {
       await _pump(tester, database, repository);
@@ -266,6 +336,7 @@ Future<void> _pump(
   AppDatabase database,
   MaintenanceRepository repository, {
   String? vehicleId = 'vehicle-1',
+  ThemeData? theme,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -274,7 +345,10 @@ Future<void> _pump(
         appPreferencesProvider.overrideWithValue(_MemoryPreferences()),
         maintenanceRepositoryProvider.overrideWithValue(repository),
       ],
-      child: MaterialApp(home: MaintenanceScreen(vehicleId: vehicleId)),
+      child: MaterialApp(
+        theme: theme,
+        home: MaintenanceScreen(vehicleId: vehicleId),
+      ),
     ),
   );
   await tester.pumpAndSettle();

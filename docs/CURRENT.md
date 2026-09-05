@@ -1,11 +1,11 @@
 # PicoRadar Current State
 
-## V01A owner feedback (pending review, not merged)
+## V01A merged; V01B conservative polish pending review
 
-Base: `70d663e969f69624e2dfde228a9ac85633373982`. Branch: `integration/V01A-owner-feedback`.
+V01A PR #53 was squash-merged as `c1010b5a2d23b2c3c4f8cf00874f4ecfd2780d44`, preserving the approved tree of `a61d77c1f16ecd0ae3c122f17bf5a423757679d6`. Post-merge Mobile CI run `33975562337` passed on that exact main SHA. V01B starts there on `integration/V01B-conservative-polish`; its bounded presentation polish remains pending review, not merged.
 Bounded Home/Garage/onboarding, Pico/Driving and local Trip adjustments follow the original 43 owner decisions. The separate Trip geography asset derives from the official B02 DANE fixture; it does not replace the RUNT registration catalog or claim complete national coverage.
 The five redesign families in `docs/design/V01A_OWNER_FEEDBACK.md` are proposals, not approved designs. Remaining visual polish belongs to V01B. F01 toll pricing and F02 manual camera updates are researched contracts, not implemented integrations; P07 real PDF picker import remains unverified. The Driving legal notice is informational text pending legal review before publication.
-No backend, schema, dependency, permission, deployment or automatic merge is part of V01A. Physical QA and CI results are recorded in the V01A handoff rather than inferred from this scope note.
+No backend, schema, dependency, permission or deployment changes are part of V01A/V01B. The V01A merge was explicitly owner-authorized; V01B merge is not authorized. Physical QA and final V01B gates are recorded in their respective handoffs, not inferred from this scope note. KEEP and unselected REDESIGN compositions remain frozen; R11/S07 wait for owner composition choices. F01/F02, physical PDF import and road smoke retain separate gates.
 
 Fecha de recuperacion R00: 2026-08-27. Base auditada: `main` en `0905d394b0379665e4a9dd343045072582d976a0`.
 

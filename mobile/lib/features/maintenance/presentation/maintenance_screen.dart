@@ -348,10 +348,14 @@ class _MaintenanceRecordCard extends StatelessWidget {
                           runSpacing: AppSpacing.xs,
                           children: [
                             for (final detail in details)
-                              Chip(
-                                label: Text(detail),
-                                visualDensity: VisualDensity.compact,
-                              ),
+                              if (MediaQuery.textScalerOf(context).scale(14) >
+                                  14)
+                                Text(detail)
+                              else
+                                Chip(
+                                  label: Text(detail),
+                                  visualDensity: VisualDensity.compact,
+                                ),
                           ],
                         ),
                       ],

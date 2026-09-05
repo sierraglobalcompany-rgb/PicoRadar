@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,13 +14,101 @@ import 'package:picoradar/features/buy_sell/presentation/buy_sell_screen.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 
 import '../../../test_app_harness.dart';
+import '../../services/presentation/v01b_tools_test_font.dart';
 
 late MemoryPreferences _preferences;
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(loadV01bToolsTestFont);
   setUp(() {
     _preferences = MemoryPreferences();
   });
+
+  for (final size in [
+    const Size(360, 800),
+    const Size(390, 844),
+    const Size(412, 915),
+  ]) {
+    for (final scale in [1.0, 1.5, 2.0]) {
+      testWidgets(
+        'V01B S03 compact heading retains editable draft with keyboard $size/$scale',
+        (tester) async {
+          await _pumpScreen(
+            tester,
+            activeVehicle: _vehicle(),
+            size: size,
+            textScale: scale,
+          );
+          final heading = tester.renderObject<RenderParagraph>(
+            find.text('Preparación de compra/venta'),
+          );
+          final metrics = TextPainter(
+            text: heading.text,
+            textDirection: heading.textDirection,
+            textScaler: heading.textScaler,
+          )..layout(maxWidth: heading.size.width);
+          if (scale == 1) {
+            expect(
+              metrics.computeLineMetrics(),
+              hasLength(1),
+              reason: 'Repeated heading should not displace the preparation form with a second line at normal scale',
+            );
+          }
+          expect(heading.didExceedMaxLines, isFalse);
+          expect(metrics.height, lessThanOrEqualTo(heading.size.height + 0.1));
+          metrics.dispose();
+          for (final label in ['Comprar', 'Vender']) {
+            final choice = find.text(label);
+            await tester.ensureVisible(choice);
+            await tester.pumpAndSettle();
+            final paragraph = tester.renderObject<RenderParagraph>(choice);
+            final boxes = paragraph.getBoxesForSelection(
+              TextSelection(baseOffset: 0, extentOffset: label.length),
+            );
+            expect(boxes, isNotEmpty);
+            expect(
+              boxes.map((box) => box.top).toSet(),
+              hasLength(1),
+              reason:
+                  '$label must not leave an orphan letter at enlarged scale',
+            );
+            expect(choice.hitTestable(), findsOneWidget);
+          }
+          tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+          addTearDown(tester.view.resetViewInsets);
+          await tester.pumpAndSettle();
+          for (final entry in [
+            ('buy-sell-candidate-plate', 'QA1234'),
+            ('buy-sell-city', 'Pereira'),
+            ('buy-sell-notes', 'QA keyboard notes'),
+          ]) {
+            final field = find.byKey(ValueKey(entry.$1));
+            await tester.ensureVisible(field);
+            await tester.pumpAndSettle();
+            expect(field.hitTestable(), findsOneWidget);
+            await tester.enterText(field, entry.$2);
+            await tester.pumpAndSettle();
+          }
+          final save = find.byKey(const ValueKey('buy-sell-save-draft'));
+          await Scrollable.ensureVisible(tester.element(save), alignment: 0.5);
+          await tester.pumpAndSettle();
+          expect(save.hitTestable(), findsOneWidget);
+          expect(
+            tester.getRect(save).bottom,
+            lessThanOrEqualTo(size.height - 300),
+          );
+          await tester.tap(save);
+          await tester.pumpAndSettle();
+          final draft = await loadBuySellDraft(_preferences);
+          expect(draft!.candidatePlate, 'QA1234');
+          expect(draft.city, 'Pereira');
+          expect(draft.notes, 'QA keyboard notes');
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
 
   test('malformed JSON removes the draft key and returns null', () async {
     await _preferences.setString(buySellDraftPreferenceKey, '{bad json');
@@ -517,14 +606,16 @@ Future<void> _pumpScreen(
       ],
       child: MaterialApp(
         theme: buildPicoRadarTheme(),
-        home: MediaQuery(
-          data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
-          child: BuySellScreen(
-            onOpenComparendos: onOpenComparendos,
-            onOpenTramites: onOpenTramites,
-            onOpenPeritajes: onOpenPeritajes,
-            onOpenDocuments: onOpenDocuments,
-          ),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
+        home: BuySellScreen(
+          onOpenComparendos: onOpenComparendos,
+          onOpenTramites: onOpenTramites,
+          onOpenPeritajes: onOpenPeritajes,
+          onOpenDocuments: onOpenDocuments,
         ),
       ),
     ),

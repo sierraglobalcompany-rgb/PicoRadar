@@ -182,8 +182,6 @@ class _TomorrowStatusStrip extends StatelessWidget {
                       ),
                       Text(
                         'Mañana · ${_tomorrowMessage(snapshot.tomorrow)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.caption.copyWith(
                           fontSize: 12,
                           color: AppColors.navy.withValues(alpha: 0.72),

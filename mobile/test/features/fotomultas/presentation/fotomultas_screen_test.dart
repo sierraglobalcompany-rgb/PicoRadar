@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:picoradar/app/router/app_routes.dart';
+import 'package:picoradar/app/theme/app_theme.dart';
 import 'package:picoradar/app/shell/app_shell.dart';
 import 'package:picoradar/core/design_system/navigation.dart';
 import 'package:picoradar/features/driving/data/camera_pack_loader.dart';
@@ -12,7 +14,86 @@ import 'package:picoradar/features/driving/domain/traffic_camera.dart';
 import 'package:picoradar/features/fotomultas/presentation/fotomultas_screen.dart';
 import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
+import '../../vehicle_status/presentation/v01b_obligations_test_font.dart';
+
 void main() {
+  setUpAll(loadV01bObligationsTestFont);
+  for (final size in const [Size(360, 800), Size(390, 844), Size(412, 915)]) {
+    for (final scale in [1.0, 1.5, 2.0]) {
+      testWidgets('V01B camera summary is readable $size scale $scale', (
+        tester,
+      ) async {
+        await _pumpScreen(
+          tester,
+          size: size,
+          textScale: scale,
+          productionTheme: true,
+        );
+        await tester.pumpAndSettle();
+        final metric = find.text('2 con velocidad reportada');
+        final richText = find.descendant(
+          of: metric,
+          matching: find.byType(RichText),
+        );
+        final paragraph = tester.renderObject<RenderParagraph>(richText);
+        expect(paragraph.didExceedMaxLines, isFalse);
+        expect(
+          find.text('Actualizado 2026-08-31T10:44:00-05:00'),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      });
+      testWidgets('V01B camera detail actions reachable $size scale $scale', (
+        tester,
+      ) async {
+        final launcher = _FakeExternalLauncher();
+        await _pumpScreen(
+          tester,
+          launcher: launcher,
+          size: size,
+          textScale: scale,
+          productionTheme: true,
+        );
+        await tester.pumpAndSettle();
+        final camera = find.byKey(
+          const ValueKey('fotomultas-camera-known-bog'),
+        );
+        await tester.scrollUntilVisible(
+          camera,
+          240,
+          scrollable: find
+              .descendant(
+                of: find.byType(CustomScrollView),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
+        await tester.pumpAndSettle();
+        final address = find.descendant(
+          of: camera,
+          matching: find.text('AV CL 80 - CR 98'),
+        );
+        await tester.ensureVisible(address);
+        await tester.pumpAndSettle();
+        expect(address.hitTestable(), findsOneWidget);
+        await tester.tap(address);
+        await tester.pumpAndSettle();
+        final source = find.byKey(const ValueKey('fotomultas-open-source'));
+        await tester.ensureVisible(source);
+        await tester.pumpAndSettle();
+        expect(source.hitTestable(), findsOneWidget);
+        await tester.tap(source);
+        await tester.pump();
+        expect(launcher.openedUris, [_sourceUrl]);
+        final date = find.text('2026-08-31T10:44:00-05:00');
+        await tester.ensureVisible(date);
+        await tester.pumpAndSettle();
+        expect(date.hitTestable(), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   testWidgets('shows loading state while the camera pack resolves', (
     tester,
   ) async {
@@ -336,6 +417,7 @@ Future<void> _pumpScreen(
   ExternalLauncher? launcher,
   Size size = const Size(390, 844),
   double textScale = 1,
+  bool productionTheme = false,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -363,10 +445,12 @@ Future<void> _pumpScreen(
         ),
       ],
       child: MaterialApp.router(
+        theme: productionTheme ? buildPicoRadarTheme() : null,
         routerConfig: router,
         builder: (context, child) {
           return MediaQuery(
-            data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(textScale)),
             child: child ?? const SizedBox.shrink(),
           );
         },

@@ -276,6 +276,12 @@ class _CdaResultCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final enlarged = MediaQuery.textScalerOf(context).scale(1) > 1.25;
+    final details = TextButton(
+      key: ValueKey('cda-detail-${entry.id}'),
+      onPressed: () => _showDetails(context, ref, entry, sourceUrl),
+      child: const Text('Ver detalles'),
+    );
     return Material(
       key: ValueKey('cda-result-${entry.id}'),
       color: Colors.white,
@@ -285,36 +291,39 @@ class _CdaResultCard extends ConsumerWidget {
         onTap: () => _showDetails(context, ref, entry, sourceUrl),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.m),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const CircleAvatar(
-                backgroundColor: AppColors.navy,
-                foregroundColor: AppColors.plateYellow,
-                child: Icon(Icons.car_repair_outlined),
-              ),
-              const SizedBox(width: AppSpacing.m),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(entry.name, style: AppTextStyles.bodyStrong),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      '${entry.municipality} · ${entry.department}',
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.navy.withValues(alpha: 0.70),
-                      ),
+              Row(
+                children: [
+                  const CircleAvatar(
+                    backgroundColor: AppColors.navy,
+                    foregroundColor: AppColors.plateYellow,
+                    child: Icon(Icons.car_repair_outlined),
+                  ),
+                  const SizedBox(width: AppSpacing.m),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(entry.name, style: AppTextStyles.bodyStrong),
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          '${entry.municipality} · ${entry.department}',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.navy.withValues(alpha: 0.70),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.s),
+                        const _RuntBadge(),
+                      ],
                     ),
-                    const SizedBox(height: AppSpacing.s),
-                    const _RuntBadge(),
-                  ],
-                ),
+                  ),
+                  if (!enlarged) details,
+                ],
               ),
-              TextButton(
-                key: ValueKey('cda-detail-${entry.id}'),
-                onPressed: () => _showDetails(context, ref, entry, sourceUrl),
-                child: const Text('Ver detalles'),
-              ),
+              if (enlarged)
+                Align(alignment: Alignment.centerRight, child: details),
             ],
           ),
         ),

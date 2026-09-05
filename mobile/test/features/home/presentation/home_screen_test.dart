@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -35,8 +36,10 @@ import 'package:picoradar/features/visual_assets/data/visual_asset_catalogs.dart
 import 'package:picoradar/features/visual_assets/data/visual_asset_preferences.dart';
 
 import '../../../test_app_harness.dart';
+import 'v01b_test_font.dart';
 
 void main() {
+  setUpAll(loadV01bTestFont);
   late TestAppHarness harness;
 
   setUp(() {
@@ -44,6 +47,67 @@ void main() {
   });
 
   group('Home V2 shell states', () {
+    for (final size in const [Size(360, 800), Size(390, 844), Size(412, 915)]) {
+      for (final scale in const [1.0, 1.5, 2.0]) {
+        testWidgets('V01B Home status readable ${size.width} scale $scale', (
+          tester,
+        ) async {
+          final vehicle = await _readyHome(harness, plate: 'ABC124');
+          await _pumpHome(
+            tester,
+            harness,
+            viewportSize: size,
+            textScaleFactor: scale,
+            bottomNavigationBar: const SizedBox(height: 82),
+          );
+          final card = find.byKey(ValueKey('home-vehicle-card-${vehicle.id}'));
+          final clipped = <String>[];
+          for (final surface in [
+            card,
+            find.byKey(const ValueKey('home-status-tomorrow')),
+          ]) {
+            await tester.ensureVisible(surface);
+            await tester.pump();
+            expect(surface.hitTestable(), findsOneWidget);
+            final surfaceBounds = tester.getRect(surface);
+            for (final element
+                in find
+                    .descendant(of: surface, matching: find.byType(RichText))
+                    .evaluate()) {
+              final paragraph = element.renderObject! as RenderParagraph;
+              if (paragraph.didExceedMaxLines) {
+                clipped.add(paragraph.text.toPlainText());
+              }
+              final boxes = paragraph.getBoxesForSelection(
+                TextSelection(
+                  baseOffset: 0,
+                  extentOffset: paragraph.text.toPlainText().length,
+                ),
+              );
+              for (final box in boxes) {
+                expect(
+                  surfaceBounds.contains(
+                    paragraph.localToGlobal(Offset(box.left, box.top)),
+                  ),
+                  isTrue,
+                  reason: paragraph.text.toPlainText(),
+                );
+                expect(
+                  surfaceBounds.contains(
+                    paragraph.localToGlobal(Offset(box.right, box.bottom)),
+                  ),
+                  isTrue,
+                  reason: paragraph.text.toPlainText(),
+                );
+              }
+            }
+          }
+          expect(clipped, isEmpty, reason: 'Essential Home status is clipped');
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
+
     testWidgets('no vehicle keeps the branded header and R01 empty state', (
       tester,
     ) async {
