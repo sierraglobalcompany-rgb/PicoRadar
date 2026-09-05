@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 use Tests\Unit\TollGuruTripPreviewTest;
@@ -67,6 +68,20 @@ class TripPreviewTest extends TestCase
     {
         $this->postJson('/api/v1/trips/preview', $this->request())
             ->assertStatus(503)->assertExactJson(['error' => ['code' => 'not_configured']]);
+        Http::assertNothingSent();
+    }
+
+    public function test_production_route_is_registered_and_throttled_without_account(): void
+    {
+        $route = Route::getRoutes()->getByName('api.v1.trips.preview');
+        $this->assertNotNull($route);
+        $this->assertSame('api/v1/trips/preview', $route->uri());
+        $this->assertContains('throttle:trips-preview', $route->gatherMiddleware());
+        for ($i = 0; $i < 6; $i++) {
+            $this->postJson('/api/v1/trips/preview', $this->request())->assertStatus(503);
+        }
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertStatus(429)->assertExactJson(['error' => ['code' => 'quota']]);
         Http::assertNothingSent();
     }
 

@@ -25,6 +25,7 @@ class TripDraft {
     required this.destination,
     required this.date,
     this.activeVehicleId,
+    this.departureMinute,
     this.completedChecklist = const {},
   });
 
@@ -32,6 +33,7 @@ class TripDraft {
   final String destination;
   final DateTime date;
   final String? activeVehicleId;
+  final int? departureMinute;
   final Set<TripChecklistItem> completedChecklist;
 
   Map<String, Object?> toJson() {
@@ -40,6 +42,7 @@ class TripDraft {
       'destination': destination.trim(),
       'date': _dateOnlyIso(date),
       'activeVehicleId': _optionalText(activeVehicleId),
+      'departureMinute': departureMinute,
       'completedChecklist': [for (final item in completedChecklist) item.key],
     };
   }
@@ -63,11 +66,16 @@ class TripDraft {
       }
     }
 
+    final minute = json['departureMinute'];
+    if (minute != null && (minute is! int || minute < 0 || minute > 1439)) {
+      throw const FormatException('Trip draft time is invalid.');
+    }
     return TripDraft(
       origin: _requiredText(json['origin'], 'origin'),
       destination: _requiredText(json['destination'], 'destination'),
       date: DateTime.parse(rawDate),
       activeVehicleId: _optionalText(json['activeVehicleId']),
+      departureMinute: minute as int?,
       completedChecklist: completedChecklist,
     );
   }

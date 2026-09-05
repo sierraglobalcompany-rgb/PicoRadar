@@ -15,6 +15,20 @@ class TripContent extends StatelessWidget {
     required this.originController,
     required this.destinationController,
     required this.selectedDate,
+    required this.departureMinute,
+    required this.originError,
+    required this.destinationError,
+    required this.timeError,
+    required this.vehicleError,
+    required this.standardVehicleConfirmed,
+    required this.onStandardVehicleChanged,
+    required this.onTimeChanged,
+    required this.isPlanning,
+    required this.planError,
+    required this.onPreview,
+    required this.onCancelPreview,
+    required this.planResult,
+    required this.instantRestrictions,
     required this.completedChecklist,
     required this.vehicles,
     required this.selectedVehicle,
@@ -43,6 +57,20 @@ class TripContent extends StatelessWidget {
   final TextEditingController originController;
   final TextEditingController destinationController;
   final DateTime selectedDate;
+  final int? departureMinute;
+  final String? originError;
+  final String? destinationError;
+  final String? timeError;
+  final String? vehicleError;
+  final bool standardVehicleConfirmed;
+  final ValueChanged<bool> onStandardVehicleChanged;
+  final ValueChanged<int> onTimeChanged;
+  final bool isPlanning;
+  final String? planError;
+  final VoidCallback onPreview;
+  final VoidCallback onCancelPreview;
+  final Widget? planResult;
+  final Widget instantRestrictions;
   final Set<TripChecklistItem> completedChecklist;
   final List<VehicleProfile> vehicles;
   final VehicleProfile? selectedVehicle;
@@ -85,25 +113,35 @@ class TripContent extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'PicoRadar no calcula rutas, ETA ni peajes en esta versión.',
-                    key: const ValueKey('trip-local-limits-copy'),
-                    style: AppTextStyles.body.copyWith(
-                      color: AppColors.navy.withValues(alpha: 0.72),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.l),
                   _VehicleCard(
                     vehicles: vehicles,
                     vehicle: selectedVehicle,
                     restoredVehicleMissing: restoredVehicleMissing,
                     onChanged: onVehicleChanged,
                   ),
+                  CheckboxListTile(
+                    key: const ValueKey('trip-standard-vehicle'),
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: const Text(
+                      'Vehículo de 2 ejes, sin remolque ni modificaciones',
+                    ),
+                    value: standardVehicleConfirmed,
+                    onChanged: selectedVehicle == null
+                        ? null
+                        : (value) => onStandardVehicleChanged(value ?? false),
+                  ),
+                  if (vehicleError != null) _FieldError(vehicleError!),
                   const SizedBox(height: AppSpacing.l),
                   _TripFields(
                     originController: originController,
                     destinationController: destinationController,
                     selectedDate: selectedDate,
+                    departureMinute: departureMinute,
+                    originError: originError,
+                    destinationError: destinationError,
+                    timeError: timeError,
+                    onTimeChanged: onTimeChanged,
                     originSuggestions: originSuggestions,
                     destinationSuggestions: destinationSuggestions,
                     onOriginChanged: onOriginChanged,
@@ -112,7 +150,47 @@ class TripContent extends StatelessWidget {
                     onDestinationSelected: onDestinationSelected,
                     onDateChanged: onDateChanged,
                   ),
+                  const SizedBox(height: AppSpacing.m),
+                  FilledButton.icon(
+                    key: const ValueKey('trip-preview'),
+                    onPressed: isPlanning ? null : onPreview,
+                    icon: const Icon(Icons.route_outlined),
+                    label: Text(
+                      isPlanning
+                          ? 'Consultando plan de viaje'
+                          : 'Ver plan de viaje',
+                    ),
+                  ),
+                  if (isPlanning) ...[
+                    const SizedBox(height: AppSpacing.s),
+                    const LinearProgressIndicator(),
+                    TextButton.icon(
+                      key: const ValueKey('trip-cancel-preview'),
+                      onPressed: onCancelPreview,
+                      icon: const Icon(Icons.close),
+                      label: const Text('Cancelar consulta'),
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.s),
+                  const Text(
+                    'Al consultar se envían municipios, salida y categoría al servicio de rutas. La placa permanece en este dispositivo.',
+                  ),
+                  if (planError != null) ...[
+                    const SizedBox(height: AppSpacing.m),
+                    Semantics(liveRegion: true, child: _FieldError(planError!)),
+                  ],
+                  if (planResult != null) ...[
+                    const SizedBox(height: AppSpacing.l),
+                    planResult!,
+                  ],
                   const SizedBox(height: AppSpacing.l),
+                  Text('Pico y placa del viaje', style: AppTextStyles.h2),
+                  const SizedBox(height: AppSpacing.m),
+                  instantRestrictions,
+                  const SizedBox(height: AppSpacing.l),
+                  const Text(
+                    'Vista previa por fecha, sin evaluar la hora de llegada.',
+                  ),
                   _RestrictionSummary(
                     date: selectedDate,
                     origin: originRestriction,
@@ -126,7 +204,7 @@ class TripContent extends StatelessWidget {
                   const SizedBox(height: AppSpacing.l),
                   _ExternalNotice(draftRestored: draftRestored),
                   const SizedBox(height: AppSpacing.l),
-                  FilledButton.icon(
+                  OutlinedButton.icon(
                     key: const ValueKey('trip-open-google-maps'),
                     onPressed: onGoogleMaps,
                     icon: const Icon(Icons.map_outlined),
@@ -216,7 +294,7 @@ class _VehicleCard extends StatelessWidget {
                   restoredVehicleMissing
                       ? 'El vehículo del borrador ya no está disponible.'
                       : current == null
-                      ? 'Opcional para este borrador.'
+                      ? 'Selecciona un vehículo para consultar el plan.'
                       : '${_vehicleType(current)} · ${current.plate}',
                   key: const ValueKey('trip-active-vehicle'),
                   style: AppTextStyles.body.copyWith(
@@ -268,6 +346,11 @@ class _TripFields extends StatelessWidget {
     required this.originController,
     required this.destinationController,
     required this.selectedDate,
+    required this.departureMinute,
+    required this.originError,
+    required this.destinationError,
+    required this.timeError,
+    required this.onTimeChanged,
     required this.originSuggestions,
     required this.destinationSuggestions,
     required this.onOriginChanged,
@@ -280,6 +363,11 @@ class _TripFields extends StatelessWidget {
   final TextEditingController originController;
   final TextEditingController destinationController;
   final DateTime selectedDate;
+  final int? departureMinute;
+  final String? originError;
+  final String? destinationError;
+  final String? timeError;
+  final ValueChanged<int> onTimeChanged;
   final List<TripMunicipality> originSuggestions;
   final List<TripMunicipality> destinationSuggestions;
   final ValueChanged<String> onOriginChanged;
@@ -299,9 +387,11 @@ class _TripFields extends StatelessWidget {
             controller: originController,
             onChanged: onOriginChanged,
             textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Origen',
-              prefixIcon: Icon(Icons.trip_origin),
+              prefixIcon: const Icon(Icons.trip_origin),
+              errorText: originError,
+              errorMaxLines: 5,
             ),
             validator: _requiredField('Ingresa el origen.'),
           ),
@@ -316,9 +406,11 @@ class _TripFields extends StatelessWidget {
             controller: destinationController,
             onChanged: onDestinationChanged,
             textInputAction: TextInputAction.done,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Destino',
-              prefixIcon: Icon(Icons.place_outlined),
+              prefixIcon: const Icon(Icons.place_outlined),
+              errorText: destinationError,
+              errorMaxLines: 5,
             ),
             validator: _requiredField('Ingresa el destino.'),
           ),
@@ -348,6 +440,35 @@ class _TripFields extends StatelessWidget {
             icon: const Icon(Icons.calendar_today_outlined),
             label: Text('Fecha · ${_formatDate(selectedDate)}'),
           ),
+          const SizedBox(height: AppSpacing.s),
+          OutlinedButton.icon(
+            key: const ValueKey('trip-time-button'),
+            onPressed: () async {
+              final minute = departureMinute;
+              final selected = await showTimePicker(
+                context: context,
+                initialTime: minute == null
+                    ? const TimeOfDay(hour: 8, minute: 0)
+                    : TimeOfDay(hour: minute ~/ 60, minute: minute % 60),
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(context)
+                      .copyWith(alwaysUse24HourFormat: true),
+                  child: child!,
+                ),
+              );
+              if (context.mounted && selected != null) {
+                onTimeChanged(selected.hour * 60 + selected.minute);
+              }
+            },
+            icon: const Icon(Icons.schedule),
+            label: Text(
+              departureMinute == null
+                  ? 'Hora de salida · Confirmar'
+                  : 'Hora de salida · ${_minuteLabel(departureMinute!)}',
+            ),
+          ),
+          const Text('Hora de Colombia (America/Bogota)'),
+          if (timeError != null) _FieldError(timeError!),
         ],
       ),
     );
@@ -514,6 +635,14 @@ class _ExternalNotice extends StatelessWidget {
               key: const ValueKey('trip-external-services-copy'),
               style: AppTextStyles.body,
             ),
+            const SizedBox(height: AppSpacing.s),
+            const Text(
+              'Google Maps y Waze pueden recalcular el recorrido y cambiar los tiempos y peajes. La alternativa seleccionada no se conserva en el enlace.',
+            ),
+            const SizedBox(height: AppSpacing.s),
+            const Text(
+              'INVÍAS es una fuente vial separada; sus cierres no están confirmados en este plan.',
+            ),
             if (draftRestored) ...[
               const SizedBox(height: AppSpacing.s),
               Text(
@@ -555,6 +684,19 @@ FormFieldValidator<String> _requiredField(String message) {
     return null;
   };
 }
+
+class _FieldError extends StatelessWidget {
+  const _FieldError(this.message);
+  final String message;
+  @override
+  Widget build(BuildContext context) => Text(
+    message,
+    style: TextStyle(color: Theme.of(context).colorScheme.error),
+  );
+}
+
+String _minuteLabel(int value) =>
+    '${(value ~/ 60).toString().padLeft(2, '0')}:${(value % 60).toString().padLeft(2, '0')}';
 
 String _formatDate(DateTime date) {
   final month = date.month.toString().padLeft(2, '0');

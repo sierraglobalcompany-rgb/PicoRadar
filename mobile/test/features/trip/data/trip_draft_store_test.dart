@@ -8,6 +8,24 @@ import 'package:picoradar/features/trip/domain/trip_draft.dart';
 import '../../../test_app_harness.dart';
 
 void main() {
+  test('VIAJE-R1 preserves explicit time through existing draft JSON', () {
+    final draft = TripDraft.fromJson({
+      'origin': 'Bogota',
+      'destination': 'Medellin',
+      'date': '2026-09-06',
+      'departureMinute': 1385,
+    });
+    expect(draft.toJson()['departureMinute'], 1385);
+  });
+
+  test('VIAJE-R1 old drafts do not silently acquire midnight', () {
+    final draft = TripDraft.fromJson({
+      'origin': 'Bogota',
+      'destination': 'Medellin',
+      'date': '2026-09-06',
+    });
+    expect(draft.toJson()['departureMinute'], isNull);
+  });
   group('TripDraftStore', () {
     late MemoryPreferences preferences;
     late TripDraftStore store;

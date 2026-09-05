@@ -51,6 +51,14 @@ class AppServiceProvider extends ServiceProvider
                 });
         });
 
+        RateLimiter::for('trips-preview', function (Request $request): Limit {
+            return Limit::perMinute(6)
+                ->by('trips-preview|'.hash('sha256', (string) $request->ip()))
+                ->response(function (Request $request, array $headers) {
+                    return response()->json(['error' => ['code' => 'quota']], 429, $headers);
+                });
+        });
+
         RateLimiter::for('operator-login', function (Request $request): Limit {
             return Limit::perMinute(5)
                 ->by(strtolower((string) $request->input('email')).'|'.$request->ip())
