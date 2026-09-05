@@ -117,6 +117,27 @@ void main() {
     expect(find.text('Información desactualizada'), findsOneWidget);
   });
 
+  testWidgets('VIAJE-R1 review10 departure window error preserves selected date and time', (tester) async {
+    final client = _PendingPlanClient();
+    await TripDraftStore(preferences).saveDraft(TripDraft(
+      origin: 'Bogotá', destination: 'Medellín', date: DateTime(2026, 9, 5), departureMinute: 600,
+    ));
+    await _pumpScreen(tester, preferences: preferences, activeVehicle: _vehicle(), planClient: client);
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    client.completions.single.completeError(const TripPlanFailure('departure_window', maxFutureDays: 7));
+    await tester.pumpAndSettle();
+    final error = find.text('Elige una salida futura dentro de los próximos 7 días.');
+    expect(error, findsOneWidget);
+    expect(find.ancestor(of: error, matching: find.byType(Form)), findsOneWidget);
+    expect(find.text('Fecha · 2026-09-05'), findsOneWidget);
+    expect(find.text('Hora de salida · 10:00'), findsOneWidget);
+    expect(client.requests.single.departureUtc, DateTime.utc(2026, 9, 5, 15));
+    expect(find.byKey(const ValueKey('trip-origin-instant')), findsOneWidget);
+    expect(find.text('No pudimos conectar. Puedes volver a consultar.'), findsNothing);
+  });
+
   testWidgets(
     'VIAJE-R1 immutable request single flight cancel and stale response',
     (tester) async {
