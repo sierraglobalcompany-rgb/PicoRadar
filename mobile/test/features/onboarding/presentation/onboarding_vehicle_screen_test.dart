@@ -50,6 +50,117 @@ void main() {
     expect(find.text('Taxi'), findsOneWidget);
   });
 
+  testWidgets('UI back from step 2 returns to the vehicle selector', (
+    tester,
+  ) async {
+    await _openOnboarding(tester, harness);
+    await tester.tap(find.byKey(const ValueKey('vehicle-choice-privateCar')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('onboarding-back')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Paso 1 de 2'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('vehicle-choice-motorcycle')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('system back from step 2 allows choosing another family', (
+    tester,
+  ) async {
+    await _openOnboarding(tester, harness);
+    await tester.tap(find.byKey(const ValueKey('vehicle-choice-privateCar')));
+    await tester.pumpAndSettle();
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('vehicle-choice-motorcycle')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Paso 2 de 2'), findsOneWidget);
+    expect(find.text('Moto'), findsOneWidget);
+    expect(find.byKey(const ValueKey('vehicle-subtype-field')), findsOneWidget);
+  });
+
+  testWidgets('new car subtype labels use the owner-approved catalog', (
+    tester,
+  ) async {
+    await _openOnboarding(tester, harness);
+    await tester.tap(find.byKey(const ValueKey('vehicle-choice-privateCar')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('vehicle-subtype-field')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Camioneta / SUV'), findsOneWidget);
+    expect(find.text('Coupé / Hatchback'), findsOneWidget);
+    expect(find.text('Coupé'), findsNothing);
+  });
+
+  testWidgets('back and reselecting car preserves a compatible subtype', (
+    tester,
+  ) async {
+    await _openOnboarding(tester, harness);
+    await tester.tap(find.byKey(const ValueKey('vehicle-choice-privateCar')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('vehicle-subtype-field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Camioneta / SUV').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('onboarding-back')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('vehicle-choice-privateCar')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Camioneta / SUV'), findsOneWidget);
+  });
+
+  testWidgets('switching from car to motorcycle clears incompatible subtype', (
+    tester,
+  ) async {
+    await _openOnboarding(tester, harness);
+    await tester.tap(find.byKey(const ValueKey('vehicle-choice-privateCar')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('vehicle-subtype-field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Camioneta / SUV').last);
+    await tester.pumpAndSettle();
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('vehicle-choice-motorcycle')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('vehicle-subtype-field')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Camioneta / SUV'), findsNothing);
+    expect(find.text('Scooter'), findsOneWidget);
+  });
+
+  testWidgets('legacy car_coupe edits without changing its subtype', (
+    tester,
+  ) async {
+    final vehicle = await harness.repository.createVehicle(
+      plate: 'LEG123',
+      kind: VehicleKind.car,
+      serviceType: VehicleServiceType.private,
+      subtype: 'car_coupe',
+      registrationCity: 'Bogota',
+    );
+
+    await _openVehicleEdit(tester, harness, vehicle.id);
+    expect(find.text('Coupé (anterior)'), findsOneWidget);
+    await _tapSave(tester);
+
+    expect(
+      (await harness.repository.getVehicle(vehicle.id))?.subtype,
+      'car_coupe',
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('selecting private car creates car private vehicle', (
     tester,
   ) async {
@@ -348,6 +459,44 @@ Future<void> _openOnboarding(
         path: '/vehicle-onboarding',
         builder: (context, state) =>
             const OnboardingVehicleScreen(returnPath: '/'),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        appDatabaseProvider.overrideWithValue(harness.database),
+        appPreferencesProvider.overrideWithValue(harness.preferences),
+        registrationCityCatalogProvider.overrideWith(
+          (_) async => _testRegistrationCatalog,
+        ),
+      ],
+      child: MaterialApp.router(routerConfig: router),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openVehicleEdit(
+  WidgetTester tester,
+  TestAppHarness harness,
+  String vehicleId,
+) async {
+  final router = GoRouter(
+    initialLocation: '/vehicle-edit/$vehicleId',
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) =>
+            const Scaffold(body: Center(child: Text('Inicio'))),
+      ),
+      GoRoute(
+        path: '/vehicle-edit/:vehicleId',
+        builder: (context, state) => OnboardingVehicleScreen(
+          vehicleId: state.pathParameters['vehicleId'],
+          returnPath: '/',
+        ),
       ),
     ],
   );

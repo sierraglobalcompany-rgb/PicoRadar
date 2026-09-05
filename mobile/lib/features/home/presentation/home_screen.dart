@@ -16,6 +16,8 @@ import '../../garage/data/vehicle_profile.dart';
 import '../../garage/presentation/vehicle_display.dart';
 import '../../location/application/location_controller.dart';
 import '../../location/data/location_preferences.dart';
+import '../../location/domain/jurisdiction_location_resolver.dart';
+import '../../location/platform/device_location_gateway.dart';
 import '../data/home_banner_config.dart';
 import 'pico_notification_sheet.dart';
 import '../../pico_placa/data/pico_preferences.dart';
@@ -33,6 +35,11 @@ final homeFocusedVehicleIdProvider =
     NotifierProvider<HomeFocusedVehicleNotifier, String?>(
       HomeFocusedVehicleNotifier.new,
     );
+
+@visibleForTesting
+final homeGpsClockProvider = Provider<DateTime Function()>((ref) {
+  return DateTime.now;
+});
 
 final homeVehicleSnapshotsProvider =
     FutureProvider.family<
@@ -550,7 +557,7 @@ class _NoCityCard extends ConsumerWidget {
   }
 }
 
-class _HomeLocationCard extends ConsumerWidget {
+class _HomeLocationCard extends ConsumerStatefulWidget {
   const _HomeLocationCard({
     required this.jurisdictions,
     required this.selectedJurisdiction,
@@ -560,26 +567,105 @@ class _HomeLocationCard extends ConsumerWidget {
   final RestrictionJurisdiction? selectedJurisdiction;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_HomeLocationCard> createState() => _HomeLocationCardState();
+}
+
+enum _HomeGpsAvailability { unknown, available, disabled }
+
+class _HomeLocationCardState extends ConsumerState<_HomeLocationCard>
+    with WidgetsBindingObserver {
+  _HomeGpsAvailability _gpsAvailability = _HomeGpsAvailability.unknown;
+  int _gpsProbeGeneration = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _probeGpsAvailability(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _gpsProbeGeneration += 1;
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _probeGpsAvailability();
+    }
+  }
+
+  Future<void> _probeGpsAvailability() async {
+    if (!mounted) {
+      return;
+    }
+    final generation = ++_gpsProbeGeneration;
+    if (_gpsAvailability != _HomeGpsAvailability.unknown) {
+      setState(() => _gpsAvailability = _HomeGpsAvailability.unknown);
+    }
+    final gateway = ref.read(deviceLocationGatewayProvider);
+    try {
+      final serviceEnabled = await gateway.isLocationServiceEnabled();
+      if (!mounted || generation != _gpsProbeGeneration) {
+        return;
+      }
+      if (!serviceEnabled) {
+        _setGpsAvailability(_HomeGpsAvailability.disabled, generation);
+        return;
+      }
+      final permission = await gateway.checkPermission();
+      if (!mounted || generation != _gpsProbeGeneration) {
+        return;
+      }
+      _setGpsAvailability(
+        permission == DeviceLocationPermission.granted
+            ? _HomeGpsAvailability.available
+            : _HomeGpsAvailability.disabled,
+        generation,
+      );
+    } on Object {
+      _setGpsAvailability(_HomeGpsAvailability.unknown, generation);
+    }
+  }
+
+  void _setGpsAvailability(_HomeGpsAvailability availability, int generation) {
+    if (mounted &&
+        generation == _gpsProbeGeneration &&
+        availability != _gpsAvailability) {
+      setState(() => _gpsAvailability = availability);
+    }
+  }
+
+  Future<void> _openLocationSettings() async {
+    await _showLocationSettingsSheet(context, widget.jurisdictions);
+    if (mounted) {
+      await _probeGpsAvailability();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final locationState = ref.watch(locationStateProvider);
     final state = locationState.asData?.value;
     final city = _locationCityName(
-      jurisdictions,
+      widget.jurisdictions,
       state?.effectiveJurisdictionId,
-      selectedJurisdiction,
+      widget.selectedJurisdiction,
     );
-    final mode = state?.mode ?? LocationMode.manual;
-    final status = state?.refreshStatus ?? LocationRefreshStatus.idle;
-    final refreshing =
-        locationState.isLoading || status == LocationRefreshStatus.refreshing;
-    final rightLabel = _locationActionLabel(mode, status, city);
-    final rightIcon = mode == LocationMode.gpsAuto
-        ? Icons.gps_fixed_rounded
-        : Icons.my_location_rounded;
+    final gpsVisualState = _homeGpsVisualState(
+      availability: _gpsAvailability,
+      locationState: state,
+      now: ref.watch(homeGpsClockProvider)(),
+    );
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     final compactText = textScale >= 1.4;
     final iconSize = compactText ? 22.0 : 24.0;
-    final height = compactText ? 64.0 : 54.0;
+    final height = compactText ? 64.0 : 48.0;
     final screenWidth = MediaQuery.sizeOf(context).width;
 
     return LayoutBuilder(
@@ -594,6 +680,8 @@ class _HomeLocationCard extends ConsumerWidget {
             constraints: BoxConstraints.tightFor(width: cardWidth),
             child: Semantics(
               button: true,
+              container: true,
+              explicitChildNodes: true,
               label: 'Ubicación ${city ?? 'sin ciudad'}',
               child: Material(
                 color: AppColors.surface,
@@ -603,8 +691,7 @@ class _HomeLocationCard extends ConsumerWidget {
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   key: const ValueKey('home-location-card'),
-                  onTap: () =>
-                      _showLocationSettingsSheet(context, jurisdictions),
+                  onTap: _openLocationSettings,
                   child: Container(
                     height: height,
                     padding: const EdgeInsets.symmetric(
@@ -631,19 +718,6 @@ class _HomeLocationCard extends ConsumerWidget {
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (!compactText) ...[
-                                Text(
-                                  'Ubicación',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTextStyles.caption.copyWith(
-                                    color: AppColors.navy.withValues(
-                                      alpha: 0.72,
-                                    ),
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ],
                               Text(
                                 city ?? 'Sin ciudad',
                                 maxLines: 1,
@@ -667,42 +741,10 @@ class _HomeLocationCard extends ConsumerWidget {
                                 : AppSpacing.m,
                           ),
                         ),
-                        if (refreshing)
-                          const SizedBox.square(
-                            dimension: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2.2),
-                          )
-                        else ...[
-                          if (!compactText) ...[
-                            Flexible(
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    rightLabel,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.visible,
-                                    style: AppTextStyles.bodyStrong.copyWith(
-                                      color: mode == LocationMode.gpsAuto
-                                          ? AppColors.teal
-                                          : AppColors.navy,
-                                      fontSize: 13.5,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.s),
-                          ],
-                          Icon(
-                            rightIcon,
-                            color: mode == LocationMode.gpsAuto
-                                ? AppColors.teal
-                                : AppColors.navy,
-                            size: compactText ? 20 : 21,
-                          ),
-                        ],
+                        _HomeSatelliteStatus(
+                          state: gpsVisualState,
+                          iconSize: compactText ? 20 : 21,
+                        ),
                       ],
                     ),
                   ),
@@ -716,14 +758,89 @@ class _HomeLocationCard extends ConsumerWidget {
   }
 }
 
+enum _HomeGpsVisualState { active, disabled, unknown }
+
+_HomeGpsVisualState _homeGpsVisualState({
+  required _HomeGpsAvailability availability,
+  required LocationState? locationState,
+  required DateTime now,
+}) {
+  if (availability == _HomeGpsAvailability.disabled) {
+    return _HomeGpsVisualState.disabled;
+  }
+  if (availability != _HomeGpsAvailability.available ||
+      locationState == null ||
+      locationState.mode != LocationMode.gpsAuto ||
+      locationState.refreshStatus != LocationRefreshStatus.detected ||
+      locationState.lastGpsRefreshAt == null ||
+      locationState.lastGpsRefreshAt!.isAfter(now.toUtc()) ||
+      now.toUtc().difference(locationState.lastGpsRefreshAt!) >=
+          locationRefreshTtl) {
+    return _HomeGpsVisualState.unknown;
+  }
+  return _HomeGpsVisualState.active;
+}
+
+class _HomeSatelliteStatus extends StatelessWidget {
+  const _HomeSatelliteStatus({required this.state, required this.iconSize});
+
+  final _HomeGpsVisualState state;
+  final double iconSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = switch (state) {
+      _HomeGpsVisualState.active => 'GPS activo',
+      _HomeGpsVisualState.disabled => 'GPS desactivado',
+      _HomeGpsVisualState.unknown => 'Estado GPS desconocido',
+    };
+    final color = switch (state) {
+      _HomeGpsVisualState.active => AppColors.green,
+      _HomeGpsVisualState.disabled => AppColors.navy.withValues(alpha: 0.42),
+      _HomeGpsVisualState.unknown => AppColors.blue.withValues(alpha: 0.72),
+    };
+    return Semantics(
+      label: label,
+      child: Tooltip(
+        message: label,
+        child: SizedBox.square(
+          dimension: 32,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(
+                Icons.satellite_alt_outlined,
+                key: const ValueKey('home-location-satellite-status'),
+                color: color,
+                size: iconSize,
+              ),
+              if (state == _HomeGpsVisualState.disabled)
+                Positioned(
+                  right: 1,
+                  bottom: 1,
+                  child: Icon(
+                    Icons.lock_rounded,
+                    key: const ValueKey('home-location-satellite-lock'),
+                    color: color,
+                    size: 12,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 double _locationCardWidth({
   required double screenWidth,
   required double availableWidth,
 }) {
   final targetWidth = switch (screenWidth) {
-    < 380 => 244.0,
-    < 400 => 258.0,
-    _ => 266.0,
+    < 380 => 212.0,
+    < 400 => 220.0,
+    _ => 228.0,
   };
   return math.min(targetWidth, availableWidth);
 }
@@ -1281,20 +1398,6 @@ String _displayJurisdictionName(RestrictionJurisdiction jurisdiction) {
     'co-ant-medellin' => 'Medellín',
     _ => jurisdiction.name,
   };
-}
-
-String _locationActionLabel(
-  LocationMode mode,
-  LocationRefreshStatus status,
-  String? city,
-) {
-  if (status == LocationRefreshStatus.refreshing) {
-    return 'Detectando';
-  }
-  if (mode == LocationMode.gpsAuto) {
-    return city == null ? 'Reintentar' : 'GPS activo';
-  }
-  return 'Usar GPS';
 }
 
 String? _locationFeedbackMessage(

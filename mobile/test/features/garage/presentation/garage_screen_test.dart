@@ -58,6 +58,13 @@ void main() {
     expect(find.byKey(const ValueKey('garage-info-panel')), findsOneWidget);
     expect(find.byKey(const ValueKey('garage-add-vehicle')), findsOneWidget);
     expect(find.byKey(const ValueKey('garage-quick-actions')), findsOneWidget);
+    expect(find.byKey(const ValueKey('garage-action-detail')), findsNothing);
+    expect(
+      tester.getTopLeft(find.byKey(const ValueKey('garage-quick-actions'))).dy,
+      lessThan(
+        tester.getTopLeft(find.byKey(const ValueKey('garage-add-vehicle'))).dy,
+      ),
+    );
     expect(
       find.text('Tus vehículos y su estado en un solo lugar.'),
       findsNothing,
@@ -116,23 +123,20 @@ void main() {
   });
 
   testWidgets(
-    'P02 focused info panel and detail target follow B and C atomically',
+    'focused vehicle card opens its detail without changing active vehicle',
     (tester) async {
       final seeded = await _seedThreeVehicles(harness);
 
       await _openGarage(tester, harness);
-
-      _expectGarageInfoPanel(tester, seeded.active);
-      await _openDetailAndReturn(tester, seeded.active);
-
       await _focusNewestVehicle(tester);
       _expectGarageInfoPanel(tester, seeded.newest);
-      await _openDetailAndReturn(tester, seeded.newest);
+      await tester.tap(
+        find.byKey(ValueKey('garage-vehicle-card-${seeded.newest.id}')),
+      );
+      await tester.pumpAndSettle();
 
-      await _focusOldestVehicle(tester);
-      _expectGarageInfoPanel(tester, seeded.oldest);
-      await _openDetailAndReturn(tester, seeded.oldest);
-
+      expect(find.text('Detalle del vehículo'), findsOneWidget);
+      expect(find.text(seeded.newest.plate), findsOneWidget);
       expect(
         (await harness.repository.getActiveVehicle())?.id,
         seeded.active.id,
@@ -178,7 +182,9 @@ void main() {
     expect((await harness.repository.getActiveVehicle())?.id, seeded.active.id);
     _expectGarageCoreAboveNav(tester, reason: 'non-active focused');
 
-    await tester.tap(find.byKey(const ValueKey('garage-action-detail')));
+    await tester.tap(
+      find.byKey(ValueKey('garage-vehicle-card-${seeded.newest.id}')),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Detalle del vehículo'), findsOneWidget);
@@ -309,9 +315,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('tab-garage')));
       await tester.pumpAndSettle();
       await _focusNewestVehicle(tester);
-      await _tapVisible(
-        tester,
-        find.byKey(const ValueKey('garage-action-detail')),
+      await tester.tap(
+        find.byKey(ValueKey('garage-vehicle-card-${focused.id}')),
       );
       await tester.pumpAndSettle();
 
@@ -761,10 +766,7 @@ void main() {
     );
 
     await _openGarage(tester, harness);
-    await _tapVisible(
-      tester,
-      find.byKey(const ValueKey('garage-action-detail')),
-    );
+    await tester.tap(find.byKey(ValueKey('garage-vehicle-card-${other.id}')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('detail-status-soat')));
     await tester.pumpAndSettle();
@@ -786,10 +788,10 @@ void main() {
 
       await _openGarage(tester, harness);
       await _focusNewestVehicle(tester);
-      await _tapVisible(
-        tester,
-        find.byKey(const ValueKey('garage-action-detail')),
+      await tester.tap(
+        find.byKey(ValueKey('garage-vehicle-card-${seeded.newest.id}')),
       );
+      await tester.pumpAndSettle();
 
       expect(find.text(seeded.newest.plate), findsWidgets);
       expect(
@@ -845,6 +847,23 @@ void main() {
 
     expect(find.byKey(const ValueKey('apps-launcher-overlay')), findsNothing);
     expect(find.text(seeded.newest.plate), findsWidgets);
+  });
+
+  testWidgets('notification close returns to the same Garage focus', (
+    tester,
+  ) async {
+    final seeded = await _seedThreeVehicles(harness);
+
+    await _openGarage(tester, harness);
+    await _focusNewestVehicle(tester);
+    await tester.tap(find.byKey(const ValueKey('garage-notification-bell')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('notification-sheet-close')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('home-notification-sheet')), findsNothing);
+    expect(find.text(seeded.newest.plate), findsWidgets);
+    expect((await harness.repository.getActiveVehicle())?.id, seeded.active.id);
   });
 
   testWidgets('Garage V2 viewports and text scales do not overflow', (
@@ -1186,7 +1205,7 @@ void _expectGarageCoreAboveNav(WidgetTester tester, {required String reason}) {
   expect(infoPanel.height, lessThanOrEqualTo(122), reason: reason);
   expect(addBottom, lessThan(navTop), reason: reason);
   expect(actionsBottom, lessThan(navTop), reason: reason);
-  expect(find.byKey(const ValueKey('garage-action-detail')), findsOneWidget);
+  expect(find.byKey(const ValueKey('garage-action-detail')), findsNothing);
   expect(
     find.byKey(const ValueKey('garage-action-maintenance')),
     findsOneWidget,
@@ -1202,17 +1221,6 @@ List<String> _selectedBottomNavLabels(WidgetTester tester) {
       .map((widget) => widget.properties.label)
       .whereType<String>()
       .toList();
-}
-
-Future<void> _openDetailAndReturn(
-  WidgetTester tester,
-  VehicleProfile vehicle,
-) async {
-  await _tapVisible(tester, find.byKey(const ValueKey('garage-action-detail')));
-  expect(find.text('Detalle del vehículo'), findsOneWidget);
-  expect(find.text(vehicle.plate), findsOneWidget);
-  await tester.tap(find.byTooltip('Volver'));
-  await tester.pumpAndSettle();
 }
 
 Future<void> _tapVisible(
