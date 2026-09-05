@@ -3,14 +3,20 @@
 namespace Tests\Feature;
 
 use App\Enums\GeographicUnitLevel;
+use App\Http\Controllers\Api\TripPreviewController;
 use App\Models\GeographicUnit;
+use App\Services\TollGuruTripPreview;
+use App\Support\GeographicNameNormalizer;
+use GuzzleHttp\Exception\ConnectTimeoutException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 use Tests\Unit\TollGuruTripPreviewTest;
@@ -28,9 +34,12 @@ class TripPreviewTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // The parent owns production routing; use its real route once it is integrated.
+        if (! collect(Route::getRoutes())->contains(fn ($route): bool => $route->uri() === 'api/v1/trips/preview')) {
+            Route::post('/api/v1/trips/preview', TripPreviewController::class);
+        }
         $this->travelTo(now()->setDate(2026, 9, 5)->setTime(12, 0)->utc());
-        Http::preventStrayRequests();
-        Http::fake([self::ENDPOINT => Http::response(TollGuruTripPreviewTest::providerFixture())]);
+        $this->fakeProvider([self::ENDPOINT => fn () => Http::response(TollGuruTripPreviewTest::providerFixture())]);
         config([
             'trips.enabled' => false,
             'trips.api_key' => 'synthetic-test-key-not-a-credential',
@@ -203,7 +212,7 @@ class TripPreviewTest extends TestCase
         $body['summary']['vehicleType'] = '2AxlesMotorcycle';
         $body['routes'][0]['tolls'] = [];
         $body['routes'][0]['costs']['cash'] = null;
-        Http::fake([self::ENDPOINT => Http::response($body)]);
+        $this->fakeProvider([self::ENDPOINT => Http::response($body)]);
         $this->postJson('/api/v1/trips/preview', $request)
             ->assertOk()->assertJsonPath('routes.0.tolls.coverage', 'unknown')
             ->assertJsonPath('routes.0.tolls.totalMinor', null);
@@ -257,6 +266,8 @@ class TripPreviewTest extends TestCase
             'negative money' => ['money_minor', -1],
             'string counter' => ['requests', '0'],
             'overflow money' => ['money_minor', PHP_INT_MAX],
+            'abandoned operation' => ['in_flight', true],
+            'missing operation state' => ['in_flight', null],
         ];
     }
 
@@ -309,8 +320,8 @@ class TripPreviewTest extends TestCase
     public function test_reservation_and_operation_lock_are_in_place_before_http_and_lock_is_released_afterward(): void
     {
         config(['trips.enabled' => true]);
-        Http::fake(function (): mixed {
-            $this->assertSame($this->ledger(1, 21, 300), Cache::store('database')->get(self::LEDGER));
+        $this->fakeProvider(function (): mixed {
+            $this->assertSame([...$this->ledger(1, 21, 300), 'in_flight' => true], Cache::store('database')->get(self::LEDGER));
             $contender = Cache::store('database')->lock(self::LOCK, 30);
             $this->assertFalse($contender->get());
 
@@ -327,7 +338,7 @@ class TripPreviewTest extends TestCase
     {
         config(['trips.enabled' => true]);
         Log::spy();
-        Http::fake([self::ENDPOINT => Http::response('private-route TEST123 synthetic-test-key-not-a-credential', $upstream)]);
+        $this->fakeProvider([self::ENDPOINT => Http::response('private-route TEST123 synthetic-test-key-not-a-credential', $upstream)]);
         $this->postJson('/api/v1/trips/preview', $this->request())
             ->assertStatus($status)->assertExactJson(['error' => ['code' => $code]]);
         Http::assertSentCount(1);
@@ -347,7 +358,7 @@ class TripPreviewTest extends TestCase
     public function test_network_failure_is_sanitized_and_keeps_conservative_reservation(): void
     {
         config(['trips.enabled' => true]);
-        Http::fake(function (): never {
+        $this->fakeProvider(function (): never {
             throw new ConnectionException('private route and synthetic-test-key-not-a-credential');
         });
         $this->postJson('/api/v1/trips/preview', $this->request())
@@ -365,21 +376,110 @@ class TripPreviewTest extends TestCase
         }
     }
 
+    public function test_expired_lock_cannot_admit_a_second_operation_while_first_is_active(): void
+    {
+        config(['trips.enabled' => true]);
+        $this->fakeProvider(function (): mixed {
+            $this->travel(31)->seconds();
+            try {
+                app(TollGuruTripPreview::class)->preview($this->request());
+                $this->fail('An active operation must survive expiration of the cache lock.');
+            } catch (\DomainException $exception) {
+                $this->assertSame('quota', $exception->getMessage());
+            }
+
+            return Http::response(TollGuruTripPreviewTest::providerFixture());
+        });
+        $this->postJson('/api/v1/trips/preview', $this->request())->assertOk();
+        Http::assertSentCount(1);
+        $this->assertTrue(Cache::store('database')->get(self::LEDGER)['in_flight']);
+    }
+
+    public function test_ledger_evicted_during_http_is_never_restored_from_stale_memory(): void
+    {
+        config(['trips.enabled' => true]);
+        $this->fakeProvider(function (): mixed {
+            Cache::store('database')->forget(self::LEDGER);
+
+            return Http::response(TollGuruTripPreviewTest::providerFixture());
+        });
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertStatus(429)->assertExactJson(['error' => ['code' => 'quota']]);
+        $this->assertNull(Cache::store('database')->get(self::LEDGER));
+        Http::assertSentCount(1);
+    }
+
+    public function test_unavailable_cache_never_falls_back_to_unmetered_http(): void
+    {
+        config(['trips.enabled' => true]);
+        Cache::shouldReceive('store')->andThrow(new \RuntimeException('private storage details'));
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertStatus(429)->assertExactJson(['error' => ['code' => 'quota']]);
+        Http::assertNothingSent();
+    }
+
+    public function test_transport_timeout_uses_typed_cause_without_exposing_exception_text(): void
+    {
+        config(['trips.enabled' => true]);
+        $this->fakeProvider(function (): never {
+            $cause = new ConnectTimeoutException('private-route', new \GuzzleHttp\Psr7\Request('POST', self::ENDPOINT));
+            throw new ConnectionException('private timeout details', 0, $cause);
+        });
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertStatus(504)->assertExactJson(['error' => ['code' => 'timeout']]);
+        $this->assertSame($this->ledger(1, 21, 300), Cache::store('database')->get(self::LEDGER));
+    }
+
+    public function test_transport_disables_redirects_and_bounds_streamed_response_without_content_length(): void
+    {
+        config(['trips.enabled' => true]);
+        $this->fakeProvider(function ($request, $options): mixed {
+            $this->assertFalse($options['allow_redirects']);
+            $this->assertTrue($options['verify']);
+            $this->assertTrue($options['stream']);
+            $this->assertLessThanOrEqual(10, $options['timeout']);
+            $this->assertLessThanOrEqual(3, $options['connect_timeout']);
+
+            return Http::response(str_repeat(' ', 262145), 200, ['Content-Type' => 'application/json']);
+        });
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertStatus(502)->assertExactJson(['error' => ['code' => 'invalid_upstream']]);
+        Http::assertSentCount(1);
+        $this->assertSame($this->ledger(1, 21, 300), Cache::store('database')->get(self::LEDGER));
+    }
+
+    public function test_provider_echoed_secret_is_not_released_as_a_route_label(): void
+    {
+        config(['trips.enabled' => true]);
+        $body = TollGuruTripPreviewTest::providerFixture();
+        $body['routes'][0]['summary']['name'] = 'synthetic-test-key-not-a-credential';
+        $this->fakeProvider([self::ENDPOINT => Http::response($body)]);
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertStatus(502)->assertExactJson(['error' => ['code' => 'invalid_upstream']]);
+    }
+
     private function request(): array
     {
         return TollGuruTripPreviewTest::tripRequest();
     }
 
+    private function fakeProvider(array|\Closure $callback): void
+    {
+        Http::swap(new Factory);
+        Http::preventStrayRequests();
+        Http::fake($callback);
+    }
+
     private function ledger(int $requests = 0, int $units = 0, int $money = 0): array
     {
-        return ['budget_id' => 'test-authorization-001', 'currency' => 'USD', 'requests' => $requests, 'units' => $units, 'money_minor' => $money];
+        return ['budget_id' => 'test-authorization-001', 'currency' => 'USD', 'requests' => $requests, 'units' => $units, 'money_minor' => $money, 'in_flight' => false];
     }
 
     private function unit(string $code, string $name, GeographicUnitLevel $level, ?int $parent = null): GeographicUnit
     {
         return GeographicUnit::query()->create([
             'key' => 'co-'.strtolower($code), 'code' => $code, 'name' => $name,
-            'normalized_name' => \App\Support\GeographicNameNormalizer::normalize($name),
+            'normalized_name' => GeographicNameNormalizer::normalize($name),
             'level' => $level, 'parent_id' => $parent, 'is_active' => true,
             'source_system' => 'test', 'source_version' => 'v1',
         ]);

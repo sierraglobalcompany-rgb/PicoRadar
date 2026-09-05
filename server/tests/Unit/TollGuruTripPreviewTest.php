@@ -31,6 +31,7 @@ class TollGuruTripPreviewTest extends TestCase
         $this->assertSame('static', $route['timeBasis']);
         $this->assertSame('complete', $route['tolls']['coverage']);
         $this->assertSame(1800030, $route['tolls']['totalMinor']);
+        $this->assertNull($route['tolls']['subtotalMinor']);
         $this->assertSame(0, $route['tolls']['missingRates']);
         $this->assertSame(2, $route['tolls']['stationCount']);
         $this->assertSame(2, $route['tolls']['payableCount']);
@@ -62,9 +63,10 @@ class TollGuruTripPreviewTest extends TestCase
         $body['routes'][0]['costs']['cash'] = 19000;
         $tolls = $this->normalize($body)['routes'][0]['tolls'];
 
-        $this->assertSame('partial', $tolls['coverage']);
+        $this->assertSame('unknown', $tolls['coverage']);
         $this->assertNull($tolls['totalMinor']);
-        $this->assertSame(1800030, $tolls['subtotalMinor']);
+        $this->assertNull($tolls['subtotalMinor']);
+        $this->assertSame(0, $tolls['missingRates']);
     }
 
     #[DataProvider('emptyTollEvidence')]
@@ -78,6 +80,7 @@ class TollGuruTripPreviewTest extends TestCase
 
         $this->assertSame($coverage, $tolls['coverage']);
         $this->assertSame($total, $tolls['totalMinor']);
+        $this->assertNull($tolls['subtotalMinor']);
         $this->assertSame($coverage === 'no_charge_confirmed' ? 0 : null, $tolls['stationCount']);
         $this->assertSame($coverage === 'no_charge_confirmed' ? 0 : null, $tolls['payableCount']);
     }
@@ -160,7 +163,6 @@ class TollGuruTripPreviewTest extends TestCase
     public static function invalidProviderFields(): array
     {
         return [
-            'foreign currency' => ['summary.currency', 'USD'],
             'foreign country' => ['summary.countries', ['USA']],
             'wrong municipality' => ['summary.route.1.address', 'Rionegro, Santander, Colombia'],
             'substring homonym' => ['summary.route.1.address', 'Nuevo Rionegro, Antioquia, Colombia'],
@@ -210,6 +212,21 @@ class TollGuruTripPreviewTest extends TestCase
             'missing toll list' => ['routes.0.tolls', null],
             'malformed toll list' => ['routes.0.tolls', ['arbitrary' => 'value']],
         ];
+    }
+
+    public function test_global_currency_mismatch_keeps_route_with_unknown_tolls(): void
+    {
+        $body = self::providerFixture();
+        $body['summary']['currency'] = 'USD';
+        $route = $this->normalize($body)['routes'][0];
+
+        $this->assertSame(42000, $route['distanceMeters']);
+        $this->assertSame(3600, $route['durationSeconds']);
+        $this->assertSame('unknown', $route['tolls']['coverage']);
+        $this->assertSame('COP', $route['tolls']['currency']);
+        $this->assertNull($route['tolls']['totalMinor']);
+        $this->assertNull($route['tolls']['subtotalMinor']);
+        $this->assertNull($route['tolls']['payableCount']);
     }
 
     public function test_zero_rate_station_is_passed_but_is_not_a_payable_charge(): void
