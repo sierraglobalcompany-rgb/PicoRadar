@@ -310,10 +310,15 @@ class _CdaResultCard extends ConsumerWidget {
                   ],
                 ),
               ),
-              TextButton(
-                key: ValueKey('cda-detail-${entry.id}'),
-                onPressed: () => _showDetails(context, ref, entry, sourceUrl),
-                child: const Text('Ver detalles'),
+              SizedBox(
+                width: MediaQuery.textScalerOf(context).scale(1) >= 1.7
+                    ? 144
+                    : null,
+                child: TextButton(
+                  key: ValueKey('cda-detail-${entry.id}'),
+                  onPressed: () => _showDetails(context, ref, entry, sourceUrl),
+                  child: const Text('Ver detalles'),
+                ),
               ),
             ],
           ),

@@ -372,6 +372,8 @@ class _TaxPanel extends ConsumerWidget {
             key: const ValueKey('tax-authority-field'),
             initialValue: calendar?.authorityId,
             isExpanded: true,
+            isDense: false,
+            itemHeight: null,
             decoration: const InputDecoration(labelText: 'Entidad tributaria'),
             items: [
               for (final item in vehicleTaxCalendars)

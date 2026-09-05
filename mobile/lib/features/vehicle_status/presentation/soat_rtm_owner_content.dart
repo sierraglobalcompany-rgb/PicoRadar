@@ -485,10 +485,13 @@ class _DocumentCard extends StatelessWidget {
           FilledButton.tonal(
             key: ValueKey('owner-document-action-${type.value}'),
             onPressed: hasDocument ? onView : onAttach,
-            child: Text(
-              hasDocument
-                  ? (isSoat ? 'Ver SOAT' : 'Ver certificado')
-                  : (isSoat ? 'Adjuntar SOAT' : 'Cargar certificado'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.s),
+              child: Text(
+                hasDocument
+                    ? (isSoat ? 'Ver SOAT' : 'Ver certificado')
+                    : (isSoat ? 'Adjuntar SOAT' : 'Cargar certificado'),
+              ),
             ),
           ),
           if (hasDocument)
@@ -904,8 +907,6 @@ class _HeroFact extends StatelessWidget {
               children: [
                 Text(
                   data.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption.copyWith(
                     color: Colors.white.withValues(alpha: 0.78),
                     height: 1.05,
@@ -913,8 +914,6 @@ class _HeroFact extends StatelessWidget {
                 ),
                 Text(
                   data.value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.bodyStrong.copyWith(
                     color: data.color,
                     height: 1.05,

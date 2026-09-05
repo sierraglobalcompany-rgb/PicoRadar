@@ -416,7 +416,12 @@ class _Header extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Documentos vehiculares', style: AppTextStyles.h1),
+                  Text(
+                    'Documentos vehiculares',
+                    style: MediaQuery.textScalerOf(context).scale(1) >= 1.7
+                        ? AppTextStyles.h2
+                        : AppTextStyles.h1,
+                  ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
                     vehicle.nickname?.trim().isNotEmpty == true

@@ -1,14 +1,80 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
+import 'package:picoradar/app/theme/app_theme.dart';
 import 'package:picoradar/features/cda/data/cda_catalog.dart';
 import 'package:picoradar/features/cda/presentation/cda_finder_screen.dart';
 import 'package:picoradar/features/location/application/location_controller.dart';
 import 'package:picoradar/features/location/platform/device_location_gateway.dart';
 import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
+import '../../vehicle_status/presentation/v01b_obligations_test_font.dart';
+
 void main() {
+  setUpAll(loadV01bObligationsTestFont);
+  for (final size in const [Size(360, 800), Size(390, 844), Size(412, 915)]) {
+    for (final scale in [1.0, 1.5, 2.0]) {
+      testWidgets('V01B CDA name and detail reachable $size scale $scale', (
+        tester,
+      ) async {
+        final launcher = _FakeExternalLauncher();
+        await _pumpScreen(
+          tester,
+          launcher: launcher,
+          size: size,
+          textScale: scale,
+          productionTheme: true,
+        );
+        expect(tester.takeException(), isNull);
+        final name = find.descendant(
+          of: find.text('CDA Bogotá Uno'),
+          matching: find.byType(RichText),
+        );
+        final paragraph = tester.renderObject<RenderParagraph>(name);
+        final word = paragraph.getBoxesForSelection(
+          const TextSelection(baseOffset: 4, extentOffset: 10),
+        );
+        expect(
+          word.map((box) => box.top).toSet(),
+          hasLength(1),
+          reason:
+              'Bogotá must remain a readable word alongside the details CTA',
+        );
+        final details = find.byKey(const ValueKey('cda-detail-cda-bog'));
+        final actionParagraph = tester.renderObject<RenderParagraph>(
+          find.descendant(of: details, matching: find.byType(RichText)),
+        );
+        expect(
+          actionParagraph
+              .getBoxesForSelection(
+                const TextSelection(baseOffset: 4, extentOffset: 12),
+              )
+              .map((box) => box.top)
+              .toSet(),
+          hasLength(1),
+          reason: 'The details CTA must also keep its word readable',
+        );
+        await tester.ensureVisible(details);
+        await tester.pumpAndSettle();
+        expect(details.hitTestable(), findsOneWidget);
+        expect(tester.getSize(details).height, greaterThanOrEqualTo(44));
+        await tester.tap(details);
+        await tester.pumpAndSettle();
+        final source = find.byKey(const ValueKey('cda-open-source'));
+        await tester.ensureVisible(source);
+        await tester.pumpAndSettle();
+        expect(source.hitTestable(), findsOneWidget);
+        await tester.tap(source);
+        await tester.pump();
+        expect(launcher.openedUris, [cdaCatalogSourceUrl]);
+        expect(find.text('julio 2026'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   testWidgets('typing local search does not request GPS permission', (
     tester,
   ) async {
@@ -126,9 +192,13 @@ Future<void> _pumpScreen(
   DeviceLocationGateway? gateway,
   ExternalLauncher? launcher,
   Size size = const Size(390, 844),
+  double textScale = 1,
+  bool productionTheme = false,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
+  tester.platformDispatcher.textScaleFactorTestValue = textScale;
+  addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
   addTearDown(tester.view.resetDevicePixelRatio);
   addTearDown(tester.view.resetPhysicalSize);
   await tester.pumpWidget(
@@ -143,7 +213,10 @@ Future<void> _pumpScreen(
           launcher ?? _FakeExternalLauncher(),
         ),
       ],
-      child: const MaterialApp(home: CdaFinderScreen()),
+      child: MaterialApp(
+        theme: productionTheme ? buildPicoRadarTheme() : null,
+        home: const CdaFinderScreen(),
+      ),
     ),
   );
   await tester.pumpAndSettle();
