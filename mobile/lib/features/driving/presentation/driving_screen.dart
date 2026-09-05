@@ -556,6 +556,13 @@ class _DrivingDashboard extends StatelessWidget {
             ),
           ],
           const SizedBox(height: AppSpacing.m),
+          TextButton.icon(
+            key: const ValueKey('driving-legal-notice-action'),
+            onPressed: () => _showDrivingLegalNotice(context),
+            icon: const Icon(Icons.gavel_outlined),
+            label: const Text('Aviso legal'),
+          ),
+          const SizedBox(height: AppSpacing.s),
           Text(
             'Ubicación activa solo mientras conduces. No se guarda recorrido '
             'ni se envía al servidor.',
@@ -781,15 +788,16 @@ class _DrivingStatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = _DrivingColors.forSpeedState(state.speedState);
+    if (state.speedState == DrivingSpeedState.noCamera &&
+        state.canEvaluateAlerts) {
+      return const SizedBox(key: ValueKey('driving-state-chip'), height: 0);
+    }
     final label = switch (state.speedState) {
       DrivingSpeedState.over => 'Reduce velocidad',
       DrivingSpeedState.near => 'Cerca del valor reportado',
       DrivingSpeedState.within => 'Vía clara',
       DrivingSpeedState.unknownReportedSpeed => 'Fotodetección sin velocidad',
-      DrivingSpeedState.noCamera =>
-        state.canEvaluateAlerts
-            ? 'Sin cámara objetivo'
-            : state.gpsQuality.label,
+      DrivingSpeedState.noCamera => state.gpsQuality.label,
     };
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 260),
@@ -812,6 +820,60 @@ class _DrivingStatusChip extends StatelessWidget {
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyStrong.copyWith(color: colors.accent),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> _showDrivingLegalNotice(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => const _DrivingLegalNoticeSheet(),
+  );
+}
+
+class _DrivingLegalNoticeSheet extends StatelessWidget {
+  const _DrivingLegalNoticeSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        key: const ValueKey('driving-legal-notice-sheet'),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.l,
+          0,
+          AppSpacing.l,
+          AppSpacing.l,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text('Aviso legal', style: AppTextStyles.h2)),
+                IconButton(
+                  key: const ValueKey('driving-legal-notice-close'),
+                  tooltip: 'Cerrar',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.s),
+            const Text(
+              'PicoRadar ofrece información de apoyo que puede ser incompleta '
+              'o estar desactualizada. No garantiza detectar todas las cámaras '
+              'ni evitar comparendos. La señalización y las disposiciones '
+              'vigentes de la autoridad prevalecen. Conduce respetando las '
+              'normas y configura la app con el vehículo detenido. Este aviso '
+              'no limita los derechos ni las responsabilidades establecidos '
+              'por la ley.',
+              style: AppTextStyles.body,
+            ),
+          ],
         ),
       ),
     );

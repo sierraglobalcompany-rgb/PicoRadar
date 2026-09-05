@@ -62,6 +62,48 @@ void main() {
     expect(gateway.requestPermissionCalls, 0);
   });
 
+  testWidgets('idle legal notice opens and closes without starting driving', (
+    tester,
+  ) async {
+    final gateway = _IdleGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _emptyPack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('driving-legal-notice-action')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('driving-legal-notice-sheet')),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('PicoRadar ofrece información de apoyo'),
+      findsOneWidget,
+    );
+    expect(gateway.requestPermissionCalls, 0);
+
+    await tester.tap(find.byKey(const ValueKey('driving-legal-notice-close')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('driving-legal-notice-sheet')),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('start-driving')), findsOneWidget);
+  });
+
   testWidgets('start button requests foreground GPS permission', (
     tester,
   ) async {
@@ -85,6 +127,33 @@ void main() {
     await tester.pump();
 
     expect(gateway.requestPermissionCalls, 1);
+    await tester.pumpAndSettle();
+    expect(
+      find.text('PicoRadar solo usa GPS mientras Conducir está activo.'),
+      findsOneWidget,
+    );
+    expect(find.text('Sin cámara objetivo'), findsNothing);
+  });
+
+  testWidgets('GPS stream failure message remains visible', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          drivingControllerProvider.overrideWith(
+            _LocationErrorDrivingController.new,
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('No se pudo leer la ubicación en tiempo real.'),
+      findsOneWidget,
+    );
+    expect(find.text('Sin cámara objetivo'), findsNothing);
   });
 
   testWidgets(
@@ -297,7 +366,7 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const ValueKey('driving-state-chip')), findsOneWidget);
-    expect(find.text('Sin cámara objetivo'), findsOneWidget);
+    expect(find.text('Sin cámara objetivo'), findsNothing);
     expect(
       find.byKey(const ValueKey('driving-camera-alert-panel')),
       findsNothing,
@@ -1679,4 +1748,15 @@ class _StreamingGateway implements DrivingLocationGateway {
   Future<DeviceLocationPermission> requestPermission() async {
     return DeviceLocationPermission.granted;
   }
+}
+
+class _LocationErrorDrivingController extends DrivingController {
+  @override
+  Future<DrivingState> build() async => const DrivingState(
+    status: DrivingSessionStatus.locationUnavailable,
+    preferences: defaultDrivingPreferences,
+    cameraCount: 0,
+    cameraSpeedKnownCount: 0,
+    errorMessage: 'No se pudo leer la ubicación en tiempo real.',
+  );
 }
