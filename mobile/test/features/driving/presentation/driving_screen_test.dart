@@ -23,6 +23,71 @@ import 'package:picoradar/features/vehicle_status/platform/external_launcher.dar
 import '../../../test_app_harness.dart';
 
 void main() {
+  test('live GPS stream error publishes location-unavailable state', () async {
+    final stages = <String>[];
+    final gateway = _ControlledErrorGateway(stages);
+    final feedback = _ObservedFeedbackGateway(stages);
+    final container = ProviderContainer(
+      overrides: [
+        appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+        cameraPackProvider.overrideWith((ref) async => _emptyPack()),
+        drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+      ],
+    );
+    ProviderSubscription<AsyncValue<DrivingState>>? subscription;
+
+    try {
+      await container.read(drivingControllerProvider.future);
+      final unavailable = Completer<DrivingState>();
+      subscription = container.listen<AsyncValue<DrivingState>>(
+        drivingControllerProvider,
+        (_, next) {
+          final value = next.asData?.value;
+          if (value != null) {
+            stages.add('state:${value.status.name}:${value.errorMessage}');
+          }
+          if (value?.status == DrivingSessionStatus.locationUnavailable &&
+              !unavailable.isCompleted) {
+            unavailable.complete(value);
+          }
+        },
+      );
+
+      await container.read(drivingControllerProvider.notifier).start();
+      await gateway.whenListening;
+      expect(
+        container.read(drivingControllerProvider).requireValue.status,
+        DrivingSessionStatus.active,
+      );
+
+      gateway.emitError();
+      final observed = await unavailable.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          final current = container.read(drivingControllerProvider);
+          throw TestFailure(
+            'Timed out waiting for locationUnavailable. '
+            'provider=$current; stages=$stages',
+          );
+        },
+      );
+
+      expect(observed.status, DrivingSessionStatus.locationUnavailable);
+      expect(
+        observed.errorMessage,
+        'No se pudo leer la ubicación en tiempo real.',
+      );
+      expect(stages, contains('stream:onCancel'));
+      expect(stages, contains('feedback:stop'));
+      expect(stages, contains('feedback:screen:false'));
+    } finally {
+      subscription?.close();
+      container.dispose();
+      await gateway.close();
+    }
+  });
+
   setUp(CameraMapEpisodeCache.resetForTesting);
 
   testWidgets('shows the driving start surface without requesting GPS', (
@@ -1747,6 +1812,67 @@ class _StreamingGateway implements DrivingLocationGateway {
   @override
   Future<DeviceLocationPermission> requestPermission() async {
     return DeviceLocationPermission.granted;
+  }
+}
+
+class _ControlledErrorGateway implements DrivingLocationGateway {
+  _ControlledErrorGateway(this.stages);
+
+  final List<String> stages;
+  final Completer<void> _listening = Completer<void>();
+  late final StreamController<DrivingPoint> _controller =
+      StreamController<DrivingPoint>(
+        onListen: () {
+          stages.add('stream:onListen');
+          if (!_listening.isCompleted) _listening.complete();
+        },
+        onCancel: () {
+          stages.add('stream:onCancel');
+        },
+      );
+
+  Future<void> get whenListening => _listening.future.timeout(
+    const Duration(seconds: 5),
+    onTimeout: () => throw TestFailure(
+      'Timed out waiting for stream onListen. stages=$stages',
+    ),
+  );
+
+  void emitError() {
+    stages.add('stream:addError');
+    _controller.addError(StateError('GPS unavailable'));
+  }
+
+  Future<void> close() => _controller.close();
+
+  @override
+  Future<DeviceLocationPermission> checkPermission() async =>
+      DeviceLocationPermission.granted;
+
+  @override
+  Future<bool> isLocationServiceEnabled() async => true;
+
+  @override
+  Stream<DrivingPoint> positionStream() => _controller.stream;
+
+  @override
+  Future<DeviceLocationPermission> requestPermission() async =>
+      DeviceLocationPermission.granted;
+}
+
+class _ObservedFeedbackGateway extends _NoopDrivingFeedbackGateway {
+  _ObservedFeedbackGateway(this.stages);
+
+  final List<String> stages;
+
+  @override
+  Future<void> setKeepScreenOn(bool enabled) async {
+    stages.add('feedback:screen:$enabled');
+  }
+
+  @override
+  Future<void> stopOngoingFeedback() async {
+    stages.add('feedback:stop');
   }
 }
 
