@@ -209,6 +209,8 @@ void main() {
         await tester.showKeyboard(find.byKey(const ValueKey('trip-destination-field')));
         tester.view.viewInsets = const FakeViewPadding(bottom: 300);
         addTearDown(tester.view.resetViewInsets);
+        await tester.pump();
+        expect(MediaQuery.viewInsetsOf(tester.element(find.byType(TripScreen))).bottom, 300);
         await _tapByKey(tester, 'trip-preview');
         expect(find.text('Ingresa el origen.'), findsOneWidget);
         expect(tester.takeException(), isNull);
@@ -1007,10 +1009,11 @@ Future<void> _pumpScreen(
         ),
       ],
       child: MaterialApp(
-        home: MediaQuery(
-          data: MediaQueryData.fromView(tester.view).copyWith(textScaler: TextScaler.linear(textScale)),
-          child: const TripScreen(),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
         ),
+        home: const TripScreen(),
       ),
     ),
   );

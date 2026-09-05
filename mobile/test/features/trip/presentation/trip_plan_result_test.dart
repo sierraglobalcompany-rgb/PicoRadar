@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.dart';
+import 'package:picoradar/features/pico_placa/domain/restriction_engine.dart';
+import 'package:picoradar/features/trip/application/trip_services.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/trip/data/trip_municipality_catalog.dart';
 import 'package:picoradar/features/trip/domain/trip_plan.dart';
@@ -77,6 +81,43 @@ void main() {
     expect(find.descendant(of: unknown, matching: find.textContaining('COP 0')), findsNothing);
     expect(find.descendant(of: unknown, matching: find.textContaining('0 peajes')), findsNothing);
     expect(find.textContaining('Menor costo de peajes'), findsNothing);
+  });
+
+  testWidgets('station count and payable count do not come from charge list length', (tester) async {
+    await pump(tester, [route('count', TripTolls(coverage: TripTollCoverage.partial, vehicleCategory: 'car',
+      stationCount: 7, payableCount: 4, subtotalMinor: 1200000, missingRates: 3,
+      charges: const [TripTollCharge(name: 'Una tarifa conocida', amountMinor: 1200000)]))]);
+    expect(find.text('7 estaciones de peaje · 4 cobros aplicables'), findsOneWidget);
+    expect(find.textContaining('1 estaciones'), findsNothing);
+  });
+
+  testWidgets('cheapest compares complete totals and preserves repeated station visits', (tester) async {
+    await pump(tester, [
+      route('expensive', TripTolls(coverage: TripTollCoverage.complete, vehicleCategory: 'car', totalMinor: 2400000,
+        charges: const [TripTollCharge(name: 'Paso', amountMinor: 1200000), TripTollCharge(name: 'Paso', amountMinor: 1200000)])),
+      route('cheap', TripTolls(coverage: TripTollCoverage.complete, vehicleCategory: 'car', totalMinor: 1200000,
+        charges: const [TripTollCharge(name: 'Otro', amountMinor: 1200000)])),
+      route('partial', TripTolls(coverage: TripTollCoverage.partial, vehicleCategory: 'car', subtotalMinor: 100000, missingRates: 2)),
+    ]);
+    expect(find.descendant(of: find.byKey(const ValueKey('trip-route-cheap')),
+      matching: find.textContaining('Menor costo de peajes')), findsOneWidget);
+    expect(find.descendant(of: find.byKey(const ValueKey('trip-route-partial')),
+      matching: find.textContaining('Menor costo de peajes')), findsNothing);
+    expect(find.text('Total estimado de peajes: COP 24.000'), findsOneWidget);
+  });
+
+  testWidgets('outside restriction window keeps day warning and source verification', (tester) async {
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: SingleChildScrollView(child: TripInstantEndpoint(
+      label: 'Origen / salida', instantUtc: DateTime.utc(2026, 9, 5, 23), onSource: (_) {},
+      evaluation: AsyncData(TripEndpointRestriction(status: RestrictionDayStatus.restricted,
+        instantStatus: RestrictionStatus.allowed, windows: const [RestrictionDayWindow(startMinute: 360, endMinute: 540)],
+        sourceUrl: 'https://example.com/regla', verifiedAt: DateTime.utc(2026, 9, 1, 12))),
+    )))));
+    expect(find.text('Sin restricción a la hora evaluada'), findsOneWidget);
+    expect(find.text('Este día tiene restricción para el vehículo.'), findsOneWidget);
+    expect(find.text('Horario restringido: 06:00–09:00'), findsOneWidget);
+    expect(find.text('Consultar fuente'), findsOneWidget);
+    expect(find.textContaining('Fuente verificada: 2026-09-01 07:00'), findsOneWidget);
   });
 
   for (final coverage in TripTollCoverage.values) {
