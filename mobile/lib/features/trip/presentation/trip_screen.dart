@@ -689,6 +689,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
       unawaited(
         _reveal(
           _resultsAnchorKey,
+          alignment: 0,
           focusNode: _resultsFocusNode,
           requestId: requestId,
           scrollRevision: scrollRevision,
@@ -703,6 +704,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
 
   Future<void> _reveal(
     GlobalKey anchor, {
+    double alignment = 0.05,
     FocusNode? focusNode,
     String? requestId,
     int? scrollRevision,
@@ -720,7 +722,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
     try {
       await Scrollable.ensureVisible(
         anchorContext,
-        alignment: 0.05,
+        alignment: alignment,
         duration: MediaQuery.disableAnimationsOf(context)
             ? Duration.zero
             : const Duration(milliseconds: 320),
