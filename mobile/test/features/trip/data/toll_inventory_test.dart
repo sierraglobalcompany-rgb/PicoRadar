@@ -114,7 +114,9 @@ void main() {
 
     setUp(() async {
       root = await Directory.systemTemp.createTemp('picoradar_tolls_');
-      snapshot = File('${root.path}/tolls_inventory.json');
+      snapshot = File(
+        '${root.path}${Platform.pathSeparator}tolls_inventory.json',
+      );
       db = AppDatabase(NativeDatabase.memory());
     });
 
@@ -139,10 +141,10 @@ void main() {
 
       final imported = _copy(assetJson)..['version'] = '2026.09.06-local-test';
       await _installSnapshot(store, db, imported);
+      final importedSha = await _sha256(utf8.encode(jsonEncode(imported)));
 
       expect((await store.load()).version, '2026.09.06-local-test');
-      expect(await snapshot.exists(), isTrue);
-      expect(await store.snapshotHashFile.exists(), isTrue);
+      expect(await File('${snapshot.path}.$importedSha').exists(), isTrue);
     });
 
     test(
@@ -154,7 +156,9 @@ void main() {
           bundledLoader: () async => jsonEncode(assetJson),
         );
         await _installSnapshot(store, db, assetJson);
-        final previous = await snapshot.readAsBytes();
+        final previousSha = await _sha256(utf8.encode(jsonEncode(assetJson)));
+        final selectedSnapshot = File('${snapshot.path}.$previousSha');
+        final previous = await selectedSnapshot.readAsBytes();
         final invalid = _copy(assetJson);
         ((invalid['records'] as List)[0]['tariffsBySourceCategoryCOP']
                 as Map<String, dynamic>)['category_1'] =
@@ -165,7 +169,7 @@ void main() {
           throwsA(isA<DatasetSyncException>()),
         );
 
-        expect(await snapshot.readAsBytes(), previous);
+        expect(await selectedSnapshot.readAsBytes(), previous);
         expect((await store.load()).version, '2026.09.05-viaje-r2');
       },
     );
@@ -179,13 +183,226 @@ void main() {
           bundledLoader: () async => jsonEncode(assetJson),
         );
         await _installSnapshot(store, db, assetJson);
+        final installedSha = await _sha256(utf8.encode(jsonEncode(assetJson)));
         final changed = _copy(assetJson);
         (changed['records'] as List).first['name'] = 'Changed after import';
-        await snapshot.writeAsString(jsonEncode(changed), flush: true);
+        await File('${snapshot.path}.$installedSha')
+            .writeAsString(jsonEncode(changed), flush: true);
 
         await expectLater(store.load(), throwsA(isA<DatasetSyncException>()));
       },
     );
+
+    test(
+      'keeps the database-selected snapshot visible before commit',
+      () async {
+        final store = TollInventoryStore(
+          database: db,
+          snapshotFile: snapshot,
+          bundledLoader: () async => jsonEncode(assetJson),
+        );
+        await _installSnapshot(store, db, assetJson);
+        final oldBytes = utf8.encode(jsonEncode(assetJson));
+        final oldSha = await _sha256(oldBytes);
+        final replacement = _copy(assetJson)
+          ..['version'] = '2026.09.06-local-test';
+        final replacementBytes = utf8.encode(jsonEncode(replacement));
+        final replacementSha = await _sha256(replacementBytes);
+
+        final prepared = await store.transactionalImporter(
+          db,
+          replacement,
+          replacementBytes,
+          replacementSha,
+        );
+        addTearDown(prepared.rollback);
+
+        expect((await store.load()).version, assetJson['version']);
+        expect(await File('${snapshot.path}.$oldSha').exists(), isTrue);
+        expect(await File('${snapshot.path}.$replacementSha').exists(), isTrue);
+      },
+    );
+
+    test(
+      'database commit atomically selects the new immutable snapshot',
+      () async {
+        final store = TollInventoryStore(
+          database: db,
+          snapshotFile: snapshot,
+          bundledLoader: () async => jsonEncode(assetJson),
+        );
+        await _installSnapshot(store, db, assetJson);
+        final oldSha = await _sha256(utf8.encode(jsonEncode(assetJson)));
+        final replacement = _copy(assetJson)
+          ..['version'] = '2026.09.06-local-test';
+        final replacementBytes = utf8.encode(jsonEncode(replacement));
+        final replacementSha = await _sha256(replacementBytes);
+        final prepared = await store.transactionalImporter(
+          db,
+          replacement,
+          replacementBytes,
+          replacementSha,
+        );
+
+        await db.transaction(() async {
+          await prepared.activate();
+          await (db.update(
+                db.datasetVersions,
+              )..where((row) => row.datasetKey.equals(tollInventoryDatasetKey)))
+              .write(
+                DatasetVersionsCompanion(
+                  version: const Value('2026.09.06-local-test'),
+                  sha256: Value(replacementSha),
+                ),
+              );
+        });
+
+        expect((await store.load()).version, '2026.09.06-local-test');
+        expect(await File('${snapshot.path}.$oldSha').exists(), isTrue);
+        expect(await File('${snapshot.path}.$replacementSha').exists(), isTrue);
+        await prepared.commit();
+      },
+    );
+
+    test('cleanup preserves overlapping prepared snapshots', () async {
+      final store = TollInventoryStore(
+        database: db,
+        snapshotFile: snapshot,
+        bundledLoader: () async => jsonEncode(assetJson),
+      );
+      await _installSnapshot(store, db, assetJson);
+      final first = _copy(assetJson)..['version'] = '2026.09.06-concurrent-a';
+      final firstBytes = utf8.encode(jsonEncode(first));
+      final firstSha = await _sha256(firstBytes);
+      final firstPrepared = await store.transactionalImporter(
+        db,
+        first,
+        firstBytes,
+        firstSha,
+      );
+      await _selectSnapshot(
+        db,
+        firstPrepared,
+        version: first['version'] as String,
+        sha256: firstSha,
+      );
+
+      final second = _copy(assetJson)..['version'] = '2026.09.06-concurrent-b';
+      final secondBytes = utf8.encode(jsonEncode(second));
+      final secondSha = await _sha256(secondBytes);
+      final secondPrepared = await store.transactionalImporter(
+        db,
+        second,
+        secondBytes,
+        secondSha,
+      );
+
+      final reader = store.load();
+      final cleanup = firstPrepared.commit();
+      expect((await reader).version, first['version']);
+      await cleanup;
+      expect(await File('${snapshot.path}.$secondSha').exists(), isTrue);
+
+      await _selectSnapshot(
+        db,
+        secondPrepared,
+        version: second['version'] as String,
+        sha256: secondSha,
+      );
+      await secondPrepared.commit();
+      expect((await store.load()).version, second['version']);
+    });
+
+    test('stale commit cleanup keeps the database-selected snapshot', () async {
+      final store = TollInventoryStore(
+        database: db,
+        snapshotFile: snapshot,
+        bundledLoader: () async => jsonEncode(assetJson),
+      );
+      await _installSnapshot(store, db, assetJson);
+      final first = _copy(assetJson)..['version'] = '2026.09.06-stale-a';
+      final firstBytes = utf8.encode(jsonEncode(first));
+      final firstSha = await _sha256(firstBytes);
+      final firstPrepared = await store.transactionalImporter(
+        db,
+        first,
+        firstBytes,
+        firstSha,
+      );
+      final second = _copy(assetJson)..['version'] = '2026.09.06-selected-b';
+      final secondBytes = utf8.encode(jsonEncode(second));
+      final secondSha = await _sha256(secondBytes);
+      final secondPrepared = await store.transactionalImporter(
+        db,
+        second,
+        secondBytes,
+        secondSha,
+      );
+
+      await _selectSnapshot(
+        db,
+        firstPrepared,
+        version: first['version'] as String,
+        sha256: firstSha,
+      );
+      await _selectSnapshot(
+        db,
+        secondPrepared,
+        version: second['version'] as String,
+        sha256: secondSha,
+      );
+      await secondPrepared.commit();
+      expect(await _selectedSha(db), secondSha);
+      expect(await File('${snapshot.path}.$secondSha').exists(), isTrue);
+
+      await firstPrepared.commit();
+
+      expect(await _selectedSha(db), secondSha);
+      expect(await File('${snapshot.path}.$secondSha').exists(), isTrue);
+      expect((await store.load()).version, second['version']);
+    });
+
+    test('reader holding the old SHA completes before cleanup', () async {
+      final old = _copy(assetJson)
+        ..['version'] = '2026.09.06-reader-old'
+        ..['readerPadding'] = 'x' * (8 * 1024 * 1024);
+      final store = TollInventoryStore(
+        database: db,
+        snapshotFile: snapshot,
+        bundledLoader: () async => jsonEncode(old),
+      );
+      await _installSnapshot(store, db, old);
+      final replacement = _copy(assetJson)
+        ..['version'] = '2026.09.06-reader-new';
+      final replacementBytes = utf8.encode(jsonEncode(replacement));
+      final replacementSha = await _sha256(replacementBytes);
+      final prepared = await store.transactionalImporter(
+        db,
+        replacement,
+        replacementBytes,
+        replacementSha,
+      );
+
+      final reader = store.load();
+      await Future<void>.delayed(Duration.zero);
+      await db.customSelect('SELECT 1').get();
+      await _selectSnapshot(
+        db,
+        prepared,
+        version: replacement['version'] as String,
+        sha256: replacementSha,
+      );
+      var cleanupCompleted = false;
+      final cleanup = prepared.commit().whenComplete(() {
+        cleanupCompleted = true;
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      expect(cleanupCompleted, isFalse);
+      expect((await reader).version, old['version']);
+      await cleanup;
+      expect((await store.load()).version, replacement['version']);
+    });
   });
 }
 
@@ -224,6 +441,29 @@ Future<PreparedDatasetImport> _prepareSnapshot(
 ) async {
   final bytes = utf8.encode(jsonEncode(json));
   return store.transactionalImporter(db, json, bytes, await _sha256(bytes));
+}
+
+Future<void> _selectSnapshot(
+  AppDatabase db,
+  PreparedDatasetImport prepared, {
+  required String version,
+  required String sha256,
+}) async {
+  await db.transaction(() async {
+    await prepared.activate();
+    await (db.update(
+      db.datasetVersions,
+    )..where((row) => row.datasetKey.equals(tollInventoryDatasetKey))).write(
+      DatasetVersionsCompanion(version: Value(version), sha256: Value(sha256)),
+    );
+  });
+}
+
+Future<String?> _selectedSha(AppDatabase db) async {
+  final rows = await (db.select(
+    db.datasetVersions,
+  )..where((row) => row.datasetKey.equals(tollInventoryDatasetKey))).get();
+  return rows.singleOrNull?.sha256;
 }
 
 Future<String> _sha256(List<int> bytes) async {

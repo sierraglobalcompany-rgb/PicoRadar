@@ -68,6 +68,7 @@ class DatasetSyncService {
     this.maxManifestBytes = 64 * 1024,
     this.maxDownloadBytes = 4 * 1024 * 1024,
     this.maxDecodedBytes = 16 * 1024 * 1024,
+    this.onDatasetCommitted,
   }) : http =
            http ??
            Dio(
@@ -107,6 +108,7 @@ class DatasetSyncService {
   final int maxManifestBytes;
   final int maxDownloadBytes;
   final int maxDecodedBytes;
+  final void Function(String datasetKey)? onDatasetCommitted;
 
   Future<DatasetSyncResult> sync({CancelToken? cancelToken}) async {
     final headers = <String, String>{};
@@ -118,7 +120,7 @@ class DatasetSyncService {
     var manifestResponse = await _requestManifest(headers, cancelToken);
 
     if (manifestResponse.statusCode == HttpStatus.notModified) {
-      if (await _installedTransactionalDatasetsAreUsable()) {
+      if (await _installedDatasetsAreUsable()) {
         return const DatasetSyncResult(notModified: true);
       }
       manifestResponse = await _requestManifest(const {}, cancelToken);
@@ -176,21 +178,23 @@ class DatasetSyncService {
     );
   }
 
-  Future<bool> _installedTransactionalDatasetsAreUsable() async {
-    var allUsable = true;
-    for (final entry in transactionalImporters.entries) {
-      final installed = await _localDatasetVersion(entry.key);
-      if (installed?.status == 'installed') {
-        final usable = await entry.value.isInstalledVersionUsable(
-          database,
-          installed!,
-        );
-        if (!usable) {
-          allUsable = false;
-        }
+  Future<bool> _installedDatasetsAreUsable() async {
+    final datasetKeys = {...importers.keys, ...transactionalImporters.keys};
+    for (final datasetKey in datasetKeys) {
+      final installed = await _localDatasetVersion(datasetKey);
+      if (installed == null || installed.status != 'installed') {
+        return false;
+      }
+      final transactionalImporter = transactionalImporters[datasetKey];
+      if (transactionalImporter != null &&
+          !await transactionalImporter.isInstalledVersionUsable(
+            database,
+            installed,
+          )) {
+        return false;
       }
     }
-    return allUsable;
+    return true;
   }
 
   Future<void> _syncDataset(
@@ -213,6 +217,9 @@ class DatasetSyncService {
     }
 
     final localVersion = await _localDatasetVersion(datasetKey);
+    if (localVersion?.status == 'installed') {
+      _validatePublicationOrder(datasetKey, entry, localVersion!);
+    }
     if (localVersion?.version == entry.version &&
         localVersion?.status == 'installed') {
       final installedHash = localVersion?.sha256?.trim();
@@ -231,16 +238,15 @@ class DatasetSyncService {
             localVersion!,
           );
       if (installedStateUsable) {
+        if (entry.publicationRevision != null &&
+            entry.publicationRevision! > localVersion!.publicationRevision) {
+          await database.transaction(
+            () => _writeDatasetVersion(datasetKey, entry),
+          );
+        }
         result.skippedCurrent.add(datasetKey);
         return;
       }
-    }
-    if (localVersion?.status == 'installed' &&
-        _isOrderedDowngrade(entry.version, localVersion!.version)) {
-      throw DatasetSyncException(
-        'Dataset $datasetKey downgrade from ${localVersion.version} to '
-        '${entry.version} is not allowed.',
-      );
     }
 
     final uri = _resolveDatasetUri(entry.url);
@@ -306,6 +312,7 @@ class DatasetSyncService {
       }
       await prepared?.commit();
       result.imported.add(datasetKey);
+      onDatasetCommitted?.call(datasetKey);
     } finally {
       if (await tempFile.exists()) {
         await tempFile.delete();
@@ -480,13 +487,63 @@ class DatasetSyncService {
     }
   }
 
-  bool _isOrderedDowngrade(String candidate, String installed) {
-    final candidateParts = _orderedVersion(candidate);
-    final installedParts = _orderedVersion(installed);
-    if (candidateParts == null || installedParts == null) {
-      return false;
+  void _validatePublicationOrder(
+    String datasetKey,
+    DatasetManifestEntry entry,
+    DatasetVersion installed,
+  ) {
+    final installedHash = installed.sha256?.trim();
+    if (entry.version == installed.version &&
+        installedHash != null &&
+        installedHash.isNotEmpty &&
+        installedHash != entry.sha256) {
+      throw DatasetSyncException(
+        'Dataset $datasetKey reuses version ${entry.version} with a '
+        'different SHA-256.',
+      );
     }
-    return _compareOrderedVersions(candidateParts, installedParts) < 0;
+
+    final candidateRevision = entry.publicationRevision;
+    if (candidateRevision != null) {
+      if (candidateRevision < installed.publicationRevision) {
+        throw DatasetSyncException(
+          'Dataset $datasetKey publication revision $candidateRevision is '
+          'older than installed revision ${installed.publicationRevision}.',
+        );
+      }
+      if (candidateRevision == installed.publicationRevision &&
+          (entry.version != installed.version ||
+              installedHash != entry.sha256)) {
+        throw DatasetSyncException(
+          'Dataset $datasetKey reuses publication revision '
+          '$candidateRevision with different content.',
+        );
+      }
+      return;
+    }
+
+    if (installed.publicationRevision > 0) {
+      throw DatasetSyncException(
+        'Dataset $datasetKey requires a publication revision.',
+      );
+    }
+    if (entry.version == installed.version) {
+      return;
+    }
+    final candidateParts = _orderedVersion(entry.version);
+    final installedParts = _orderedVersion(installed.version);
+    if (candidateParts == null || installedParts == null) {
+      throw DatasetSyncException(
+        'Dataset $datasetKey opaque version changes require a publication '
+        'revision.',
+      );
+    }
+    if (_compareOrderedVersions(candidateParts, installedParts) < 0) {
+      throw DatasetSyncException(
+        'Dataset $datasetKey downgrade from ${installed.version} to '
+        '${entry.version} is not allowed.',
+      );
+    }
   }
 
   List<int>? _orderedVersion(String value) {
@@ -558,6 +615,7 @@ class DatasetSyncService {
               version: entry.version,
               sha256: Value(entry.sha256),
               status: 'installed',
+              publicationRevision: Value(entry.publicationRevision ?? 0),
               appliedAt: Value(appliedAt),
             ),
           );
@@ -571,6 +629,7 @@ class DatasetSyncService {
         version: Value(entry.version),
         sha256: Value(entry.sha256),
         status: const Value('installed'),
+        publicationRevision: Value(entry.publicationRevision ?? 0),
         appliedAt: Value(appliedAt),
       ),
     );

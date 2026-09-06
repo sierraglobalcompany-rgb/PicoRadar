@@ -49,7 +49,10 @@ class DatasetPublisher
                 }
                 $previous = $dataset->current_version;
                 $locked->forceFill(['status' => DatasetReleaseStatus::Published, 'asset_path' => $path, 'content_encoding' => null, 'published_at' => now()])->save();
-                $dataset->forceFill(['current_version' => $locked->version])->save();
+                $dataset->forceFill([
+                    'current_version' => $locked->version,
+                    'publication_revision' => $dataset->publication_revision + 1,
+                ])->save();
                 $this->audit->log($actor, 'release.published', $locked, ['datasetKey' => $dataset->key, 'version' => $locked->version, 'sha256' => $sha, 'previousVersion' => $previous]);
 
                 return $locked->refresh();
@@ -74,7 +77,10 @@ class DatasetPublisher
                     return;
                 }
                 $previous = $locked->current_version;
-                $locked->forceFill(['current_version' => $release->version])->save();
+                $locked->forceFill([
+                    'current_version' => $release->version,
+                    'publication_revision' => $locked->publication_revision + 1,
+                ])->save();
                 $this->audit->log($actor, 'dataset.rollback', $locked, ['datasetKey' => $locked->key, 'previousVersion' => $previous, 'newVersion' => $release->version]);
             });
         });

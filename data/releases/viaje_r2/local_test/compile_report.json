@@ -1,6 +1,6 @@
 {
   "artifacts": {
-    "data/releases/viaje_r2/local_test/manifest.json": "559fd2ef232442904246f647038723bb97f6c7dfdc3c97a623e082c9801c23d9",
+    "data/releases/viaje_r2/local_test/manifest.json": "be120a6257988a188eca1c87b863fcc45f531051afd71859a148a84ed71c3102",
     "data/releases/viaje_r2/restriction_decision_ledger_v1.json": "d1af7d18bda5fdac38b1660806186ca6aba0fe29160588f82f9bdfefdd373622",
     "data/releases/viaje_r2/toll_decision_ledger_v1.json": "7806d5eafb820dde6d86b6c5d117e3da0e03bb30b30f243dc1af320a1b38819a",
     "mobile/assets/catalogs/tolls_inventory_v1.json": "a991626ecc8893c050a60e71b27e8f803cbfe864978dced5e6b595f2fe02de93"

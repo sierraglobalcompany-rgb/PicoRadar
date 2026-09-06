@@ -63,7 +63,7 @@ class ManifestPublisher
         if (! $release || $release->status !== DatasetReleaseStatus::Published || ! $release->asset_path || ! $release->sha256 || ! $disk->exists($release->asset_path) || ! hash_equals($release->sha256, hash('sha256', $disk->get($release->asset_path)))) {
             throw new DomainException("Dataset pointer is inconsistent for {$dataset->key}.");
         }
-        $entry = ['version' => $release->version, 'url' => $this->url($release->asset_path), 'sha256' => $release->sha256];
+        $entry = ['version' => $release->version, 'url' => $this->url($release->asset_path), 'sha256' => $release->sha256, 'publicationRevision' => $dataset->publication_revision];
         if ($release->content_encoding) {
             $entry['contentEncoding'] = $release->content_encoding;
         }

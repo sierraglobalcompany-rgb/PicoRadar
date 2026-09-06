@@ -7,12 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use LogicException;
 
-#[Fillable(['key', 'title', 'schema_version', 'enabled', 'current_version'])]
+#[Fillable(['key', 'title', 'schema_version', 'enabled', 'current_version', 'publication_revision'])]
 class Dataset extends Model
 {
     protected function casts(): array
     {
-        return ['schema_version' => 'integer', 'enabled' => 'boolean'];
+        return ['schema_version' => 'integer', 'enabled' => 'boolean', 'publication_revision' => 'integer'];
     }
 
     public function releases(): HasMany
