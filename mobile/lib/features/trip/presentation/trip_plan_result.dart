@@ -15,6 +15,9 @@ class TripPlanResult extends StatelessWidget {
     required this.selectedRouteId,
     required this.onRouteSelected,
     required this.onSource,
+    this.mapPreview,
+    this.mapAnchorKey,
+    this.onViewMap,
     super.key,
   });
 
@@ -23,6 +26,9 @@ class TripPlanResult extends StatelessWidget {
   final String selectedRouteId;
   final ValueChanged<String> onRouteSelected;
   final ValueChanged<String> onSource;
+  final Widget? mapPreview;
+  final GlobalKey? mapAnchorKey;
+  final VoidCallback? onViewMap;
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +57,10 @@ class TripPlanResult extends StatelessWidget {
       key: const ValueKey('trip-plan-result'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('${routes.length} rutas encontradas', style: AppTextStyles.h2),
+        Semantics(
+          header: true,
+          child: Text('Tu plan de viaje', style: AppTextStyles.h2),
+        ),
         const SizedBox(height: AppSpacing.s),
         Text(
           '${request.origin.displayName} → ${request.destination.displayName}',
@@ -61,13 +70,11 @@ class TripPlanResult extends StatelessWidget {
           'Vehículo: ${request.vehicle.plate} · ${_category(request.vehicleCategory)}',
         ),
         Text('Salida: ${tripInstantLabel(request.departureUtc)}'),
-        Text('Consulta: ${tripInstantLabel(plan.generatedAtUtc)}'),
-        const SizedBox(height: AppSpacing.s),
-        Text('Punto de origen: ${plan.origin.label}'),
-        Text('Punto de destino: ${plan.destination.label}'),
-        const Text('Estimación entre puntos de referencia de las ciudades'),
-        Text('Proveedor: ${plan.provider}'),
-        Text(plan.attribution),
+        const SizedBox(height: AppSpacing.m),
+        if (selected != null)
+          _TripSummary(route: selected, departureUtc: request.departureUtc),
+        const SizedBox(height: AppSpacing.l),
+        Text('Opciones de ruta · ${routes.length}', style: AppTextStyles.h2),
         const SizedBox(height: AppSpacing.m),
         for (final route in routes) ...[
           Container(
@@ -86,7 +93,37 @@ class TripPlanResult extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(route.summary, style: AppTextStyles.bodyStrong),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      route.id == selectedRouteId
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: route.id == selectedRouteId
+                          ? AppColors.teal
+                          : AppColors.navy.withValues(alpha: 0.62),
+                    ),
+                    const SizedBox(width: AppSpacing.s),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(route.summary, style: AppTextStyles.bodyStrong),
+                          if (route.durationSeconds ==
+                              routes.first.durationSeconds)
+                            Text(
+                              'Menor duración',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.teal,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.s),
                 Text(
                   '${(route.distanceMeters / 1000).toStringAsFixed(1)} km por carretera',
                 ),
@@ -126,11 +163,44 @@ class TripPlanResult extends StatelessWidget {
                         : 'Seleccionar ruta',
                   ),
                 ),
+                if (route.id == selectedRouteId) ...[
+                  const SizedBox(height: AppSpacing.s),
+                  TextButton.icon(
+                    key: ValueKey('trip-view-map-${route.id}'),
+                    onPressed: onViewMap,
+                    icon: const Icon(Icons.map_outlined),
+                    label: const Text('Ver en mapa'),
+                  ),
+                ],
               ],
             ),
           ),
           const SizedBox(height: AppSpacing.m),
         ],
+        Text('Vista previa de la ruta', style: AppTextStyles.h2),
+        const SizedBox(height: AppSpacing.s),
+        KeyedSubtree(
+          key: mapAnchorKey,
+          child: Container(
+            key: const ValueKey('trip-map-preview-slot'),
+            constraints: const BoxConstraints(minHeight: 240),
+            padding: const EdgeInsets.all(AppSpacing.l),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(AppRadius.card),
+            ),
+            child:
+                mapPreview ??
+                const Center(
+                  child: Text(
+                    'Vista previa de ruta no disponible. Conserva las alternativas y sus detalles.',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.m),
         if (selected != null)
           ExpansionTile(
             key: ValueKey('trip-toll-details-${selected.id}'),
@@ -187,9 +257,145 @@ class TripPlanResult extends StatelessWidget {
               ),
             ],
           ),
+        ExpansionTile(
+          key: const ValueKey('trip-plan-source-details'),
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: const EdgeInsets.only(bottom: AppSpacing.m),
+          title: Text(
+            'Datos y fuente del cálculo',
+            style: AppTextStyles.bodyStrong,
+          ),
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Consulta: ${tripInstantLabel(plan.generatedAtUtc)}'),
+                  Text('Punto de origen: ${plan.origin.label}'),
+                  Text('Punto de destino: ${plan.destination.label}'),
+                  const Text(
+                    'Estimación entre puntos de referencia de las ciudades',
+                  ),
+                  Text('Proveedor: ${plan.provider}'),
+                  Text(plan.attribution),
+                ],
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
+}
+
+class _TripSummary extends StatelessWidget {
+  const _TripSummary({required this.route, required this.departureUtc});
+
+  final TripRouteOption route;
+  final DateTime departureUtc;
+
+  @override
+  Widget build(BuildContext context) {
+    final metrics = [
+      (
+        key: 'distance',
+        icon: Icons.route_outlined,
+        value: '${(route.distanceMeters / 1000).toStringAsFixed(1)} km',
+        label: 'Distancia aproximada',
+      ),
+      (
+        key: 'duration',
+        icon: Icons.schedule_outlined,
+        value: _duration(route.durationSeconds),
+        label: 'Duración estimada',
+      ),
+      (
+        key: 'arrival',
+        icon: Icons.flag_outlined,
+        value: tripInstantLabel(route.arrivalUtc(departureUtc)),
+        label: 'Llegada aproximada',
+      ),
+      (
+        key: 'tolls',
+        icon: Icons.toll_outlined,
+        value: route.tolls.stationCount?.toString() ?? 'Por confirmar',
+        label: 'Peajes del trayecto',
+      ),
+      (
+        key: 'cost',
+        icon: Icons.payments_outlined,
+        value: _summaryCost(route.tolls),
+        label: 'Costo de peajes',
+      ),
+      (
+        key: 'cameras',
+        icon: Icons.photo_camera_outlined,
+        value: 'Por confirmar',
+        label: 'Cámaras registradas',
+      ),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.m),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const gap = AppSpacing.s;
+          final width = (constraints.maxWidth - gap) / 2;
+          return Wrap(
+            spacing: gap,
+            runSpacing: AppSpacing.m,
+            children: [
+              for (final metric in metrics)
+                SizedBox(
+                  key: ValueKey('trip-summary-${metric.key}'),
+                  width: width,
+                  child: _SummaryMetric(
+                    icon: metric.icon,
+                    value: metric.value,
+                    label: metric.label,
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SummaryMetric extends StatelessWidget {
+  const _SummaryMetric({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(icon, color: AppColors.teal),
+      const SizedBox(width: AppSpacing.s),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(value, style: AppTextStyles.bodyStrong),
+            Text(label, style: AppTextStyles.caption),
+          ],
+        ),
+      ),
+    ],
+  );
 }
 
 class TripInstantEndpoint extends StatelessWidget {
@@ -323,6 +529,18 @@ String _tollsText(TripTolls tolls) => switch (tolls.coverage) {
     'Sin cobro confirmado para este vehículo (COP 0)',
   TripTollCoverage.unsupportedVehicle =>
     'Categoría no soportada para tarifas de peajes',
+};
+
+String _summaryCost(TripTolls tolls) => switch (tolls.coverage) {
+  TripTollCoverage.complete =>
+    tolls.totalMinor == null ? 'Por confirmar' : _cop(tolls.totalMinor!),
+  TripTollCoverage.partial =>
+    tolls.subtotalMinor == null
+        ? 'Parcial'
+        : '${_cop(tolls.subtotalMinor!)} parcial',
+  TripTollCoverage.noChargeConfirmed => 'Sin cobro confirmado',
+  TripTollCoverage.unknown => 'Por confirmar',
+  TripTollCoverage.unsupportedVehicle => 'No disponible',
 };
 
 String _restrictionReason(TripEndpointRestriction result) {

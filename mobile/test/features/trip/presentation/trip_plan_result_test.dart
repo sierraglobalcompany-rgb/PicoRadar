@@ -80,15 +80,19 @@ void main() {
     departureUtc: DateTime.utc(2026, 9, 6, 4, 30),
     standardVehicleConfirmed: true,
   );
-  TripRouteOption route(String id, TripTolls tolls, {int seconds = 7200}) =>
-      TripRouteOption(
-        id: id,
-        summary: 'Corredor $id',
-        distanceMeters: 125500,
-        durationSeconds: seconds,
-        timeBasis: 'static',
-        tolls: tolls,
-      );
+  TripRouteOption route(
+    String id,
+    TripTolls tolls, {
+    int seconds = 7200,
+    String? summary,
+  }) => TripRouteOption(
+    id: id,
+    summary: summary ?? 'Corredor $id',
+    distanceMeters: 125500,
+    durationSeconds: seconds,
+    timeBasis: 'static',
+    tolls: tolls,
+  );
   TripPlan plan(List<TripRouteOption> routes) => TripPlan(
     requestId: request.requestId,
     generatedAtUtc: DateTime.utc(2026, 9, 5, 12),
@@ -110,9 +114,10 @@ void main() {
     WidgetTester tester,
     List<TripRouteOption> routes, {
     double scale = 1,
+    Size size = const Size(360, 800),
   }) async {
     tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(360, 800);
+    tester.view.physicalSize = size;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     var selected = routes.first.id;
@@ -136,6 +141,135 @@ void main() {
         ),
       ),
     );
+  }
+
+  testWidgets(
+    'VIAJE-R2 summary is 2x3, routes are vertical, and map slot follows routes',
+    (tester) async {
+      final routes = [
+        route(
+          'fast',
+          TripTolls(
+            coverage: TripTollCoverage.complete,
+            vehicleCategory: 'car',
+            stationCount: 2,
+            payableCount: 2,
+            totalMinor: 2400000,
+          ),
+        ),
+        route(
+          'slow',
+          TripTolls(coverage: TripTollCoverage.unknown, vehicleCategory: 'car'),
+          seconds: 10800,
+        ),
+      ];
+
+      await pump(tester, routes);
+
+      expect(find.text('Tu plan de viaje'), findsOneWidget);
+      final metrics = [
+        find.byKey(const ValueKey('trip-summary-distance')),
+        find.byKey(const ValueKey('trip-summary-duration')),
+        find.byKey(const ValueKey('trip-summary-arrival')),
+        find.byKey(const ValueKey('trip-summary-tolls')),
+        find.byKey(const ValueKey('trip-summary-cost')),
+        find.byKey(const ValueKey('trip-summary-cameras')),
+      ];
+      for (final metric in metrics) {
+        expect(metric, findsOneWidget);
+      }
+      expect(
+        tester.getTopLeft(metrics[0]).dx,
+        tester.getTopLeft(metrics[2]).dx,
+      );
+      expect(
+        tester.getTopLeft(metrics[1]).dx,
+        tester.getTopLeft(metrics[3]).dx,
+      );
+      expect(
+        tester.getTopLeft(metrics[0]).dx,
+        tester.getTopLeft(metrics[4]).dx,
+      );
+      expect(
+        tester.getTopLeft(metrics[1]).dx,
+        tester.getTopLeft(metrics[5]).dx,
+      );
+      expect(find.text('Cámaras registradas'), findsOneWidget);
+      expect(find.text('Por confirmar'), findsOneWidget);
+
+      final firstRoute = find.byKey(const ValueKey('trip-route-fast'));
+      final secondRoute = find.byKey(const ValueKey('trip-route-slow'));
+      final mapSlot = find.byKey(const ValueKey('trip-map-preview-slot'));
+      final tollDetails = find.byKey(const ValueKey('trip-toll-details-fast'));
+      expect(tester.getSize(firstRoute).width, greaterThan(300));
+      expect(
+        tester.getTopLeft(secondRoute).dy,
+        greaterThan(tester.getBottomLeft(firstRoute).dy),
+      );
+      expect(
+        tester.getTopLeft(mapSlot).dy,
+        greaterThan(tester.getBottomLeft(secondRoute).dy),
+      );
+      expect(
+        tester.getTopLeft(tollDetails).dy,
+        greaterThan(tester.getBottomLeft(mapSlot).dy),
+      );
+      expect(find.text('Ruta recomendada'), findsNothing);
+      expect(find.text('Menor duración'), findsOneWidget);
+    },
+  );
+
+  for (final size in [
+    const Size(360, 780),
+    const Size(360, 800),
+    const Size(390, 844),
+    const Size(412, 915),
+  ]) {
+    for (final scale in [1.0, 1.5, 2.0]) {
+      testWidgets('VIAJE-R2 dense result fits $size at text scale $scale', (
+        tester,
+      ) async {
+        await pump(
+          tester,
+          [
+            route(
+              'one',
+              TripTolls(
+                coverage: TripTollCoverage.partial,
+                vehicleCategory: 'car',
+                stationCount: 12,
+                payableCount: 5,
+                subtotalMinor: 9876500,
+                missingRates: 7,
+              ),
+              summary: 'Corredor nacional con nombre extenso y datos parciales por confirmar',
+            ),
+            route(
+              'two',
+              TripTolls(
+                coverage: TripTollCoverage.unknown,
+                vehicleCategory: 'car',
+              ),
+              seconds: 14400,
+            ),
+            route(
+              'three',
+              TripTolls(
+                coverage: TripTollCoverage.unsupportedVehicle,
+                vehicleCategory: 'car',
+              ),
+              seconds: 18000,
+            ),
+          ],
+          size: size,
+          scale: scale,
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(Scrollable), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
   }
 
   testWidgets(
@@ -170,7 +304,13 @@ void main() {
         ),
       ];
       await pump(tester, routes);
-      expect(find.textContaining('2026-09-06 01:30'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('trip-route-a')),
+          matching: find.textContaining('2026-09-06 01:30'),
+        ),
+        findsOneWidget,
+      );
       await tester.ensureVisible(
         find.byKey(const ValueKey('trip-toll-details-a')),
       );

@@ -28,6 +28,14 @@ class TripScreen extends ConsumerStatefulWidget {
 class _TripScreenState extends ConsumerState<TripScreen>
     with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
+  final _resultsAnchorKey = GlobalKey();
+  final _mapAnchorKey = GlobalKey();
+  final _originFocusNode = FocusNode(debugLabel: 'trip-origin-focus');
+  final _destinationFocusNode = FocusNode(debugLabel: 'trip-destination-focus');
+  final _vehicleFocusNode = FocusNode(debugLabel: 'trip-vehicle-focus');
+  final _timeFocusNode = FocusNode(debugLabel: 'trip-time-focus');
+  final _resultsFocusNode = FocusNode(debugLabel: 'trip-results-focus');
   final _originController = TextEditingController();
   final _destinationController = TextEditingController();
   final _random = Random.secure();
@@ -53,6 +61,8 @@ class _TripScreenState extends ConsumerState<TripScreen>
   String? _restoredVehicleId;
   TripMunicipality? _originMunicipality;
   TripMunicipality? _destinationMunicipality;
+  String? _revealedRequestId;
+  var _userScrollRevision = 0;
 
   @override
   void initState() {
@@ -73,6 +83,12 @@ class _TripScreenState extends ConsumerState<TripScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _invalidatePlan();
+    _scrollController.dispose();
+    _originFocusNode.dispose();
+    _destinationFocusNode.dispose();
+    _vehicleFocusNode.dispose();
+    _timeFocusNode.dispose();
+    _resultsFocusNode.dispose();
     _originController.dispose();
     _destinationController.dispose();
     super.dispose();
@@ -167,6 +183,14 @@ class _TripScreenState extends ConsumerState<TripScreen>
         !vehicles.any((vehicle) => vehicle.id == requestedVehicleId);
 
     return TripContent(
+      scrollController: _scrollController,
+      resultsAnchorKey: _resultsAnchorKey,
+      resultsFocusNode: _resultsFocusNode,
+      originFocusNode: _originFocusNode,
+      destinationFocusNode: _destinationFocusNode,
+      vehicleFocusNode: _vehicleFocusNode,
+      timeFocusNode: _timeFocusNode,
+      onUserScroll: () => _userScrollRevision++,
       formKey: _formKey,
       originController: _originController,
       destinationController: _destinationController,
@@ -200,6 +224,8 @@ class _TripScreenState extends ConsumerState<TripScreen>
               selectedRouteId: selectedRoute.id,
               onRouteSelected: (id) => setState(() => _selectedRouteId = id),
               onSource: _openSource,
+              mapAnchorKey: _mapAnchorKey,
+              onViewMap: _scrollToMap,
             )
           : null,
       instantRestrictions: Column(
@@ -292,6 +318,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
         _destinationMunicipality = municipality;
         _destinationController.text = municipality.displayName;
       }),
+      onSwapLocations: _swapLocations,
       onDateChanged: (value) => setState(() {
         _invalidatePlan();
         _selectedDate = value;
@@ -554,6 +581,70 @@ class _TripScreenState extends ConsumerState<TripScreen>
     _planError = null;
   }
 
+  void _swapLocations() {
+    setState(() {
+      _invalidatePlan();
+      final origin = _originMunicipality;
+      _originMunicipality = _destinationMunicipality;
+      _destinationMunicipality = origin;
+      final originText = _originController.text;
+      _originController.text = _destinationController.text;
+      _destinationController.text = originText;
+      _originError = null;
+      _destinationError = null;
+    });
+  }
+
+  void _focusFirstInvalid() {
+    final focusNode = _originError != null
+        ? _originFocusNode
+        : _destinationError != null
+        ? _destinationFocusNode
+        : _timeError != null
+        ? _timeFocusNode
+        : _vehicleError != null
+        ? _vehicleFocusNode
+        : null;
+    focusNode?.requestFocus();
+  }
+
+  void _scheduleResultsReveal(String requestId, int scrollRevision) {
+    if (_revealedRequestId == requestId) return;
+    _revealedRequestId = requestId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          _request?.requestId != requestId ||
+          _plan?.requestId != requestId ||
+          !TickerMode.valuesOf(context).enabled ||
+          scrollRevision != _userScrollRevision) {
+        return;
+      }
+      unawaited(_reveal(_resultsAnchorKey, focusNode: _resultsFocusNode));
+    });
+  }
+
+  void _scrollToMap() {
+    unawaited(_reveal(_mapAnchorKey));
+  }
+
+  Future<void> _reveal(GlobalKey anchor, {FocusNode? focusNode}) async {
+    final anchorContext = anchor.currentContext;
+    if (!mounted ||
+        anchorContext == null ||
+        !TickerMode.valuesOf(context).enabled) {
+      return;
+    }
+    await Scrollable.ensureVisible(
+      anchorContext,
+      alignment: 0.05,
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
+    if (mounted && focusNode != null) focusNode.requestFocus();
+  }
+
   Future<void> _preview(
     TripMunicipalityCatalog catalog,
     VehicleProfile? vehicle,
@@ -592,6 +683,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
         _destinationError != null ||
         _timeError != null ||
         _vehicleError != null) {
+      _focusFirstInvalid();
       return;
     }
     FocusScope.of(context).unfocus();
@@ -610,6 +702,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
       ).toUtc(),
     );
     final token = CancelToken();
+    final scrollRevision = _userScrollRevision;
     setState(() {
       _invalidatePlan();
       _request = request;
@@ -636,6 +729,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
                 .id;
         _cancelToken = null;
       });
+      _scheduleResultsReveal(request.requestId, scrollRevision);
     } catch (error) {
       if (!mounted || generation != _generation || token.isCancelled) return;
       setState(() {

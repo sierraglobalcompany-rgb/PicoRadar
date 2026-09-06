@@ -639,6 +639,7 @@ void main() {
   });
 
   for (final size in [
+    const Size(360, 780),
     const Size(360, 800),
     const Size(390, 844),
     const Size(412, 915),
@@ -1385,24 +1386,263 @@ void main() {
   });
 
   testWidgets('target responsive viewports avoid overflow', (tester) async {
-    const cases = [
-      (Size(360, 800), 1.0),
-      (Size(360, 800), 2.0),
-      (Size(390, 844), 1.5),
-      (Size(412, 915), 2.0),
-    ];
+    for (final size in const [
+      Size(360, 780),
+      Size(360, 800),
+      Size(390, 844),
+      Size(412, 915),
+    ]) {
+      for (final scale in const [1.0, 1.5, 2.0]) {
+        await _pumpScreen(
+          tester,
+          preferences: preferences,
+          size: size,
+          textScale: scale,
+        );
 
-    for (final testCase in cases) {
+        expect(find.byKey(const ValueKey('trip-screen')), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+    }
+  });
+
+  testWidgets(
+    'VIAJE-R2 focuses the first invalid field and swaps endpoints accessibly',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpScreen(tester, preferences: preferences);
+
+      await _tapByKey(tester, 'trip-preview');
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'trip-origin-focus',
+      );
+
+      await tester.enterText(
+        find.byKey(const ValueKey('trip-origin-field')),
+        'Bogotá · Bogotá',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('trip-destination-field')),
+        'Medellín · Antioquia',
+      );
+      await _tapByKey(tester, 'trip-swap-locations');
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('trip-origin-field')),
+            )
+            .controller!
+            .text,
+        'Medellín · Antioquia',
+      );
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('trip-destination-field')),
+            )
+            .controller!
+            .text,
+        'Bogotá · Bogotá',
+      );
+      expect(
+        find.bySemanticsLabel('Intercambiar origen y destino'),
+        findsOneWidget,
+      );
+      semantics.dispose();
+    },
+  );
+
+  testWidgets(
+    'VIAJE-R2 successful request compacts preparation and reveals results once',
+    (tester) async {
+      final client = _PendingPlanClient();
+      await TripDraftStore(preferences).saveDraft(
+        TripDraft(
+          origin: 'Bogotá',
+          destination: 'Medellín',
+          date: DateTime(2026, 9, 7),
+          departureMinute: 600,
+        ),
+      );
       await _pumpScreen(
         tester,
         preferences: preferences,
-        size: testCase.$1,
-        textScale: testCase.$2,
+        activeVehicle: _vehicle(),
+        planClient: client,
       );
+      await _tapByKey(tester, 'trip-standard-vehicle');
+      _pressButtonByKey(tester, 'trip-preview');
+      await tester.pump();
+      final scrollable = tester.state<ScrollableState>(
+        find.byType(Scrollable).first,
+      );
+      final offsetBeforeSuccess = scrollable.position.pixels;
+      client.completions.single.complete(_testPlan(client.requests.single));
+      await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('trip-screen')), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    }
+      expect(scrollable.position.pixels, isNot(offsetBeforeSuccess));
+      expect(find.text('Tu plan de viaje').hitTestable(), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('trip-preparation-summary')),
+        findsOneWidget,
+      );
+      expect(find.text('Bogotá → Medellín'), findsOneWidget);
+      expect(find.textContaining('ABC123'), findsWidgets);
+      expect(find.byKey(const ValueKey('trip-origin-field')), findsNothing);
+      expect(find.byKey(const ValueKey('trip-plan-result')), findsOneWidget);
+
+      await _tapByKey(tester, 'trip-preparation-compact');
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('trip-origin-field')),
+            )
+            .controller!
+            .text,
+        'Bogotá',
+      );
+      expect(
+        tester
+            .widget<TextFormField>(
+              find.byKey(const ValueKey('trip-destination-field')),
+            )
+            .controller!
+            .text,
+        'Medellín',
+      );
+      await _tapByKey(tester, 'trip-preparation-compact');
+
+      final revealedOffset = scrollable.position.pixels;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(scrollable.position.pixels, revealedOffset);
+
+      _pressButtonByKey(tester, 'trip-view-map-test-route');
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('trip-map-preview-slot')).hitTestable(),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('VIAJE-R2 offstage success never changes scroll position', (
+    tester,
+  ) async {
+    final client = _PendingPlanClient();
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(2026, 9, 7),
+        departureMinute: 600,
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: _vehicle(),
+      planClient: client,
+      tickerEnabled: false,
+    );
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    final scrollable = tester.state<ScrollableState>(
+      find.byType(Scrollable).first,
+    );
+    final offsetBeforeSuccess = scrollable.position.pixels;
+    client.completions.single.complete(_testPlan(client.requests.single));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('trip-plan-result')), findsOneWidget);
+    expect(scrollable.position.pixels, offsetBeforeSuccess);
+  });
+
+  testWidgets('VIAJE-R2 reduced motion reveals results without animation', (
+    tester,
+  ) async {
+    final client = _PendingPlanClient();
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(2026, 9, 7),
+        departureMinute: 600,
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: _vehicle(),
+      planClient: client,
+      disableAnimations: true,
+    );
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    client.completions.single.complete(_testPlan(client.requests.single));
+    await tester.pump();
+    await tester.pump();
+
+    final scrollable = tester.state<ScrollableState>(
+      find.byType(Scrollable).first,
+    );
+    expect(scrollable.position.pixels, greaterThan(0));
+    expect(scrollable.position.isScrollingNotifier.value, isFalse);
+  });
+
+  testWidgets('VIAJE-R2 manual scroll while loading suppresses auto-scroll', (
+    tester,
+  ) async {
+    final client = _PendingPlanClient();
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(2026, 9, 7),
+        departureMinute: 600,
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: _vehicle(),
+      planClient: client,
+    );
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    await tester.drag(
+      find.byKey(const ValueKey('trip-screen')),
+      const Offset(0, -180),
+    );
+    await tester.pump(const Duration(milliseconds: 500));
+    final scrollable = tester.state<ScrollableState>(
+      find.byType(Scrollable).first,
+    );
+    final manualOffset = scrollable.position.pixels;
+
+    client.completions.single.complete(_testPlan(client.requests.single));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('trip-plan-result')), findsOneWidget);
+    expect(scrollable.position.pixels, manualOffset);
+  });
+
+  testWidgets('VIAJE-R2 keyboard next moves focus to destination', (
+    tester,
+  ) async {
+    await _pumpScreen(tester, preferences: preferences);
+    await tester.showKeyboard(find.byKey(const ValueKey('trip-origin-field')));
+    await tester.testTextInput.receiveAction(TextInputAction.next);
+    await tester.pump();
+
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'trip-destination-focus',
+    );
   });
 }
 
@@ -1431,6 +1671,8 @@ Future<void> _pumpScreen(
   instantRestriction,
   Size size = const Size(390, 844),
   double textScale = 1,
+  bool tickerEnabled = true,
+  bool disableAnimations = false,
   bool settle = true,
 }) async {
   final ownedRestrictionStore = restrictionStore == null
@@ -1476,11 +1718,13 @@ Future<void> _pumpScreen(
       ],
       child: MaterialApp(
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context)
-              .copyWith(textScaler: TextScaler.linear(textScale)),
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(textScale),
+            disableAnimations: disableAnimations,
+          ),
           child: child!,
         ),
-        home: const TripScreen(),
+        home: TickerMode(enabled: tickerEnabled, child: const TripScreen()),
       ),
     ),
   );
