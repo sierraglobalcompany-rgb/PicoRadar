@@ -83,6 +83,10 @@ void main() {
 
         expect(beforeReveal, 0);
         expect(_tripScroll(tester).position.pixels, greaterThan(0));
+        _expectNotPartiallyClippedAtTop(
+          tester,
+          find.text('Toca para editar sin perder tus datos'),
+        );
         expect(find.text(_evidenceLabel), findsOneWidget);
         expect(_semanticsWithLabel(_evidenceLabel), findsOneWidget);
         expect(find.text('Opciones de ruta · 3'), findsOneWidget);
@@ -233,6 +237,16 @@ void main() {
       find.textContaining('El mapa base no está disponible'),
       findsOneWidget,
     );
+    const tileFailureKey = ValueKey('trip-map-tile-failure');
+    expect(find.byKey(tileFailureKey), findsOneWidget);
+    final tileFailureSemantics = tester
+        .getSemantics(find.byKey(tileFailureKey))
+        .getSemanticsData();
+    expect(tileFailureSemantics.hasFlag(SemanticsFlag.isLiveRegion), isTrue);
+    expect(
+      tileFailureSemantics.label,
+      contains('El mapa base no está disponible'),
+    );
     expect(find.byKey(const ValueKey('trip-route-polyline')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('trip-map-camera-camera-a-0')),
@@ -370,6 +384,22 @@ void _press(WidgetTester tester, Key key) {
 
 ScrollableState _tripScroll(WidgetTester tester) =>
     tester.state<ScrollableState>(find.byType(Scrollable).first);
+
+void _expectNotPartiallyClippedAtTop(WidgetTester tester, Finder finder) {
+  final viewportTop = tester
+      .getRect(find.byKey(const ValueKey('trip-screen')))
+      .top;
+  final contentRect = tester.getRect(finder);
+  final partiallyClipped =
+      contentRect.top < viewportTop && contentRect.bottom > viewportTop;
+  expect(
+    partiallyClipped,
+    isFalse,
+    reason:
+        'Content crossed the scroll viewport top: '
+        '$contentRect vs top $viewportTop.',
+  );
+}
 
 Finder _semanticsWithLabel(String label) => find.byWidgetPredicate(
   (widget) => widget is Semantics && widget.properties.label == label,

@@ -713,45 +713,53 @@ class _MapControls extends StatelessWidget {
 class _TileFailure extends StatelessWidget {
   const _TileFailure({required this.onRetry});
 
+  static const _message =
+      'El mapa base no está disponible. La ruta y los puntos siguen visibles.';
+
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      const message = Text(
-        'El mapa base no está disponible. La ruta y los puntos siguen visibles.',
-        style: AppTextStyles.caption,
-      );
-      final retry = TextButton(
-        onPressed: onRetry,
-        child: const Text('Reintentar mapa'),
-      );
-      final compact =
-          constraints.maxWidth < 320 ||
-          MediaQuery.textScalerOf(context).scale(14) > 20;
-      return Material(
-        color: Colors.white.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-          child: compact
-              ? Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    message,
-                    Align(alignment: Alignment.centerRight, child: retry),
-                  ],
-                )
-              : Row(
-                  children: [
-                    const Expanded(child: message),
-                    retry,
-                  ],
-                ),
-        ),
-      );
-    },
+  Widget build(BuildContext context) => Semantics(
+    key: const ValueKey('trip-map-tile-failure'),
+    container: true,
+    liveRegion: true,
+    label: _message,
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        const message = ExcludeSemantics(
+          child: Text(_message, style: AppTextStyles.caption),
+        );
+        final retry = TextButton(
+          onPressed: onRetry,
+          child: const Text('Reintentar mapa'),
+        );
+        final compact =
+            constraints.maxWidth < 320 ||
+            MediaQuery.textScalerOf(context).scale(14) > 20;
+        return Material(
+          color: Colors.white.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+            child: compact
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      message,
+                      Align(alignment: Alignment.centerRight, child: retry),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      const Expanded(child: message),
+                      retry,
+                    ],
+                  ),
+          ),
+        );
+      },
+    ),
   );
 }
 
