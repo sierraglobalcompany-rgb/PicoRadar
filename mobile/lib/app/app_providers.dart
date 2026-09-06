@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../core/database/app_database.dart'
     hide MaintenanceRecord, VehicleObligation;
@@ -26,6 +29,8 @@ import '../features/pico_placa/domain/bogota_time.dart';
 import '../features/pico_placa/platform/pico_notifications.dart';
 import '../features/pico_placa/platform/pico_widget_bridge.dart';
 import '../features/peritajes/data/peritajes_draft_store.dart';
+import '../features/trip/data/toll_inventory.dart';
+import '../features/trip/data/trip_route_preview_data.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   final database = AppDatabase();
@@ -50,6 +55,29 @@ final vehicleVisualCatalogProvider = FutureProvider<VehicleVisualCatalog>((
 final homeBannerConfigProvider = FutureProvider<HomeBannerConfig>((ref) async {
   final source = await rootBundle.loadString(homeBannerConfigAssetPath);
   return HomeBannerConfig.fromJsonString(source);
+});
+
+final tripTollInventoryProvider = FutureProvider<TollInventoryDataset>((
+  ref,
+) async {
+  final directory = await getApplicationSupportDirectory();
+  final datasetsDirectory = Directory(
+    '${directory.path}${Platform.pathSeparator}datasets',
+  );
+  final store = TollInventoryStore(
+    database: ref.watch(appDatabaseProvider),
+    snapshotFile: File(
+      '${datasetsDirectory.path}${Platform.pathSeparator}tolls_inventory.json',
+    ),
+    bundledLoader: () => rootBundle.loadString(bundledTollInventoryAsset),
+  );
+  return store.load();
+});
+
+final tripCameraPackSnapshotProvider = FutureProvider<TripCameraPackSnapshot>((
+  ref,
+) {
+  return loadTripCameraPackSnapshot(rootBundle);
 });
 
 final homeBannerCampaignProvider = FutureProvider<HomeBannerCampaign?>((

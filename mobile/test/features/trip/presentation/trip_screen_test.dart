@@ -11,6 +11,7 @@ import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
+import 'package:picoradar/features/driving/domain/traffic_camera.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_store.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_rule.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.dart';
@@ -18,10 +19,13 @@ import 'package:picoradar/features/pico_placa/domain/restriction_engine.dart';
 import 'package:picoradar/features/trip/data/trip_draft_store.dart';
 import 'package:picoradar/features/trip/application/trip_services.dart';
 import 'package:picoradar/features/trip/data/trip_plan_client.dart';
+import 'package:picoradar/features/trip/data/toll_inventory.dart';
+import 'package:picoradar/features/trip/data/trip_route_preview_data.dart';
 import 'package:picoradar/features/trip/domain/trip_plan.dart';
 import 'package:picoradar/features/trip/data/trip_municipality_catalog.dart';
 import 'package:picoradar/features/trip/domain/trip_draft.dart';
 import 'package:picoradar/features/trip/presentation/trip_screen.dart';
+import 'package:picoradar/features/trip/presentation/trip_route_preview_map.dart';
 import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
 import '../../../test_app_harness.dart';
@@ -1737,6 +1741,78 @@ void main() {
     },
   );
 
+  testWidgets('VIAJE-R2 mounts the reviewed map in the selected-route seam', (
+    tester,
+  ) async {
+    final client = _PendingPlanClient();
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(2026, 9, 7),
+        departureMinute: 600,
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: _vehicle(),
+      planClient: client,
+    );
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    client.completions.single.complete(
+      _testPlan(client.requests.single, withGeometry: true),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TripRoutePreviewMap), findsOneWidget);
+    expect(find.byKey(const ValueKey('trip-route-map')), findsOneWidget);
+    expect(find.textContaining('DEMOSTRACIÓN'), findsNothing);
+    expect(find.textContaining('Test only'), findsWidgets);
+  });
+
+  testWidgets('VIAJE-R2 keeps the plan and retries local map data', (
+    tester,
+  ) async {
+    final client = _PendingPlanClient();
+    var failTolls = true;
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(2026, 9, 7),
+        departureMinute: 600,
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: _vehicle(),
+      planClient: client,
+      tollInventoryLoader: () async {
+        if (failTolls) throw StateError('local snapshot unavailable');
+        return _emptyTollInventory();
+      },
+    );
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    client.completions.single.complete(
+      _testPlan(client.requests.single, withGeometry: true),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('trip-plan-result')), findsOneWidget);
+    expect(find.byKey(const ValueKey('trip-map-data-retry')), findsOneWidget);
+    failTolls = false;
+    await _tapByKey(tester, 'trip-map-data-retry');
+
+    expect(find.byType(TripRoutePreviewMap), findsOneWidget);
+    expect(find.byKey(const ValueKey('trip-route-map')), findsOneWidget);
+  });
+
   testWidgets('VIAJE-R2 offstage success never changes scroll position', (
     tester,
   ) async {
@@ -1934,6 +2010,10 @@ Future<void> _pumpScreen(
   bool tickerEnabled = true,
   bool disableAnimations = false,
   bool settle = true,
+  TollInventoryDataset? tollInventory,
+  Future<TollInventoryDataset> Function()? tollInventoryLoader,
+  TripCameraPackSnapshot? cameraSnapshot,
+  TripRouteMapConfig? mapConfig,
 }) async {
   final ownedRestrictionStore = restrictionStore == null
       ? _FakeTripRestrictionStore()
@@ -1974,6 +2054,17 @@ Future<void> _pumpScreen(
         ),
         externalLauncherProvider.overrideWithValue(
           launcher ?? _FakeExternalLauncher(),
+        ),
+        tripTollInventoryProvider.overrideWith(
+          (ref) =>
+              tollInventoryLoader?.call() ??
+              Future.value(tollInventory ?? _emptyTollInventory()),
+        ),
+        tripCameraPackSnapshotProvider.overrideWith(
+          (ref) async => cameraSnapshot ?? _emptyCameraSnapshot(),
+        ),
+        tripRouteMapConfigProvider.overrideWithValue(
+          mapConfig ?? _neutralTripMapConfig(),
         ),
       ],
       child: MaterialApp(
@@ -2046,34 +2137,68 @@ class _PendingPlanClient implements TripPlanClient {
   }
 }
 
-TripPlan _testPlan(TripPlanRequest request) => TripPlan(
-  requestId: request.requestId,
-  generatedAtUtc: DateTime.utc(2026, 9, 5, 12),
-  provider: 'Test only',
-  attribution: 'Test only',
-  origin: const TripResolvedPoint(
-    label: 'Referencia origen',
-    latitude: 4.7,
-    longitude: -74.1,
-  ),
-  destination: const TripResolvedPoint(
-    label: 'Referencia destino',
-    latitude: 6.2,
-    longitude: -75.5,
-  ),
-  routes: [
-    TripRouteOption(
-      id: 'test-route',
-      summary: 'Ruta de prueba',
-      distanceMeters: 420000,
-      durationSeconds: 36000,
-      timeBasis: 'static',
-      tolls: TripTolls(
-        coverage: TripTollCoverage.unknown,
-        vehicleCategory: 'car',
+TripPlan _testPlan(TripPlanRequest request, {bool withGeometry = false}) =>
+    TripPlan(
+      requestId: request.requestId,
+      generatedAtUtc: DateTime.utc(2026, 9, 5, 12),
+      provider: 'Test only',
+      attribution: 'Test only',
+      origin: const TripResolvedPoint(
+        label: 'Referencia origen',
+        latitude: 4.7,
+        longitude: -74.1,
       ),
+      destination: const TripResolvedPoint(
+        label: 'Referencia destino',
+        latitude: 6.2,
+        longitude: -75.5,
+      ),
+      routes: [
+        TripRouteOption(
+          id: 'test-route',
+          summary: 'Ruta de prueba',
+          distanceMeters: 420000,
+          durationSeconds: 36000,
+          timeBasis: 'static',
+          geometry: withGeometry
+              ? const [
+                  TripCoordinate(latitude: 4.7, longitude: -74.1),
+                  TripCoordinate(latitude: 5.4, longitude: -74.8),
+                  TripCoordinate(latitude: 6.2, longitude: -75.5),
+                ]
+              : const [],
+          tolls: TripTolls(
+            coverage: TripTollCoverage.unknown,
+            vehicleCategory: 'car',
+          ),
+        ),
+      ],
+    );
+
+TollInventoryDataset _emptyTollInventory() => TollInventoryDataset(
+  version: 'test-tolls-v1',
+  sourceTimestamp: DateTime.utc(2026, 8, 31),
+  records: const [],
+);
+
+TripCameraPackSnapshot _emptyCameraSnapshot() => const TripCameraPackSnapshot(
+  version: 'test-cameras-v1',
+  pack: CameraPack(
+    source: CameraPackSource(
+      name: 'Test only',
+      pageUrl: 'https://example.test/cameras',
+      dataUrl: 'https://example.test/cameras.json',
+      fetchedAtUtc: '2026-08-31T00:00:00Z',
     ),
-  ],
+    cameras: [],
+  ),
+);
+
+TripRouteMapConfig _neutralTripMapConfig() => const TripRouteMapConfig(
+  tileUrlTemplate: 'https://tiles.test/{z}/{x}/{y}.png',
+  attributionLabel: 'Test only',
+  userAgentPackageName: 'co.picoradar.app.dev',
+  forceNeutralFallback: true,
 );
 
 TripPlan _testPlanWithTwoRoutes(TripPlanRequest request) {

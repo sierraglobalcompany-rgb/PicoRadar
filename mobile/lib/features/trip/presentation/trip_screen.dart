@@ -11,12 +11,33 @@ import '../../garage/data/vehicle_profile.dart';
 import '../../pico_placa/domain/bogota_time.dart';
 import '../../vehicle_status/platform/external_launcher.dart';
 import '../application/trip_services.dart';
+import '../data/toll_inventory.dart';
 import '../domain/trip_draft.dart';
 import '../data/trip_municipality_catalog.dart';
 import '../data/trip_plan_client.dart';
+import '../data/trip_route_preview_data.dart';
 import '../domain/trip_plan.dart';
 import 'trip_plan_result.dart';
+import 'trip_route_preview_map.dart';
 import 'trip_screen_content.dart';
+
+final tripRouteMapConfigProvider = Provider<TripRouteMapConfig>((ref) {
+  const tilesApproved = bool.fromEnvironment(
+    'PICORADAR_TRIP_MAP_TILES_APPROVED',
+  );
+  return const TripRouteMapConfig(
+    tileUrlTemplate: String.fromEnvironment(
+      'PICORADAR_TRIP_TILE_URL_TEMPLATE',
+      defaultValue: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    ),
+    attributionLabel: 'OpenStreetMap contributors',
+    userAgentPackageName: String.fromEnvironment(
+      'PICORADAR_TRIP_TILE_USER_AGENT',
+      defaultValue: 'co.picoradar.app',
+    ),
+    forceNeutralFallback: !tilesApproved,
+  );
+});
 
 class TripScreen extends ConsumerStatefulWidget {
   const TripScreen({super.key});
@@ -163,6 +184,12 @@ class _TripScreenState extends ConsumerState<TripScreen>
     final selectedRoute = currentPlan?.routes
         .where((route) => route.id == _selectedRouteId)
         .firstOrNull;
+    final tollInventory = selectedRoute == null
+        ? null
+        : ref.watch(tripTollInventoryProvider);
+    final cameraSnapshot = selectedRoute == null
+        ? null
+        : ref.watch(tripCameraPackSnapshotProvider);
     final originRestriction = ref.watch(
       tripRestrictionProvider((
         municipality: origin,
@@ -224,6 +251,11 @@ class _TripScreenState extends ConsumerState<TripScreen>
               selectedRouteId: selectedRoute.id,
               onRouteSelected: (id) => setState(() => _selectedRouteId = id),
               onSource: _openSource,
+              mapPreview: _buildMapPreview(
+                route: selectedRoute,
+                tollInventory: tollInventory!,
+                cameraSnapshot: cameraSnapshot!,
+              ),
               mapAnchorKey: _mapAnchorKey,
               onViewMap: _scrollToMap,
             )
@@ -333,6 +365,33 @@ class _TripScreenState extends ConsumerState<TripScreen>
       onGoogleMaps: _openGoogleMaps,
       onWaze: _openWaze,
       onInvias: _openInvias,
+    );
+  }
+
+  Widget _buildMapPreview({
+    required TripRouteOption route,
+    required AsyncValue<TollInventoryDataset> tollInventory,
+    required AsyncValue<TripCameraPackSnapshot> cameraSnapshot,
+  }) {
+    return tollInventory.when(
+      data: (tolls) => cameraSnapshot.when(
+        data: (cameras) => TripRoutePreviewMap(
+          routeId: route.id,
+          geometry: route.geometry,
+          tollInventory: tolls,
+          cameraPack: cameras.pack,
+          cameraPackVersion: cameras.version,
+          config: ref.watch(tripRouteMapConfigProvider),
+        ),
+        loading: () => const _TripMapLoading(),
+        error: (error, stackTrace) => _TripMapLoadError(
+          onRetry: () => ref.invalidate(tripCameraPackSnapshotProvider),
+        ),
+      ),
+      loading: () => const _TripMapLoading(),
+      error: (error, stackTrace) => _TripMapLoadError(
+        onRetry: () => ref.invalidate(tripTollInventoryProvider),
+      ),
     );
   }
 
@@ -826,6 +885,46 @@ class _LoadingPane extends StatelessWidget {
     return const Center(
       key: ValueKey('trip-loading'),
       child: CircularProgressIndicator(),
+    );
+  }
+}
+
+class _TripMapLoading extends StatelessWidget {
+  const _TripMapLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      key: ValueKey('trip-map-data-loading'),
+      child: CircularProgressIndicator(),
+    );
+  }
+}
+
+class _TripMapLoadError extends StatelessWidget {
+  const _TripMapLoadError({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'No pudimos cargar los datos locales del mapa. El plan sigue disponible.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.s),
+          TextButton.icon(
+            key: const ValueKey('trip-map-data-retry'),
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reintentar datos'),
+          ),
+        ],
+      ),
     );
   }
 }

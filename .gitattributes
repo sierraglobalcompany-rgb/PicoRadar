@@ -1,1 +1,3 @@
 mobile/assets/datasets/cameras/*.json text eol=lf
+mobile/assets/catalogs/tolls_inventory_v1.json text eol=lf
+data/releases/viaje_r2/**/*.json text eol=lf

@@ -58,6 +58,14 @@ Apps:
 - Los modulos premium/off deben diferenciar disponibilidad sin parecer errores.
 - No usar texto que se corte dentro de tiles.
 
+Viaje:
+- Una sola pagina con scroll vertical; el mapa no crea un segundo scroll vertical competidor.
+- Tras una consulta exitosa, revelar resultados una sola vez y compactar la preparacion sin perder valores; seleccionar otra alternativa no repite el auto-scroll ni la consulta.
+- Resumen 2x3 en ancho estrecho, alternativas verticales de ancho completo y `Ver en mapa` antes del desglose/fuentes.
+- El mapa previo conserva ruta, inicio/fin y capas separadas para peajes, historicos y camaras. Pan, zoom, capas y pantalla ampliada no recalculan ni vuelven a consultar la ruta.
+- Distinguir ubicaciones fisicas de pasos candidatos. Tarifa, cobro, vigencia y sentido desconocidos se muestran como desconocidos; las camaras por distancia sola son proximas al recorrido, no confirmadas para la via/sentido.
+- Si faltan geometria, datos locales o tiles, mantener el plan y mostrar un estado honesto con reintento. Nunca dibujar una linea recta inventada.
+
 Loading:
 - Usar skeletons para cargas visibles de pantalla/tarjeta.
 - Reservar spinners para acciones cortas o estados inevitables de sistema.

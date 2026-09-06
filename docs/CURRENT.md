@@ -1,12 +1,16 @@
 # PicoRadar Current State
 
-## V01B merged; VIAJE-R1 awaiting provider access
+## V01B merged; VIAJE-R2 implemented, provider access still pending
 
 Owner-authorized PR #54 squash: `e9ef37511df3110ffb0fc006ef06be781df432ac`, parent `c1010b5a2d23b2c3c4f8cf00874f4ecfd2780d44`. It preserves the approved V01B HEAD `d84a1765224481e629ab60586e79da35b3cc9841` tree `3e3a6c05bf09c1b059262ba5cf311d3e6b348b6f`. Postmerge Mobile CI `33988444392` passed on that squash. Server CI did not trigger for the visual-only merge. This is bounded V01B approval, not approval of all 43 screens or historical P07/F01/F02 gates.
 
 `integration/VIAJE-R1-real-planner` starts at that exact squash. The 2026-09-05 owner instruction combines R12/S07/F01 into the existing Viaje flow: explicit plan CTA, vehicle-specific departure date/time, real route response presentation, COP toll breakdown and local origin/departure plus destination/ETA restrictions. S07 remains an alias, not a new module. Contract: `docs/contracts/VIAJE_R1.md`.
 
 The development-only Laravel bridge protects a fixed TollGuru endpoint with explicit access/license flags and conservative atomic global budget reservations. It is disabled by default, even with a key. No live access, spending, provider-data license or APK-accessible backend has been approved. Runtime fixtures are absent; missing configuration is an honest error while local restrictions remain usable. Tests with synthetic responses do not demonstrate live Colombian routes or current toll tariffs. Status remains `PARTIAL_WAITING_PROVIDER_ACCESS`; the Viaje PR must stay draft and unmerged until the separate live/physical gates are met.
+
+VIAJE-R2 extends that same flow with the owner-approved responsive one-page hierarchy and a pre-trip map contract. Route geometry travels in the existing preview response and is never persisted. The map associates the selected geometry with the local 184-location toll inventory and the existing 360-camera ANSV pack. Counts distinguish physical locations from candidate passages; cameras remain `nearbyUnconfirmed`, historical toll locations are opt-in, and absent tariffs remain null. The 219 coverage rows, 261 dated rows and 73 rotation/validity rows supplied for national preparation remain quarantined/informational; no new runtime restriction rule was published. Contract: `docs/contracts/VIAJE_R2.md`.
+
+Basemap network access is disabled by default with `PICORADAR_TRIP_MAP_TILES_APPROVED=false`. Enabling it requires an approved provider/license combination and explicit tile URL/user-agent configuration. Without that approval, the vector route, local markers, disclosures and neutral fallback remain usable and no tile request is sent.
 
 Only municipality endpoints, departure and technical vehicle category may leave the phone on the CTA. Plate/vehicle identity and restriction evaluation stay local. Responses/geometries are not persisted. Taxi toll mapping remains unsupported until verified; unknown counts/costs are not zero. No new dependency, schema, permission, account, public deployment or D02 work is authorized. The existing Trip geography asset stays distinct from the RUNT registration catalog.
 

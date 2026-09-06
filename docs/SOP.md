@@ -115,3 +115,12 @@ Antes de release o merge aprobado:
 ### Codegen Gate
 
 Antes de correr `build_runner`, revisar si cambiaron entradas de generacion: tablas Drift, rutas/anotaciones, modelos generados, assets declarados o configuracion que produzca codigo. Si no cambiaron, reportar `CODEGEN_NOT_REQUIRED` y no ejecutar codegen.
+
+## SOP-08 Viaje Map Provider Gate
+
+- `PICORADAR_TRIP_MAP_TILES_APPROVED` permanece `false` por defecto.
+- No habilitar tiles por la sola presencia de una URL o credencial. Registrar primero proveedor, licencia de basemap y compatibilidad con la geometria de rutas.
+- Configuracion aprobada: `PICORADAR_TRIP_TILE_URL_TEMPLATE` y `PICORADAR_TRIP_TILE_USER_AGENT`; nunca incluir secretos en `dart-define`.
+- Tests usan `TileProvider` falso o fallback neutral; no solicitan tiles publicos.
+- Un fallo de tiles no borra geometria, marcadores, conteos ni detalles del plan.
+- Habilitar basemap no autoriza proveedor de rutas, gasto, deploy publico, GPS, background ni navegacion giro a giro.
