@@ -10,7 +10,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:picoradar/app/app_providers.dart';
+import 'package:picoradar/app/shell/app_shell.dart';
+import 'package:picoradar/app/theme/app_theme.dart';
 import 'package:picoradar/features/driving/domain/traffic_camera.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.dart';
@@ -60,6 +63,40 @@ void main() {
     expect(find.text(_evidenceLabel), findsNothing);
     expect(find.byKey(const ValueKey('trip-screen')), findsOneWidget);
   });
+
+  testWidgets('VIAJE-R2C evidence uses the real PicoRadar theme and shell', (
+    tester,
+  ) async {
+    await _pumpScreen(tester);
+
+    expect(find.byType(AppShell), findsOneWidget);
+    expect(find.byKey(const ValueKey('tab-trip')), findsOneWidget);
+    final context = tester.element(find.byType(TripScreen));
+    expect(
+      Theme.of(context).scaffoldBackgroundColor,
+      buildPicoRadarTheme().scaffoldBackgroundColor,
+    );
+  });
+
+  for (final scale in const [1.0, 2.0]) {
+    testWidgets('VIAJE-R2C preparation evidence 360x800 scale $scale', (
+      tester,
+    ) async {
+      await _pumpScreen(tester, size: const Size(360, 800), textScale: scale);
+
+      expect(find.byKey(const ValueKey('trip-location-group')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('trip-departure-group')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('trip-preview')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await _capture(
+        tester,
+        'preparation-360x800-scale-${scale.toStringAsFixed(1)}',
+      );
+    });
+  }
 
   for (final viewport in const [
     (name: '360x800', size: Size(360, 800)),
@@ -175,7 +212,9 @@ void main() {
       await _reveal(tester, const ValueKey('trip-select-route-partial'));
       final readingOffset = _tripScroll(tester).position.pixels;
       final readingFocus = FocusManager.instance.primaryFocus;
-      _press(tester, const ValueKey('trip-select-route-partial'));
+      await tester.tap(
+        find.byKey(const ValueKey('trip-select-route-partial')).hitTestable(),
+      );
       await tester.pumpAndSettle();
 
       expect(harness.client.requests, hasLength(1));
@@ -303,6 +342,29 @@ Future<_Harness> _pumpScreen(
   tester.view.physicalSize = size;
   addTearDown(tester.view.resetDevicePixelRatio);
   addTearDown(tester.view.resetPhysicalSize);
+  final router = GoRouter(
+    initialLocation: AppTab.trip.route.path,
+    routes: [
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            AppShell(navigationShell: navigationShell),
+        branches: [
+          for (final tab in AppTab.values)
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: tab.route.path,
+                  builder: (context, state) => tab == AppTab.trip
+                      ? const TripScreen()
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ),
+        ],
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
 
   await tester.pumpWidget(
     ProviderScope(
@@ -337,10 +399,9 @@ Future<_Harness> _pumpScreen(
           ),
         ),
       ],
-      child: MaterialApp(
-        theme: ThemeData(
-          fontFamily: _evidenceFontPath.isEmpty ? null : 'EvidenceFont',
-        ),
+      child: MaterialApp.router(
+        theme: buildPicoRadarTheme(),
+        routerConfig: router,
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(
             textScaler: TextScaler.linear(textScale),
@@ -364,7 +425,6 @@ Future<_Harness> _pumpScreen(
             ),
           ),
         ),
-        home: const TripScreen(),
       ),
     ),
   );
@@ -379,7 +439,7 @@ Future<void> _submitFixture(
   await _reveal(tester, const ValueKey('trip-standard-vehicle'));
   await tester.tap(find.byKey(const ValueKey('trip-standard-vehicle')));
   await tester.pumpAndSettle();
-  _press(tester, const ValueKey('trip-preview'));
+  await tester.tap(find.byKey(const ValueKey('trip-preview')).hitTestable());
   await tester.pump();
   expect(client.requests, hasLength(1));
   client.complete(_fixturePlan(client.requests.single));
@@ -391,18 +451,6 @@ Future<void> _reveal(WidgetTester tester, Key key) async {
   await tester.ensureVisible(finder);
   await tester.pumpAndSettle();
   expect(finder.hitTestable(), findsOneWidget);
-}
-
-void _press(WidgetTester tester, Key key) {
-  final widget = tester.widget(find.byKey(key));
-  switch (widget) {
-    case ButtonStyleButton(:final onPressed):
-      onPressed?.call();
-    case IconButton(:final onPressed):
-      onPressed?.call();
-    default:
-      fail('The fixture control $key is not pressable.');
-  }
 }
 
 ScrollableState _tripScroll(WidgetTester tester) =>
@@ -439,7 +487,7 @@ Future<void> _loadEvidenceFonts() async {
     fail('VIAJE_VISUAL_ICONS_PATH must name the local Material Icons font.');
   }
   final bytes = await textFont.readAsBytes();
-  final loader = FontLoader('EvidenceFont')
+  final loader = FontLoader('Roboto')
     ..addFont(Future.value(bytes.buffer.asByteData()));
   await loader.load();
   final iconBytes = await iconFont.readAsBytes();
@@ -489,7 +537,7 @@ class _EvidenceBanner extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Color(0xFF3D2B00),
-              fontFamily: 'EvidenceFont',
+              fontFamily: 'Roboto',
               fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
