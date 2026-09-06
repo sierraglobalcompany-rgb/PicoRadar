@@ -55,6 +55,65 @@ void main() {
     expect(find.text('Ver plan de viaje'), findsOneWidget);
   });
 
+  testWidgets(
+    'VIAJE-R2C keeps preparation grouped and the CTA before secondary content',
+    (tester) async {
+      await TripDraftStore(preferences).saveDraft(
+        TripDraft(
+          origin: 'Bogota',
+          destination: 'Medellin',
+          date: DateTime(2026, 9, 7),
+          departureMinute: 600,
+        ),
+      );
+      await _pumpScreen(
+        tester,
+        preferences: preferences,
+        activeVehicle: _vehicle(),
+        size: const Size(360, 800),
+      );
+
+      final locationGroup = find.byKey(const ValueKey('trip-location-group'));
+      final departureGroup = find.byKey(const ValueKey('trip-departure-group'));
+      final preview = find.byKey(const ValueKey('trip-preview'));
+      final secondaryContent = find.text('Pico y placa del viaje');
+
+      expect(locationGroup, findsOneWidget);
+      expect(
+        find.descendant(
+          of: locationGroup,
+          matching: find.byKey(const ValueKey('trip-swap-locations')),
+        ),
+        findsOneWidget,
+      );
+      expect(departureGroup, findsOneWidget);
+      for (final key in const [
+        'trip-date-button',
+        'trip-time-button',
+        'trip-select-vehicle',
+      ]) {
+        expect(
+          find.descendant(
+            of: departureGroup,
+            matching: find.byKey(ValueKey(key)),
+          ),
+          findsOneWidget,
+        );
+      }
+      expect(preview.hitTestable(), findsOneWidget);
+      expect(
+        tester.getTopLeft(preview).dy,
+        lessThan(tester.getTopLeft(secondaryContent).dy),
+      );
+      await tester.tap(preview);
+      await tester.pumpAndSettle();
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'trip-vehicle-focus',
+      );
+    },
+  );
+
   for (final mode in ['false', 'throw', 'unsafe']) {
     testWidgets('Viaje source handoff handles $mode safely', (tester) async {
       final sourceLauncher = _FakeExternalLauncher()
