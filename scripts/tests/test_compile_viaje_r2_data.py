@@ -127,6 +127,26 @@ class ReleaseCompilerTests(unittest.TestCase):
                 source_row,
             )
 
+        rotation_decisions = {
+            row["sourceJurisdictionKey"]: row
+            for row in ledger["rotationValidityDecisions"]
+        }
+        self.assertEqual(len(rotation_decisions), 73)
+        self.assertEqual(
+            set(rotation_decisions),
+            {
+                row["sourceJurisdictionKey"]
+                for row in source["rotationsAndValidity"]
+            },
+        )
+        for source_row in source["rotationsAndValidity"]:
+            decision = rotation_decisions[source_row["sourceJurisdictionKey"]]
+            self.assertEqual(decision["sourceProjection"], source_row)
+            self.assertEqual(decision["sourceRef"], source_row["sourceRef"])
+            self.assertEqual(decision["decision"], "informational_only")
+            self.assertFalse(decision["publishable"])
+            self.assertFalse(decision["runtimePublished"])
+
     def test_maps_only_the_five_reviewed_geography_aliases(self):
         compiler.compile_release(SOURCE_PACKAGE, self.output_root)
         ledger = read_json(
@@ -251,6 +271,7 @@ class CheckedInReleaseTests(unittest.TestCase):
         self.assertEqual(len(asset["records"]), 184)
         self.assertEqual(len(restrictions["coverageDecisions"]), 219)
         self.assertEqual(len(restrictions["datedScheduleDecisions"]), 261)
+        self.assertEqual(len(restrictions["rotationValidityDecisions"]), 73)
         self.assertEqual(report["tariffCellsNull"], 1288)
 
 

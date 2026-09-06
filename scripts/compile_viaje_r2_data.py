@@ -219,7 +219,37 @@ def _restriction_ledger(pico: dict, repo_root: Path, restriction_hash: str) -> d
             }
         )
 
-    if len(coverage_decisions) != 219 or len(dated_decisions) != 261:
+    rotation_decisions = []
+    rotation_keys = set()
+    for row in pico.get("rotationsAndValidity", []):
+        source_key = row["sourceJurisdictionKey"]
+        if source_key in rotation_keys:
+            raise ValueError(f"Duplicate rotation/validity source key: {source_key}")
+        rotation_keys.add(source_key)
+        if not row.get("valuesBySourceHeader"):
+            raise ValueError(
+                f"Rotation/validity source values are required: {source_key}"
+            )
+        rotation_decisions.append(
+            {
+                "sourceJurisdictionKey": source_key,
+                "decision": "informational_only",
+                "publishable": False,
+                "runtimePublished": False,
+                "quarantineReasons": _unique_reasons(
+                    COMMON_RESTRICTION_REASONS,
+                    "rotation_validity_is_not_a_runtime_rule",
+                ),
+                "sourceRef": row["sourceRef"],
+                "sourceProjection": dict(row),
+            }
+        )
+
+    if (
+        len(coverage_decisions) != 219
+        or len(dated_decisions) != 261
+        or len(rotation_decisions) != 73
+    ):
         raise ValueError("Restriction source accounting changed")
     explicit_holds = sum(
         "source_explicit_no_publish" in row["quarantineReasons"]
@@ -241,6 +271,7 @@ def _restriction_ledger(pico: dict, repo_root: Path, restriction_hash: str) -> d
         "mappedAppJurisdictionIds": sorted(mapped_ids),
         "coverageDecisions": coverage_decisions,
         "datedScheduleDecisions": dated_decisions,
+        "rotationValidityDecisions": rotation_decisions,
     }
 
 

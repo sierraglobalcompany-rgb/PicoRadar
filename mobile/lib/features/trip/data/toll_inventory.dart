@@ -232,9 +232,14 @@ class TollInventoryStore {
 
   File get snapshotHashFile => File('${snapshotFile.path}.sha256');
 
-  TransactionalDatasetImporter get transactionalImporter => _prepareImport;
+  TransactionalDatasetImporter get transactionalImporter =>
+      TransactionalDatasetImporter(
+        prepare: _prepareImport,
+        isInstalledVersionUsable: _isInstalledVersionUsable,
+      );
 
   Future<TollInventoryDataset> load() async {
+    final installed = await _installedVersion();
     final snapshotExists = await snapshotFile.exists();
     final hashExists = await snapshotHashFile.exists();
     if (snapshotExists != hashExists) {
@@ -243,9 +248,25 @@ class TollInventoryStore {
       );
     }
     if (!snapshotExists) {
+      if (installed?.status == 'installed') {
+        throw const DatasetSyncException(
+          'Installed toll inventory snapshot and hash sidecar are missing.',
+        );
+      }
       return TollInventoryDataset.fromJsonString(await bundledLoader());
     }
 
+    if (installed == null || installed.status != 'installed') {
+      throw const DatasetSyncException(
+        'Toll inventory snapshot has no installed dataset version.',
+      );
+    }
+    return _loadInstalledSnapshot(installed);
+  }
+
+  Future<TollInventoryDataset> _loadInstalledSnapshot(
+    DatasetVersion installed,
+  ) async {
     final expectedHash = (await snapshotHashFile.readAsString()).trim();
     if (!RegExp(r'^[a-f0-9]{64}$').hasMatch(expectedHash)) {
       throw const DatasetSyncException(
@@ -258,10 +279,7 @@ class TollInventoryStore {
         'Toll inventory snapshot does not match its SHA-256 sidecar.',
       );
     }
-    final installed = await _installedVersion();
-    if (installed == null ||
-        installed.status != 'installed' ||
-        installed.sha256 != expectedHash) {
+    if (installed.sha256 != expectedHash) {
       throw const DatasetSyncException(
         'Toll inventory snapshot hash does not match dataset_versions.',
       );
@@ -275,6 +293,30 @@ class TollInventoryStore {
       );
     }
     return dataset;
+  }
+
+  Future<bool> _isInstalledVersionUsable(
+    AppDatabase targetDatabase,
+    DatasetVersion installed,
+  ) async {
+    if (!identical(targetDatabase, database) ||
+        installed.datasetKey != tollInventoryDatasetKey ||
+        installed.status != 'installed') {
+      return false;
+    }
+    try {
+      final snapshotExists = await snapshotFile.exists();
+      final hashExists = await snapshotHashFile.exists();
+      if (!snapshotExists || !hashExists) {
+        return false;
+      }
+      await _loadInstalledSnapshot(installed);
+      return true;
+    } on DatasetSyncException {
+      return false;
+    } on FileSystemException {
+      return false;
+    }
   }
 
   Future<PreparedDatasetImport> _prepareImport(

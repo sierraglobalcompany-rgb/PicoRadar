@@ -48143,6 +48143,3439 @@
     "co-vac-cali"
   ],
   "newRuntimeRulesPublished": 0,
+  "rotationValidityDecisions": [
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:antioquia:barbosa",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:antioquia:barbosa",
+        "sourceRef": {
+          "row": 2,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Barbosa",
+          "Departamento": "Antioquia",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Moto - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Moto - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Moto - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Moto - última rotación/cambio": "2026-08-03",
+          "Observaciones": "Rotación coordinada del Valle de Aburrá; revisar vías exentas específicas por municipio.",
+          "Particular - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Particular - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Particular - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Particular - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Particular - última rotación/cambio": "2026-08-03",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 2,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:antioquia:bello",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:antioquia:bello",
+        "sourceRef": {
+          "row": 3,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Bello",
+          "Departamento": "Antioquia",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Moto - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Moto - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Moto - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Moto - última rotación/cambio": "2026-08-03",
+          "Observaciones": "Rotación coordinada del Valle de Aburrá; revisar vías exentas específicas por municipio.",
+          "Particular - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Particular - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Particular - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Particular - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Particular - última rotación/cambio": "2026-08-03",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 3,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:antioquia:caldas",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:antioquia:caldas",
+        "sourceRef": {
+          "row": 4,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Caldas",
+          "Departamento": "Antioquia",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Moto - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Moto - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Moto - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Moto - última rotación/cambio": "2026-08-03",
+          "Observaciones": "Rotación coordinada del Valle de Aburrá; revisar vías exentas específicas por municipio.",
+          "Particular - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Particular - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Particular - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Particular - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Particular - última rotación/cambio": "2026-08-03",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 4,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:antioquia:copacabana",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:antioquia:copacabana",
+        "sourceRef": {
+          "row": 5,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Copacabana",
+          "Departamento": "Antioquia",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Moto - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Moto - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Moto - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Moto - última rotación/cambio": "2026-08-03",
+          "Observaciones": "Rotación coordinada del Valle de Aburrá; revisar vías exentas específicas por municipio.",
+          "Particular - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Particular - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Particular - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Particular - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Particular - última rotación/cambio": "2026-08-03",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 5,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:antioquia:envigado",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:antioquia:envigado",
+        "sourceRef": {
+          "row": 6,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Envigado",
+          "Departamento": "Antioquia",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Moto - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Moto - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Moto - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Moto - última rotación/cambio": "2026-08-03",
+          "Observaciones": "Rotación coordinada del Valle de Aburrá; revisar vías exentas específicas por municipio.",
+          "Particular - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Particular - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Particular - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Particular - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Particular - última rotación/cambio": "2026-08-03",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 6,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:antioquia:girardota",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:antioquia:girardota",
+        "sourceRef": {
+          "row": 7,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Girardota",
+          "Departamento": "Antioquia",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Moto - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Moto - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Moto - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Moto - última rotación/cambio": "2026-08-03",
+          "Observaciones": "Rotación coordinada del Valle de Aburrá; revisar vías exentas específicas por municipio.",
+          "Particular - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Particular - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Particular - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Particular - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Particular - última rotación/cambio": "2026-08-03",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 7,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:antioquia:itagui",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:antioquia:itagui",
+        "sourceRef": {
+          "row": 8,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Itagüí",
+          "Departamento": "Antioquia",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Moto - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Moto - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Moto - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Moto - última rotación/cambio": "2026-08-03",
+          "Observaciones": "Rotación coordinada del Valle de Aburrá; revisar vías exentas específicas por municipio.",
+          "Particular - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Particular - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Particular - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Particular - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Particular - última rotación/cambio": "2026-08-03",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 8,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:antioquia:la-estrella",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:antioquia:la-estrella",
+        "sourceRef": {
+          "row": 9,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "La Estrella",
+          "Departamento": "Antioquia",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Moto - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Moto - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Moto - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Moto - última rotación/cambio": "2026-08-03",
+          "Observaciones": "Rotación coordinada del Valle de Aburrá; revisar vías exentas específicas por municipio.",
+          "Particular - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Particular - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Particular - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Particular - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Particular - última rotación/cambio": "2026-08-03",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 9,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:antioquia:medellin",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:antioquia:medellin",
+        "sourceRef": {
+          "row": 10,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Medellín",
+          "Departamento": "Antioquia",
+          "Días desde 05-09-2026": 25,
+          "Moto - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Moto - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Moto - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Moto - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Moto - última rotación/cambio": "2026-08-03",
+          "Observaciones": "Rotación coordinada del Valle de Aburrá; revisar vías exentas específicas por municipio.",
+          "Particular - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Particular - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Particular - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Particular - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Particular - última rotación/cambio": "2026-08-03",
+          "Próximo hito fechado confirmado/operativo": "2026-09-30",
+          "Taxi - certeza": "Calendario mensual; fecha/dígitos futuros pendientes",
+          "Taxi - frecuencia": "Cada taxi: una restricción cada 2 semanas; calendario operativo mensual",
+          "Taxi - próximo evento": "Octubre 2026: calendario siguiente por actualizar",
+          "Taxi - vence": "Calendario actual: 2026-09-30",
+          "Taxi - última rotación/cambio": "Calendario septiembre 2026 publicado 2026-09-01",
+          "Tipo de hito": "Taxi: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 10,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:antioquia:rionegro",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:antioquia:rionegro",
+        "sourceRef": {
+          "row": 11,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Rionegro",
+          "Departamento": "Antioquia",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "No se identificó pico y placa general vigente certificado al corte.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 11,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:antioquia:sabaneta",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:antioquia:sabaneta",
+        "sourceRef": {
+          "row": 12,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Sabaneta",
+          "Departamento": "Antioquia",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Moto - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Moto - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Moto - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Moto - última rotación/cambio": "2026-08-03",
+          "Observaciones": "Rotación coordinada del Valle de Aburrá; revisar vías exentas específicas por municipio.",
+          "Particular - certeza": "ESTIMADA por periodicidad; no confirmada",
+          "Particular - frecuencia": "Semestral (la Alcaldía publica una rotación por semestre)",
+          "Particular - próximo evento": "Primer semestre 2027; fecha oficial aún no publicada",
+          "Particular - vence": "Segundo semestre 2026; fecha final exacta no expresa en la página consultada",
+          "Particular - última rotación/cambio": "2026-08-03",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 12,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:baranoa",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:baranoa",
+        "sourceRef": {
+          "row": 13,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Baranoa",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 13,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:barranquilla",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:barranquilla",
+        "sourceRef": {
+          "row": 14,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Barranquilla",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": null,
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "No se identificó pico y placa general vigente al 05-09-2026. El pico y placa de taxis fue eliminado en 2025; medidas temporales de Carnaval no están vigentes en septiembre.",
+          "Particular - certeza": null,
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": null,
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 14,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:campo-de-la-cruz",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:campo-de-la-cruz",
+        "sourceRef": {
+          "row": 15,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Campo de la Cruz",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 15,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:candelaria",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:candelaria",
+        "sourceRef": {
+          "row": 16,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Candelaria",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 16,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:galapa",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:galapa",
+        "sourceRef": {
+          "row": 17,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Galapa",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 17,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:juan-de-acosta",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:juan-de-acosta",
+        "sourceRef": {
+          "row": 18,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Juan de Acosta",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 18,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:malambo",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:malambo",
+        "sourceRef": {
+          "row": 19,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Malambo",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 19,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:manati",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:manati",
+        "sourceRef": {
+          "row": 20,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Manatí",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 20,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:palmar-de-varela",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:palmar-de-varela",
+        "sourceRef": {
+          "row": 21,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Palmar de Varela",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 21,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:piojo",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:piojo",
+        "sourceRef": {
+          "row": 22,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Piojó",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 22,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:polonuevo",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:polonuevo",
+        "sourceRef": {
+          "row": 23,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Polonuevo",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 23,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:ponedera",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:ponedera",
+        "sourceRef": {
+          "row": 24,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Ponedera",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 24,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:puerto-colombia",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:puerto-colombia",
+        "sourceRef": {
+          "row": 25,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Puerto Colombia",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 25,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:repelon",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:repelon",
+        "sourceRef": {
+          "row": 26,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Repelón",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 26,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:sabanagrande",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:sabanagrande",
+        "sourceRef": {
+          "row": 27,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Sabanagrande",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 27,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:sabanalarga",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:sabanalarga",
+        "sourceRef": {
+          "row": 28,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Sabanalarga",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 28,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:santa-lucia",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:santa-lucia",
+        "sourceRef": {
+          "row": 29,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Santa Lucía",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 29,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:santo-tomas",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:santo-tomas",
+        "sourceRef": {
+          "row": 30,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Santo Tomás",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 30,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:soledad",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:soledad",
+        "sourceRef": {
+          "row": 31,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Soledad",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Pendiente",
+          "Moto - frecuencia": "No se verificó periodicidad fija",
+          "Moto - próximo evento": "Pendiente de certificar acto municipal actualizado",
+          "Moto - vence": "No se verificó vencimiento vigente",
+          "Moto - última rotación/cambio": "Acto base anterior; última rotación 2026 no certificada",
+          "Observaciones": null,
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 31,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:suan",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:suan",
+        "sourceRef": {
+          "row": 32,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Suan",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 32,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:tubara",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:tubara",
+        "sourceRef": {
+          "row": 33,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Tubará",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 33,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:atlantico:usiacuri",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:atlantico:usiacuri",
+        "sourceRef": {
+          "row": 34,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Usiacurí",
+          "Departamento": "Atlántico",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija / revisar decreto",
+          "Moto - frecuencia": "Sin periodicidad fija publicada; esquema departamental 2026",
+          "Moto - próximo evento": "No publicada",
+          "Moto - vence": "No se localizó fecha de vencimiento expresa en la comunicación oficial consultada",
+          "Moto - última rotación/cambio": "2026-01-01",
+          "Observaciones": "Medida departamental para motos/motocarros/cuatrimotos.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 34,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:bogota-d-c:bogota",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:bogota-d-c:bogota",
+        "sourceRef": {
+          "row": 35,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Bogotá",
+          "Departamento": "Bogotá D.C.",
+          "Días desde 05-09-2026": 25,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": null,
+          "Particular - certeza": "Sin fecha fija",
+          "Particular - frecuencia": "Sin periodicidad fija; revisión periódica",
+          "Particular - próximo evento": "No programada. Si cambia, el Distrito debe anunciarlo con anticipación.",
+          "Particular - vence": "Sin vencimiento publicado; vigente hasta nuevo acto",
+          "Particular - última rotación/cambio": "2023-01-10",
+          "Próximo hito fechado confirmado/operativo": "2026-09-30",
+          "Taxi - certeza": "Vencimiento confirmado del calendario / siguiente calendario pendiente",
+          "Taxi - frecuencia": "Los dígitos cambian a diario; el calendario se publica por mes",
+          "Taxi - próximo evento": "2026-10-01: debe entrar calendario de octubre; dígitos aún no publicados al corte",
+          "Taxi - vence": "2026-09-30",
+          "Taxi - última rotación/cambio": "2026-09-01 (inicio del calendario mensual actual)",
+          "Tipo de hito": "Taxi: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 35,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:bolivar:cartagena",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:bolivar:cartagena",
+        "sourceRef": {
+          "row": 36,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Cartagena",
+          "Departamento": "Bolívar",
+          "Días desde 05-09-2026": 27,
+          "Moto - certeza": "CONFIRMADA en Decreto 0015/2026",
+          "Moto - frecuencia": "4 periodos predefinidos en 2026 (~trimestral)",
+          "Moto - próximo evento": "2026-10-05: inicia cuarta rotación; vigencia hasta 2027-01-22",
+          "Moto - vence": "2026-10-02",
+          "Moto - última rotación/cambio": "2026-06-30",
+          "Observaciones": null,
+          "Particular - certeza": "CONFIRMADA en Decreto 0015/2026",
+          "Particular - frecuencia": "4 periodos predefinidos en 2026 (~trimestral)",
+          "Particular - próximo evento": "2026-10-05: inicia cuarta rotación; vigencia hasta 2027-01-22",
+          "Particular - vence": "2026-10-02",
+          "Particular - última rotación/cambio": "2026-06-30",
+          "Próximo hito fechado confirmado/operativo": "2026-10-02",
+          "Taxi - certeza": "Pendiente",
+          "Taxi - frecuencia": "Calendario mensual",
+          "Taxi - próximo evento": "Pendiente localizar/publicar calendario vigente",
+          "Taxi - vence": "Calendario de septiembre no certificado en esta revisión",
+          "Taxi - última rotación/cambio": "Último calendario oficial certificado en la base: julio 2026",
+          "Tipo de hito": "Particular: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 36,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:bolivar:turbaco",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:bolivar:turbaco",
+        "sourceRef": {
+          "row": 37,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Turbaco",
+          "Departamento": "Bolívar",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "Sin pico y placa general vigente verificado al corte.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 37,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:boyaca:duitama",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:boyaca:duitama",
+        "sourceRef": {
+          "row": 38,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Duitama",
+          "Departamento": "Boyacá",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": null,
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "Fuentes contradictorias; no publicar regla hasta certificar acto vigente.",
+          "Particular - certeza": null,
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": null,
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 38,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:boyaca:tunja",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:boyaca:tunja",
+        "sourceRef": {
+          "row": 39,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Tunja",
+          "Departamento": "Boyacá",
+          "Días desde 05-09-2026": 117,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": null,
+          "Particular - certeza": "Pendiente fecha oficial",
+          "Particular - frecuencia": "No se verificó periodicidad fija",
+          "Particular - próximo evento": "2027: nueva rotación/acto por confirmar",
+          "Particular - vence": "2026-12-31 (fuente secundaria actual)",
+          "Particular - última rotación/cambio": "Fecha exacta de última rotación no localizada en fuente oficial abierta",
+          "Próximo hito fechado confirmado/operativo": "2026-12-31",
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": "Particular: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 39,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:caldas:manizales",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:caldas:manizales",
+        "sourceRef": {
+          "row": 40,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Manizales",
+          "Departamento": "Caldas",
+          "Días desde 05-09-2026": 10,
+          "Moto - certeza": null,
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": "2026-09-15 (fin de la medida temporal de particulares)",
+          "Moto - última rotación/cambio": "2026-09-01",
+          "Observaciones": "La restricción de particulares es temporal; taxis requieren calendario separado.",
+          "Particular - certeza": "VENCIMIENTO CONFIRMADO",
+          "Particular - frecuencia": "Excepcional por emergencia; sin periodicidad fija",
+          "Particular - próximo evento": "2026-09-16: finaliza salvo nueva prórroga/modificación",
+          "Particular - vence": "2026-09-15",
+          "Particular - última rotación/cambio": "2026-09-01 (prórroga mediante Decreto 0292/2026)",
+          "Próximo hito fechado confirmado/operativo": "2026-09-15",
+          "Taxi - certeza": "NO PUBLICAR automáticamente sin fuente oficial municipal",
+          "Taxi - frecuencia": "Calendario diario/mensual",
+          "Taxi - próximo evento": "Octubre 2026: calendario pendiente de certificar",
+          "Taxi - vence": "Calendario consultado: 2026-09-30",
+          "Taxi - última rotación/cambio": "Calendario septiembre 2026",
+          "Tipo de hito": "Particular: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 40,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:caqueta:florencia",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:caqueta:florencia",
+        "sourceRef": {
+          "row": 41,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Florencia",
+          "Departamento": "Caquetá",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "No se encontró una regla general vigente certificada.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 41,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:casanare:yopal",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:casanare:yopal",
+        "sourceRef": {
+          "row": 42,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Yopal",
+          "Departamento": "Casanare",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "No se encontró una regla general vigente certificada.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 42,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:cauca:popayan",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:cauca:popayan",
+        "sourceRef": {
+          "row": 43,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Popayán",
+          "Departamento": "Cauca",
+          "Días desde 05-09-2026": 117,
+          "Moto - certeza": "Vencimiento confirmado / siguiente fecha pendiente",
+          "Moto - frecuencia": "Semestral (dos periodos definidos en el Decreto 2026)",
+          "Moto - próximo evento": "Enero 2027: nuevo acto/rotación; fecha exacta aún no publicada",
+          "Moto - vence": "2026-12-31",
+          "Moto - última rotación/cambio": "2026-07-06",
+          "Observaciones": null,
+          "Particular - certeza": "Vencimiento confirmado / siguiente fecha pendiente",
+          "Particular - frecuencia": "Semestral (dos periodos definidos en el Decreto 2026)",
+          "Particular - próximo evento": "Enero 2027: nuevo acto/rotación; fecha exacta aún no publicada",
+          "Particular - vence": "2026-12-31",
+          "Particular - última rotación/cambio": "2026-07-06",
+          "Próximo hito fechado confirmado/operativo": "2026-12-31",
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": "Particular: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 43,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:cesar:valledupar",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:cesar:valledupar",
+        "sourceRef": {
+          "row": 44,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Valledupar",
+          "Departamento": "Cesar",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "No se encontró una regla general vigente certificada.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 44,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:choco:quibdo",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:choco:quibdo",
+        "sourceRef": {
+          "row": 45,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Quibdó",
+          "Departamento": "Chocó",
+          "Días desde 05-09-2026": 117,
+          "Moto - certeza": "Vencimiento actual reportado; próxima fecha no oficial",
+          "Moto - frecuencia": "Periodo semestral 2026 según calendario consultado",
+          "Moto - próximo evento": "Enero 2027: nueva rotación/acto por confirmar",
+          "Moto - vence": "2026-12-31",
+          "Moto - última rotación/cambio": "2026-07-06",
+          "Observaciones": null,
+          "Particular - certeza": "Vencimiento actual reportado; próxima fecha no oficial",
+          "Particular - frecuencia": "Periodo semestral 2026 según calendario consultado",
+          "Particular - próximo evento": "Enero 2027: nueva rotación/acto por confirmar",
+          "Particular - vence": "2026-12-31",
+          "Particular - última rotación/cambio": "2026-07-06",
+          "Próximo hito fechado confirmado/operativo": "2026-12-31",
+          "Taxi - certeza": null,
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": "Particular: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 45,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:cundinamarca:fusagasuga",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:cundinamarca:fusagasuga",
+        "sourceRef": {
+          "row": 46,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Fusagasugá",
+          "Departamento": "Cundinamarca",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "No se encontró una regla general vigente certificada.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 46,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:cundinamarca:soacha",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:cundinamarca:soacha",
+        "sourceRef": {
+          "row": 47,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Soacha",
+          "Departamento": "Cundinamarca",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "No mezclar taxi (servicio público individual) con transporte público colectivo.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Requiere ficha separada para transporte colectivo",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 47,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:cordoba:monteria",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:cordoba:monteria",
+        "sourceRef": {
+          "row": 48,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Montería",
+          "Departamento": "Córdoba",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "No se encontró una regla general vigente certificada.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 48,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:cordoba:santa-cruz-de-lorica",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:cordoba:santa-cruz-de-lorica",
+        "sourceRef": {
+          "row": 49,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Santa Cruz de Lorica",
+          "Departamento": "Córdoba",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "No se encontró una regla general vigente certificada.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 49,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:huila:neiva",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:huila:neiva",
+        "sourceRef": {
+          "row": 50,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Neiva",
+          "Departamento": "Huila",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "No se encontró una regla general vigente certificada.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 50,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:huila:pitalito",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:huila:pitalito",
+        "sourceRef": {
+          "row": 51,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Pitalito",
+          "Departamento": "Huila",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": null,
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "Fuentes secundarias reportan medida; falta certificar acto municipal vigente.",
+          "Particular - certeza": null,
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": null,
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 51,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:magdalena:santa-marta",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:magdalena:santa-marta",
+        "sourceRef": {
+          "row": 52,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Santa Marta",
+          "Departamento": "Magdalena",
+          "Días desde 05-09-2026": 54,
+          "Moto - certeza": "Vencimiento confirmado",
+          "Moto - frecuencia": "Vigencia anual del decreto actual; no necesariamente rota dígitos cada año",
+          "Moto - próximo evento": "2026-10-30: requiere prórroga/nuevo decreto",
+          "Moto - vence": "2026-10-29",
+          "Moto - última rotación/cambio": "2025-10-29",
+          "Observaciones": null,
+          "Particular - certeza": "Vencimiento confirmado",
+          "Particular - frecuencia": "No se verificó una cadencia fija; medida por decreto temporal",
+          "Particular - próximo evento": "2026-11-09: requiere prórroga/nuevo decreto para continuar",
+          "Particular - vence": "2026-11-08",
+          "Particular - última rotación/cambio": "2026-05-08",
+          "Próximo hito fechado confirmado/operativo": "2026-10-29",
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": "Moto: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 52,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:meta:villavicencio",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:meta:villavicencio",
+        "sourceRef": {
+          "row": 53,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Villavicencio",
+          "Departamento": "Meta",
+          "Días desde 05-09-2026": 108,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": null,
+          "Particular - certeza": "VENCIMIENTO CONFIRMADO; próximo esquema pendiente",
+          "Particular - frecuencia": "Vigencia anual 2026; NO implica que rote automáticamente cada año",
+          "Particular - próximo evento": "Nuevo acto 2027: fecha/dígitos aún no publicados",
+          "Particular - vence": "2026-12-22",
+          "Particular - última rotación/cambio": "2026-01-26",
+          "Próximo hito fechado confirmado/operativo": "2026-12-22",
+          "Taxi - certeza": null,
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": "Particular: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 53,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:narino:ipiales",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:narino:ipiales",
+        "sourceRef": {
+          "row": 54,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Ipiales",
+          "Departamento": "Nariño",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "Sin pico y placa general vigente verificado al corte.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 54,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:narino:pasto",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:narino:pasto",
+        "sourceRef": {
+          "row": 55,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Pasto",
+          "Departamento": "Nariño",
+          "Días desde 05-09-2026": 19,
+          "Moto - certeza": "VENCIMIENTO CONFIRMADO; siguiente regulación pendiente",
+          "Moto - frecuencia": "Ciclo semanal: 1→2→3→4→5 y vuelve a 1",
+          "Moto - próximo evento": "2026-09-25: requiere nuevo acto para continuar",
+          "Moto - vence": "2026-09-24 (vigencia de 2 meses desde Decreto 0122 del 24-07-2026)",
+          "Moto - última rotación/cambio": "2026-07-28: inicia con Ciclo 3",
+          "Observaciones": "Decreto 0122/2026. Transporte público colectivo/especial/por carretera está exento; taxi individual no está exento en general (solo excepción puntual por reparación/mantenimiento).",
+          "Particular - certeza": "VENCIMIENTO CONFIRMADO; siguiente regulación pendiente",
+          "Particular - frecuencia": "Ciclo semanal: 1→2→3→4→5 y vuelve a 1",
+          "Particular - próximo evento": "2026-09-25: requiere nuevo acto para continuar",
+          "Particular - vence": "2026-09-24 (vigencia de 2 meses desde Decreto 0122 del 24-07-2026)",
+          "Particular - última rotación/cambio": "2026-07-28: inicia con Ciclo 3",
+          "Próximo hito fechado confirmado/operativo": "2026-09-24",
+          "Taxi - certeza": "VENCIMIENTO CONFIRMADO; siguiente regulación pendiente",
+          "Taxi - frecuencia": "Ciclo semanal: 1→2→3→4→5 y vuelve a 1",
+          "Taxi - próximo evento": "2026-09-25: requiere nuevo acto para continuar",
+          "Taxi - vence": "2026-09-24 (vigencia de 2 meses desde Decreto 0122 del 24-07-2026)",
+          "Taxi - última rotación/cambio": "2026-07-28: inicia con Ciclo 3",
+          "Tipo de hito": "Particular: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 55,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:norte-de-santander:cucuta",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:norte-de-santander:cucuta",
+        "sourceRef": {
+          "row": 56,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Cúcuta",
+          "Departamento": "Norte de Santander",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija",
+          "Moto - frecuencia": "Sin periodicidad fija; rige hasta modificación",
+          "Moto - próximo evento": "No programada",
+          "Moto - vence": "Sin fecha final expresa localizada",
+          "Moto - última rotación/cambio": "2024-04-29 (Decreto 0212/2024)",
+          "Observaciones": "El Decreto 0212/2024 es de San José de Cúcuta. Para el pico y placa de Cúcuta considera placas matriculadas en Cúcuta, Los Patios, Villa del Rosario y El Zulia; eso NO crea automáticamente una norma municipal idéntica en esos otros municipios.",
+          "Particular - certeza": "Sin fecha fija",
+          "Particular - frecuencia": "Sin periodicidad fija; rige hasta modificación",
+          "Particular - próximo evento": "No programada",
+          "Particular - vence": "Sin fecha final expresa localizada",
+          "Particular - última rotación/cambio": "2024-04-29 (Decreto 0212/2024)",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "NO PUBLICAR dígitos hasta certificar acto 2026",
+          "Taxi - frecuencia": "Secretaría fija la secuencia mediante acto administrativo",
+          "Taxi - próximo evento": "Pendiente",
+          "Taxi - vence": "Sin calendario oficial septiembre localizado en esta auditoría",
+          "Taxi - última rotación/cambio": "Decreto base 0212/2024; calendario 2026 no localizado en fuente oficial",
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 56,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:norte-de-santander:el-zulia",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:norte-de-santander:el-zulia",
+        "sourceRef": {
+          "row": 57,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "El Zulia",
+          "Departamento": "Norte de Santander",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Contexto de placa metropolitana, no norma local",
+          "Moto - frecuencia": "No certificada localmente",
+          "Moto - próximo evento": "No certificada localmente",
+          "Moto - vence": "No certificada localmente",
+          "Moto - última rotación/cambio": "No aplica como norma municipal propia en esta auditoría",
+          "Observaciones": "La fila no debe interpretarse como pico y placa municipal propio. El Decreto 0212/2024 de Cúcuta usa estas matrículas como 'placas del área metropolitana' cuando circulan dentro de Cúcuta.",
+          "Particular - certeza": "Contexto de placa metropolitana, no norma local",
+          "Particular - frecuencia": "No certificada localmente",
+          "Particular - próximo evento": "No certificada localmente",
+          "Particular - vence": "No certificada localmente",
+          "Particular - última rotación/cambio": "No aplica como norma municipal propia en esta auditoría",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": null,
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 57,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:norte-de-santander:los-patios",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:norte-de-santander:los-patios",
+        "sourceRef": {
+          "row": 58,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Los Patios",
+          "Departamento": "Norte de Santander",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Contexto de placa metropolitana, no norma local",
+          "Moto - frecuencia": "No certificada localmente",
+          "Moto - próximo evento": "No certificada localmente",
+          "Moto - vence": "No certificada localmente",
+          "Moto - última rotación/cambio": "No aplica como norma municipal propia en esta auditoría",
+          "Observaciones": "La fila no debe interpretarse como pico y placa municipal propio. El Decreto 0212/2024 de Cúcuta usa estas matrículas como 'placas del área metropolitana' cuando circulan dentro de Cúcuta.",
+          "Particular - certeza": "Contexto de placa metropolitana, no norma local",
+          "Particular - frecuencia": "No certificada localmente",
+          "Particular - próximo evento": "No certificada localmente",
+          "Particular - vence": "No certificada localmente",
+          "Particular - última rotación/cambio": "No aplica como norma municipal propia en esta auditoría",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": null,
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 58,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:norte-de-santander:ocana",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:norte-de-santander:ocana",
+        "sourceRef": {
+          "row": 59,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Ocaña",
+          "Departamento": "Norte de Santander",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Pendiente",
+          "Moto - frecuencia": "No se certificó periodicidad fija",
+          "Moto - próximo evento": "Pendiente verificar acto de continuidad/rotación 2026",
+          "Moto - vence": "No se certificó vencimiento actual",
+          "Moto - última rotación/cambio": "Acto base: Decreto 049 de 2025",
+          "Observaciones": null,
+          "Particular - certeza": "Pendiente",
+          "Particular - frecuencia": "No se certificó periodicidad fija",
+          "Particular - próximo evento": "Pendiente verificar acto de continuidad/rotación 2026",
+          "Particular - vence": "No se certificó vencimiento actual",
+          "Particular - última rotación/cambio": "Acto base: Decreto 049 de 2025",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 59,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:norte-de-santander:pamplona",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:norte-de-santander:pamplona",
+        "sourceRef": {
+          "row": 60,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Pamplona",
+          "Departamento": "Norte de Santander",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": null,
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "Acto vigente y calendario 2026 por certificar.",
+          "Particular - certeza": null,
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": null,
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 60,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:norte-de-santander:villa-del-rosario",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:norte-de-santander:villa-del-rosario",
+        "sourceRef": {
+          "row": 61,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Villa del Rosario",
+          "Departamento": "Norte de Santander",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Contexto de placa metropolitana, no norma local",
+          "Moto - frecuencia": "No certificada localmente",
+          "Moto - próximo evento": "No certificada localmente",
+          "Moto - vence": "No certificada localmente",
+          "Moto - última rotación/cambio": "No aplica como norma municipal propia en esta auditoría",
+          "Observaciones": "La fila no debe interpretarse como pico y placa municipal propio. El Decreto 0212/2024 de Cúcuta usa estas matrículas como 'placas del área metropolitana' cuando circulan dentro de Cúcuta.",
+          "Particular - certeza": "Contexto de placa metropolitana, no norma local",
+          "Particular - frecuencia": "No certificada localmente",
+          "Particular - próximo evento": "No certificada localmente",
+          "Particular - vence": "No certificada localmente",
+          "Particular - última rotación/cambio": "No aplica como norma municipal propia en esta auditoría",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": null,
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 61,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:quindio:armenia",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:quindio:armenia",
+        "sourceRef": {
+          "row": 62,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Armenia",
+          "Departamento": "Quindío",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Estimado por plazo de 6 meses",
+          "Moto - frecuencia": "Vigencias de 6 meses; la prórroga NO implicó rotar los dígitos",
+          "Moto - próximo evento": "Finales de noviembre 2026: prórroga, cambio o vencimiento por definir",
+          "Moto - vence": "Aproximadamente 2026-11-26 por prórroga de seis meses; verificar fecha jurídica exacta",
+          "Moto - última rotación/cambio": "2025-11-18 (inicio del esquema actual); 2026-05-26 fue prórroga sin cambio de dígitos",
+          "Observaciones": null,
+          "Particular - certeza": "Estimado por plazo de 6 meses",
+          "Particular - frecuencia": "Vigencias de 6 meses; la prórroga NO implicó rotar los dígitos",
+          "Particular - próximo evento": "Finales de noviembre 2026: prórroga, cambio o vencimiento por definir",
+          "Particular - vence": "Aproximadamente 2026-11-26 por prórroga de seis meses; verificar fecha jurídica exacta",
+          "Particular - última rotación/cambio": "2025-11-18 (inicio del esquema actual); 2026-05-26 fue prórroga sin cambio de dígitos",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": null,
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 62,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:risaralda:dosquebradas",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:risaralda:dosquebradas",
+        "sourceRef": {
+          "row": 63,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Dosquebradas",
+          "Departamento": "Risaralda",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": null,
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": null,
+          "Particular - certeza": "Sin fecha fija",
+          "Particular - frecuencia": "Medida transitoria/excepcional; sin cadencia fija",
+          "Particular - próximo evento": "No publicada; requiere nuevo acto para modificar o levantar",
+          "Particular - vence": "El Decreto 324/2026 es transitorio, pero no se localizó fecha final en la comunicación consultada",
+          "Particular - última rotación/cambio": "2026-08-18",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 63,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:risaralda:pereira",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:risaralda:pereira",
+        "sourceRef": {
+          "row": 64,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Pereira",
+          "Departamento": "Risaralda",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Sin fecha fija",
+          "Moto - frecuencia": "Sin periodicidad fija",
+          "Moto - próximo evento": "No programada; cualquier modificación debe ser anunciada oficialmente",
+          "Moto - vence": "Sin vencimiento publicado localizado",
+          "Moto - última rotación/cambio": "2024-02-26 (Decreto 540; en oct-2024 la Alcaldía reiteró que no había cambiado)",
+          "Observaciones": null,
+          "Particular - certeza": "Sin fecha fija",
+          "Particular - frecuencia": "Sin periodicidad fija",
+          "Particular - próximo evento": "No programada; cualquier modificación debe ser anunciada oficialmente",
+          "Particular - vence": "Sin vencimiento publicado localizado",
+          "Particular - última rotación/cambio": "2024-02-26 (Decreto 540; en oct-2024 la Alcaldía reiteró que no había cambiado)",
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 64,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:santander:bucaramanga",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:santander:bucaramanga",
+        "sourceRef": {
+          "row": 65,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Bucaramanga",
+          "Departamento": "Santander",
+          "Días desde 05-09-2026": 25,
+          "Moto - certeza": "CONFIRMADA por calendario anual Resolución 854/2025",
+          "Moto - frecuencia": "Trimestral; cambia el primer lunes de cada trimestre",
+          "Moto - próximo evento": "2026-10-05: inicia la siguiente rotación",
+          "Moto - vence": "2026-10-03 (último sábado de la rotación actual)",
+          "Moto - última rotación/cambio": "2026-07-06",
+          "Observaciones": null,
+          "Particular - certeza": "CONFIRMADA por calendario anual Resolución 854/2025",
+          "Particular - frecuencia": "Trimestral; cambia el primer lunes de cada trimestre",
+          "Particular - próximo evento": "2026-10-05: inicia la siguiente rotación",
+          "Particular - vence": "2026-10-03 (último sábado de la rotación actual)",
+          "Particular - última rotación/cambio": "2026-07-06",
+          "Próximo hito fechado confirmado/operativo": "2026-09-30",
+          "Taxi - certeza": "NO PUBLICAR automáticamente sin acto/fuente oficial actual",
+          "Taxi - frecuencia": "Calendario semanal/mensual independiente del régimen general",
+          "Taxi - próximo evento": "Octubre 2026: pendiente",
+          "Taxi - vence": "Calendario consultado: 2026-09-30",
+          "Taxi - última rotación/cambio": "Calendario septiembre 2026 reportado",
+          "Tipo de hito": "Taxi: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 65,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:santander:floridablanca",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:santander:floridablanca",
+        "sourceRef": {
+          "row": 66,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Floridablanca",
+          "Departamento": "Santander",
+          "Días desde 05-09-2026": 28,
+          "Moto - certeza": "CONFIRMADA por periodicidad trimestral oficial; tabla siguiente debe validarse",
+          "Moto - frecuencia": "Trimestral (Resolución 008/2026)",
+          "Moto - próximo evento": "2026-10-05: siguiente rotación",
+          "Moto - vence": "2026-10-03 (último sábado de la rotación actual)",
+          "Moto - última rotación/cambio": "2026-07-06",
+          "Observaciones": null,
+          "Particular - certeza": "CONFIRMADA por periodicidad trimestral oficial; tabla siguiente debe validarse",
+          "Particular - frecuencia": "Trimestral (Resolución 008/2026)",
+          "Particular - próximo evento": "2026-10-05: siguiente rotación",
+          "Particular - vence": "2026-10-03 (último sábado de la rotación actual)",
+          "Particular - última rotación/cambio": "2026-07-06",
+          "Próximo hito fechado confirmado/operativo": "2026-10-03",
+          "Taxi - certeza": "Pendiente régimen separado",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": "Particular: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 66,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:santander:giron",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:santander:giron",
+        "sourceRef": {
+          "row": 67,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Girón",
+          "Departamento": "Santander",
+          "Días desde 05-09-2026": 28,
+          "Moto - certeza": "CONFIRMADA como programación metropolitana / acto local pendiente",
+          "Moto - frecuencia": "Coordinación trimestral metropolitana; requiere acto/localidad",
+          "Moto - próximo evento": "2026-10-05 como fecha de cambio metropolitano; validar acto local",
+          "Moto - vence": "Rotación actual llega al 2026-10-03 según programación metropolitana",
+          "Moto - última rotación/cambio": "Referencia metropolitana: 2026-07-06",
+          "Observaciones": null,
+          "Particular - certeza": "CONFIRMADA como programación metropolitana / acto local pendiente",
+          "Particular - frecuencia": "Coordinación trimestral metropolitana; requiere acto/localidad",
+          "Particular - próximo evento": "2026-10-05 como fecha de cambio metropolitano; validar acto local",
+          "Particular - vence": "Rotación actual llega al 2026-10-03 según programación metropolitana",
+          "Particular - última rotación/cambio": "Referencia metropolitana: 2026-07-06",
+          "Próximo hito fechado confirmado/operativo": "2026-10-03",
+          "Taxi - certeza": "No asumir que la Resolución general de particulares/motos aplica a taxis",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": "Particular: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 67,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:santander:piedecuesta",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:santander:piedecuesta",
+        "sourceRef": {
+          "row": 68,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Piedecuesta",
+          "Departamento": "Santander",
+          "Días desde 05-09-2026": 28,
+          "Moto - certeza": "CONFIRMADA como programación metropolitana / acto local pendiente",
+          "Moto - frecuencia": "Coordinación trimestral metropolitana; requiere acto/localidad",
+          "Moto - próximo evento": "2026-10-05 como fecha de cambio metropolitano; validar acto local",
+          "Moto - vence": "Rotación actual llega al 2026-10-03 según programación metropolitana",
+          "Moto - última rotación/cambio": "Referencia metropolitana: 2026-07-06",
+          "Observaciones": null,
+          "Particular - certeza": "CONFIRMADA como programación metropolitana / acto local pendiente",
+          "Particular - frecuencia": "Coordinación trimestral metropolitana; requiere acto/localidad",
+          "Particular - próximo evento": "2026-10-05 como fecha de cambio metropolitano; validar acto local",
+          "Particular - vence": "Rotación actual llega al 2026-10-03 según programación metropolitana",
+          "Particular - última rotación/cambio": "Referencia metropolitana: 2026-07-06",
+          "Próximo hito fechado confirmado/operativo": "2026-10-03",
+          "Taxi - certeza": "No asumir que la Resolución general de particulares/motos aplica a taxis",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": "Particular: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 68,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:sucre:sincelejo",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:sucre:sincelejo",
+        "sourceRef": {
+          "row": 69,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Sincelejo",
+          "Departamento": "Sucre",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "No se encontró una regla general vigente certificada.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 69,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:tolima:ibague",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:tolima:ibague",
+        "sourceRef": {
+          "row": 70,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Ibagué",
+          "Departamento": "Tolima",
+          "Días desde 05-09-2026": 117,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": null,
+          "Particular - certeza": "Vencimiento confirmado / próxima rotación estimada",
+          "Particular - frecuencia": "Semestral",
+          "Particular - próximo evento": "2027-01-01 / inicio de enero: siguiente rotación esperada; fecha exacta del nuevo acto por confirmar",
+          "Particular - vence": "2026-12-31",
+          "Particular - última rotación/cambio": "2026-07-01",
+          "Próximo hito fechado confirmado/operativo": "2026-12-31",
+          "Taxi - certeza": null,
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": "Particular: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 70,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:valle-del-cauca:buenaventura",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:valle-del-cauca:buenaventura",
+        "sourceRef": {
+          "row": 71,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Buenaventura",
+          "Departamento": "Valle del Cauca",
+          "Días desde 05-09-2026": 117,
+          "Moto - certeza": null,
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": null,
+          "Particular - certeza": "VENCIMIENTO CONFIRMADO / próximo acto pendiente",
+          "Particular - frecuencia": "Semestral según decreto del segundo semestre",
+          "Particular - próximo evento": "Enero 2027: nuevo acto/rotación por confirmar",
+          "Particular - vence": "2026-12-31",
+          "Particular - última rotación/cambio": "2026-07-01",
+          "Próximo hito fechado confirmado/operativo": "2026-12-31",
+          "Taxi - certeza": "VENCIMIENTO CONFIRMADO / próximo acto pendiente",
+          "Taxi - frecuencia": "Dígitos cambian diariamente; decreto por semestre",
+          "Taxi - próximo evento": "Enero 2027: nuevo decreto/calendario por confirmar",
+          "Taxi - vence": "2026-12-31",
+          "Taxi - última rotación/cambio": "2026-07-01",
+          "Tipo de hito": "Particular: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 71,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:valle-del-cauca:cali",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:valle-del-cauca:cali",
+        "sourceRef": {
+          "row": 72,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Cali",
+          "Departamento": "Valle del Cauca",
+          "Días desde 05-09-2026": 117,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": null,
+          "Particular - certeza": "Semestral / próxima fecha oficial pendiente",
+          "Particular - frecuencia": "Semestral",
+          "Particular - próximo evento": "Primer semestre 2027; fecha exacta aún no publicada",
+          "Particular - vence": "Segundo semestre 2026 (fin esperado 2026-12-31; el primer semestre terminó 30-jun)",
+          "Particular - última rotación/cambio": "2026-07-01",
+          "Próximo hito fechado confirmado/operativo": "2026-12-31",
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": "Particular: Vencimiento"
+        }
+      },
+      "sourceRef": {
+        "row": 72,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:valle-del-cauca:palmira",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:valle-del-cauca:palmira",
+        "sourceRef": {
+          "row": 73,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Palmira",
+          "Departamento": "Valle del Cauca",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "Sin pico y placa general vigente verificado.",
+          "Particular - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "Revisado al 2026-09-05; no equivale a certificación jurídica de ausencia",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 73,
+        "sheet": "Rotaciones_vigencia"
+      }
+    },
+    {
+      "decision": "informational_only",
+      "publishable": false,
+      "quarantineReasons": [
+        "freshness_unverified",
+        "holiday_policy_unverified",
+        "legal_validity_unverified",
+        "registration_scope_unverified",
+        "rotation_validity_is_not_a_runtime_rule"
+      ],
+      "runtimePublished": false,
+      "sourceJurisdictionKey": "co-source:valle-del-cauca:tulua",
+      "sourceProjection": {
+        "sourceJurisdictionKey": "co-source:valle-del-cauca:tulua",
+        "sourceRef": {
+          "row": 74,
+          "sheet": "Rotaciones_vigencia"
+        },
+        "valuesBySourceHeader": {
+          "Ciudad": "Tuluá",
+          "Departamento": "Valle del Cauca",
+          "Días desde 05-09-2026": null,
+          "Moto - certeza": "NO PUBLICAR",
+          "Moto - frecuencia": null,
+          "Moto - próximo evento": null,
+          "Moto - vence": null,
+          "Moto - última rotación/cambio": null,
+          "Observaciones": "La auditoría evitó usar como vigente una norma antigua que aparece en buscadores. Requiere acto municipal 2026.",
+          "Particular - certeza": "NO PUBLICAR",
+          "Particular - frecuencia": null,
+          "Particular - próximo evento": null,
+          "Particular - vence": null,
+          "Particular - última rotación/cambio": null,
+          "Próximo hito fechado confirmado/operativo": null,
+          "Taxi - certeza": "NO PUBLICAR",
+          "Taxi - frecuencia": null,
+          "Taxi - próximo evento": null,
+          "Taxi - vence": null,
+          "Taxi - última rotación/cambio": null,
+          "Tipo de hito": null
+        }
+      },
+      "sourceRef": {
+        "row": 74,
+        "sheet": "Rotaciones_vigencia"
+      }
+    }
+  ],
   "schemaVersion": 1,
   "sourceSnapshotDate": "2026-09-05",
   "version": "2026.09.05-viaje-r2"

@@ -445,6 +445,50 @@ void main() {
       expect((await store.load()).version, '2026.09.05-viaje-r2');
     },
   );
+
+  test(
+    'missing installed snapshot fails closed and same version recovers',
+    () async {
+      final asset = _readJson(File('assets/catalogs/tolls_inventory_v1.json'));
+      final payload = await _payload(asset);
+      final snapshot = File('${snapshotDirectory.path}/tolls.json');
+      final store = TollInventoryStore(
+        database: db,
+        snapshotFile: snapshot,
+        bundledLoader: () async => jsonEncode(asset),
+      );
+      _serveManifest(server, {
+        tollInventoryDatasetKey: _entry(
+          version: asset['version'] as String,
+          path: '/recover-tolls.json',
+          sha256: payload.sha256,
+          sourceTimestamp: '2026-09-05T00:00:00Z',
+        ),
+      });
+      _serveBytes(server, '/recover-tolls.json', payload.bytes);
+      final service = _service(
+        db,
+        preferences,
+        tempDirectory,
+        server,
+        transactionalImporters: {
+          tollInventoryDatasetKey: store.transactionalImporter,
+        },
+      );
+
+      expect((await service.sync()).imported, [tollInventoryDatasetKey]);
+      await snapshot.delete();
+      await store.snapshotHashFile.delete();
+
+      await expectLater(store.load(), throwsA(isA<DatasetSyncException>()));
+
+      final recovery = await service.sync();
+      expect(recovery.imported, [tollInventoryDatasetKey]);
+      expect(recovery.skippedCurrent, isEmpty);
+      expect(await snapshot.readAsBytes(), payload.bytes);
+      expect((await store.load()).version, asset['version']);
+    },
+  );
 }
 
 DatasetSyncService _service(

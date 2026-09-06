@@ -16,12 +16,35 @@ typedef DatasetImporter = Future<void> Function(
   Map<String, dynamic> json,
 );
 
-typedef TransactionalDatasetImporter = Future<PreparedDatasetImport> Function(
+typedef PrepareTransactionalDatasetImport =
+    Future<PreparedDatasetImport> Function(
+      AppDatabase db,
+      Map<String, dynamic> json,
+      List<int> verifiedBytes,
+      String sha256,
+    );
+
+typedef ValidateInstalledDataset = Future<bool> Function(
   AppDatabase db,
-  Map<String, dynamic> json,
-  List<int> verifiedBytes,
-  String sha256,
+  DatasetVersion installedVersion,
 );
+
+class TransactionalDatasetImporter {
+  const TransactionalDatasetImporter({
+    required this.prepare,
+    required this.isInstalledVersionUsable,
+  });
+
+  final PrepareTransactionalDatasetImport prepare;
+  final ValidateInstalledDataset isInstalledVersionUsable;
+
+  Future<PreparedDatasetImport> call(
+    AppDatabase db,
+    Map<String, dynamic> json,
+    List<int> verifiedBytes,
+    String sha256,
+  ) => prepare(db, json, verifiedBytes, sha256);
+}
 
 abstract interface class PreparedDatasetImport {
   Future<void> activate();
@@ -169,8 +192,16 @@ class DatasetSyncService {
           'different SHA-256.',
         );
       }
-      result.skippedCurrent.add(datasetKey);
-      return;
+      final installedStateUsable =
+          transactionalImporter == null ||
+          await transactionalImporter.isInstalledVersionUsable(
+            database,
+            localVersion!,
+          );
+      if (installedStateUsable) {
+        result.skippedCurrent.add(datasetKey);
+        return;
+      }
     }
     if (localVersion?.status == 'installed' &&
         _isOrderedDowngrade(entry.version, localVersion!.version)) {
