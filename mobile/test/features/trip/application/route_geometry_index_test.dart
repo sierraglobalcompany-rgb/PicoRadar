@@ -75,6 +75,23 @@ void main() {
       },
     );
 
+    test('zero-length interior segment does not split one passage', () {
+      final index = RouteGeometryIndex(const [
+        TripCoordinate(latitude: 6.24, longitude: -75.58),
+        TripCoordinate(latitude: 6.24, longitude: -75.57),
+        TripCoordinate(latitude: 6.24, longitude: -75.57),
+        TripCoordinate(latitude: 6.24, longitude: -75.56),
+      ]);
+
+      final hits = index.projectPassages(
+        const TripCoordinate(latitude: 6.2401, longitude: -75.57),
+        corridorMeters: 30,
+      );
+
+      expect(index.quality, RouteGeometryQuality.polyline);
+      expect(hits, hasLength(1));
+    });
+
     test('empty and one-point geometries remain honest', () {
       final empty = RouteGeometryIndex(const []);
       final point = RouteGeometryIndex(const [

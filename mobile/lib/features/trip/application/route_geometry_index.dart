@@ -95,17 +95,24 @@ class RouteGeometryIndex {
       ];
     }
 
-    final candidates = <RouteProjection>[];
+    final candidates = <_ProjectionCandidate>[];
+    var usableSegmentIndex = 0;
     for (final segment in _segments) {
       if (!segment.isUsable) {
         continue;
       }
+      final currentUsableSegmentIndex = usableSegmentIndex++;
       if (!segment.mayContain(point, corridorMeters)) {
         continue;
       }
       final projection = segment.project(point);
       if (projection.crossTrackMeters <= corridorMeters) {
-        candidates.add(projection);
+        candidates.add(
+          _ProjectionCandidate(
+            projection: projection,
+            usableSegmentIndex: currentUsableSegmentIndex,
+          ),
+        );
       }
     }
     if (candidates.isEmpty) {
@@ -113,18 +120,19 @@ class RouteGeometryIndex {
     }
 
     final passages = <RouteProjection>[];
-    var groupBest = candidates.first;
-    var previousSegment = candidates.first.segmentIndex;
+    var groupBest = candidates.first.projection;
+    var previousUsableSegment = candidates.first.usableSegmentIndex;
     for (final candidate in candidates.skip(1)) {
-      if (candidate.segmentIndex == previousSegment + 1) {
-        if (candidate.crossTrackMeters < groupBest.crossTrackMeters) {
-          groupBest = candidate;
+      if (candidate.usableSegmentIndex == previousUsableSegment + 1) {
+        if (candidate.projection.crossTrackMeters <
+            groupBest.crossTrackMeters) {
+          groupBest = candidate.projection;
         }
       } else {
         passages.add(groupBest);
-        groupBest = candidate;
+        groupBest = candidate.projection;
       }
-      previousSegment = candidate.segmentIndex;
+      previousUsableSegment = candidate.usableSegmentIndex;
     }
     passages.add(groupBest);
     passages.sort(_compareProjection);
@@ -149,6 +157,16 @@ class RouteGeometryIndex {
     }
     return List.unmodifiable(result);
   }
+}
+
+class _ProjectionCandidate {
+  const _ProjectionCandidate({
+    required this.projection,
+    required this.usableSegmentIndex,
+  });
+
+  final RouteProjection projection;
+  final int usableSegmentIndex;
 }
 
 class _RouteSegment {
