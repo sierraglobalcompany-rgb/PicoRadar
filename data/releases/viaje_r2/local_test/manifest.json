@@ -1,0 +1,26 @@
+{
+  "datasets": {
+    "restrictions": {
+      "sha256": "abd836fa0bc3391b26e5c6f14d1e35bb53b1fc0d1e6307039a50cc721ac40f88",
+      "sourceTimestamp": "2026-08-31T00:00:00Z",
+      "url": "/assets/datasets/restrictions/restrictions_v1.json",
+      "version": "2026.08.31-c10b-a"
+    },
+    "tolls_inventory": {
+      "sha256": "a991626ecc8893c050a60e71b27e8f803cbfe864978dced5e6b595f2fe02de93",
+      "sourceTimestamp": "2026-09-05T00:00:00Z",
+      "url": "/assets/catalogs/tolls_inventory_v1.json",
+      "version": "2026.09.05-viaje-r2"
+    }
+  },
+  "distribution": "local_simulation_only",
+  "features": {
+    "ads": false,
+    "cloud": false,
+    "paidDocuments": false
+  },
+  "generatedAt": "2026-09-05T00:00:00Z",
+  "minAppVersion": "1.0.0",
+  "schemaVersion": 1,
+  "serverPublished": false
+}
