@@ -19,6 +19,9 @@ final tripPlanClientProvider = Provider<TripPlanClient>((ref) {
   return TripPlanClient(dio: dio, baseUri: Uri.tryParse(configured));
 });
 
+// Must match TollGuruTripPreview::MAX_GEOMETRY_POINTS.
+const _maximumGeometryPoints = 3000;
+
 class TripPlanClient {
   TripPlanClient({
     required this._dio,
@@ -200,7 +203,9 @@ List<TripCoordinate> _geometry(Object? value) {
   final json = _object(value);
   if (json['type'] != 'LineString') throw const FormatException();
   final rows = json['coordinates'];
-  if (rows is! List || rows.length < 2 || rows.length > 20000) {
+  if (rows is! List ||
+      rows.length < 2 ||
+      rows.length > _maximumGeometryPoints) {
     throw const FormatException();
   }
   final points = <TripCoordinate>[];

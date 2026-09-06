@@ -248,17 +248,27 @@ void main() {
     expect(route.geometry.last.longitude, -75.374);
     expect(route.tolls.totalMinor, 1800030);
   });
-  test('accepts route geometry at the 20000-coordinate ceiling', () async {
-    adapter.body = _plan();
-    adapter.body['routes'][0]['geometry']['coordinates'] = _coordinates(20000);
+  test(
+    'accepts three routes at the 3000-coordinate transport ceiling',
+    () async {
+      adapter.body = _planWithRoutes(3000);
+      final encodedPayload = utf8.encode(jsonEncode(adapter.body));
 
-    final route = (await client.preview(_request())).routes.single;
+      expect(encodedPayload.length, greaterThan(150000));
+      expect(encodedPayload.length, lessThanOrEqualTo(262144));
 
-    expect(route.geometry, hasLength(20000));
-  });
-  test('rejects route geometry above the 20000-coordinate ceiling', () async {
+      final routes = (await client.preview(_request())).routes;
+
+      expect(routes, hasLength(3));
+      for (final route in routes) {
+        expect(route.geometry, hasLength(3000));
+      }
+    },
+  );
+  test('rejects route geometry above the 3000-coordinate ceiling', () async {
     adapter.body = _plan();
-    adapter.body['routes'][0]['geometry']['coordinates'] = _coordinates(20001);
+    adapter.body['routes'][0]['geometry']['coordinates'] =
+        _colombianCoordinates(3001);
 
     await expectLater(
       client.preview(_request()),
@@ -421,11 +431,34 @@ TripPlanRequest _request({
   standardVehicleConfirmed: confirmed,
 );
 
-List<List<int>> _coordinates(int count) => List.generate(
-  count,
-  (index) => index == count - 1 ? const [1, 1] : const [0, 0],
-  growable: false,
-);
+Map<String, dynamic> _planWithRoutes(int vertices) {
+  final plan = _plan();
+  final template = plan['routes'][0];
+  plan['routes'] = List.generate(3, (index) {
+    final route = jsonDecode(jsonEncode(template)) as Map<String, dynamic>;
+    route['id'] = 'route-${index + 1}';
+    route['durationSeconds'] = 14400 + (index * 600);
+    route['geometry']['coordinates'] = _colombianCoordinates(
+      vertices,
+      variant: index,
+    );
+    return route;
+  });
+  return plan;
+}
+
+List<List<double>> _colombianCoordinates(int count, {int variant = 0}) =>
+    List.generate(count, (index) {
+      final ratio = index / (count - 1);
+      final offset = index > 0 && index < count - 1 ? variant * 0.00001 : 0;
+      final latitude = double.parse(
+        (6.24 + ((4.60 - 6.24) * ratio) + offset).toStringAsFixed(5),
+      );
+      final longitude = double.parse(
+        (-75.58 + ((-74.08 + 75.58) * ratio)).toStringAsFixed(5),
+      );
+      return [longitude, latitude];
+    }, growable: false);
 
 Map<String, dynamic> _plan() => {
   'requestId': 'request-1',

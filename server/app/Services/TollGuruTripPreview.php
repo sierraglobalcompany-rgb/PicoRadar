@@ -18,6 +18,11 @@ use Throwable;
 
 final class TollGuruTripPreview
 {
+    private const MAX_MOBILE_RESPONSE_BYTES = 262144;
+
+    // Shared transport contract with the Dart decoder.
+    private const MAX_GEOMETRY_POINTS = 3000;
+
     private const ENDPOINT = 'https://apis.tollguru.com/toll/v2/origin-destination-waypoints/';
 
     private const LEDGER = 'trips:tollguru:budget:v1';
@@ -126,7 +131,7 @@ final class TollGuruTripPreview
         // 01,03,04,05,06a,15 at https://github.com/mapup/tollguru-tolltally-api-payload-examples
         // Public schema evidence only (2026-09-05), not Colombia license/tariff validation.
         $address = fn (array $point): string => $point['municipality'].', '.$point['department'].', Colombia';
-        $max = min(262144, (int) config('trips.max_response_bytes', 262144));
+        $max = min(self::MAX_MOBILE_RESPONSE_BYTES, (int) config('trips.max_response_bytes', self::MAX_MOBILE_RESPONSE_BYTES));
         $stream = null;
         try {
             $response = Http::acceptJson()->asJson()->withHeaders(['x-api-key' => config('trips.api_key')])
@@ -190,7 +195,7 @@ final class TollGuruTripPreview
 
     public function normalizeResponse(string $body, array $request): array
     {
-        if (strlen($body) > min(262144, (int) config('trips.max_response_bytes', 262144))) {
+        if (strlen($body) > min(self::MAX_MOBILE_RESPONSE_BYTES, (int) config('trips.max_response_bytes', self::MAX_MOBILE_RESPONSE_BYTES))) {
             throw new DomainException('invalid_upstream');
         }
         try {
@@ -239,9 +244,18 @@ final class TollGuruTripPreview
         $routes = array_values($routes);
         usort($routes, fn (array $a, array $b): int => [$a['durationSeconds'], $a['id']] <=> [$b['durationSeconds'], $b['id']]);
 
-        return ['requestId' => $request['requestId'], 'generatedAtUtc' => now()->utc()->format('Y-m-d\TH:i:s\Z'),
+        $plan = ['requestId' => $request['requestId'], 'generatedAtUtc' => now()->utc()->format('Y-m-d\TH:i:s\Z'),
             'provider' => 'TollGuru', 'attribution' => 'TollGuru / MapUp; routing: HERE', 'origin' => $origin, 'destination' => $destination,
             'routes' => array_slice($routes, 0, min(3, $request['alternatives']))];
+        try {
+            if (strlen(json_encode($plan, JSON_THROW_ON_ERROR)) > self::MAX_MOBILE_RESPONSE_BYTES) {
+                throw new DomainException('invalid_upstream');
+            }
+        } catch (JsonException) {
+            throw new DomainException('invalid_upstream');
+        }
+
+        return $plan;
     }
 
     private function resolvedPoint(mixed $point, array $requested): array
@@ -302,7 +316,7 @@ final class TollGuruTripPreview
                 $position[$axis] += ($value & 1) ? ~($value >> 1) : ($value >> 1);
             }
             $point = [$position[0] / 100000, $position[1] / 100000];
-            if (! $this->colombiaPoint(...$point) || count($points) >= 20000) {
+            if (! $this->colombiaPoint(...$point) || count($points) >= self::MAX_GEOMETRY_POINTS) {
                 throw new DomainException('invalid_upstream');
             }
             $points[] = $point;

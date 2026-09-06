@@ -61,6 +61,59 @@ class TollGuruTripPreviewTest extends TestCase
         );
     }
 
+    public function test_three_routes_at_3000_vertices_fit_the_mobile_transport_budget(): void
+    {
+        $body = self::providerFixtureWithRoutes(3000);
+        $providerPayload = json_encode($body, JSON_THROW_ON_ERROR);
+        $this->assertLessThanOrEqual(262144, strlen($providerPayload));
+
+        $plan = app(TollGuruTripPreview::class)->normalizeResponse($providerPayload, self::tripRequest());
+        $normalizedPayload = json_encode($plan, JSON_THROW_ON_ERROR);
+
+        $this->assertCount(3, $plan['routes']);
+        foreach ($plan['routes'] as $route) {
+            $this->assertCount(3000, $route['geometry']['coordinates']);
+        }
+        $this->assertGreaterThan(150000, strlen($normalizedPayload));
+        $this->assertLessThanOrEqual(262144, strlen($normalizedPayload));
+    }
+
+    public function test_route_above_3000_vertices_is_rejected(): void
+    {
+        $body = self::providerFixture();
+        $body['routes'][0]['polyline'] = self::colombianPolyline(3001);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('invalid_upstream');
+        $this->normalize($body);
+    }
+
+    public function test_expanded_response_above_mobile_byte_limit_is_rejected(): void
+    {
+        $body = self::providerFixtureWithRoutes(3000);
+        $tolls = [];
+        for ($index = 0; $index < 200; $index++) {
+            $tolls[] = [
+                'id' => $index + 1,
+                'name' => str_pad("Test station {$index}", 150, 'x'),
+                'cashCost' => 1,
+                'currency' => 'COP',
+                'arrival' => ['distance' => $index + 1, 'time' => '2026-09-06T04:45:00Z'],
+            ];
+        }
+        foreach ($body['routes'] as &$route) {
+            $route['tolls'] = $tolls;
+            $route['costs']['cash'] = 200;
+        }
+        unset($route);
+        $providerPayload = json_encode($body, JSON_THROW_ON_ERROR);
+        $this->assertLessThanOrEqual(262144, strlen($providerPayload));
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('invalid_upstream');
+        app(TollGuruTripPreview::class)->normalizeResponse($providerPayload, self::tripRequest());
+    }
+
     public function test_missing_cash_rate_keeps_route_with_subtotal_and_no_total(): void
     {
         $body = self::providerFixture();
@@ -366,6 +419,50 @@ class TollGuruTripPreviewTest extends TestCase
     private function normalize(array $body, ?array $request = null): array
     {
         return app(TollGuruTripPreview::class)->normalizeResponse(json_encode($body, JSON_THROW_ON_ERROR), $request ?? self::tripRequest());
+    }
+
+    private static function providerFixtureWithRoutes(int $vertices): array
+    {
+        $body = self::providerFixture();
+        $template = $body['routes'][0];
+        $body['routes'] = [];
+        for ($variant = 0; $variant < 3; $variant++) {
+            $route = $template;
+            $route['summary']['name'] = 'Synthetic route '.($variant + 1);
+            $route['summary']['duration']['value'] += $variant * 600;
+            $route['polyline'] = self::colombianPolyline($vertices, $variant);
+            $body['routes'][] = $route;
+        }
+
+        return $body;
+    }
+
+    private static function colombianPolyline(int $vertices, int $variant = 0): string
+    {
+        $encoded = '';
+        $previous = [0, 0];
+        for ($index = 0; $index < $vertices; $index++) {
+            $ratio = $index / ($vertices - 1);
+            $point = [
+                (int) round(624420 + ((615330 - 624420) * $ratio)),
+                (int) round(-7558120 + ((-7537400 + 7558120) * $ratio)),
+            ];
+            if ($index > 0 && $index < $vertices - 1) {
+                $point[0] += $variant;
+            }
+            foreach ([0, 1] as $axis) {
+                $delta = $point[$axis] - $previous[$axis];
+                $value = $delta < 0 ? ~($delta << 1) : $delta << 1;
+                while ($value >= 0x20) {
+                    $encoded .= chr((0x20 | ($value & 0x1F)) + 63);
+                    $value >>= 5;
+                }
+                $encoded .= chr($value + 63);
+            }
+            $previous = $point;
+        }
+
+        return $encoded;
     }
 
     public static function tripRequest(): array
