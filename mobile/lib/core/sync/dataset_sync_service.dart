@@ -23,6 +23,10 @@ class DatasetSyncService {
     required this.importers,
     Dio? http,
     Directory? tempDirectory,
+    this.currentAppVersion = '1.0.0',
+    DateTime Function()? now,
+    this.maxDownloadBytes = 4 * 1024 * 1024,
+    this.maxDecodedBytes = 16 * 1024 * 1024,
   }) : http =
            http ??
            Dio(
@@ -31,7 +35,12 @@ class DatasetSyncService {
                receiveTimeout: const Duration(seconds: 30),
              ),
            ),
-       tempDirectory = tempDirectory ?? Directory.systemTemp;
+       tempDirectory = tempDirectory ?? Directory.systemTemp,
+       now = now ?? DateTime.now {
+    if (maxDownloadBytes <= 0 || maxDecodedBytes <= 0) {
+      throw ArgumentError('Dataset byte limits must be positive.');
+    }
+  }
 
   static const manifestEtagPreferenceKey = 'manifest_etag_v1';
 
@@ -41,8 +50,12 @@ class DatasetSyncService {
   final Map<String, DatasetImporter> importers;
   final Dio http;
   final Directory tempDirectory;
+  final String currentAppVersion;
+  final DateTime Function() now;
+  final int maxDownloadBytes;
+  final int maxDecodedBytes;
 
-  Future<DatasetSyncResult> sync() async {
+  Future<DatasetSyncResult> sync({CancelToken? cancelToken}) async {
     final headers = <String, String>{};
     final etag = await preferences.getString(manifestEtagPreferenceKey);
     if (etag != null && etag.isNotEmpty) {
@@ -51,9 +64,11 @@ class DatasetSyncService {
 
     final manifestResponse = await http.getUri<Object?>(
       config.manifestUri,
+      cancelToken: cancelToken,
       options: Options(
         headers: headers,
-        validateStatus: (status) => status != null && status < 500,
+        followRedirects: false,
+        validateStatus: (status) => status != null,
       ),
     );
 
@@ -69,10 +84,11 @@ class DatasetSyncService {
     final manifest = DatasetManifest.fromJson(
       _manifestMap(manifestResponse.data),
     );
+    _validateManifest(manifest);
     final result = DatasetSyncResultBuilder();
 
     for (final entry in manifest.datasets.entries) {
-      await _syncDataset(entry.key, entry.value, result);
+      await _syncDataset(entry.key, entry.value, result, cancelToken);
     }
 
     final newEtag = manifestResponse.headers.value(HttpHeaders.etagHeader);
@@ -87,6 +103,7 @@ class DatasetSyncService {
     String datasetKey,
     DatasetManifestEntry entry,
     DatasetSyncResultBuilder result,
+    CancelToken? cancelToken,
   ) async {
     final importer = importers[datasetKey];
     if (importer == null) {
@@ -94,11 +111,33 @@ class DatasetSyncService {
       return;
     }
 
+    final currentTime = now().toUtc();
+    if (entry.expiresAt != null &&
+        !currentTime.isBefore(entry.expiresAt!.toUtc())) {
+      throw DatasetSyncException('Dataset $datasetKey manifest entry expired.');
+    }
+
     final localVersion = await _localDatasetVersion(datasetKey);
     if (localVersion?.version == entry.version &&
         localVersion?.status == 'installed') {
+      final installedHash = localVersion?.sha256?.trim();
+      if (installedHash != null &&
+          installedHash.isNotEmpty &&
+          installedHash != entry.sha256) {
+        throw DatasetSyncException(
+          'Dataset $datasetKey reuses version ${entry.version} with a '
+          'different SHA-256.',
+        );
+      }
       result.skippedCurrent.add(datasetKey);
       return;
+    }
+    if (localVersion?.status == 'installed' &&
+        _isOrderedDowngrade(entry.version, localVersion!.version)) {
+      throw DatasetSyncException(
+        'Dataset $datasetKey downgrade from ${localVersion.version} to '
+        '${entry.version} is not allowed.',
+      );
     }
 
     final uri = _resolveDatasetUri(entry.url);
@@ -109,7 +148,7 @@ class DatasetSyncService {
     );
 
     try {
-      final bytes = await _downloadToTemp(uri, tempFile);
+      final bytes = await _downloadToTemp(uri, tempFile, cancelToken);
       final actualSha256 = await _sha256Hex(bytes);
       if (actualSha256 != entry.sha256) {
         throw DatasetSyncException(
@@ -119,6 +158,7 @@ class DatasetSyncService {
       }
 
       final payload = _decodeDatasetPayload(datasetKey, entry, bytes);
+      _validatePayloadMetadata(datasetKey, entry, payload);
       await database.transaction(() async {
         await importer(database, payload);
         await _writeDatasetVersion(datasetKey, entry);
@@ -131,24 +171,44 @@ class DatasetSyncService {
     }
   }
 
-  Future<List<int>> _downloadToTemp(Uri uri, File tempFile) async {
+  Future<List<int>> _downloadToTemp(
+    Uri uri,
+    File tempFile,
+    CancelToken? cancelToken,
+  ) async {
     final response = await http.getUri<Object?>(
       uri,
+      cancelToken: cancelToken,
       options: Options(
         responseType: ResponseType.bytes,
         followRedirects: false,
-        validateStatus: (status) =>
-            status != null &&
-            status >= HttpStatus.ok &&
-            status < HttpStatus.multipleChoices,
+        validateStatus: (status) => status != null,
       ),
     );
+    if (response.statusCode != HttpStatus.ok) {
+      throw DatasetSyncException(
+        'Dataset request failed with HTTP ${response.statusCode}: $uri.',
+      );
+    }
+    final declaredLength = int.tryParse(
+      response.headers.value(HttpHeaders.contentLengthHeader) ?? '',
+    );
+    if (declaredLength != null && declaredLength > maxDownloadBytes) {
+      throw DatasetSyncException(
+        'Dataset response exceeds compressed byte limit: $uri.',
+      );
+    }
     final data = response.data;
     if (data is! List<int>) {
       throw DatasetSyncException('Dataset response was not bytes: $uri.');
     }
 
     final bytes = List<int>.from(data);
+    if (bytes.length > maxDownloadBytes) {
+      throw DatasetSyncException(
+        'Dataset response exceeds compressed byte limit: $uri.',
+      );
+    }
     await tempFile.writeAsBytes(bytes, flush: true);
     return bytes;
   }
@@ -158,19 +218,128 @@ class DatasetSyncService {
     DatasetManifestEntry entry,
     List<int> bytes,
   ) {
-    final decodedBytes = switch (entry.contentEncoding) {
-      null => bytes,
-      'gzip' => gzip.decode(bytes),
-      final encoding => throw DatasetSyncException(
-        'Unsupported contentEncoding for $datasetKey: $encoding.',
-      ),
-    };
+    try {
+      final decodedBytes = switch (entry.contentEncoding) {
+        null => bytes,
+        'gzip' => gzip.decode(bytes),
+        final encoding => throw DatasetSyncException(
+          'Unsupported contentEncoding for $datasetKey: $encoding.',
+        ),
+      };
+      if (decodedBytes.length > maxDecodedBytes) {
+        throw DatasetSyncException(
+          'Dataset $datasetKey exceeds decoded byte limit.',
+        );
+      }
 
-    final decodedJson = jsonDecode(utf8.decode(decodedBytes));
-    if (decodedJson is Map) {
-      return Map<String, dynamic>.from(decodedJson);
+      final decodedJson = jsonDecode(utf8.decode(decodedBytes));
+      if (decodedJson is Map) {
+        return Map<String, dynamic>.from(decodedJson);
+      }
+      throw const DatasetSyncException(
+        'Dataset payload must be a JSON object.',
+      );
+    } on DatasetSyncException {
+      rethrow;
+    } on FormatException catch (error) {
+      throw DatasetSyncException(
+        'Dataset $datasetKey is not valid UTF-8 JSON: $error',
+      );
     }
-    throw DatasetSyncException('Dataset payload must be a JSON object.');
+  }
+
+  void _validateManifest(DatasetManifest manifest) {
+    final currentTime = now().toUtc();
+    if (manifest.generatedAt.toUtc().isAfter(
+      currentTime.add(const Duration(minutes: 5)),
+    )) {
+      throw const DatasetSyncException(
+        'Manifest generatedAt is in the future.',
+      );
+    }
+    final requiredVersion = _orderedVersion(manifest.minAppVersion);
+    final installedVersion = _orderedVersion(currentAppVersion);
+    if (requiredVersion == null || installedVersion == null) {
+      throw const DatasetSyncException(
+        'Manifest and app versions must be numeric dotted versions.',
+      );
+    }
+    if (_compareOrderedVersions(installedVersion, requiredVersion) < 0) {
+      throw DatasetSyncException(
+        'Manifest requires app ${manifest.minAppVersion}; installed '
+        '$currentAppVersion.',
+      );
+    }
+  }
+
+  void _validatePayloadMetadata(
+    String datasetKey,
+    DatasetManifestEntry entry,
+    Map<String, dynamic> payload,
+  ) {
+    final payloadKey = payload['datasetKey'];
+    if (payloadKey != null && payloadKey != datasetKey) {
+      throw DatasetSyncException(
+        'Dataset payload key does not match manifest key $datasetKey.',
+      );
+    }
+    final payloadVersion = payload['version'];
+    if (payloadVersion != null && payloadVersion.toString() != entry.version) {
+      throw DatasetSyncException(
+        'Dataset $datasetKey payload version does not match manifest.',
+      );
+    }
+    final expectedSourceTimestamp = entry.sourceTimestamp;
+    if (expectedSourceTimestamp == null) {
+      return;
+    }
+    final rawTimestamp =
+        payload['sourceTimestamp'] ??
+        payload['sourceSnapshotDate'] ??
+        payload['generatedAt'];
+    if (rawTimestamp is! String || rawTimestamp.trim().isEmpty) {
+      throw DatasetSyncException(
+        'Dataset $datasetKey source timestamp is required by manifest.',
+      );
+    }
+    final normalized = RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(rawTimestamp)
+        ? '${rawTimestamp}T00:00:00Z'
+        : rawTimestamp;
+    final actualSourceTimestamp = DateTime.tryParse(normalized);
+    if (actualSourceTimestamp == null ||
+        actualSourceTimestamp.toUtc() != expectedSourceTimestamp.toUtc()) {
+      throw DatasetSyncException(
+        'Dataset $datasetKey source timestamp does not match manifest.',
+      );
+    }
+  }
+
+  bool _isOrderedDowngrade(String candidate, String installed) {
+    final candidateParts = _orderedVersion(candidate);
+    final installedParts = _orderedVersion(installed);
+    if (candidateParts == null || installedParts == null) {
+      return false;
+    }
+    return _compareOrderedVersions(candidateParts, installedParts) < 0;
+  }
+
+  List<int>? _orderedVersion(String value) {
+    if (!RegExp(r'^\d+(?:\.\d+)*$').hasMatch(value)) {
+      return null;
+    }
+    return value.split('.').map(int.parse).toList(growable: false);
+  }
+
+  int _compareOrderedVersions(List<int> left, List<int> right) {
+    final length = left.length > right.length ? left.length : right.length;
+    for (var index = 0; index < length; index++) {
+      final leftPart = index < left.length ? left[index] : 0;
+      final rightPart = index < right.length ? right[index] : 0;
+      if (leftPart != rightPart) {
+        return leftPart.compareTo(rightPart);
+      }
+    }
+    return 0;
   }
 
   Uri _resolveDatasetUri(String url) {
@@ -211,7 +380,7 @@ class DatasetSyncService {
     String datasetKey,
     DatasetManifestEntry entry,
   ) async {
-    final now = DateTime.now().toUtc();
+    final appliedAt = now().toUtc();
     final existing = await _localDatasetVersion(datasetKey);
     if (existing == null) {
       await database
@@ -223,7 +392,7 @@ class DatasetSyncService {
               version: entry.version,
               sha256: Value(entry.sha256),
               status: 'installed',
-              appliedAt: Value(now),
+              appliedAt: Value(appliedAt),
             ),
           );
       return;
@@ -236,7 +405,7 @@ class DatasetSyncService {
         version: Value(entry.version),
         sha256: Value(entry.sha256),
         status: const Value('installed'),
-        appliedAt: Value(now),
+        appliedAt: Value(appliedAt),
       ),
     );
   }
