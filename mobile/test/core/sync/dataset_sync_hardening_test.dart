@@ -447,7 +447,7 @@ void main() {
   );
 
   test(
-    'missing installed snapshot fails closed and same version recovers',
+    '304 retries without ETag when an installed snapshot is missing',
     () async {
       final asset = _readJson(File('assets/catalogs/tolls_inventory_v1.json'));
       final payload = await _payload(asset);
@@ -457,7 +457,7 @@ void main() {
         snapshotFile: snapshot,
         bundledLoader: () async => jsonEncode(asset),
       );
-      _serveManifest(server, {
+      final manifest = _manifest({
         tollInventoryDatasetKey: _entry(
           version: asset['version'] as String,
           path: '/recover-tolls.json',
@@ -465,7 +465,30 @@ void main() {
           sourceTimestamp: '2026-09-05T00:00:00Z',
         ),
       });
-      _serveBytes(server, '/recover-tolls.json', payload.bytes);
+      const etag = '"recover-tolls"';
+      var conditionalManifestRequests = 0;
+      var unconditionalManifestRequests = 0;
+      var tollDownloads = 0;
+      server.handlers['/v1/manifest.json'] = (request) async {
+        if (request.headers.value(HttpHeaders.ifNoneMatchHeader) == etag) {
+          conditionalManifestRequests += 1;
+          request.response.statusCode = HttpStatus.notModified;
+          await request.response.close();
+          return;
+        }
+        unconditionalManifestRequests += 1;
+        request.response.headers.contentType = ContentType.json;
+        request.response.headers.set(HttpHeaders.etagHeader, etag);
+        request.response.write(jsonEncode(manifest));
+        await request.response.close();
+      };
+      server.handlers['/recover-tolls.json'] = (request) async {
+        tollDownloads += 1;
+        request.response.headers.contentType = ContentType.binary;
+        request.response.contentLength = payload.bytes.length;
+        request.response.add(payload.bytes);
+        await request.response.close();
+      };
       final service = _service(
         db,
         preferences,
@@ -477,6 +500,9 @@ void main() {
       );
 
       expect((await service.sync()).imported, [tollInventoryDatasetKey]);
+      expect(unconditionalManifestRequests, 1);
+      expect(conditionalManifestRequests, 0);
+      expect(tollDownloads, 1);
       await snapshot.delete();
       await store.snapshotHashFile.delete();
 
@@ -485,7 +511,17 @@ void main() {
       final recovery = await service.sync();
       expect(recovery.imported, [tollInventoryDatasetKey]);
       expect(recovery.skippedCurrent, isEmpty);
+      expect(recovery.notModified, isFalse);
+      expect(unconditionalManifestRequests, 2);
+      expect(conditionalManifestRequests, 1);
+      expect(tollDownloads, 2);
       expect(await snapshot.readAsBytes(), payload.bytes);
+      expect(
+        (await store.snapshotHashFile.readAsString()).trim(),
+        payload.sha256,
+      );
+      expect(await _installedHash(db, tollInventoryDatasetKey), payload.sha256);
+      expect(await _version(db, tollInventoryDatasetKey), asset['version']);
       expect((await store.load()).version, asset['version']);
     },
   );

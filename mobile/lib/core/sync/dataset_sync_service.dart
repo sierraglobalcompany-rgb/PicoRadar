@@ -115,19 +115,18 @@ class DatasetSyncService {
       headers[HttpHeaders.ifNoneMatchHeader] = etag;
     }
 
-    final manifestResponse = await http.getUri<ResponseBody>(
-      config.manifestUri,
-      cancelToken: cancelToken,
-      options: Options(
-        headers: headers,
-        responseType: ResponseType.stream,
-        followRedirects: false,
-        validateStatus: (status) => status != null,
-      ),
-    );
+    var manifestResponse = await _requestManifest(headers, cancelToken);
 
     if (manifestResponse.statusCode == HttpStatus.notModified) {
-      return const DatasetSyncResult(notModified: true);
+      if (await _installedTransactionalDatasetsAreUsable()) {
+        return const DatasetSyncResult(notModified: true);
+      }
+      manifestResponse = await _requestManifest(const {}, cancelToken);
+      if (manifestResponse.statusCode == HttpStatus.notModified) {
+        throw const DatasetSyncException(
+          'Manifest returned 304 during unconditional recovery request.',
+        );
+      }
     }
     if (manifestResponse.statusCode != HttpStatus.ok) {
       throw DatasetSyncException(
@@ -159,6 +158,39 @@ class DatasetSyncService {
     }
 
     return result.build();
+  }
+
+  Future<Response<ResponseBody>> _requestManifest(
+    Map<String, String> headers,
+    CancelToken? cancelToken,
+  ) {
+    return http.getUri<ResponseBody>(
+      config.manifestUri,
+      cancelToken: cancelToken,
+      options: Options(
+        headers: headers,
+        responseType: ResponseType.stream,
+        followRedirects: false,
+        validateStatus: (status) => status != null,
+      ),
+    );
+  }
+
+  Future<bool> _installedTransactionalDatasetsAreUsable() async {
+    var allUsable = true;
+    for (final entry in transactionalImporters.entries) {
+      final installed = await _localDatasetVersion(entry.key);
+      if (installed?.status == 'installed') {
+        final usable = await entry.value.isInstalledVersionUsable(
+          database,
+          installed!,
+        );
+        if (!usable) {
+          allUsable = false;
+        }
+      }
+    }
+    return allUsable;
   }
 
   Future<void> _syncDataset(
