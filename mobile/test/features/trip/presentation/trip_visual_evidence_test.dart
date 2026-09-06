@@ -13,7 +13,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/features/driving/domain/traffic_camera.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
-import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_engine.dart';
 import 'package:picoradar/features/trip/application/trip_route_association_resolver.dart';
@@ -242,7 +241,7 @@ void main() {
     final tileFailureSemantics = tester
         .getSemantics(find.byKey(tileFailureKey))
         .getSemanticsData();
-    expect(tileFailureSemantics.hasFlag(SemanticsFlag.isLiveRegion), isTrue);
+    expect(tileFailureSemantics.flagsCollection.isLiveRegion, isTrue);
     expect(
       tileFailureSemantics.label,
       contains('El mapa base no está disponible'),
@@ -439,7 +438,7 @@ Future<void> _capture(WidgetTester tester, String name) async {
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
       if (data == null) fail('Could not encode visual evidence $name.');
       await File('${directory.path}${Platform.pathSeparator}$name.png')
-          .writeAsBytes(data!.buffer.asUint8List(), flush: true);
+          .writeAsBytes(data.buffer.asUint8List(), flush: true);
     } finally {
       image.dispose();
     }
