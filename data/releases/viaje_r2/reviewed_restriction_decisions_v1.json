@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "reviewVersion": "2026.09.06-viaje-r2c-a",
+  "reviewedAt": "2026-09-06T00:00:00Z",
+  "reviewer": "Agent A official-source review",
+  "decisions": [
+    {
+      "sourceCoverageId": "co-source:antioquia:medellin:private_car",
+      "sourceRef": {"sheet": "Resumen_ciudades", "row": 11, "columns": "3:19"},
+      "sourceRecordIds": [],
+      "originalValue": {"status": "Si", "digitPosition": "Ultimo digito"},
+      "interpretedValue": {
+        "vehicleKind": "car",
+        "serviceType": "private",
+        "rotation": "Mon 5/8, Tue 1/4, Wed 0/2, Thu 3/6, Fri 7/9",
+        "hours": "05:00-20:00",
+        "starts": "2026-08-03"
+      },
+      "officialSourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+      "evidenceSummary": "The current official page confirms last plate digit, weekday rotation, hours, start date, exempt roads, and no application in corregimientos.",
+      "consultedAt": "2026-09-06",
+      "legalValidity": {"status": "incomplete", "validFrom": "2026-08-03", "validUntil": null, "sourceTimestamp": null},
+      "decision": "needs_evidence",
+      "reviewer": "Agent A official-source review",
+      "snapshotAction": "hold",
+      "blockers": [
+        "current_holiday_policy_not_verified",
+        "engine_cannot_represent_spatial_exemptions_and_corregimiento_scope",
+        "exact_legal_valid_until_not_stated",
+        "registration_scope_not_verified"
+      ]
+    },
+    {
+      "sourceCoverageId": "co-source:antioquia:medellin:motorcycle",
+      "sourceRef": {"sheet": "Resumen_ciudades", "row": 11, "columns": "20:36"},
+      "sourceRecordIds": [],
+      "originalValue": {"status": "Si", "digitPosition": "Primer digito"},
+      "interpretedValue": {
+        "vehicleKind": "motorcycle",
+        "serviceType": "private",
+        "rotation": "Mon 5/8, Tue 1/4, Wed 0/2, Thu 3/6, Fri 7/9",
+        "hours": "05:00-20:00",
+        "starts": "2026-08-03"
+      },
+      "officialSourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+      "evidenceSummary": "The current official page confirms first plate digit for two- and four-stroke motorcycles, weekday rotation, hours, start date, exempt roads, and no application in corregimientos.",
+      "consultedAt": "2026-09-06",
+      "legalValidity": {"status": "incomplete", "validFrom": "2026-08-03", "validUntil": null, "sourceTimestamp": null},
+      "decision": "needs_evidence",
+      "reviewer": "Agent A official-source review",
+      "snapshotAction": "hold",
+      "blockers": [
+        "current_holiday_policy_not_verified",
+        "engine_cannot_represent_spatial_exemptions_and_corregimiento_scope",
+        "exact_legal_valid_until_not_stated",
+        "registration_scope_not_verified"
+      ]
+    },
+    {
+      "sourceCoverageId": "co-source:bogota-d-c:bogota:private_car",
+      "sourceRef": {"sheet": "Resumen_ciudades", "row": 36, "columns": "3:19"},
+      "sourceRecordIds": [],
+      "originalValue": {"status": "Si", "digitPosition": "Ultimo digito"},
+      "interpretedValue": {
+        "vehicleKind": "car",
+        "serviceType": "private",
+        "rotation": "even dates 1-5, odd dates 6-0",
+        "hours": "06:00-21:00",
+        "days": "business days",
+        "scope": "Bogota urban perimeter"
+      },
+      "officialSourceUrl": "https://www.movilidadbogota.gov.co/pico-y-placa",
+      "evidenceSummary": "The current official page identifies the September 2026 calendar and links the private-vehicle legal basis and boundary map; the legal text also contains vehicle exceptions.",
+      "consultedAt": "2026-09-06",
+      "legalValidity": {"status": "incomplete", "validFrom": null, "validUntil": null, "sourceTimestamp": "2026-08-31"},
+      "decision": "needs_evidence",
+      "reviewer": "Agent A official-source review",
+      "snapshotAction": "hold",
+      "blockers": [
+        "current_compiled_legal_text_not_semantically_reviewed",
+        "engine_cannot_represent_vehicle_exceptions",
+        "official_calendar_not_bound_to_complete_runtime_interval",
+        "registration_scope_not_verified"
+      ]
+    },
+    {
+      "sourceCoverageId": "co-source:narino:pasto:private_car",
+      "sourceRef": {"sheet": "Resumen_ciudades", "row": 56, "columns": "3:19"},
+      "sourceRecordIds": [],
+      "originalValue": {"status": "Si", "digitPosition": "Ultimo digito"},
+      "interpretedValue": {"vehicleKind": "car", "serviceType": "private", "runtimeRule": null},
+      "officialSourceUrl": "https://www.pasto.gov.co/index.php/decretos-2026?download=3115701%3Adec-0122-24-jul-2026",
+      "evidenceSummary": "The official 2026 decree index identifies Decreto 0122 of 24 July 2026, but the linked decree content was not accessible for semantic review in this environment.",
+      "consultedAt": "2026-09-06",
+      "legalValidity": {"status": "unverified", "validFrom": null, "validUntil": null, "sourceTimestamp": "2026-07-24"},
+      "decision": "needs_evidence",
+      "reviewer": "Agent A official-source review",
+      "snapshotAction": "hold",
+      "blockers": ["official_decree_content_inaccessible", "legal_semantics_not_verified", "runtime_scope_not_verified"]
+    },
+    {
+      "sourceCoverageId": "co-source:narino:pasto:motorcycle",
+      "sourceRef": {"sheet": "Resumen_ciudades", "row": 56, "columns": "20:36"},
+      "sourceRecordIds": [],
+      "originalValue": {"status": "Si", "digitPosition": "Ultimo digito"},
+      "interpretedValue": {"vehicleKind": "motorcycle", "serviceType": "private", "runtimeRule": null},
+      "officialSourceUrl": "https://www.pasto.gov.co/index.php/decretos-2026?download=3115701%3Adec-0122-24-jul-2026",
+      "evidenceSummary": "The official 2026 decree index identifies Decreto 0122 of 24 July 2026, but the linked decree content was not accessible for semantic review in this environment.",
+      "consultedAt": "2026-09-06",
+      "legalValidity": {"status": "unverified", "validFrom": null, "validUntil": null, "sourceTimestamp": "2026-07-24"},
+      "decision": "needs_evidence",
+      "reviewer": "Agent A official-source review",
+      "snapshotAction": "hold",
+      "blockers": ["official_decree_content_inaccessible", "legal_semantics_not_verified", "runtime_scope_not_verified"]
+    },
+    {
+      "sourceCoverageId": "co-source:narino:pasto:taxi",
+      "sourceRef": {"sheet": "Resumen_ciudades", "row": 56, "columns": "37:53"},
+      "sourceRecordIds": [],
+      "originalValue": {"status": "Si", "digitPosition": "Ultimo digito"},
+      "interpretedValue": {"vehicleKind": "car", "serviceType": "taxi", "runtimeRule": null},
+      "officialSourceUrl": "https://www.pasto.gov.co/index.php/decretos-2026?download=3115701%3Adec-0122-24-jul-2026",
+      "evidenceSummary": "The official 2026 decree index identifies Decreto 0122 of 24 July 2026, but the linked decree content was not accessible for semantic review in this environment.",
+      "consultedAt": "2026-09-06",
+      "legalValidity": {"status": "unverified", "validFrom": null, "validUntil": null, "sourceTimestamp": "2026-07-24"},
+      "decision": "needs_evidence",
+      "reviewer": "Agent A official-source review",
+      "snapshotAction": "hold",
+      "blockers": ["official_decree_content_inaccessible", "legal_semantics_not_verified", "runtime_scope_not_verified"]
+    }
+  ]
+}

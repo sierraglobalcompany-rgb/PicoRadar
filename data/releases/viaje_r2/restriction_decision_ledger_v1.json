@@ -20,6 +20,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:barbosa:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:barbosa",
@@ -171,6 +172,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:barbosa:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:barbosa",
@@ -323,6 +325,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:antioquia:barbosa:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:antioquia:barbosa",
@@ -447,6 +450,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:bello:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:bello",
@@ -598,6 +602,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:bello:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:bello",
@@ -750,6 +755,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:antioquia:bello:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:antioquia:bello",
@@ -874,6 +880,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:caldas:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:caldas",
@@ -1025,6 +1032,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:caldas:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:caldas",
@@ -1177,6 +1185,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:antioquia:caldas:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:antioquia:caldas",
@@ -1301,6 +1310,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:copacabana:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:copacabana",
@@ -1452,6 +1462,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:copacabana:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:copacabana",
@@ -1604,6 +1615,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:antioquia:copacabana:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:antioquia:copacabana",
@@ -1728,6 +1740,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:envigado:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:envigado",
@@ -1879,6 +1892,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:envigado:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:envigado",
@@ -2031,6 +2045,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:antioquia:envigado:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:antioquia:envigado",
@@ -2155,6 +2170,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:girardota:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:girardota",
@@ -2306,6 +2322,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:girardota:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:girardota",
@@ -2458,6 +2475,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:antioquia:girardota:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:antioquia:girardota",
@@ -2582,6 +2600,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:itagui:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:itagui",
@@ -2733,6 +2752,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:itagui:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:itagui",
@@ -2885,6 +2905,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:antioquia:itagui:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:antioquia:itagui",
@@ -3009,6 +3030,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:la-estrella:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:la-estrella",
@@ -3160,6 +3182,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:la-estrella:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:la-estrella",
@@ -3312,6 +3335,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:antioquia:la-estrella:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:antioquia:la-estrella",
@@ -3427,15 +3451,59 @@
       "publishable": false,
       "quarantineReasons": [
         "app_jurisdiction_mapping_not_verified",
+        "current_holiday_policy_not_verified",
+        "engine_cannot_represent_spatial_exemptions_and_corregimiento_scope",
+        "exact_legal_valid_until_not_stated",
         "freshness_policy_is_not_legal_validity",
         "freshness_unverified",
         "holiday_policy_not_structured_in_workbook",
         "holiday_policy_unverified",
         "legal_validity_unverified",
+        "registration_scope_not_verified",
         "registration_scope_unverified",
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
+      "reviewProjection": {
+        "blockers": [
+          "current_holiday_policy_not_verified",
+          "engine_cannot_represent_spatial_exemptions_and_corregimiento_scope",
+          "exact_legal_valid_until_not_stated",
+          "registration_scope_not_verified"
+        ],
+        "consultedAt": "2026-09-06",
+        "decision": "needs_evidence",
+        "evidenceSummary": "The current official page confirms last plate digit, weekday rotation, hours, start date, exempt roads, and no application in corregimientos.",
+        "interpretedValue": {
+          "hours": "05:00-20:00",
+          "rotation": "Mon 5/8, Tue 1/4, Wed 0/2, Thu 3/6, Fri 7/9",
+          "serviceType": "private",
+          "starts": "2026-08-03",
+          "vehicleKind": "car"
+        },
+        "legalValidity": {
+          "sourceTimestamp": null,
+          "status": "incomplete",
+          "validFrom": "2026-08-03",
+          "validUntil": null
+        },
+        "officialSourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+        "originalValue": {
+          "digitPosition": "Ultimo digito",
+          "status": "Si"
+        },
+        "reviewer": "Agent A official-source review",
+        "snapshotAction": "hold",
+        "sourceCoverageId": "co-source:antioquia:medellin:private_car",
+        "sourceRecordIds": [],
+        "sourceRef": {
+          "columns": "3:19",
+          "row": 11,
+          "sheet": "Resumen_ciudades"
+        }
+      },
+      "runtimePublished": false,
       "sourceCoverageId": "co-source:antioquia:medellin:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:medellin",
@@ -3578,15 +3646,59 @@
       "publishable": false,
       "quarantineReasons": [
         "app_jurisdiction_mapping_not_verified",
+        "current_holiday_policy_not_verified",
+        "engine_cannot_represent_spatial_exemptions_and_corregimiento_scope",
+        "exact_legal_valid_until_not_stated",
         "freshness_policy_is_not_legal_validity",
         "freshness_unverified",
         "holiday_policy_not_structured_in_workbook",
         "holiday_policy_unverified",
         "legal_validity_unverified",
+        "registration_scope_not_verified",
         "registration_scope_unverified",
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
+      "reviewProjection": {
+        "blockers": [
+          "current_holiday_policy_not_verified",
+          "engine_cannot_represent_spatial_exemptions_and_corregimiento_scope",
+          "exact_legal_valid_until_not_stated",
+          "registration_scope_not_verified"
+        ],
+        "consultedAt": "2026-09-06",
+        "decision": "needs_evidence",
+        "evidenceSummary": "The current official page confirms first plate digit for two- and four-stroke motorcycles, weekday rotation, hours, start date, exempt roads, and no application in corregimientos.",
+        "interpretedValue": {
+          "hours": "05:00-20:00",
+          "rotation": "Mon 5/8, Tue 1/4, Wed 0/2, Thu 3/6, Fri 7/9",
+          "serviceType": "private",
+          "starts": "2026-08-03",
+          "vehicleKind": "motorcycle"
+        },
+        "legalValidity": {
+          "sourceTimestamp": null,
+          "status": "incomplete",
+          "validFrom": "2026-08-03",
+          "validUntil": null
+        },
+        "officialSourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+        "originalValue": {
+          "digitPosition": "Primer digito",
+          "status": "Si"
+        },
+        "reviewer": "Agent A official-source review",
+        "snapshotAction": "hold",
+        "sourceCoverageId": "co-source:antioquia:medellin:motorcycle",
+        "sourceRecordIds": [],
+        "sourceRef": {
+          "columns": "20:36",
+          "row": 11,
+          "sheet": "Resumen_ciudades"
+        }
+      },
+      "runtimePublished": false,
       "sourceCoverageId": "co-source:antioquia:medellin:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:medellin",
@@ -3738,6 +3850,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:medellin:taxi",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:medellin",
@@ -3879,6 +3992,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:antioquia:rionegro:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:antioquia:rionegro",
@@ -4004,6 +4118,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:antioquia:rionegro:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:antioquia:rionegro",
@@ -4129,6 +4244,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:antioquia:rionegro:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:antioquia:rionegro",
@@ -4253,6 +4369,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:sabaneta:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:sabaneta",
@@ -4404,6 +4521,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:antioquia:sabaneta:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:antioquia:sabaneta",
@@ -4556,6 +4674,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:antioquia:sabaneta:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:antioquia:sabaneta",
@@ -4681,6 +4800,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:baranoa:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:baranoa",
@@ -4805,6 +4925,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:baranoa:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:baranoa",
@@ -4957,6 +5078,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:baranoa:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:baranoa",
@@ -5082,6 +5204,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:barranquilla:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:barranquilla",
@@ -5207,6 +5330,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:barranquilla:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:barranquilla",
@@ -5332,6 +5456,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:barranquilla:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:barranquilla",
@@ -5457,6 +5582,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:campo-de-la-cruz:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:campo-de-la-cruz",
@@ -5581,6 +5707,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:campo-de-la-cruz:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:campo-de-la-cruz",
@@ -5733,6 +5860,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:campo-de-la-cruz:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:campo-de-la-cruz",
@@ -5858,6 +5986,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:candelaria:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:candelaria",
@@ -5982,6 +6111,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:candelaria:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:candelaria",
@@ -6134,6 +6264,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:candelaria:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:candelaria",
@@ -6259,6 +6390,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:galapa:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:galapa",
@@ -6383,6 +6515,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:galapa:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:galapa",
@@ -6535,6 +6668,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:galapa:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:galapa",
@@ -6660,6 +6794,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:juan-de-acosta:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:juan-de-acosta",
@@ -6784,6 +6919,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:juan-de-acosta:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:juan-de-acosta",
@@ -6936,6 +7072,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:juan-de-acosta:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:juan-de-acosta",
@@ -7061,6 +7198,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:malambo:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:malambo",
@@ -7185,6 +7323,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:malambo:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:malambo",
@@ -7337,6 +7476,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:malambo:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:malambo",
@@ -7462,6 +7602,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:manati:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:manati",
@@ -7586,6 +7727,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:manati:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:manati",
@@ -7738,6 +7880,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:manati:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:manati",
@@ -7863,6 +8006,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:palmar-de-varela:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:palmar-de-varela",
@@ -7987,6 +8131,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:palmar-de-varela:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:palmar-de-varela",
@@ -8139,6 +8284,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:palmar-de-varela:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:palmar-de-varela",
@@ -8264,6 +8410,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:piojo:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:piojo",
@@ -8388,6 +8535,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:piojo:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:piojo",
@@ -8540,6 +8688,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:piojo:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:piojo",
@@ -8665,6 +8814,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:polonuevo:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:polonuevo",
@@ -8789,6 +8939,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:polonuevo:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:polonuevo",
@@ -8941,6 +9092,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:polonuevo:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:polonuevo",
@@ -9066,6 +9218,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:ponedera:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:ponedera",
@@ -9190,6 +9343,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:ponedera:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:ponedera",
@@ -9342,6 +9496,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:ponedera:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:ponedera",
@@ -9467,6 +9622,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:puerto-colombia:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:puerto-colombia",
@@ -9591,6 +9747,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:puerto-colombia:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:puerto-colombia",
@@ -9743,6 +9900,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:puerto-colombia:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:puerto-colombia",
@@ -9868,6 +10026,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:repelon:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:repelon",
@@ -9992,6 +10151,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:repelon:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:repelon",
@@ -10144,6 +10304,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:repelon:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:repelon",
@@ -10269,6 +10430,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:sabanagrande:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:sabanagrande",
@@ -10393,6 +10555,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:sabanagrande:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:sabanagrande",
@@ -10545,6 +10708,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:sabanagrande:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:sabanagrande",
@@ -10670,6 +10834,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:sabanalarga:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:sabanalarga",
@@ -10794,6 +10959,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:sabanalarga:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:sabanalarga",
@@ -10946,6 +11112,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:sabanalarga:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:sabanalarga",
@@ -11071,6 +11238,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:santa-lucia:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:santa-lucia",
@@ -11195,6 +11363,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:santa-lucia:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:santa-lucia",
@@ -11347,6 +11516,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:santa-lucia:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:santa-lucia",
@@ -11472,6 +11642,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:santo-tomas:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:santo-tomas",
@@ -11596,6 +11767,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:santo-tomas:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:santo-tomas",
@@ -11748,6 +11920,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:santo-tomas:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:santo-tomas",
@@ -11873,6 +12046,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:soledad:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:soledad",
@@ -11997,6 +12171,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:soledad:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:soledad",
@@ -12147,6 +12322,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:soledad:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:soledad",
@@ -12272,6 +12448,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:suan:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:suan",
@@ -12396,6 +12573,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:suan:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:suan",
@@ -12548,6 +12726,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:suan:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:suan",
@@ -12673,6 +12852,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:tubara:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:tubara",
@@ -12797,6 +12977,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:tubara:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:tubara",
@@ -12949,6 +13130,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:tubara:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:tubara",
@@ -13074,6 +13256,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:usiacuri:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:usiacuri",
@@ -13198,6 +13381,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:atlantico:usiacuri:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:atlantico:usiacuri",
@@ -13350,6 +13534,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:atlantico:usiacuri:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:atlantico:usiacuri",
@@ -13465,16 +13650,61 @@
       "publishable": false,
       "quarantineReasons": [
         "app_jurisdiction_mapping_not_verified",
+        "current_compiled_legal_text_not_semantically_reviewed",
         "dynamic_or_textual_weekday_rule",
+        "engine_cannot_represent_vehicle_exceptions",
         "freshness_policy_is_not_legal_validity",
         "freshness_unverified",
         "holiday_policy_not_structured_in_workbook",
         "holiday_policy_unverified",
         "legal_validity_unverified",
+        "official_calendar_not_bound_to_complete_runtime_interval",
+        "registration_scope_not_verified",
         "registration_scope_unverified",
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
+      "reviewProjection": {
+        "blockers": [
+          "current_compiled_legal_text_not_semantically_reviewed",
+          "engine_cannot_represent_vehicle_exceptions",
+          "official_calendar_not_bound_to_complete_runtime_interval",
+          "registration_scope_not_verified"
+        ],
+        "consultedAt": "2026-09-06",
+        "decision": "needs_evidence",
+        "evidenceSummary": "The current official page identifies the September 2026 calendar and links the private-vehicle legal basis and boundary map; the legal text also contains vehicle exceptions.",
+        "interpretedValue": {
+          "days": "business days",
+          "hours": "06:00-21:00",
+          "rotation": "even dates 1-5, odd dates 6-0",
+          "scope": "Bogota urban perimeter",
+          "serviceType": "private",
+          "vehicleKind": "car"
+        },
+        "legalValidity": {
+          "sourceTimestamp": "2026-08-31",
+          "status": "incomplete",
+          "validFrom": null,
+          "validUntil": null
+        },
+        "officialSourceUrl": "https://www.movilidadbogota.gov.co/pico-y-placa",
+        "originalValue": {
+          "digitPosition": "Ultimo digito",
+          "status": "Si"
+        },
+        "reviewer": "Agent A official-source review",
+        "snapshotAction": "hold",
+        "sourceCoverageId": "co-source:bogota-d-c:bogota:private_car",
+        "sourceRecordIds": [],
+        "sourceRef": {
+          "columns": "3:19",
+          "row": 36,
+          "sheet": "Resumen_ciudades"
+        }
+      },
+      "runtimePublished": false,
       "sourceCoverageId": "co-source:bogota-d-c:bogota:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:bogota-d-c:bogota",
@@ -13613,6 +13843,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:bogota-d-c:bogota:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:bogota-d-c:bogota",
@@ -13737,6 +13968,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:bogota-d-c:bogota:taxi",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:bogota-d-c:bogota",
@@ -13877,6 +14109,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:bolivar:cartagena:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:bolivar:cartagena",
@@ -14039,6 +14272,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:bolivar:cartagena:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:bolivar:cartagena",
@@ -14196,6 +14430,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:bolivar:cartagena:taxi",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:bolivar:cartagena",
@@ -14332,6 +14567,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:bolivar:turbaco:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:bolivar:turbaco",
@@ -14457,6 +14693,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:bolivar:turbaco:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:bolivar:turbaco",
@@ -14582,6 +14819,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:bolivar:turbaco:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:bolivar:turbaco",
@@ -14707,6 +14945,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:boyaca:duitama:private_car",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:boyaca:duitama",
@@ -14832,6 +15071,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:boyaca:duitama:motorcycle",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:boyaca:duitama",
@@ -14957,6 +15197,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:boyaca:duitama:taxi",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:boyaca:duitama",
@@ -15081,6 +15322,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:boyaca:tunja:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:boyaca:tunja",
@@ -15233,6 +15475,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:boyaca:tunja:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:boyaca:tunja",
@@ -15358,6 +15601,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:boyaca:tunja:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:boyaca:tunja",
@@ -15482,6 +15726,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:caldas:manizales:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:caldas:manizales",
@@ -15623,6 +15868,7 @@
         "scoped_exemption_requires_review",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:caldas:manizales:motorcycle",
       "sourceDisposition": "scoped_exemption_requires_review",
       "sourceJurisdictionKey": "co-source:caldas:manizales",
@@ -15756,6 +16002,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:caldas:manizales:taxi",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:caldas:manizales",
@@ -15894,6 +16141,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:caqueta:florencia:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:caqueta:florencia",
@@ -16019,6 +16267,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:caqueta:florencia:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:caqueta:florencia",
@@ -16144,6 +16393,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:caqueta:florencia:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:caqueta:florencia",
@@ -16269,6 +16519,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:casanare:yopal:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:casanare:yopal",
@@ -16394,6 +16645,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:casanare:yopal:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:casanare:yopal",
@@ -16519,6 +16771,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:casanare:yopal:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:casanare:yopal",
@@ -16643,6 +16896,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:cauca:popayan:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:cauca:popayan",
@@ -16796,6 +17050,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:cauca:popayan:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:cauca:popayan",
@@ -16950,6 +17205,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:cauca:popayan:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:cauca:popayan",
@@ -17075,6 +17331,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:cesar:valledupar:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:cesar:valledupar",
@@ -17200,6 +17457,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:cesar:valledupar:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:cesar:valledupar",
@@ -17325,6 +17583,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:cesar:valledupar:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:cesar:valledupar",
@@ -17449,6 +17708,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:choco:quibdo:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:choco:quibdo",
@@ -17602,6 +17862,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:choco:quibdo:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:choco:quibdo",
@@ -17766,6 +18027,7 @@
         "scoped_exemption_requires_review",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:choco:quibdo:taxi",
       "sourceDisposition": "scoped_exemption_requires_review",
       "sourceJurisdictionKey": "co-source:choco:quibdo",
@@ -17891,6 +18153,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:cundinamarca:fusagasuga:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:cundinamarca:fusagasuga",
@@ -18016,6 +18279,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:cundinamarca:fusagasuga:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:cundinamarca:fusagasuga",
@@ -18141,6 +18405,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:cundinamarca:fusagasuga:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:cundinamarca:fusagasuga",
@@ -18266,6 +18531,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:cundinamarca:soacha:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:cundinamarca:soacha",
@@ -18391,6 +18657,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:cundinamarca:soacha:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:cundinamarca:soacha",
@@ -18516,6 +18783,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:cundinamarca:soacha:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:cundinamarca:soacha",
@@ -18641,6 +18909,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:cordoba:monteria:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:cordoba:monteria",
@@ -18766,6 +19035,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:cordoba:monteria:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:cordoba:monteria",
@@ -18891,6 +19161,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:cordoba:monteria:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:cordoba:monteria",
@@ -19016,6 +19287,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:cordoba:santa-cruz-de-lorica:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:cordoba:santa-cruz-de-lorica",
@@ -19141,6 +19413,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:cordoba:santa-cruz-de-lorica:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:cordoba:santa-cruz-de-lorica",
@@ -19266,6 +19539,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:cordoba:santa-cruz-de-lorica:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:cordoba:santa-cruz-de-lorica",
@@ -19391,6 +19665,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:huila:neiva:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:huila:neiva",
@@ -19516,6 +19791,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:huila:neiva:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:huila:neiva",
@@ -19641,6 +19917,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:huila:neiva:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:huila:neiva",
@@ -19766,6 +20043,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:huila:pitalito:private_car",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:huila:pitalito",
@@ -19891,6 +20169,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:huila:pitalito:motorcycle",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:huila:pitalito",
@@ -20016,6 +20295,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:huila:pitalito:taxi",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:huila:pitalito",
@@ -20140,6 +20420,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:magdalena:santa-marta:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:magdalena:santa-marta",
@@ -20313,6 +20594,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:magdalena:santa-marta:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:magdalena:santa-marta",
@@ -20469,6 +20751,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:magdalena:santa-marta:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:magdalena:santa-marta",
@@ -20593,6 +20876,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:meta:villavicencio:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:meta:villavicencio",
@@ -20753,6 +21037,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:meta:villavicencio:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:meta:villavicencio",
@@ -20878,6 +21163,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:meta:villavicencio:taxi",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:meta:villavicencio",
@@ -21003,6 +21289,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:narino:ipiales:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:narino:ipiales",
@@ -21128,6 +21415,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:narino:ipiales:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:narino:ipiales",
@@ -21253,6 +21541,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:narino:ipiales:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:narino:ipiales",
@@ -21372,11 +21661,51 @@
         "freshness_unverified",
         "holiday_policy_not_structured_in_workbook",
         "holiday_policy_unverified",
+        "legal_semantics_not_verified",
         "legal_validity_unverified",
+        "official_decree_content_inaccessible",
         "registration_scope_unverified",
         "runtime_coverage_incomplete",
+        "runtime_scope_not_verified",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
+      "reviewProjection": {
+        "blockers": [
+          "official_decree_content_inaccessible",
+          "legal_semantics_not_verified",
+          "runtime_scope_not_verified"
+        ],
+        "consultedAt": "2026-09-06",
+        "decision": "needs_evidence",
+        "evidenceSummary": "The official 2026 decree index identifies Decreto 0122 of 24 July 2026, but the linked decree content was not accessible for semantic review in this environment.",
+        "interpretedValue": {
+          "runtimeRule": null,
+          "serviceType": "private",
+          "vehicleKind": "car"
+        },
+        "legalValidity": {
+          "sourceTimestamp": "2026-07-24",
+          "status": "unverified",
+          "validFrom": null,
+          "validUntil": null
+        },
+        "officialSourceUrl": "https://www.pasto.gov.co/index.php/decretos-2026?download=3115701%3Adec-0122-24-jul-2026",
+        "originalValue": {
+          "digitPosition": "Ultimo digito",
+          "status": "Si"
+        },
+        "reviewer": "Agent A official-source review",
+        "snapshotAction": "hold",
+        "sourceCoverageId": "co-source:narino:pasto:private_car",
+        "sourceRecordIds": [],
+        "sourceRef": {
+          "columns": "3:19",
+          "row": 56,
+          "sheet": "Resumen_ciudades"
+        }
+      },
+      "runtimePublished": false,
       "sourceCoverageId": "co-source:narino:pasto:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:narino:pasto",
@@ -21512,11 +21841,51 @@
         "freshness_unverified",
         "holiday_policy_not_structured_in_workbook",
         "holiday_policy_unverified",
+        "legal_semantics_not_verified",
         "legal_validity_unverified",
+        "official_decree_content_inaccessible",
         "registration_scope_unverified",
         "runtime_coverage_incomplete",
+        "runtime_scope_not_verified",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
+      "reviewProjection": {
+        "blockers": [
+          "official_decree_content_inaccessible",
+          "legal_semantics_not_verified",
+          "runtime_scope_not_verified"
+        ],
+        "consultedAt": "2026-09-06",
+        "decision": "needs_evidence",
+        "evidenceSummary": "The official 2026 decree index identifies Decreto 0122 of 24 July 2026, but the linked decree content was not accessible for semantic review in this environment.",
+        "interpretedValue": {
+          "runtimeRule": null,
+          "serviceType": "private",
+          "vehicleKind": "motorcycle"
+        },
+        "legalValidity": {
+          "sourceTimestamp": "2026-07-24",
+          "status": "unverified",
+          "validFrom": null,
+          "validUntil": null
+        },
+        "officialSourceUrl": "https://www.pasto.gov.co/index.php/decretos-2026?download=3115701%3Adec-0122-24-jul-2026",
+        "originalValue": {
+          "digitPosition": "Ultimo digito",
+          "status": "Si"
+        },
+        "reviewer": "Agent A official-source review",
+        "snapshotAction": "hold",
+        "sourceCoverageId": "co-source:narino:pasto:motorcycle",
+        "sourceRecordIds": [],
+        "sourceRef": {
+          "columns": "20:36",
+          "row": 56,
+          "sheet": "Resumen_ciudades"
+        }
+      },
+      "runtimePublished": false,
       "sourceCoverageId": "co-source:narino:pasto:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:narino:pasto",
@@ -21652,11 +22021,51 @@
         "freshness_unverified",
         "holiday_policy_not_structured_in_workbook",
         "holiday_policy_unverified",
+        "legal_semantics_not_verified",
         "legal_validity_unverified",
+        "official_decree_content_inaccessible",
         "registration_scope_unverified",
         "runtime_coverage_incomplete",
+        "runtime_scope_not_verified",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
+      "reviewProjection": {
+        "blockers": [
+          "official_decree_content_inaccessible",
+          "legal_semantics_not_verified",
+          "runtime_scope_not_verified"
+        ],
+        "consultedAt": "2026-09-06",
+        "decision": "needs_evidence",
+        "evidenceSummary": "The official 2026 decree index identifies Decreto 0122 of 24 July 2026, but the linked decree content was not accessible for semantic review in this environment.",
+        "interpretedValue": {
+          "runtimeRule": null,
+          "serviceType": "taxi",
+          "vehicleKind": "car"
+        },
+        "legalValidity": {
+          "sourceTimestamp": "2026-07-24",
+          "status": "unverified",
+          "validFrom": null,
+          "validUntil": null
+        },
+        "officialSourceUrl": "https://www.pasto.gov.co/index.php/decretos-2026?download=3115701%3Adec-0122-24-jul-2026",
+        "originalValue": {
+          "digitPosition": "Ultimo digito",
+          "status": "Si"
+        },
+        "reviewer": "Agent A official-source review",
+        "snapshotAction": "hold",
+        "sourceCoverageId": "co-source:narino:pasto:taxi",
+        "sourceRecordIds": [],
+        "sourceRef": {
+          "columns": "37:53",
+          "row": 56,
+          "sheet": "Resumen_ciudades"
+        }
+      },
+      "runtimePublished": false,
       "sourceCoverageId": "co-source:narino:pasto:taxi",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:narino:pasto",
@@ -21797,6 +22206,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:norte-de-santander:cucuta:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:norte-de-santander:cucuta",
@@ -21960,6 +22370,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:norte-de-santander:cucuta:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:norte-de-santander:cucuta",
@@ -22124,6 +22535,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:norte-de-santander:cucuta:taxi",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:norte-de-santander:cucuta",
@@ -22262,6 +22674,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:norte-de-santander:el-zulia:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:norte-de-santander:el-zulia",
@@ -22425,6 +22838,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:norte-de-santander:el-zulia:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:norte-de-santander:el-zulia",
@@ -22588,6 +23002,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:norte-de-santander:el-zulia:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:norte-de-santander:el-zulia",
@@ -22717,6 +23132,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:norte-de-santander:los-patios:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:norte-de-santander:los-patios",
@@ -22880,6 +23296,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:norte-de-santander:los-patios:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:norte-de-santander:los-patios",
@@ -23043,6 +23460,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:norte-de-santander:los-patios:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:norte-de-santander:los-patios",
@@ -23171,6 +23589,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:norte-de-santander:ocana:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:norte-de-santander:ocana",
@@ -23320,6 +23739,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:norte-de-santander:ocana:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:norte-de-santander:ocana",
@@ -23470,6 +23890,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:norte-de-santander:ocana:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:norte-de-santander:ocana",
@@ -23595,6 +24016,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:norte-de-santander:pamplona:private_car",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:norte-de-santander:pamplona",
@@ -23720,6 +24142,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:norte-de-santander:pamplona:motorcycle",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:norte-de-santander:pamplona",
@@ -23845,6 +24268,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:norte-de-santander:pamplona:taxi",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:norte-de-santander:pamplona",
@@ -23970,6 +24394,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:norte-de-santander:villa-del-rosario:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:norte-de-santander:villa-del-rosario",
@@ -24133,6 +24558,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:norte-de-santander:villa-del-rosario:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:norte-de-santander:villa-del-rosario",
@@ -24296,6 +24722,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:norte-de-santander:villa-del-rosario:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:norte-de-santander:villa-del-rosario",
@@ -24424,6 +24851,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:quindio:armenia:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:quindio:armenia",
@@ -24578,6 +25006,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:quindio:armenia:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:quindio:armenia",
@@ -24733,6 +25162,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:quindio:armenia:taxi",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:quindio:armenia",
@@ -24857,6 +25287,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:risaralda:dosquebradas:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:risaralda:dosquebradas",
@@ -25030,6 +25461,7 @@
         "scoped_exemption_requires_review",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:risaralda:dosquebradas:motorcycle",
       "sourceDisposition": "scoped_exemption_requires_review",
       "sourceJurisdictionKey": "co-source:risaralda:dosquebradas",
@@ -25155,6 +25587,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:risaralda:dosquebradas:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:risaralda:dosquebradas",
@@ -25279,6 +25712,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:risaralda:pereira:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:risaralda:pereira",
@@ -25430,6 +25864,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:risaralda:pereira:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:risaralda:pereira",
@@ -25582,6 +26017,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:risaralda:pereira:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:risaralda:pereira",
@@ -25707,6 +26143,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:santander:bucaramanga:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:santander:bucaramanga",
@@ -25872,6 +26309,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:santander:bucaramanga:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:santander:bucaramanga",
@@ -26037,6 +26475,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:santander:bucaramanga:taxi",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:santander:bucaramanga",
@@ -26175,6 +26614,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:santander:floridablanca:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:santander:floridablanca",
@@ -26340,6 +26780,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:santander:floridablanca:motorcycle",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:santander:floridablanca",
@@ -26505,6 +26946,7 @@
         "scoped_exemption_requires_review",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:santander:floridablanca:taxi",
       "sourceDisposition": "scoped_exemption_requires_review",
       "sourceJurisdictionKey": "co-source:santander:floridablanca",
@@ -26635,6 +27077,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:santander:giron:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:santander:giron",
@@ -26802,6 +27245,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:santander:giron:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:santander:giron",
@@ -26968,6 +27412,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:santander:giron:taxi",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:santander:giron",
@@ -27098,6 +27543,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:santander:piedecuesta:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:santander:piedecuesta",
@@ -27265,6 +27711,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:santander:piedecuesta:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:santander:piedecuesta",
@@ -27431,6 +27878,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:santander:piedecuesta:taxi",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:santander:piedecuesta",
@@ -27560,6 +28008,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:sucre:sincelejo:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:sucre:sincelejo",
@@ -27685,6 +28134,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:sucre:sincelejo:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:sucre:sincelejo",
@@ -27810,6 +28260,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:sucre:sincelejo:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:sucre:sincelejo",
@@ -27934,6 +28385,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:tolima:ibague:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:tolima:ibague",
@@ -28090,6 +28542,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:tolima:ibague:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:tolima:ibague",
@@ -28215,6 +28668,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "source_blocked",
       "sourceCoverageId": "co-source:tolima:ibague:taxi",
       "sourceDisposition": "blocked_or_unverified",
       "sourceJurisdictionKey": "co-source:tolima:ibague",
@@ -28339,6 +28793,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:valle-del-cauca:buenaventura:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:valle-del-cauca:buenaventura",
@@ -28495,6 +28950,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:valle-del-cauca:buenaventura:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:valle-del-cauca:buenaventura",
@@ -28625,6 +29081,7 @@
         "service_scope_requires_review",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:valle-del-cauca:buenaventura:taxi",
       "sourceDisposition": "service_scope_requires_review",
       "sourceJurisdictionKey": "co-source:valle-del-cauca:buenaventura",
@@ -28765,6 +29222,7 @@
         "runtime_coverage_incomplete",
         "spatial_scope_and_exceptions_require_review"
       ],
+      "reviewDecision": "needs_evidence",
       "sourceCoverageId": "co-source:valle-del-cauca:cali:private_car",
       "sourceDisposition": "candidate_requires_semantic_review",
       "sourceJurisdictionKey": "co-source:valle-del-cauca:cali",
@@ -28919,6 +29377,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:valle-del-cauca:cali:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:valle-del-cauca:cali",
@@ -29044,6 +29503,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:valle-del-cauca:cali:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:valle-del-cauca:cali",
@@ -29169,6 +29629,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:valle-del-cauca:palmira:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:valle-del-cauca:palmira",
@@ -29294,6 +29755,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:valle-del-cauca:palmira:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:valle-del-cauca:palmira",
@@ -29419,6 +29881,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:valle-del-cauca:palmira:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:valle-del-cauca:palmira",
@@ -29544,6 +30007,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:valle-del-cauca:tulua:private_car",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:valle-del-cauca:tulua",
@@ -29669,6 +30133,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:valle-del-cauca:tulua:motorcycle",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:valle-del-cauca:tulua",
@@ -29794,6 +30259,7 @@
         "spatial_scope_and_exceptions_require_review",
         "unknown_not_absence"
       ],
+      "reviewDecision": "unknown_not_absence",
       "sourceCoverageId": "co-source:valle-del-cauca:tulua:taxi",
       "sourceDisposition": "unknown_not_absence",
       "sourceJurisdictionKey": "co-source:valle-del-cauca:tulua",
@@ -48119,10 +48585,10 @@
       "vehicleTypeRaw": "Servicio público de transporte terrestre automotor de pasajeros"
     }
   ],
-  "decisionPolicy": "all_supplied_coverages_quarantined",
+  "decisionPolicy": "selective_reviewed_publication_fail_closed",
   "existingBundledRestrictionsPreserved": true,
   "existingBundledRestrictionsSha256": "abd836fa0bc3391b26e5c6f14d1e35bb53b1fc0d1e6307039a50cc721ac40f88",
-  "generatedAt": "2026-09-05T00:00:00Z",
+  "generatedAt": "2026-09-06T00:00:00Z",
   "ledgerKey": "viaje_r2_restriction_decisions",
   "mappedAppJurisdictionIds": [
     "co-ant-medellin",
@@ -48143,6 +48609,8 @@
     "co-vac-cali"
   ],
   "newRuntimeRulesPublished": 0,
+  "resultBundledRestrictionsSha256": "abd836fa0bc3391b26e5c6f14d1e35bb53b1fc0d1e6307039a50cc721ac40f88",
+  "reviewedDecisionCount": 6,
   "rotationValidityDecisions": [
     {
       "decision": "informational_only",
@@ -51578,5 +52046,5 @@
   ],
   "schemaVersion": 1,
   "sourceSnapshotDate": "2026-09-05",
-  "version": "2026.09.05-viaje-r2"
+  "version": "2026.09.06-viaje-r2c-a"
 }
