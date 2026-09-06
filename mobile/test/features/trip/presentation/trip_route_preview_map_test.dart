@@ -584,7 +584,9 @@ void main() {
     expect(identical(fullscreen.associations, snapshot), isTrue);
   });
 
-  testWidgets('remains readable at 360x780 and 2x text scale', (tester) async {
+  testWidgets('fullscreen fits 360x780 at 2x text scale without clipping', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(360, 780);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -594,8 +596,40 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final openFullscreen = find.byKey(const ValueKey('trip-map-fullscreen'));
+    await tester.ensureVisible(openFullscreen);
+    await tester.pump();
+    await tester.tap(openFullscreen);
+    await tester.pumpAndSettle();
+
     expect(tester.takeException(), isNull);
-    expect(find.textContaining('tarifas no disponibles'), findsOneWidget);
+    expect(find.text('Vista previa de la ruta'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('trip-map-close-fullscreen')).hitTestable(),
+      findsOneWidget,
+    );
+
+    final fullscreen = find.byType(TripRoutePreviewMap).last;
+    final viewport = find.byKey(const ValueKey('trip-map-fullscreen-scroll'));
+    expect(viewport, findsOneWidget);
+    for (final summary in [
+      find.descendant(
+        of: fullscreen,
+        matching: find.textContaining('tarifas no disponibles'),
+      ),
+      find.descendant(
+        of: fullscreen,
+        matching: find.textContaining('cámara registrada próxima'),
+      ),
+    ]) {
+      expect(summary, findsOneWidget);
+      await tester.ensureVisible(summary);
+      await tester.pumpAndSettle();
+      final viewportRect = tester.getRect(viewport);
+      final summaryRect = tester.getRect(summary);
+      expect(summaryRect.top, greaterThanOrEqualTo(viewportRect.top));
+      expect(summaryRect.bottom, lessThanOrEqualTo(viewportRect.bottom));
+    }
   });
 }
 

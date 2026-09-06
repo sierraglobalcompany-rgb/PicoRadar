@@ -53,7 +53,12 @@ class CachedTripRouteAssociationResolver
     }
     final pending = _compute(request);
     _cache[key] = pending;
-    pending.then<void>((_) {}, onError: (_, _) => _cache.remove(key));
+    pending.then<void>(
+      (_) {},
+      onError: (_, _) {
+        _cache.remove(key);
+      },
+    );
     return pending;
   }
 }

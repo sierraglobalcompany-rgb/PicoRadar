@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/features/driving/domain/traffic_camera.dart';
 import 'package:picoradar/features/trip/application/route_geometry_index.dart';
@@ -77,6 +79,30 @@ void main() {
     expect(result.uniqueTollLocationCount, 1);
     expect(result.uniqueCameraLocationCount, 1);
   });
+
+  test(
+    'failed computation is evicted without an unhandled async error',
+    () async {
+      final failure = StateError('association failed');
+      final unhandledErrors = <Object>[];
+      var computations = 0;
+      final resolver = CachedTripRouteAssociationResolver(
+        compute: (_) {
+          computations++;
+          return Future<TripRouteAssociations>.error(failure);
+        },
+      );
+
+      await runZonedGuarded(() async {
+        await expectLater(resolver.resolve(request()), throwsA(same(failure)));
+        await Future<void>.delayed(Duration.zero);
+      }, (error, _) => unhandledErrors.add(error));
+
+      expect(unhandledErrors, isEmpty);
+      await expectLater(resolver.resolve(request()), throwsA(same(failure)));
+      expect(computations, 2);
+    },
+  );
 }
 
 TollInventoryRecord _toll() => const TollInventoryRecord(

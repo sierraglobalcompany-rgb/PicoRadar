@@ -198,65 +198,80 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
     if (widget.associations.geometryQuality != RouteGeometryQuality.polyline) {
       return const _MissingGeometry();
     }
-    return Column(
+    final layerControls = Wrap(
+      spacing: AppSpacing.s,
+      runSpacing: AppSpacing.s,
+      children: [
+        FilterChip(
+          key: const ValueKey('trip-map-toggle-route'),
+          selected: _showRoute,
+          avatar: const Icon(Icons.route_rounded, size: 18),
+          label: const Text('Ruta'),
+          onSelected: (value) => setState(() => _showRoute = value),
+        ),
+        FilterChip(
+          key: const ValueKey('trip-map-toggle-tolls'),
+          selected: _showTolls,
+          avatar: const Icon(Icons.toll_rounded, size: 18),
+          label: const Text('Peajes'),
+          onSelected: (value) => setState(() => _showTolls = value),
+        ),
+        FilterChip(
+          key: const ValueKey('trip-map-toggle-historical-tolls'),
+          selected: _showHistoricalTolls,
+          avatar: const Icon(Icons.history_rounded, size: 18),
+          label: const Text('Históricos'),
+          onSelected: (value) => setState(() => _showHistoricalTolls = value),
+        ),
+        FilterChip(
+          key: const ValueKey('trip-map-toggle-cameras'),
+          selected: _showCameras,
+          avatar: const Icon(Icons.photo_camera_rounded, size: 18),
+          label: const Text('Cámaras'),
+          onSelected: (value) => setState(() => _showCameras = value),
+        ),
+      ],
+    );
+    Widget content(Widget map) => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          spacing: AppSpacing.s,
-          runSpacing: AppSpacing.s,
-          children: [
-            FilterChip(
-              key: const ValueKey('trip-map-toggle-route'),
-              selected: _showRoute,
-              avatar: const Icon(Icons.route_rounded, size: 18),
-              label: const Text('Ruta'),
-              onSelected: (value) => setState(() => _showRoute = value),
-            ),
-            FilterChip(
-              key: const ValueKey('trip-map-toggle-tolls'),
-              selected: _showTolls,
-              avatar: const Icon(Icons.toll_rounded, size: 18),
-              label: const Text('Peajes'),
-              onSelected: (value) => setState(() => _showTolls = value),
-            ),
-            FilterChip(
-              key: const ValueKey('trip-map-toggle-historical-tolls'),
-              selected: _showHistoricalTolls,
-              avatar: const Icon(Icons.history_rounded, size: 18),
-              label: const Text('Históricos'),
-              onSelected: (value) =>
-                  setState(() => _showHistoricalTolls = value),
-            ),
-            FilterChip(
-              key: const ValueKey('trip-map-toggle-cameras'),
-              selected: _showCameras,
-              avatar: const Icon(Icons.photo_camera_rounded, size: 18),
-              label: const Text('Cámaras'),
-              onSelected: (value) => setState(() => _showCameras = value),
-            ),
-          ],
-        ),
+        layerControls,
         const SizedBox(height: AppSpacing.s),
-        if (widget.allowFullscreen)
-          SizedBox(
-            height: 260,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              child: _buildMap(context),
-            ),
-          )
-        else
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              child: _buildMap(context),
-            ),
-          ),
+        map,
         const SizedBox(height: AppSpacing.s),
         Text(_tollSummary, style: AppTextStyles.caption),
         const SizedBox(height: AppSpacing.xs),
         Text(_cameraSummary, style: AppTextStyles.caption),
       ],
+    );
+
+    if (widget.allowFullscreen) {
+      return content(
+        SizedBox(
+          height: 260,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            child: _buildMap(context),
+          ),
+        ),
+      );
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        key: const ValueKey('trip-map-fullscreen-scroll'),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: content(
+            SizedBox(
+              height: (constraints.maxHeight * 0.55).clamp(260.0, 480.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.card),
+                child: _buildMap(context),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
