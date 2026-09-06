@@ -40,6 +40,8 @@ class TripPreviewTest extends TestCase
             'trips.api_key' => 'synthetic-test-key-not-a-credential',
             'trips.access_authorized' => true,
             'trips.license_authorized' => true,
+            'trips.confirmed_free' => false,
+            'trips.authorization_expires_at' => '2026-09-06T12:00:00Z',
             'trips.cache_store' => 'database',
             'trips.budget_id' => 'test-authorization-001',
             'trips.budget_currency' => 'USD',
@@ -114,6 +116,128 @@ class TripPreviewTest extends TestCase
             return true;
         });
         $this->assertSame($this->ledger(1, 21, 300), Cache::store('database')->get(self::LEDGER));
+    }
+
+    public function test_confirmed_free_trial_allows_zero_money_and_reserves_non_money_quota(): void
+    {
+        $this->enableConfirmedFreeTrial();
+
+        $this->postJson('/api/v1/trips/preview', $this->request())->assertOk();
+
+        Http::assertSentCount(1);
+        $this->assertSame($this->ledger(1, 21, 0), Cache::store('database')->get(self::LEDGER));
+    }
+
+    public function test_zero_money_trial_requires_explicit_confirmed_free_authorization(): void
+    {
+        config([
+            'trips.enabled' => true,
+            'trips.max_money_minor' => 0,
+            'trips.money_minor_per_request' => 0,
+        ]);
+
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertStatus(503)->assertExactJson(['error' => ['code' => 'not_configured']]);
+        Http::assertNothingSent();
+        $this->assertSame($this->ledger(), Cache::store('database')->get(self::LEDGER));
+    }
+
+    #[DataProvider('missingConfirmedFreeAuthorization')]
+    public function test_confirmed_free_trial_keeps_non_money_authorization_gates_closed(string $key, mixed $value): void
+    {
+        $this->enableConfirmedFreeTrial();
+        config(['trips.'.$key => $value]);
+
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertStatus(503)->assertExactJson(['error' => ['code' => 'not_configured']]);
+        Http::assertNothingSent();
+        $this->assertSame($this->ledger(), Cache::store('database')->get(self::LEDGER));
+    }
+
+    public static function missingConfirmedFreeAuthorization(): array
+    {
+        return [
+            'owner access not authorized' => ['access_authorized', false],
+            'provider key missing' => ['api_key', null],
+            'provider license not authorized' => ['license_authorized', false],
+            'free-cost evidence not boolean' => ['confirmed_free', 'true'],
+            'authorization deadline missing' => ['authorization_expires_at', null],
+            'request allowance missing' => ['max_requests', 0],
+            'unit allowance missing' => ['max_units', 0],
+            'unit reservation missing' => ['units_per_request', 0],
+            'timeout missing' => ['timeout_seconds', 0],
+        ];
+    }
+
+    public function test_expired_authorization_blocks_confirmed_free_trial_without_spending(): void
+    {
+        $this->enableConfirmedFreeTrial();
+        config(['trips.authorization_expires_at' => '2026-09-05T12:00:00Z']);
+
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertStatus(503)->assertExactJson(['error' => ['code' => 'not_configured']]);
+        Http::assertNothingSent();
+        $this->assertSame($this->ledger(), Cache::store('database')->get(self::LEDGER));
+    }
+
+    #[DataProvider('exhaustedConfirmedFreeLedgers')]
+    public function test_confirmed_free_trial_still_enforces_request_and_unit_caps(int $requests, int $units): void
+    {
+        $this->enableConfirmedFreeTrial();
+        $ledger = $this->ledger($requests, $units, 0);
+        Cache::store('database')->forever(self::LEDGER, $ledger);
+
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertStatus(429)->assertExactJson(['error' => ['code' => 'quota']]);
+        Http::assertNothingSent();
+        $this->assertSame($ledger, Cache::store('database')->get(self::LEDGER));
+    }
+
+    public static function exhaustedConfirmedFreeLedgers(): array
+    {
+        return [
+            'requests exhausted' => [2, 0],
+            'units exhausted' => [0, 22],
+        ];
+    }
+
+    public function test_confirmed_free_trial_rejects_corrupt_ledger_without_resetting_it(): void
+    {
+        $this->enableConfirmedFreeTrial();
+        $ledger = $this->ledger();
+        $ledger['requests'] = '0';
+        Cache::store('database')->forever(self::LEDGER, $ledger);
+
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertStatus(429)->assertExactJson(['error' => ['code' => 'quota']]);
+        Http::assertNothingSent();
+        $this->assertSame($ledger, Cache::store('database')->get(self::LEDGER));
+    }
+
+    public function test_unknown_cost_mode_rejects_zero_money_budget(): void
+    {
+        config([
+            'trips.enabled' => true,
+            'trips.confirmed_free' => false,
+            'trips.max_money_minor' => 0,
+            'trips.money_minor_per_request' => 0,
+        ]);
+
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertStatus(503)->assertExactJson(['error' => ['code' => 'not_configured']]);
+        Http::assertNothingSent();
+        $this->assertSame($this->ledger(), Cache::store('database')->get(self::LEDGER));
+    }
+
+    public function test_positive_money_reservation_cannot_cross_zero_budget(): void
+    {
+        $this->enableConfirmedFreeTrial();
+        config(['trips.money_minor_per_request' => 1]);
+
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertStatus(429)->assertExactJson(['error' => ['code' => 'quota']]);
+        Http::assertNothingSent();
+        $this->assertSame($this->ledger(), Cache::store('database')->get(self::LEDGER));
     }
 
     #[DataProvider('closedConfiguration')]
@@ -586,6 +710,16 @@ class TripPreviewTest extends TestCase
     private function ledger(int $requests = 0, int $units = 0, int $money = 0): array
     {
         return ['budget_id' => 'test-authorization-001', 'currency' => 'USD', 'requests' => $requests, 'units' => $units, 'money_minor' => $money, 'in_flight' => false];
+    }
+
+    private function enableConfirmedFreeTrial(): void
+    {
+        config([
+            'trips.enabled' => true,
+            'trips.confirmed_free' => true,
+            'trips.max_money_minor' => 0,
+            'trips.money_minor_per_request' => 0,
+        ]);
     }
 
     private function unit(string $code, string $name, GeographicUnitLevel $level, ?int $parent = null): GeographicUnit

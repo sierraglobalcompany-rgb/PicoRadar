@@ -6,6 +6,8 @@ return [
     'api_key' => env('TOLLGURU_API_KEY'),
     'access_authorized' => env('TRIPS_ACCESS_AUTHORIZED', false),
     'license_authorized' => env('TRIPS_LICENSE_AUTHORIZED', false),
+    'confirmed_free' => env('TRIPS_CONFIRMED_FREE', false),
+    'authorization_expires_at' => env('TRIPS_AUTHORIZATION_EXPIRES_AT'),
     'cache_store' => 'database',
     'budget_id' => env('TRIPS_BUDGET_ID'),
     'budget_currency' => env('TRIPS_BUDGET_CURRENCY'),
