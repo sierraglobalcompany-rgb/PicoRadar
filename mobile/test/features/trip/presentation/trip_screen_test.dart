@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:drift/native.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,6 +18,8 @@ import 'package:picoradar/features/pico_placa/domain/restriction_rule.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_engine.dart';
 import 'package:picoradar/features/trip/data/trip_draft_store.dart';
+import 'package:picoradar/features/trip/application/trip_route_association_resolver.dart';
+import 'package:picoradar/features/trip/application/trip_route_associations.dart';
 import 'package:picoradar/features/trip/application/trip_services.dart';
 import 'package:picoradar/features/trip/data/trip_plan_client.dart';
 import 'package:picoradar/features/trip/data/toll_inventory.dart';
@@ -1477,6 +1480,13 @@ void main() {
         for (final metric in metricKeys) {
           expect(find.byKey(ValueKey('trip-summary-$metric')), findsOneWidget);
         }
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('trip-summary-cameras')),
+            matching: find.text('Por confirmar'),
+          ),
+          findsOneWidget,
+        );
         final metricRects = [
           for (final metric in metricKeys)
             tester.getRect(find.byKey(ValueKey('trip-summary-$metric'))),
@@ -1773,6 +1783,142 @@ void main() {
     expect(find.textContaining('Test only'), findsWidgets);
   });
 
+  testWidgets('VIAJE-R2 uses the available local camera location count', (
+    tester,
+  ) async {
+    final client = _PendingPlanClient();
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(2026, 9, 7),
+        departureMinute: 600,
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: _vehicle(),
+      planClient: client,
+      cameraSnapshot: TripCameraPackSnapshot(
+        version: 'test-cameras-v2',
+        pack: CameraPack(
+          source: const CameraPackSource(
+            name: 'Test only',
+            pageUrl: 'https://example.test/cameras',
+            dataUrl: 'https://example.test/cameras.json',
+            fetchedAtUtc: '2026-09-01T00:00:00Z',
+          ),
+          cameras: [_cameraForRoute('local-camera')],
+        ),
+      ),
+    );
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    client.completions.single.complete(
+      _testPlan(client.requests.single, withGeometry: true),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('trip-summary-cameras')),
+        matching: find.text('1'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('trip-map-camera-local-camera-0')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'VIAJE-R2 defers local associations and discards a stale route result',
+    (tester) async {
+      final client = _PendingPlanClient();
+      final associations = _PendingAssociationResolver();
+      await TripDraftStore(preferences).saveDraft(
+        TripDraft(
+          origin: 'Bogotá',
+          destination: 'Medellín',
+          date: DateTime(2026, 9, 7),
+          departureMinute: 600,
+        ),
+      );
+      await _pumpScreen(
+        tester,
+        preferences: preferences,
+        activeVehicle: _vehicle(),
+        planClient: client,
+        associationResolver: associations,
+      );
+      await _tapByKey(tester, 'trip-standard-vehicle');
+      _pressButtonByKey(tester, 'trip-preview');
+      await tester.pump();
+      client.completions.single.complete(
+        _testPlanWithTwoRoutes(client.requests.single, withGeometry: true),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('trip-plan-result')), findsOneWidget);
+      expect(associations.requests, hasLength(1));
+      expect(associations.schedulerPhases, [SchedulerPhase.postFrameCallbacks]);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('trip-summary-cameras')),
+          matching: find.text('Por confirmar'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('trip-select-route-scenic')),
+      );
+      await tester.pump();
+      _pressButtonByKey(tester, 'trip-select-route-scenic');
+      await tester.pump();
+      expect(associations.requests, hasLength(2));
+
+      associations.completions.first.complete(
+        _associationResult(
+          associations.requests.first,
+          cameras: [_cameraForRoute('old-camera')],
+        ),
+      );
+      await tester.pump();
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('trip-summary-cameras')),
+          matching: find.text('Por confirmar'),
+        ),
+        findsOneWidget,
+      );
+
+      associations.completions.last.complete(
+        _associationResult(associations.requests.last, cameras: const []),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('trip-summary-cameras')),
+          matching: find.text('0'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('no significa que la ruta esté libre de cámaras'),
+        findsWidgets,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('trip-map-fullscreen')));
+      await tester.pumpAndSettle();
+      expect(associations.requests, hasLength(2));
+    },
+  );
+
   testWidgets('VIAJE-R2 keeps the plan and retries local map data', (
     tester,
   ) async {
@@ -1806,6 +1952,13 @@ void main() {
 
     expect(find.byKey(const ValueKey('trip-plan-result')), findsOneWidget);
     expect(find.byKey(const ValueKey('trip-map-data-retry')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('trip-summary-cameras')),
+        matching: find.text('Por confirmar'),
+      ),
+      findsOneWidget,
+    );
     failTolls = false;
     await _tapByKey(tester, 'trip-map-data-retry');
 
@@ -2014,6 +2167,7 @@ Future<void> _pumpScreen(
   Future<TollInventoryDataset> Function()? tollInventoryLoader,
   TripCameraPackSnapshot? cameraSnapshot,
   TripRouteMapConfig? mapConfig,
+  TripRouteAssociationResolver? associationResolver,
 }) async {
   final ownedRestrictionStore = restrictionStore == null
       ? _FakeTripRestrictionStore()
@@ -2065,6 +2219,18 @@ Future<void> _pumpScreen(
         ),
         tripRouteMapConfigProvider.overrideWithValue(
           mapConfig ?? _neutralTripMapConfig(),
+        ),
+        tripRouteAssociationResolverProvider.overrideWithValue(
+          associationResolver ??
+              CachedTripRouteAssociationResolver(
+                compute: (request) async =>
+                    const TripRouteAssociator().associate(
+                      routeId: request.routeId,
+                      geometry: request.geometry,
+                      tolls: request.tolls,
+                      cameras: request.cameras,
+                    ),
+              ),
         ),
       ],
       child: MaterialApp(
@@ -2201,8 +2367,11 @@ TripRouteMapConfig _neutralTripMapConfig() => const TripRouteMapConfig(
   forceNeutralFallback: true,
 );
 
-TripPlan _testPlanWithTwoRoutes(TripPlanRequest request) {
-  final plan = _testPlan(request);
+TripPlan _testPlanWithTwoRoutes(
+  TripPlanRequest request, {
+  bool withGeometry = false,
+}) {
+  final plan = _testPlan(request, withGeometry: withGeometry);
   return TripPlan(
     requestId: plan.requestId,
     generatedAtUtc: plan.generatedAtUtc,
@@ -2218,6 +2387,13 @@ TripPlan _testPlanWithTwoRoutes(TripPlanRequest request) {
         distanceMeters: 460000,
         durationSeconds: 39600,
         timeBasis: 'static',
+        geometry: withGeometry
+            ? const [
+                TripCoordinate(latitude: 4.7, longitude: -74.1),
+                TripCoordinate(latitude: 5.5, longitude: -74.7),
+                TripCoordinate(latitude: 6.2, longitude: -75.5),
+              ]
+            : const [],
         tolls: TripTolls(
           coverage: TripTollCoverage.partial,
           vehicleCategory: 'car',
@@ -2228,6 +2404,45 @@ TripPlan _testPlanWithTwoRoutes(TripPlanRequest request) {
     ],
   );
 }
+
+class _PendingAssociationResolver implements TripRouteAssociationResolver {
+  final requests = <TripRouteAssociationRequest>[];
+  final completions = <Completer<TripRouteAssociations>>[];
+  final schedulerPhases = <SchedulerPhase>[];
+
+  @override
+  Future<TripRouteAssociations> resolve(TripRouteAssociationRequest request) {
+    requests.add(request);
+    schedulerPhases.add(SchedulerBinding.instance.schedulerPhase);
+    final completion = Completer<TripRouteAssociations>();
+    completions.add(completion);
+    return completion.future;
+  }
+}
+
+TripRouteAssociations _associationResult(
+  TripRouteAssociationRequest request, {
+  required List<TrafficCamera> cameras,
+}) => const TripRouteAssociator(corridorMeters: 100000).associate(
+  routeId: request.routeId,
+  geometry: request.geometry,
+  tolls: request.tolls,
+  cameras: cameras,
+);
+
+TrafficCamera _cameraForRoute(String id) => TrafficCamera(
+  id: id,
+  department: 'Cundinamarca',
+  municipality: 'Bogotá',
+  jurisdiction: 'Bogotá',
+  address: 'Corredor de prueba',
+  latitude: 5.4,
+  longitude: -74.8,
+  status: 'Aprobada',
+  technology: null,
+  kind: CameraKind.mixed,
+  speedLimitKmh: null,
+);
 
 class _FakeExternalLauncher implements ExternalLauncher {
   final opened = <String>[];
