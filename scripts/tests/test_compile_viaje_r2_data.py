@@ -143,6 +143,160 @@ class ReleaseCompilerTests(unittest.TestCase):
         self.refresh_evidence_hashes(decision)
         return decision
 
+    def complete_weekly_decision(self, *, date_parity=False):
+        if date_parity:
+            source_coverage_id = "co-source:bogota-d-c:bogota:private_car"
+            jurisdiction_id = "co-dc-bogota"
+            jurisdiction_name = "Bogota, D.C."
+            source_url = (
+                "https://bogota.gov.co/mi-ciudad/gestion-juridica/"
+                "decreto-003-de-2023-nuevo-pico-y-placa-y-otras-medidas-de-movilidad"
+            )
+            start_minute = 360
+            end_minute = 1260
+            rules = [
+                {
+                    "id": "bogota-car-private-even-test",
+                    "priority": 1000,
+                    "effect": "restrict",
+                    "validFrom": "2026-09-01T00:00:00",
+                    "validUntil": "2026-09-30T23:59:59",
+                    "registrationOrigins": ["local", "foreign", "unknown"],
+                    "weekdays": [1, 2, 3, 4, 5],
+                    "dateParity": "even",
+                    "digitPosition": "lastNumeric",
+                    "digits": [1, 2, 3, 4, 5],
+                    "timeWindows": [
+                        {"startMinute": start_minute, "endMinute": end_minute}
+                    ],
+                    "appliesOnHolidays": False,
+                    "sourceUrl": source_url,
+                    "verifiedAt": "2026-09-06T00:00:00Z",
+                },
+                {
+                    "id": "bogota-car-private-odd-test",
+                    "priority": 1000,
+                    "effect": "restrict",
+                    "validFrom": "2026-09-01T00:00:00",
+                    "validUntil": "2026-09-30T23:59:59",
+                    "registrationOrigins": ["local", "foreign", "unknown"],
+                    "weekdays": [1, 2, 3, 4, 5],
+                    "dateParity": "odd",
+                    "digitPosition": "lastNumeric",
+                    "digits": [0, 6, 7, 8, 9],
+                    "timeWindows": [
+                        {"startMinute": start_minute, "endMinute": end_minute}
+                    ],
+                    "appliesOnHolidays": False,
+                    "sourceUrl": source_url,
+                    "verifiedAt": "2026-09-06T00:00:00Z",
+                },
+            ]
+            source_weekdays = [1, 2, 3, 4, 5]
+        else:
+            source_coverage_id = "co-source:antioquia:medellin:private_car"
+            jurisdiction_id = "co-ant-medellin"
+            jurisdiction_name = "Medellin"
+            source_url = (
+                "https://www.medellin.gov.co/es/secretaria-de-movilidad/"
+                "pico-y-placa-medellin-2023-segundo-semestre/"
+            )
+            rules = [
+                {
+                    "id": "medellin-car-private-monday-test",
+                    "priority": 1000,
+                    "effect": "restrict",
+                    "validFrom": "2026-08-03T00:00:00",
+                    "validUntil": "2026-12-31T23:59:59",
+                    "registrationOrigins": ["local", "foreign", "unknown"],
+                    "weekdays": [1],
+                    "digitPosition": "lastNumeric",
+                    "digits": [5, 8],
+                    "timeWindows": [
+                        {"startMinute": 300, "endMinute": 1200}
+                    ],
+                    "appliesOnHolidays": False,
+                    "sourceUrl": source_url,
+                    "verifiedAt": "2026-09-06T00:00:00Z",
+                }
+            ]
+            source_weekdays = [1]
+
+        source = read_json(
+            SOURCE_PACKAGE / "data/staging/pico_colombia_source_v1.json"
+        )
+        source_coverage = next(
+            coverage
+            for jurisdiction in source["jurisdictions"]
+            for coverage in jurisdiction["coverages"]
+            if (
+                f"{jurisdiction['sourceJurisdictionKey']}:"
+                f"{coverage['sourceVehicleType']}"
+            )
+            == source_coverage_id
+        )
+        recurrence_source = {
+            "sourceRef": source_coverage["sourceRef"],
+            "sourceUrls": source_coverage["sourceUrls"],
+            "digitPositionCandidate": source_coverage["digitPositionCandidate"],
+            "weekdaySchedule": source_coverage["weekdaySchedule"],
+            "timeWindowsCandidate": source_coverage["timeWindowsCandidate"],
+        }
+        runtime_coverage = {
+            "jurisdictionId": jurisdiction_id,
+            "jurisdictionName": jurisdiction_name,
+            "vehicleKind": "car",
+            "serviceType": "private",
+            "verifiedAt": "2026-09-06T00:00:00Z",
+            "staleAfter": (
+                "2026-10-02T00:00:00Z"
+                if date_parity
+                else "2027-01-02T00:00:00Z"
+            ),
+            "sourceUrls": [source_url],
+            "rules": rules,
+        }
+        decision = {
+            "sourceCoverageId": source_coverage_id,
+            "sourceRef": source_coverage["sourceRef"],
+            "evidenceKind": "weekly_recurrence",
+            "sourceRecordIds": [],
+            "originalValue": {
+                "sourceCoverageSha256": canonical_sha256(source_coverage),
+                "sourceRecordsSha256": canonical_sha256([]),
+                "sourceRecurrenceSha256": canonical_sha256(recurrence_source),
+            },
+            "interpretedValue": {
+                "runtimeCoverageSha256": canonical_sha256(runtime_coverage),
+                "ruleEvidence": [
+                    {
+                        "ruleId": rule["id"],
+                        "sourceWeekdays": source_weekdays,
+                        "reviewedSemantics": {
+                            field: rule.get(field)
+                            for field in compiler.RULE_SEMANTIC_FIELDS
+                        },
+                    }
+                    for rule in rules
+                ],
+            },
+            "officialSourceUrl": source_url,
+            "evidenceSummary": "Synthetic reviewed recurrence for tests only.",
+            "consultedAt": "2026-09-06T00:00:00Z",
+            "legalValidity": {
+                "status": "complete",
+                "validFrom": rules[0]["validFrom"],
+                "validUntil": rules[0]["validUntil"],
+                "sourceTimestamp": "2026-08-03T00:00:00Z",
+            },
+            "decision": "verified_executable",
+            "reviewer": "test-reviewer",
+            "snapshotAction": "update",
+            "blockers": [],
+            "runtimeCoverage": runtime_coverage,
+        }
+        return decision
+
     def refresh_evidence_hashes(self, decision):
         source = read_json(
             SOURCE_PACKAGE / "data/staging/pico_colombia_source_v1.json"
@@ -228,6 +382,84 @@ class ReleaseCompilerTests(unittest.TestCase):
         self.assertEqual(
             [row for row in before["jurisdictions"] if row["id"] != "co-nar-pasto"],
             [row for row in after["jurisdictions"] if row["id"] != "co-nar-pasto"],
+        )
+
+    def test_reviewed_weekly_recurrence_needs_no_fabricated_dated_rows(self):
+        decision = self.complete_weekly_decision()
+        path = self.decision_path(decision)
+
+        report = compiler.compile_release(
+            SOURCE_PACKAGE, self.output_root, reviewed_decisions_path=path
+        )
+
+        self.assertEqual(decision["sourceRecordIds"], [])
+        self.assertEqual(report["restrictions"]["newRulesPublished"], 1)
+        reviewed = self.reviewed_ledger_row(decision["sourceCoverageId"])
+        self.assertEqual(reviewed["reviewDecision"], "verified_executable")
+        self.assertEqual(
+            reviewed["reviewProjection"]["evidenceKind"],
+            "weekly_recurrence",
+        )
+
+    def test_reviewed_weekly_recurrence_supports_date_parity(self):
+        decision = self.complete_weekly_decision(date_parity=True)
+        path = self.decision_path(decision)
+
+        report = compiler.compile_release(
+            SOURCE_PACKAGE, self.output_root, reviewed_decisions_path=path
+        )
+
+        self.assertEqual(report["restrictions"]["newRulesPublished"], 2)
+        restrictions = read_json(
+            self.output_root
+            / "mobile/assets/datasets/restrictions/restrictions_v1.json"
+        )
+        bogota = next(
+            row for row in restrictions["jurisdictions"] if row["id"] == "co-dc-bogota"
+        )
+        self.assertEqual(
+            {rule["dateParity"] for rule in bogota["coverages"][0]["rules"]},
+            {"even", "odd"},
+        )
+
+    def test_incomplete_weekly_recurrence_evidence_stays_quarantined(self):
+        decision = self.complete_weekly_decision()
+        decision["originalValue"]["sourceRecurrenceSha256"] = "0" * 64
+        path = self.decision_path(decision)
+        restriction_path = (
+            self.output_root
+            / "mobile/assets/datasets/restrictions/restrictions_v1.json"
+        )
+        before = restriction_path.read_bytes()
+
+        report = compiler.compile_release(
+            SOURCE_PACKAGE, self.output_root, reviewed_decisions_path=path
+        )
+
+        reviewed = self.reviewed_ledger_row(decision["sourceCoverageId"])
+        self.assertEqual(report["restrictions"]["newRulesPublished"], 0)
+        self.assertEqual(restriction_path.read_bytes(), before)
+        self.assertEqual(reviewed["reviewDecision"], "needs_evidence")
+        self.assertIn(
+            "review_source_recurrence_hash_mismatch",
+            reviewed["quarantineReasons"],
+        )
+
+    def test_weekly_recurrence_without_rule_evidence_stays_quarantined(self):
+        decision = self.complete_weekly_decision()
+        decision["interpretedValue"]["ruleEvidence"] = []
+        path = self.decision_path(decision)
+
+        report = compiler.compile_release(
+            SOURCE_PACKAGE, self.output_root, reviewed_decisions_path=path
+        )
+
+        reviewed = self.reviewed_ledger_row(decision["sourceCoverageId"])
+        self.assertEqual(report["restrictions"]["newRulesPublished"], 0)
+        self.assertEqual(reviewed["reviewDecision"], "needs_evidence")
+        self.assertIn(
+            "review_rule_evidence_missing",
+            reviewed["quarantineReasons"],
         )
 
     def test_incomplete_verified_decision_remains_quarantined(self):
