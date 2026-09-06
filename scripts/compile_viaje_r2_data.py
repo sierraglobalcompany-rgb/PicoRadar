@@ -51,6 +51,7 @@ REVIEW_DECISIONS = {
     "verified_executable",
     "informational_only",
 }
+EVIDENCE_KINDS = {"dated_schedule", "weekly_recurrence"}
 OFFICIAL_SOURCE_HOSTS = {
     "alcaldiabogota.gov.co",
     "bogota.gov.co",
@@ -199,6 +200,18 @@ def _canonical_sha256(value: object) -> str:
         allow_nan=False,
     ).encode("utf-8")
     return _sha256_bytes(encoded)
+
+
+def _recurrence_source_value(source_coverage: dict) -> dict:
+    return {
+        "sourceRef": copy.deepcopy(source_coverage.get("sourceRef")),
+        "sourceUrls": copy.deepcopy(source_coverage.get("sourceUrls")),
+        "digitPositionCandidate": source_coverage.get("digitPositionCandidate"),
+        "weekdaySchedule": copy.deepcopy(source_coverage.get("weekdaySchedule")),
+        "timeWindowsCandidate": copy.deepcopy(
+            source_coverage.get("timeWindowsCandidate")
+        ),
+    }
 
 
 def _is_utc_timestamp(value: object) -> bool:
@@ -492,6 +505,9 @@ def _review_validation_reasons(
     restriction_payload: dict,
 ) -> list[str]:
     reasons = []
+    evidence_kind = decision.get("evidenceKind", "dated_schedule")
+    if evidence_kind not in EVIDENCE_KINDS:
+        reasons.append("review_evidence_kind_invalid")
     for field in (
         "sourceRef",
         "originalValue",
@@ -564,8 +580,10 @@ def _review_validation_reasons(
         reasons.append("review_blockers_present")
     if not _is_utc_timestamp(decision.get("consultedAt")):
         reasons.append("review_consulted_at_not_utc")
-    if not source_record_ids:
+    if evidence_kind == "dated_schedule" and not source_record_ids:
         reasons.append("review_source_record_ids_required")
+    if evidence_kind == "weekly_recurrence" and source_record_ids:
+        reasons.append("review_source_record_ids_not_allowed_for_recurrence")
     official_source_url = decision.get("officialSourceUrl")
     if not _is_official_source_url(official_source_url):
         reasons.append("review_official_source_domain_not_allowed")
@@ -629,6 +647,10 @@ def _review_validation_reasons(
         reasons.append("review_source_coverage_hash_mismatch")
     if original_value.get("sourceRecordsSha256") != _canonical_sha256(source_records):
         reasons.append("review_source_records_hash_mismatch")
+    if evidence_kind == "weekly_recurrence" and original_value.get(
+        "sourceRecurrenceSha256"
+    ) != _canonical_sha256(_recurrence_source_value(source_coverage)):
+        reasons.append("review_source_recurrence_hash_mismatch")
     interpreted_value = decision.get("interpretedValue")
     if not isinstance(interpreted_value, dict):
         reasons.append("review_interpreted_value_invalid")
@@ -659,9 +681,7 @@ def _review_validation_reasons(
         if rule.get("verifiedAt") != runtime.get("verifiedAt"):
             reasons.append("runtime_rule_verified_at_mismatch")
         evidence = evidence_by_rule.get(rule.get("id"))
-        source_record_id = evidence.get("sourceRecordId") if evidence else None
-        source_record = dated_by_id.get(source_record_id)
-        if source_record_id not in source_record_ids or source_record is None:
+        if not isinstance(evidence, dict):
             reasons.append("review_rule_evidence_missing")
             continue
         reviewed_semantics = evidence.get("reviewedSemantics")
@@ -672,27 +692,88 @@ def _review_validation_reasons(
             reasons.append("review_rule_semantics_missing")
         elif reviewed_semantics != runtime_semantics:
             reasons.append("review_rule_semantics_mismatch")
-        expected_windows = [
-            {
-                "startMinute": window.get("startMinute"),
-                "endMinute": window.get("endMinute"),
+        if evidence_kind == "weekly_recurrence":
+            source_weekdays = evidence.get("sourceWeekdays")
+            if (
+                not isinstance(source_weekdays, list)
+                or not source_weekdays
+                or any(
+                    not _is_exact_int(value) or value < 1 or value > 7
+                    for value in source_weekdays
+                )
+                or len(set(source_weekdays)) != len(source_weekdays)
+            ):
+                reasons.append("review_rule_source_weekdays_invalid")
+                continue
+            schedule_by_weekday = {
+                row.get("isoWeekday"): row
+                for row in source_coverage.get("weekdaySchedule", [])
+                if isinstance(row, dict)
             }
-            for window in source_record.get("timeWindowsCandidate", [])
-        ]
-        expected_date = source_record.get("date")
-        if (
-            rule_from is None
-            or rule_until is None
-            or rule_from.date().isoformat() != expected_date
-            or rule_until.date().isoformat() != expected_date
-            or rule.get("weekdays") != [source_record.get("isoWeekday")]
-            or rule.get("digits") != source_record.get("digitsRestrictedCandidate")
-            or rule.get("digitPosition")
-            != source_record.get("digitPositionCandidate")
-            or rule.get("timeWindows") != expected_windows
-            or rule.get("sourceUrl") not in source_record.get("sourceUrls", [])
-        ):
-            reasons.append("review_rule_evidence_mismatch")
+            source_schedule = [
+                schedule_by_weekday.get(weekday) for weekday in source_weekdays
+            ]
+            if any(row is None for row in source_schedule):
+                reasons.append("review_rule_source_weekday_unknown")
+                continue
+            expected_windows = [
+                {
+                    "startMinute": window.get("startMinute"),
+                    "endMinute": window.get("endMinute"),
+                }
+                for window in source_coverage.get("timeWindowsCandidate", [])
+            ]
+            structured_digits = [
+                row.get("digitsRestrictedCandidate") for row in source_schedule
+            ]
+            digits_match = all(
+                digits is not None and digits == rule.get("digits")
+                for digits in structured_digits
+            )
+            parity_source = all(
+                "fecha par impar" in _normalized(row.get("raw"))
+                for row in source_schedule
+            )
+            if (
+                "regla semanal"
+                not in _normalized(source_coverage.get("dynamicCalendarRaw"))
+                or rule.get("weekdays") != source_weekdays
+                or (not digits_match and not (parity_source and rule.get("dateParity")))
+                or rule.get("digitPosition")
+                != source_coverage.get("digitPositionCandidate")
+                or rule.get("timeWindows") != expected_windows
+                or rule.get("sourceUrl")
+                not in source_coverage.get("sourceUrls", [])
+            ):
+                reasons.append("review_rule_evidence_mismatch")
+        else:
+            source_record_id = evidence.get("sourceRecordId")
+            source_record = dated_by_id.get(source_record_id)
+            if source_record_id not in source_record_ids or source_record is None:
+                reasons.append("review_rule_evidence_missing")
+                continue
+            expected_windows = [
+                {
+                    "startMinute": window.get("startMinute"),
+                    "endMinute": window.get("endMinute"),
+                }
+                for window in source_record.get("timeWindowsCandidate", [])
+            ]
+            expected_date = source_record.get("date")
+            if (
+                rule_from is None
+                or rule_until is None
+                or rule_from.date().isoformat() != expected_date
+                or rule_until.date().isoformat() != expected_date
+                or rule.get("weekdays") != [source_record.get("isoWeekday")]
+                or rule.get("digits")
+                != source_record.get("digitsRestrictedCandidate")
+                or rule.get("digitPosition")
+                != source_record.get("digitPositionCandidate")
+                or rule.get("timeWindows") != expected_windows
+                or rule.get("sourceUrl") not in source_record.get("sourceUrls", [])
+            ):
+                reasons.append("review_rule_evidence_mismatch")
     if stale_after and legal_until:
         if _comparable_datetime(stale_after) <= _comparable_datetime(legal_until):
             reasons.append("runtime_stale_after_not_after_validity")

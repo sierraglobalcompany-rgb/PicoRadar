@@ -52,31 +52,54 @@ void main() {
     }
   });
 
-  test('reviewed-rule fixture changes engine result through real HTTP and importer', () async {
+  test('Python compiler bytes reach the engine through HTTP and Drift', () async {
+    final sourcePackage = _viajeR2SourcePackage();
+    if (sourcePackage == null) {
+      markTestSkipped('VIAJE-R2 source package is unavailable.');
+      return;
+    }
     expect(
-      (await _reviewedRuleEvaluation(db)).status,
+      (await _compiledRuleEvaluation(db)).status,
       RestrictionStatus.unknown,
     );
-    final manifest = _readJson(
-      File('../data/releases/viaje_r2/local_test/manifest.json'),
+    final firstOutput = Directory('${tempDirectory.path}/compiled-first');
+    final secondOutput = Directory('${tempDirectory.path}/compiled-second');
+    await _compileViajeR2Fixture(sourcePackage, firstOutput);
+    await _compileViajeR2Fixture(sourcePackage, secondOutput);
+
+    final manifestFile = File(
+      '${firstOutput.path}/data/releases/viaje_r2/local_test/manifest.json',
     );
-    final restrictionPayload = await _payload(_reviewedRestrictionDataset());
-    final datasets = Map<String, dynamic>.from(manifest['datasets'] as Map);
-    datasets[restrictionsDatasetKey] = _entry(
-      version: 'NON_PRODUCTION_FIXTURE-reviewed-rule',
-      path: '/assets/datasets/restrictions/restrictions_v1.json',
-      sha256: restrictionPayload.sha256,
-      sourceTimestamp: '2026-09-06T00:00:00Z',
-      publicationRevision: 2,
+    final restrictionFile = File(
+      '${firstOutput.path}/mobile/assets/datasets/restrictions/restrictions_v1.json',
     );
-    manifest['datasets'] = datasets;
-    final tollBytes = await File('assets/catalogs/tolls_inventory_v1.json')
-        .readAsBytes();
-    _serveJson(server, '/v1/manifest.json', manifest, etag: '"viaje-r2"');
+    final tollFile = File(
+      '${firstOutput.path}/mobile/assets/catalogs/tolls_inventory_v1.json',
+    );
+    final manifestBytes = await manifestFile.readAsBytes();
+    final restrictionBytes = await restrictionFile.readAsBytes();
+    final tollBytes = await tollFile.readAsBytes();
+    final manifest = Map<String, dynamic>.from(
+      jsonDecode(utf8.decode(manifestBytes)) as Map,
+    );
+    final restrictionEntry = Map<String, dynamic>.from(
+      (manifest['datasets'] as Map)[restrictionsDatasetKey] as Map,
+    );
+
+    expect(
+      await File(
+        '${secondOutput.path}/mobile/assets/datasets/restrictions/restrictions_v1.json',
+      ).readAsBytes(),
+      restrictionBytes,
+    );
+    expect(await _sha256Hex(restrictionBytes), restrictionEntry['sha256']);
+    expect(utf8.decode(restrictionBytes), contains('NON_PRODUCTION_FIXTURE'));
+
+    _serveBytes(server, '/v1/manifest.json', manifestBytes, etag: '"viaje-r2"');
     _serveBytes(
       server,
       '/assets/datasets/restrictions/restrictions_v1.json',
-      restrictionPayload.bytes,
+      restrictionBytes,
     );
     _serveBytes(server, '/assets/catalogs/tolls_inventory_v1.json', tollBytes);
     final snapshot = File('${snapshotDirectory.path}/tolls.json');
@@ -105,10 +128,27 @@ void main() {
     expect((await tollStore.load()).records, hasLength(184));
     expect((await tollStore.load()).sourceTimestamp, DateTime.utc(2026, 9, 5));
     expect(await _version(db, tollInventoryDatasetKey), '2026.09.05-viaje-r2');
-    expect(await db.select(db.restrictionCoverages).get(), hasLength(1));
+    final compiledCoverage = (await db.select(db.restrictionCoverages).get())
+        .singleWhere((row) => row.id == 'co-ant-medellin:car:private');
+    expect(compiledCoverage.rulesJson, contains('NON_PRODUCTION_FIXTURE'));
     expect(
-      (await _reviewedRuleEvaluation(db)).status,
+      (await _compiledRuleEvaluation(db)).status,
       RestrictionStatus.restricted,
+    );
+    expect(
+      (await _compiledRuleEvaluation(db, plate: 'ABC154')).status,
+      RestrictionStatus.allowed,
+    );
+    expect(
+      (await _compiledRuleEvaluation(db, isHoliday: true)).status,
+      RestrictionStatus.allowed,
+    );
+    expect(
+      (await _compiledRuleEvaluation(
+        db,
+        localDateTime: DateTime(2027, 1, 3, 8),
+      )).status,
+      RestrictionStatus.stale,
     );
     expect(
       await preferences.getString(DatasetSyncService.manifestEtagPreferenceKey),
@@ -685,69 +725,34 @@ void main() {
   );
 }
 
-Future<RestrictionEvaluation> _reviewedRuleEvaluation(AppDatabase db) async {
+Future<RestrictionEvaluation> _compiledRuleEvaluation(
+  AppDatabase db, {
+  String plate = 'ABC145',
+  DateTime? localDateTime,
+  bool isHoliday = false,
+}) async {
+  final evaluatedAt = localDateTime ?? DateTime(2026, 9, 7, 8);
   final rules = await RestrictionStore(db).loadCoverage(
-    'co-nar-pasto',
+    'co-ant-medellin',
     VehicleKind.car,
     VehicleServiceType.private,
-    DateTime.utc(2026, 9, 1),
+    evaluatedAt,
   );
   return const RestrictionEngine().evaluate(
     RestrictionContext(
-      jurisdictionId: 'co-nar-pasto',
-      plate: 'ABC145',
+      jurisdictionId: 'co-ant-medellin',
+      plate: plate,
       vehicleKind: VehicleKind.car,
       serviceType: VehicleServiceType.private,
       registrationOrigin: RegistrationOrigin.local,
-      localDateTime: DateTime(2026, 9, 1, 8),
-      isHoliday: false,
+      localDateTime: evaluatedAt,
+      isHoliday: isHoliday,
       coverageKnown: rules.coverageKnown,
       dataIsStale: rules.dataIsStale,
     ),
     rules.rules,
   );
 }
-
-Map<String, Object?> _reviewedRestrictionDataset() => {
-  'schemaVersion': 1,
-  'datasetKey': restrictionsDatasetKey,
-  'version': 'NON_PRODUCTION_FIXTURE-reviewed-rule',
-  'generatedAt': '2026-09-06T00:00:00Z',
-  'jurisdictions': [
-    {
-      'id': 'co-nar-pasto',
-      'name': 'Pasto',
-      'coverages': [
-        {
-          'vehicleKind': 'car',
-          'serviceType': 'private',
-          'verifiedAt': '2026-09-06T00:00:00Z',
-          'staleAfter': '2026-09-02T00:00:00Z',
-          'sourceUrls': ['https://example.test/NON_PRODUCTION_FIXTURE'],
-          'rules': [
-            {
-              'id': 'NON_PRODUCTION_FIXTURE-pasto-2026-09-01',
-              'priority': 1000,
-              'effect': 'restrict',
-              'validFrom': '2026-09-01T00:00:00',
-              'validUntil': '2026-09-01T23:59:59',
-              'registrationOrigins': ['local', 'foreign', 'unknown'],
-              'weekdays': [2],
-              'digitPosition': 'lastNumeric',
-              'digits': [4, 5],
-              'timeWindows': [
-                {'startMinute': 450, 'endMinute': 1140},
-              ],
-              'appliesOnHolidays': false,
-              'sourceUrl': 'https://example.test/NON_PRODUCTION_FIXTURE',
-              'verifiedAt': '2026-09-06T00:00:00Z',
-            },
-          ],
-        },
-      ],
-    },
-  ],
-};
 
 DatasetSyncService _service(
   AppDatabase db,
@@ -803,9 +808,17 @@ void _serveJson(
   };
 }
 
-void _serveBytes(_HttpFixtureServer server, String path, List<int> bytes) {
+void _serveBytes(
+  _HttpFixtureServer server,
+  String path,
+  List<int> bytes, {
+  String? etag,
+}) {
   server.handlers[path] = (request) async {
     request.response.headers.contentType = ContentType.binary;
+    if (etag != null) {
+      request.response.headers.set(HttpHeaders.etagHeader, etag);
+    }
     request.response.contentLength = bytes.length;
     request.response.add(bytes);
     await request.response.close();
@@ -883,6 +896,50 @@ Future<_Payload> _payload(
     bytes,
     hash.bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join(),
   );
+}
+
+Directory? _viajeR2SourcePackage() {
+  final configured = Platform.environment['VIAJE_R2_SOURCE_PACKAGE'];
+  final candidates = [
+    if (configured != null && configured.isNotEmpty) Directory(configured),
+    Directory(
+      '${Directory.current.parent.parent.path}${Platform.pathSeparator}'
+      'VIAJE_R2${Platform.pathSeparator}source-package',
+    ),
+  ];
+  for (final candidate in candidates) {
+    if (candidate.existsSync()) return candidate;
+  }
+  return null;
+}
+
+Future<void> _compileViajeR2Fixture(
+  Directory sourcePackage,
+  Directory outputRoot,
+) async {
+  final repoRoot = Directory.current.parent;
+  final result = await Process.run(Platform.environment['PYTHON'] ?? 'python', [
+    '${repoRoot.path}/scripts/tests/viaje_r2_bridge_fixture.py',
+    '--source-package',
+    sourcePackage.path,
+    '--seed-repo-root',
+    repoRoot.path,
+    '--output-root',
+    outputRoot.path,
+  ], runInShell: Platform.isWindows);
+  expect(
+    result.exitCode,
+    0,
+    reason:
+        'Python bridge compiler failed:\n${result.stdout}\n${result.stderr}',
+  );
+}
+
+Future<String> _sha256Hex(List<int> bytes) async {
+  final hash = await Sha256().hash(bytes);
+  return hash.bytes
+      .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+      .join();
 }
 
 Future<void> _insertVersion(
