@@ -426,7 +426,19 @@ class TollInventoryStore {
       }
       prepared._finished = true;
       _releasePreparedHash(prepared.sha256);
-      await _cleanupUnselectedSnapshots(prepared.sha256);
+      final DatasetVersion? installed;
+      try {
+        installed = await _installedVersion();
+      } on Exception {
+        return;
+      }
+      final selectedSha256 = installed?.status == 'installed'
+          ? installed?.sha256?.trim()
+          : null;
+      if (selectedSha256 != null &&
+          RegExp(r'^[a-f0-9]{64}$').hasMatch(selectedSha256)) {
+        await _cleanupUnselectedSnapshots(selectedSha256);
+      }
     });
   }
 
