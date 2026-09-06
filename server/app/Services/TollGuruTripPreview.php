@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Support\GeographicNameNormalizer;
+use DateTimeImmutable;
+use DateTimeZone;
 use DomainException;
 use GuzzleHttp\Exception\ConnectTimeoutException;
 use GuzzleHttp\Exception\NetworkTimeoutException;
@@ -68,6 +70,10 @@ final class TollGuruTripPreview
             }
             $reserved = $spent;
 
+            if (now()->utc()->toDateTimeImmutable() >= $settings['authorization_deadline']) {
+                throw new DomainException('not_configured');
+            }
+
             return $this->normalizeResponse($this->fetch($request, $settings), $request);
         } catch (DomainException $exception) {
             throw $exception;
@@ -101,7 +107,11 @@ final class TollGuruTripPreview
 
     private function settings(): array
     {
+        $confirmedFree = config('trips.confirmed_free');
+        $authorizationDeadline = $this->authorizationDeadline(config('trips.authorization_expires_at'));
         if (config('trips.enabled') !== true || config('trips.access_authorized') !== true || config('trips.license_authorized') !== true
+            || ! is_bool($confirmedFree) || $authorizationDeadline === null
+            || now()->utc()->toDateTimeImmutable() >= $authorizationDeadline
             || ! is_string(config('trips.api_key')) || trim(config('trips.api_key')) === ''
             || ! is_string(config('trips.budget_id')) || ! preg_match('/\A[a-zA-Z0-9_-]{1,80}\z/', config('trips.budget_id'))
             || ! in_array(config('trips.budget_currency'), ['USD', 'COP'], true)
@@ -109,8 +119,7 @@ final class TollGuruTripPreview
             throw new DomainException('not_configured');
         }
         $settings = [];
-        foreach (['max_requests' => 1000000, 'max_units' => 1000000000, 'max_money_minor' => 1000000000000,
-            'units_per_request' => 1000000, 'money_minor_per_request' => 1000000000,
+        foreach (['max_requests' => 1000000, 'max_units' => 1000000000, 'units_per_request' => 1000000,
             'timeout_seconds' => 20, 'connect_timeout_seconds' => 5, 'lock_seconds' => 120] as $name => $max) {
             $value = config('trips.'.$name);
             if ((! is_int($value) && (! is_string($value) || ! ctype_digit($value))) || $value < 1 || $value > $max) {
@@ -118,11 +127,35 @@ final class TollGuruTripPreview
             }
             $settings[$name] = (int) $value;
         }
+        foreach (['max_money_minor' => 1000000000000, 'money_minor_per_request' => 1000000000] as $name => $max) {
+            $value = config('trips.'.$name);
+            $minimum = $confirmedFree ? 0 : 1;
+            if ((! is_int($value) && (! is_string($value) || ! ctype_digit($value))) || $value < $minimum || $value > $max) {
+                throw new DomainException('not_configured');
+            }
+            $settings[$name] = (int) $value;
+        }
         if ($settings['lock_seconds'] < $settings['timeout_seconds'] + 10 || $settings['connect_timeout_seconds'] > $settings['timeout_seconds']) {
             throw new DomainException('not_configured');
         }
+        $settings['authorization_deadline'] = $authorizationDeadline;
 
         return $settings;
+    }
+
+    private function authorizationDeadline(mixed $value): ?DateTimeImmutable
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+        $deadline = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i:s\Z', $value, new DateTimeZone('UTC'));
+        $errors = DateTimeImmutable::getLastErrors();
+        if ($deadline === false || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))
+            || $deadline->format('Y-m-d\TH:i:s\Z') !== $value) {
+            return null;
+        }
+
+        return $deadline;
     }
 
     private function fetch(array $request, array $settings): string
