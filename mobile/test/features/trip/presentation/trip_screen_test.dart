@@ -481,85 +481,93 @@ void main() {
     },
   );
 
-  testWidgets(
-    'VIAJE-R1 selecting route updates arrival restriction without remote query',
-    (tester) async {
-      final client = _PendingPlanClient();
-      await TripDraftStore(preferences).saveDraft(
-        TripDraft(
-          origin: 'Bogotá',
-          destination: 'Medellín',
-          date: DateTime(2026, 9, 5),
-          departureMinute: 1410,
-        ),
-      );
-      await _pumpScreen(
-        tester,
-        preferences: preferences,
-        activeVehicle: _vehicle(),
-        planClient: client,
-      );
-      final container = ProviderScope.containerOf(
-        tester.element(find.byType(TripScreen)),
-      );
-      await _tapByKey(tester, 'trip-standard-vehicle');
-      _pressButtonByKey(tester, 'trip-preview');
-      await tester.pump();
-      final request = client.requests.single;
-      final first = _testPlan(request);
-      client.completions.single.complete(
-        TripPlan(
-          requestId: first.requestId,
-          generatedAtUtc: first.generatedAtUtc,
-          provider: first.provider,
-          attribution: first.attribution,
-          origin: first.origin,
-          destination: first.destination,
-          routes: [
-            first.routes.single,
-            TripRouteOption(
-              id: 'slow',
-              summary: 'Ruta lenta',
-              distanceMeters: 600000,
-              durationSeconds: 43200,
-              timeBasis: 'static',
-              tolls: TripTolls(
-                coverage: TripTollCoverage.unknown,
-                vehicleCategory: 'car',
-              ),
+  testWidgets('VIAJE-R2 route selection updates locally without auto-scroll', (
+    tester,
+  ) async {
+    final client = _PendingPlanClient();
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(2026, 9, 5),
+        departureMinute: 1410,
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: _vehicle(),
+      planClient: client,
+    );
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(TripScreen)),
+    );
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    final request = client.requests.single;
+    final first = _testPlan(request);
+    client.completions.single.complete(
+      TripPlan(
+        requestId: first.requestId,
+        generatedAtUtc: first.generatedAtUtc,
+        provider: first.provider,
+        attribution: first.attribution,
+        origin: first.origin,
+        destination: first.destination,
+        routes: [
+          first.routes.single,
+          TripRouteOption(
+            id: 'slow',
+            summary: 'Ruta lenta',
+            distanceMeters: 600000,
+            durationSeconds: 43200,
+            timeBasis: 'static',
+            tolls: TripTolls(
+              coverage: TripTollCoverage.unknown,
+              vehicleCategory: 'car',
             ),
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(
-        find.byKey(const ValueKey('trip-destination-instant-test-route')),
-        findsOneWidget,
-      );
-      await _tapByKey(tester, 'trip-select-route-slow');
-      expect(
-        find.byKey(const ValueKey('trip-destination-instant-test-route')),
-        findsNothing,
-      );
-      expect(
-        find.byKey(const ValueKey('trip-destination-instant-slow')),
-        findsOneWidget,
-      );
-      final evaluation = await container.read(
-        tripInstantRestrictionProvider((
-          municipality: request.destination,
-          vehicle: request.vehicle,
-          instantUtc: DateTime.utc(2026, 9, 6, 16, 30),
-        )).future,
-      );
-      expect(evaluation.evaluatedAtUtc, DateTime.utc(2026, 9, 6, 16, 30));
-      expect(client.requests, hasLength(1));
-      expect(
-        find.byKey(const ValueKey('trip-toll-details-slow')),
-        findsOneWidget,
-      );
-    },
-  );
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('trip-destination-instant-test-route')),
+      findsOneWidget,
+    );
+    final routeButton = find.byKey(const ValueKey('trip-select-route-slow'));
+    await tester.ensureVisible(routeButton);
+    await tester.pumpAndSettle();
+    final scrollable = tester.state<ScrollableState>(
+      find.byType(Scrollable).first,
+    );
+    final offsetBeforeSelection = scrollable.position.pixels;
+    _pressButtonByKey(tester, 'trip-select-route-slow');
+    await tester.pumpAndSettle();
+    expect(scrollable.position.pixels, offsetBeforeSelection);
+    expect(
+      find.byKey(const ValueKey('trip-destination-instant-test-route')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('trip-destination-instant-slow')),
+      findsOneWidget,
+    );
+    final evaluation = await container.read(
+      tripInstantRestrictionProvider((
+        municipality: request.destination,
+        vehicle: request.vehicle,
+        instantUtc: DateTime.utc(2026, 9, 6, 16, 30),
+      )).future,
+    );
+    expect(evaluation.evaluatedAtUtc, DateTime.utc(2026, 9, 6, 16, 30));
+    expect(client.requests, hasLength(1));
+    expect(
+      find.byKey(const ValueKey('trip-toll-details-slow')),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('VIAJE-R1 mismatched request ID cannot become current plan', (
     tester,
