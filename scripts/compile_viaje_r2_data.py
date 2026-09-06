@@ -37,6 +37,29 @@ COMMON_RESTRICTION_REASONS = (
     "freshness_unverified",
     "registration_scope_unverified",
 )
+GEOGRAPHY_ALIASES = {
+    ("co-source:bogota-d-c:bogota", "Bogotá D.C.", "Bogotá"): (
+        "Bogotá, D.C.",
+        "Bogotá, D.C.",
+    ),
+    ("co-source:bolivar:cartagena", "Bolívar", "Cartagena"): (
+        "Bolívar",
+        "Cartagena de Indias",
+    ),
+    (
+        "co-source:cordoba:santa-cruz-de-lorica",
+        "Córdoba",
+        "Santa Cruz de Lorica",
+    ): ("Córdoba", "Lorica"),
+    ("co-source:norte-de-santander:cucuta", "Norte de Santander", "Cúcuta"): (
+        "Norte de Santander",
+        "San José de Cúcuta",
+    ),
+    ("co-source:valle-del-cauca:cali", "Valle del Cauca", "Cali"): (
+        "Valle del Cauca",
+        "Santiago de Cali",
+    ),
+}
 
 
 def _read_json(path: Path) -> dict:
@@ -116,7 +139,15 @@ def _geography_lookup(repo_root: Path) -> dict[tuple[str, str], dict]:
 
 
 def _mapped_geography(city: dict, lookup: dict[tuple[str, str], dict]) -> dict:
-    record = lookup.get((_normalized(city.get("department")), _normalized(city.get("city"))))
+    source_identity = (
+        city.get("sourceJurisdictionKey"),
+        city.get("department"),
+        city.get("city"),
+    )
+    target = GEOGRAPHY_ALIASES.get(source_identity)
+    if target is None:
+        target = (city.get("department"), city.get("city"))
+    record = lookup.get((_normalized(target[0]), _normalized(target[1])))
     if record is None:
         return {"divipolaCode": None, "appJurisdictionId": None}
     return {
@@ -157,6 +188,7 @@ def _restriction_ledger(pico: dict, repo_root: Path, restriction_hash: str) -> d
                     ),
                     "sourceUrls": coverage.get("sourceUrls", []),
                     "sourceRef": coverage["sourceRef"],
+                    "sourceProjection": dict(coverage),
                 }
             )
 
@@ -183,6 +215,7 @@ def _restriction_ledger(pico: dict, repo_root: Path, restriction_hash: str) -> d
                 "quarantineReasons": _unique_reasons(reasons),
                 "sourceUrls": row.get("sourceUrls", []),
                 "sourceRef": row["sourceRef"],
+                "sourceProjection": dict(row),
             }
         )
 

@@ -94,6 +94,74 @@ class ReleaseCompilerTests(unittest.TestCase):
         for row in ledger["coverageDecisions"]:
             self.assertTrue(required_reasons.issubset(row["quarantineReasons"]))
 
+    def test_restriction_ledger_preserves_every_source_row_value(self):
+        compiler.compile_release(SOURCE_PACKAGE, self.output_root)
+        source = read_json(
+            SOURCE_PACKAGE / "data/staging/pico_colombia_source_v1.json"
+        )
+        ledger = read_json(
+            self.output_root
+            / "data/releases/viaje_r2/restriction_decision_ledger_v1.json"
+        )
+
+        coverage_decisions = {
+            row["sourceCoverageId"]: row for row in ledger["coverageDecisions"]
+        }
+        for jurisdiction in source["jurisdictions"]:
+            for coverage in jurisdiction["coverages"]:
+                source_id = (
+                    f"{jurisdiction['sourceJurisdictionKey']}:"
+                    f"{coverage['sourceVehicleType']}"
+                )
+                self.assertEqual(
+                    coverage_decisions[source_id]["sourceProjection"], coverage
+                )
+
+        dated_decisions = {
+            row["sourceRecordId"]: row
+            for row in ledger["datedScheduleDecisions"]
+        }
+        for source_row in source["datedSchedules"]:
+            self.assertEqual(
+                dated_decisions[source_row["sourceRecordId"]]["sourceProjection"],
+                source_row,
+            )
+
+    def test_maps_only_the_five_reviewed_geography_aliases(self):
+        compiler.compile_release(SOURCE_PACKAGE, self.output_root)
+        ledger = read_json(
+            self.output_root
+            / "data/releases/viaje_r2/restriction_decision_ledger_v1.json"
+        )
+        expected = {
+            "co-source:bogota-d-c:bogota": ("11001", "co-dc-bogota"),
+            "co-source:bolivar:cartagena": ("13001", "co-bol-cartagena"),
+            "co-source:cordoba:santa-cruz-de-lorica": ("23417", None),
+            "co-source:norte-de-santander:cucuta": ("54001", "co-nds-cucuta"),
+            "co-source:valle-del-cauca:cali": ("76001", "co-vac-cali"),
+        }
+        by_jurisdiction = {}
+        for row in ledger["coverageDecisions"]:
+            by_jurisdiction.setdefault(row["sourceJurisdictionKey"], row)
+        for source_key, (divipola, app_id) in expected.items():
+            self.assertEqual(by_jurisdiction[source_key]["divipolaCode"], divipola)
+            self.assertEqual(
+                by_jurisdiction[source_key]["appJurisdictionId"], app_id
+            )
+
+        lookup = compiler._geography_lookup(self.output_root)
+        wrong_identity = compiler._mapped_geography(
+            {
+                "sourceJurisdictionKey": "co-source:bolivar:cartagena",
+                "department": "Bolívar",
+                "city": "Cartagena equivocada",
+            },
+            lookup,
+        )
+        self.assertEqual(
+            wrong_identity, {"divipolaCode": None, "appJurisdictionId": None}
+        )
+
     def test_emits_physical_inventory_without_prices_or_charge_events(self):
         compiler.compile_release(SOURCE_PACKAGE, self.output_root)
 
