@@ -716,23 +716,42 @@ class _TileFailure extends StatelessWidget {
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.white.withValues(alpha: 0.95),
-    borderRadius: BorderRadius.circular(AppRadius.card),
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text(
-              'El mapa base no está disponible. La ruta y los puntos siguen visibles.',
-              style: AppTextStyles.caption,
-            ),
-          ),
-          TextButton(onPressed: onRetry, child: const Text('Reintentar mapa')),
-        ],
-      ),
-    ),
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      const message = Text(
+        'El mapa base no está disponible. La ruta y los puntos siguen visibles.',
+        style: AppTextStyles.caption,
+      );
+      final retry = TextButton(
+        onPressed: onRetry,
+        child: const Text('Reintentar mapa'),
+      );
+      final compact =
+          constraints.maxWidth < 320 ||
+          MediaQuery.textScalerOf(context).scale(14) > 20;
+      return Material(
+        color: Colors.white.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+          child: compact
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    message,
+                    Align(alignment: Alignment.centerRight, child: retry),
+                  ],
+                )
+              : Row(
+                  children: [
+                    const Expanded(child: message),
+                    retry,
+                  ],
+                ),
+        ),
+      );
+    },
   );
 }
 
