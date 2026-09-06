@@ -467,6 +467,10 @@ def _read_reviewed_decisions(path: Path | None) -> dict:
     for field in ("reviewVersion", "reviewedAt", "reviewer"):
         if not isinstance(payload.get(field), str) or not payload[field]:
             raise ValueError(f"Reviewed decisions require {field}")
+    if not _is_utc_timestamp(payload["reviewedAt"]):
+        raise ValueError(
+            "Reviewed decisions require reviewedAt as a UTC timestamp"
+        )
     decisions = payload.get("decisions")
     if not isinstance(decisions, list):
         raise ValueError("Reviewed decisions must contain a decisions list")

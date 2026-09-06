@@ -772,6 +772,34 @@ class ReleaseCompilerTests(unittest.TestCase):
         self.assertEqual(report["restrictions"]["newRulesPublished"], 0)
         self.assertEqual(report["tolls"]["activeChargesPublished"], 0)
 
+    def test_invalid_reviewed_at_is_rejected_before_outputs_are_written(self):
+        path = self.decision_path(self.complete_pasto_decision())
+        payload = read_json(path)
+        payload["reviewedAt"] = "not-a-date"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        before = {
+            file.relative_to(self.output_root): file.read_bytes()
+            for file in self.output_root.rglob("*")
+            if file.is_file()
+        }
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "Reviewed decisions require reviewedAt as a UTC timestamp",
+        ):
+            compiler.compile_release(
+                SOURCE_PACKAGE,
+                self.output_root,
+                reviewed_decisions_path=path,
+            )
+
+        after = {
+            file.relative_to(self.output_root): file.read_bytes()
+            for file in self.output_root.rglob("*")
+            if file.is_file()
+        }
+        self.assertEqual(before, after)
+
     def test_second_compile_is_byte_identical(self):
         compiler.compile_release(SOURCE_PACKAGE, self.output_root)
         outputs = [self.output_root / path for path in compiler.OUTPUT_PATHS]
