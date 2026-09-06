@@ -66,6 +66,7 @@ void main() {
     _serveBytes(server, '/assets/catalogs/tolls_inventory_v1.json', tollBytes);
     final snapshot = File('${snapshotDirectory.path}/tolls.json');
     final tollStore = TollInventoryStore(
+      database: db,
       snapshotFile: snapshot,
       bundledLoader: () =>
           File('assets/catalogs/tolls_inventory_v1.json').readAsString(),
@@ -76,13 +77,18 @@ void main() {
       preferences,
       tempDirectory,
       server,
-      importers: {
-        restrictionsDatasetKey: importRestrictionsDataset,
-        tollInventoryDatasetKey: tollStore.datasetImporter,
+      importers: {restrictionsDatasetKey: importRestrictionsDataset},
+      transactionalImporters: {
+        tollInventoryDatasetKey: tollStore.transactionalImporter,
       },
     ).sync();
 
     expect(result.imported, [restrictionsDatasetKey, tollInventoryDatasetKey]);
+    expect(await snapshot.readAsBytes(), tollBytes);
+    expect(
+      (await tollStore.snapshotHashFile.readAsString()).trim(),
+      (manifest['datasets'] as Map)['tolls_inventory']['sha256'],
+    );
     expect((await tollStore.load()).records, hasLength(184));
     expect((await tollStore.load()).sourceTimestamp, DateTime.utc(2026, 9, 5));
     expect(await _version(db, tollInventoryDatasetKey), '2026.09.05-viaje-r2');
@@ -155,6 +161,31 @@ void main() {
     expect(await db.select(db.datasetVersions).get(), isEmpty);
   });
 
+  test('caps a chunked manifest without Content-Length', () async {
+    final oversizedManifest = utf8.encode(
+      jsonEncode({..._manifest(<String, Object?>{}), 'padding': 'x' * 512}),
+    );
+    _serveChunked(
+      server,
+      '/v1/manifest.json',
+      oversizedManifest,
+      chunkSize: 17,
+    );
+
+    await expectLater(
+      _service(
+        db,
+        preferences,
+        tempDirectory,
+        server,
+        maxManifestBytes: 96,
+      ).sync(),
+      throwsA(isA<DatasetSyncException>()),
+    );
+
+    expect(await db.select(db.datasetVersions).get(), isEmpty);
+  });
+
   test('rejects same-version hash replay and numeric downgrade', () async {
     await _insertVersion(db, 'restrictions', version: '2.0', sha256: 'a' * 64);
     _serveManifest(server, {
@@ -196,8 +227,9 @@ void main() {
     expect(await _version(db, 'restrictions'), '2.0');
   });
 
-  test('enforces downloaded and gzip-decoded size limits', () async {
+  test('caps a chunked dataset without Content-Length', () async {
     final oversized = await _payload({'rows': 'x' * 200});
+    var chunksSent = 0;
     _serveManifest(server, {
       'restrictions': _entry(
         version: '2.0',
@@ -205,7 +237,14 @@ void main() {
         sha256: oversized.sha256,
       ),
     });
-    _serveBytes(server, '/oversized.json', oversized.bytes);
+    _serveChunked(
+      server,
+      '/oversized.json',
+      oversized.bytes,
+      chunkSize: 13,
+      chunkDelay: const Duration(milliseconds: 3),
+      onChunkSent: () => chunksSent += 1,
+    );
     await expectLater(
       _service(
         db,
@@ -213,12 +252,17 @@ void main() {
         tempDirectory,
         server,
         importers: {'restrictions': (_, _) async {}},
-        maxDownloadBytes: 32,
+        maxDownloadBytes: 48,
       ).sync(),
       throwsA(isA<DatasetSyncException>()),
     );
 
-    final compressed = await _payload({'rows': 'x' * 500}, compressed: true);
+    expect(await db.select(db.datasetVersions).get(), isEmpty);
+    expect(chunksSent, lessThan((oversized.bytes.length / 13).ceil()));
+  });
+
+  test('caps high-expansion gzip while decoding its stream', () async {
+    final compressed = await _payload({'rows': 'x' * 100000}, compressed: true);
     _serveManifest(server, {
       'restrictions': _entry(
         version: '2.0',
@@ -227,7 +271,7 @@ void main() {
         contentEncoding: 'gzip',
       ),
     });
-    _serveBytes(server, '/expanded.json.gz', compressed.bytes);
+    _serveChunked(server, '/expanded.json.gz', compressed.bytes, chunkSize: 11);
     await expectLater(
       _service(
         db,
@@ -235,7 +279,7 @@ void main() {
         tempDirectory,
         server,
         importers: {'restrictions': (_, _) async {}},
-        maxDecodedBytes: 64,
+        maxDecodedBytes: 1024,
       ).sync(),
       throwsA(isA<DatasetSyncException>()),
     );
@@ -327,35 +371,56 @@ void main() {
   });
 
   test(
-    'failed toll import keeps previous snapshot and dataset version',
+    'version write failure after replacement restores snapshot and version',
     () async {
       final asset = _readJson(File('assets/catalogs/tolls_inventory_v1.json'));
       final snapshot = File('${snapshotDirectory.path}/tolls.json');
       final store = TollInventoryStore(
+        database: db,
         snapshotFile: snapshot,
         bundledLoader: () async => jsonEncode(asset),
       );
-      await store.importJson(asset);
-      final previousBytes = await snapshot.readAsBytes();
-      await _insertVersion(
+      final previousPayload = await _payload(asset);
+      _serveManifest(server, {
+        tollInventoryDatasetKey: _entry(
+          version: asset['version'] as String,
+          path: '/previous-tolls.json',
+          sha256: previousPayload.sha256,
+          sourceTimestamp: '2026-09-05T00:00:00Z',
+        ),
+      });
+      _serveBytes(server, '/previous-tolls.json', previousPayload.bytes);
+      await _service(
         db,
-        tollInventoryDatasetKey,
-        version: '2026.09.05-viaje-r2',
-      );
-      final invalid = _copy(asset)..['version'] = '2026.09.06-local-test';
-      ((invalid['records'] as List)[0]['tariffsBySourceCategoryCOP']
-              as Map<String, dynamic>)['category_1'] =
-          0;
-      final payload = await _payload(invalid);
+        preferences,
+        tempDirectory,
+        server,
+        transactionalImporters: {
+          tollInventoryDatasetKey: store.transactionalImporter,
+        },
+      ).sync();
+      final previousBytes = await snapshot.readAsBytes();
+      final previousHashBytes = await store.snapshotHashFile.readAsBytes();
+      final previousHash = await _installedHash(db, tollInventoryDatasetKey);
+      final replacement = _copy(asset)..['version'] = '2026.09.06-local-test';
+      final payload = await _payload(replacement);
       _serveManifest(server, {
         tollInventoryDatasetKey: _entry(
           version: '2026.09.06-local-test',
-          path: '/invalid-tolls.json',
+          path: '/replacement-tolls.json',
           sha256: payload.sha256,
           sourceTimestamp: '2026-09-05T00:00:00Z',
         ),
       });
-      _serveBytes(server, '/invalid-tolls.json', payload.bytes);
+      _serveBytes(server, '/replacement-tolls.json', payload.bytes);
+      await db.customStatement('''
+        CREATE TRIGGER reject_toll_version_update
+        BEFORE UPDATE ON dataset_versions
+        WHEN OLD.dataset_key = 'tolls_inventory'
+        BEGIN
+          SELECT RAISE(ABORT, 'forced version write failure');
+        END;
+      ''');
 
       await expectLater(
         _service(
@@ -363,16 +428,21 @@ void main() {
           preferences,
           tempDirectory,
           server,
-          importers: {tollInventoryDatasetKey: store.datasetImporter},
+          transactionalImporters: {
+            tollInventoryDatasetKey: store.transactionalImporter,
+          },
         ).sync(),
-        throwsA(isA<DatasetSyncException>()),
+        throwsA(anything),
       );
 
       expect(await snapshot.readAsBytes(), previousBytes);
+      expect(await store.snapshotHashFile.readAsBytes(), previousHashBytes);
       expect(
         await _version(db, tollInventoryDatasetKey),
         '2026.09.05-viaje-r2',
       );
+      expect(await _installedHash(db, tollInventoryDatasetKey), previousHash);
+      expect((await store.load()).version, '2026.09.05-viaje-r2');
     },
   );
 }
@@ -383,6 +453,8 @@ DatasetSyncService _service(
   Directory tempDirectory,
   _HttpFixtureServer server, {
   Map<String, DatasetImporter> importers = const {},
+  Map<String, TransactionalDatasetImporter> transactionalImporters = const {},
+  int maxManifestBytes = 64 * 1024,
   int maxDownloadBytes = 1024 * 1024,
   int maxDecodedBytes = 4 * 1024 * 1024,
   Duration receiveTimeout = const Duration(seconds: 2),
@@ -392,6 +464,7 @@ DatasetSyncService _service(
     preferences: preferences,
     config: AppConfig(cdnBaseUrl: server.origin.toString()),
     importers: importers,
+    transactionalImporters: transactionalImporters,
     http: Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 2),
@@ -401,6 +474,7 @@ DatasetSyncService _service(
     tempDirectory: tempDirectory,
     currentAppVersion: '1.0.0',
     now: () => DateTime.utc(2026, 9, 5, 12),
+    maxManifestBytes: maxManifestBytes,
     maxDownloadBytes: maxDownloadBytes,
     maxDecodedBytes: maxDecodedBytes,
   );
@@ -431,6 +505,32 @@ void _serveBytes(_HttpFixtureServer server, String path, List<int> bytes) {
     request.response.headers.contentType = ContentType.binary;
     request.response.contentLength = bytes.length;
     request.response.add(bytes);
+    await request.response.close();
+  };
+}
+
+void _serveChunked(
+  _HttpFixtureServer server,
+  String path,
+  List<int> bytes, {
+  required int chunkSize,
+  Duration chunkDelay = Duration.zero,
+  void Function()? onChunkSent,
+}) {
+  server.handlers[path] = (request) async {
+    request.response.headers.contentType = ContentType.binary;
+    request.response.bufferOutput = false;
+    for (var offset = 0; offset < bytes.length; offset += chunkSize) {
+      final end = offset + chunkSize < bytes.length
+          ? offset + chunkSize
+          : bytes.length;
+      request.response.add(bytes.sublist(offset, end));
+      await request.response.flush();
+      onChunkSent?.call();
+      if (chunkDelay > Duration.zero) {
+        await Future<void>.delayed(chunkDelay);
+      }
+    }
     await request.response.close();
   };
 }
@@ -504,6 +604,13 @@ Future<String?> _version(AppDatabase db, String key) async {
     db.datasetVersions,
   )..where((row) => row.datasetKey.equals(key))).get();
   return rows.isEmpty ? null : rows.single.version;
+}
+
+Future<String?> _installedHash(AppDatabase db, String key) async {
+  final rows = await (db.select(
+    db.datasetVersions,
+  )..where((row) => row.datasetKey.equals(key))).get();
+  return rows.isEmpty ? null : rows.single.sha256;
 }
 
 Map<String, dynamic> _readJson(File file) {

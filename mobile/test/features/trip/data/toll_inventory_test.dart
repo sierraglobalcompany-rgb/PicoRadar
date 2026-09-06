@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:cryptography/cryptography.dart';
+import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/core/database/app_database.dart';
@@ -126,6 +128,7 @@ void main() {
     test('loads bundled bytes until an imported snapshot exists', () async {
       final bundled = jsonEncode(assetJson);
       final store = TollInventoryStore(
+        database: db,
         snapshotFile: snapshot,
         bundledLoader: () async => bundled,
       );
@@ -135,20 +138,22 @@ void main() {
       expect(await snapshot.exists(), isFalse);
 
       final imported = _copy(assetJson)..['version'] = '2026.09.06-local-test';
-      await store.datasetImporter(db, imported);
+      await _installSnapshot(store, db, imported);
 
       expect((await store.load()).version, '2026.09.06-local-test');
       expect(await snapshot.exists(), isTrue);
+      expect(await store.snapshotHashFile.exists(), isTrue);
     });
 
     test(
       'failed import preserves the previous snapshot byte for byte',
       () async {
         final store = TollInventoryStore(
+          database: db,
           snapshotFile: snapshot,
           bundledLoader: () async => jsonEncode(assetJson),
         );
-        await store.datasetImporter(db, assetJson);
+        await _installSnapshot(store, db, assetJson);
         final previous = await snapshot.readAsBytes();
         final invalid = _copy(assetJson);
         ((invalid['records'] as List)[0]['tariffsBySourceCategoryCOP']
@@ -156,7 +161,7 @@ void main() {
             0;
 
         await expectLater(
-          store.datasetImporter(db, invalid),
+          _prepareSnapshot(store, db, invalid),
           throwsA(isA<DatasetSyncException>()),
         );
 
@@ -164,7 +169,68 @@ void main() {
         expect((await store.load()).version, '2026.09.05-viaje-r2');
       },
     );
+
+    test(
+      'rejects a valid JSON snapshot changed after verified import',
+      () async {
+        final store = TollInventoryStore(
+          database: db,
+          snapshotFile: snapshot,
+          bundledLoader: () async => jsonEncode(assetJson),
+        );
+        await _installSnapshot(store, db, assetJson);
+        final changed = _copy(assetJson);
+        (changed['records'] as List).first['name'] = 'Changed after import';
+        await snapshot.writeAsString(jsonEncode(changed), flush: true);
+
+        await expectLater(store.load(), throwsA(isA<DatasetSyncException>()));
+      },
+    );
   });
+}
+
+Future<void> _installSnapshot(
+  TollInventoryStore store,
+  AppDatabase db,
+  Map<String, dynamic> json,
+) async {
+  final prepared = await _prepareSnapshot(store, db, json);
+  try {
+    await db.transaction(() async {
+      await prepared.activate();
+      await db
+          .into(db.datasetVersions)
+          .insert(
+            DatasetVersionsCompanion.insert(
+              id: tollInventoryDatasetKey,
+              datasetKey: tollInventoryDatasetKey,
+              version: json['version'] as String,
+              sha256: Value(await _sha256(utf8.encode(jsonEncode(json)))),
+              status: 'installed',
+            ),
+          );
+    });
+  } catch (_) {
+    await prepared.rollback();
+    rethrow;
+  }
+  await prepared.commit();
+}
+
+Future<PreparedDatasetImport> _prepareSnapshot(
+  TollInventoryStore store,
+  AppDatabase db,
+  Map<String, dynamic> json,
+) async {
+  final bytes = utf8.encode(jsonEncode(json));
+  return store.transactionalImporter(db, json, bytes, await _sha256(bytes));
+}
+
+Future<String> _sha256(List<int> bytes) async {
+  final hash = await Sha256().hash(bytes);
+  return hash.bytes
+      .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
+      .join();
 }
 
 Map<String, dynamic> _copy(Map<String, dynamic> value) {

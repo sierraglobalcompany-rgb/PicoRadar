@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:cryptography/cryptography.dart';
+
+import '../../../core/database/app_database.dart';
 import '../../../core/sync/dataset_sync_service.dart';
 
 const tollInventoryDatasetKey = 'tolls_inventory';
@@ -218,64 +221,240 @@ class TollInventoryRecord {
 
 class TollInventoryStore {
   const TollInventoryStore({
+    required this.database,
     required this.snapshotFile,
     required this.bundledLoader,
   });
 
+  final AppDatabase database;
   final File snapshotFile;
   final Future<String> Function() bundledLoader;
 
-  DatasetImporter get datasetImporter =>
-      (_, json) => importJson(json);
+  File get snapshotHashFile => File('${snapshotFile.path}.sha256');
+
+  TransactionalDatasetImporter get transactionalImporter => _prepareImport;
 
   Future<TollInventoryDataset> load() async {
-    final source = await snapshotFile.exists()
-        ? await snapshotFile.readAsString()
-        : await bundledLoader();
-    return TollInventoryDataset.fromJsonString(source);
+    final snapshotExists = await snapshotFile.exists();
+    final hashExists = await snapshotHashFile.exists();
+    if (snapshotExists != hashExists) {
+      throw const DatasetSyncException(
+        'Toll inventory snapshot and hash sidecar must exist together.',
+      );
+    }
+    if (!snapshotExists) {
+      return TollInventoryDataset.fromJsonString(await bundledLoader());
+    }
+
+    final expectedHash = (await snapshotHashFile.readAsString()).trim();
+    if (!RegExp(r'^[a-f0-9]{64}$').hasMatch(expectedHash)) {
+      throw const DatasetSyncException(
+        'Toll inventory snapshot hash sidecar is invalid.',
+      );
+    }
+    final actualHash = await _sha256File(snapshotFile);
+    if (actualHash != expectedHash) {
+      throw const DatasetSyncException(
+        'Toll inventory snapshot does not match its SHA-256 sidecar.',
+      );
+    }
+    final installed = await _installedVersion();
+    if (installed == null ||
+        installed.status != 'installed' ||
+        installed.sha256 != expectedHash) {
+      throw const DatasetSyncException(
+        'Toll inventory snapshot hash does not match dataset_versions.',
+      );
+    }
+    final dataset = TollInventoryDataset.fromJsonString(
+      await snapshotFile.readAsString(),
+    );
+    if (dataset.version != installed.version) {
+      throw const DatasetSyncException(
+        'Toll inventory snapshot version does not match dataset_versions.',
+      );
+    }
+    return dataset;
   }
 
-  Future<void> importJson(Map<String, dynamic> json) async {
+  Future<PreparedDatasetImport> _prepareImport(
+    AppDatabase targetDatabase,
+    Map<String, dynamic> json,
+    List<int> verifiedBytes,
+    String sha256,
+  ) async {
+    if (!identical(targetDatabase, database)) {
+      throw const DatasetSyncException(
+        'Toll inventory store received an unexpected database.',
+      );
+    }
+    if (!RegExp(r'^[a-f0-9]{64}$').hasMatch(sha256) ||
+        await _sha256Bytes(verifiedBytes) != sha256) {
+      throw const DatasetSyncException(
+        'Toll inventory bytes do not match the verified SHA-256.',
+      );
+    }
     TollInventoryDataset.fromJson(json);
-    final bytes = utf8.encode(jsonEncode(json));
-    await _replaceSnapshot(bytes);
-  }
+    try {
+      TollInventoryDataset.fromJsonString(utf8.decode(verifiedBytes));
+    } on FormatException catch (error) {
+      throw DatasetSyncException('Invalid toll inventory UTF-8: $error');
+    }
 
-  Future<void> _replaceSnapshot(List<int> bytes) async {
     await snapshotFile.parent.create(recursive: true);
     final stamp = DateTime.now().microsecondsSinceEpoch;
-    final temporary = File('${snapshotFile.path}.tmp.$stamp');
-    final backup = File('${snapshotFile.path}.bak.$stamp');
-    var movedPrevious = false;
+    final candidate = File('${snapshotFile.path}.candidate.$stamp');
+    final candidateHash = File('${snapshotHashFile.path}.candidate.$stamp');
     try {
-      await temporary.writeAsBytes(bytes, flush: true);
-      if (await snapshotFile.exists()) {
-        await snapshotFile.rename(backup.path);
-        movedPrevious = true;
-      }
-      await temporary.rename(snapshotFile.path);
-      if (movedPrevious && await backup.exists()) {
-        await backup.delete();
-      }
+      await candidate.writeAsBytes(verifiedBytes, flush: true);
+      await candidateHash.writeAsString('$sha256\n', flush: true);
     } catch (error) {
-      if (movedPrevious && await backup.exists()) {
-        if (await snapshotFile.exists()) {
-          await snapshotFile.delete();
-        }
-        await backup.rename(snapshotFile.path);
+      if (await candidate.exists()) {
+        await candidate.delete();
       }
-      if (await temporary.exists()) {
-        await temporary.delete();
+      if (await candidateHash.exists()) {
+        await candidateHash.delete();
+      }
+      throw DatasetSyncException(
+        'Toll inventory snapshot preparation failed: $error',
+      );
+    }
+    return _PreparedTollSnapshot(
+      store: this,
+      candidate: candidate,
+      candidateHash: candidateHash,
+      backup: File('${snapshotFile.path}.backup.$stamp'),
+      backupHash: File('${snapshotHashFile.path}.backup.$stamp'),
+    );
+  }
+
+  Future<DatasetVersion?> _installedVersion() async {
+    final rows = await (database.select(
+      database.datasetVersions,
+    )..where((row) => row.datasetKey.equals(tollInventoryDatasetKey))).get();
+    if (rows.length > 1) {
+      throw const DatasetSyncException(
+        'Multiple toll inventory dataset versions are installed.',
+      );
+    }
+    return rows.isEmpty ? null : rows.single;
+  }
+}
+
+class _PreparedTollSnapshot implements PreparedDatasetImport {
+  _PreparedTollSnapshot({
+    required this.store,
+    required this.candidate,
+    required this.candidateHash,
+    required this.backup,
+    required this.backupHash,
+  });
+
+  final TollInventoryStore store;
+  final File candidate;
+  final File candidateHash;
+  final File backup;
+  final File backupHash;
+  var _previousSnapshotMoved = false;
+  var _previousHashMoved = false;
+  var _candidateSnapshotMoved = false;
+  var _candidateHashMoved = false;
+
+  @override
+  Future<void> activate() async {
+    try {
+      final snapshotExists = await store.snapshotFile.exists();
+      final hashExists = await store.snapshotHashFile.exists();
+      if (snapshotExists != hashExists) {
+        throw const DatasetSyncException(
+          'Existing toll snapshot and hash sidecar are inconsistent.',
+        );
+      }
+      if (snapshotExists) {
+        await store.load();
+        await store.snapshotFile.rename(backup.path);
+        _previousSnapshotMoved = true;
+        await store.snapshotHashFile.rename(backupHash.path);
+        _previousHashMoved = true;
+      }
+      await candidate.rename(store.snapshotFile.path);
+      _candidateSnapshotMoved = true;
+      await candidateHash.rename(store.snapshotHashFile.path);
+      _candidateHashMoved = true;
+    } catch (error) {
+      try {
+        await rollback();
+      } catch (rollbackError) {
+        throw DatasetSyncException(
+          'Toll snapshot activation failed and rollback failed: '
+          '$error; rollback: $rollbackError',
+        );
       }
       if (error is DatasetSyncException) {
         rethrow;
       }
-      throw DatasetSyncException(
-        'Toll inventory snapshot import failed: $error',
-      );
+      throw DatasetSyncException('Toll snapshot activation failed: $error');
+    }
+  }
+
+  @override
+  Future<void> commit() async {
+    if (await backup.exists()) {
+      await backup.delete();
+    }
+    if (await backupHash.exists()) {
+      await backupHash.delete();
+    }
+    await _deleteCandidates();
+  }
+
+  @override
+  Future<void> rollback() async {
+    if (_candidateSnapshotMoved && await store.snapshotFile.exists()) {
+      await store.snapshotFile.delete();
+    }
+    if (_candidateHashMoved && await store.snapshotHashFile.exists()) {
+      await store.snapshotHashFile.delete();
+    }
+    _candidateSnapshotMoved = false;
+    _candidateHashMoved = false;
+    if (_previousSnapshotMoved) {
+      await backup.rename(store.snapshotFile.path);
+      _previousSnapshotMoved = false;
+    }
+    if (_previousHashMoved) {
+      await backupHash.rename(store.snapshotHashFile.path);
+      _previousHashMoved = false;
+    }
+    await _deleteCandidates();
+  }
+
+  Future<void> _deleteCandidates() async {
+    if (await candidate.exists()) {
+      await candidate.delete();
+    }
+    if (await candidateHash.exists()) {
+      await candidateHash.delete();
     }
   }
 }
+
+Future<String> _sha256Bytes(List<int> bytes) async {
+  final hash = await Sha256().hash(bytes);
+  return _hex(hash.bytes);
+}
+
+Future<String> _sha256File(File file) async {
+  final sink = Sha256().toSync().newHashSink();
+  await for (final chunk in file.openRead()) {
+    sink.add(chunk);
+  }
+  sink.close();
+  return _hex((await sink.hash()).bytes);
+}
+
+String _hex(List<int> bytes) =>
+    bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
 
 TollOperationClassification _operationClassification(String value) {
   return switch (value) {
