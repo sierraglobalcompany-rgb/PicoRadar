@@ -39,14 +39,21 @@ class RouteGeometryIndex {
   final List<TripCoordinate> geometry;
   final List<_RouteSegment> _segments;
 
-  RouteGeometryQuality get quality => switch (geometry.length) {
-    0 => RouteGeometryQuality.unavailable,
-    1 => RouteGeometryQuality.pointOnly,
-    _ => RouteGeometryQuality.polyline,
-  };
+  RouteGeometryQuality get quality {
+    if (geometry.isEmpty || geometry.any((point) => !point.isFinite)) {
+      return RouteGeometryQuality.unavailable;
+    }
+    if (geometry.length == 1) {
+      return RouteGeometryQuality.pointOnly;
+    }
+    return _segments.any((segment) => segment.isUsable)
+        ? RouteGeometryQuality.polyline
+        : RouteGeometryQuality.unavailable;
+  }
 
-  double get lengthMeters =>
-      _segments.isEmpty ? 0 : _segments.last.cumulativeEndMeters;
+  double get lengthMeters => quality == RouteGeometryQuality.polyline
+      ? _segments.last.cumulativeEndMeters
+      : 0;
 
   RouteProjection? nearest(
     TripCoordinate point, {
@@ -66,10 +73,12 @@ class RouteGeometryIndex {
     TripCoordinate point, {
     double corridorMeters = defaultCorridorMeters,
   }) {
-    if (!corridorMeters.isFinite || corridorMeters <= 0 || geometry.isEmpty) {
+    if (!corridorMeters.isFinite ||
+        corridorMeters <= 0 ||
+        quality == RouteGeometryQuality.unavailable) {
       return const [];
     }
-    if (geometry.length == 1) {
+    if (quality == RouteGeometryQuality.pointOnly) {
       final distance = _distanceMeters(geometry.single, point);
       if (distance > corridorMeters) {
         return const [];
@@ -88,6 +97,9 @@ class RouteGeometryIndex {
 
     final candidates = <RouteProjection>[];
     for (final segment in _segments) {
+      if (!segment.isUsable) {
+        continue;
+      }
       if (!segment.mayContain(point, corridorMeters)) {
         continue;
       }
@@ -167,6 +179,8 @@ class _RouteSegment {
   late final double lengthMeters;
   late final double cumulativeEndMeters;
 
+  bool get isUsable => lengthMeters.isFinite && lengthMeters > 0;
+
   bool mayContain(TripCoordinate point, double corridorMeters) {
     final latitudePadding = corridorMeters / 111320;
     final longitudeScale = math.max(
@@ -243,3 +257,7 @@ double _latitudeMeters(double degrees) =>
     _toRadians(degrees) * _earthRadiusMeters;
 
 double _toRadians(double degrees) => degrees * math.pi / 180;
+
+extension on TripCoordinate {
+  bool get isFinite => latitude.isFinite && longitude.isFinite;
+}

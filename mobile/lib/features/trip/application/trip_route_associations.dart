@@ -51,6 +51,26 @@ class TripRouteAssociations {
 
   int get uniqueCameraLocationCount =>
       cameras.map((item) => item.location.id).toSet().length;
+
+  Iterable<TripRouteAssociation<TollInventoryRecord>> get currentTolls =>
+      tolls.where(
+        (item) =>
+            item.location.operationClassification !=
+            TollOperationClassification.nonOperationalHistorical,
+      );
+
+  Iterable<TripRouteAssociation<TollInventoryRecord>> get historicalTolls =>
+      tolls.where(
+        (item) =>
+            item.location.operationClassification ==
+            TollOperationClassification.nonOperationalHistorical,
+      );
+
+  int get uniqueCurrentTollLocationCount =>
+      currentTolls.map((item) => item.location.id).toSet().length;
+
+  int get uniqueHistoricalTollLocationCount =>
+      historicalTolls.map((item) => item.location.id).toSet().length;
 }
 
 class TripRouteAssociator {

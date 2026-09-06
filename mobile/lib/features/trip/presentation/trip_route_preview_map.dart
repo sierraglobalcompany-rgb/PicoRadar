@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../../app/theme/app_tokens.dart';
 import '../../driving/domain/traffic_camera.dart';
+import '../application/route_geometry_index.dart';
 import '../application/trip_route_associations.dart';
 import '../data/toll_inventory.dart';
 import '../domain/trip_plan.dart';
@@ -34,21 +35,37 @@ class TripRoutePreviewMap extends StatefulWidget {
     required this.geometry,
     required this.tollInventory,
     required this.cameraPack,
+    required this.cameraPackVersion,
     required this.config,
     this.associator = const TripRouteAssociator(),
     this.mapController,
     this.allowFullscreen = true,
     super.key,
-  });
+  }) : _initialAssociations = null;
+
+  const TripRoutePreviewMap._fullscreen({
+    required this.routeId,
+    required this.geometry,
+    required this.tollInventory,
+    required this.cameraPack,
+    required this.cameraPackVersion,
+    required this.config,
+    required this.associator,
+    required TripRouteAssociations associations,
+  }) : mapController = null,
+       allowFullscreen = false,
+       _initialAssociations = associations;
 
   final String routeId;
   final List<TripCoordinate> geometry;
   final TollInventoryDataset tollInventory;
   final CameraPack cameraPack;
+  final String cameraPackVersion;
   final TripRouteMapConfig config;
   final TripRouteAssociator associator;
   final MapController? mapController;
   final bool allowFullscreen;
+  final TripRouteAssociations? _initialAssociations;
 
   @override
   State<TripRoutePreviewMap> createState() => _TripRoutePreviewMapState();
@@ -62,6 +79,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
   Timer? _tileTimer;
   var _showRoute = true;
   var _showTolls = true;
+  var _showHistoricalTolls = false;
   var _showCameras = true;
   var _tilesUnavailable = false;
   var _tileAttempt = 0;
@@ -73,7 +91,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
     _ownsController = widget.mapController == null;
     _mapController = widget.mapController ?? MapController();
     _memoizer = TripRouteAssociationMemoizer(associator: widget.associator);
-    _associations = _resolveAssociations();
+    _associations = widget._initialAssociations ?? _resolveAssociations();
     _startTileTimer();
   }
 
@@ -83,10 +101,33 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
     final routeChanged =
         oldWidget.routeId != widget.routeId ||
         !identical(oldWidget.geometry, widget.geometry);
-    if (!identical(oldWidget.associator, widget.associator)) {
+    final tollDatasetChanged =
+        oldWidget.tollInventory.version != widget.tollInventory.version ||
+        !identical(
+          oldWidget.tollInventory.records,
+          widget.tollInventory.records,
+        );
+    final cameraDatasetChanged =
+        _cameraPackIdentity(
+              oldWidget.cameraPack,
+              oldWidget.cameraPackVersion,
+            ) !=
+            _cameraPackIdentity(widget.cameraPack, widget.cameraPackVersion) ||
+        !identical(oldWidget.cameraPack.cameras, widget.cameraPack.cameras);
+    final associatorChanged = !identical(
+      oldWidget.associator,
+      widget.associator,
+    );
+    if (associatorChanged) {
       _memoizer = TripRouteAssociationMemoizer(associator: widget.associator);
     }
     _associations = _resolveAssociations();
+    if (routeChanged ||
+        tollDatasetChanged ||
+        cameraDatasetChanged ||
+        associatorChanged) {
+      _selectedLocation = null;
+    }
     final tileConfigChanged =
         oldWidget.config.forceNeutralFallback !=
             widget.config.forceNeutralFallback ||
@@ -99,8 +140,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
       _startTileTimer();
     }
     if (routeChanged &&
-        oldWidget.geometry.length >= 2 &&
-        widget.geometry.length >= 2) {
+        _associations.geometryQuality == RouteGeometryQuality.polyline) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _reframe();
@@ -123,14 +163,17 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
     geometry: widget.geometry,
     tollVersion: widget.tollInventory.version,
     tolls: widget.tollInventory.records,
-    cameraPackIdentity:
-        '${widget.cameraPack.source.dataUrl}|${widget.cameraPack.source.fetchedAtUtc}',
+    cameraPackIdentity: _cameraPackIdentity(
+      widget.cameraPack,
+      widget.cameraPackVersion,
+    ),
     cameras: widget.cameraPack.cameras,
   );
 
   void _startTileTimer() {
     _tileTimer?.cancel();
-    if (widget.config.forceNeutralFallback || widget.geometry.length < 2) {
+    if (widget.config.forceNeutralFallback ||
+        _associations.geometryQuality != RouteGeometryQuality.polyline) {
       return;
     }
     _tileTimer = Timer(widget.config.tileReadyTimeout, _markTilesUnavailable);
@@ -165,7 +208,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.geometry.length < 2) {
+    if (_associations.geometryQuality != RouteGeometryQuality.polyline) {
       return const _MissingGeometry();
     }
     return Column(
@@ -190,6 +233,14 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
               onSelected: (value) => setState(() => _showTolls = value),
             ),
             FilterChip(
+              key: const ValueKey('trip-map-toggle-historical-tolls'),
+              selected: _showHistoricalTolls,
+              avatar: const Icon(Icons.history_rounded, size: 18),
+              label: const Text('Históricos'),
+              onSelected: (value) =>
+                  setState(() => _showHistoricalTolls = value),
+            ),
+            FilterChip(
               key: const ValueKey('trip-map-toggle-cameras'),
               selected: _showCameras,
               avatar: const Icon(Icons.photo_camera_rounded, size: 18),
@@ -201,7 +252,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
         const SizedBox(height: AppSpacing.s),
         if (widget.allowFullscreen)
           SizedBox(
-            height: 270,
+            height: 260,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.card),
               child: _buildMap(context),
@@ -223,11 +274,19 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
   }
 
   String get _tollSummary {
-    final count = _associations.uniqueTollLocationCount;
+    final count = _associations.uniqueCurrentTollLocationCount;
     final noun = count == 1
         ? 'peaje inventariado próximo'
         : 'peajes inventariados próximos';
-    return '$count $noun; tarifas no disponibles y cobro activo no confirmado.';
+    final historical = _associations.uniqueHistoricalTollLocationCount;
+    final historicalSummary = _showHistoricalTolls
+        ? 'Históricos visibles: ${_locationCount(historical)} · '
+              '${_passageCount(_associations.historicalTolls.length)}'
+        : 'Históricos: $historical en capa separada oculta';
+    return '$count $noun: ${_locationCount(count)} · '
+        '${_passageCount(_associations.currentTolls.length)}. '
+        '$historicalSummary; '
+        'tarifas no disponibles y cobro activo no confirmado.';
   }
 
   String get _cameraSummary {
@@ -235,7 +294,9 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
     final noun = count == 1
         ? 'cámara registrada próxima'
         : 'cámaras registradas próximas';
-    return '$count $noun al recorrido; vía y sentido no confirmados.';
+    return '$count $noun al recorrido: ${_locationCount(count)} · '
+        '${_passageCount(_associations.cameras.length)}; '
+        'vía y sentido no confirmados.';
   }
 
   Widget _buildMap(BuildContext context) {
@@ -353,6 +414,9 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
             bottom: AppSpacing.s,
             child: _MarkerDetails(
               location: location,
+              tollInventory: widget.tollInventory,
+              cameraPack: widget.cameraPack,
+              cameraPackVersion: widget.cameraPackVersion,
               onClose: () => setState(() => _selectedLocation = null),
             ),
           ),
@@ -384,7 +448,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
       ),
     ),
     if (_showTolls)
-      for (final association in _associations.tolls)
+      for (final association in _associations.currentTolls)
         Marker(
           point: LatLng(
             association.location.latitude,
@@ -399,6 +463,27 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
             tooltip: 'Ver peaje inventariado ${association.location.name}',
             icon: Icons.toll_rounded,
             color: AppColors.orange,
+            onPressed: () =>
+                setState(() => _selectedLocation = association.location),
+          ),
+        ),
+    if (_showHistoricalTolls)
+      for (final association in _associations.historicalTolls)
+        Marker(
+          point: LatLng(
+            association.location.latitude,
+            association.location.longitude,
+          ),
+          width: 42,
+          height: 42,
+          child: _MapMarkerButton(
+            key: ValueKey(
+              'trip-map-toll-${association.location.id}-${association.passageIndex}',
+            ),
+            tooltip:
+                'Ver peaje histórico no operativo ${association.location.name}',
+            icon: Icons.history_rounded,
+            color: Colors.blueGrey,
             onPressed: () =>
                 setState(() => _selectedLocation = association.location),
           ),
@@ -463,14 +548,15 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
           body: SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.l),
-              child: TripRoutePreviewMap(
+              child: TripRoutePreviewMap._fullscreen(
                 routeId: widget.routeId,
                 geometry: widget.geometry,
                 tollInventory: widget.tollInventory,
                 cameraPack: widget.cameraPack,
+                cameraPackVersion: widget.cameraPackVersion,
                 config: widget.config,
                 associator: widget.associator,
-                allowFullscreen: false,
+                associations: _associations,
               ),
             ),
           ),
@@ -479,6 +565,9 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
     );
   }
 }
+
+String _cameraPackIdentity(CameraPack pack, String version) =>
+    '$version|${pack.source.dataUrl}|${pack.source.fetchedAtUtc}';
 
 class _MissingGeometry extends StatelessWidget {
   const _MissingGeometry();
@@ -642,9 +731,18 @@ class _TileFailure extends StatelessWidget {
 }
 
 class _MarkerDetails extends StatelessWidget {
-  const _MarkerDetails({required this.location, required this.onClose});
+  const _MarkerDetails({
+    required this.location,
+    required this.tollInventory,
+    required this.cameraPack,
+    required this.cameraPackVersion,
+    required this.onClose,
+  });
 
   final Object location;
+  final TollInventoryDataset tollInventory;
+  final CameraPack cameraPack;
+  final String cameraPackVersion;
   final VoidCallback onClose;
 
   @override
@@ -656,43 +754,70 @@ class _MarkerDetails extends StatelessWidget {
           record.previewOperationLabel,
           'Este punto físico no confirma un cobro activo.',
           'Tarifa actual no disponible',
+          'Inventario ${tollInventory.version} · corte ${_dateOnly(tollInventory.sourceTimestamp)}',
+          'El corte no confirma vigencia operativa.',
+          'Fuente inventario: ${record.inventorySource}',
+          'Fuente GPS: ${record.gpsSource}',
         ],
       ),
       TrafficCamera camera => (
         camera.address ?? camera.locality,
-        const [
+        [
           'Cámara registrada próxima al recorrido; el sentido no está confirmado.',
+          'Pack $cameraPackVersion · captura ${_cameraSnapshotDate(cameraPack.source.fetchedAtUtc)}',
+          'La captura no confirma vigencia operativa.',
+          'Fuente: ${cameraPack.source.name}',
+          cameraPack.source.pageUrl,
         ],
       ),
       _ => ('Detalle no disponible', const <String>[]),
     };
-    return Material(
-      color: Colors.white.withValues(alpha: 0.97),
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(title, style: AppTextStyles.bodyStrong),
-                  for (final line in lines)
-                    Text(line, style: AppTextStyles.caption),
-                ],
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 238),
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.97),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(title, style: AppTextStyles.bodyStrong),
+                      for (final line in lines)
+                        Text(line, style: AppTextStyles.caption),
+                    ],
+                  ),
+                ),
               ),
-            ),
-            IconButton(
-              tooltip: 'Cerrar detalle',
-              onPressed: onClose,
-              icon: const Icon(Icons.close_rounded),
-            ),
-          ],
+              IconButton(
+                tooltip: 'Cerrar detalle',
+                onPressed: onClose,
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
+
+String _dateOnly(DateTime value) =>
+    '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+
+String _cameraSnapshotDate(String value) {
+  final parsed = DateTime.tryParse(value);
+  return parsed == null ? 'no disponible' : _dateOnly(parsed.toUtc());
+}
+
+String _locationCount(int count) =>
+    count == 1 ? '1 ubicación única' : '$count ubicaciones únicas';
+
+String _passageCount(int count) =>
+    count == 1 ? '1 paso candidato' : '$count pasos candidatos';

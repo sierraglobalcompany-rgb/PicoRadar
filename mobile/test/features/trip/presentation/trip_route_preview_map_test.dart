@@ -55,6 +55,87 @@ void main() {
     expect(computations, 1);
   });
 
+  testWidgets(
+    'shows unique and passage counts while historical tolls require opt-in',
+    (tester) async {
+      const repeatedRoute = [
+        TripCoordinate(latitude: 6.240, longitude: -75.580),
+        TripCoordinate(latitude: 6.240, longitude: -75.570),
+        TripCoordinate(latitude: 6.250, longitude: -75.570),
+        TripCoordinate(latitude: 6.250, longitude: -75.580),
+        TripCoordinate(latitude: 6.240, longitude: -75.580),
+        TripCoordinate(latitude: 6.240, longitude: -75.570),
+      ];
+      await tester.pumpWidget(
+        _app(
+          config: _neutralConfig(),
+          geometry: repeatedRoute,
+          tollInventory: _tollDataset(
+            records: [
+              _toll(),
+              _toll(
+                id: 'historical',
+                longitude: -75.576,
+                classification:
+                    TollOperationClassification.nonOperationalHistorical,
+              ),
+            ],
+          ),
+          cameraPack: _cameraPack(cameras: [_camera(longitude: -75.574)]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining(
+          '1 peaje inventariado próximo: '
+          '1 ubicación única · 2 pasos candidatos',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining(
+          '1 cámara registrada próxima al recorrido: '
+          '1 ubicación única · 2 pasos candidatos',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('trip-map-toll-historical-0')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('trip-map-toggle-historical-tolls')),
+        findsOneWidget,
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('trip-map-toggle-historical-tolls')),
+      );
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('trip-map-toll-historical-0')),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining(
+          'Históricos visibles: 1 ubicación única · 2 pasos candidatos',
+        ),
+        findsOneWidget,
+      );
+      _openTollDetailsById(tester, 'historical');
+      await tester.pump();
+      expect(
+        find.text('Registro histórico reportado como no operativo'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('no confirma un cobro activo'),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('supports map drag, zoom controls and reframe', (tester) async {
     final controller = MapController();
     await tester.pumpWidget(
@@ -138,36 +219,143 @@ void main() {
     expect(controller.camera.center.longitude, closeTo(-74.110, 0.01));
   });
 
+  testWidgets('clears an open marker detail when the route changes', (
+    tester,
+  ) async {
+    final tollInventory = _tollDataset();
+    final cameraPack = _cameraPack();
+    await tester.pumpWidget(
+      _app(
+        config: _neutralConfig(),
+        tollInventory: tollInventory,
+        cameraPack: cameraPack,
+      ),
+    );
+    await tester.pumpAndSettle();
+    _openTollDetails(tester);
+    await tester.pump();
+    expect(find.text('Peaje de prueba'), findsOneWidget);
+
+    await tester.pumpWidget(
+      _app(
+        config: _neutralConfig(),
+        routeId: 'route-b',
+        tollInventory: tollInventory,
+        cameraPack: cameraPack,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Peaje de prueba'), findsNothing);
+  });
+
+  testWidgets('clears marker detail when either dataset identity changes', (
+    tester,
+  ) async {
+    final records = [_toll()];
+    final originalTolls = _tollDataset(records: records);
+    final originalCameras = _cameraPack();
+    await tester.pumpWidget(
+      _app(
+        config: _neutralConfig(),
+        tollInventory: originalTolls,
+        cameraPack: originalCameras,
+      ),
+    );
+    await tester.pumpAndSettle();
+    _openTollDetails(tester);
+    await tester.pump();
+
+    final updatedTolls = _tollDataset(version: 'v2', records: records);
+    await tester.pumpWidget(
+      _app(
+        config: _neutralConfig(),
+        tollInventory: updatedTolls,
+        cameraPack: originalCameras,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Peaje de prueba'), findsNothing);
+
+    _openCameraDetails(tester);
+    await tester.pump();
+    expect(find.text('Vía de prueba'), findsOneWidget);
+    await tester.pumpWidget(
+      _app(
+        config: _neutralConfig(),
+        tollInventory: updatedTolls,
+        cameraPack: _cameraPack(fetchedAtUtc: '2026-09-01T00:00:00Z'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Vía de prueba'), findsNothing);
+  });
+
+  testWidgets('camera pack version change clears an open camera detail', (
+    tester,
+  ) async {
+    final tollInventory = _tollDataset();
+    final cameraPack = _cameraPack();
+    await tester.pumpWidget(
+      _app(
+        config: _neutralConfig(),
+        tollInventory: tollInventory,
+        cameraPack: cameraPack,
+      ),
+    );
+    await tester.pumpAndSettle();
+    _openCameraDetails(tester);
+    await tester.pump();
+
+    await tester.pumpWidget(
+      _app(
+        config: _neutralConfig(),
+        tollInventory: tollInventory,
+        cameraPack: cameraPack,
+        cameraPackVersion: '2026.09.01-ansv',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Vía de prueba'), findsNothing);
+  });
+
   testWidgets('marker sheets preserve uncertainty and provenance', (
     tester,
   ) async {
     await tester.pumpWidget(_app(config: _neutralConfig()));
     await tester.pumpAndSettle();
 
-    tester
-        .widget<IconButton>(
-          find.descendant(
-            of: find.byKey(const ValueKey('trip-map-toll-toll-1-0')),
-            matching: find.byType(IconButton),
-          ),
-        )
-        .onPressed!();
+    _openTollDetails(tester);
     await tester.pump();
     expect(find.text('Peaje de prueba'), findsOneWidget);
     expect(find.textContaining('no confirma un cobro activo'), findsOneWidget);
     expect(find.text('Tarifa actual no disponible'), findsOneWidget);
+    expect(find.text('Inventario v1 · corte 2026-08-31'), findsOneWidget);
+    expect(
+      find.text('El corte no confirma vigencia operativa.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Fuente inventario: https://example.test/inventory'),
+      findsOneWidget,
+    );
+    expect(find.text('Fuente GPS: https://example.test/gps'), findsOneWidget);
 
-    tester
-        .widget<IconButton>(
-          find.descendant(
-            of: find.byKey(const ValueKey('trip-map-camera-camera-1-0')),
-            matching: find.byType(IconButton),
-          ),
-        )
-        .onPressed!();
+    _openCameraDetails(tester);
     await tester.pump();
     expect(find.text('Vía de prueba'), findsOneWidget);
     expect(find.textContaining('sentido no está confirmado'), findsOneWidget);
+    expect(
+      find.text('Pack 2026.08.31-ansv · captura 2026-08-31'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('La captura no confirma vigencia operativa.'),
+      findsOneWidget,
+    );
+    expect(find.text('Fuente: ANSV'), findsOneWidget);
+    expect(find.text('https://example.test/cameras'), findsOneWidget);
   });
 
   testWidgets('missing geometry shows fallback and does not build a map', (
@@ -176,6 +364,26 @@ void main() {
     await tester.pumpWidget(_app(config: _neutralConfig(), geometry: const []));
 
     expect(find.byType(FlutterMap), findsNothing);
+    expect(find.textContaining('no incluyó geometría'), findsOneWidget);
+  });
+
+  testWidgets('repeated coordinates show the honest no-route fallback', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        config: _neutralConfig(),
+        geometry: const [
+          TripCoordinate(latitude: 6.24, longitude: -75.58),
+          TripCoordinate(latitude: 6.24, longitude: -75.58),
+        ],
+      ),
+    );
+
+    expect(find.byType(FlutterMap), findsNothing);
+    expect(find.byKey(const ValueKey('trip-route-polyline')), findsNothing);
+    expect(find.byKey(const ValueKey('trip-route-start')), findsNothing);
+    expect(find.byKey(const ValueKey('trip-route-end')), findsNothing);
     expect(find.textContaining('no incluyó geometría'), findsOneWidget);
   });
 
@@ -199,7 +407,9 @@ void main() {
     expect(find.textContaining('mapa base no está disponible'), findsOneWidget);
     expect(find.text('Reintentar mapa'), findsOneWidget);
 
-    await tester.tap(find.text('Reintentar mapa'));
+    tester
+        .widget<TextButton>(find.widgetWithText(TextButton, 'Reintentar mapa'))
+        .onPressed!();
     await tester.pump();
     expect(find.byKey(const ValueKey('trip-route-polyline')), findsOneWidget);
   });
@@ -246,6 +456,26 @@ void main() {
     );
   });
 
+  testWidgets('fullscreen reuses the immutable association snapshot', (
+    tester,
+  ) async {
+    var computations = 0;
+    await tester.pumpWidget(
+      _app(
+        config: _neutralConfig(),
+        associator: _CountingAssociator(() => computations++),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(computations, 1);
+
+    await tester.tap(find.byKey(const ValueKey('trip-map-fullscreen')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Vista previa de la ruta'), findsOneWidget);
+    expect(computations, 1);
+  });
+
   testWidgets('remains readable at 360x780 and 2x text scale', (tester) async {
     tester.view.physicalSize = const Size(360, 780);
     tester.view.devicePixelRatio = 1;
@@ -271,6 +501,9 @@ Widget _app({
   ],
   MapController? mapController,
   TripRouteAssociator associator = const TripRouteAssociator(),
+  TollInventoryDataset? tollInventory,
+  CameraPack? cameraPack,
+  String cameraPackVersion = '2026.08.31-ansv',
   double textScale = 1,
   bool scrollable = false,
 }) {
@@ -280,20 +513,9 @@ Widget _app({
       child: TripRoutePreviewMap(
         routeId: routeId,
         geometry: geometry,
-        tollInventory: TollInventoryDataset(
-          version: 'v1',
-          sourceTimestamp: DateTime.utc(2026, 8, 31),
-          records: [_toll()],
-        ),
-        cameraPack: CameraPack(
-          source: const CameraPackSource(
-            name: 'ANSV',
-            pageUrl: 'https://example.test/cameras',
-            dataUrl: 'https://example.test/cameras.json',
-            fetchedAtUtc: '2026-08-31T00:00:00Z',
-          ),
-          cameras: [_camera()],
-        ),
+        tollInventory: tollInventory ?? _tollDataset(),
+        cameraPack: cameraPack ?? _cameraPack(),
+        cameraPackVersion: cameraPackVersion,
         config: config,
         mapController: mapController,
         associator: associator,
@@ -312,6 +534,54 @@ Widget _app({
   );
 }
 
+void _openTollDetails(WidgetTester tester) {
+  _openTollDetailsById(tester, 'toll-1');
+}
+
+void _openTollDetailsById(WidgetTester tester, String id) {
+  tester
+      .widget<IconButton>(
+        find.descendant(
+          of: find.byKey(ValueKey('trip-map-toll-$id-0')),
+          matching: find.byType(IconButton),
+        ),
+      )
+      .onPressed!();
+}
+
+void _openCameraDetails(WidgetTester tester) {
+  tester
+      .widget<IconButton>(
+        find.descendant(
+          of: find.byKey(const ValueKey('trip-map-camera-camera-1-0')),
+          matching: find.byType(IconButton),
+        ),
+      )
+      .onPressed!();
+}
+
+TollInventoryDataset _tollDataset({
+  String version = 'v1',
+  List<TollInventoryRecord>? records,
+}) => TollInventoryDataset(
+  version: version,
+  sourceTimestamp: DateTime.utc(2026, 8, 31),
+  records: records ?? [_toll()],
+);
+
+CameraPack _cameraPack({
+  String fetchedAtUtc = '2026-08-31T00:00:00Z',
+  List<TrafficCamera>? cameras,
+}) => CameraPack(
+  source: CameraPackSource(
+    name: 'ANSV',
+    pageUrl: 'https://example.test/cameras',
+    dataUrl: 'https://example.test/cameras.json',
+    fetchedAtUtc: fetchedAtUtc,
+  ),
+  cameras: cameras ?? [_camera()],
+);
+
 TripRouteMapConfig _neutralConfig() => const TripRouteMapConfig(
   tileUrlTemplate: 'https://tiles.test/{z}/{x}/{y}.png',
   attributionLabel: 'Proveedor cartográfico de prueba',
@@ -319,17 +589,23 @@ TripRouteMapConfig _neutralConfig() => const TripRouteMapConfig(
   forceNeutralFallback: true,
 );
 
-TollInventoryRecord _toll() => const TollInventoryRecord(
-  id: 'toll-1',
-  name: 'Peaje de prueba',
-  exactSourceName: 'PEAJE DE PRUEBA',
+TollInventoryRecord _toll({
+  String id = 'toll-1',
+  String name = 'Peaje de prueba',
+  double latitude = 6.2402,
+  double longitude = -75.575,
+  TollOperationClassification classification =
+      TollOperationClassification.inventoriedOperationNotConfirmed,
+}) => TollInventoryRecord(
+  id: id,
+  name: name,
+  exactSourceName: name.toUpperCase(),
   department: 'Antioquia',
   recordKind: TollRecordKind.physicalStation,
   operationStatusRaw: 'Inventariado',
-  operationClassification:
-      TollOperationClassification.inventoriedOperationNotConfirmed,
-  latitude: 6.2402,
-  longitude: -75.575,
+  operationClassification: classification,
+  latitude: latitude,
+  longitude: longitude,
   chargeEventVerified: false,
   tariffsBySourceCategoryCop: {
     'category_1': null,
@@ -344,14 +620,18 @@ TollInventoryRecord _toll() => const TollInventoryRecord(
   gpsSource: 'https://example.test/gps',
 );
 
-TrafficCamera _camera() => const TrafficCamera(
-  id: 'camera-1',
+TrafficCamera _camera({
+  String id = 'camera-1',
+  double latitude = 6.2402,
+  double longitude = -75.576,
+}) => TrafficCamera(
+  id: id,
   department: 'Antioquia',
   municipality: 'Medellín',
   jurisdiction: 'Medellín',
   address: 'Vía de prueba',
-  latitude: 6.2402,
-  longitude: -75.576,
+  latitude: latitude,
+  longitude: longitude,
   status: 'Aprobada',
   technology: null,
   kind: CameraKind.mixed,

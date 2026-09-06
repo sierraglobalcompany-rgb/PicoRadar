@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/features/driving/domain/traffic_camera.dart';
+import 'package:picoradar/features/trip/application/route_geometry_index.dart';
 import 'package:picoradar/features/trip/application/trip_route_associations.dart';
 import 'package:picoradar/features/trip/data/toll_inventory.dart';
 import 'package:picoradar/features/trip/domain/trip_plan.dart';
@@ -73,6 +74,22 @@ void main() {
       result.tolls.single.location.operationClassification,
       TollOperationClassification.inventoriedOperationNotConfirmed,
     );
+  });
+
+  test('unusable repeated geometry produces no route associations', () {
+    final result = const TripRouteAssociator().associate(
+      routeId: 'route-degenerate',
+      geometry: const [
+        TripCoordinate(latitude: 6.24, longitude: -75.58),
+        TripCoordinate(latitude: 6.24, longitude: -75.58),
+      ],
+      tolls: [_toll('toll-1', -75.58, latitude: 6.24)],
+      cameras: [_camera('camera-1', -75.58)],
+    );
+
+    expect(result.geometryQuality, RouteGeometryQuality.unavailable);
+    expect(result.tolls, isEmpty);
+    expect(result.cameras, isEmpty);
   });
 
   test('toll preview labels preserve every audited source classification', () {
@@ -190,6 +207,46 @@ void main() {
       cameras: cameras,
     );
     expect(computations, 6);
+  });
+
+  test('associates 184 tolls and 360 cameras within a realistic budget', () {
+    final realisticGeometry = List.generate(
+      1001,
+      (index) =>
+          TripCoordinate(latitude: 6.24, longitude: -75.58 + index * 0.00001),
+      growable: false,
+    );
+    final tolls = List.generate(
+      184,
+      (index) => _toll(
+        'toll-$index',
+        -75.5799 + (index / 184) * 0.0098,
+        latitude: 6.2401,
+      ),
+      growable: false,
+    );
+    final cameras = List.generate(
+      360,
+      (index) => _camera('camera-$index', -75.5799 + (index / 360) * 0.0098),
+      growable: false,
+    );
+    final stopwatch = Stopwatch()..start();
+
+    final result = const TripRouteAssociator().associate(
+      routeId: 'route-realistic-volume',
+      geometry: realisticGeometry,
+      tolls: tolls,
+      cameras: cameras,
+    );
+    stopwatch.stop();
+
+    expect(result.uniqueTollLocationCount, 184);
+    expect(result.uniqueCameraLocationCount, 360);
+    expect(
+      stopwatch.elapsed,
+      lessThan(const Duration(seconds: 2)),
+      reason: 'Association work must stay outside frame-by-frame map updates.',
+    );
   });
 }
 

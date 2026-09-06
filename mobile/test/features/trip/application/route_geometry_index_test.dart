@@ -97,5 +97,26 @@ void main() {
         isTrue,
       );
     });
+
+    test('repeated or non-finite points are not usable route geometry', () {
+      final repeated = RouteGeometryIndex(const [
+        TripCoordinate(latitude: 6.24, longitude: -75.58),
+        TripCoordinate(latitude: 6.24, longitude: -75.58),
+        TripCoordinate(latitude: 6.24, longitude: -75.58),
+      ]);
+      final nonFinite = RouteGeometryIndex(const [
+        TripCoordinate(latitude: 6.24, longitude: -75.58),
+        TripCoordinate(latitude: double.nan, longitude: -75.57),
+      ]);
+
+      expect(repeated.quality, RouteGeometryQuality.unavailable);
+      expect(nonFinite.quality, RouteGeometryQuality.unavailable);
+      expect(
+        repeated.nearest(
+          const TripCoordinate(latitude: 6.24, longitude: -75.58),
+        ),
+        isNull,
+      );
+    });
   });
 }
