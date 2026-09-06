@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_tokens.dart';
@@ -11,6 +12,14 @@ import '../domain/trip_draft.dart';
 
 class TripContent extends StatelessWidget {
   const TripContent({
+    required this.scrollController,
+    required this.resultsAnchorKey,
+    required this.resultsFocusNode,
+    required this.originFocusNode,
+    required this.destinationFocusNode,
+    required this.vehicleFocusNode,
+    required this.timeFocusNode,
+    required this.onUserScroll,
     required this.formKey,
     required this.originController,
     required this.destinationController,
@@ -43,6 +52,7 @@ class TripContent extends StatelessWidget {
     required this.onDestinationChanged,
     required this.onOriginSelected,
     required this.onDestinationSelected,
+    required this.onSwapLocations,
     required this.onDateChanged,
     required this.onChecklistChanged,
     required this.onSaveDraft,
@@ -53,6 +63,14 @@ class TripContent extends StatelessWidget {
     super.key,
   });
 
+  final ScrollController scrollController;
+  final GlobalKey resultsAnchorKey;
+  final FocusNode resultsFocusNode;
+  final FocusNode originFocusNode;
+  final FocusNode destinationFocusNode;
+  final FocusNode vehicleFocusNode;
+  final FocusNode timeFocusNode;
+  final VoidCallback onUserScroll;
   final GlobalKey<FormState> formKey;
   final TextEditingController originController;
   final TextEditingController destinationController;
@@ -85,6 +103,7 @@ class TripContent extends StatelessWidget {
   final ValueChanged<String> onDestinationChanged;
   final ValueChanged<TripMunicipality> onOriginSelected;
   final ValueChanged<TripMunicipality> onDestinationSelected;
+  final VoidCallback onSwapLocations;
   final ValueChanged<DateTime> onDateChanged;
   final void Function(TripChecklistItem item, bool selected) onChecklistChanged;
   final VoidCallback onSaveDraft;
@@ -95,161 +114,223 @@ class TripContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      key: const ValueKey('trip-screen'),
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.l,
-        AppSpacing.l,
-        AppSpacing.l,
-        96,
-      ),
+    final hasPlan = planResult != null;
+    final endpointSummary =
+        '${originController.text.trim().isEmpty ? 'Origen pendiente' : originController.text.trim()} → '
+        '${destinationController.text.trim().isEmpty ? 'Destino pendiente' : destinationController.text.trim()}';
+    final vehicleSummary = selectedVehicle == null
+        ? 'Vehículo pendiente'
+        : '${_vehicleType(selectedVehicle!)} · ${selectedVehicle!.plate}';
+    final preparation = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Form(
-              key: formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _VehicleCard(
-                    vehicles: vehicles,
-                    vehicle: selectedVehicle,
-                    restoredVehicleMissing: restoredVehicleMissing,
-                    onChanged: onVehicleChanged,
-                  ),
-                  CheckboxListTile(
-                    key: const ValueKey('trip-standard-vehicle'),
-                    contentPadding: EdgeInsets.zero,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    title: const Text(
-                      'Vehículo de 2 ejes, sin remolque ni modificaciones',
+        _TripFields(
+          originController: originController,
+          destinationController: destinationController,
+          originFocusNode: originFocusNode,
+          destinationFocusNode: destinationFocusNode,
+          timeFocusNode: timeFocusNode,
+          selectedDate: selectedDate,
+          departureMinute: departureMinute,
+          originError: originError,
+          destinationError: destinationError,
+          timeError: timeError,
+          onTimeChanged: onTimeChanged,
+          originSuggestions: originSuggestions,
+          destinationSuggestions: destinationSuggestions,
+          onOriginChanged: onOriginChanged,
+          onDestinationChanged: onDestinationChanged,
+          onOriginSelected: onOriginSelected,
+          onDestinationSelected: onDestinationSelected,
+          onSwapLocations: onSwapLocations,
+          onDateChanged: onDateChanged,
+        ),
+        const SizedBox(height: AppSpacing.m),
+        _VehicleCard(
+          vehicles: vehicles,
+          vehicle: selectedVehicle,
+          restoredVehicleMissing: restoredVehicleMissing,
+          focusNode: vehicleFocusNode,
+          onChanged: onVehicleChanged,
+        ),
+        CheckboxListTile(
+          key: const ValueKey('trip-standard-vehicle'),
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          title: const Text(
+            'Vehículo de 2 ejes, sin remolque ni modificaciones',
+          ),
+          value: standardVehicleConfirmed,
+          onChanged: selectedVehicle == null
+              ? null
+              : (value) => onStandardVehicleChanged(value ?? false),
+        ),
+        if (vehicleError != null) _FieldError(vehicleError!),
+        const SizedBox(height: AppSpacing.m),
+        FilledButton.icon(
+          key: const ValueKey('trip-preview'),
+          onPressed: isPlanning ? null : onPreview,
+          icon: const Icon(Icons.route_outlined),
+          label: Text(
+            isPlanning ? 'Consultando plan de viaje' : 'Ver plan de viaje',
+          ),
+        ),
+        if (isPlanning) ...[
+          const SizedBox(height: AppSpacing.s),
+          const LinearProgressIndicator(),
+          TextButton.icon(
+            key: const ValueKey('trip-cancel-preview'),
+            onPressed: onCancelPreview,
+            icon: const Icon(Icons.close),
+            label: const Text('Cancelar consulta'),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.s),
+        const Text(
+          'Al consultar se envían municipios, salida y categoría al servicio de rutas. La placa permanece en este dispositivo.',
+        ),
+        if (planError != null) ...[
+          const SizedBox(height: AppSpacing.m),
+          Semantics(liveRegion: true, child: _FieldError(planError!)),
+        ],
+      ],
+    );
+
+    return NotificationListener<UserScrollNotification>(
+      onNotification: (notification) {
+        if (notification.direction != ScrollDirection.idle) onUserScroll();
+        return false;
+      },
+      child: ListView(
+        controller: scrollController,
+        key: const ValueKey('trip-screen'),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.l,
+          AppSpacing.l,
+          AppSpacing.l,
+          96,
+        ),
+        children: [
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ExpansionTile(
+                      key: ValueKey(
+                        hasPlan
+                            ? 'trip-preparation-compact'
+                            : 'trip-preparation-expanded',
+                      ),
+                      initiallyExpanded: !hasPlan,
+                      maintainState: false,
+                      tilePadding: EdgeInsets.zero,
+                      childrenPadding: const EdgeInsets.only(
+                        bottom: AppSpacing.s,
+                      ),
+                      title: hasPlan
+                          ? Column(
+                              key: const ValueKey('trip-preparation-summary'),
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Preparación del viaje',
+                                  style: AppTextStyles.bodyStrong,
+                                ),
+                                Text(endpointSummary),
+                                Text(vehicleSummary),
+                              ],
+                            )
+                          : Text('Prepara tu viaje', style: AppTextStyles.h2),
+                      subtitle: hasPlan
+                          ? const Text('Toca para editar sin perder tus datos')
+                          : null,
+                      children: [preparation],
                     ),
-                    value: standardVehicleConfirmed,
-                    onChanged: selectedVehicle == null
-                        ? null
-                        : (value) => onStandardVehicleChanged(value ?? false),
-                  ),
-                  if (vehicleError != null) _FieldError(vehicleError!),
-                  const SizedBox(height: AppSpacing.l),
-                  _TripFields(
-                    originController: originController,
-                    destinationController: destinationController,
-                    selectedDate: selectedDate,
-                    departureMinute: departureMinute,
-                    originError: originError,
-                    destinationError: destinationError,
-                    timeError: timeError,
-                    onTimeChanged: onTimeChanged,
-                    originSuggestions: originSuggestions,
-                    destinationSuggestions: destinationSuggestions,
-                    onOriginChanged: onOriginChanged,
-                    onDestinationChanged: onDestinationChanged,
-                    onOriginSelected: onOriginSelected,
-                    onDestinationSelected: onDestinationSelected,
-                    onDateChanged: onDateChanged,
-                  ),
-                  const SizedBox(height: AppSpacing.m),
-                  FilledButton.icon(
-                    key: const ValueKey('trip-preview'),
-                    onPressed: isPlanning ? null : onPreview,
-                    icon: const Icon(Icons.route_outlined),
-                    label: Text(
-                      isPlanning
-                          ? 'Consultando plan de viaje'
-                          : 'Ver plan de viaje',
-                    ),
-                  ),
-                  if (isPlanning) ...[
-                    const SizedBox(height: AppSpacing.s),
-                    const LinearProgressIndicator(),
-                    TextButton.icon(
-                      key: const ValueKey('trip-cancel-preview'),
-                      onPressed: onCancelPreview,
-                      icon: const Icon(Icons.close),
-                      label: const Text('Cancelar consulta'),
-                    ),
-                  ],
-                  const SizedBox(height: AppSpacing.s),
-                  const Text(
-                    'Al consultar se envían municipios, salida y categoría al servicio de rutas. La placa permanece en este dispositivo.',
-                  ),
-                  if (planError != null) ...[
-                    const SizedBox(height: AppSpacing.m),
-                    Semantics(liveRegion: true, child: _FieldError(planError!)),
-                  ],
-                  if (planResult != null) ...[
-                    const SizedBox(height: AppSpacing.l),
-                    planResult!,
-                  ],
-                  const SizedBox(height: AppSpacing.l),
-                  Text('Pico y placa del viaje', style: AppTextStyles.h2),
-                  const SizedBox(height: AppSpacing.m),
-                  instantRestrictions,
-                  const SizedBox(height: AppSpacing.l),
-                  const Text(
-                    'Vista previa por fecha, sin evaluar la hora de llegada.',
-                  ),
-                  _RestrictionSummary(
-                    date: selectedDate,
-                    origin: originRestriction,
-                    destination: destinationRestriction,
-                  ),
-                  const SizedBox(height: AppSpacing.l),
-                  _ChecklistCard(
-                    completedChecklist: completedChecklist,
-                    onChanged: onChecklistChanged,
-                  ),
-                  const SizedBox(height: AppSpacing.l),
-                  _ExternalNotice(draftRestored: draftRestored),
-                  const SizedBox(height: AppSpacing.l),
-                  OutlinedButton.icon(
-                    key: const ValueKey('trip-open-google-maps'),
-                    onPressed: onGoogleMaps,
-                    icon: const Icon(Icons.map_outlined),
-                    label: const Text('Abrir Google Maps'),
-                  ),
-                  const SizedBox(height: AppSpacing.s),
-                  OutlinedButton.icon(
-                    key: const ValueKey('trip-open-waze'),
-                    onPressed: onWaze,
-                    icon: const Icon(Icons.navigation_outlined),
-                    label: const Text('Abrir Waze'),
-                  ),
-                  const SizedBox(height: AppSpacing.s),
-                  OutlinedButton.icon(
-                    key: const ValueKey('trip-open-invias'),
-                    onPressed: onInvias,
-                    icon: const Icon(Icons.account_balance_outlined),
-                    label: const Text('Consultar estado vial en INVÍAS'),
-                  ),
-                  const SizedBox(height: AppSpacing.l),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.tonalIcon(
-                          key: const ValueKey('trip-save-draft'),
-                          onPressed: onSaveDraft,
-                          icon: const Icon(Icons.save_outlined),
-                          label: const Text('Guardar borrador'),
+                    if (planResult != null) ...[
+                      const SizedBox(height: AppSpacing.l),
+                      SizedBox(key: resultsAnchorKey),
+                      Focus(
+                        focusNode: resultsFocusNode,
+                        child: Semantics(
+                          liveRegion: true,
+                          container: true,
+                          child: planResult!,
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.s),
-                      IconButton.outlined(
-                        key: const ValueKey('trip-delete-draft'),
-                        tooltip: 'Borrar borrador',
-                        onPressed: onDeleteDraft,
-                        icon: const Icon(Icons.delete_outline),
-                      ),
                     ],
-                  ),
-                ],
+                    const SizedBox(height: AppSpacing.l),
+                    Text('Pico y placa del viaje', style: AppTextStyles.h2),
+                    const SizedBox(height: AppSpacing.m),
+                    instantRestrictions,
+                    const SizedBox(height: AppSpacing.l),
+                    const Text(
+                      'Vista previa por fecha, sin evaluar la hora de llegada.',
+                    ),
+                    _RestrictionSummary(
+                      date: selectedDate,
+                      origin: originRestriction,
+                      destination: destinationRestriction,
+                    ),
+                    const SizedBox(height: AppSpacing.l),
+                    _ChecklistCard(
+                      completedChecklist: completedChecklist,
+                      onChanged: onChecklistChanged,
+                    ),
+                    const SizedBox(height: AppSpacing.l),
+                    _ExternalNotice(draftRestored: draftRestored),
+                    const SizedBox(height: AppSpacing.l),
+                    OutlinedButton.icon(
+                      key: const ValueKey('trip-open-google-maps'),
+                      onPressed: onGoogleMaps,
+                      icon: const Icon(Icons.map_outlined),
+                      label: const Text('Abrir Google Maps'),
+                    ),
+                    const SizedBox(height: AppSpacing.s),
+                    OutlinedButton.icon(
+                      key: const ValueKey('trip-open-waze'),
+                      onPressed: onWaze,
+                      icon: const Icon(Icons.navigation_outlined),
+                      label: const Text('Abrir Waze'),
+                    ),
+                    const SizedBox(height: AppSpacing.s),
+                    OutlinedButton.icon(
+                      key: const ValueKey('trip-open-invias'),
+                      onPressed: onInvias,
+                      icon: const Icon(Icons.account_balance_outlined),
+                      label: const Text('Consultar estado vial en INVÍAS'),
+                    ),
+                    const SizedBox(height: AppSpacing.l),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.tonalIcon(
+                            key: const ValueKey('trip-save-draft'),
+                            onPressed: onSaveDraft,
+                            icon: const Icon(Icons.save_outlined),
+                            label: const Text('Guardar borrador'),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.s),
+                        IconButton.outlined(
+                          key: const ValueKey('trip-delete-draft'),
+                          tooltip: 'Borrar borrador',
+                          onPressed: onDeleteDraft,
+                          icon: const Icon(Icons.delete_outline),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -259,12 +340,14 @@ class _VehicleCard extends StatelessWidget {
     required this.vehicles,
     required this.vehicle,
     required this.restoredVehicleMissing,
+    required this.focusNode,
     required this.onChanged,
   });
 
   final List<VehicleProfile> vehicles;
   final VehicleProfile? vehicle;
   final bool restoredVehicleMissing;
+  final FocusNode focusNode;
   final ValueChanged<String> onChanged;
 
   @override
@@ -308,6 +391,7 @@ class _VehicleCard extends StatelessWidget {
           IconButton.outlined(
             key: const ValueKey('trip-select-vehicle'),
             tooltip: 'Elegir vehículo para este viaje',
+            focusNode: focusNode,
             onPressed: vehicles.isEmpty
                 ? null
                 : () => _showVehicleSelector(context),
@@ -345,6 +429,9 @@ class _TripFields extends StatelessWidget {
   const _TripFields({
     required this.originController,
     required this.destinationController,
+    required this.originFocusNode,
+    required this.destinationFocusNode,
+    required this.timeFocusNode,
     required this.selectedDate,
     required this.departureMinute,
     required this.originError,
@@ -357,11 +444,15 @@ class _TripFields extends StatelessWidget {
     required this.onDestinationChanged,
     required this.onOriginSelected,
     required this.onDestinationSelected,
+    required this.onSwapLocations,
     required this.onDateChanged,
   });
 
   final TextEditingController originController;
   final TextEditingController destinationController;
+  final FocusNode originFocusNode;
+  final FocusNode destinationFocusNode;
+  final FocusNode timeFocusNode;
   final DateTime selectedDate;
   final int? departureMinute;
   final String? originError;
@@ -374,6 +465,7 @@ class _TripFields extends StatelessWidget {
   final ValueChanged<String> onDestinationChanged;
   final ValueChanged<TripMunicipality> onOriginSelected;
   final ValueChanged<TripMunicipality> onDestinationSelected;
+  final VoidCallback onSwapLocations;
   final ValueChanged<DateTime> onDateChanged;
 
   @override
@@ -385,8 +477,10 @@ class _TripFields extends StatelessWidget {
           TextFormField(
             key: const ValueKey('trip-origin-field'),
             controller: originController,
+            focusNode: originFocusNode,
             onChanged: onOriginChanged,
             textInputAction: TextInputAction.next,
+            onFieldSubmitted: (_) => destinationFocusNode.requestFocus(),
             decoration: InputDecoration(
               labelText: 'Origen',
               prefixIcon: const Icon(Icons.trip_origin),
@@ -400,12 +494,29 @@ class _TripFields extends StatelessWidget {
             suggestions: originSuggestions,
             onSelected: onOriginSelected,
           ),
-          const SizedBox(height: AppSpacing.m),
+          Align(
+            alignment: Alignment.center,
+            child: Semantics(
+              label: 'Intercambiar origen y destino',
+              button: true,
+              onTap: onSwapLocations,
+              child: ExcludeSemantics(
+                child: IconButton.outlined(
+                  key: const ValueKey('trip-swap-locations'),
+                  tooltip: 'Intercambiar origen y destino',
+                  onPressed: onSwapLocations,
+                  icon: const Icon(Icons.swap_vert),
+                ),
+              ),
+            ),
+          ),
           TextFormField(
             key: const ValueKey('trip-destination-field'),
             controller: destinationController,
+            focusNode: destinationFocusNode,
             onChanged: onDestinationChanged,
             textInputAction: TextInputAction.done,
+            onFieldSubmitted: (_) => destinationFocusNode.unfocus(),
             decoration: InputDecoration(
               labelText: 'Destino',
               prefixIcon: const Icon(Icons.place_outlined),
@@ -443,6 +554,7 @@ class _TripFields extends StatelessWidget {
           const SizedBox(height: AppSpacing.s),
           OutlinedButton.icon(
             key: const ValueKey('trip-time-button'),
+            focusNode: timeFocusNode,
             onPressed: () async {
               final minute = departureMinute;
               final selected = await showTimePicker(
