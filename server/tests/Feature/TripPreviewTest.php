@@ -91,6 +91,9 @@ class TripPreviewTest extends TestCase
         $response = $this->postJson('/api/v1/trips/preview', $this->request());
 
         $response->assertOk()->assertJsonPath('requestId', 'trip-test-001')
+            ->assertJsonPath('routes.0.geometry.type', 'LineString')
+            ->assertJsonPath('routes.0.geometry.coordinates.0', [-75.5812, 6.2442])
+            ->assertJsonPath('routes.0.geometry.coordinates.2', [-75.374, 6.1533])
             ->assertJsonPath('routes.0.tolls.totalMinor', 1800030)
             ->assertJsonPath('routes.0.tolls.stationCount', 2)
             ->assertJsonPath('routes.0.tolls.payableCount', 2);

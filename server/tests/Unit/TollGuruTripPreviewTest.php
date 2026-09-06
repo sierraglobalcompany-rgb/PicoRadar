@@ -39,8 +39,26 @@ class TollGuruTripPreviewTest extends TestCase
         $this->assertSame([null, null], array_column($route['tolls']['charges'], 'effectiveAt'));
         $this->assertSame([null, null], array_column($route['tolls']['charges'], 'sourceUrl'));
         $this->assertArrayNotHasKey('polyline', $route);
-        $this->assertArrayNotHasKey('geometry', $route);
+        $this->assertSame([
+            'type' => 'LineString',
+            'coordinates' => [
+                [-75.5812, 6.2442],
+                [-75.48, 6.2],
+                [-75.374, 6.1533],
+            ],
+        ], $route['geometry']);
         $this->assertStringNotContainsString('upstream-private-marker', json_encode($plan, JSON_THROW_ON_ERROR));
+    }
+
+    public function test_normalized_payload_matches_the_mobile_boundary_fixture(): void
+    {
+        $fixture = file_get_contents(dirname(base_path()).'/mobile/test/fixtures/trip/tollguru_normalized_plan.json');
+        $this->assertNotFalse($fixture);
+
+        $this->assertSame(
+            json_decode($fixture, true, 512, JSON_THROW_ON_ERROR),
+            $this->normalize(self::providerFixture()),
+        );
     }
 
     public function test_missing_cash_rate_keeps_route_with_subtotal_and_no_total(): void

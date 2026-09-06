@@ -231,7 +231,10 @@ final class TollGuruTripPreview
             $id = hash('sha256', json_encode($points, JSON_THROW_ON_ERROR));
             $routes[$id] ??= ['id' => $id, 'summary' => $meta['name'], 'distanceMeters' => $distance, 'durationSeconds' => $duration,
                 // The documented duration field alone does not prove predicted traffic.
-                'timeBasis' => 'static', 'tolls' => $this->tolls($route, $request, ($summary['currency'] ?? null) === 'COP')];
+                'timeBasis' => 'static',
+                // GeoJSON positions are [longitude, latitude].
+                'geometry' => ['type' => 'LineString', 'coordinates' => array_map(fn (array $point): array => [$point[1], $point[0]], $points)],
+                'tolls' => $this->tolls($route, $request, ($summary['currency'] ?? null) === 'COP')];
         }
         $routes = array_values($routes);
         usort($routes, fn (array $a, array $b): int => [$a['durationSeconds'], $a['id']] <=> [$b['durationSeconds'], $b['id']]);

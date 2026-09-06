@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -226,6 +227,50 @@ void main() {
       );
     },
   );
+  test('accepts the PHP-normalized boundary fixture', () async {
+    adapter.body = jsonDecode(
+      File('test/fixtures/trip/tollguru_normalized_plan.json')
+          .readAsStringSync(),
+    ) as Map<String, dynamic>;
+
+    final route = (await client.preview(_request(requestId: 'trip-test-001')))
+        .routes
+        .single;
+
+    expect(
+      route.id,
+      'b0e15b7c343826ec635f703f9ecda9dc23897181d986e6fae4b752434b00cb8f',
+    );
+    expect(route.geometry, hasLength(3));
+    expect(route.geometry.first.latitude, 6.2442);
+    expect(route.geometry.first.longitude, -75.5812);
+    expect(route.geometry.last.latitude, 6.1533);
+    expect(route.geometry.last.longitude, -75.374);
+    expect(route.tolls.totalMinor, 1800030);
+  });
+  test('accepts route geometry at the 20000-coordinate ceiling', () async {
+    adapter.body = _plan();
+    adapter.body['routes'][0]['geometry']['coordinates'] = _coordinates(20000);
+
+    final route = (await client.preview(_request())).routes.single;
+
+    expect(route.geometry, hasLength(20000));
+  });
+  test('rejects route geometry above the 20000-coordinate ceiling', () async {
+    adapter.body = _plan();
+    adapter.body['routes'][0]['geometry']['coordinates'] = _coordinates(20001);
+
+    await expectLater(
+      client.preview(_request()),
+      throwsA(
+        isA<TripPlanFailure>().having(
+          (error) => error.code,
+          'code',
+          'invalid_upstream',
+        ),
+      ),
+    );
+  });
   test('malformed route geometry is rejected as invalid upstream', () async {
     final invalidGeometries = <Object>[
       {'type': 'Point', 'coordinates': const []},
@@ -240,6 +285,13 @@ void main() {
         'coordinates': const [
           [-75.58, 6.24],
           [-74.08, 181],
+        ],
+      },
+      {
+        'type': 'LineString',
+        'coordinates': const [
+          [-75.58, 6.24],
+          [-181, 4.60],
         ],
       },
       {
@@ -342,8 +394,11 @@ void main() {
   });
 }
 
-TripPlanRequest _request({bool confirmed = true}) => TripPlanRequest(
-  requestId: 'request-1',
+TripPlanRequest _request({
+  bool confirmed = true,
+  String requestId = 'request-1',
+}) => TripPlanRequest(
+  requestId: requestId,
   origin: const TripMunicipality(
     code: '05001',
     municipality: 'Medellin',
@@ -365,6 +420,13 @@ TripPlanRequest _request({bool confirmed = true}) => TripPlanRequest(
   departureUtc: DateTime.utc(2026, 9, 7, 4),
   standardVehicleConfirmed: confirmed,
 );
+
+List<List<int>> _coordinates(int count) => List.generate(
+  count,
+  (index) => index == count - 1 ? const [1, 1] : const [0, 0],
+  growable: false,
+);
+
 Map<String, dynamic> _plan() => {
   'requestId': 'request-1',
   'generatedAtUtc': '2026-09-06T00:00:00Z',
