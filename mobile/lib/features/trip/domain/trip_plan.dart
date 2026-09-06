@@ -74,21 +74,30 @@ class TripResolvedPoint {
   final double longitude;
 }
 
+class TripCoordinate {
+  const TripCoordinate({required this.latitude, required this.longitude});
+
+  final double latitude;
+  final double longitude;
+}
+
 class TripRouteOption {
-  const TripRouteOption({
+  TripRouteOption({
     required this.id,
     required this.summary,
     required this.distanceMeters,
     required this.durationSeconds,
     required this.timeBasis,
     required this.tolls,
-  });
+    List<TripCoordinate> geometry = const [],
+  }) : geometry = List.unmodifiable(geometry);
   final String id;
   final String summary;
   final int distanceMeters;
   final int durationSeconds;
   final String timeBasis;
   final TripTolls tolls;
+  final List<TripCoordinate> geometry;
 
   DateTime arrivalUtc(DateTime departureUtc) =>
       departureUtc.toUtc().add(Duration(seconds: durationSeconds));

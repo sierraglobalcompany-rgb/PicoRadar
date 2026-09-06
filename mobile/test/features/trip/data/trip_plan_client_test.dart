@@ -187,6 +187,88 @@ void main() {
     }
   });
   test(
+    'missing route geometry is rejected without fabricating a route',
+    () async {
+      adapter.body = _plan();
+      adapter.body['routes'][0].remove('geometry');
+
+      await expectLater(
+        client.preview(_request()),
+        throwsA(
+          isA<TripPlanFailure>().having(
+            (error) => error.code,
+            'code',
+            'invalid_upstream',
+          ),
+        ),
+      );
+    },
+  );
+  test(
+    'decodes ordered GeoJSON coordinates as immutable route geometry',
+    () async {
+      final geometry = (await client.preview(_request()))
+          .routes
+          .single
+          .geometry;
+
+      expect(geometry, hasLength(3));
+      expect(geometry[0].latitude, 6.24);
+      expect(geometry[0].longitude, -75.58);
+      expect(geometry[1].latitude, 5.5);
+      expect(geometry[1].longitude, -75.0);
+      expect(geometry[2].latitude, 4.60);
+      expect(geometry[2].longitude, -74.08);
+      expect(
+        () =>
+            geometry.add(const TripCoordinate(latitude: 4.7, longitude: -74.2)),
+        throwsUnsupportedError,
+      );
+    },
+  );
+  test('malformed route geometry is rejected as invalid upstream', () async {
+    final invalidGeometries = <Object>[
+      {'type': 'Point', 'coordinates': const []},
+      {
+        'type': 'LineString',
+        'coordinates': const [
+          [-75.58, 6.24],
+        ],
+      },
+      {
+        'type': 'LineString',
+        'coordinates': const [
+          [-75.58, 6.24],
+          [-74.08, 181],
+        ],
+      },
+      {
+        'type': 'LineString',
+        'coordinates': const [
+          [-75.58, 6.24, 1000],
+          [-74.08, 4.60],
+        ],
+      },
+    ];
+
+    for (final geometry in invalidGeometries) {
+      adapter.body = _plan();
+      adapter.body['routes'][0]['geometry'] = geometry;
+
+      await expectLater(
+        client.preview(_request()),
+        throwsA(
+          isA<TripPlanFailure>().having(
+            (error) => error.code,
+            'code',
+            'invalid_upstream',
+          ),
+        ),
+        reason: 'must reject $geometry',
+      );
+    }
+  });
+  test(
     'bad toll data preserves real route km and ETA with unknown coverage',
     () async {
       for (final mutate in <void Function(Map<String, dynamic>)>[
@@ -305,6 +387,14 @@ Map<String, dynamic> _plan() => {
       'distanceMeters': 400000,
       'durationSeconds': 14400,
       'timeBasis': 'static',
+      'geometry': {
+        'type': 'LineString',
+        'coordinates': [
+          [-75.58, 6.24],
+          [-75.0, 5.5],
+          [-74.08, 4.60],
+        ],
+      },
       'tolls': {
         'coverage': 'complete',
         'currency': 'COP',

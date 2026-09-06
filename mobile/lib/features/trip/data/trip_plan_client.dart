@@ -179,6 +179,7 @@ TripPlan _parsePlan(Map<String, dynamic> json, String category) {
           maximum: 604800,
         ),
         timeBasis: basis,
+        geometry: _geometry(row['geometry']),
         tolls: _tolls(row['tolls'], category),
       ),
     );
@@ -193,6 +194,36 @@ TripPlan _parsePlan(Map<String, dynamic> json, String category) {
     destination: _point(json['destination']),
     routes: routes,
   );
+}
+
+List<TripCoordinate> _geometry(Object? value) {
+  final json = _object(value);
+  if (json['type'] != 'LineString') throw const FormatException();
+  final rows = json['coordinates'];
+  if (rows is! List || rows.length < 2 || rows.length > 20000) {
+    throw const FormatException();
+  }
+  final points = <TripCoordinate>[];
+  for (final raw in rows) {
+    if (raw is! List || raw.length != 2) throw const FormatException();
+    final longitude = raw[0];
+    final latitude = raw[1];
+    if (longitude is! num ||
+        latitude is! num ||
+        !longitude.isFinite ||
+        !latitude.isFinite ||
+        longitude.abs() > 180 ||
+        latitude.abs() > 90) {
+      throw const FormatException();
+    }
+    points.add(
+      TripCoordinate(
+        latitude: latitude.toDouble(),
+        longitude: longitude.toDouble(),
+      ),
+    );
+  }
+  return points;
 }
 
 TripResolvedPoint _point(Object? value) {
