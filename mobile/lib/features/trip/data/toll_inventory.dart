@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -220,7 +221,7 @@ class TollInventoryRecord {
 }
 
 class TollInventoryStore {
-  const TollInventoryStore({
+  TollInventoryStore({
     required this.database,
     required this.snapshotFile,
     required this.bundledLoader,
@@ -229,6 +230,8 @@ class TollInventoryStore {
   final AppDatabase database;
   final File snapshotFile;
   final Future<String> Function() bundledLoader;
+  final _snapshotMutex = _AsyncMutex();
+  final Map<String, int> _preparedHashes = {};
 
   TransactionalDatasetImporter get transactionalImporter =>
       TransactionalDatasetImporter(
@@ -236,13 +239,13 @@ class TollInventoryStore {
         isInstalledVersionUsable: _isInstalledVersionUsable,
       );
 
-  Future<TollInventoryDataset> load() async {
+  Future<TollInventoryDataset> load() => _snapshotMutex.synchronized(() async {
     final installed = await _installedVersion();
     if (installed?.status != 'installed') {
       return TollInventoryDataset.fromJsonString(await bundledLoader());
     }
     return _loadInstalledSnapshot(installed!);
-  }
+  });
 
   Future<TollInventoryDataset> _loadInstalledSnapshot(
     DatasetVersion installed,
@@ -280,14 +283,16 @@ class TollInventoryStore {
         installed.status != 'installed') {
       return false;
     }
-    try {
-      await _loadInstalledSnapshot(installed);
-      return true;
-    } on DatasetSyncException {
-      return false;
-    } on FileSystemException {
-      return false;
-    }
+    return _snapshotMutex.synchronized(() async {
+      try {
+        await _loadInstalledSnapshot(installed);
+        return true;
+      } on DatasetSyncException {
+        return false;
+      } on FileSystemException {
+        return false;
+      }
+    });
   }
 
   Future<PreparedDatasetImport> _prepareImport(
@@ -314,44 +319,47 @@ class TollInventoryStore {
       throw DatasetSyncException('Invalid toll inventory UTF-8: $error');
     }
 
-    await snapshotFile.parent.create(recursive: true);
-    final immutableSnapshot = _snapshotForHash(sha256);
-    var created = false;
-    try {
-      if (await immutableSnapshot.exists()) {
-        if (await _sha256File(immutableSnapshot) != sha256) {
-          throw const DatasetSyncException(
-            'Existing immutable toll snapshot is corrupt.',
+    return _snapshotMutex.synchronized(() async {
+      await snapshotFile.parent.create(recursive: true);
+      final immutableSnapshot = _snapshotForHash(sha256);
+      var created = false;
+      try {
+        if (await immutableSnapshot.exists()) {
+          if (await _sha256File(immutableSnapshot) != sha256) {
+            throw const DatasetSyncException(
+              'Existing immutable toll snapshot is corrupt.',
+            );
+          }
+        } else {
+          final candidate = File(
+            '${immutableSnapshot.path}.candidate.'
+            '${DateTime.now().microsecondsSinceEpoch}',
           );
-        }
-      } else {
-        final candidate = File(
-          '${immutableSnapshot.path}.candidate.'
-          '${DateTime.now().microsecondsSinceEpoch}',
-        );
-        await candidate.writeAsBytes(verifiedBytes, flush: true);
-        try {
-          await candidate.rename(immutableSnapshot.path);
-          created = true;
-        } on FileSystemException {
-          await _deleteBestEffort(candidate);
-          if (!await immutableSnapshot.exists() ||
-              await _sha256File(immutableSnapshot) != sha256) {
-            rethrow;
+          await candidate.writeAsBytes(verifiedBytes, flush: true);
+          try {
+            await candidate.rename(immutableSnapshot.path);
+            created = true;
+          } on FileSystemException {
+            await _deleteBestEffort(candidate);
+            if (!await immutableSnapshot.exists() ||
+                await _sha256File(immutableSnapshot) != sha256) {
+              rethrow;
+            }
           }
         }
+      } catch (error) {
+        throw DatasetSyncException(
+          'Toll inventory snapshot preparation failed: $error',
+        );
       }
-    } catch (error) {
-      throw DatasetSyncException(
-        'Toll inventory snapshot preparation failed: $error',
+      _preparedHashes.update(sha256, (count) => count + 1, ifAbsent: () => 1);
+      return _PreparedTollSnapshot(
+        store: this,
+        immutableSnapshot: immutableSnapshot,
+        sha256: sha256,
+        created: created,
       );
-    }
-    return _PreparedTollSnapshot(
-      store: this,
-      immutableSnapshot: immutableSnapshot,
-      sha256: sha256,
-      created: created,
-    );
+    });
   }
 
   File _snapshotForHash(String sha256) => File('${snapshotFile.path}.$sha256');
@@ -389,19 +397,60 @@ class TollInventoryStore {
 
   Future<void> _cleanupUnselectedSnapshots(String selectedSha256) async {
     try {
+      final snapshotName = snapshotFile.uri.pathSegments.last;
+      final prefix = '$snapshotName.';
       await for (final entity in snapshotFile.parent.list()) {
-        if (entity is! File ||
-            !entity.path.startsWith('${snapshotFile.path}.')) {
+        if (entity is! File) {
           continue;
         }
-        final suffix = entity.path.substring(snapshotFile.path.length + 1);
+        final entityName = entity.uri.pathSegments.last;
+        if (!entityName.startsWith(prefix)) {
+          continue;
+        }
+        final suffix = entityName.substring(prefix.length);
         if (suffix != selectedSha256 &&
+            !_preparedHashes.containsKey(suffix) &&
             RegExp(r'^[a-f0-9]{64}$').hasMatch(suffix)) {
           await _deleteBestEffort(entity);
         }
       }
     } on FileSystemException {
       return;
+    }
+  }
+
+  Future<void> _commitPrepared(_PreparedTollSnapshot prepared) {
+    return _snapshotMutex.synchronized(() async {
+      if (prepared._finished) {
+        return;
+      }
+      prepared._finished = true;
+      _releasePreparedHash(prepared.sha256);
+      await _cleanupUnselectedSnapshots(prepared.sha256);
+    });
+  }
+
+  Future<void> _rollbackPrepared(_PreparedTollSnapshot prepared) {
+    return _snapshotMutex.synchronized(() async {
+      if (prepared._finished) {
+        return;
+      }
+      prepared._finished = true;
+      _releasePreparedHash(prepared.sha256);
+      if (prepared.created &&
+          !_preparedHashes.containsKey(prepared.sha256) &&
+          !await _isHashSelected(prepared.sha256)) {
+        await _deleteBestEffort(prepared.immutableSnapshot);
+      }
+    });
+  }
+
+  void _releasePreparedHash(String sha256) {
+    final count = _preparedHashes[sha256];
+    if (count == null || count <= 1) {
+      _preparedHashes.remove(sha256);
+    } else {
+      _preparedHashes[sha256] = count - 1;
     }
   }
 
@@ -430,19 +479,30 @@ class _PreparedTollSnapshot implements PreparedDatasetImport {
   final File immutableSnapshot;
   final String sha256;
   final bool created;
+  bool _finished = false;
 
   @override
   Future<void> activate() async {}
 
   @override
-  Future<void> commit() async {
-    await store._cleanupUnselectedSnapshots(sha256);
-  }
+  Future<void> commit() => store._commitPrepared(this);
 
   @override
-  Future<void> rollback() async {
-    if (created && !await store._isHashSelected(sha256)) {
-      await _deleteBestEffort(immutableSnapshot);
+  Future<void> rollback() => store._rollbackPrepared(this);
+}
+
+class _AsyncMutex {
+  Future<void> _tail = Future.value();
+
+  Future<T> synchronized<T>(Future<T> Function() action) async {
+    final previous = _tail;
+    final release = Completer<void>();
+    _tail = release.future;
+    await previous;
+    try {
+      return await action();
+    } finally {
+      release.complete();
     }
   }
 }

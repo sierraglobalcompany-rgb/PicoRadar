@@ -94,6 +94,18 @@ final tollInventoryStoreProvider = FutureProvider<TollInventoryStore>((
   );
 });
 
+final datasetSyncCommitHandlerProvider =
+    Provider<void Function(String datasetKey)>((ref) {
+      return (datasetKey) {
+        if (datasetKey == restrictionsDatasetKey) {
+          ref.invalidate(bundledRestrictionsProvider);
+          ref.invalidate(restrictionJurisdictionsProvider);
+        } else if (datasetKey == tollInventoryDatasetKey) {
+          ref.invalidate(tripTollInventoryProvider);
+        }
+      };
+    });
+
 final tripTollInventoryProvider = FutureProvider<TollInventoryDataset>((
   ref,
 ) async {
@@ -107,6 +119,7 @@ final datasetSyncServiceProvider = FutureProvider<DatasetSyncService?>((
   if (config == null) {
     return null;
   }
+  _validateProductDatasetConfig(config);
   final tollStore = await ref.watch(tollInventoryStoreProvider.future);
   return DatasetSyncService(
     database: ref.watch(appDatabaseProvider),
@@ -116,6 +129,7 @@ final datasetSyncServiceProvider = FutureProvider<DatasetSyncService?>((
     transactionalImporters: {
       tollInventoryDatasetKey: tollStore.transactionalImporter,
     },
+    onDatasetCommitted: ref.watch(datasetSyncCommitHandlerProvider),
   );
 });
 
@@ -124,11 +138,8 @@ final datasetSyncRunProvider = FutureProvider<DatasetSyncResult?>((ref) async {
   if (service == null) {
     return null;
   }
-  final result = await service.sync();
-  ref.invalidate(bundledRestrictionsProvider);
-  ref.invalidate(restrictionJurisdictionsProvider);
-  ref.invalidate(tripTollInventoryProvider);
-  return result;
+  await ref.read(bundledRestrictionsProvider.future);
+  return service.sync();
 });
 
 final tripCameraPackSnapshotProvider = FutureProvider<TripCameraPackSnapshot>((
@@ -411,4 +422,23 @@ Future<void> _tryCancelPicoNotifications(Ref ref) async {
   } on MissingPluginException {
     return;
   }
+}
+
+void _validateProductDatasetConfig(AppConfig config) {
+  final cdn = config.cdnBaseUri;
+  final manifest = config.manifestUri;
+  if (cdn.scheme != 'https' || manifest.scheme != 'https') {
+    throw ArgumentError('CDN_BASE_URL and MANIFEST_URL must use HTTPS.');
+  }
+  if (cdn.host != manifest.host ||
+      _effectiveUriPort(cdn) != _effectiveUriPort(manifest)) {
+    throw ArgumentError('MANIFEST_URL must use the CDN_BASE_URL origin.');
+  }
+}
+
+int _effectiveUriPort(Uri uri) {
+  if (uri.hasPort) {
+    return uri.port;
+  }
+  return uri.scheme == 'https' ? 443 : 80;
 }

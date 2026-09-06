@@ -68,6 +68,7 @@ class DatasetSyncService {
     this.maxManifestBytes = 64 * 1024,
     this.maxDownloadBytes = 4 * 1024 * 1024,
     this.maxDecodedBytes = 16 * 1024 * 1024,
+    this.onDatasetCommitted,
   }) : http =
            http ??
            Dio(
@@ -107,6 +108,7 @@ class DatasetSyncService {
   final int maxManifestBytes;
   final int maxDownloadBytes;
   final int maxDecodedBytes;
+  final void Function(String datasetKey)? onDatasetCommitted;
 
   Future<DatasetSyncResult> sync({CancelToken? cancelToken}) async {
     final headers = <String, String>{};
@@ -310,6 +312,7 @@ class DatasetSyncService {
       }
       await prepared?.commit();
       result.imported.add(datasetKey);
+      onDatasetCommitted?.call(datasetKey);
     } finally {
       if (await tempFile.exists()) {
         await tempFile.delete();

@@ -114,7 +114,9 @@ void main() {
 
     setUp(() async {
       root = await Directory.systemTemp.createTemp('picoradar_tolls_');
-      snapshot = File('${root.path}/tolls_inventory.json');
+      snapshot = File(
+        '${root.path}${Platform.pathSeparator}tolls_inventory.json',
+      );
       db = AppDatabase(NativeDatabase.memory());
     });
 
@@ -261,6 +263,55 @@ void main() {
         await prepared.commit();
       },
     );
+
+    test('cleanup preserves overlapping prepared snapshots', () async {
+      final store = TollInventoryStore(
+        database: db,
+        snapshotFile: snapshot,
+        bundledLoader: () async => jsonEncode(assetJson),
+      );
+      await _installSnapshot(store, db, assetJson);
+      final first = _copy(assetJson)..['version'] = '2026.09.06-concurrent-a';
+      final firstBytes = utf8.encode(jsonEncode(first));
+      final firstSha = await _sha256(firstBytes);
+      final firstPrepared = await store.transactionalImporter(
+        db,
+        first,
+        firstBytes,
+        firstSha,
+      );
+      await _selectSnapshot(
+        db,
+        firstPrepared,
+        version: first['version'] as String,
+        sha256: firstSha,
+      );
+
+      final second = _copy(assetJson)..['version'] = '2026.09.06-concurrent-b';
+      final secondBytes = utf8.encode(jsonEncode(second));
+      final secondSha = await _sha256(secondBytes);
+      final secondPrepared = await store.transactionalImporter(
+        db,
+        second,
+        secondBytes,
+        secondSha,
+      );
+
+      final reader = store.load();
+      final cleanup = firstPrepared.commit();
+      expect((await reader).version, first['version']);
+      await cleanup;
+      expect(await File('${snapshot.path}.$secondSha').exists(), isTrue);
+
+      await _selectSnapshot(
+        db,
+        secondPrepared,
+        version: second['version'] as String,
+        sha256: secondSha,
+      );
+      await secondPrepared.commit();
+      expect((await store.load()).version, second['version']);
+    });
   });
 }
 
@@ -299,6 +350,22 @@ Future<PreparedDatasetImport> _prepareSnapshot(
 ) async {
   final bytes = utf8.encode(jsonEncode(json));
   return store.transactionalImporter(db, json, bytes, await _sha256(bytes));
+}
+
+Future<void> _selectSnapshot(
+  AppDatabase db,
+  PreparedDatasetImport prepared, {
+  required String version,
+  required String sha256,
+}) async {
+  await db.transaction(() async {
+    await prepared.activate();
+    await (db.update(
+      db.datasetVersions,
+    )..where((row) => row.datasetKey.equals(tollInventoryDatasetKey))).write(
+      DatasetVersionsCompanion(version: Value(version), sha256: Value(sha256)),
+    );
+  });
 }
 
 Future<String> _sha256(List<int> bytes) async {
