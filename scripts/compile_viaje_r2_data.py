@@ -51,6 +51,24 @@ REVIEW_DECISIONS = {
     "verified_executable",
     "informational_only",
 }
+OFFICIAL_SOURCE_HOSTS = {
+    "alcaldiabogota.gov.co",
+    "bogota.gov.co",
+    "medellin.gov.co",
+    "movilidadbogota.gov.co",
+    "pasto.gov.co",
+    "www.alcaldiabogota.gov.co",
+    "www.bogota.gov.co",
+    "www.medellin.gov.co",
+    "www.movilidadbogota.gov.co",
+    "www.pasto.gov.co",
+}
+VEHICLE_KINDS = {"car", "motorcycle"}
+SERVICE_TYPES = {"private", "taxi"}
+REGISTRATION_ORIGINS = {"local", "foreign", "unknown"}
+RULE_EFFECTS = {"restrict", "allow"}
+DATE_PARITIES = {"odd", "even"}
+DIGIT_POSITIONS = {"firstNumeric", "lastNumeric"}
 GEOGRAPHY_ALIASES = {
     ("co-source:bogota-d-c:bogota", "Bogotá D.C.", "Bogotá"): (
         "Bogotá, D.C.",
@@ -157,6 +175,268 @@ def _iso_datetime(value: object) -> datetime | None:
         return None
 
 
+def _canonical_sha256(value: object) -> str:
+    encoded = json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return _sha256_bytes(encoded)
+
+
+def _is_utc_timestamp(value: object) -> bool:
+    parsed = _iso_datetime(value)
+    return (
+        isinstance(value, str)
+        and "T" in value
+        and parsed is not None
+        and parsed.tzinfo is not None
+        and parsed.utcoffset() is not None
+        and parsed.utcoffset().total_seconds() == 0
+    )
+
+
+def _is_official_source_url(value: object) -> bool:
+    return _is_https_url(value) and urlparse(str(value)).hostname in OFFICIAL_SOURCE_HOSTS
+
+
+def _is_exact_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _comparable_datetime(value: datetime) -> datetime:
+    return value.replace(tzinfo=None)
+
+
+def _runtime_rule_reasons(rule: object, runtime_source_urls: list[str]) -> list[str]:
+    if not isinstance(rule, dict):
+        return ["runtime_rule_invalid"]
+    reasons = []
+    rule_id = rule.get("id")
+    if not isinstance(rule_id, str) or not rule_id.strip():
+        reasons.append("runtime_rule_id_invalid")
+    if not _is_exact_int(rule.get("priority")):
+        reasons.append("runtime_rule_priority_invalid")
+    effect = rule.get("effect")
+    if not isinstance(effect, str) or effect not in RULE_EFFECTS:
+        reasons.append("runtime_rule_effect_invalid")
+
+    valid_from = _iso_datetime(rule.get("validFrom"))
+    valid_until_value = rule.get("validUntil")
+    valid_until = (
+        None if valid_until_value is None else _iso_datetime(valid_until_value)
+    )
+    if valid_from is None or (
+        valid_until_value is not None and valid_until is None
+    ):
+        reasons.append("runtime_rule_validity_invalid")
+    elif valid_until is not None and _comparable_datetime(
+        valid_from
+    ) > _comparable_datetime(valid_until):
+        reasons.append("runtime_rule_validity_invalid")
+
+    registration_origins = rule.get("registrationOrigins")
+    if registration_origins is not None and (
+        not isinstance(registration_origins, list)
+        or any(
+            not isinstance(value, str) or value not in REGISTRATION_ORIGINS
+            for value in registration_origins
+        )
+    ):
+        reasons.append("runtime_rule_registration_origins_invalid")
+    weekdays = rule.get("weekdays")
+    if weekdays is not None and (
+        not isinstance(weekdays, list)
+        or any(not _is_exact_int(value) or value < 1 or value > 7 for value in weekdays)
+    ):
+        reasons.append("runtime_rule_weekdays_invalid")
+    date_parity = rule.get("dateParity")
+    if date_parity is not None and (
+        not isinstance(date_parity, str) or date_parity not in DATE_PARITIES
+    ):
+        reasons.append("runtime_rule_date_parity_invalid")
+    digit_position = rule.get("digitPosition")
+    if digit_position is not None and (
+        not isinstance(digit_position, str)
+        or digit_position not in DIGIT_POSITIONS
+    ):
+        reasons.append("runtime_rule_digit_position_invalid")
+    digits = rule.get("digits")
+    if digits is not None and (
+        not isinstance(digits, list)
+        or any(not _is_exact_int(value) or value < 0 or value > 9 for value in digits)
+    ):
+        reasons.append("runtime_rule_digits_invalid")
+    if digits is not None and digit_position is None:
+        reasons.append("runtime_rule_digit_position_required")
+
+    windows = rule.get("timeWindows")
+    if not isinstance(windows, list):
+        reasons.append("runtime_rule_windows_invalid")
+    else:
+        for window in windows:
+            if (
+                not isinstance(window, dict)
+                or not _is_exact_int(window.get("startMinute"))
+                or not _is_exact_int(window.get("endMinute"))
+                or window["startMinute"] < 0
+                or window["startMinute"] >= 1440
+                or window["endMinute"] < 0
+                or window["endMinute"] >= 1440
+                or window["startMinute"] == window["endMinute"]
+            ):
+                reasons.append("runtime_rule_window_invalid")
+    if not isinstance(rule.get("appliesOnHolidays"), bool):
+        reasons.append("runtime_rule_holiday_policy_invalid")
+    source_url = rule.get("sourceUrl")
+    if not _is_https_url(source_url):
+        reasons.append("runtime_rule_source_url_invalid")
+    elif source_url not in runtime_source_urls:
+        reasons.append("runtime_rule_source_mismatch")
+    if _iso_datetime(rule.get("verifiedAt")) is None:
+        reasons.append("runtime_rule_verified_at_invalid")
+    return _unique_reasons(reasons)
+
+
+def _runtime_coverage_reasons(runtime: object) -> list[str]:
+    if not isinstance(runtime, dict):
+        return ["runtime_coverage_missing"]
+    reasons = []
+    for field in ("jurisdictionId", "jurisdictionName"):
+        value = runtime.get(field)
+        if not isinstance(value, str) or not value.strip():
+            reasons.append(f"runtime_coverage_missing_{field}")
+    vehicle_kind = runtime.get("vehicleKind")
+    if not isinstance(vehicle_kind, str) or vehicle_kind not in VEHICLE_KINDS:
+        reasons.append("runtime_vehicle_kind_invalid")
+    service_type = runtime.get("serviceType")
+    if not isinstance(service_type, str) or service_type not in SERVICE_TYPES:
+        reasons.append("runtime_service_type_invalid")
+    if _iso_datetime(runtime.get("verifiedAt")) is None:
+        reasons.append("runtime_verified_at_invalid")
+    if _iso_datetime(runtime.get("staleAfter")) is None:
+        reasons.append("runtime_stale_after_invalid")
+    source_urls = runtime.get("sourceUrls")
+    if not isinstance(source_urls, list) or not source_urls or any(
+        not _is_https_url(value) for value in source_urls
+    ):
+        reasons.append("runtime_source_urls_invalid")
+        source_urls = []
+    rules = runtime.get("rules")
+    if not isinstance(rules, list):
+        reasons.append("runtime_rules_invalid")
+        rules = []
+    elif not rules:
+        reasons.append("runtime_rules_missing")
+    rule_ids = set()
+    for rule in rules:
+        reasons.extend(_runtime_rule_reasons(rule, source_urls))
+        if isinstance(rule, dict) and isinstance(rule.get("id"), str):
+            rule_id = rule["id"]
+            if rule_id in rule_ids:
+                reasons.append("runtime_rule_id_duplicate")
+            rule_ids.add(rule_id)
+    return _unique_reasons(reasons)
+
+
+def _actual_snapshot_action(restriction_payload: dict, runtime: dict) -> str:
+    jurisdiction = next(
+        (
+            row
+            for row in restriction_payload["jurisdictions"]
+            if row["id"] == runtime["jurisdictionId"]
+        ),
+        None,
+    )
+    if jurisdiction is None:
+        return "add"
+    existing = next(
+        (
+            row
+            for row in jurisdiction["coverages"]
+            if row["vehicleKind"] == runtime["vehicleKind"]
+            and row["serviceType"] == runtime["serviceType"]
+        ),
+        None,
+    )
+    if existing is None:
+        return "add"
+    expected = {
+        key: value
+        for key, value in runtime.items()
+        if key not in {"jurisdictionId", "jurisdictionName"}
+    }
+    if jurisdiction.get("name") == runtime["jurisdictionName"] and existing == expected:
+        return "maintain"
+    return "update"
+
+
+def _runtime_dataset_reasons(payload: object) -> list[str]:
+    if not isinstance(payload, dict):
+        return ["runtime_dataset_invalid"]
+    reasons = []
+    if payload.get("schemaVersion") != 1:
+        reasons.append("runtime_dataset_schema_invalid")
+    if payload.get("datasetKey") != "restrictions":
+        reasons.append("runtime_dataset_key_invalid")
+    for field in ("version",):
+        if not isinstance(payload.get(field), str) or not payload[field].strip():
+            reasons.append(f"runtime_dataset_{field}_invalid")
+    if _iso_datetime(payload.get("generatedAt")) is None:
+        reasons.append("runtime_dataset_generated_at_invalid")
+    jurisdictions = payload.get("jurisdictions")
+    if not isinstance(jurisdictions, list):
+        return _unique_reasons(reasons, "runtime_jurisdictions_invalid")
+    coverage_ids = set()
+    rule_ids = set()
+    for jurisdiction in jurisdictions:
+        if not isinstance(jurisdiction, dict):
+            reasons.append("runtime_jurisdiction_invalid")
+            continue
+        jurisdiction_id = jurisdiction.get("id")
+        jurisdiction_name = jurisdiction.get("name")
+        if not isinstance(jurisdiction_id, str) or not jurisdiction_id.strip():
+            reasons.append("runtime_jurisdiction_id_invalid")
+            continue
+        if not isinstance(jurisdiction_name, str) or not jurisdiction_name.strip():
+            reasons.append("runtime_jurisdiction_name_invalid")
+        coverages = jurisdiction.get("coverages")
+        if not isinstance(coverages, list):
+            reasons.append("runtime_coverages_invalid")
+            continue
+        for coverage in coverages:
+            if not isinstance(coverage, dict):
+                reasons.append("runtime_coverage_invalid")
+                continue
+            runtime = {
+                "jurisdictionId": jurisdiction_id,
+                "jurisdictionName": jurisdiction_name,
+                **coverage,
+            }
+            reasons.extend(_runtime_coverage_reasons(runtime))
+            coverage_id = (
+                jurisdiction_id,
+                coverage.get("vehicleKind"),
+                coverage.get("serviceType"),
+            )
+            if coverage_id in coverage_ids:
+                reasons.append("runtime_coverage_duplicate")
+            coverage_ids.add(coverage_id)
+            rules = coverage.get("rules")
+            if not isinstance(rules, list):
+                continue
+            for rule in rules:
+                if not isinstance(rule, dict):
+                    continue
+                rule_key = (jurisdiction_id, rule.get("id"))
+                if rule_key in rule_ids:
+                    reasons.append("runtime_rule_id_duplicate")
+                rule_ids.add(rule_key)
+    return _unique_reasons(reasons)
+
+
 def _read_reviewed_decisions(path: Path | None) -> dict:
     if path is None or not path.is_file():
         return {
@@ -176,7 +456,11 @@ def _read_reviewed_decisions(path: Path | None) -> dict:
     if not isinstance(decisions, list):
         raise ValueError("Reviewed decisions must contain a decisions list")
     ids = [row.get("sourceCoverageId") for row in decisions if isinstance(row, dict)]
-    if len(ids) != len(decisions) or len(set(ids)) != len(ids):
+    if (
+        len(ids) != len(decisions)
+        or any(not isinstance(value, str) or not value for value in ids)
+        or len(set(ids)) != len(ids)
+    ):
         raise ValueError("Reviewed decisions require unique sourceCoverageId values")
     return payload
 
@@ -186,6 +470,7 @@ def _review_validation_reasons(
     source_coverage: dict,
     mapped: dict,
     dated_by_id: dict[str, dict],
+    restriction_payload: dict,
 ) -> list[str]:
     reasons = []
     for field in (
@@ -212,18 +497,34 @@ def _review_validation_reasons(
     if decision.get("snapshotAction") not in {"hold", "add", "update", "maintain"}:
         reasons.append("review_snapshot_action_invalid")
 
-    source_record_ids = decision.get("sourceRecordIds", [])
+    source_record_ids = decision.get("sourceRecordIds")
     if not isinstance(source_record_ids, list):
         reasons.append("review_source_record_ids_invalid")
         source_record_ids = []
+    elif any(
+        not isinstance(value, str) or not value for value in source_record_ids
+    ):
+        reasons.append("review_source_record_ids_invalid")
+        source_record_ids = []
+    elif len(set(source_record_ids)) != len(source_record_ids):
+        reasons.append("review_source_record_ids_duplicate")
+    source_records = []
     for source_record_id in source_record_ids:
         source_record = dated_by_id.get(source_record_id)
         if source_record is None:
             reasons.append("review_source_record_unknown")
-        elif _normalized(source_record.get("sourcePublicationFlagRaw")).startswith("no"):
+            continue
+        source_records.append(source_record)
+        if _normalized(source_record.get("sourcePublicationFlagRaw")).startswith("no"):
             reasons.append("source_explicit_no_publish")
     source_jurisdiction_key = decision["sourceCoverageId"].rsplit(":", 1)[0]
     source_vehicle_type = source_coverage.get("sourceVehicleType")
+    for source_record in source_records:
+        if (
+            source_record.get("sourceJurisdictionKey") != source_jurisdiction_key
+            or source_record.get("vehicleTypeCandidate") != source_vehicle_type
+        ):
+            reasons.append("review_source_record_not_correlated")
     related_dated_rows = (
         row
         for row in dated_by_id.values()
@@ -239,22 +540,29 @@ def _review_validation_reasons(
     if decision.get("decision") != "verified_executable":
         return _unique_reasons(reasons, decision.get("blockers", []))
 
+    blockers = decision.get("blockers")
+    if not isinstance(blockers, list) or blockers:
+        reasons.append("review_blockers_present")
+    if not _is_utc_timestamp(decision.get("consultedAt")):
+        reasons.append("review_consulted_at_not_utc")
+    if not source_record_ids:
+        reasons.append("review_source_record_ids_required")
+    official_source_url = decision.get("officialSourceUrl")
+    if not _is_official_source_url(official_source_url):
+        reasons.append("review_official_source_domain_not_allowed")
+    linked_source_urls = {
+        url
+        for source in (source_coverage, *source_records)
+        for url in source.get("sourceUrls", [])
+        if isinstance(url, str)
+    }
+    if official_source_url not in linked_source_urls:
+        reasons.append("review_official_source_not_in_source_records")
+
     runtime = decision.get("runtimeCoverage")
     if not isinstance(runtime, dict):
         return _unique_reasons(reasons, "runtime_coverage_missing")
-    for field in (
-        "jurisdictionId",
-        "jurisdictionName",
-        "vehicleKind",
-        "serviceType",
-        "verifiedAt",
-        "staleAfter",
-        "sourceUrls",
-        "rules",
-    ):
-        value = runtime.get(field)
-        if value is None or value == "" or value == []:
-            reasons.append(f"runtime_coverage_missing_{field}")
+    reasons.extend(_runtime_coverage_reasons(runtime))
     if runtime.get("jurisdictionId") != mapped.get("appJurisdictionId"):
         reasons.append("runtime_jurisdiction_mismatch")
     if runtime.get("vehicleKind") != source_coverage.get("appVehicleKindCandidate"):
@@ -262,97 +570,118 @@ def _review_validation_reasons(
     if runtime.get("serviceType") != source_coverage.get("appServiceTypeCandidate"):
         reasons.append("runtime_service_type_mismatch")
     source_urls = runtime.get("sourceUrls")
-    if not isinstance(source_urls, list) or not source_urls or not all(
-        _is_https_url(url) for url in source_urls
+    if isinstance(source_urls, list) and any(
+        not _is_official_source_url(url) for url in source_urls
     ):
-        reasons.append("runtime_source_urls_invalid")
-    elif decision.get("officialSourceUrl") not in source_urls:
+        reasons.append("runtime_source_url_domain_not_allowed")
+    if isinstance(source_urls, list) and official_source_url not in source_urls:
         reasons.append("runtime_official_source_missing")
-    if _iso_datetime(runtime.get("verifiedAt")) is None:
-        reasons.append("runtime_verified_at_invalid")
     stale_after = _iso_datetime(runtime.get("staleAfter"))
-    if stale_after is None:
-        reasons.append("runtime_stale_after_invalid")
+    if runtime.get("verifiedAt") != decision.get("consultedAt"):
+        reasons.append("runtime_verified_at_not_consulted_at")
 
     legal = decision.get("legalValidity")
     if not isinstance(legal, dict):
         reasons.append("legal_validity_invalid")
         legal = {}
+    if legal.get("status") != "complete":
+        reasons.append("legal_validity_status_not_complete")
     for field in ("validFrom", "validUntil", "sourceTimestamp"):
         if _iso_datetime(legal.get(field)) is None:
             reasons.append(f"legal_validity_missing_{field}")
+    if legal.get("sourceTimestamp") is not None and not _is_utc_timestamp(
+        legal.get("sourceTimestamp")
+    ):
+        reasons.append("legal_validity_source_timestamp_not_utc")
     legal_from = _iso_datetime(legal.get("validFrom"))
     legal_until = _iso_datetime(legal.get("validUntil"))
-    if legal_from and legal_until and legal_from > legal_until:
+    if legal_from and legal_until and _comparable_datetime(
+        legal_from
+    ) > _comparable_datetime(legal_until):
         reasons.append("legal_validity_range_invalid")
 
+    original_value = decision.get("originalValue")
+    if not isinstance(original_value, dict):
+        reasons.append("review_original_value_invalid")
+        original_value = {}
+    if original_value.get("sourceCoverageSha256") != _canonical_sha256(
+        source_coverage
+    ):
+        reasons.append("review_source_coverage_hash_mismatch")
+    if original_value.get("sourceRecordsSha256") != _canonical_sha256(source_records):
+        reasons.append("review_source_records_hash_mismatch")
+    interpreted_value = decision.get("interpretedValue")
+    if not isinstance(interpreted_value, dict):
+        reasons.append("review_interpreted_value_invalid")
+        interpreted_value = {}
+    if interpreted_value.get("runtimeCoverageSha256") != _canonical_sha256(runtime):
+        reasons.append("review_runtime_coverage_hash_mismatch")
+
     rules = runtime.get("rules")
-    if not isinstance(rules, list) or not rules:
-        reasons.append("runtime_rules_missing")
+    if not isinstance(rules, list):
         rules = []
-    rule_ids = set()
+    evidence_rows = interpreted_value.get("ruleEvidence")
+    if not isinstance(evidence_rows, list):
+        reasons.append("review_rule_evidence_invalid")
+        evidence_rows = []
+    evidence_by_rule = {
+        row.get("ruleId"): row.get("sourceRecordId")
+        for row in evidence_rows
+        if isinstance(row, dict)
+    }
     for rule in rules:
         if not isinstance(rule, dict):
-            reasons.append("runtime_rule_invalid")
             continue
-        for field in (
-            "id",
-            "priority",
-            "effect",
-            "validFrom",
-            "validUntil",
-            "digitPosition",
-            "digits",
-            "timeWindows",
-            "appliesOnHolidays",
-            "sourceUrl",
-            "verifiedAt",
-        ):
-            if field not in rule or rule[field] is None or rule[field] == []:
-                reasons.append(f"runtime_rule_missing_{field}")
-        rule_id = rule.get("id")
-        if not isinstance(rule_id, str) or not rule_id or rule_id in rule_ids:
-            reasons.append("runtime_rule_id_invalid")
-        rule_ids.add(rule_id)
-        if rule.get("effect") != "restrict":
-            reasons.append("runtime_rule_effect_invalid")
-        if rule.get("digitPosition") not in {"firstNumeric", "lastNumeric"}:
-            reasons.append("runtime_rule_digit_position_invalid")
-        digits = rule.get("digits")
-        if not isinstance(digits, list) or not digits or any(
-            not isinstance(digit, int) or digit < 0 or digit > 9 for digit in digits
-        ):
-            reasons.append("runtime_rule_digits_invalid")
-        windows = rule.get("timeWindows")
-        if not isinstance(windows, list) or not windows:
-            reasons.append("runtime_rule_windows_invalid")
-            windows = []
-        for window in windows:
-            if not isinstance(window, dict) or not all(
-                isinstance(window.get(field), int)
-                and 0 <= window[field] <= 1440
-                for field in ("startMinute", "endMinute")
-            ):
-                reasons.append("runtime_rule_window_invalid")
         rule_from = _iso_datetime(rule.get("validFrom"))
         rule_until = _iso_datetime(rule.get("validUntil"))
-        if rule_from is None or rule_until is None or rule_from > rule_until:
-            reasons.append("runtime_rule_validity_invalid")
-        elif legal_from and legal_until and (
-            rule_from < legal_from or rule_until > legal_until
+        if rule_from and rule_until and legal_from and legal_until and (
+            _comparable_datetime(rule_from) < _comparable_datetime(legal_from)
+            or _comparable_datetime(rule_until) > _comparable_datetime(legal_until)
         ):
             reasons.append("runtime_rule_outside_legal_validity")
-        if rule.get("sourceUrl") != decision.get("officialSourceUrl"):
-            reasons.append("runtime_rule_source_mismatch")
         if rule.get("verifiedAt") != runtime.get("verifiedAt"):
             reasons.append("runtime_rule_verified_at_mismatch")
-        if not isinstance(rule.get("appliesOnHolidays"), bool):
-            reasons.append("runtime_rule_holiday_policy_invalid")
+        source_record_id = evidence_by_rule.get(rule.get("id"))
+        source_record = dated_by_id.get(source_record_id)
+        if source_record_id not in source_record_ids or source_record is None:
+            reasons.append("review_rule_evidence_missing")
+            continue
+        expected_windows = [
+            {
+                "startMinute": window.get("startMinute"),
+                "endMinute": window.get("endMinute"),
+            }
+            for window in source_record.get("timeWindowsCandidate", [])
+        ]
+        expected_date = source_record.get("date")
+        if (
+            rule_from is None
+            or rule_until is None
+            or rule_from.date().isoformat() != expected_date
+            or rule_until.date().isoformat() != expected_date
+            or rule.get("weekdays") != [source_record.get("isoWeekday")]
+            or rule.get("digits") != source_record.get("digitsRestrictedCandidate")
+            or rule.get("digitPosition")
+            != source_record.get("digitPositionCandidate")
+            or rule.get("timeWindows") != expected_windows
+            or rule.get("sourceUrl") not in source_record.get("sourceUrls", [])
+        ):
+            reasons.append("review_rule_evidence_mismatch")
     if stale_after and legal_until:
-        comparable_stale = stale_after.replace(tzinfo=None)
-        comparable_until = legal_until.replace(tzinfo=None)
-        if comparable_stale <= comparable_until:
+        if _comparable_datetime(stale_after) <= _comparable_datetime(legal_until):
             reasons.append("runtime_stale_after_not_after_validity")
+    if isinstance(runtime, dict) and all(
+        key in runtime
+        for key in (
+            "jurisdictionId",
+            "jurisdictionName",
+            "vehicleKind",
+            "serviceType",
+        )
+    ):
+        actual_action = _actual_snapshot_action(restriction_payload, runtime)
+        if decision.get("snapshotAction") != actual_action:
+            reasons.append(f"snapshot_action_mismatch_expected_{actual_action}")
     return _unique_reasons(reasons)
 
 
@@ -409,6 +738,7 @@ def _restriction_ledger(
     repo_root: Path,
     restriction_hash: str,
     reviewed_decisions: dict,
+    restriction_payload: dict,
 ) -> tuple[dict, list[dict]]:
     geography = _geography_lookup(repo_root)
     coverage_decisions = []
@@ -535,6 +865,7 @@ def _restriction_ledger(
             source_coverage,
             mapped_by_coverage[source_coverage_id],
             dated_by_id,
+            restriction_payload,
         )
         requested = review.get("decision")
         accepted = requested == "verified_executable" and not reasons
@@ -583,6 +914,7 @@ def _apply_reviewed_coverages(
     snapshot_diff = {"added": 0, "updated": 0, "maintained": 0, "removed": 0}
     for decision in approved:
         runtime = copy.deepcopy(decision["runtimeCoverage"])
+        action = _actual_snapshot_action(result, runtime)
         jurisdiction_id = runtime.pop("jurisdictionId")
         jurisdiction_name = runtime.pop("jurisdictionName")
         jurisdiction = next(
@@ -600,6 +932,8 @@ def _apply_reviewed_coverages(
                 "coverages": [],
             }
             result["jurisdictions"].append(jurisdiction)
+        else:
+            jurisdiction["name"] = jurisdiction_name
         existing_index = next(
             (
                 index
@@ -613,7 +947,6 @@ def _apply_reviewed_coverages(
             jurisdiction["coverages"].append(runtime)
         else:
             jurisdiction["coverages"][existing_index] = runtime
-        action = decision["snapshotAction"]
         if action == "add":
             snapshot_diff["added"] += 1
         elif action == "update":
@@ -741,11 +1074,31 @@ def compile_release(
     compile_generated_at = reviewed_decisions["reviewedAt"] or GENERATED_AT
 
     restriction_ledger, approved = _restriction_ledger(
-        pico, repo_root, restriction_hash, reviewed_decisions
+        pico,
+        repo_root,
+        restriction_hash,
+        reviewed_decisions,
+        restriction_payload,
     )
+    base_restriction_payload = restriction_payload
     restriction_payload, snapshot_diff = _apply_reviewed_coverages(
         restriction_payload, approved, reviewed_decisions
     )
+    dataset_reasons = _runtime_dataset_reasons(restriction_payload)
+    if approved and dataset_reasons:
+        for ledger_row in restriction_ledger["coverageDecisions"]:
+            if not ledger_row.get("publishable"):
+                continue
+            ledger_row["reviewDecision"] = "needs_evidence"
+            ledger_row["decision"] = "quarantined"
+            ledger_row["publishable"] = False
+            ledger_row["runtimePublished"] = False
+            ledger_row["quarantineReasons"] = dataset_reasons
+        approved = []
+        restriction_payload = base_restriction_payload
+        snapshot_diff = {"added": 0, "updated": 0, "maintained": 0, "removed": 0}
+        restriction_ledger["existingBundledRestrictionsPreserved"] = True
+        restriction_ledger["newRuntimeRulesPublished"] = 0
     toll_asset = _toll_asset(tolls)
     toll_ledger = _toll_ledger(toll_asset)
 
