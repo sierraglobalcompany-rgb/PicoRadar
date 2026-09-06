@@ -18,6 +18,7 @@ class TripPlanResult extends StatelessWidget {
     this.mapPreview,
     this.mapAnchorKey,
     this.onViewMap,
+    this.cameraLocationCount,
     super.key,
   });
 
@@ -29,6 +30,7 @@ class TripPlanResult extends StatelessWidget {
   final Widget? mapPreview;
   final GlobalKey? mapAnchorKey;
   final VoidCallback? onViewMap;
+  final int? cameraLocationCount;
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +74,11 @@ class TripPlanResult extends StatelessWidget {
         Text('Salida: ${tripInstantLabel(request.departureUtc)}'),
         const SizedBox(height: AppSpacing.m),
         if (selected != null)
-          _TripSummary(route: selected, departureUtc: request.departureUtc),
+          _TripSummary(
+            route: selected,
+            departureUtc: request.departureUtc,
+            cameraLocationCount: cameraLocationCount,
+          ),
         const SizedBox(height: AppSpacing.l),
         Text('Opciones de ruta · ${routes.length}', style: AppTextStyles.h2),
         const SizedBox(height: AppSpacing.m),
@@ -290,10 +296,15 @@ class TripPlanResult extends StatelessWidget {
 }
 
 class _TripSummary extends StatelessWidget {
-  const _TripSummary({required this.route, required this.departureUtc});
+  const _TripSummary({
+    required this.route,
+    required this.departureUtc,
+    required this.cameraLocationCount,
+  });
 
   final TripRouteOption route;
   final DateTime departureUtc;
+  final int? cameraLocationCount;
 
   @override
   Widget build(BuildContext context) {
@@ -331,7 +342,7 @@ class _TripSummary extends StatelessWidget {
       (
         key: 'cameras',
         icon: Icons.photo_camera_outlined,
-        value: 'Por confirmar',
+        value: cameraLocationCount?.toString() ?? 'Por confirmar',
         label: 'Cámaras registradas',
       ),
     ];
@@ -346,20 +357,32 @@ class _TripSummary extends StatelessWidget {
         builder: (context, constraints) {
           const gap = AppSpacing.s;
           final width = (constraints.maxWidth - gap) / 2;
-          return Wrap(
-            spacing: gap,
-            runSpacing: AppSpacing.m,
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (final metric in metrics)
-                SizedBox(
-                  key: ValueKey('trip-summary-${metric.key}'),
-                  width: width,
-                  child: _SummaryMetric(
-                    icon: metric.icon,
-                    value: metric.value,
-                    label: metric.label,
-                  ),
+              Wrap(
+                spacing: gap,
+                runSpacing: AppSpacing.m,
+                children: [
+                  for (final metric in metrics)
+                    SizedBox(
+                      key: ValueKey('trip-summary-${metric.key}'),
+                      width: width,
+                      child: _SummaryMetric(
+                        icon: metric.icon,
+                        value: metric.value,
+                        label: metric.label,
+                      ),
+                    ),
+                ],
+              ),
+              if (cameraLocationCount == 0) ...[
+                const SizedBox(height: AppSpacing.m),
+                const Text(
+                  'Sin coincidencias locales; esto no significa que la ruta esté libre de cámaras.',
+                  style: AppTextStyles.caption,
                 ),
+              ],
             ],
           );
         },

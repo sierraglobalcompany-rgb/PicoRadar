@@ -8,6 +8,7 @@ import '../../../app/theme/app_tokens.dart';
 import '../../driving/domain/traffic_camera.dart';
 import '../application/route_geometry_index.dart';
 import '../application/trip_route_associations.dart';
+import '../application/trip_tile_config.dart';
 import '../data/toll_inventory.dart';
 import '../domain/trip_plan.dart';
 
@@ -16,6 +17,7 @@ class TripRouteMapConfig {
     required this.tileUrlTemplate,
     required this.attributionLabel,
     required this.userAgentPackageName,
+    this.approved = false,
     this.tileReadyTimeout = const Duration(seconds: 8),
     this.forceNeutralFallback = false,
     this.tileProvider,
@@ -24,9 +26,19 @@ class TripRouteMapConfig {
   final String tileUrlTemplate;
   final String attributionLabel;
   final String userAgentPackageName;
+  final bool approved;
   final Duration tileReadyTimeout;
   final bool forceNeutralFallback;
   final TileProvider? tileProvider;
+
+  bool get tilesEnabled =>
+      !forceNeutralFallback &&
+      resolveTripTileConfig(
+        approved: approved,
+        urlTemplate: tileUrlTemplate,
+        userAgent: userAgentPackageName,
+        attribution: attributionLabel,
+      ).enabled;
 }
 
 class TripRoutePreviewMap extends StatefulWidget {
@@ -36,12 +48,12 @@ class TripRoutePreviewMap extends StatefulWidget {
     required this.tollInventory,
     required this.cameraPack,
     required this.cameraPackVersion,
+    required this.associations,
     required this.config,
-    this.associator = const TripRouteAssociator(),
     this.mapController,
     this.allowFullscreen = true,
     super.key,
-  }) : _initialAssociations = null;
+  });
 
   const TripRoutePreviewMap._fullscreen({
     required this.routeId,
@@ -50,22 +62,19 @@ class TripRoutePreviewMap extends StatefulWidget {
     required this.cameraPack,
     required this.cameraPackVersion,
     required this.config,
-    required this.associator,
-    required TripRouteAssociations associations,
+    required this.associations,
   }) : mapController = null,
-       allowFullscreen = false,
-       _initialAssociations = associations;
+       allowFullscreen = false;
 
   final String routeId;
   final List<TripCoordinate> geometry;
   final TollInventoryDataset tollInventory;
   final CameraPack cameraPack;
   final String cameraPackVersion;
+  final TripRouteAssociations associations;
   final TripRouteMapConfig config;
-  final TripRouteAssociator associator;
   final MapController? mapController;
   final bool allowFullscreen;
-  final TripRouteAssociations? _initialAssociations;
 
   @override
   State<TripRoutePreviewMap> createState() => _TripRoutePreviewMapState();
@@ -74,8 +83,6 @@ class TripRoutePreviewMap extends StatefulWidget {
 class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
   late final MapController _mapController;
   late final bool _ownsController;
-  late TripRouteAssociationMemoizer _memoizer;
-  late TripRouteAssociations _associations;
   Timer? _tileTimer;
   var _showRoute = true;
   var _showTolls = true;
@@ -90,8 +97,6 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
     super.initState();
     _ownsController = widget.mapController == null;
     _mapController = widget.mapController ?? MapController();
-    _memoizer = TripRouteAssociationMemoizer(associator: widget.associator);
-    _associations = widget._initialAssociations ?? _resolveAssociations();
     _startTileTimer();
   }
 
@@ -114,24 +119,18 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
             ) !=
             _cameraPackIdentity(widget.cameraPack, widget.cameraPackVersion) ||
         !identical(oldWidget.cameraPack.cameras, widget.cameraPack.cameras);
-    final associatorChanged = !identical(
-      oldWidget.associator,
-      widget.associator,
-    );
-    if (associatorChanged) {
-      _memoizer = TripRouteAssociationMemoizer(associator: widget.associator);
-    }
-    _associations = _resolveAssociations();
     if (routeChanged ||
         tollDatasetChanged ||
         cameraDatasetChanged ||
-        associatorChanged) {
+        !identical(oldWidget.associations, widget.associations)) {
       _selectedLocation = null;
     }
     final tileConfigChanged =
-        oldWidget.config.forceNeutralFallback !=
-            widget.config.forceNeutralFallback ||
+        oldWidget.config.tilesEnabled != widget.config.tilesEnabled ||
+        oldWidget.config.tileReadyTimeout != widget.config.tileReadyTimeout ||
         oldWidget.config.tileUrlTemplate != widget.config.tileUrlTemplate ||
+        oldWidget.config.userAgentPackageName !=
+            widget.config.userAgentPackageName ||
         oldWidget.config.tileProvider != widget.config.tileProvider;
     if (routeChanged || tileConfigChanged) {
       _tileTimer?.cancel();
@@ -140,7 +139,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
       _startTileTimer();
     }
     if (routeChanged &&
-        _associations.geometryQuality == RouteGeometryQuality.polyline) {
+        widget.associations.geometryQuality == RouteGeometryQuality.polyline) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _reframe();
@@ -158,22 +157,10 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
     super.dispose();
   }
 
-  TripRouteAssociations _resolveAssociations() => _memoizer.resolve(
-    routeId: widget.routeId,
-    geometry: widget.geometry,
-    tollVersion: widget.tollInventory.version,
-    tolls: widget.tollInventory.records,
-    cameraPackIdentity: _cameraPackIdentity(
-      widget.cameraPack,
-      widget.cameraPackVersion,
-    ),
-    cameras: widget.cameraPack.cameras,
-  );
-
   void _startTileTimer() {
     _tileTimer?.cancel();
-    if (widget.config.forceNeutralFallback ||
-        _associations.geometryQuality != RouteGeometryQuality.polyline) {
+    if (!widget.config.tilesEnabled ||
+        widget.associations.geometryQuality != RouteGeometryQuality.polyline) {
       return;
     }
     _tileTimer = Timer(widget.config.tileReadyTimeout, _markTilesUnavailable);
@@ -208,94 +195,113 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
 
   @override
   Widget build(BuildContext context) {
-    if (_associations.geometryQuality != RouteGeometryQuality.polyline) {
+    if (widget.associations.geometryQuality != RouteGeometryQuality.polyline) {
       return const _MissingGeometry();
     }
-    return Column(
+    final layerControls = Wrap(
+      spacing: AppSpacing.s,
+      runSpacing: AppSpacing.s,
+      children: [
+        FilterChip(
+          key: const ValueKey('trip-map-toggle-route'),
+          selected: _showRoute,
+          avatar: const Icon(Icons.route_rounded, size: 18),
+          label: const Text('Ruta'),
+          onSelected: (value) => setState(() => _showRoute = value),
+        ),
+        FilterChip(
+          key: const ValueKey('trip-map-toggle-tolls'),
+          selected: _showTolls,
+          avatar: const Icon(Icons.toll_rounded, size: 18),
+          label: const Text('Peajes'),
+          onSelected: (value) => setState(() => _showTolls = value),
+        ),
+        FilterChip(
+          key: const ValueKey('trip-map-toggle-historical-tolls'),
+          selected: _showHistoricalTolls,
+          avatar: const Icon(Icons.history_rounded, size: 18),
+          label: const Text('Históricos'),
+          onSelected: (value) => setState(() => _showHistoricalTolls = value),
+        ),
+        FilterChip(
+          key: const ValueKey('trip-map-toggle-cameras'),
+          selected: _showCameras,
+          avatar: const Icon(Icons.photo_camera_rounded, size: 18),
+          label: const Text('Cámaras'),
+          onSelected: (value) => setState(() => _showCameras = value),
+        ),
+      ],
+    );
+    Widget content(Widget map) => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          spacing: AppSpacing.s,
-          runSpacing: AppSpacing.s,
-          children: [
-            FilterChip(
-              key: const ValueKey('trip-map-toggle-route'),
-              selected: _showRoute,
-              avatar: const Icon(Icons.route_rounded, size: 18),
-              label: const Text('Ruta'),
-              onSelected: (value) => setState(() => _showRoute = value),
-            ),
-            FilterChip(
-              key: const ValueKey('trip-map-toggle-tolls'),
-              selected: _showTolls,
-              avatar: const Icon(Icons.toll_rounded, size: 18),
-              label: const Text('Peajes'),
-              onSelected: (value) => setState(() => _showTolls = value),
-            ),
-            FilterChip(
-              key: const ValueKey('trip-map-toggle-historical-tolls'),
-              selected: _showHistoricalTolls,
-              avatar: const Icon(Icons.history_rounded, size: 18),
-              label: const Text('Históricos'),
-              onSelected: (value) =>
-                  setState(() => _showHistoricalTolls = value),
-            ),
-            FilterChip(
-              key: const ValueKey('trip-map-toggle-cameras'),
-              selected: _showCameras,
-              avatar: const Icon(Icons.photo_camera_rounded, size: 18),
-              label: const Text('Cámaras'),
-              onSelected: (value) => setState(() => _showCameras = value),
-            ),
-          ],
-        ),
+        layerControls,
         const SizedBox(height: AppSpacing.s),
-        if (widget.allowFullscreen)
-          SizedBox(
-            height: 260,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              child: _buildMap(context),
-            ),
-          )
-        else
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              child: _buildMap(context),
-            ),
-          ),
+        map,
         const SizedBox(height: AppSpacing.s),
         Text(_tollSummary, style: AppTextStyles.caption),
         const SizedBox(height: AppSpacing.xs),
         Text(_cameraSummary, style: AppTextStyles.caption),
       ],
     );
+
+    if (widget.allowFullscreen) {
+      return content(
+        SizedBox(
+          height: 260,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            child: _buildMap(context),
+          ),
+        ),
+      );
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        key: const ValueKey('trip-map-fullscreen-scroll'),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: content(
+            SizedBox(
+              height: (constraints.maxHeight * 0.55).clamp(260.0, 480.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.card),
+                child: _buildMap(context),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   String get _tollSummary {
-    final count = _associations.uniqueCurrentTollLocationCount;
+    final count = widget.associations.uniqueCurrentTollLocationCount;
     final noun = count == 1
         ? 'peaje inventariado próximo'
         : 'peajes inventariados próximos';
-    final historical = _associations.uniqueHistoricalTollLocationCount;
+    final historical = widget.associations.uniqueHistoricalTollLocationCount;
     final historicalSummary = _showHistoricalTolls
         ? 'Históricos visibles: ${_locationCount(historical)} · '
-              '${_passageCount(_associations.historicalTolls.length)}'
+              '${_passageCount(widget.associations.historicalTolls.length)}'
         : 'Históricos: $historical en capa separada oculta';
     return '$count $noun: ${_locationCount(count)} · '
-        '${_passageCount(_associations.currentTolls.length)}. '
+        '${_passageCount(widget.associations.currentTolls.length)}. '
         '$historicalSummary; '
         'tarifas no disponibles y cobro activo no confirmado.';
   }
 
   String get _cameraSummary {
-    final count = _associations.uniqueCameraLocationCount;
+    final count = widget.associations.uniqueCameraLocationCount;
+    if (count == 0) {
+      return '0 cámaras próximas: 0 ubicaciones únicas · 0 pasos candidatos. '
+          'No significa ruta libre de cámaras.';
+    }
     final noun = count == 1
         ? 'cámara registrada próxima'
         : 'cámaras registradas próximas';
     return '$count $noun al recorrido: ${_locationCount(count)} · '
-        '${_passageCount(_associations.cameras.length)}; '
+        '${_passageCount(widget.associations.cameras.length)}; '
         'vía y sentido no confirmados.';
   }
 
@@ -330,7 +336,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
             ),
           ),
           children: [
-            if (!widget.config.forceNeutralFallback && !_tilesUnavailable)
+            if (widget.config.tilesEnabled && !_tilesUnavailable)
               TileLayer(
                 key: ValueKey('trip-map-tiles-$_tileAttempt'),
                 urlTemplate: widget.config.tileUrlTemplate,
@@ -365,27 +371,28 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
                 ],
               ),
             MarkerLayer(markers: _markers(coordinates)),
-            RichAttributionWidget(
-              attributions: [
-                LogoSourceAttribution(
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(AppRadius.card),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: Text(
-                        widget.config.attributionLabel,
-                        style: const TextStyle(fontSize: 11),
+            if (widget.config.attributionLabel.isNotEmpty)
+              RichAttributionWidget(
+                attributions: [
+                  LogoSourceAttribution(
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(AppRadius.card),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: Text(
+                          widget.config.attributionLabel,
+                          style: const TextStyle(fontSize: 11),
+                        ),
                       ),
                     ),
+                    height: 24,
                   ),
-                  height: 24,
-                ),
-              ],
-              showFlutterMapAttribution: false,
-            ),
+                ],
+                showFlutterMapAttribution: false,
+              ),
           ],
         ),
         Positioned(
@@ -448,14 +455,14 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
       ),
     ),
     if (_showTolls)
-      for (final association in _associations.currentTolls)
+      for (final association in widget.associations.currentTolls)
         Marker(
           point: LatLng(
             association.location.latitude,
             association.location.longitude,
           ),
-          width: 42,
-          height: 42,
+          width: 48,
+          height: 48,
           child: _MapMarkerButton(
             key: ValueKey(
               'trip-map-toll-${association.location.id}-${association.passageIndex}',
@@ -468,14 +475,14 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
           ),
         ),
     if (_showHistoricalTolls)
-      for (final association in _associations.historicalTolls)
+      for (final association in widget.associations.historicalTolls)
         Marker(
           point: LatLng(
             association.location.latitude,
             association.location.longitude,
           ),
-          width: 42,
-          height: 42,
+          width: 48,
+          height: 48,
           child: _MapMarkerButton(
             key: ValueKey(
               'trip-map-toll-${association.location.id}-${association.passageIndex}',
@@ -489,14 +496,14 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
           ),
         ),
     if (_showCameras)
-      for (final association in _associations.cameras)
+      for (final association in widget.associations.cameras)
         Marker(
           point: LatLng(
             association.location.latitude,
             association.location.longitude,
           ),
-          width: 42,
-          height: 42,
+          width: 48,
+          height: 48,
           child: _MapMarkerButton(
             key: ValueKey(
               'trip-map-camera-${association.location.id}-${association.passageIndex}',
@@ -555,8 +562,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
                 cameraPack: widget.cameraPack,
                 cameraPackVersion: widget.cameraPackVersion,
                 config: widget.config,
-                associator: widget.associator,
-                associations: _associations,
+                associations: widget.associations,
               ),
             ),
           ),

@@ -25,18 +25,123 @@ void main() {
     expect(find.textContaining('tarifas no disponibles'), findsOneWidget);
   });
 
-  testWidgets('layer toggles hide pins without recomputing associations', (
+  testWidgets('zero nearby cameras never claims the route is camera-free', (
     tester,
   ) async {
-    var computations = 0;
     await tester.pumpWidget(
       _app(
         config: _neutralConfig(),
-        associator: _CountingAssociator(() => computations++),
+        cameraPack: _cameraPack(cameras: const []),
       ),
     );
     await tester.pumpAndSettle();
-    expect(computations, 1);
+
+    expect(find.textContaining('0 cámaras próximas'), findsOneWidget);
+    expect(
+      find.textContaining('No significa ruta libre de cámaras'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('toll historical and camera marker targets are at least 48x48', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _app(
+        config: _neutralConfig(),
+        tollInventory: _tollDataset(
+          records: [
+            _toll(),
+            _toll(
+              id: 'historical',
+              longitude: -75.576,
+              classification:
+                  TollOperationClassification.nonOperationalHistorical,
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('trip-map-toggle-historical-tolls')),
+    );
+    await tester.pump();
+
+    for (final key in const [
+      'trip-map-toll-toll-1-0',
+      'trip-map-toll-historical-0',
+      'trip-map-camera-camera-1-0',
+    ]) {
+      final size = tester.getSize(find.byKey(ValueKey(key)));
+      expect(size.width, greaterThanOrEqualTo(48), reason: key);
+      expect(size.height, greaterThanOrEqualTo(48), reason: key);
+    }
+  });
+
+  testWidgets('tiles stay disabled when any explicit gate is invalid', (
+    tester,
+  ) async {
+    for (final config in [
+      TripRouteMapConfig(
+        tileUrlTemplate: 'http://tiles.test/{z}/{x}/{y}.png',
+        attributionLabel: 'Proveedor inseguro',
+        userAgentPackageName: 'co.picoradar.app.dev',
+        approved: true,
+        tileProvider: _NeverTileProvider(),
+      ),
+      TripRouteMapConfig(
+        tileUrlTemplate: 'https://tiles.test/{z}/{x}/{y}.png',
+        attributionLabel: 'Proveedor sin agente',
+        userAgentPackageName: '',
+        approved: true,
+        tileProvider: _NeverTileProvider(),
+      ),
+      TripRouteMapConfig(
+        tileUrlTemplate: 'https://tiles.test/{z}/{x}/{y}.png',
+        attributionLabel: '',
+        userAgentPackageName: 'co.picoradar.app.dev',
+        approved: true,
+        tileProvider: _NeverTileProvider(),
+      ),
+    ]) {
+      await tester.pumpWidget(_app(config: config));
+      await tester.pump();
+
+      expect(find.byType(TileLayer), findsNothing);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    }
+  });
+
+  testWidgets('enabling an approved tile config starts its bounded timeout', (
+    tester,
+  ) async {
+    final provider = _NeverTileProvider();
+    TripRouteMapConfig config({required bool approved}) => TripRouteMapConfig(
+      tileUrlTemplate: 'https://tiles.test/{z}/{x}/{y}.png',
+      attributionLabel: 'Proveedor cartográfico de prueba',
+      userAgentPackageName: 'co.picoradar.app.dev',
+      approved: approved,
+      tileReadyTimeout: const Duration(milliseconds: 20),
+      tileProvider: provider,
+    );
+
+    await tester.pumpWidget(_app(config: config(approved: false)));
+    expect(find.byType(TileLayer), findsNothing);
+
+    await tester.pumpWidget(_app(config: config(approved: true)));
+    await tester.pump(const Duration(milliseconds: 30));
+
+    expect(find.byType(TileLayer), findsNothing);
+    expect(find.textContaining('mapa base no está disponible'), findsOneWidget);
+  });
+
+  testWidgets('layer toggles hide pins while keeping the supplied snapshot', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_app(config: _neutralConfig()));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const ValueKey('trip-map-toggle-route')));
     await tester.pump();
@@ -52,7 +157,6 @@ void main() {
       find.byKey(const ValueKey('trip-map-camera-camera-1-0')),
       findsNothing,
     );
-    expect(computations, 1);
   });
 
   testWidgets(
@@ -161,17 +265,12 @@ void main() {
     expect(controller.camera.zoom, lessThanOrEqualTo(16));
   });
 
-  testWidgets('supports pinch zoom without requesting new associations', (
+  testWidgets('supports pinch zoom with the supplied association snapshot', (
     tester,
   ) async {
-    var computations = 0;
     final controller = MapController();
     await tester.pumpWidget(
-      _app(
-        config: _neutralConfig(),
-        mapController: controller,
-        associator: _CountingAssociator(() => computations++),
-      ),
+      _app(config: _neutralConfig(), mapController: controller),
     );
     await tester.pumpAndSettle();
     final map = find.byKey(const ValueKey('trip-route-map'));
@@ -190,7 +289,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(controller.camera.zoom, greaterThan(initialZoom));
-    expect(computations, 1);
   });
 
   testWidgets('reframes when the selected route geometry changes', (
@@ -396,6 +494,7 @@ void main() {
           tileUrlTemplate: 'https://tiles.test/{z}/{x}/{y}.png',
           attributionLabel: 'Proveedor cartográfico de prueba',
           userAgentPackageName: 'co.picoradar.app.dev',
+          approved: true,
           tileReadyTimeout: const Duration(milliseconds: 20),
           tileProvider: _NeverTileProvider(),
         ),
@@ -423,6 +522,7 @@ void main() {
           tileUrlTemplate: 'https://tiles.test/{z}/{x}/{y}.png',
           attributionLabel: 'Proveedor cartográfico de prueba',
           userAgentPackageName: 'co.picoradar.app.dev',
+          approved: true,
           tileReadyTimeout: const Duration(seconds: 5),
           tileProvider: _NeverTileProvider(),
         ),
@@ -459,24 +559,34 @@ void main() {
   testWidgets('fullscreen reuses the immutable association snapshot', (
     tester,
   ) async {
-    var computations = 0;
+    final snapshot = const TripRouteAssociator().associate(
+      routeId: 'route-a',
+      geometry: const [
+        TripCoordinate(latitude: 6.240, longitude: -75.580),
+        TripCoordinate(latitude: 6.240, longitude: -75.570),
+        TripCoordinate(latitude: 6.250, longitude: -75.570),
+      ],
+      tolls: [_toll()],
+      cameras: [_camera()],
+    );
     await tester.pumpWidget(
-      _app(
-        config: _neutralConfig(),
-        associator: _CountingAssociator(() => computations++),
-      ),
+      _app(config: _neutralConfig(), associations: snapshot),
     );
     await tester.pumpAndSettle();
-    expect(computations, 1);
 
     await tester.tap(find.byKey(const ValueKey('trip-map-fullscreen')));
     await tester.pumpAndSettle();
 
     expect(find.text('Vista previa de la ruta'), findsOneWidget);
-    expect(computations, 1);
+    final fullscreen = tester.widget<TripRoutePreviewMap>(
+      find.byType(TripRoutePreviewMap).last,
+    );
+    expect(identical(fullscreen.associations, snapshot), isTrue);
   });
 
-  testWidgets('remains readable at 360x780 and 2x text scale', (tester) async {
+  testWidgets('fullscreen fits 360x780 at 2x text scale without clipping', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(360, 780);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -486,8 +596,40 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final openFullscreen = find.byKey(const ValueKey('trip-map-fullscreen'));
+    await tester.ensureVisible(openFullscreen);
+    await tester.pump();
+    await tester.tap(openFullscreen);
+    await tester.pumpAndSettle();
+
     expect(tester.takeException(), isNull);
-    expect(find.textContaining('tarifas no disponibles'), findsOneWidget);
+    expect(find.text('Vista previa de la ruta'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('trip-map-close-fullscreen')).hitTestable(),
+      findsOneWidget,
+    );
+
+    final fullscreen = find.byType(TripRoutePreviewMap).last;
+    final viewport = find.byKey(const ValueKey('trip-map-fullscreen-scroll'));
+    expect(viewport, findsOneWidget);
+    for (final summary in [
+      find.descendant(
+        of: fullscreen,
+        matching: find.textContaining('tarifas no disponibles'),
+      ),
+      find.descendant(
+        of: fullscreen,
+        matching: find.textContaining('cámara registrada próxima'),
+      ),
+    ]) {
+      expect(summary, findsOneWidget);
+      await tester.ensureVisible(summary);
+      await tester.pumpAndSettle();
+      final viewportRect = tester.getRect(viewport);
+      final summaryRect = tester.getRect(summary);
+      expect(summaryRect.top, greaterThanOrEqualTo(viewportRect.top));
+      expect(summaryRect.bottom, lessThanOrEqualTo(viewportRect.bottom));
+    }
   });
 }
 
@@ -500,25 +642,35 @@ Widget _app({
     TripCoordinate(latitude: 6.250, longitude: -75.570),
   ],
   MapController? mapController,
-  TripRouteAssociator associator = const TripRouteAssociator(),
+  TripRouteAssociations? associations,
   TollInventoryDataset? tollInventory,
   CameraPack? cameraPack,
   String cameraPackVersion = '2026.08.31-ansv',
   double textScale = 1,
   bool scrollable = false,
 }) {
+  final tolls = tollInventory ?? _tollDataset();
+  final cameras = cameraPack ?? _cameraPack();
+  final snapshot =
+      associations ??
+      const TripRouteAssociator().associate(
+        routeId: routeId,
+        geometry: geometry,
+        tolls: tolls.records,
+        cameras: cameras.cameras,
+      );
   final preview = Center(
     child: SizedBox(
       width: 360,
       child: TripRoutePreviewMap(
         routeId: routeId,
         geometry: geometry,
-        tollInventory: tollInventory ?? _tollDataset(),
-        cameraPack: cameraPack ?? _cameraPack(),
+        tollInventory: tolls,
+        cameraPack: cameras,
         cameraPackVersion: cameraPackVersion,
+        associations: snapshot,
         config: config,
         mapController: mapController,
-        associator: associator,
       ),
     ),
   );
@@ -658,28 +810,6 @@ TileImage _testTileImage() => TileImage(
   errorImage: null,
   cancelLoading: Completer<void>(),
 );
-
-class _CountingAssociator extends TripRouteAssociator {
-  const _CountingAssociator(this.onCompute);
-
-  final void Function() onCompute;
-
-  @override
-  TripRouteAssociations associate({
-    required String routeId,
-    required List<TripCoordinate> geometry,
-    required Iterable<TollInventoryRecord> tolls,
-    required Iterable<TrafficCamera> cameras,
-  }) {
-    onCompute();
-    return super.associate(
-      routeId: routeId,
-      geometry: geometry,
-      tolls: tolls,
-      cameras: cameras,
-    );
-  }
-}
 
 class _NeverImageProvider extends ImageProvider<_NeverImageProvider> {
   const _NeverImageProvider();

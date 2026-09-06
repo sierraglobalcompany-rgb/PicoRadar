@@ -10,7 +10,11 @@ import '../../../app/theme/app_tokens.dart';
 import '../../garage/data/vehicle_profile.dart';
 import '../../pico_placa/domain/bogota_time.dart';
 import '../../vehicle_status/platform/external_launcher.dart';
+import '../application/route_geometry_index.dart';
+import '../application/trip_route_association_resolver.dart';
+import '../application/trip_route_associations.dart';
 import '../application/trip_services.dart';
+import '../application/trip_tile_config.dart';
 import '../data/toll_inventory.dart';
 import '../domain/trip_draft.dart';
 import '../data/trip_municipality_catalog.dart';
@@ -25,19 +29,33 @@ final tripRouteMapConfigProvider = Provider<TripRouteMapConfig>((ref) {
   const tilesApproved = bool.fromEnvironment(
     'PICORADAR_TRIP_MAP_TILES_APPROVED',
   );
-  return const TripRouteMapConfig(
-    tileUrlTemplate: String.fromEnvironment(
-      'PICORADAR_TRIP_TILE_URL_TEMPLATE',
-      defaultValue: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    ),
-    attributionLabel: 'OpenStreetMap contributors',
-    userAgentPackageName: String.fromEnvironment(
-      'PICORADAR_TRIP_TILE_USER_AGENT',
-      defaultValue: 'co.picoradar.app',
-    ),
-    forceNeutralFallback: !tilesApproved,
+  const tileUrlTemplate = String.fromEnvironment(
+    'PICORADAR_TRIP_TILE_URL_TEMPLATE',
+  );
+  const tileUserAgent = String.fromEnvironment(
+    'PICORADAR_TRIP_TILE_USER_AGENT',
+  );
+  const tileAttribution = String.fromEnvironment(
+    'PICORADAR_TRIP_TILE_ATTRIBUTION',
+  );
+  final resolved = resolveTripTileConfig(
+    approved: tilesApproved,
+    urlTemplate: tileUrlTemplate,
+    userAgent: tileUserAgent,
+    attribution: tileAttribution,
+  );
+  return TripRouteMapConfig(
+    tileUrlTemplate: resolved.urlTemplate,
+    attributionLabel: resolved.attribution,
+    userAgentPackageName: resolved.userAgent,
+    approved: resolved.enabled,
   );
 });
+
+final tripRouteAssociationResolverProvider =
+    Provider<TripRouteAssociationResolver>(
+      (ref) => CachedTripRouteAssociationResolver(),
+    );
 
 class TripScreen extends ConsumerStatefulWidget {
   const TripScreen({super.key});
@@ -245,19 +263,21 @@ class _TripScreenState extends ConsumerState<TripScreen>
       onCancelPreview: () => setState(_invalidatePlan),
       planResult:
           currentPlan != null && currentRequest != null && selectedRoute != null
-          ? TripPlanResult(
+          ? _TripPlanWithLocalData(
               request: currentRequest,
               plan: currentPlan,
-              selectedRouteId: selectedRoute.id,
+              route: selectedRoute,
               onRouteSelected: (id) => setState(() => _selectedRouteId = id),
               onSource: _openSource,
-              mapPreview: _buildMapPreview(
-                route: selectedRoute,
-                tollInventory: tollInventory!,
-                cameraSnapshot: cameraSnapshot!,
-              ),
               mapAnchorKey: _mapAnchorKey,
               onViewMap: _scrollToMap,
+              tollInventory: tollInventory!,
+              cameraSnapshot: cameraSnapshot!,
+              mapConfig: ref.watch(tripRouteMapConfigProvider),
+              resolver: ref.watch(tripRouteAssociationResolverProvider),
+              onRetryTolls: () => ref.invalidate(tripTollInventoryProvider),
+              onRetryCameras: () =>
+                  ref.invalidate(tripCameraPackSnapshotProvider),
             )
           : null,
       instantRestrictions: Column(
@@ -365,33 +385,6 @@ class _TripScreenState extends ConsumerState<TripScreen>
       onGoogleMaps: _openGoogleMaps,
       onWaze: _openWaze,
       onInvias: _openInvias,
-    );
-  }
-
-  Widget _buildMapPreview({
-    required TripRouteOption route,
-    required AsyncValue<TollInventoryDataset> tollInventory,
-    required AsyncValue<TripCameraPackSnapshot> cameraSnapshot,
-  }) {
-    return tollInventory.when(
-      data: (tolls) => cameraSnapshot.when(
-        data: (cameras) => TripRoutePreviewMap(
-          routeId: route.id,
-          geometry: route.geometry,
-          tollInventory: tolls,
-          cameraPack: cameras.pack,
-          cameraPackVersion: cameras.version,
-          config: ref.watch(tripRouteMapConfigProvider),
-        ),
-        loading: () => const _TripMapLoading(),
-        error: (error, stackTrace) => _TripMapLoadError(
-          onRetry: () => ref.invalidate(tripCameraPackSnapshotProvider),
-        ),
-      ),
-      loading: () => const _TripMapLoading(),
-      error: (error, stackTrace) => _TripMapLoadError(
-        onRetry: () => ref.invalidate(tripTollInventoryProvider),
-      ),
     );
   }
 
@@ -874,6 +867,210 @@ class _TripScreenState extends ConsumerState<TripScreen>
       opened = false;
     }
     if (mounted && !opened) _showSnackBar('No pudimos abrir la fuente.');
+  }
+}
+
+class _TripPlanWithLocalData extends StatelessWidget {
+  const _TripPlanWithLocalData({
+    required this.request,
+    required this.plan,
+    required this.route,
+    required this.onRouteSelected,
+    required this.onSource,
+    required this.mapAnchorKey,
+    required this.onViewMap,
+    required this.tollInventory,
+    required this.cameraSnapshot,
+    required this.mapConfig,
+    required this.resolver,
+    required this.onRetryTolls,
+    required this.onRetryCameras,
+  });
+
+  final TripPlanRequest request;
+  final TripPlan plan;
+  final TripRouteOption route;
+  final ValueChanged<String> onRouteSelected;
+  final ValueChanged<String> onSource;
+  final GlobalKey mapAnchorKey;
+  final VoidCallback onViewMap;
+  final AsyncValue<TollInventoryDataset> tollInventory;
+  final AsyncValue<TripCameraPackSnapshot> cameraSnapshot;
+  final TripRouteMapConfig mapConfig;
+  final TripRouteAssociationResolver resolver;
+  final VoidCallback onRetryTolls;
+  final VoidCallback onRetryCameras;
+
+  @override
+  Widget build(BuildContext context) => tollInventory.when(
+    data: (tolls) => cameraSnapshot.when(
+      data: (cameras) => _TripPlanWithAssociations(
+        request: request,
+        plan: plan,
+        route: route,
+        tolls: tolls,
+        cameras: cameras,
+        mapConfig: mapConfig,
+        resolver: resolver,
+        onRouteSelected: onRouteSelected,
+        onSource: onSource,
+        mapAnchorKey: mapAnchorKey,
+        onViewMap: onViewMap,
+      ),
+      loading: () => _result(const _TripMapLoading()),
+      error: (_, _) => _result(_TripMapLoadError(onRetry: onRetryCameras)),
+    ),
+    loading: () => _result(const _TripMapLoading()),
+    error: (_, _) => _result(_TripMapLoadError(onRetry: onRetryTolls)),
+  );
+
+  Widget _result(Widget mapPreview) => TripPlanResult(
+    request: request,
+    plan: plan,
+    selectedRouteId: route.id,
+    onRouteSelected: onRouteSelected,
+    onSource: onSource,
+    mapPreview: mapPreview,
+    mapAnchorKey: mapAnchorKey,
+    onViewMap: onViewMap,
+  );
+}
+
+class _TripPlanWithAssociations extends StatefulWidget {
+  const _TripPlanWithAssociations({
+    required this.request,
+    required this.plan,
+    required this.route,
+    required this.tolls,
+    required this.cameras,
+    required this.mapConfig,
+    required this.resolver,
+    required this.onRouteSelected,
+    required this.onSource,
+    required this.mapAnchorKey,
+    required this.onViewMap,
+  });
+
+  final TripPlanRequest request;
+  final TripPlan plan;
+  final TripRouteOption route;
+  final TollInventoryDataset tolls;
+  final TripCameraPackSnapshot cameras;
+  final TripRouteMapConfig mapConfig;
+  final TripRouteAssociationResolver resolver;
+  final ValueChanged<String> onRouteSelected;
+  final ValueChanged<String> onSource;
+  final GlobalKey mapAnchorKey;
+  final VoidCallback onViewMap;
+
+  @override
+  State<_TripPlanWithAssociations> createState() =>
+      _TripPlanWithAssociationsState();
+}
+
+class _TripPlanWithAssociationsState extends State<_TripPlanWithAssociations> {
+  TripRouteAssociations? _snapshot;
+  Object? _error;
+  var _generation = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleResolveAfterFrame();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TripPlanWithAssociations oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.route.id != widget.route.id ||
+        !identical(oldWidget.route.geometry, widget.route.geometry) ||
+        oldWidget.tolls.version != widget.tolls.version ||
+        oldWidget.cameras.version != widget.cameras.version ||
+        !identical(oldWidget.resolver, widget.resolver)) {
+      _snapshot = null;
+      _error = null;
+      _scheduleResolveAfterFrame();
+    }
+  }
+
+  void _scheduleResolveAfterFrame() {
+    final generation = ++_generation;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || generation != _generation) {
+        return;
+      }
+      _resolve(generation);
+    });
+  }
+
+  void _resolve(int generation) {
+    final request = TripRouteAssociationRequest(
+      routeId: widget.route.id,
+      geometry: widget.route.geometry,
+      tollVersion: widget.tolls.version,
+      tolls: widget.tolls.records,
+      cameraVersion: widget.cameras.version,
+      cameras: widget.cameras.pack.cameras,
+    );
+    Future.sync(() => widget.resolver.resolve(request)).then(
+      (snapshot) {
+        if (!mounted || generation != _generation) {
+          return;
+        }
+        setState(() {
+          _snapshot = snapshot;
+          _error = null;
+        });
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (!mounted || generation != _generation) {
+          return;
+        }
+        setState(() => _error = error);
+      },
+    );
+  }
+
+  void _retry() {
+    setState(() {
+      _snapshot = null;
+      _error = null;
+    });
+    _resolve(++_generation);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final snapshot = _snapshot;
+    final cameraCount =
+        snapshot?.geometryQuality == RouteGeometryQuality.polyline
+        ? snapshot?.uniqueCameraLocationCount
+        : null;
+    final mapPreview = switch ((_error, snapshot)) {
+      (final Object _, _) => _TripMapLoadError(onRetry: _retry),
+      (null, null) => const _TripMapLoading(),
+      (null, final TripRouteAssociations associations) => TripRoutePreviewMap(
+        routeId: widget.route.id,
+        geometry: widget.route.geometry,
+        tollInventory: widget.tolls,
+        cameraPack: widget.cameras.pack,
+        cameraPackVersion: widget.cameras.version,
+        associations: associations,
+        config: widget.mapConfig,
+      ),
+    };
+
+    return TripPlanResult(
+      request: widget.request,
+      plan: widget.plan,
+      selectedRouteId: widget.route.id,
+      onRouteSelected: widget.onRouteSelected,
+      onSource: widget.onSource,
+      mapPreview: mapPreview,
+      mapAnchorKey: widget.mapAnchorKey,
+      onViewMap: widget.onViewMap,
+      cameraLocationCount: cameraCount,
+    );
   }
 }
 
