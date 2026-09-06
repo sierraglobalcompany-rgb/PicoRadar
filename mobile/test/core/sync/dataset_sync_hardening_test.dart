@@ -11,7 +11,11 @@ import 'package:picoradar/core/config/app_config.dart';
 import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/core/sync/dataset_sync_service.dart';
+import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_dataset.dart';
+import 'package:picoradar/features/pico_placa/data/restriction_store.dart';
+import 'package:picoradar/features/pico_placa/domain/restriction_engine.dart';
+import 'package:picoradar/features/pico_placa/domain/restriction_rule.dart';
 import 'package:picoradar/features/trip/data/toll_inventory.dart';
 
 void main() {
@@ -49,6 +53,7 @@ void main() {
   });
 
   test('imports generated local manifest through real importers', () async {
+    expect((await _medellinEvaluation(db)).status, RestrictionStatus.unknown);
     final manifest = _readJson(
       File('../data/releases/viaje_r2/local_test/manifest.json'),
     );
@@ -81,6 +86,7 @@ void main() {
       transactionalImporters: {
         tollInventoryDatasetKey: tollStore.transactionalImporter,
       },
+      currentTime: DateTime.utc(2026, 9, 6, 12),
     ).sync();
 
     expect(result.imported, [restrictionsDatasetKey, tollInventoryDatasetKey]);
@@ -90,6 +96,10 @@ void main() {
     expect((await tollStore.load()).sourceTimestamp, DateTime.utc(2026, 9, 5));
     expect(await _version(db, tollInventoryDatasetKey), '2026.09.05-viaje-r2');
     expect(await db.select(db.restrictionCoverages).get(), hasLength(9));
+    expect(
+      (await _medellinEvaluation(db)).status,
+      RestrictionStatus.restricted,
+    );
     expect(
       await preferences.getString(DatasetSyncService.manifestEtagPreferenceKey),
       '"viaje-r2"',
@@ -665,6 +675,29 @@ void main() {
   );
 }
 
+Future<RestrictionEvaluation> _medellinEvaluation(AppDatabase db) async {
+  final rules = await RestrictionStore(db).loadCoverage(
+    'co-ant-medellin',
+    VehicleKind.car,
+    VehicleServiceType.private,
+    DateTime.utc(2026, 8, 27),
+  );
+  return const RestrictionEngine().evaluate(
+    RestrictionContext(
+      jurisdictionId: 'co-ant-medellin',
+      plate: 'ABC158',
+      vehicleKind: VehicleKind.car,
+      serviceType: VehicleServiceType.private,
+      registrationOrigin: RegistrationOrigin.local,
+      localDateTime: DateTime(2026, 8, 3, 8),
+      isHoliday: false,
+      coverageKnown: rules.coverageKnown,
+      dataIsStale: rules.dataIsStale,
+    ),
+    rules.rules,
+  );
+}
+
 DatasetSyncService _service(
   AppDatabase db,
   AppPreferences preferences,
@@ -676,6 +709,7 @@ DatasetSyncService _service(
   int maxDownloadBytes = 1024 * 1024,
   int maxDecodedBytes = 4 * 1024 * 1024,
   Duration receiveTimeout = const Duration(seconds: 2),
+  DateTime? currentTime,
 }) {
   return DatasetSyncService(
     database: db,
@@ -691,7 +725,7 @@ DatasetSyncService _service(
     ),
     tempDirectory: tempDirectory,
     currentAppVersion: '1.0.0',
-    now: () => DateTime.utc(2026, 9, 5, 12),
+    now: () => currentTime ?? DateTime.utc(2026, 9, 5, 12),
     maxManifestBytes: maxManifestBytes,
     maxDownloadBytes: maxDownloadBytes,
     maxDecodedBytes: maxDecodedBytes,
