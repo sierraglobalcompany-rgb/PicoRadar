@@ -1,12 +1,12 @@
 {
   "artifacts": {
-    "data/releases/viaje_r2/local_test/manifest.json": "be120a6257988a188eca1c87b863fcc45f531051afd71859a148a84ed71c3102",
-    "data/releases/viaje_r2/restriction_decision_ledger_v1.json": "d1af7d18bda5fdac38b1660806186ca6aba0fe29160588f82f9bdfefdd373622",
+    "data/releases/viaje_r2/local_test/manifest.json": "363452de875e19a01734ee4b1c35097ba7c7e8725457a152180a2e5a7f93c600",
+    "data/releases/viaje_r2/restriction_decision_ledger_v1.json": "ae312f8d154a4a914b98516702f2d87ee9a42f068e6251d2db4233d72a6c10ba",
     "data/releases/viaje_r2/toll_decision_ledger_v1.json": "7806d5eafb820dde6d86b6c5d117e3da0e03bb30b30f243dc1af320a1b38819a",
     "mobile/assets/catalogs/tolls_inventory_v1.json": "a991626ecc8893c050a60e71b27e8f803cbfe864978dced5e6b595f2fe02de93"
   },
   "distribution": "local_simulation_only",
-  "generatedAt": "2026-09-05T00:00:00Z",
+  "generatedAt": "2026-09-06T00:00:00Z",
   "reportKey": "viaje_r2_local_compile",
   "restrictions": {
     "coveragesQuarantined": 219,
@@ -14,7 +14,21 @@
     "existingAssetPreserved": true,
     "existingAssetSha256": "abd836fa0bc3391b26e5c6f14d1e35bb53b1fc0d1e6307039a50cc721ac40f88",
     "explicitNoPublishSchedules": 74,
-    "newRulesPublished": 0
+    "newRulesPublished": 0,
+    "resultAssetSha256": "abd836fa0bc3391b26e5c6f14d1e35bb53b1fc0d1e6307039a50cc721ac40f88",
+    "reviewedDecisions": 6,
+    "snapshotDiff": {
+      "added": 0,
+      "maintained": 0,
+      "removed": 0,
+      "updated": 0
+    },
+    "verifiedExecutableDecisions": 0
+  },
+  "reviewedDecisions": {
+    "path": "data/releases/viaje_r2/reviewed_restriction_decisions_v1.json",
+    "reviewVersion": "2026.09.06-viaje-r2c-a",
+    "sha256": "09d06d38f23941090dacecfbfc9bfa1117a6e8b453da1bf639b675f699ca229f"
   },
   "schemaVersion": 1,
   "serverPublished": false,
@@ -36,5 +50,5 @@
     "freshness_unverified",
     "registration_scope_unverified"
   ],
-  "version": "2026.09.05-viaje-r2"
+  "version": "2026.09.06-viaje-r2c-a"
 }
