@@ -13,6 +13,7 @@ from pathlib import Path
 
 RELEASE_VERSION = "2026.09.05-viaje-r2"
 GENERATED_AT = "2026-09-05T00:00:00Z"
+PUBLICATION_REVISION = 1
 APPROVED_SOURCE_HASHES = {
     "pico_colombia_source_v1.json": (
         "fb104432e37d9ad5a9ee44bbbc0546d48e68486b1dc333e0f1d373548d1ad6cf"
@@ -402,12 +403,14 @@ def compile_release(source_package: Path, repo_root: Path) -> dict:
                 "url": "/assets/datasets/restrictions/restrictions_v1.json",
                 "sha256": restriction_hash,
                 "sourceTimestamp": restriction_payload["generatedAt"],
+                "publicationRevision": PUBLICATION_REVISION,
             },
             "tolls_inventory": {
                 "version": RELEASE_VERSION,
                 "url": "/assets/catalogs/tolls_inventory_v1.json",
                 "sha256": _sha256_file(toll_path),
                 "sourceTimestamp": GENERATED_AT,
+                "publicationRevision": PUBLICATION_REVISION,
             },
         },
         "features": {"ads": False, "cloud": False, "paidDocuments": False},

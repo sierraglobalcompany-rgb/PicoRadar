@@ -2538,6 +2538,17 @@ class $DatasetVersionsTable extends DatasetVersions
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _publicationRevisionMeta =
+      const VerificationMeta('publicationRevision');
+  @override
+  late final GeneratedColumn<int> publicationRevision = GeneratedColumn<int>(
+    'publication_revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _appliedAtMeta = const VerificationMeta(
     'appliedAt',
   );
@@ -2557,6 +2568,7 @@ class $DatasetVersionsTable extends DatasetVersions
     version,
     sha256,
     status,
+    publicationRevision,
     appliedAt,
   ];
   @override
@@ -2606,6 +2618,15 @@ class $DatasetVersionsTable extends DatasetVersions
     } else if (isInserting) {
       context.missing(_statusMeta);
     }
+    if (data.containsKey('publication_revision')) {
+      context.handle(
+        _publicationRevisionMeta,
+        publicationRevision.isAcceptableOrUnknown(
+          data['publication_revision']!,
+          _publicationRevisionMeta,
+        ),
+      );
+    }
     if (data.containsKey('applied_at')) {
       context.handle(
         _appliedAtMeta,
@@ -2641,6 +2662,10 @@ class $DatasetVersionsTable extends DatasetVersions
         DriftSqlType.string,
         data['${effectivePrefix}status'],
       )!,
+      publicationRevision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}publication_revision'],
+      )!,
       appliedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}applied_at'],
@@ -2660,6 +2685,7 @@ class DatasetVersion extends DataClass implements Insertable<DatasetVersion> {
   final String version;
   final String? sha256;
   final String status;
+  final int publicationRevision;
   final DateTime appliedAt;
   const DatasetVersion({
     required this.id,
@@ -2667,6 +2693,7 @@ class DatasetVersion extends DataClass implements Insertable<DatasetVersion> {
     required this.version,
     this.sha256,
     required this.status,
+    required this.publicationRevision,
     required this.appliedAt,
   });
   @override
@@ -2679,6 +2706,7 @@ class DatasetVersion extends DataClass implements Insertable<DatasetVersion> {
       map['sha256'] = Variable<String>(sha256);
     }
     map['status'] = Variable<String>(status);
+    map['publication_revision'] = Variable<int>(publicationRevision);
     map['applied_at'] = Variable<DateTime>(appliedAt);
     return map;
   }
@@ -2692,6 +2720,7 @@ class DatasetVersion extends DataClass implements Insertable<DatasetVersion> {
           ? const Value.absent()
           : Value(sha256),
       status: Value(status),
+      publicationRevision: Value(publicationRevision),
       appliedAt: Value(appliedAt),
     );
   }
@@ -2707,6 +2736,9 @@ class DatasetVersion extends DataClass implements Insertable<DatasetVersion> {
       version: serializer.fromJson<String>(json['version']),
       sha256: serializer.fromJson<String?>(json['sha256']),
       status: serializer.fromJson<String>(json['status']),
+      publicationRevision: serializer.fromJson<int>(
+        json['publicationRevision'],
+      ),
       appliedAt: serializer.fromJson<DateTime>(json['appliedAt']),
     );
   }
@@ -2719,6 +2751,7 @@ class DatasetVersion extends DataClass implements Insertable<DatasetVersion> {
       'version': serializer.toJson<String>(version),
       'sha256': serializer.toJson<String?>(sha256),
       'status': serializer.toJson<String>(status),
+      'publicationRevision': serializer.toJson<int>(publicationRevision),
       'appliedAt': serializer.toJson<DateTime>(appliedAt),
     };
   }
@@ -2729,6 +2762,7 @@ class DatasetVersion extends DataClass implements Insertable<DatasetVersion> {
     String? version,
     Value<String?> sha256 = const Value.absent(),
     String? status,
+    int? publicationRevision,
     DateTime? appliedAt,
   }) => DatasetVersion(
     id: id ?? this.id,
@@ -2736,6 +2770,7 @@ class DatasetVersion extends DataClass implements Insertable<DatasetVersion> {
     version: version ?? this.version,
     sha256: sha256.present ? sha256.value : this.sha256,
     status: status ?? this.status,
+    publicationRevision: publicationRevision ?? this.publicationRevision,
     appliedAt: appliedAt ?? this.appliedAt,
   );
   DatasetVersion copyWithCompanion(DatasetVersionsCompanion data) {
@@ -2747,6 +2782,9 @@ class DatasetVersion extends DataClass implements Insertable<DatasetVersion> {
       version: data.version.present ? data.version.value : this.version,
       sha256: data.sha256.present ? data.sha256.value : this.sha256,
       status: data.status.present ? data.status.value : this.status,
+      publicationRevision: data.publicationRevision.present
+          ? data.publicationRevision.value
+          : this.publicationRevision,
       appliedAt: data.appliedAt.present ? data.appliedAt.value : this.appliedAt,
     );
   }
@@ -2759,14 +2797,22 @@ class DatasetVersion extends DataClass implements Insertable<DatasetVersion> {
           ..write('version: $version, ')
           ..write('sha256: $sha256, ')
           ..write('status: $status, ')
+          ..write('publicationRevision: $publicationRevision, ')
           ..write('appliedAt: $appliedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, datasetKey, version, sha256, status, appliedAt);
+  int get hashCode => Object.hash(
+    id,
+    datasetKey,
+    version,
+    sha256,
+    status,
+    publicationRevision,
+    appliedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2776,6 +2822,7 @@ class DatasetVersion extends DataClass implements Insertable<DatasetVersion> {
           other.version == this.version &&
           other.sha256 == this.sha256 &&
           other.status == this.status &&
+          other.publicationRevision == this.publicationRevision &&
           other.appliedAt == this.appliedAt);
 }
 
@@ -2785,6 +2832,7 @@ class DatasetVersionsCompanion extends UpdateCompanion<DatasetVersion> {
   final Value<String> version;
   final Value<String?> sha256;
   final Value<String> status;
+  final Value<int> publicationRevision;
   final Value<DateTime> appliedAt;
   final Value<int> rowid;
   const DatasetVersionsCompanion({
@@ -2793,6 +2841,7 @@ class DatasetVersionsCompanion extends UpdateCompanion<DatasetVersion> {
     this.version = const Value.absent(),
     this.sha256 = const Value.absent(),
     this.status = const Value.absent(),
+    this.publicationRevision = const Value.absent(),
     this.appliedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -2802,6 +2851,7 @@ class DatasetVersionsCompanion extends UpdateCompanion<DatasetVersion> {
     required String version,
     this.sha256 = const Value.absent(),
     required String status,
+    this.publicationRevision = const Value.absent(),
     this.appliedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -2814,6 +2864,7 @@ class DatasetVersionsCompanion extends UpdateCompanion<DatasetVersion> {
     Expression<String>? version,
     Expression<String>? sha256,
     Expression<String>? status,
+    Expression<int>? publicationRevision,
     Expression<DateTime>? appliedAt,
     Expression<int>? rowid,
   }) {
@@ -2823,6 +2874,8 @@ class DatasetVersionsCompanion extends UpdateCompanion<DatasetVersion> {
       if (version != null) 'version': version,
       if (sha256 != null) 'sha256': sha256,
       if (status != null) 'status': status,
+      if (publicationRevision != null)
+        'publication_revision': publicationRevision,
       if (appliedAt != null) 'applied_at': appliedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -2834,6 +2887,7 @@ class DatasetVersionsCompanion extends UpdateCompanion<DatasetVersion> {
     Value<String>? version,
     Value<String?>? sha256,
     Value<String>? status,
+    Value<int>? publicationRevision,
     Value<DateTime>? appliedAt,
     Value<int>? rowid,
   }) {
@@ -2843,6 +2897,7 @@ class DatasetVersionsCompanion extends UpdateCompanion<DatasetVersion> {
       version: version ?? this.version,
       sha256: sha256 ?? this.sha256,
       status: status ?? this.status,
+      publicationRevision: publicationRevision ?? this.publicationRevision,
       appliedAt: appliedAt ?? this.appliedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -2866,6 +2921,9 @@ class DatasetVersionsCompanion extends UpdateCompanion<DatasetVersion> {
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
+    if (publicationRevision.present) {
+      map['publication_revision'] = Variable<int>(publicationRevision.value);
+    }
     if (appliedAt.present) {
       map['applied_at'] = Variable<DateTime>(appliedAt.value);
     }
@@ -2883,6 +2941,7 @@ class DatasetVersionsCompanion extends UpdateCompanion<DatasetVersion> {
           ..write('version: $version, ')
           ..write('sha256: $sha256, ')
           ..write('status: $status, ')
+          ..write('publicationRevision: $publicationRevision, ')
           ..write('appliedAt: $appliedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -5300,6 +5359,7 @@ typedef $$DatasetVersionsTableCreateCompanionBuilder =
       required String version,
       Value<String?> sha256,
       required String status,
+      Value<int> publicationRevision,
       Value<DateTime> appliedAt,
       Value<int> rowid,
     });
@@ -5310,6 +5370,7 @@ typedef $$DatasetVersionsTableUpdateCompanionBuilder =
       Value<String> version,
       Value<String?> sha256,
       Value<String> status,
+      Value<int> publicationRevision,
       Value<DateTime> appliedAt,
       Value<int> rowid,
     });
@@ -5345,6 +5406,11 @@ class $$DatasetVersionsTableFilterComposer
 
   ColumnFilters<String> get status => $composableBuilder(
     column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get publicationRevision => $composableBuilder(
+    column: $table.publicationRevision,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5388,6 +5454,11 @@ class $$DatasetVersionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get publicationRevision => $composableBuilder(
+    column: $table.publicationRevision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get appliedAt => $composableBuilder(
     column: $table.appliedAt,
     builder: (column) => ColumnOrderings(column),
@@ -5419,6 +5490,11 @@ class $$DatasetVersionsTableAnnotationComposer
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get publicationRevision => $composableBuilder(
+    column: $table.publicationRevision,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get appliedAt =>
       $composableBuilder(column: $table.appliedAt, builder: (column) => column);
@@ -5466,6 +5542,7 @@ class $$DatasetVersionsTableTableManager
                 Value<String> version = const Value.absent(),
                 Value<String?> sha256 = const Value.absent(),
                 Value<String> status = const Value.absent(),
+                Value<int> publicationRevision = const Value.absent(),
                 Value<DateTime> appliedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DatasetVersionsCompanion(
@@ -5474,6 +5551,7 @@ class $$DatasetVersionsTableTableManager
                 version: version,
                 sha256: sha256,
                 status: status,
+                publicationRevision: publicationRevision,
                 appliedAt: appliedAt,
                 rowid: rowid,
               ),
@@ -5484,6 +5562,7 @@ class $$DatasetVersionsTableTableManager
                 required String version,
                 Value<String?> sha256 = const Value.absent(),
                 required String status,
+                Value<int> publicationRevision = const Value.absent(),
                 Value<DateTime> appliedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DatasetVersionsCompanion.insert(
@@ -5492,6 +5571,7 @@ class $$DatasetVersionsTableTableManager
                 version: version,
                 sha256: sha256,
                 status: status,
+                publicationRevision: publicationRevision,
                 appliedAt: appliedAt,
                 rowid: rowid,
               ),

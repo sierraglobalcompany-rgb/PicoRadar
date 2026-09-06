@@ -45,6 +45,7 @@ class DatasetManifestEntry {
     this.contentEncoding,
     this.expiresAt,
     this.sourceTimestamp,
+    this.publicationRevision,
   });
 
   factory DatasetManifestEntry.fromJson(Map<String, dynamic> json) {
@@ -56,6 +57,13 @@ class DatasetManifestEntry {
     final contentEncoding = json['contentEncoding']?.toString().trim();
     final expiresAt = json['expiresAt']?.toString().trim();
     final sourceTimestamp = json['sourceTimestamp']?.toString().trim();
+    final publicationRevision = json['publicationRevision'];
+    if (publicationRevision != null &&
+        (publicationRevision is! int || publicationRevision <= 0)) {
+      throw const ManifestFormatException(
+        'publicationRevision must be a positive integer.',
+      );
+    }
     final sha256 = _string(json, 'sha256').toLowerCase();
     if (!_sha256Pattern.hasMatch(sha256)) {
       throw ManifestFormatException('Invalid sha256 for dataset $version.');
@@ -74,6 +82,7 @@ class DatasetManifestEntry {
       sourceTimestamp: sourceTimestamp == null || sourceTimestamp.isEmpty
           ? null
           : DateTime.parse(sourceTimestamp),
+      publicationRevision: publicationRevision as int?,
     );
   }
 
@@ -83,6 +92,7 @@ class DatasetManifestEntry {
   final String? contentEncoding;
   final DateTime? expiresAt;
   final DateTime? sourceTimestamp;
+  final int? publicationRevision;
 }
 
 class ManifestFormatException implements Exception {

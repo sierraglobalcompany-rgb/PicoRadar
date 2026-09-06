@@ -244,6 +244,12 @@ class ReleaseCompilerTests(unittest.TestCase):
             manifest["datasets"]["tolls_inventory"]["sourceTimestamp"],
             "2026-09-05T00:00:00Z",
         )
+        self.assertEqual(
+            manifest["datasets"]["restrictions"]["publicationRevision"], 1
+        )
+        self.assertEqual(
+            manifest["datasets"]["tolls_inventory"]["publicationRevision"], 1
+        )
         self.assertFalse(report["serverPublished"])
         self.assertEqual(report["restrictions"]["newRulesPublished"], 0)
         self.assertEqual(report["tolls"]["activeChargesPublished"], 0)

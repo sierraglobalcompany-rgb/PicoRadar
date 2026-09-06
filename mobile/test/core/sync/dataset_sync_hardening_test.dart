@@ -84,11 +84,8 @@ void main() {
     ).sync();
 
     expect(result.imported, [restrictionsDatasetKey, tollInventoryDatasetKey]);
-    expect(await snapshot.readAsBytes(), tollBytes);
-    expect(
-      (await tollStore.snapshotHashFile.readAsString()).trim(),
-      (manifest['datasets'] as Map)['tolls_inventory']['sha256'],
-    );
+    final tollSha = (manifest['datasets'] as Map)['tolls_inventory']['sha256'];
+    expect(await File('${snapshot.path}.$tollSha').readAsBytes(), tollBytes);
     expect((await tollStore.load()).records, hasLength(184));
     expect((await tollStore.load()).sourceTimestamp, DateTime.utc(2026, 9, 5));
     expect(await _version(db, tollInventoryDatasetKey), '2026.09.05-viaje-r2');
@@ -226,6 +223,91 @@ void main() {
 
     expect(await _version(db, 'restrictions'), '2.0');
   });
+
+  test(
+    'rejects opaque version changes without a publication revision',
+    () async {
+      await _insertVersion(
+        db,
+        restrictionsDatasetKey,
+        version: '2026.09.06-newer',
+        sha256: 'a' * 64,
+      );
+      final payload = await _payload({
+        'datasetKey': restrictionsDatasetKey,
+        'version': '2026.09.05-older',
+        'rows': <Object?>[],
+      });
+      _serveManifest(server, {
+        restrictionsDatasetKey: _entry(
+          version: '2026.09.05-older',
+          path: '/opaque-rollback.json',
+          sha256: payload.sha256,
+        ),
+      });
+      _serveBytes(server, '/opaque-rollback.json', payload.bytes);
+      var imported = false;
+
+      await expectLater(
+        _service(
+          db,
+          preferences,
+          tempDirectory,
+          server,
+          importers: {restrictionsDatasetKey: (_, _) async => imported = true},
+        ).sync(),
+        throwsA(isA<DatasetSyncException>()),
+      );
+
+      expect(imported, isFalse);
+      expect(await _version(db, restrictionsDatasetKey), '2026.09.06-newer');
+    },
+  );
+
+  test(
+    'accepts an older payload only with a newer publication revision',
+    () async {
+      await _insertVersion(
+        db,
+        restrictionsDatasetKey,
+        version: '2',
+        sha256: 'a' * 64,
+      );
+      final payload = await _payload({
+        'datasetKey': restrictionsDatasetKey,
+        'version': '1',
+        'rows': <Object?>[],
+      });
+      _serveManifest(server, {
+        restrictionsDatasetKey: _entry(
+          version: '1',
+          path: '/authorized-rollback.json',
+          sha256: payload.sha256,
+          publicationRevision: 2,
+        ),
+      });
+      _serveBytes(server, '/authorized-rollback.json', payload.bytes);
+
+      final result = await _service(
+        db,
+        preferences,
+        tempDirectory,
+        server,
+        importers: {restrictionsDatasetKey: (_, _) async {}},
+      ).sync();
+      final revision = await db
+          .customSelect(
+            'SELECT publication_revision FROM dataset_versions '
+            'WHERE dataset_key = ?',
+            variables: [Variable.withString(restrictionsDatasetKey)],
+          )
+          .getSingle();
+
+      expect(result.imported, [restrictionsDatasetKey]);
+      expect(await _version(db, restrictionsDatasetKey), '1');
+      expect(revision.read<int>('publication_revision'), 2);
+    },
+  );
 
   test('caps a chunked dataset without Content-Length', () async {
     final oversized = await _payload({'rows': 'x' * 200});
@@ -399,9 +481,9 @@ void main() {
           tollInventoryDatasetKey: store.transactionalImporter,
         },
       ).sync();
-      final previousBytes = await snapshot.readAsBytes();
-      final previousHashBytes = await store.snapshotHashFile.readAsBytes();
       final previousHash = await _installedHash(db, tollInventoryDatasetKey);
+      final previousSnapshot = File('${snapshot.path}.$previousHash');
+      final previousBytes = await previousSnapshot.readAsBytes();
       final replacement = _copy(asset)..['version'] = '2026.09.06-local-test';
       final payload = await _payload(replacement);
       _serveManifest(server, {
@@ -435,8 +517,7 @@ void main() {
         throwsA(anything),
       );
 
-      expect(await snapshot.readAsBytes(), previousBytes);
-      expect(await store.snapshotHashFile.readAsBytes(), previousHashBytes);
+      expect(await previousSnapshot.readAsBytes(), previousBytes);
       expect(
         await _version(db, tollInventoryDatasetKey),
         '2026.09.05-viaje-r2',
@@ -503,8 +584,7 @@ void main() {
       expect(unconditionalManifestRequests, 1);
       expect(conditionalManifestRequests, 0);
       expect(tollDownloads, 1);
-      await snapshot.delete();
-      await store.snapshotHashFile.delete();
+      await File('${snapshot.path}.${payload.sha256}').delete();
 
       await expectLater(store.load(), throwsA(isA<DatasetSyncException>()));
 
@@ -515,14 +595,72 @@ void main() {
       expect(unconditionalManifestRequests, 2);
       expect(conditionalManifestRequests, 1);
       expect(tollDownloads, 2);
-      expect(await snapshot.readAsBytes(), payload.bytes);
       expect(
-        (await store.snapshotHashFile.readAsString()).trim(),
-        payload.sha256,
+        await File('${snapshot.path}.${payload.sha256}').readAsBytes(),
+        payload.bytes,
       );
       expect(await _installedHash(db, tollInventoryDatasetKey), payload.sha256);
       expect(await _version(db, tollInventoryDatasetKey), asset['version']);
       expect((await store.load()).version, asset['version']);
+    },
+  );
+
+  test(
+    '304 validates plain and transactional importer keys together',
+    () async {
+      await preferences.setString(
+        DatasetSyncService.manifestEtagPreferenceKey,
+        '"union-etag"',
+      );
+      final payload = await _payload({
+        'datasetKey': restrictionsDatasetKey,
+        'version': '2026.09.06-sync',
+        'rows': <Object?>[],
+      });
+      var conditionalRequests = 0;
+      var unconditionalRequests = 0;
+      var downloads = 0;
+      server.handlers['/v1/manifest.json'] = (request) async {
+        if (request.headers.value(HttpHeaders.ifNoneMatchHeader) != null) {
+          conditionalRequests += 1;
+          request.response.statusCode = HttpStatus.notModified;
+          await request.response.close();
+          return;
+        }
+        unconditionalRequests += 1;
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(
+          jsonEncode(
+            _manifest({
+              restrictionsDatasetKey: _entry(
+                version: '2026.09.06-sync',
+                path: '/missing-restrictions.json',
+                sha256: payload.sha256,
+                publicationRevision: 1,
+              ),
+            }),
+          ),
+        );
+        await request.response.close();
+      };
+      server.handlers['/missing-restrictions.json'] = (request) async {
+        downloads += 1;
+        request.response.add(payload.bytes);
+        await request.response.close();
+      };
+
+      final result = await _service(
+        db,
+        preferences,
+        tempDirectory,
+        server,
+        importers: {restrictionsDatasetKey: (_, _) async {}},
+      ).sync();
+
+      expect(result.imported, [restrictionsDatasetKey]);
+      expect(conditionalRequests, 1);
+      expect(unconditionalRequests, 1);
+      expect(downloads, 1);
     },
   );
 }
@@ -636,6 +774,7 @@ Map<String, Object?> _entry({
   String? contentEncoding,
   String? expiresAt,
   String? sourceTimestamp,
+  int? publicationRevision,
 }) {
   return {
     'version': version,
@@ -644,6 +783,7 @@ Map<String, Object?> _entry({
     'contentEncoding': ?contentEncoding,
     'expiresAt': ?expiresAt,
     'sourceTimestamp': ?sourceTimestamp,
+    'publicationRevision': ?publicationRevision,
   };
 }
 

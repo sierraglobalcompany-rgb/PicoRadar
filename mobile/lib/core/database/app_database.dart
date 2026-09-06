@@ -90,6 +90,8 @@ class DatasetVersions extends Table {
   TextColumn get version => text().withLength(min: 1, max: 64)();
   TextColumn get sha256 => text().nullable()();
   TextColumn get status => text().withLength(min: 1, max: 32)();
+  IntColumn get publicationRevision =>
+      integer().withDefault(const Constant(0))();
   DateTimeColumn get appliedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
@@ -131,7 +133,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'picoradar'));
 
-  static const currentSchemaVersion = 5;
+  static const currentSchemaVersion = 6;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -186,6 +188,14 @@ class AppDatabase extends _$AppDatabase {
     if (from == 4) {
       await migrator.createTable(maintenanceRecords);
       from = 5;
+    }
+
+    if (from == 5) {
+      await migrator.addColumn(
+        datasetVersions,
+        datasetVersions.publicationRevision,
+      );
+      from = 6;
     }
 
     if (from == to) {

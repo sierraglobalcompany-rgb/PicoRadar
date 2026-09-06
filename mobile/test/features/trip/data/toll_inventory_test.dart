@@ -139,10 +139,10 @@ void main() {
 
       final imported = _copy(assetJson)..['version'] = '2026.09.06-local-test';
       await _installSnapshot(store, db, imported);
+      final importedSha = await _sha256(utf8.encode(jsonEncode(imported)));
 
       expect((await store.load()).version, '2026.09.06-local-test');
-      expect(await snapshot.exists(), isTrue);
-      expect(await store.snapshotHashFile.exists(), isTrue);
+      expect(await File('${snapshot.path}.$importedSha').exists(), isTrue);
     });
 
     test(
@@ -154,7 +154,9 @@ void main() {
           bundledLoader: () async => jsonEncode(assetJson),
         );
         await _installSnapshot(store, db, assetJson);
-        final previous = await snapshot.readAsBytes();
+        final previousSha = await _sha256(utf8.encode(jsonEncode(assetJson)));
+        final selectedSnapshot = File('${snapshot.path}.$previousSha');
+        final previous = await selectedSnapshot.readAsBytes();
         final invalid = _copy(assetJson);
         ((invalid['records'] as List)[0]['tariffsBySourceCategoryCOP']
                 as Map<String, dynamic>)['category_1'] =
@@ -165,7 +167,7 @@ void main() {
           throwsA(isA<DatasetSyncException>()),
         );
 
-        expect(await snapshot.readAsBytes(), previous);
+        expect(await selectedSnapshot.readAsBytes(), previous);
         expect((await store.load()).version, '2026.09.05-viaje-r2');
       },
     );
@@ -179,11 +181,84 @@ void main() {
           bundledLoader: () async => jsonEncode(assetJson),
         );
         await _installSnapshot(store, db, assetJson);
+        final installedSha = await _sha256(utf8.encode(jsonEncode(assetJson)));
         final changed = _copy(assetJson);
         (changed['records'] as List).first['name'] = 'Changed after import';
-        await snapshot.writeAsString(jsonEncode(changed), flush: true);
+        await File('${snapshot.path}.$installedSha')
+            .writeAsString(jsonEncode(changed), flush: true);
 
         await expectLater(store.load(), throwsA(isA<DatasetSyncException>()));
+      },
+    );
+
+    test(
+      'keeps the database-selected snapshot visible before commit',
+      () async {
+        final store = TollInventoryStore(
+          database: db,
+          snapshotFile: snapshot,
+          bundledLoader: () async => jsonEncode(assetJson),
+        );
+        await _installSnapshot(store, db, assetJson);
+        final oldBytes = utf8.encode(jsonEncode(assetJson));
+        final oldSha = await _sha256(oldBytes);
+        final replacement = _copy(assetJson)
+          ..['version'] = '2026.09.06-local-test';
+        final replacementBytes = utf8.encode(jsonEncode(replacement));
+        final replacementSha = await _sha256(replacementBytes);
+
+        final prepared = await store.transactionalImporter(
+          db,
+          replacement,
+          replacementBytes,
+          replacementSha,
+        );
+        addTearDown(prepared.rollback);
+
+        expect((await store.load()).version, assetJson['version']);
+        expect(await File('${snapshot.path}.$oldSha').exists(), isTrue);
+        expect(await File('${snapshot.path}.$replacementSha').exists(), isTrue);
+      },
+    );
+
+    test(
+      'database commit atomically selects the new immutable snapshot',
+      () async {
+        final store = TollInventoryStore(
+          database: db,
+          snapshotFile: snapshot,
+          bundledLoader: () async => jsonEncode(assetJson),
+        );
+        await _installSnapshot(store, db, assetJson);
+        final oldSha = await _sha256(utf8.encode(jsonEncode(assetJson)));
+        final replacement = _copy(assetJson)
+          ..['version'] = '2026.09.06-local-test';
+        final replacementBytes = utf8.encode(jsonEncode(replacement));
+        final replacementSha = await _sha256(replacementBytes);
+        final prepared = await store.transactionalImporter(
+          db,
+          replacement,
+          replacementBytes,
+          replacementSha,
+        );
+
+        await db.transaction(() async {
+          await prepared.activate();
+          await (db.update(
+                db.datasetVersions,
+              )..where((row) => row.datasetKey.equals(tollInventoryDatasetKey)))
+              .write(
+                DatasetVersionsCompanion(
+                  version: const Value('2026.09.06-local-test'),
+                  sha256: Value(replacementSha),
+                ),
+              );
+        });
+
+        expect((await store.load()).version, '2026.09.06-local-test');
+        expect(await File('${snapshot.path}.$oldSha').exists(), isTrue);
+        expect(await File('${snapshot.path}.$replacementSha').exists(), isTrue);
+        await prepared.commit();
       },
     );
   });

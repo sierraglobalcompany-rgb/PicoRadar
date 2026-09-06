@@ -230,8 +230,6 @@ class TollInventoryStore {
   final File snapshotFile;
   final Future<String> Function() bundledLoader;
 
-  File get snapshotHashFile => File('${snapshotFile.path}.sha256');
-
   TransactionalDatasetImporter get transactionalImporter =>
       TransactionalDatasetImporter(
         prepare: _prepareImport,
@@ -240,52 +238,30 @@ class TollInventoryStore {
 
   Future<TollInventoryDataset> load() async {
     final installed = await _installedVersion();
-    final snapshotExists = await snapshotFile.exists();
-    final hashExists = await snapshotHashFile.exists();
-    if (snapshotExists != hashExists) {
-      throw const DatasetSyncException(
-        'Toll inventory snapshot and hash sidecar must exist together.',
-      );
-    }
-    if (!snapshotExists) {
-      if (installed?.status == 'installed') {
-        throw const DatasetSyncException(
-          'Installed toll inventory snapshot and hash sidecar are missing.',
-        );
-      }
+    if (installed?.status != 'installed') {
       return TollInventoryDataset.fromJsonString(await bundledLoader());
     }
-
-    if (installed == null || installed.status != 'installed') {
-      throw const DatasetSyncException(
-        'Toll inventory snapshot has no installed dataset version.',
-      );
-    }
-    return _loadInstalledSnapshot(installed);
+    return _loadInstalledSnapshot(installed!);
   }
 
   Future<TollInventoryDataset> _loadInstalledSnapshot(
     DatasetVersion installed,
   ) async {
-    final expectedHash = (await snapshotHashFile.readAsString()).trim();
+    final expectedHash = installed.sha256?.trim() ?? '';
     if (!RegExp(r'^[a-f0-9]{64}$').hasMatch(expectedHash)) {
       throw const DatasetSyncException(
-        'Toll inventory snapshot hash sidecar is invalid.',
+        'Installed toll inventory SHA-256 is invalid.',
       );
     }
-    final actualHash = await _sha256File(snapshotFile);
+    final selectedSnapshot = await _selectedSnapshot(expectedHash);
+    final actualHash = await _sha256File(selectedSnapshot);
     if (actualHash != expectedHash) {
       throw const DatasetSyncException(
-        'Toll inventory snapshot does not match its SHA-256 sidecar.',
-      );
-    }
-    if (installed.sha256 != expectedHash) {
-      throw const DatasetSyncException(
-        'Toll inventory snapshot hash does not match dataset_versions.',
+        'Toll inventory snapshot does not match dataset_versions.',
       );
     }
     final dataset = TollInventoryDataset.fromJsonString(
-      await snapshotFile.readAsString(),
+      await selectedSnapshot.readAsString(),
     );
     if (dataset.version != installed.version) {
       throw const DatasetSyncException(
@@ -305,11 +281,6 @@ class TollInventoryStore {
       return false;
     }
     try {
-      final snapshotExists = await snapshotFile.exists();
-      final hashExists = await snapshotHashFile.exists();
-      if (!snapshotExists || !hashExists) {
-        return false;
-      }
       await _loadInstalledSnapshot(installed);
       return true;
     } on DatasetSyncException {
@@ -344,30 +315,94 @@ class TollInventoryStore {
     }
 
     await snapshotFile.parent.create(recursive: true);
-    final stamp = DateTime.now().microsecondsSinceEpoch;
-    final candidate = File('${snapshotFile.path}.candidate.$stamp');
-    final candidateHash = File('${snapshotHashFile.path}.candidate.$stamp');
+    final immutableSnapshot = _snapshotForHash(sha256);
+    var created = false;
     try {
-      await candidate.writeAsBytes(verifiedBytes, flush: true);
-      await candidateHash.writeAsString('$sha256\n', flush: true);
+      if (await immutableSnapshot.exists()) {
+        if (await _sha256File(immutableSnapshot) != sha256) {
+          throw const DatasetSyncException(
+            'Existing immutable toll snapshot is corrupt.',
+          );
+        }
+      } else {
+        final candidate = File(
+          '${immutableSnapshot.path}.candidate.'
+          '${DateTime.now().microsecondsSinceEpoch}',
+        );
+        await candidate.writeAsBytes(verifiedBytes, flush: true);
+        try {
+          await candidate.rename(immutableSnapshot.path);
+          created = true;
+        } on FileSystemException {
+          await _deleteBestEffort(candidate);
+          if (!await immutableSnapshot.exists() ||
+              await _sha256File(immutableSnapshot) != sha256) {
+            rethrow;
+          }
+        }
+      }
     } catch (error) {
-      if (await candidate.exists()) {
-        await candidate.delete();
-      }
-      if (await candidateHash.exists()) {
-        await candidateHash.delete();
-      }
       throw DatasetSyncException(
         'Toll inventory snapshot preparation failed: $error',
       );
     }
     return _PreparedTollSnapshot(
       store: this,
-      candidate: candidate,
-      candidateHash: candidateHash,
-      backup: File('${snapshotFile.path}.backup.$stamp'),
-      backupHash: File('${snapshotHashFile.path}.backup.$stamp'),
+      immutableSnapshot: immutableSnapshot,
+      sha256: sha256,
+      created: created,
     );
+  }
+
+  File _snapshotForHash(String sha256) => File('${snapshotFile.path}.$sha256');
+
+  Future<File> _selectedSnapshot(String sha256) async {
+    final selected = _snapshotForHash(sha256);
+    if (await selected.exists()) {
+      return selected;
+    }
+
+    final legacyHash = File('${snapshotFile.path}.sha256');
+    if (await snapshotFile.exists() && await legacyHash.exists()) {
+      final sidecar = (await legacyHash.readAsString()).trim();
+      if (sidecar == sha256 && await _sha256File(snapshotFile) == sha256) {
+        try {
+          await snapshotFile.rename(selected.path);
+        } on FileSystemException {
+          if (!await selected.exists()) {
+            rethrow;
+          }
+        }
+        await _deleteBestEffort(legacyHash);
+        return selected;
+      }
+    }
+    throw const DatasetSyncException(
+      'Installed toll inventory snapshot is missing.',
+    );
+  }
+
+  Future<bool> _isHashSelected(String sha256) async {
+    final installed = await _installedVersion();
+    return installed?.status == 'installed' && installed?.sha256 == sha256;
+  }
+
+  Future<void> _cleanupUnselectedSnapshots(String selectedSha256) async {
+    try {
+      await for (final entity in snapshotFile.parent.list()) {
+        if (entity is! File ||
+            !entity.path.startsWith('${snapshotFile.path}.')) {
+          continue;
+        }
+        final suffix = entity.path.substring(snapshotFile.path.length + 1);
+        if (suffix != selectedSha256 &&
+            RegExp(r'^[a-f0-9]{64}$').hasMatch(suffix)) {
+          await _deleteBestEffort(entity);
+        }
+      }
+    } on FileSystemException {
+      return;
+    }
   }
 
   Future<DatasetVersion?> _installedVersion() async {
@@ -386,98 +421,39 @@ class TollInventoryStore {
 class _PreparedTollSnapshot implements PreparedDatasetImport {
   _PreparedTollSnapshot({
     required this.store,
-    required this.candidate,
-    required this.candidateHash,
-    required this.backup,
-    required this.backupHash,
+    required this.immutableSnapshot,
+    required this.sha256,
+    required this.created,
   });
 
   final TollInventoryStore store;
-  final File candidate;
-  final File candidateHash;
-  final File backup;
-  final File backupHash;
-  var _previousSnapshotMoved = false;
-  var _previousHashMoved = false;
-  var _candidateSnapshotMoved = false;
-  var _candidateHashMoved = false;
+  final File immutableSnapshot;
+  final String sha256;
+  final bool created;
 
   @override
-  Future<void> activate() async {
-    try {
-      final snapshotExists = await store.snapshotFile.exists();
-      final hashExists = await store.snapshotHashFile.exists();
-      if (snapshotExists != hashExists) {
-        throw const DatasetSyncException(
-          'Existing toll snapshot and hash sidecar are inconsistent.',
-        );
-      }
-      if (snapshotExists) {
-        await store.load();
-        await store.snapshotFile.rename(backup.path);
-        _previousSnapshotMoved = true;
-        await store.snapshotHashFile.rename(backupHash.path);
-        _previousHashMoved = true;
-      }
-      await candidate.rename(store.snapshotFile.path);
-      _candidateSnapshotMoved = true;
-      await candidateHash.rename(store.snapshotHashFile.path);
-      _candidateHashMoved = true;
-    } catch (error) {
-      try {
-        await rollback();
-      } catch (rollbackError) {
-        throw DatasetSyncException(
-          'Toll snapshot activation failed and rollback failed: '
-          '$error; rollback: $rollbackError',
-        );
-      }
-      if (error is DatasetSyncException) {
-        rethrow;
-      }
-      throw DatasetSyncException('Toll snapshot activation failed: $error');
-    }
-  }
+  Future<void> activate() async {}
 
   @override
   Future<void> commit() async {
-    if (await backup.exists()) {
-      await backup.delete();
-    }
-    if (await backupHash.exists()) {
-      await backupHash.delete();
-    }
-    await _deleteCandidates();
+    await store._cleanupUnselectedSnapshots(sha256);
   }
 
   @override
   Future<void> rollback() async {
-    if (_candidateSnapshotMoved && await store.snapshotFile.exists()) {
-      await store.snapshotFile.delete();
+    if (created && !await store._isHashSelected(sha256)) {
+      await _deleteBestEffort(immutableSnapshot);
     }
-    if (_candidateHashMoved && await store.snapshotHashFile.exists()) {
-      await store.snapshotHashFile.delete();
-    }
-    _candidateSnapshotMoved = false;
-    _candidateHashMoved = false;
-    if (_previousSnapshotMoved) {
-      await backup.rename(store.snapshotFile.path);
-      _previousSnapshotMoved = false;
-    }
-    if (_previousHashMoved) {
-      await backupHash.rename(store.snapshotHashFile.path);
-      _previousHashMoved = false;
-    }
-    await _deleteCandidates();
   }
+}
 
-  Future<void> _deleteCandidates() async {
-    if (await candidate.exists()) {
-      await candidate.delete();
+Future<void> _deleteBestEffort(File file) async {
+  try {
+    if (await file.exists()) {
+      await file.delete();
     }
-    if (await candidateHash.exists()) {
-      await candidateHash.delete();
-    }
+  } on FileSystemException {
+    return;
   }
 }
 

@@ -4,9 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../core/config/app_config.dart';
 import '../core/database/app_database.dart'
     hide MaintenanceRecord, VehicleObligation;
 import '../core/storage/app_preferences.dart';
+import '../core/sync/dataset_sync_service.dart';
 import '../features/defense/application/defense_case_providers.dart';
 import '../features/garage/application/vehicle_associated_data_cleaner.dart';
 import '../features/garage/data/garage_favorites.dart';
@@ -24,6 +26,7 @@ import '../features/visual_assets/data/visual_asset_catalogs.dart';
 import '../features/visual_assets/data/visual_asset_preferences.dart';
 import '../features/pico_placa/data/bundled_restrictions.dart';
 import '../features/pico_placa/data/pico_preferences.dart';
+import '../features/pico_placa/data/restriction_dataset.dart';
 import '../features/pico_placa/data/restriction_store.dart';
 import '../features/pico_placa/domain/bogota_time.dart';
 import '../features/pico_placa/platform/pico_notifications.dart';
@@ -57,21 +60,75 @@ final homeBannerConfigProvider = FutureProvider<HomeBannerConfig>((ref) async {
   return HomeBannerConfig.fromJsonString(source);
 });
 
-final tripTollInventoryProvider = FutureProvider<TollInventoryDataset>((
+final datasetSyncConfigProvider = Provider<AppConfig?>((ref) {
+  const cdnBaseUrl = String.fromEnvironment('CDN_BASE_URL');
+  if (cdnBaseUrl.trim().isEmpty) {
+    return null;
+  }
+  return AppConfig(
+    apiBaseUrl: const String.fromEnvironment('API_BASE_URL'),
+    cdnBaseUrl: cdnBaseUrl,
+    manifestUrl: const String.fromEnvironment('MANIFEST_URL'),
+  );
+});
+
+final datasetSnapshotsDirectoryProvider = FutureProvider<Directory>((
   ref,
 ) async {
   final directory = await getApplicationSupportDirectory();
-  final datasetsDirectory = Directory(
-    '${directory.path}${Platform.pathSeparator}datasets',
+  return Directory('${directory.path}${Platform.pathSeparator}datasets');
+});
+
+final tollInventoryStoreProvider = FutureProvider<TollInventoryStore>((
+  ref,
+) async {
+  final datasetsDirectory = await ref.watch(
+    datasetSnapshotsDirectoryProvider.future,
   );
-  final store = TollInventoryStore(
+  return TollInventoryStore(
     database: ref.watch(appDatabaseProvider),
     snapshotFile: File(
       '${datasetsDirectory.path}${Platform.pathSeparator}tolls_inventory.json',
     ),
     bundledLoader: () => rootBundle.loadString(bundledTollInventoryAsset),
   );
-  return store.load();
+});
+
+final tripTollInventoryProvider = FutureProvider<TollInventoryDataset>((
+  ref,
+) async {
+  return (await ref.watch(tollInventoryStoreProvider.future)).load();
+});
+
+final datasetSyncServiceProvider = FutureProvider<DatasetSyncService?>((
+  ref,
+) async {
+  final config = ref.watch(datasetSyncConfigProvider);
+  if (config == null) {
+    return null;
+  }
+  final tollStore = await ref.watch(tollInventoryStoreProvider.future);
+  return DatasetSyncService(
+    database: ref.watch(appDatabaseProvider),
+    preferences: ref.watch(appPreferencesProvider),
+    config: config,
+    importers: const {restrictionsDatasetKey: importRestrictionsDataset},
+    transactionalImporters: {
+      tollInventoryDatasetKey: tollStore.transactionalImporter,
+    },
+  );
+});
+
+final datasetSyncRunProvider = FutureProvider<DatasetSyncResult?>((ref) async {
+  final service = await ref.watch(datasetSyncServiceProvider.future);
+  if (service == null) {
+    return null;
+  }
+  final result = await service.sync();
+  ref.invalidate(bundledRestrictionsProvider);
+  ref.invalidate(restrictionJurisdictionsProvider);
+  ref.invalidate(tripTollInventoryProvider);
+  return result;
 });
 
 final tripCameraPackSnapshotProvider = FutureProvider<TripCameraPackSnapshot>((
