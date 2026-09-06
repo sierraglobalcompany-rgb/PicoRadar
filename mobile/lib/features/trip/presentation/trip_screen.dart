@@ -605,7 +605,22 @@ class _TripScreenState extends ConsumerState<TripScreen>
         : _vehicleError != null
         ? _vehicleFocusNode
         : null;
-    focusNode?.requestFocus();
+    if (focusNode == null) return;
+    focusNode.requestFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final focusContext = focusNode.context;
+      if (!mounted || !focusNode.hasFocus || focusContext == null) return;
+      unawaited(
+        Scrollable.ensureVisible(
+          focusContext,
+          alignment: 0.2,
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
+        ),
+      );
+    });
   }
 
   void _scheduleResultsReveal(String requestId, int scrollRevision) {
@@ -619,7 +634,14 @@ class _TripScreenState extends ConsumerState<TripScreen>
           scrollRevision != _userScrollRevision) {
         return;
       }
-      unawaited(_reveal(_resultsAnchorKey, focusNode: _resultsFocusNode));
+      unawaited(
+        _reveal(
+          _resultsAnchorKey,
+          focusNode: _resultsFocusNode,
+          requestId: requestId,
+          scrollRevision: scrollRevision,
+        ),
+      );
     });
   }
 
@@ -627,22 +649,53 @@ class _TripScreenState extends ConsumerState<TripScreen>
     unawaited(_reveal(_mapAnchorKey));
   }
 
-  Future<void> _reveal(GlobalKey anchor, {FocusNode? focusNode}) async {
+  Future<void> _reveal(
+    GlobalKey anchor, {
+    FocusNode? focusNode,
+    String? requestId,
+    int? scrollRevision,
+  }) async {
     final anchorContext = anchor.currentContext;
     if (!mounted ||
         anchorContext == null ||
-        !TickerMode.valuesOf(context).enabled) {
+        !TickerMode.valuesOf(context).enabled ||
+        !_matchesRevealGuard(requestId, scrollRevision)) {
       return;
     }
-    await Scrollable.ensureVisible(
-      anchorContext,
-      alignment: 0.05,
-      duration: MediaQuery.disableAnimationsOf(context)
-          ? Duration.zero
-          : const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
-    );
-    if (mounted && focusNode != null) focusNode.requestFocus();
+    var focusChanged = false;
+    void markFocusChange() => focusChanged = true;
+    if (focusNode != null) FocusManager.instance.addListener(markFocusChange);
+    try {
+      await Scrollable.ensureVisible(
+        anchorContext,
+        alignment: 0.05,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      );
+    } finally {
+      if (focusNode != null) {
+        FocusManager.instance.removeListener(markFocusChange);
+      }
+    }
+    if (focusNode == null ||
+        focusChanged ||
+        !mounted ||
+        !TickerMode.valuesOf(context).enabled ||
+        !_matchesRevealGuard(requestId, scrollRevision)) {
+      return;
+    }
+    focusNode.requestFocus();
+  }
+
+  bool _matchesRevealGuard(String? requestId, int? scrollRevision) {
+    if (requestId == null && scrollRevision == null) return true;
+    return requestId != null &&
+        scrollRevision != null &&
+        _request?.requestId == requestId &&
+        _plan?.requestId == requestId &&
+        _userScrollRevision == scrollRevision;
   }
 
   Future<void> _preview(

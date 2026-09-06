@@ -1393,7 +1393,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('target responsive viewports avoid overflow', (tester) async {
+  testWidgets('initial target responsive viewports avoid overflow', (
+    tester,
+  ) async {
     for (final size in const [
       Size(360, 780),
       Size(360, 800),
@@ -1413,6 +1415,206 @@ void main() {
       }
     }
   });
+
+  testWidgets('VIAJE-R2 integrated success covers the 4 x 3 matrix', (
+    tester,
+  ) async {
+    for (final size in const [
+      Size(360, 780),
+      Size(360, 800),
+      Size(390, 844),
+      Size(412, 915),
+    ]) {
+      for (final scale in const [1.0, 1.5, 2.0]) {
+        final casePreferences = MemoryPreferences();
+        final client = _PendingPlanClient();
+        await TripDraftStore(casePreferences).saveDraft(
+          TripDraft(
+            origin: 'Bogotá',
+            destination: 'Medellín',
+            date: DateTime(2026, 9, 7),
+            departureMinute: 600,
+          ),
+        );
+        final keyboardCase = size == const Size(360, 780) && scale == 2.0;
+        tester.view.padding = keyboardCase
+            ? const FakeViewPadding(top: 24, bottom: 16)
+            : FakeViewPadding.zero;
+        await _pumpScreen(
+          tester,
+          preferences: casePreferences,
+          activeVehicle: _vehicle(),
+          planClient: client,
+          size: size,
+          textScale: scale,
+        );
+        await _tapByKey(tester, 'trip-standard-vehicle');
+        _pressButtonByKey(tester, 'trip-preview');
+        await tester.pump();
+        client.completions.single.complete(
+          _testPlanWithTwoRoutes(client.requests.single),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(Scrollable), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('trip-preparation-summary')),
+          findsOneWidget,
+        );
+        expect(find.byKey(const ValueKey('trip-plan-result')), findsOneWidget);
+        const metricKeys = [
+          'distance',
+          'duration',
+          'arrival',
+          'tolls',
+          'cost',
+          'cameras',
+        ];
+        for (final metric in metricKeys) {
+          expect(find.byKey(ValueKey('trip-summary-$metric')), findsOneWidget);
+        }
+        final metricRects = [
+          for (final metric in metricKeys)
+            tester.getRect(find.byKey(ValueKey('trip-summary-$metric'))),
+        ];
+        expect(metricRects[0].left, closeTo(metricRects[2].left, 0.01));
+        expect(metricRects[0].left, closeTo(metricRects[4].left, 0.01));
+        expect(metricRects[1].left, closeTo(metricRects[3].left, 0.01));
+        expect(metricRects[1].left, closeTo(metricRects[5].left, 0.01));
+        expect(metricRects[0].top, closeTo(metricRects[1].top, 0.01));
+        expect(metricRects[2].top, closeTo(metricRects[3].top, 0.01));
+        expect(metricRects[4].top, closeTo(metricRects[5].top, 0.01));
+
+        final firstRoute = find.byKey(const ValueKey('trip-route-test-route'));
+        final secondRoute = find.byKey(const ValueKey('trip-route-scenic'));
+        final firstRect = tester.getRect(firstRoute);
+        final secondRect = tester.getRect(secondRoute);
+        expect(firstRect.left, closeTo(secondRect.left, 0.01));
+        expect(firstRect.width, closeTo(secondRect.width, 0.01));
+        expect(
+          firstRect.width,
+          closeTo(
+            tester
+                .getSize(find.byKey(const ValueKey('trip-plan-result')))
+                .width,
+            0.01,
+          ),
+        );
+        expect(firstRect.bottom, lessThan(secondRect.top));
+        final mapRect = tester.getRect(
+          find.byKey(const ValueKey('trip-map-preview-slot')),
+        );
+        final tollRect = tester.getRect(
+          find.byKey(const ValueKey('trip-toll-details-test-route')),
+        );
+        expect(secondRect.bottom, lessThan(mapRect.top));
+        expect(mapRect.bottom, lessThanOrEqualTo(tollRect.top));
+
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('trip-view-map-test-route')),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('trip-view-map-test-route')).hitTestable(),
+          findsOneWidget,
+        );
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('trip-preparation-compact')),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('trip-preparation-compact')).hitTestable(),
+          findsOneWidget,
+        );
+
+        if (keyboardCase) {
+          await _tapByKey(tester, 'trip-preparation-compact');
+          await tester.showKeyboard(
+            find.byKey(const ValueKey('trip-destination-field')),
+          );
+          tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(
+            find.byKey(const ValueKey('trip-destination-field')),
+          );
+          await tester.pumpAndSettle();
+          expect(
+            FocusManager.instance.primaryFocus?.debugLabel,
+            'trip-destination-focus',
+          );
+          expect(
+            find.byKey(const ValueKey('trip-destination-field')).hitTestable(),
+            findsOneWidget,
+          );
+          expect(
+            tester.getTopLeft(find.byKey(const ValueKey('trip-screen'))).dy,
+            greaterThanOrEqualTo(24),
+          );
+          tester.view.resetViewInsets();
+        }
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+        tester.view.resetPadding();
+      }
+    }
+  });
+
+  for (final invalidField in const [
+    (name: 'origin', focus: 'trip-origin-focus', key: 'trip-origin-field'),
+    (
+      name: 'destination',
+      focus: 'trip-destination-focus',
+      key: 'trip-destination-field',
+    ),
+    (name: 'time', focus: 'trip-time-focus', key: 'trip-time-button'),
+    (name: 'vehicle', focus: 'trip-vehicle-focus', key: 'trip-select-vehicle'),
+  ]) {
+    testWidgets(
+      'VIAJE-R2 focuses and reveals first invalid ${invalidField.name}',
+      (tester) async {
+        final casePreferences = MemoryPreferences();
+        if (invalidField.name != 'origin') {
+          await TripDraftStore(casePreferences).saveDraft(
+            TripDraft(
+              origin: 'Bogotá',
+              destination: 'Medellín',
+              date: DateTime(2026, 9, 7),
+              departureMinute: invalidField.name == 'time' ? null : 600,
+            ),
+          );
+        }
+        final vehicle = _vehicle();
+        await _pumpScreen(
+          tester,
+          preferences: casePreferences,
+          activeVehicle: invalidField.name == 'vehicle' ? null : vehicle,
+          vehicles: [vehicle],
+          size: const Size(360, 780),
+          textScale: 2,
+        );
+        if (invalidField.name == 'destination') {
+          await tester.enterText(
+            find.byKey(const ValueKey('trip-destination-field')),
+            '',
+          );
+          tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+        }
+
+        await _tapByKey(tester, 'trip-preview');
+
+        expect(
+          FocusManager.instance.primaryFocus?.debugLabel,
+          invalidField.focus,
+        );
+        expect(
+          find.byKey(ValueKey(invalidField.key)).hitTestable(),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+        tester.view.resetViewInsets();
+      },
+    );
+  }
 
   testWidgets(
     'VIAJE-R2 focuses the first invalid field and swaps endpoints accessibly',
@@ -1639,6 +1841,56 @@ void main() {
     expect(scrollable.position.pixels, manualOffset);
   });
 
+  testWidgets(
+    'VIAJE-R2 interaction during reveal keeps user scroll and focus authority',
+    (tester) async {
+      final client = _PendingPlanClient();
+      await TripDraftStore(preferences).saveDraft(
+        TripDraft(
+          origin: 'Bogotá',
+          destination: 'Medellín',
+          date: DateTime(2026, 9, 7),
+          departureMinute: 600,
+        ),
+      );
+      await _pumpScreen(
+        tester,
+        preferences: preferences,
+        activeVehicle: _vehicle(),
+        planClient: client,
+      );
+      await _tapByKey(tester, 'trip-standard-vehicle');
+      _pressButtonByKey(tester, 'trip-preview');
+      await tester.pump();
+      client.completions.single.complete(_testPlan(client.requests.single));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 80));
+
+      final scrollable = tester.state<ScrollableState>(
+        find.byType(Scrollable).first,
+      );
+      expect(scrollable.position.isScrollingNotifier.value, isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      final userFocus = FocusManager.instance.primaryFocus;
+      expect(userFocus, isNotNull);
+      expect(userFocus?.debugLabel, isNot('trip-results-focus'));
+
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byKey(const ValueKey('trip-screen'))),
+      );
+      await gesture.moveBy(const Offset(0, -80));
+      await tester.pump(const Duration(milliseconds: 200));
+      await gesture.up();
+      await tester.pump();
+      final userOffset = scrollable.position.pixels;
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(scrollable.position.pixels, closeTo(userOffset, 0.01));
+      expect(FocusManager.instance.primaryFocus, same(userFocus));
+    },
+  );
+
   testWidgets('VIAJE-R2 keyboard next moves focus to destination', (
     tester,
   ) async {
@@ -1823,6 +2075,34 @@ TripPlan _testPlan(TripPlanRequest request) => TripPlan(
     ),
   ],
 );
+
+TripPlan _testPlanWithTwoRoutes(TripPlanRequest request) {
+  final plan = _testPlan(request);
+  return TripPlan(
+    requestId: plan.requestId,
+    generatedAtUtc: plan.generatedAtUtc,
+    provider: plan.provider,
+    attribution: plan.attribution,
+    origin: plan.origin,
+    destination: plan.destination,
+    routes: [
+      plan.routes.single,
+      TripRouteOption(
+        id: 'scenic',
+        summary: 'Ruta alterna extensa para validar lectura integrada',
+        distanceMeters: 460000,
+        durationSeconds: 39600,
+        timeBasis: 'static',
+        tolls: TripTolls(
+          coverage: TripTollCoverage.partial,
+          vehicleCategory: 'car',
+          stationCount: 4,
+          subtotalMinor: 4200000,
+        ),
+      ),
+    ],
+  );
+}
 
 class _FakeExternalLauncher implements ExternalLauncher {
   final opened = <String>[];
