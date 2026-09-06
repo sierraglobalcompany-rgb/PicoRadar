@@ -175,6 +175,24 @@ class ReleaseCompilerTests(unittest.TestCase):
                 {
                     "ruleId": rule["id"],
                     "sourceRecordId": decision["sourceRecordIds"][index],
+                    "reviewedSemantics": {
+                        "priority": 1000,
+                        "effect": "restrict",
+                        "validFrom": "2026-09-01T00:00:00",
+                        "validUntil": "2026-09-01T23:59:59",
+                        "registrationOrigins": ["local", "foreign", "unknown"],
+                        "weekdays": [2],
+                        "dateParity": None,
+                        "digitPosition": "lastNumeric",
+                        "digits": [4, 5],
+                        "timeWindows": [{"startMinute": 450, "endMinute": 1140}],
+                        "appliesOnHolidays": False,
+                        "sourceUrl": (
+                            "https://www.pasto.gov.co/index.php/decretos-2026?"
+                            "download=3115701%3Adec-0122-24-jul-2026"
+                        ),
+                        "verifiedAt": "2026-09-06T00:00:00Z",
+                    },
                 }
                 for index, rule in enumerate(decision["runtimeCoverage"]["rules"])
                 if index < len(decision["sourceRecordIds"])
@@ -399,6 +417,35 @@ class ReleaseCompilerTests(unittest.TestCase):
         reviewed = self.reviewed_ledger_row(decision["sourceCoverageId"])
         self.assertEqual(report["restrictions"]["newRulesPublished"], 0)
         self.assertIn("review_rule_evidence_mismatch", reviewed["quarantineReasons"])
+
+    def test_runtime_behavior_must_match_independently_reviewed_semantics(self):
+        cases = (
+            ("effect", lambda rule: rule.update(effect="allow")),
+            ("priority", lambda rule: rule.update(priority=999)),
+            ("holiday policy", lambda rule: rule.update(appliesOnHolidays=True)),
+            (
+                "registration scope",
+                lambda rule: rule.update(registrationOrigins=["local"]),
+            ),
+            ("date parity", lambda rule: rule.update(dateParity="odd")),
+        )
+        for label, mutate in cases:
+            with self.subTest(label=label):
+                decision = self.complete_pasto_decision()
+                mutate(decision["runtimeCoverage"]["rules"][0])
+                self.refresh_evidence_hashes(decision)
+                path = self.decision_path(decision)
+
+                report = compiler.compile_release(
+                    SOURCE_PACKAGE, self.output_root, reviewed_decisions_path=path
+                )
+
+                reviewed = self.reviewed_ledger_row(decision["sourceCoverageId"])
+                self.assertEqual(report["restrictions"]["newRulesPublished"], 0)
+                self.assertIn(
+                    "review_rule_semantics_mismatch",
+                    reviewed["quarantineReasons"],
+                )
 
     def test_final_dataset_rejects_cross_coverage_rule_id_collision(self):
         private = self.complete_pasto_decision()

@@ -1491,13 +1491,23 @@ void main() {
           for (final metric in metricKeys)
             tester.getRect(find.byKey(ValueKey('trip-summary-$metric'))),
         ];
-        expect(metricRects[0].left, closeTo(metricRects[2].left, 0.01));
-        expect(metricRects[0].left, closeTo(metricRects[4].left, 0.01));
-        expect(metricRects[1].left, closeTo(metricRects[3].left, 0.01));
-        expect(metricRects[1].left, closeTo(metricRects[5].left, 0.01));
-        expect(metricRects[0].top, closeTo(metricRects[1].top, 0.01));
-        expect(metricRects[2].top, closeTo(metricRects[3].top, 0.01));
-        expect(metricRects[4].top, closeTo(metricRects[5].top, 0.01));
+        if (scale == 2) {
+          expect(metricRects.map((rect) => rect.left).toSet(), hasLength(1));
+          for (var index = 1; index < metricRects.length; index += 1) {
+            expect(
+              metricRects[index].top,
+              greaterThan(metricRects[index - 1].bottom),
+            );
+          }
+        } else {
+          expect(metricRects[0].left, closeTo(metricRects[2].left, 0.01));
+          expect(metricRects[0].left, closeTo(metricRects[4].left, 0.01));
+          expect(metricRects[1].left, closeTo(metricRects[3].left, 0.01));
+          expect(metricRects[1].left, closeTo(metricRects[5].left, 0.01));
+          expect(metricRects[0].top, closeTo(metricRects[1].top, 0.01));
+          expect(metricRects[2].top, closeTo(metricRects[3].top, 0.01));
+          expect(metricRects[4].top, closeTo(metricRects[5].top, 0.01));
+        }
 
         final firstRoute = find.byKey(const ValueKey('trip-route-test-route'));
         final secondRoute = find.byKey(const ValueKey('trip-route-scenic'));

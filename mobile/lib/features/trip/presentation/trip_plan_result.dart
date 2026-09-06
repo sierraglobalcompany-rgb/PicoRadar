@@ -356,7 +356,11 @@ class _TripSummary extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           const gap = AppSpacing.s;
-          final width = (constraints.maxWidth - gap) / 2;
+          final useSingleColumn =
+              MediaQuery.textScalerOf(context).scale(1) >= 2;
+          final width = useSingleColumn
+              ? constraints.maxWidth
+              : (constraints.maxWidth - gap) / 2;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

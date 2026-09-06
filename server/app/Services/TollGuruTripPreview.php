@@ -130,7 +130,8 @@ final class TollGuruTripPreview
         foreach (['max_money_minor' => 1000000000000, 'money_minor_per_request' => 1000000000] as $name => $max) {
             $value = config('trips.'.$name);
             $minimum = $confirmedFree ? 0 : 1;
-            if ((! is_int($value) && (! is_string($value) || ! ctype_digit($value))) || $value < $minimum || $value > $max) {
+            if ((! is_int($value) && (! is_string($value) || ! ctype_digit($value))) || $value < $minimum || $value > $max
+                || ($confirmedFree && (int) $value !== 0)) {
                 throw new DomainException('not_configured');
             }
             $settings[$name] = (int) $value;

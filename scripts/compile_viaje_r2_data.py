@@ -69,6 +69,21 @@ REGISTRATION_ORIGINS = {"local", "foreign", "unknown"}
 RULE_EFFECTS = {"restrict", "allow"}
 DATE_PARITIES = {"odd", "even"}
 DIGIT_POSITIONS = {"firstNumeric", "lastNumeric"}
+RULE_SEMANTIC_FIELDS = (
+    "priority",
+    "effect",
+    "validFrom",
+    "validUntil",
+    "registrationOrigins",
+    "weekdays",
+    "dateParity",
+    "digitPosition",
+    "digits",
+    "timeWindows",
+    "appliesOnHolidays",
+    "sourceUrl",
+    "verifiedAt",
+)
 GEOGRAPHY_ALIASES = {
     ("co-source:bogota-d-c:bogota", "Bogotá D.C.", "Bogotá"): (
         "Bogotá, D.C.",
@@ -625,9 +640,7 @@ def _review_validation_reasons(
         reasons.append("review_rule_evidence_invalid")
         evidence_rows = []
     evidence_by_rule = {
-        row.get("ruleId"): row.get("sourceRecordId")
-        for row in evidence_rows
-        if isinstance(row, dict)
+        row.get("ruleId"): row for row in evidence_rows if isinstance(row, dict)
     }
     for rule in rules:
         if not isinstance(rule, dict):
@@ -641,11 +654,20 @@ def _review_validation_reasons(
             reasons.append("runtime_rule_outside_legal_validity")
         if rule.get("verifiedAt") != runtime.get("verifiedAt"):
             reasons.append("runtime_rule_verified_at_mismatch")
-        source_record_id = evidence_by_rule.get(rule.get("id"))
+        evidence = evidence_by_rule.get(rule.get("id"))
+        source_record_id = evidence.get("sourceRecordId") if evidence else None
         source_record = dated_by_id.get(source_record_id)
         if source_record_id not in source_record_ids or source_record is None:
             reasons.append("review_rule_evidence_missing")
             continue
+        reviewed_semantics = evidence.get("reviewedSemantics")
+        runtime_semantics = {
+            field: copy.deepcopy(rule.get(field)) for field in RULE_SEMANTIC_FIELDS
+        }
+        if not isinstance(reviewed_semantics, dict):
+            reasons.append("review_rule_semantics_missing")
+        elif reviewed_semantics != runtime_semantics:
+            reasons.append("review_rule_semantics_mismatch")
         expected_windows = [
             {
                 "startMinute": window.get("startMinute"),

@@ -109,6 +109,30 @@ void main() {
         );
         expect(find.text('Sin restricción a la hora evaluada'), findsOneWidget);
         expect(find.text('No circula a la hora evaluada'), findsOneWidget);
+        if (scale == 2) {
+          final metricRects = [
+            for (final key in const [
+              'distance',
+              'duration',
+              'arrival',
+              'tolls',
+              'cost',
+              'cameras',
+            ])
+              tester.getRect(find.byKey(ValueKey('trip-summary-$key'))),
+          ];
+          expect(
+            metricRects.map((rect) => rect.left).toSet(),
+            hasLength(1),
+            reason: 'Large text must use one readable summary column.',
+          );
+          for (var index = 1; index < metricRects.length; index += 1) {
+            expect(
+              metricRects[index].top,
+              greaterThan(metricRects[index - 1].bottom),
+            );
+          }
+        }
         expect(tester.takeException(), isNull);
 
         await _capture(

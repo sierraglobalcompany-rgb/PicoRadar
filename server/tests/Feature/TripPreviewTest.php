@@ -229,13 +229,16 @@ class TripPreviewTest extends TestCase
         $this->assertSame($this->ledger(), Cache::store('database')->get(self::LEDGER));
     }
 
-    public function test_positive_money_reservation_cannot_cross_zero_budget(): void
+    public function test_confirmed_free_trial_rejects_positive_money_budget_and_reservation(): void
     {
         $this->enableConfirmedFreeTrial();
-        config(['trips.money_minor_per_request' => 1]);
+        config([
+            'trips.max_money_minor' => 100,
+            'trips.money_minor_per_request' => 1,
+        ]);
 
         $this->postJson('/api/v1/trips/preview', $this->request())
-            ->assertStatus(429)->assertExactJson(['error' => ['code' => 'quota']]);
+            ->assertStatus(503)->assertExactJson(['error' => ['code' => 'not_configured']]);
         Http::assertNothingSent();
         $this->assertSame($this->ledger(), Cache::store('database')->get(self::LEDGER));
     }

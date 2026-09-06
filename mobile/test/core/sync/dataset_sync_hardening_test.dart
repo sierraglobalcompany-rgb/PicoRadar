@@ -52,21 +52,31 @@ void main() {
     }
   });
 
-  test('imports generated local manifest through real importers', () async {
-    expect((await _medellinEvaluation(db)).status, RestrictionStatus.unknown);
+  test('reviewed-rule fixture changes engine result through real HTTP and importer', () async {
+    expect(
+      (await _reviewedRuleEvaluation(db)).status,
+      RestrictionStatus.unknown,
+    );
     final manifest = _readJson(
       File('../data/releases/viaje_r2/local_test/manifest.json'),
     );
-    final restrictionBytes = await File(
-      'assets/datasets/restrictions/restrictions_v1.json',
-    ).readAsBytes();
+    final restrictionPayload = await _payload(_reviewedRestrictionDataset());
+    final datasets = Map<String, dynamic>.from(manifest['datasets'] as Map);
+    datasets[restrictionsDatasetKey] = _entry(
+      version: 'NON_PRODUCTION_FIXTURE-reviewed-rule',
+      path: '/assets/datasets/restrictions/restrictions_v1.json',
+      sha256: restrictionPayload.sha256,
+      sourceTimestamp: '2026-09-06T00:00:00Z',
+      publicationRevision: 2,
+    );
+    manifest['datasets'] = datasets;
     final tollBytes = await File('assets/catalogs/tolls_inventory_v1.json')
         .readAsBytes();
     _serveJson(server, '/v1/manifest.json', manifest, etag: '"viaje-r2"');
     _serveBytes(
       server,
       '/assets/datasets/restrictions/restrictions_v1.json',
-      restrictionBytes,
+      restrictionPayload.bytes,
     );
     _serveBytes(server, '/assets/catalogs/tolls_inventory_v1.json', tollBytes);
     final snapshot = File('${snapshotDirectory.path}/tolls.json');
@@ -95,9 +105,9 @@ void main() {
     expect((await tollStore.load()).records, hasLength(184));
     expect((await tollStore.load()).sourceTimestamp, DateTime.utc(2026, 9, 5));
     expect(await _version(db, tollInventoryDatasetKey), '2026.09.05-viaje-r2');
-    expect(await db.select(db.restrictionCoverages).get(), hasLength(9));
+    expect(await db.select(db.restrictionCoverages).get(), hasLength(1));
     expect(
-      (await _medellinEvaluation(db)).status,
+      (await _reviewedRuleEvaluation(db)).status,
       RestrictionStatus.restricted,
     );
     expect(
@@ -675,21 +685,21 @@ void main() {
   );
 }
 
-Future<RestrictionEvaluation> _medellinEvaluation(AppDatabase db) async {
+Future<RestrictionEvaluation> _reviewedRuleEvaluation(AppDatabase db) async {
   final rules = await RestrictionStore(db).loadCoverage(
-    'co-ant-medellin',
+    'co-nar-pasto',
     VehicleKind.car,
     VehicleServiceType.private,
-    DateTime.utc(2026, 8, 27),
+    DateTime.utc(2026, 9, 1),
   );
   return const RestrictionEngine().evaluate(
     RestrictionContext(
-      jurisdictionId: 'co-ant-medellin',
-      plate: 'ABC158',
+      jurisdictionId: 'co-nar-pasto',
+      plate: 'ABC145',
       vehicleKind: VehicleKind.car,
       serviceType: VehicleServiceType.private,
       registrationOrigin: RegistrationOrigin.local,
-      localDateTime: DateTime(2026, 8, 3, 8),
+      localDateTime: DateTime(2026, 9, 1, 8),
       isHoliday: false,
       coverageKnown: rules.coverageKnown,
       dataIsStale: rules.dataIsStale,
@@ -697,6 +707,47 @@ Future<RestrictionEvaluation> _medellinEvaluation(AppDatabase db) async {
     rules.rules,
   );
 }
+
+Map<String, Object?> _reviewedRestrictionDataset() => {
+  'schemaVersion': 1,
+  'datasetKey': restrictionsDatasetKey,
+  'version': 'NON_PRODUCTION_FIXTURE-reviewed-rule',
+  'generatedAt': '2026-09-06T00:00:00Z',
+  'jurisdictions': [
+    {
+      'id': 'co-nar-pasto',
+      'name': 'Pasto',
+      'coverages': [
+        {
+          'vehicleKind': 'car',
+          'serviceType': 'private',
+          'verifiedAt': '2026-09-06T00:00:00Z',
+          'staleAfter': '2026-09-02T00:00:00Z',
+          'sourceUrls': ['https://example.test/NON_PRODUCTION_FIXTURE'],
+          'rules': [
+            {
+              'id': 'NON_PRODUCTION_FIXTURE-pasto-2026-09-01',
+              'priority': 1000,
+              'effect': 'restrict',
+              'validFrom': '2026-09-01T00:00:00',
+              'validUntil': '2026-09-01T23:59:59',
+              'registrationOrigins': ['local', 'foreign', 'unknown'],
+              'weekdays': [2],
+              'digitPosition': 'lastNumeric',
+              'digits': [4, 5],
+              'timeWindows': [
+                {'startMinute': 450, 'endMinute': 1140},
+              ],
+              'appliesOnHolidays': false,
+              'sourceUrl': 'https://example.test/NON_PRODUCTION_FIXTURE',
+              'verifiedAt': '2026-09-06T00:00:00Z',
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
 
 DatasetSyncService _service(
   AppDatabase db,
