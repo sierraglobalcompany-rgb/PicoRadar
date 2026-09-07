@@ -71,5 +71,8 @@ jobs:
       - name: Test
         run: flutter test --coverage
 
+      - name: Native Android unit tests
+        run: cd android && ./gradlew :app:testDevDebugUnitTest
+
       - name: Build dev debug APK
         run: flutter build apk --debug --flavor dev
