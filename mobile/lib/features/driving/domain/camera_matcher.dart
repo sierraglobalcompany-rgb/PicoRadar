@@ -17,12 +17,14 @@ class DrivingPoint {
     required this.speedKmh,
     required this.recordedAt,
     this.headingDegrees,
+    this.speedAccuracyKmh,
   });
 
   final double latitude;
   final double longitude;
   final double accuracyMeters;
-  final double speedKmh;
+  final double? speedKmh;
+  final double? speedAccuracyKmh;
   final double? headingDegrees;
   final DateTime recordedAt;
 }
@@ -140,7 +142,7 @@ double? _reliableCourseDegrees({
   required DrivingPoint? previous,
 }) {
   final heading = current.headingDegrees;
-  if (heading != null && heading.isFinite && current.speedKmh >= 8) {
+  if (heading != null && heading.isFinite && (current.speedKmh ?? 0) >= 8) {
     return heading;
   }
   if (previous == null || !current.recordedAt.isAfter(previous.recordedAt)) {

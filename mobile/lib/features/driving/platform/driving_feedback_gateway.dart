@@ -1,9 +1,15 @@
 import 'package:flutter/services.dart';
 
-abstract class DrivingFeedbackGateway {
-  Future<void> speak(String message);
+import '../data/driving_preferences.dart';
 
-  Future<void> playSound();
+abstract class DrivingFeedbackGateway {
+  Future<void> playAlert({
+    String? message,
+    required bool playSound,
+    required DrivingAlertOutput output,
+    required DrivingMusicBehavior musicBehavior,
+    required double volume,
+  });
 
   Future<void> vibrate();
 
@@ -18,15 +24,20 @@ class PlatformDrivingFeedbackGateway implements DrivingFeedbackGateway {
   static const _channel = MethodChannel('co.picoradar.app/driving');
 
   @override
-  Future<void> playSound() {
-    return SystemSound.play(SystemSoundType.alert);
-  }
-
-  @override
-  Future<void> setKeepScreenOn(bool enabled) async {
+  Future<void> playAlert({
+    String? message,
+    required bool playSound,
+    required DrivingAlertOutput output,
+    required DrivingMusicBehavior musicBehavior,
+    required double volume,
+  }) async {
     try {
-      await _channel.invokeMethod<void>('setKeepScreenOn', {
-        'enabled': enabled,
+      await _channel.invokeMethod<void>('playDrivingAlert', {
+        'message': message,
+        'playSound': playSound,
+        'output': output.name,
+        'musicBehavior': musicBehavior.name,
+        'volume': volume.clamp(0, 1),
       });
     } on MissingPluginException {
       return;
@@ -34,10 +45,10 @@ class PlatformDrivingFeedbackGateway implements DrivingFeedbackGateway {
   }
 
   @override
-  Future<void> speak(String message) async {
+  Future<void> setKeepScreenOn(bool enabled) async {
     try {
-      await _channel.invokeMethod<void>('speakDrivingAlert', {
-        'message': message,
+      await _channel.invokeMethod<void>('setKeepScreenOn', {
+        'enabled': enabled,
       });
     } on MissingPluginException {
       return;

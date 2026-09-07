@@ -11,6 +11,9 @@ void main() {
 
     expect(loaded.cameraVisualizationMode, CameraVisualizationMode.auto);
     expect(loaded.cameraTargetingConeDegrees, 90);
+    expect(loaded.alertOutput, DrivingAlertOutput.automatic);
+    expect(loaded.musicBehavior, DrivingMusicBehavior.duck);
+    expect(loaded.alertVolume, 0.8);
   });
 
   test('persists camera visualization mode and preserves saved cone', () async {
@@ -25,5 +28,21 @@ void main() {
 
     expect(loaded.cameraVisualizationMode, CameraVisualizationMode.radar);
     expect(loaded.cameraTargetingConeDegrees, 180);
+  });
+
+  test('persists driving audio routing, focus behavior, and gain', () async {
+    final preferences = MemoryPreferences();
+    final value = defaultDrivingPreferences.copyWith(
+      alertOutput: DrivingAlertOutput.phoneSpeaker,
+      musicBehavior: DrivingMusicBehavior.pause,
+      alertVolume: 0.35,
+    );
+
+    await saveDrivingPreferences(preferences, value);
+    final loaded = await loadDrivingPreferences(preferences);
+
+    expect(loaded.alertOutput, DrivingAlertOutput.phoneSpeaker);
+    expect(loaded.musicBehavior, DrivingMusicBehavior.pause);
+    expect(loaded.alertVolume, 0.35);
   });
 }

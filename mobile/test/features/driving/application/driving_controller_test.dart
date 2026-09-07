@@ -15,8 +15,229 @@ import 'package:picoradar/features/location/platform/device_location_gateway.dar
 
 import '../../../test_app_harness.dart';
 
+final _testBaseTime = _roundedFutureTestBaseTime();
+
+DateTime _roundedFutureTestBaseTime() {
+  final now = DateTime.now().toUtc().add(const Duration(minutes: 5));
+  return DateTime.utc(now.year, now.month, now.day, now.hour, now.minute);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('unknown sensor speed remains distinct from a stopped vehicle', () {
+    final unknown = DrivingState(
+      status: DrivingSessionStatus.active,
+      preferences: defaultDrivingPreferences,
+      cameraCount: 0,
+      cameraSpeedKnownCount: 0,
+      currentPoint: DrivingPoint(
+        latitude: 6.24,
+        longitude: -75.57,
+        accuracyMeters: 12,
+        speedKmh: null,
+        recordedAt: DateTime.utc(2026, 9, 6),
+      ),
+    );
+    final stopped = DrivingState(
+      status: DrivingSessionStatus.active,
+      preferences: defaultDrivingPreferences,
+      cameraCount: 0,
+      cameraSpeedKnownCount: 0,
+      currentPoint: DrivingPoint(
+        latitude: 6.24,
+        longitude: -75.57,
+        accuracyMeters: 12,
+        speedKmh: 0,
+        recordedAt: DateTime.utc(2026, 9, 6),
+      ),
+    );
+
+    expect(unknown.speedKmh, isNull);
+    expect(stopped.speedKmh, 0);
+  });
+
+  test('GPS sample becomes stale and recovers on the next fresh fix', () async {
+    final gateway = _FakeDrivingLocationGateway();
+    final container = ProviderContainer(
+      overrides: [
+        appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+        cameraPackProvider.overrideWith((ref) async => _pack(cameras: [])),
+        drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingFeedbackGatewayProvider.overrideWithValue(
+          _FakeDrivingFeedbackGateway(),
+        ),
+        drivingClockProvider.overrideWithValue(() => _testBaseTime),
+        drivingGpsStaleAfterProvider.overrideWithValue(
+          const Duration(milliseconds: 20),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(drivingControllerProvider.notifier).start();
+    gateway.add(_point(latitude: 6.239, speedKmh: 36, seconds: 0));
+    await _flushController();
+    expect(container.read(drivingControllerProvider).value!.speedKmh, 36);
+
+    await Future<void>.delayed(const Duration(milliseconds: 35));
+    var state = container.read(drivingControllerProvider).value!;
+    expect(state.gpsQuality, GpsQuality.stale);
+    expect(state.speedKmh, isNull);
+
+    gateway.add(_point(latitude: 6.240, speedKmh: 42, seconds: 1));
+    await _flushController();
+    state = container.read(drivingControllerProvider).value!;
+    expect(state.gpsQuality, GpsQuality.good);
+    expect(state.speedKmh, 42);
+  });
+
+  test(
+    'old GPS sample is stale immediately and does not activate cameras',
+    () async {
+      final gateway = _FakeDrivingLocationGateway();
+      final feedback = _FakeDrivingFeedbackGateway();
+      final container = ProviderContainer(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+          drivingClockProvider.overrideWithValue(
+            () => _testBaseTime.add(const Duration(seconds: 20)),
+          ),
+          drivingGpsStaleAfterProvider.overrideWithValue(
+            const Duration(seconds: 3),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(drivingControllerProvider.notifier).start();
+      gateway.add(_point(latitude: 6.241, speedKmh: 70, seconds: 0));
+      await _flushController();
+
+      final state = container.read(drivingControllerProvider).value!;
+      expect(state.gpsQuality, GpsQuality.stale);
+      expect(state.speedKmh, isNull);
+      expect(state.nearestCamera, isNull);
+      expect(state.lastAlert, isNull);
+      expect(feedback.spokenMessages, isEmpty);
+      expect(feedback.soundCalls, 0);
+      expect(feedback.vibrationCalls, 0);
+    },
+  );
+
+  test('coalesces burst GPS work to the newest pending sample', () async {
+    final gateway = _FakeDrivingLocationGateway(sync: true);
+    final observedSeconds = <int>[];
+    final container = ProviderContainer(
+      overrides: [
+        appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+        cameraPackProvider.overrideWith((ref) async => _pack()),
+        drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingFeedbackGatewayProvider.overrideWithValue(
+          _FakeDrivingFeedbackGateway(),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    final subscription = container.listen<AsyncValue<DrivingState>>(
+      drivingControllerProvider,
+      (_, next) {
+        final second = next.asData?.value.currentPoint?.recordedAt.second;
+        if (second != null) observedSeconds.add(second);
+      },
+    );
+    addTearDown(subscription.close);
+
+    await container.read(drivingControllerProvider.notifier).start();
+    gateway.add(_point(latitude: 6.239, speedKmh: 50, seconds: 20));
+    gateway.add(_point(latitude: 6.240, speedKmh: 52, seconds: 21));
+    gateway.add(_point(latitude: 6.241, speedKmh: 54, seconds: 22));
+    await _flushController();
+
+    expect(container.read(drivingControllerProvider).value!.speedKmh, 54);
+    expect(observedSeconds, contains(20));
+    expect(observedSeconds, contains(22));
+    expect(observedSeconds.last, 22);
+    expect(observedSeconds.length, lessThanOrEqualTo(4));
+  });
+
+  test('feedback failure does not stop later GPS speed updates', () async {
+    final gateway = _FakeDrivingLocationGateway();
+    final container = ProviderContainer(
+      overrides: [
+        appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+        cameraPackProvider.overrideWith((ref) async => _pack()),
+        drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingFeedbackGatewayProvider.overrideWithValue(
+          _FailingDrivingFeedbackGateway(),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(drivingControllerProvider.notifier).start();
+    gateway.add(_point(latitude: 6.239, speedKmh: 50, seconds: 0));
+    await _flushController();
+    gateway.add(_point(latitude: 6.241, speedKmh: 58, seconds: 20));
+    await _flushController();
+    gateway.add(_point(latitude: 6.242, speedKmh: 64, seconds: 21));
+    await _flushController();
+
+    final state = container.read(drivingControllerProvider).value!;
+    expect(state.status, DrivingSessionStatus.active);
+    expect(state.speedKmh, 64);
+  });
+
+  test('feedback failure is visible and keeps vibration fallback', () async {
+    final gateway = _FakeDrivingLocationGateway();
+    final feedback = _FailingDrivingFeedbackGateway();
+    final container = ProviderContainer(
+      overrides: [
+        appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+        cameraPackProvider.overrideWith((ref) async => _pack()),
+        drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(drivingControllerProvider.notifier).start();
+    gateway.add(_point(latitude: 6.239, speedKmh: 50, seconds: 0));
+    await _flushController();
+    gateway.add(_point(latitude: 6.241, speedKmh: 70, seconds: 20));
+    await _flushController();
+
+    final state = container.read(drivingControllerProvider).value!;
+    expect(state.status, DrivingSessionStatus.active);
+    expect(state.errorMessage, contains('audio'));
+    expect(feedback.vibrationCalls, 1);
+  });
+
+  test('dispose cancels GPS and emits no later feedback', () async {
+    final gateway = _FakeDrivingLocationGateway();
+    final feedback = _FakeDrivingFeedbackGateway();
+    final container = ProviderContainer(
+      overrides: [
+        appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+        cameraPackProvider.overrideWith((ref) async => _pack()),
+        drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+      ],
+    );
+
+    await container.read(drivingControllerProvider.notifier).start();
+    container.dispose();
+    await _flushController();
+    gateway.add(_point(latitude: 6.241, speedKmh: 70, seconds: 20));
+    await _flushController();
+
+    expect(gateway.cancelled, isTrue);
+    expect(feedback.spokenMessages, isEmpty);
+    expect(feedback.soundCalls, 0);
+  });
 
   test(
     'requests location only when the driver starts a foreground session',
@@ -44,27 +265,9 @@ void main() {
       );
       expect(feedback.keepScreenOnStates, [true]);
 
-      gateway.add(
-        DrivingPoint(
-          latitude: 6.239,
-          longitude: -75.57,
-          accuracyMeters: 14,
-          speedKmh: 42,
-          headingDegrees: 0,
-          recordedAt: DateTime.utc(2026, 8, 31, 12),
-        ),
-      );
+      gateway.add(_point(latitude: 6.239, speedKmh: 42, seconds: 0));
       await Future<void>.delayed(Duration.zero);
-      gateway.add(
-        DrivingPoint(
-          latitude: 6.241,
-          longitude: -75.57,
-          accuracyMeters: 14,
-          speedKmh: 42,
-          headingDegrees: 0,
-          recordedAt: DateTime.utc(2026, 8, 31, 12, 1),
-        ),
-      );
+      gateway.add(_point(latitude: 6.241, speedKmh: 42, seconds: 1));
       await Future<void>.delayed(Duration.zero);
 
       final state = container.read(drivingControllerProvider).value!;
@@ -100,16 +303,7 @@ void main() {
     addTearDown(container.dispose);
 
     await container.read(drivingControllerProvider.notifier).start();
-    gateway.add(
-      DrivingPoint(
-        latitude: 6.2434,
-        longitude: -75.57,
-        accuracyMeters: 14,
-        speedKmh: 42,
-        headingDegrees: 0,
-        recordedAt: DateTime.utc(2026, 8, 31, 12),
-      ),
-    );
+    gateway.add(_point(latitude: 6.2434, speedKmh: 42, seconds: 0));
     await Future<void>.delayed(Duration.zero);
 
     final state = container.read(drivingControllerProvider).value!;
@@ -136,19 +330,11 @@ void main() {
       await container.read(drivingControllerProvider.notifier).start();
       for (final latitude in [6.241, 6.242]) {
         gateway.add(
-          DrivingPoint(
+          _point(
             latitude: latitude,
-            longitude: -75.57,
-            accuracyMeters: 90,
             speedKmh: 42,
-            headingDegrees: 0,
-            recordedAt: DateTime.utc(
-              2026,
-              8,
-              31,
-              12,
-              latitude == 6.241 ? 0 : 1,
-            ),
+            seconds: latitude == 6.241 ? 0 : 1,
+            accuracy: 90,
           ),
         );
         await Future<void>.delayed(Duration.zero);
@@ -454,6 +640,44 @@ void main() {
   );
 
   test(
+    'dismiss cancels an in-flight camera feedback before sound and vibration',
+    () async {
+      final gateway = _FakeDrivingLocationGateway();
+      final feedback = _ControllableDrivingFeedbackGateway();
+      final container = ProviderContainer(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(drivingControllerProvider.notifier).start();
+      gateway.add(_point(latitude: 6.239, speedKmh: 50, seconds: 0));
+      await _flushController();
+      feedback.blockNextSpeak();
+      gateway.add(_point(latitude: 6.241, speedKmh: 70, seconds: 20));
+      await feedback.waitForBlockedSpeak();
+
+      await container
+          .read(drivingControllerProvider.notifier)
+          .dismissCurrentCameraAlert();
+      feedback.releaseBlockedSpeak();
+      await _flushController();
+
+      expect(
+        container.read(drivingControllerProvider).value!.showCameraAlertPanel,
+        isFalse,
+      );
+      expect(feedback.soundCalls, 0);
+      expect(feedback.vibrationCalls, 0);
+      expect(feedback.stopOngoingFeedbackCalls, greaterThanOrEqualTo(1));
+    },
+  );
+
+  test(
     'turning away closes the active camera target and alert panel',
     () async {
       final gateway = _FakeDrivingLocationGateway();
@@ -562,7 +786,7 @@ void main() {
   );
 
   test(
-    'processes stream points in order while feedback futures are pending',
+    'publishes fresh speed while feedback is pending and keeps latest sample',
     () async {
       final gateway = _FakeDrivingLocationGateway();
       final feedback = _ControllableDrivingFeedbackGateway();
@@ -583,15 +807,23 @@ void main() {
       feedback.blockNextSpeak();
       gateway.add(_point(latitude: 6.241, speedKmh: 70, seconds: 20));
       await feedback.waitForBlockedSpeak();
+
+      var latest = container.read(drivingControllerProvider).value!;
+      expect(latest.currentPoint!.recordedAt.second, 20);
+      expect(latest.speedKmh, 70);
+
       gateway.add(_point(latitude: 6.242, speedKmh: 72, seconds: 21));
       gateway.add(_point(latitude: 6.243, speedKmh: 74, seconds: 22));
       await _flushController();
 
-      expect(container.read(drivingControllerProvider).value!.speedKmh, 50);
+      latest = container.read(drivingControllerProvider).value!;
+      expect(latest.currentPoint!.recordedAt.second, 22);
+      expect(latest.speedKmh, 74);
+
       feedback.releaseBlockedSpeak();
       await _flushController();
 
-      final latest = container.read(drivingControllerProvider).value!;
+      latest = container.read(drivingControllerProvider).value!;
       expect(latest.currentPoint!.recordedAt.second, 22);
       expect(latest.speedKmh, 74);
       expect(feedback.spokenMessages, hasLength(1));
@@ -946,28 +1178,87 @@ void main() {
     expect(feedback.vibrationCalls, 1);
   });
 
-  test('platform gateway emits stopDrivingFeedback', () async {
-    final calls = <String>[];
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-          const MethodChannel('co.picoradar.app/driving'),
-          (call) async {
-            calls.add(call.method);
-            return null;
-          },
-        );
-    addTearDown(() {
+  test(
+    'platform gateway sends one coordinated alert with audio settings',
+    () async {
+      final calls = <MethodCall>[];
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
             const MethodChannel('co.picoradar.app/driving'),
-            null,
+            (call) async {
+              calls.add(call);
+              return null;
+            },
           );
-    });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('co.picoradar.app/driving'),
+              null,
+            );
+      });
 
-    await const PlatformDrivingFeedbackGateway().stopOngoingFeedback();
+      await const PlatformDrivingFeedbackGateway().playAlert(
+        message: 'Prueba de voz',
+        playSound: true,
+        output: DrivingAlertOutput.phoneSpeaker,
+        musicBehavior: DrivingMusicBehavior.pause,
+        volume: 0.35,
+      );
 
-    expect(calls, ['stopDrivingFeedback']);
-  });
+      expect(calls.single.method, 'playDrivingAlert');
+      expect(calls.single.arguments, {
+        'message': 'Prueba de voz',
+        'playSound': true,
+        'output': 'phoneSpeaker',
+        'musicBehavior': 'pause',
+        'volume': 0.35,
+      });
+    },
+  );
+
+  test(
+    'platform gateway keeps tone-only and voice-only alerts distinct',
+    () async {
+      final calls = <MethodCall>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('co.picoradar.app/driving'),
+            (call) async {
+              calls.add(call);
+              return null;
+            },
+          );
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('co.picoradar.app/driving'),
+              null,
+            );
+      });
+      const gateway = PlatformDrivingFeedbackGateway();
+
+      await gateway.playAlert(
+        playSound: true,
+        output: DrivingAlertOutput.automatic,
+        musicBehavior: DrivingMusicBehavior.duck,
+        volume: 0,
+      );
+      await gateway.playAlert(
+        message: 'Solo voz',
+        playSound: false,
+        output: DrivingAlertOutput.automatic,
+        musicBehavior: DrivingMusicBehavior.duck,
+        volume: 1,
+      );
+
+      expect(calls[0].arguments, containsPair('playSound', true));
+      expect(calls[0].arguments, containsPair('message', null));
+      expect(calls[0].arguments, containsPair('volume', 0.0));
+      expect(calls[1].arguments, containsPair('playSound', false));
+      expect(calls[1].arguments, containsPair('message', 'Solo voz'));
+    },
+  );
 }
 
 CameraPack _pack({int? speedLimitKmh = 60, List<TrafficCamera>? cameras}) {
@@ -1017,7 +1308,7 @@ DrivingPoint _point({
     accuracyMeters: accuracy,
     speedKmh: speedKmh,
     headingDegrees: heading,
-    recordedAt: DateTime.utc(2026, 8, 31, 12, 0, seconds),
+    recordedAt: _testBaseTime.add(Duration(seconds: seconds)),
   );
 }
 
@@ -1029,18 +1320,20 @@ class _FakeDrivingFeedbackGateway implements DrivingFeedbackGateway {
   var vibrationCalls = 0;
 
   @override
-  Future<void> playSound() async {
-    soundCalls += 1;
+  Future<void> playAlert({
+    String? message,
+    required bool playSound,
+    required DrivingAlertOutput output,
+    required DrivingMusicBehavior musicBehavior,
+    required double volume,
+  }) async {
+    if (message != null) spokenMessages.add(message);
+    if (playSound) soundCalls += 1;
   }
 
   @override
   Future<void> setKeepScreenOn(bool enabled) async {
     keepScreenOnStates.add(enabled);
-  }
-
-  @override
-  Future<void> speak(String message) async {
-    spokenMessages.add(message);
   }
 
   @override
@@ -1059,6 +1352,7 @@ class _ControllableDrivingFeedbackGateway extends _FakeDrivingFeedbackGateway {
   Completer<void>? _speakStarted;
   Completer<void>? _blockedKeepScreenOnEnable;
   Completer<void>? _keepScreenOnEnableStarted;
+  var _feedbackCancelled = false;
 
   void blockNextSpeak() {
     _blockedSpeak = Completer<void>();
@@ -1103,19 +1397,49 @@ class _ControllableDrivingFeedbackGateway extends _FakeDrivingFeedbackGateway {
   }
 
   @override
-  Future<void> speak(String message) async {
-    spokenMessages.add(message);
+  Future<void> playAlert({
+    String? message,
+    required bool playSound,
+    required DrivingAlertOutput output,
+    required DrivingMusicBehavior musicBehavior,
+    required double volume,
+  }) async {
+    if (message != null) spokenMessages.add(message);
+    _feedbackCancelled = false;
     _speakStarted?.complete();
     final blockedSpeak = _blockedSpeak;
     if (blockedSpeak != null) {
       await blockedSpeak.future;
       _blockedSpeak = null;
     }
+    if (!_feedbackCancelled && playSound) soundCalls += 1;
+  }
+
+  @override
+  Future<void> stopOngoingFeedback() async {
+    _feedbackCancelled = true;
+    await super.stopOngoingFeedback();
+  }
+}
+
+class _FailingDrivingFeedbackGateway extends _FakeDrivingFeedbackGateway {
+  @override
+  Future<void> playAlert({
+    String? message,
+    required bool playSound,
+    required DrivingAlertOutput output,
+    required DrivingMusicBehavior musicBehavior,
+    required double volume,
+  }) async {
+    throw PlatformException(code: 'audio_failed');
   }
 }
 
 class _FakeDrivingLocationGateway implements DrivingLocationGateway {
-  final _controller = StreamController<DrivingPoint>();
+  _FakeDrivingLocationGateway({bool sync = false})
+    : _controller = StreamController<DrivingPoint>(sync: sync);
+
+  final StreamController<DrivingPoint> _controller;
   var requestPermissionCalls = 0;
   var cancelled = false;
   var listenCalls = 0;

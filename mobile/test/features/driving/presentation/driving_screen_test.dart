@@ -22,7 +22,17 @@ import 'package:picoradar/features/vehicle_status/platform/external_launcher.dar
 
 import '../../../test_app_harness.dart';
 
+final _testBaseTime = _roundedFutureTestBaseTime();
+
 void main() {
+  test('default driving map config does not activate external tiles', () {
+    final config = DrivingMapConfig.fromEnvironment();
+
+    expect(config.tileUrlTemplate, isEmpty);
+    expect(config.forceOfflineFallback, isFalse);
+    expect(config.attributionLabel, 'Mapa no configurado');
+  });
+
   test('live GPS stream error publishes location-unavailable state', () async {
     final stages = <String>[];
     final gateway = _ControlledErrorGateway(stages);
@@ -288,6 +298,21 @@ void main() {
       expect(find.byKey(const ValueKey('custom-alert-50')), findsOneWidget);
       expect(find.text('250 m'), findsNothing);
       expect(find.textContaining('Datos ANSV'), findsOneWidget);
+      await tester.ensureVisible(find.text('Salida de las alertas'));
+      await tester.pumpAndSettle();
+      expect(find.text('Salida de las alertas'), findsOneWidget);
+      expect(find.text('Automática'), findsOneWidget);
+      expect(find.text('Altavoz del teléfono'), findsOneWidget);
+      expect(find.text('Música durante el aviso'), findsOneWidget);
+      expect(find.text('Bajar temporalmente'), findsOneWidget);
+      expect(find.text('Solicitar pausa temporal'), findsOneWidget);
+      expect(find.text('Volumen de la alerta'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('driving-alert-volume')),
+        findsOneWidget,
+      );
+      expect(find.text('Probar voz'), findsOneWidget);
+      expect(find.text('Probar sonido'), findsOneWidget);
     },
   );
 
@@ -324,6 +349,37 @@ void main() {
     final loaded = await loadDrivingPreferences(preferences);
     expect(loaded.cameraVisualizationMode, CameraVisualizationMode.radar);
     expect(loaded.cameraTargetingConeDegrees, 180);
+  });
+
+  testWidgets('voice and sound tests use the configured real alert path', (
+    tester,
+  ) async {
+    final feedback = _RecordingDrivingFeedbackGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _emptyPack()),
+          drivingLocationGatewayProvider.overrideWithValue(_IdleGateway()),
+          drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Alertas'));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Probar voz'));
+    await tester.tap(find.text('Probar voz'));
+    await tester.pump();
+    await tester.tap(find.text('Probar sonido'));
+    await tester.pump();
+
+    expect(feedback.alerts, [
+      (message: 'Prueba de voz de PicoRadar.', playSound: false),
+      (message: null, playSound: true),
+    ]);
   });
 
   testWidgets('normal HUD is not mirrored', (tester) async {
@@ -916,6 +972,9 @@ void main() {
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
+          drivingGpsStaleAfterProvider.overrideWithValue(
+            const Duration(minutes: 1),
+          ),
           drivingMapConfigProvider.overrideWithValue(
             _testMapConfig(tileProvider: _NeverTileProvider()),
           ),
@@ -1042,6 +1101,9 @@ void main() {
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
+          drivingGpsStaleAfterProvider.overrideWithValue(
+            const Duration(minutes: 1),
+          ),
           drivingMapConfigProvider.overrideWithValue(
             _testMapConfig(tileProvider: _NeverTileProvider()),
           ),
@@ -1124,6 +1186,45 @@ void main() {
       findsNothing,
     );
     expect(find.byType(TileLayer), findsNothing);
+  });
+
+  testWidgets('active top bar fits Mi A3 width without overflow', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 2;
+    tester.view.physicalSize = const ui.Size(720, 1560);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final gateway = _StreamingGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 50));
+    await tester.pump();
+    gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 54));
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('driving-connection-chip')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('hud-mirror-action')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(
@@ -1543,19 +1644,37 @@ void main() {
 
 class _NoopDrivingFeedbackGateway implements DrivingFeedbackGateway {
   @override
-  Future<void> playSound() async {}
+  Future<void> playAlert({
+    String? message,
+    required bool playSound,
+    required DrivingAlertOutput output,
+    required DrivingMusicBehavior musicBehavior,
+    required double volume,
+  }) async {}
 
   @override
   Future<void> setKeepScreenOn(bool enabled) async {}
-
-  @override
-  Future<void> speak(String message) async {}
 
   @override
   Future<void> stopOngoingFeedback() async {}
 
   @override
   Future<void> vibrate() async {}
+}
+
+class _RecordingDrivingFeedbackGateway extends _NoopDrivingFeedbackGateway {
+  final alerts = <({String? message, bool playSound})>[];
+
+  @override
+  Future<void> playAlert({
+    String? message,
+    required bool playSound,
+    required DrivingAlertOutput output,
+    required DrivingMusicBehavior musicBehavior,
+    required double volume,
+  }) async {
+    alerts.add((message: message, playSound: playSound));
+  }
 }
 
 class _FakeExternalLauncher implements ExternalLauncher {
@@ -1736,6 +1855,11 @@ TrafficCamera _camera({
   );
 }
 
+DateTime _roundedFutureTestBaseTime() {
+  final now = DateTime.now().toUtc().add(const Duration(minutes: 5));
+  return DateTime.utc(now.year, now.month, now.day, now.hour, now.minute);
+}
+
 double _northDegrees(double distanceMeters, double bearingDegrees) {
   return math.cos(bearingDegrees * math.pi / 180) * distanceMeters / 111320.0;
 }
@@ -1762,7 +1886,7 @@ DrivingPoint _point({
     accuracyMeters: 12,
     speedKmh: speedKmh,
     headingDegrees: 0,
-    recordedAt: DateTime.utc(2026, 8, 31, 12, 0, seconds),
+    recordedAt: _testBaseTime.add(Duration(seconds: seconds)),
   );
 }
 

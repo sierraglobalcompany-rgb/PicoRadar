@@ -31,7 +31,14 @@ enum DrivingSimulationScenario {
   gpsWeak,
 }
 
-enum DrivingSpeedState { noCamera, unknownReportedSpeed, within, near, over }
+enum DrivingSpeedState {
+  noCamera,
+  unknownVehicleSpeed,
+  unknownReportedSpeed,
+  within,
+  near,
+  over,
+}
 
 class OverspeedPulseGate {
   DrivingSpeedState? _previous;
@@ -55,6 +62,14 @@ final drivingLocationGatewayProvider = Provider<DrivingLocationGateway>((ref) {
 
 final drivingFeedbackGatewayProvider = Provider<DrivingFeedbackGateway>((ref) {
   return const PlatformDrivingFeedbackGateway();
+});
+
+final drivingGpsStaleAfterProvider = Provider<Duration>((ref) {
+  return const Duration(seconds: 3);
+});
+
+final drivingClockProvider = Provider<DateTime Function()>((ref) {
+  return () => DateTime.now().toUtc();
 });
 
 final drivingHudActiveProvider =
@@ -94,6 +109,7 @@ enum DrivingSessionStatus {
 
 enum GpsQuality {
   waiting('Buscando GPS'),
+  stale('GPS sin actualizar'),
   good('GPS bueno'),
   fair('GPS medio'),
   weak('GPS débil');
@@ -116,6 +132,7 @@ class DrivingState {
     this.lastAlert,
     this.dismissedCameraId,
     this.errorMessage,
+    this.gpsStale = false,
   });
 
   final DrivingSessionStatus status;
@@ -129,10 +146,11 @@ class DrivingState {
   final DrivingAlert? lastAlert;
   final String? dismissedCameraId;
   final String? errorMessage;
+  final bool gpsStale;
 
   bool get isActive => status == DrivingSessionStatus.active;
 
-  int get speedKmh => (currentPoint?.speedKmh ?? 0).round();
+  int? get speedKmh => gpsStale ? null : currentPoint?.speedKmh?.round();
 
   int get cameraSpeedUnknownCount => cameraCount - cameraSpeedKnownCount;
 
@@ -151,7 +169,7 @@ class DrivingState {
     if (reported == null) {
       return 0;
     }
-    return speedKmh - reported;
+    return (speedKmh ?? reported) - reported;
   }
 
   DrivingSpeedState get speedState {
@@ -159,15 +177,19 @@ class DrivingState {
     if (!isActive || camera == null) {
       return DrivingSpeedState.noCamera;
     }
+    final currentSpeed = speedKmh;
+    if (currentSpeed == null) {
+      return DrivingSpeedState.unknownVehicleSpeed;
+    }
     final reported = camera.speedLimitKmh;
     if (reported == null) {
       return DrivingSpeedState.unknownReportedSpeed;
     }
     // UI hysteresis only: avoids color jitter. This is not a legal tolerance.
-    if (speedKmh > reported + drivingOverspeedVisualMarginKmh) {
+    if (currentSpeed > reported + drivingOverspeedVisualMarginKmh) {
       return DrivingSpeedState.over;
     }
-    if (speedKmh >= reported - 5) {
+    if (currentSpeed >= reported - 5) {
       return DrivingSpeedState.near;
     }
     return DrivingSpeedState.within;
@@ -182,11 +204,17 @@ class DrivingState {
       hasTargetCamera && dismissedCameraId != nearestCamera!.camera.id;
 
   bool get canEvaluateAlerts {
+    if (gpsStale) {
+      return false;
+    }
     final accuracy = currentPoint?.accuracyMeters;
     return accuracy != null && accuracy <= 60;
   }
 
   GpsQuality get gpsQuality {
+    if (gpsStale) {
+      return GpsQuality.stale;
+    }
     final accuracy = currentPoint?.accuracyMeters;
     if (accuracy == null) {
       return GpsQuality.waiting;
@@ -216,6 +244,7 @@ class DrivingState {
     bool clearLastAlert = false,
     bool clearDismissedCamera = false,
     bool clearErrorMessage = false,
+    bool? gpsStale,
   }) {
     return DrivingState(
       status: status ?? this.status,
@@ -238,6 +267,7 @@ class DrivingState {
       errorMessage: clearErrorMessage
           ? null
           : errorMessage ?? this.errorMessage,
+      gpsStale: gpsStale ?? this.gpsStale,
     );
   }
 }
@@ -250,14 +280,26 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   String? _activeCameraId;
   var _cameraEpisodeSerial = 0;
   var _sessionSerial = 0;
-  Future<void> _pointProcessing = Future<void>.value();
+  var _processingPoint = false;
+  DrivingPoint? _pendingPoint;
+  var _feedbackActive = false;
+  ({
+    DrivingPreferences preferences,
+    DrivingAlert alert,
+    int sessionSerial,
+    String? episodeKey,
+  })?
+  _pendingFeedback;
+  Timer? _gpsStaleTimer;
 
   @override
   Future<DrivingState> build() async {
     final cleanupFeedback = ref.read(drivingFeedbackGatewayProvider);
     ref.onDispose(() {
       _sessionSerial += 1;
-      _pointProcessing = Future<void>.value();
+      _pendingPoint = null;
+      _pendingFeedback = null;
+      _gpsStaleTimer?.cancel();
       unawaited(_cancelSubscription());
       unawaited(_stopNativeSessionCleanup(cleanupFeedback));
     });
@@ -299,11 +341,14 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     }
     _sessionSerial += 1;
     final sessionSerial = _sessionSerial;
-    _pointProcessing = Future<void>.value();
+    _pendingPoint = null;
+    _pendingFeedback = null;
+    _gpsStaleTimer?.cancel();
     state = AsyncData(
       current.copyWith(
         status: DrivingSessionStatus.starting,
         clearErrorMessage: true,
+        gpsStale: false,
       ),
     );
     final pack = await ref.read(cameraPackProvider.future);
@@ -409,7 +454,9 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   Future<void> stop() async {
     final current = state.asData?.value ?? await build();
     _sessionSerial += 1;
-    _pointProcessing = Future<void>.value();
+    _pendingPoint = null;
+    _pendingFeedback = null;
+    _gpsStaleTimer?.cancel();
     await _cancelSubscription();
     await _stopNativeSessionCleanup();
     state = AsyncData(
@@ -429,7 +476,13 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     if (cameraId == null) {
       return;
     }
+    _pendingFeedback = null;
     state = AsyncData(current.copyWith(dismissedCameraId: cameraId));
+    try {
+      await ref.read(drivingFeedbackGatewayProvider).stopOngoingFeedback();
+    } catch (_) {
+      // Alert dismissal is best-effort and must not break the session.
+    }
   }
 
   Future<void> savePreferences(DrivingPreferences preferences) async {
@@ -442,25 +495,49 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   }
 
   void _enqueuePoint(DrivingPoint point, int sessionSerial) {
-    _pointProcessing = _pointProcessing
-        .catchError((_) {})
-        .then((_) => _onPoint(point, sessionSerial))
-        .catchError((_) {
-          if (!_isActiveSession(sessionSerial)) {
-            return;
-          }
-          final latest = state.asData?.value;
-          if (latest == null) {
-            return;
-          }
-          unawaited(
-            _setStopped(
-              latest,
-              DrivingSessionStatus.locationUnavailable,
-              'No se pudo leer la ubicación en tiempo real.',
-            ),
+    if (_processingPoint) {
+      final pending = _pendingPoint;
+      if (pending == null || point.recordedAt.isAfter(pending.recordedAt)) {
+        _pendingPoint = point;
+      }
+      return;
+    }
+    _processingPoint = true;
+    unawaited(_drainPoints(point, sessionSerial));
+  }
+
+  Future<void> _drainPoints(DrivingPoint first, int sessionSerial) async {
+    var point = first;
+    try {
+      while (_isActiveSession(sessionSerial)) {
+        await _onPoint(point, sessionSerial);
+        await Future<void>.value();
+        final pending = _pendingPoint;
+        _pendingPoint = null;
+        if (pending == null) {
+          break;
+        }
+        point = pending;
+      }
+    } catch (_) {
+      if (_isActiveSession(sessionSerial)) {
+        final latest = state.asData?.value;
+        if (latest != null) {
+          await _setStopped(
+            latest,
+            DrivingSessionStatus.locationUnavailable,
+            'No se pudo leer la ubicación en tiempo real.',
           );
-        });
+        }
+      }
+    } finally {
+      _processingPoint = false;
+      final pending = _pendingPoint;
+      _pendingPoint = null;
+      if (pending != null && _isActiveSession(sessionSerial)) {
+        _enqueuePoint(pending, sessionSerial);
+      }
+    }
   }
 
   Future<void> _onPoint(DrivingPoint point, int sessionSerial) async {
@@ -481,8 +558,27 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       return;
     }
     final alertEngine = _alertEngine ??= _alertEngineFor(current.preferences);
+    if (_isGpsSampleStale(point)) {
+      _previousPoint = null;
+      _pendingFeedback = null;
+      _gpsStaleTimer?.cancel();
+      alertEngine.markNoMatch(point.recordedAt);
+      state = AsyncData(
+        current.copyWith(
+          status: DrivingSessionStatus.active,
+          currentPoint: point,
+          clearNearestCamera: true,
+          clearLastAlert: true,
+          clearDismissedCamera: true,
+          clearErrorMessage: true,
+          gpsStale: true,
+        ),
+      );
+      return;
+    }
     if (point.accuracyMeters > 60) {
       _previousPoint = null;
+      _pendingFeedback = null;
       alertEngine.markNoMatch(point.recordedAt);
       final keepLastAlert =
           current.lastAlert != null &&
@@ -499,8 +595,10 @@ class DrivingController extends AsyncNotifier<DrivingState> {
           clearLastAlert: !keepLastAlert,
           clearDismissedCamera: !keepDismissal,
           clearErrorMessage: true,
+          gpsStale: false,
         ),
       );
+      _armGpsStaleTimer(point, sessionSerial);
       return;
     }
 
@@ -516,8 +614,10 @@ class DrivingController extends AsyncNotifier<DrivingState> {
           clearLastAlert: current.lastAlert == null,
           clearDismissedCamera: !keepDismissal,
           clearErrorMessage: true,
+          gpsStale: false,
         ),
       );
+      _armGpsStaleTimer(point, sessionSerial);
       return;
     }
 
@@ -535,7 +635,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         : _episodeKeyFor(match.camera.id, sameActiveEpisode);
     final alert = alertEngine.evaluate(
       match: match,
-      speedKmh: point.speedKmh,
+      speedKmh: point.speedKmh ?? 0,
       now: point.recordedAt,
     );
     _previousPoint = point;
@@ -544,12 +644,6 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         current.dismissedCameraId == match.camera.id &&
         sameActiveEpisode;
     final visibleAlert = dismissedCurrentEpisode ? null : alert;
-    if (visibleAlert != null) {
-      await _notify(current.preferences, visibleAlert, sessionSerial);
-      if (!_isActiveSession(sessionSerial)) {
-        return;
-      }
-    }
     final keepLastAlert =
         current.lastAlert != null &&
         alertEngine.hasActiveEpisode(
@@ -572,22 +666,175 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       clearLastAlert: visibleAlert == null && !keepLastAlert,
       clearDismissedCamera: clearDismissedCamera,
       clearErrorMessage: true,
+      gpsStale: false,
     );
-    if (nextState.isOverspeeding &&
-        !_wasOverspeeding &&
-        current.preferences.vibrationEnabled &&
-        visibleAlert == null &&
-        !dismissedCurrentEpisode) {
-      if (!_isActiveSession(sessionSerial)) {
-        return;
-      }
-      await ref.read(drivingFeedbackGatewayProvider).vibrate();
-      if (!_isActiveSession(sessionSerial)) {
-        return;
-      }
-    }
+    final wasOverspeeding = _wasOverspeeding;
     _wasOverspeeding = nextState.isOverspeeding;
     state = AsyncData(nextState);
+    _armGpsStaleTimer(point, sessionSerial);
+    if (visibleAlert != null) {
+      _enqueueFeedback(
+        current.preferences,
+        visibleAlert,
+        sessionSerial,
+        episodeKey,
+      );
+    } else if (nextState.isOverspeeding &&
+        !wasOverspeeding &&
+        current.preferences.vibrationEnabled &&
+        !dismissedCurrentEpisode) {
+      unawaited(ref.read(drivingFeedbackGatewayProvider).vibrate());
+    }
+  }
+
+  void _armGpsStaleTimer(DrivingPoint point, int sessionSerial) {
+    _gpsStaleTimer?.cancel();
+    final remaining = _gpsStaleRemaining(point);
+    if (remaining <= Duration.zero) {
+      _markCurrentPointStale(point, sessionSerial);
+      return;
+    }
+    _gpsStaleTimer = Timer(remaining, () {
+      _markCurrentPointStale(point, sessionSerial);
+    });
+  }
+
+  void _markCurrentPointStale(DrivingPoint point, int sessionSerial) {
+    if (!_isActiveSession(sessionSerial)) {
+      return;
+    }
+    final current = state.asData?.value;
+    if (current == null || current.currentPoint != point) {
+      return;
+    }
+    _previousPoint = null;
+    _pendingFeedback = null;
+    state = AsyncData(
+      current.copyWith(
+        gpsStale: true,
+        clearNearestCamera: true,
+        clearLastAlert: true,
+        clearDismissedCamera: true,
+      ),
+    );
+  }
+
+  Duration _gpsStaleRemaining(DrivingPoint point) {
+    final staleAfter = ref.read(drivingGpsStaleAfterProvider);
+    final age = ref
+        .read(drivingClockProvider)()
+        .difference(point.recordedAt.toUtc());
+    return staleAfter - age;
+  }
+
+  bool _isGpsSampleStale(DrivingPoint point) {
+    return _gpsStaleRemaining(point) <= Duration.zero;
+  }
+
+  void _enqueueFeedback(
+    DrivingPreferences preferences,
+    DrivingAlert alert,
+    int sessionSerial,
+    String? episodeKey,
+  ) {
+    if (_feedbackActive) {
+      _pendingFeedback = (
+        preferences: preferences,
+        alert: alert,
+        sessionSerial: sessionSerial,
+        episodeKey: episodeKey,
+      );
+      return;
+    }
+    _feedbackActive = true;
+    unawaited(_drainFeedback(preferences, alert, sessionSerial, episodeKey));
+  }
+
+  Future<void> _drainFeedback(
+    DrivingPreferences preferences,
+    DrivingAlert alert,
+    int sessionSerial,
+    String? episodeKey,
+  ) async {
+    var next = (
+      preferences: preferences,
+      alert: alert,
+      sessionSerial: sessionSerial,
+      episodeKey: episodeKey,
+    );
+    try {
+      while (_isActiveSession(next.sessionSerial)) {
+        if (_isCurrentFeedbackTarget(
+          next.alert,
+          next.sessionSerial,
+          next.episodeKey,
+        )) {
+          try {
+            final currentPreferences =
+                state.asData?.value.preferences ?? next.preferences;
+            await _notify(
+              currentPreferences,
+              next.alert,
+              next.sessionSerial,
+              next.episodeKey,
+            );
+          } catch (_) {
+            _showFeedbackError(next.sessionSerial);
+          }
+        }
+        final pending = _pendingFeedback;
+        _pendingFeedback = null;
+        if (pending == null) {
+          break;
+        }
+        next = pending;
+      }
+    } finally {
+      _feedbackActive = false;
+      final pending = _pendingFeedback;
+      _pendingFeedback = null;
+      if (pending != null && _isActiveSession(pending.sessionSerial)) {
+        _enqueueFeedback(
+          pending.preferences,
+          pending.alert,
+          pending.sessionSerial,
+          pending.episodeKey,
+        );
+      }
+    }
+  }
+
+  bool _isCurrentFeedbackTarget(
+    DrivingAlert alert,
+    int sessionSerial,
+    String? episodeKey,
+  ) {
+    if (!_isActiveSession(sessionSerial)) {
+      return false;
+    }
+    final current = state.asData?.value;
+    if (current == null || current.gpsStale) {
+      return false;
+    }
+    if (current.dismissedCameraId == alert.cameraId) {
+      return false;
+    }
+    if (current.nearestCamera?.camera.id != alert.cameraId) {
+      return false;
+    }
+    return episodeKey == null || current.cameraEpisodeKey == episodeKey;
+  }
+
+  void _showFeedbackError(int sessionSerial) {
+    if (!_isActiveSession(sessionSerial)) {
+      return;
+    }
+    const message = 'No se pudo reproducir el audio de alerta.';
+    final current = state.asData?.value;
+    if (current == null || current.errorMessage == message) {
+      return;
+    }
+    state = AsyncData(current.copyWith(errorMessage: message));
   }
 
   bool _isActiveSession(int sessionSerial) {
@@ -620,32 +867,34 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     DrivingPreferences preferences,
     DrivingAlert alert,
     int sessionSerial,
+    String? episodeKey,
   ) async {
     final feedback = ref.read(drivingFeedbackGatewayProvider);
-    if (preferences.voiceEnabled) {
+    if (preferences.voiceEnabled || preferences.soundEnabled) {
       if (!_isActiveSession(sessionSerial)) {
         return;
       }
-      await feedback.speak(_voiceMessage(alert));
-      if (!_isActiveSession(sessionSerial)) {
-        return;
+      try {
+        await feedback.playAlert(
+          message: preferences.voiceEnabled ? _voiceMessage(alert) : null,
+          playSound: preferences.soundEnabled,
+          output: preferences.alertOutput,
+          musicBehavior: preferences.musicBehavior,
+          volume: preferences.alertVolume,
+        );
+      } catch (_) {
+        _showFeedbackError(sessionSerial);
       }
-    }
-    if (preferences.soundEnabled) {
-      if (!_isActiveSession(sessionSerial)) {
-        return;
-      }
-      await feedback.playSound();
       if (!_isActiveSession(sessionSerial)) {
         return;
       }
     }
     if (preferences.vibrationEnabled) {
-      if (!_isActiveSession(sessionSerial)) {
+      if (!_isCurrentFeedbackTarget(alert, sessionSerial, episodeKey)) {
         return;
       }
       await feedback.vibrate();
-      if (!_isActiveSession(sessionSerial)) {
+      if (!_isCurrentFeedbackTarget(alert, sessionSerial, episodeKey)) {
         return;
       }
     }
@@ -657,7 +906,9 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     String message,
   ) async {
     _sessionSerial += 1;
-    _pointProcessing = Future<void>.value();
+    _pendingPoint = null;
+    _pendingFeedback = null;
+    _gpsStaleTimer?.cancel();
     await _cancelSubscription();
     await _stopNativeSessionCleanup();
     state = AsyncData(
@@ -713,6 +964,8 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     _previousPoint = null;
     _alertEngine = null;
     _activeCameraId = null;
+    _gpsStaleTimer?.cancel();
+    _gpsStaleTimer = null;
   }
 
   bool _shouldResetAlertEngine(

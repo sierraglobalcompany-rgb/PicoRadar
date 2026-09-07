@@ -73,3 +73,9 @@ jobs:
 
       - name: Build dev debug APK
         run: flutter build apk --debug --flavor dev
+
+      - name: Native Android audio regression tests
+        working-directory: mobile/android
+        run: |
+          test -f gradlew
+          bash ./gradlew :app:testDevDebugUnitTest --rerun-tasks --no-build-cache --console=plain
