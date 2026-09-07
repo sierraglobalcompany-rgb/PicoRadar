@@ -9,6 +9,9 @@ const _customThresholdsKey = 'driving.alert.customThresholds';
 const _hudMirrorKey = 'driving.hud.mirror';
 const _targetingConeKey = 'driving.alert.targetingConeDegrees';
 const _cameraVisualizationModeKey = 'driving.camera.visualizationMode';
+const _alertOutputKey = 'driving.alert.output';
+const _musicBehaviorKey = 'driving.alert.musicBehavior';
+const _alertVolumePercentKey = 'driving.alert.volumePercent';
 
 const allowedCameraTargetingConeDegrees = [45, 90, 180, 360];
 
@@ -23,6 +26,10 @@ enum CameraVisualizationMode {
   final String description;
 }
 
+enum DrivingAlertOutput { automatic, phoneSpeaker }
+
+enum DrivingMusicBehavior { duck, pause }
+
 class DrivingPreferences {
   const DrivingPreferences({
     required this.profile,
@@ -33,6 +40,9 @@ class DrivingPreferences {
     required this.hudMirrorEnabled,
     required this.cameraTargetingConeDegrees,
     required this.cameraVisualizationMode,
+    required this.alertOutput,
+    required this.musicBehavior,
+    required this.alertVolume,
   });
 
   final DrivingAlertProfile profile;
@@ -43,6 +53,9 @@ class DrivingPreferences {
   final bool hudMirrorEnabled;
   final int cameraTargetingConeDegrees;
   final CameraVisualizationMode cameraVisualizationMode;
+  final DrivingAlertOutput alertOutput;
+  final DrivingMusicBehavior musicBehavior;
+  final double alertVolume;
 
   List<int> get activeThresholdsMeters {
     return profile == DrivingAlertProfile.custom
@@ -59,6 +72,9 @@ class DrivingPreferences {
     bool? hudMirrorEnabled,
     int? cameraTargetingConeDegrees,
     CameraVisualizationMode? cameraVisualizationMode,
+    DrivingAlertOutput? alertOutput,
+    DrivingMusicBehavior? musicBehavior,
+    double? alertVolume,
   }) {
     return DrivingPreferences(
       profile: profile ?? this.profile,
@@ -72,6 +88,9 @@ class DrivingPreferences {
           cameraTargetingConeDegrees ?? this.cameraTargetingConeDegrees,
       cameraVisualizationMode:
           cameraVisualizationMode ?? this.cameraVisualizationMode,
+      alertOutput: alertOutput ?? this.alertOutput,
+      musicBehavior: musicBehavior ?? this.musicBehavior,
+      alertVolume: (alertVolume ?? this.alertVolume).clamp(0, 1).toDouble(),
     );
   }
 }
@@ -85,6 +104,9 @@ const defaultDrivingPreferences = DrivingPreferences(
   hudMirrorEnabled: false,
   cameraTargetingConeDegrees: 90,
   cameraVisualizationMode: CameraVisualizationMode.auto,
+  alertOutput: DrivingAlertOutput.automatic,
+  musicBehavior: DrivingMusicBehavior.duck,
+  alertVolume: 0.8,
 );
 
 Future<DrivingPreferences> loadDrivingPreferences(
@@ -110,6 +132,15 @@ Future<DrivingPreferences> loadDrivingPreferences(
     cameraVisualizationMode: _parseCameraVisualizationMode(
       await preferences.getString(_cameraVisualizationModeKey),
     ),
+    alertOutput: _parseAlertOutput(
+      await preferences.getString(_alertOutputKey),
+    ),
+    musicBehavior: _parseMusicBehavior(
+      await preferences.getString(_musicBehaviorKey),
+    ),
+    alertVolume: _parseAlertVolume(
+      await preferences.getInt(_alertVolumePercentKey),
+    ),
   );
 }
 
@@ -127,10 +158,37 @@ Future<void> saveDrivingPreferences(
     _cameraVisualizationModeKey,
     value.cameraVisualizationMode.name,
   );
+  await preferences.setString(_alertOutputKey, value.alertOutput.name);
+  await preferences.setString(_musicBehaviorKey, value.musicBehavior.name);
+  await preferences.setInt(
+    _alertVolumePercentKey,
+    (value.alertVolume.clamp(0, 1) * 100).round(),
+  );
   await preferences.setString(
     _customThresholdsKey,
     value.customThresholdsMeters.join(','),
   );
+}
+
+DrivingAlertOutput _parseAlertOutput(String? value) {
+  return DrivingAlertOutput.values.firstWhere(
+    (output) => output.name == value,
+    orElse: () => defaultDrivingPreferences.alertOutput,
+  );
+}
+
+DrivingMusicBehavior _parseMusicBehavior(String? value) {
+  return DrivingMusicBehavior.values.firstWhere(
+    (behavior) => behavior.name == value,
+    orElse: () => defaultDrivingPreferences.musicBehavior,
+  );
+}
+
+double _parseAlertVolume(int? percent) {
+  if (percent == null) {
+    return defaultDrivingPreferences.alertVolume;
+  }
+  return (percent.clamp(0, 100) / 100).toDouble();
 }
 
 CameraVisualizationMode _parseCameraVisualizationMode(String? value) {

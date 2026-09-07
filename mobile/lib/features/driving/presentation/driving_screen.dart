@@ -252,9 +252,9 @@ class DrivingMapConfig {
     return const DrivingMapConfig(
       tileUrlTemplate: String.fromEnvironment(
         'PICORADAR_DRIVING_TILE_URL_TEMPLATE',
-        defaultValue: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        defaultValue: '',
       ),
-      attributionLabel: 'OpenStreetMap contributors',
+      attributionLabel: 'Mapa no configurado',
       userAgentPackageName: String.fromEnvironment(
         'PICORADAR_DRIVING_TILE_USER_AGENT',
         defaultValue: 'co.picoradar.app.dev',
@@ -708,23 +708,32 @@ class _DrivingTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _TopStatusChip(
-          key: const ValueKey('driving-connection-chip'),
-          icon: Icons.circle,
-          label: state.gpsQuality.label,
-          color: state.canEvaluateAlerts ? AppColors.teal : AppColors.orange,
+        Flexible(
+          flex: 6,
+          child: _TopStatusChip(
+            key: const ValueKey('driving-connection-chip'),
+            icon: Icons.circle,
+            label: state.gpsQuality.label,
+            color: state.canEvaluateAlerts ? AppColors.teal : AppColors.orange,
+          ),
         ),
         const Spacer(),
-        _TopStatusChip(
-          key: const ValueKey('driving-country-chip'),
-          icon: Icons.flag_outlined,
-          label: 'Colombia',
-          color: AppColors.plateYellow,
+        Flexible(
+          flex: 4,
+          child: _TopStatusChip(
+            key: const ValueKey('driving-country-chip'),
+            icon: Icons.flag_outlined,
+            label: 'Colombia',
+            color: AppColors.plateYellow,
+          ),
         ),
         IconButton(
           tooltip: 'HUD',
           onPressed: onHud,
           color: Colors.white,
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints.tightFor(width: 40, height: 40),
           icon: const Icon(Icons.flip_to_front),
         ),
         IconButton(
@@ -732,6 +741,9 @@ class _DrivingTopBar extends StatelessWidget {
           tooltip: 'HUD espejo',
           onPressed: onMirrorHud,
           color: Colors.white,
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints.tightFor(width: 40, height: 40),
           icon: const Icon(Icons.flip),
         ),
       ],
@@ -769,9 +781,16 @@ class _TopStatusChip extends StatelessWidget {
           children: [
             Icon(icon, size: 12, color: color),
             const SizedBox(width: AppSpacing.xs),
-            Text(
-              label,
-              style: AppTextStyles.caption.copyWith(color: Colors.white),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: AppTextStyles.caption.copyWith(color: Colors.white),
+                ),
+              ),
             ),
           ],
         ),
@@ -796,6 +815,7 @@ class _DrivingStatusChip extends StatelessWidget {
       DrivingSpeedState.over => 'Reduce velocidad',
       DrivingSpeedState.near => 'Cerca del valor reportado',
       DrivingSpeedState.within => 'Vía clara',
+      DrivingSpeedState.unknownVehicleSpeed => 'GPS sin velocidad',
       DrivingSpeedState.unknownReportedSpeed => 'Fotodetección sin velocidad',
       DrivingSpeedState.noCamera => state.gpsQuality.label,
     };
@@ -1990,7 +2010,7 @@ class _SpeedGaugeState extends State<_SpeedGauge>
                 size: Size.square(widget.diameter),
                 painter: _SpeedRingPainter(
                   color: gaugeColor,
-                  speedKmh: widget.state.speedKmh,
+                  speedKmh: widget.state.speedKmh ?? 0,
                 ),
               ),
               Positioned.fill(
@@ -2004,7 +2024,7 @@ class _SpeedGaugeState extends State<_SpeedGauge>
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            '${widget.state.speedKmh}',
+                            widget.state.speedKmh?.toString() ?? '—',
                             key: const ValueKey('driving-speed'),
                             maxLines: 1,
                             style: TextStyle(
@@ -2345,8 +2365,12 @@ class _DrivingColors {
         accent: AppColors.teal,
         speedColor: Colors.white,
       ),
-      DrivingSpeedState.unknownReportedSpeed || DrivingSpeedState.noCamera =>
-        const _DrivingColors(accent: AppColors.blue, speedColor: Colors.white),
+      DrivingSpeedState.unknownVehicleSpeed ||
+      DrivingSpeedState.unknownReportedSpeed ||
+      DrivingSpeedState.noCamera => const _DrivingColors(
+        accent: AppColors.blue,
+        speedColor: Colors.white,
+      ),
     };
   }
 }
@@ -2406,7 +2430,7 @@ class _HudView extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '${state.speedKmh}',
+                      state.speedKmh?.toString() ?? '—',
                       key: const ValueKey('hud-speed'),
                       style: TextStyle(
                         color: colors.speedColor,
@@ -2504,13 +2528,14 @@ class _HudView extends StatelessWidget {
       DrivingSpeedState.over => 'Reduce velocidad',
       DrivingSpeedState.near => 'Cerca del valor reportado',
       DrivingSpeedState.within => null,
+      DrivingSpeedState.unknownVehicleSpeed => 'GPS sin velocidad',
       DrivingSpeedState.unknownReportedSpeed => 'Velocidad no publicada',
       DrivingSpeedState.noCamera => state.gpsQuality.label,
     };
   }
 }
 
-class _DrivingSettingsSheet extends StatefulWidget {
+class _DrivingSettingsSheet extends ConsumerStatefulWidget {
   const _DrivingSettingsSheet({
     required this.initial,
     required this.cameraPackSource,
@@ -2520,10 +2545,11 @@ class _DrivingSettingsSheet extends StatefulWidget {
   final CameraPackSource? cameraPackSource;
 
   @override
-  State<_DrivingSettingsSheet> createState() => _DrivingSettingsSheetState();
+  ConsumerState<_DrivingSettingsSheet> createState() =>
+      _DrivingSettingsSheetState();
 }
 
-class _DrivingSettingsSheetState extends State<_DrivingSettingsSheet> {
+class _DrivingSettingsSheetState extends ConsumerState<_DrivingSettingsSheet> {
   late DrivingPreferences _value = widget.initial;
 
   @override
@@ -2667,6 +2693,113 @@ class _DrivingSettingsSheetState extends State<_DrivingSettingsSheet> {
                   () => _value = _value.copyWith(voiceEnabled: value),
                 ),
               ),
+              const SizedBox(height: AppSpacing.s),
+              const Text('Salida de las alertas', style: AppTextStyles.h2),
+              RadioGroup<DrivingAlertOutput>(
+                groupValue: _value.alertOutput,
+                onChanged: (output) {
+                  if (output != null) {
+                    setState(
+                      () => _value = _value.copyWith(alertOutput: output),
+                    );
+                  }
+                },
+                child: Column(
+                  children: [
+                    RadioListTile<DrivingAlertOutput>(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Automática'),
+                      subtitle: const Text(
+                        'Usa la salida elegida por Android.',
+                      ),
+                      value: DrivingAlertOutput.automatic,
+                    ),
+                    RadioListTile<DrivingAlertOutput>(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Altavoz del teléfono'),
+                      subtitle: const Text(
+                        'Requiere una prueba de compatibilidad en este equipo.',
+                      ),
+                      value: DrivingAlertOutput.phoneSpeaker,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s),
+              const Text('Música durante el aviso', style: AppTextStyles.h2),
+              RadioGroup<DrivingMusicBehavior>(
+                groupValue: _value.musicBehavior,
+                onChanged: (behavior) {
+                  if (behavior != null) {
+                    setState(
+                      () => _value = _value.copyWith(musicBehavior: behavior),
+                    );
+                  }
+                },
+                child: Column(
+                  children: [
+                    RadioListTile<DrivingMusicBehavior>(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Bajar temporalmente'),
+                      subtitle: const Text('Recomendado'),
+                      value: DrivingMusicBehavior.duck,
+                    ),
+                    RadioListTile<DrivingMusicBehavior>(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Solicitar pausa temporal'),
+                      subtitle: const Text(
+                        'La respuesta depende del reproductor.',
+                      ),
+                      value: DrivingMusicBehavior.pause,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Volumen de la alerta',
+                      style: AppTextStyles.h2,
+                    ),
+                  ),
+                  Text(
+                    _value.alertVolume == 0
+                        ? 'Silenciado'
+                        : '${(_value.alertVolume * 100).round()}%',
+                    key: const ValueKey('driving-alert-volume-label'),
+                  ),
+                ],
+              ),
+              Slider(
+                key: const ValueKey('driving-alert-volume'),
+                value: _value.alertVolume,
+                min: 0,
+                max: 1,
+                divisions: 10,
+                label: '${(_value.alertVolume * 100).round()}%',
+                onChanged: (volume) => setState(
+                  () => _value = _value.copyWith(alertVolume: volume),
+                ),
+              ),
+              Wrap(
+                spacing: AppSpacing.s,
+                runSpacing: AppSpacing.s,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        _testAlert(message: 'Prueba de voz de PicoRadar.'),
+                    icon: const Icon(Icons.record_voice_over_outlined),
+                    label: const Text('Probar voz'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _testAlert(playSound: true),
+                    icon: const Icon(Icons.volume_up_outlined),
+                    label: const Text('Probar sonido'),
+                  ),
+                ],
+              ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Sonido'),
@@ -2751,6 +2884,26 @@ class _DrivingSettingsSheetState extends State<_DrivingSettingsSheet> {
         ),
       ),
     );
+  }
+
+  Future<void> _testAlert({String? message, bool playSound = false}) async {
+    try {
+      await ref
+          .read(drivingFeedbackGatewayProvider)
+          .playAlert(
+            message: message,
+            playSound: playSound,
+            output: _value.alertOutput,
+            musicBehavior: _value.musicBehavior,
+            volume: _value.alertVolume,
+          );
+    } on PlatformException {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo aplicar esta salida.')),
+        );
+      }
+    }
   }
 }
 

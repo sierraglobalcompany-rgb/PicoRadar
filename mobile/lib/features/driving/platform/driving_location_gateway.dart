@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 
 import '../../location/platform/device_location_gateway.dart';
@@ -31,10 +32,7 @@ class GeolocatorDrivingLocationGateway implements DrivingLocationGateway {
   @override
   Stream<DrivingPoint> positionStream() {
     return geo.Geolocator.getPositionStream(
-      locationSettings: const geo.LocationSettings(
-        accuracy: geo.LocationAccuracy.bestForNavigation,
-        distanceFilter: 5,
-      ),
+      locationSettings: drivingLocationSettings(defaultTargetPlatform),
     ).map(_point);
   }
 
@@ -48,7 +46,8 @@ class GeolocatorDrivingLocationGateway implements DrivingLocationGateway {
       latitude: position.latitude,
       longitude: position.longitude,
       accuracyMeters: position.accuracy,
-      speedKmh: (position.speed * 3.6).clamp(0, 260).toDouble(),
+      speedKmh: drivingSpeedKmh(position.speed),
+      speedAccuracyKmh: drivingSpeedKmh(position.speedAccuracy),
       headingDegrees: position.heading.isFinite && position.heading >= 0
           ? position.heading
           : null,
@@ -67,4 +66,25 @@ class GeolocatorDrivingLocationGateway implements DrivingLocationGateway {
         DeviceLocationPermission.notRequested,
     };
   }
+}
+
+geo.LocationSettings drivingLocationSettings(TargetPlatform platform) {
+  if (platform == TargetPlatform.android) {
+    return geo.AndroidSettings(
+      accuracy: geo.LocationAccuracy.bestForNavigation,
+      distanceFilter: 0,
+      intervalDuration: const Duration(seconds: 1),
+    );
+  }
+  return const geo.LocationSettings(
+    accuracy: geo.LocationAccuracy.bestForNavigation,
+    distanceFilter: 0,
+  );
+}
+
+double? drivingSpeedKmh(double metersPerSecond) {
+  if (!metersPerSecond.isFinite || metersPerSecond < 0) {
+    return null;
+  }
+  return (metersPerSecond * 3.6).clamp(0, 260).toDouble();
 }
