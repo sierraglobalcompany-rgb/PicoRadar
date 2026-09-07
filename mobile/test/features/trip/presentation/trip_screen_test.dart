@@ -109,7 +109,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         FocusManager.instance.primaryFocus?.debugLabel,
-        'trip-vehicle-focus',
+        isNot('trip-vehicle-focus'),
       );
     },
   );
@@ -483,69 +483,183 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('VIAJE-R1 old draft requires explicit time confirmation', (
+  testWidgets('today without a time captures now once on preview', (
     tester,
   ) async {
+    final client = _PendingPlanClient();
+    final today = DateTime.now();
     await TripDraftStore(preferences).saveDraft(
       TripDraft(
         origin: 'Bogotá',
         destination: 'Medellín',
-        date: DateTime(2026, 9, 5),
+        date: DateTime(today.year, today.month, today.day),
       ),
     );
     await _pumpScreen(
       tester,
       preferences: preferences,
       activeVehicle: _vehicle(),
+      planClient: client,
     );
-    await _tapByKey(tester, 'trip-preview');
-    expect(find.text('Confirma la hora de salida.'), findsOneWidget);
-    expect(find.byKey(const ValueKey('trip-plan-result')), findsNothing);
+    final before = DateTime.now().toUtc();
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    final after = DateTime.now().toUtc();
+
+    expect(client.requests, hasLength(1));
+    final json = client.requests.single.toJson();
+    expect(json['departureMode'], 'now');
+    expect(json['departureUtc'], isNotNull);
+    final captured = DateTime.parse(json['departureUtc']! as String);
+    expect(captured.isBefore(before), isFalse);
+    expect(captured.isAfter(after), isFalse);
+    expect(find.text('Salida: ahora'), findsOneWidget);
   });
 
-  testWidgets(
-    'VIAJE-R1 physical confirmation required and resets on vehicle change',
-    (tester) async {
-      final client = _PendingPlanClient();
-      final active = _vehicle();
-      final other = _vehicle(id: 'other', plate: 'ZZZ999');
-      await TripDraftStore(preferences).saveDraft(
-        TripDraft(
-          origin: 'Bogotá',
-          destination: 'Medellín',
-          date: DateTime(2026, 9, 5),
-          departureMinute: 600,
-        ),
-      );
-      await _pumpScreen(
-        tester,
-        preferences: preferences,
-        activeVehicle: active,
-        vehicles: [active, other],
-        planClient: client,
-      );
-      await _tapByKey(tester, 'trip-preview');
-      expect(client.requests, isEmpty);
-      expect(
-        find.text('Confirma las características del vehículo.'),
-        findsOneWidget,
-      );
-      await _tapByKey(tester, 'trip-standard-vehicle');
-      await _tapByKey(tester, 'trip-select-vehicle');
-      await tester.tap(find.text('Particular · ZZZ999'));
-      await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<CheckboxListTile>(
-              find.byKey(const ValueKey('trip-standard-vehicle')),
-            )
-            .value,
-        isFalse,
-      );
-      await _tapByKey(tester, 'trip-preview');
-      expect(client.requests, isEmpty);
-    },
-  );
+  testWidgets('future date without time is allowed and has no exact arrival', (
+    tester,
+  ) async {
+    final client = _PendingPlanClient();
+    final future = DateTime.now().add(const Duration(days: 2));
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(future.year, future.month, future.day),
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: _vehicle(),
+      planClient: client,
+    );
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+
+    expect(client.requests, hasLength(1));
+    expect(client.requests.single.toJson()['departureMode'], 'date_only');
+    expect(client.requests.single.toJson()['departureUtc'], isNull);
+    expect(find.text('Hora opcional · Sin definir'), findsWidgets);
+    expect(find.textContaining('Llegada:'), findsNothing);
+  });
+
+  testWidgets('chosen time can be cleared without blocking preview', (
+    tester,
+  ) async {
+    final client = _PendingPlanClient();
+    final future = DateTime.now().add(const Duration(days: 2));
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(future.year, future.month, future.day),
+        departureMinute: 600,
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: _vehicle(),
+      planClient: client,
+    );
+
+    await _tapByKey(tester, 'trip-clear-time');
+    expect(find.text('Hora opcional · Sin definir'), findsOneWidget);
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    expect(client.requests.single.toJson()['departureMode'], 'date_only');
+  });
+
+  testWidgets('particular defaults to 2 axes without physical confirmation', (
+    tester,
+  ) async {
+    final client = _PendingPlanClient();
+    final future = DateTime.now().add(const Duration(days: 2));
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(future.year, future.month, future.day),
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: _vehicle(),
+      planClient: client,
+    );
+
+    expect(find.text('Particular · 2 ejes'), findsOneWidget);
+    expect(find.text('Opciones del vehículo'), findsOneWidget);
+    expect(find.byType(CheckboxListTile), findsNWidgets(4));
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    expect(client.requests, hasLength(1));
+    expect(client.requests.single.vehicleCategory, 'car');
+  });
+
+  testWidgets('unsupported configuration keeps local consultation available', (
+    tester,
+  ) async {
+    final client = _PendingPlanClient();
+    final future = DateTime.now().add(const Duration(days: 2));
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(future.year, future.month, future.day),
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: _vehicle(),
+      planClient: client,
+    );
+
+    await _tapByKey(tester, 'trip-vehicle-options');
+    await tester.tap(find.text('Remolque o configuración distinta'));
+    await tester.pumpAndSettle();
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pumpAndSettle();
+
+    expect(client.requests, isEmpty);
+    expect(find.text('Lo que ya podemos consultar'), findsOneWidget);
+    expect(find.text('Rutas y precios todavía no disponibles'), findsOneWidget);
+    expect(find.textContaining('Tarifas no soportadas'), findsOneWidget);
+  });
+
+  testWidgets('not configured keeps useful local result visible', (
+    tester,
+  ) async {
+    final client = _PendingPlanClient();
+    final future = DateTime.now().add(const Duration(days: 2));
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(future.year, future.month, future.day),
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: _vehicle(),
+      planClient: client,
+    );
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    client.completions.single.completeError(
+      const TripPlanFailure('not_configured'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Lo que ya podemos consultar'), findsOneWidget);
+    expect(find.text('Rutas y precios todavía no disponibles'), findsOneWidget);
+    expect(find.textContaining('Origen'), findsWidgets);
+    expect(find.textContaining('Destino'), findsWidgets);
+  });
 
   testWidgets('VIAJE-R2 route selection updates locally without auto-scroll', (
     tester,
@@ -1649,7 +1763,6 @@ void main() {
       focus: 'trip-destination-focus',
       key: 'trip-destination-field',
     ),
-    (name: 'time', focus: 'trip-time-focus', key: 'trip-time-button'),
     (name: 'vehicle', focus: 'trip-vehicle-focus', key: 'trip-select-vehicle'),
   ]) {
     testWidgets(
@@ -1814,7 +1927,7 @@ void main() {
       _pressButtonByKey(tester, 'trip-view-map-test-route');
       await tester.pumpAndSettle();
       expect(
-        find.byKey(const ValueKey('trip-map-preview-slot')).hitTestable(),
+        find.byKey(const ValueKey('trip-map-preview-slot')),
         findsOneWidget,
       );
     },

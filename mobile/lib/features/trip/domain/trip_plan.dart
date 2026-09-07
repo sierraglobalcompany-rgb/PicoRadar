@@ -1,22 +1,47 @@
 import '../../garage/data/vehicle_profile.dart';
 import '../data/trip_municipality_catalog.dart';
+import 'trip_draft.dart';
+
+enum TripDepartureMode {
+  now('now'),
+  dateOnly('date_only'),
+  specified('specified');
+
+  const TripDepartureMode(this.wireValue);
+
+  final String wireValue;
+}
 
 class TripPlanRequest {
-  const TripPlanRequest({
+  TripPlanRequest({
     required this.requestId,
     required this.origin,
     required this.destination,
     required this.vehicle,
     required this.departureUtc,
-    this.standardVehicleConfirmed = false,
-  });
+    this.departureMode = TripDepartureMode.specified,
+    DateTime? departureDate,
+    TripVehicleConfiguration vehicleConfiguration =
+        TripVehicleConfiguration.standardTwoAxle,
+    this.vehicleCategorySource = TripVehicleCategorySource.defaultStandard,
+    bool? standardVehicleConfirmed,
+  }) : departureDate = departureDate ?? departureUtc ?? DateTime(1970),
+       vehicleConfiguration = standardVehicleConfirmed == false
+           ? TripVehicleConfiguration.unsupported
+           : vehicleConfiguration;
 
   final String requestId;
   final TripMunicipality origin;
   final TripMunicipality destination;
   final VehicleProfile vehicle;
-  final DateTime departureUtc;
-  final bool standardVehicleConfirmed;
+  final DateTime? departureUtc;
+  final DateTime departureDate;
+  final TripDepartureMode departureMode;
+  final TripVehicleConfiguration vehicleConfiguration;
+  final TripVehicleCategorySource vehicleCategorySource;
+
+  bool get standardVehicleConfirmed =>
+      vehicleConfiguration == TripVehicleConfiguration.standardTwoAxle;
 
   String get vehicleCategory => !standardVehicleConfirmed
       ? 'unsupported_vehicle'
@@ -30,12 +55,19 @@ class TripPlanRequest {
     'requestId': requestId,
     'origin': _municipality(origin),
     'destination': _municipality(destination),
-    'departureUtc': departureUtc.toUtc().toIso8601String(),
+    'departureMode': departureMode.wireValue,
+    'departureDate': _dateOnlyIso(departureDate),
+    'departureUtc': departureUtc?.toUtc().toIso8601String(),
     'timeZone': 'America/Bogota',
     'vehicleCategory': vehicleCategory,
     'paymentMethod': 'cash',
     'alternatives': 3,
   };
+
+  static String _dateOnlyIso(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-'
+      '${value.month.toString().padLeft(2, '0')}-'
+      '${value.day.toString().padLeft(2, '0')}';
 
   static Map<String, String> _municipality(TripMunicipality value) => {
     'code': value.code,

@@ -35,6 +35,9 @@ final class TollGuruTripPreview
 
     public function preview(array $request): array
     {
+        if (($request['departureMode'] ?? 'specified') === 'date_only') {
+            throw new DomainException('not_configured');
+        }
         if (! isset(self::VEHICLES[$request['vehicleCategory'] ?? ''])) {
             throw new DomainException('unsupported_vehicle');
         }

@@ -71,7 +71,11 @@ class TripPlanResult extends StatelessWidget {
         Text(
           'Vehículo: ${request.vehicle.plate} · ${_category(request.vehicleCategory)}',
         ),
-        Text('Salida: ${tripInstantLabel(request.departureUtc)}'),
+        Text(_departureLabel(request)),
+        if (request.departureMode == TripDepartureMode.dateOnly)
+          const Text(
+            'La fecha real de llegada depende de la ruta y puede ser el día siguiente.',
+          ),
         const SizedBox(height: AppSpacing.m),
         if (selected != null)
           _TripSummary(
@@ -137,7 +141,9 @@ class TripPlanResult extends StatelessWidget {
                   'Duración aproximada: ${_duration(route.durationSeconds)}',
                 ),
                 Text(
-                  'Llegada: ${tripInstantLabel(route.arrivalUtc(request.departureUtc))}',
+                  request.departureUtc == null
+                      ? 'Llegada: sin hora exacta'
+                      : 'Llegada: ${tripInstantLabel(route.arrivalUtc(request.departureUtc!))}',
                 ),
                 Text(
                   route.timeBasis == 'traffic'
@@ -185,25 +191,28 @@ class TripPlanResult extends StatelessWidget {
         ],
         Text('Vista previa de la ruta', style: AppTextStyles.h2),
         const SizedBox(height: AppSpacing.s),
-        KeyedSubtree(
+        SizedBox(
           key: mapAnchorKey,
-          child: Container(
+          child: GestureDetector(
             key: const ValueKey('trip-map-preview-slot'),
-            constraints: const BoxConstraints(minHeight: 240),
-            padding: const EdgeInsets.all(AppSpacing.l),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              border: Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(AppRadius.card),
-            ),
-            child:
-                mapPreview ??
-                const Center(
-                  child: Text(
-                    'Vista previa de ruta no disponible. Conserva las alternativas y sus detalles.',
-                    textAlign: TextAlign.center,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 240),
+              padding: const EdgeInsets.all(AppSpacing.l),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(AppRadius.card),
+              ),
+              child:
+                  mapPreview ??
+                  const Center(
+                    child: Text(
+                      'Vista previa de ruta no disponible. Conserva las alternativas y sus detalles.',
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                ),
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.m),
@@ -303,7 +312,7 @@ class _TripSummary extends StatelessWidget {
   });
 
   final TripRouteOption route;
-  final DateTime departureUtc;
+  final DateTime? departureUtc;
   final int? cameraLocationCount;
 
   @override
@@ -321,12 +330,13 @@ class _TripSummary extends StatelessWidget {
         value: _duration(route.durationSeconds),
         label: 'Duración estimada',
       ),
-      (
-        key: 'arrival',
-        icon: Icons.flag_outlined,
-        value: tripInstantLabel(route.arrivalUtc(departureUtc)),
-        label: 'Llegada aproximada',
-      ),
+      if (departureUtc != null)
+        (
+          key: 'arrival',
+          icon: Icons.flag_outlined,
+          value: tripInstantLabel(route.arrivalUtc(departureUtc!)),
+          label: 'Llegada aproximada',
+        ),
       (
         key: 'tolls',
         icon: Icons.toll_outlined,
@@ -536,6 +546,14 @@ String _category(String value) => switch (value) {
   'taxi' => 'Taxi',
   _ => 'Categoría no soportada',
 };
+
+String _departureLabel(TripPlanRequest request) =>
+    switch (request.departureMode) {
+      TripDepartureMode.now => 'Salida: ahora',
+      TripDepartureMode.dateOnly => 'Salida: Hora opcional · Sin definir',
+      TripDepartureMode.specified =>
+        'Salida: ${tripInstantLabel(request.departureUtc!)}',
+    };
 String _payment(String value) => value == 'cash' ? 'Efectivo' : 'No informado';
 String _countText(TripTolls tolls) {
   final stations = tolls.stationCount;

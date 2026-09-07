@@ -2,15 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/app_providers.dart';
+import '../../../app/shell/picoradar_app_header.dart';
 import '../../../app/theme/app_tokens.dart';
 import '../../garage/data/vehicle_profile.dart';
 import '../../garage/presentation/vehicle_display.dart';
 import '../../pico_placa/domain/restriction_day_evaluation.dart';
+import '../../pico_placa/data/pico_preferences.dart';
+import '../../home/presentation/pico_notification_sheet.dart';
 import '../application/trip_services.dart';
 import '../data/trip_municipality_catalog.dart';
 import '../domain/trip_draft.dart';
 
-class TripContent extends StatelessWidget {
+class TripContent extends ConsumerWidget {
   const TripContent({
     required this.scrollController,
     required this.resultsAnchorKey,
@@ -29,8 +33,8 @@ class TripContent extends StatelessWidget {
     required this.destinationError,
     required this.timeError,
     required this.vehicleError,
-    required this.standardVehicleConfirmed,
-    required this.onStandardVehicleChanged,
+    required this.vehicleConfiguration,
+    required this.onVehicleConfigurationChanged,
     required this.onTimeChanged,
     required this.isPlanning,
     required this.planError,
@@ -47,6 +51,8 @@ class TripContent extends StatelessWidget {
     required this.originRestriction,
     required this.destinationRestriction,
     required this.draftRestored,
+    required this.localConsultationStarted,
+    required this.localDepartureLabel,
     required this.onVehicleChanged,
     required this.onOriginChanged,
     required this.onDestinationChanged,
@@ -80,9 +86,9 @@ class TripContent extends StatelessWidget {
   final String? destinationError;
   final String? timeError;
   final String? vehicleError;
-  final bool standardVehicleConfirmed;
-  final ValueChanged<bool> onStandardVehicleChanged;
-  final ValueChanged<int> onTimeChanged;
+  final TripVehicleConfiguration vehicleConfiguration;
+  final ValueChanged<TripVehicleConfiguration> onVehicleConfigurationChanged;
+  final ValueChanged<int?> onTimeChanged;
   final bool isPlanning;
   final String? planError;
   final VoidCallback onPreview;
@@ -98,6 +104,8 @@ class TripContent extends StatelessWidget {
   final AsyncValue<TripEndpointRestriction> originRestriction;
   final AsyncValue<TripEndpointRestriction> destinationRestriction;
   final bool draftRestored;
+  final bool localConsultationStarted;
+  final String? localDepartureLabel;
   final ValueChanged<String> onVehicleChanged;
   final ValueChanged<String> onOriginChanged;
   final ValueChanged<String> onDestinationChanged;
@@ -113,7 +121,7 @@ class TripContent extends StatelessWidget {
   final VoidCallback onInvias;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final hasPlan = planResult != null;
     final endpointSummary =
         '${originController.text.trim().isEmpty ? 'Origen pendiente' : originController.text.trim()} → '
@@ -121,42 +129,9 @@ class TripContent extends StatelessWidget {
     final vehicleSummary = selectedVehicle == null
         ? 'Vehículo pendiente'
         : '${_vehicleType(selectedVehicle!)} · ${selectedVehicle!.plate}';
-    final preparation = Column(
+    final previewAction = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _TripFields(
-          originController: originController,
-          destinationController: destinationController,
-          originFocusNode: originFocusNode,
-          destinationFocusNode: destinationFocusNode,
-          originError: originError,
-          destinationError: destinationError,
-          originSuggestions: originSuggestions,
-          destinationSuggestions: destinationSuggestions,
-          onOriginChanged: onOriginChanged,
-          onDestinationChanged: onDestinationChanged,
-          onOriginSelected: onOriginSelected,
-          onDestinationSelected: onDestinationSelected,
-          onSwapLocations: onSwapLocations,
-        ),
-        const SizedBox(height: AppSpacing.m),
-        _TripDepartureGroup(
-          selectedDate: selectedDate,
-          departureMinute: departureMinute,
-          timeFocusNode: timeFocusNode,
-          timeError: timeError,
-          onDateChanged: onDateChanged,
-          onTimeChanged: onTimeChanged,
-          vehicles: vehicles,
-          vehicle: selectedVehicle,
-          restoredVehicleMissing: restoredVehicleMissing,
-          vehicleFocusNode: vehicleFocusNode,
-          vehicleError: vehicleError,
-          standardVehicleConfirmed: standardVehicleConfirmed,
-          onVehicleChanged: onVehicleChanged,
-          onStandardVehicleChanged: onStandardVehicleChanged,
-        ),
-        const SizedBox(height: AppSpacing.m),
         FilledButton.icon(
           key: const ValueKey('trip-preview'),
           onPressed: isPlanning ? null : onPreview,
@@ -179,12 +154,58 @@ class TripContent extends StatelessWidget {
         const Text(
           'Al consultar se envían municipios, salida y categoría al servicio de rutas. La placa permanece en este dispositivo.',
         ),
-        if (planError != null) ...[
-          const SizedBox(height: AppSpacing.m),
-          Semantics(liveRegion: true, child: _FieldError(planError!)),
-        ],
       ],
     );
+    final preparation = _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _TripFields(
+            originController: originController,
+            destinationController: destinationController,
+            originFocusNode: originFocusNode,
+            destinationFocusNode: destinationFocusNode,
+            originError: originError,
+            destinationError: destinationError,
+            originSuggestions: originSuggestions,
+            destinationSuggestions: destinationSuggestions,
+            onOriginChanged: onOriginChanged,
+            onDestinationChanged: onDestinationChanged,
+            onOriginSelected: onOriginSelected,
+            onDestinationSelected: onDestinationSelected,
+            onSwapLocations: onSwapLocations,
+          ),
+          const SizedBox(height: AppSpacing.m),
+          _TripDepartureGroup(
+            selectedDate: selectedDate,
+            departureMinute: departureMinute,
+            timeFocusNode: timeFocusNode,
+            timeError: timeError,
+            onDateChanged: onDateChanged,
+            onTimeChanged: onTimeChanged,
+            vehicles: vehicles,
+            vehicle: selectedVehicle,
+            restoredVehicleMissing: restoredVehicleMissing,
+            vehicleFocusNode: vehicleFocusNode,
+            vehicleError: vehicleError,
+            vehicleConfiguration: vehicleConfiguration,
+            onVehicleChanged: onVehicleChanged,
+            onVehicleConfigurationChanged: onVehicleConfigurationChanged,
+          ),
+        ],
+      ),
+    );
+    final alerts =
+        ref.watch(picoAlertPreferencesProvider).asData?.value ??
+        const PicoAlertPreferences(
+          enabled: true,
+          dayBeforeEnabled: true,
+          sameDayEnabled: true,
+          dayBeforeMinute: 1140,
+          sameDayMinute: 300,
+          permissionRequested: false,
+          permissionGranted: false,
+        );
 
     return NotificationListener<UserScrollNotification>(
       onNotification: (notification) {
@@ -210,6 +231,32 @@ class TripContent extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    PicoRadarAppHeader(
+                      alertPreferences: alerts,
+                      onNotificationsPressed: () => showModalBottomSheet<void>(
+                        context: context,
+                        isScrollControlled: true,
+                        showDragHandle: true,
+                        builder: (context) =>
+                            PicoNotificationSheet(alertPreferences: alerts),
+                      ),
+                      headerKey: const ValueKey('trip-app-header'),
+                      brandKey: const ValueKey('trip-brand-lockup'),
+                      capsuleKey: const ValueKey('trip-user-controls-capsule'),
+                      bellKey: const ValueKey('trip-notification-bell'),
+                    ),
+                    const SizedBox(height: AppSpacing.m),
+                    Text('Planea tu viaje', style: AppTextStyles.h1),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Compara rutas, peajes, cámaras y restricciones antes de salir.',
+                      style: AppTextStyles.body.copyWith(
+                        color: AppColors.navy.withValues(alpha: 0.72),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.m),
+                    previewAction,
+                    const SizedBox(height: AppSpacing.m),
                     if (hasPlan)
                       ExpansionTile(
                         key: const ValueKey('trip-preparation-compact'),
@@ -252,6 +299,22 @@ class TripContent extends StatelessWidget {
                           child: planResult!,
                         ),
                       ),
+                    ],
+                    if (localConsultationStarted) ...[
+                      const SizedBox(height: AppSpacing.l),
+                      Text(
+                        'Lo que ya podemos consultar',
+                        style: AppTextStyles.h2,
+                      ),
+                      if (localDepartureLabel != null)
+                        Text(localDepartureLabel!),
+                      if (planError != null) ...[
+                        const SizedBox(height: AppSpacing.m),
+                        Semantics(
+                          liveRegion: true,
+                          child: _RoutesUnavailable(reason: planError!),
+                        ),
+                      ],
                     ],
                     const SizedBox(height: AppSpacing.l),
                     Text('Pico y placa del viaje', style: AppTextStyles.h2),
@@ -338,9 +401,9 @@ class _TripDepartureGroup extends StatelessWidget {
     required this.restoredVehicleMissing,
     required this.vehicleFocusNode,
     required this.vehicleError,
-    required this.standardVehicleConfirmed,
+    required this.vehicleConfiguration,
     required this.onVehicleChanged,
-    required this.onStandardVehicleChanged,
+    required this.onVehicleConfigurationChanged,
   });
 
   final DateTime selectedDate;
@@ -348,15 +411,15 @@ class _TripDepartureGroup extends StatelessWidget {
   final FocusNode timeFocusNode;
   final String? timeError;
   final ValueChanged<DateTime> onDateChanged;
-  final ValueChanged<int> onTimeChanged;
+  final ValueChanged<int?> onTimeChanged;
   final List<VehicleProfile> vehicles;
   final VehicleProfile? vehicle;
   final bool restoredVehicleMissing;
   final FocusNode vehicleFocusNode;
   final String? vehicleError;
-  final bool standardVehicleConfirmed;
+  final TripVehicleConfiguration vehicleConfiguration;
   final ValueChanged<String> onVehicleChanged;
-  final ValueChanged<bool> onStandardVehicleChanged;
+  final ValueChanged<TripVehicleConfiguration> onVehicleConfigurationChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -382,34 +445,49 @@ class _TripDepartureGroup extends StatelessWidget {
           label: Text('Fecha · ${_formatDate(selectedDate)}'),
         ),
         const SizedBox(height: AppSpacing.s),
-        OutlinedButton.icon(
-          key: const ValueKey('trip-time-button'),
-          focusNode: timeFocusNode,
-          onPressed: () async {
-            final minute = departureMinute;
-            final selected = await showTimePicker(
-              context: context,
-              initialTime: minute == null
-                  ? const TimeOfDay(hour: 8, minute: 0)
-                  : TimeOfDay(hour: minute ~/ 60, minute: minute % 60),
-              builder: (context, child) => MediaQuery(
-                data: MediaQuery.of(context)
-                    .copyWith(alwaysUse24HourFormat: true),
-                child: child!,
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                key: const ValueKey('trip-time-button'),
+                focusNode: timeFocusNode,
+                onPressed: () async {
+                  final minute = departureMinute;
+                  final selected = await showTimePicker(
+                    context: context,
+                    initialTime: minute == null
+                        ? const TimeOfDay(hour: 8, minute: 0)
+                        : TimeOfDay(hour: minute ~/ 60, minute: minute % 60),
+                    builder: (context, child) => MediaQuery(
+                      data: MediaQuery.of(context)
+                          .copyWith(alwaysUse24HourFormat: true),
+                      child: child!,
+                    ),
+                  );
+                  if (context.mounted && selected != null) {
+                    onTimeChanged(selected.hour * 60 + selected.minute);
+                  }
+                },
+                icon: const Icon(Icons.schedule),
+                label: Text(
+                  departureMinute == null
+                      ? 'Hora opcional · Sin definir'
+                      : 'Hora de salida · ${_minuteLabel(departureMinute!)}',
+                ),
               ),
-            );
-            if (context.mounted && selected != null) {
-              onTimeChanged(selected.hour * 60 + selected.minute);
-            }
-          },
-          icon: const Icon(Icons.schedule),
-          label: Text(
-            departureMinute == null
-                ? 'Hora de salida · Confirmar'
-                : 'Hora de salida · ${_minuteLabel(departureMinute!)}',
-          ),
+            ),
+            if (departureMinute != null) ...[
+              const SizedBox(width: AppSpacing.s),
+              IconButton.outlined(
+                key: const ValueKey('trip-clear-time'),
+                tooltip: 'Quitar hora de salida',
+                onPressed: () => onTimeChanged(null),
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ],
         ),
-        const Text('Hora de Colombia (America/Bogota)'),
+        const Text('Hora de Colombia', style: AppTextStyles.caption),
         if (timeError != null) _FieldError(timeError!),
         const SizedBox(height: AppSpacing.s),
         _VehicleCard(
@@ -419,20 +497,99 @@ class _TripDepartureGroup extends StatelessWidget {
           focusNode: vehicleFocusNode,
           onChanged: onVehicleChanged,
         ),
-        CheckboxListTile(
+        const SizedBox(height: AppSpacing.xs),
+        GestureDetector(
           key: const ValueKey('trip-standard-vehicle'),
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-          title: const Text(
-            'Vehículo de 2 ejes, sin remolque ni modificaciones',
+          behavior: HitTestBehavior.translucent,
+          onTap: () => onVehicleConfigurationChanged(
+            TripVehicleConfiguration.standardTwoAxle,
           ),
-          value: standardVehicleConfirmed,
-          onChanged: vehicle == null
-              ? null
-              : (value) => onStandardVehicleChanged(value ?? false),
+          child: Text(
+            _vehicleCategoryLabel(vehicle, vehicleConfiguration),
+            key: const ValueKey('trip-vehicle-category'),
+            style: AppTextStyles.caption.copyWith(color: AppColors.teal),
+          ),
         ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            key: const ValueKey('trip-vehicle-options'),
+            onPressed: vehicle == null
+                ? null
+                : () => _showVehicleOptions(context),
+            icon: const Icon(Icons.tune, size: 18),
+            label: const Text('Opciones del vehículo'),
+          ),
+        ),
+        if (vehicleConfiguration == TripVehicleConfiguration.unsupported)
+          const Text(
+            'Tarifas no soportadas para remolque o configuración distinta. Los datos locales siguen disponibles.',
+          ),
         if (vehicleError != null) _FieldError(vehicleError!),
       ],
+    );
+  }
+
+  Future<void> _showVehicleOptions(BuildContext context) async {
+    final selected = await showModalBottomSheet<TripVehicleConfiguration>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _VehicleOptionTile(
+              title: 'Categoría estándar del vehículo',
+              subtitle: _standardCategoryLabel(vehicle),
+              selected:
+                  vehicleConfiguration ==
+                  TripVehicleConfiguration.standardTwoAxle,
+              onTap: () =>
+                  Navigator.of(context)
+                      .pop(TripVehicleConfiguration.standardTwoAxle),
+            ),
+            _VehicleOptionTile(
+              title: 'Remolque o configuración distinta',
+              subtitle: 'Tarifa no soportada en esta versión',
+              selected:
+                  vehicleConfiguration == TripVehicleConfiguration.unsupported,
+              onTap: () =>
+                  Navigator.of(context)
+                      .pop(TripVehicleConfiguration.unsupported),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (selected != null) onVehicleConfigurationChanged(selected);
+  }
+}
+
+class _VehicleOptionTile extends StatelessWidget {
+  const _VehicleOptionTile({
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: onTap,
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: selected
+          ? Icon(
+              Icons.check_circle,
+              color: Theme.of(context).colorScheme.primary,
+            )
+          : const Icon(Icons.radio_button_unchecked),
     );
   }
 }
@@ -455,52 +612,47 @@ class _VehicleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final current = vehicle;
-    return _Card(
-      child: Row(
-        children: [
-          Icon(
-            current == null
-                ? Icons.directions_car_outlined
-                : vehicleIcon(current),
-            size: AppIconSize.l,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: AppSpacing.m),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Vehículo para este viaje',
-                  style: AppTextStyles.bodyStrong,
+    return Row(
+      children: [
+        Icon(
+          current == null
+              ? Icons.directions_car_outlined
+              : vehicleIcon(current),
+          size: AppIconSize.l,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        const SizedBox(width: AppSpacing.m),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Vehículo para este viaje', style: AppTextStyles.bodyStrong),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                restoredVehicleMissing
+                    ? 'El vehículo del borrador ya no está disponible.'
+                    : current == null
+                    ? 'Selecciona un vehículo para consultar el plan.'
+                    : '${_vehicleType(current)} · ${current.plate}',
+                key: const ValueKey('trip-active-vehicle'),
+                style: AppTextStyles.body.copyWith(
+                  color: AppColors.navy.withValues(alpha: 0.72),
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  restoredVehicleMissing
-                      ? 'El vehículo del borrador ya no está disponible.'
-                      : current == null
-                      ? 'Selecciona un vehículo para consultar el plan.'
-                      : '${_vehicleType(current)} · ${current.plate}',
-                  key: const ValueKey('trip-active-vehicle'),
-                  style: AppTextStyles.body.copyWith(
-                    color: AppColors.navy.withValues(alpha: 0.72),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(width: AppSpacing.s),
-          IconButton.outlined(
-            key: const ValueKey('trip-select-vehicle'),
-            tooltip: 'Elegir vehículo para este viaje',
-            focusNode: focusNode,
-            onPressed: vehicles.isEmpty
-                ? null
-                : () => _showVehicleSelector(context),
-            icon: const Icon(Icons.swap_horiz),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(width: AppSpacing.s),
+        IconButton.outlined(
+          key: const ValueKey('trip-select-vehicle'),
+          tooltip: 'Elegir vehículo para este viaje',
+          focusNode: focusNode,
+          onPressed: vehicles.isEmpty
+              ? null
+              : () => _showVehicleSelector(context),
+          icon: const Icon(Icons.swap_horiz),
+        ),
+      ],
     );
   }
 
@@ -562,75 +714,72 @@ class _TripFields extends StatelessWidget {
   Widget build(BuildContext context) {
     return KeyedSubtree(
       key: const ValueKey('trip-location-group'),
-      child: _Card(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextFormField(
-                    key: const ValueKey('trip-origin-field'),
-                    controller: originController,
-                    focusNode: originFocusNode,
-                    onChanged: onOriginChanged,
-                    textInputAction: TextInputAction.next,
-                    onFieldSubmitted: (_) =>
-                        destinationFocusNode.requestFocus(),
-                    decoration: InputDecoration(
-                      labelText: 'Origen',
-                      prefixIcon: const Icon(Icons.trip_origin),
-                      errorText: originError,
-                      errorMaxLines: 5,
-                    ),
-                    validator: _requiredField('Ingresa el origen.'),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  key: const ValueKey('trip-origin-field'),
+                  controller: originController,
+                  focusNode: originFocusNode,
+                  onChanged: onOriginChanged,
+                  textInputAction: TextInputAction.next,
+                  onFieldSubmitted: (_) => destinationFocusNode.requestFocus(),
+                  decoration: InputDecoration(
+                    labelText: 'Origen',
+                    prefixIcon: const Icon(Icons.trip_origin),
+                    errorText: originError,
+                    errorMaxLines: 5,
                   ),
-                  _MunicipalitySuggestions(
-                    field: 'origin',
-                    suggestions: originSuggestions,
-                    onSelected: onOriginSelected,
-                  ),
-                  const SizedBox(height: AppSpacing.s),
-                  TextFormField(
-                    key: const ValueKey('trip-destination-field'),
-                    controller: destinationController,
-                    focusNode: destinationFocusNode,
-                    onChanged: onDestinationChanged,
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => destinationFocusNode.unfocus(),
-                    decoration: InputDecoration(
-                      labelText: 'Destino',
-                      prefixIcon: const Icon(Icons.place_outlined),
-                      errorText: destinationError,
-                      errorMaxLines: 5,
-                    ),
-                    validator: _requiredField('Ingresa el destino.'),
-                  ),
-                  _MunicipalitySuggestions(
-                    field: 'destination',
-                    suggestions: destinationSuggestions,
-                    onSelected: onDestinationSelected,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AppSpacing.s),
-            Semantics(
-              label: 'Intercambiar origen y destino',
-              button: true,
-              onTap: onSwapLocations,
-              child: ExcludeSemantics(
-                child: IconButton.outlined(
-                  key: const ValueKey('trip-swap-locations'),
-                  tooltip: 'Intercambiar origen y destino',
-                  onPressed: onSwapLocations,
-                  icon: const Icon(Icons.swap_vert),
+                  validator: _requiredField('Ingresa el origen.'),
                 ),
+                _MunicipalitySuggestions(
+                  field: 'origin',
+                  suggestions: originSuggestions,
+                  onSelected: onOriginSelected,
+                ),
+                const SizedBox(height: AppSpacing.s),
+                TextFormField(
+                  key: const ValueKey('trip-destination-field'),
+                  controller: destinationController,
+                  focusNode: destinationFocusNode,
+                  onChanged: onDestinationChanged,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => destinationFocusNode.unfocus(),
+                  decoration: InputDecoration(
+                    labelText: 'Destino',
+                    prefixIcon: const Icon(Icons.place_outlined),
+                    errorText: destinationError,
+                    errorMaxLines: 5,
+                  ),
+                  validator: _requiredField('Ingresa el destino.'),
+                ),
+                _MunicipalitySuggestions(
+                  field: 'destination',
+                  suggestions: destinationSuggestions,
+                  onSelected: onDestinationSelected,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s),
+          Semantics(
+            label: 'Intercambiar origen y destino',
+            button: true,
+            onTap: onSwapLocations,
+            child: ExcludeSemantics(
+              child: IconButton.outlined(
+                key: const ValueKey('trip-swap-locations'),
+                tooltip: 'Intercambiar origen y destino',
+                onPressed: onSwapLocations,
+                icon: const Icon(Icons.swap_vert),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -819,6 +968,31 @@ class _ExternalNotice extends StatelessWidget {
   }
 }
 
+class _RoutesUnavailable extends StatelessWidget {
+  const _RoutesUnavailable({required this.reason});
+
+  final String reason;
+
+  @override
+  Widget build(BuildContext context) => _Card(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Rutas y precios todavía no disponibles',
+          style: AppTextStyles.bodyStrong,
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(reason),
+        const SizedBox(height: AppSpacing.xs),
+        const Text(
+          'Puedes revisar las reglas locales y abrir Maps o Waze con el destino; el navegador puede recalcular.',
+        ),
+      ],
+    ),
+  );
+}
+
 class _Card extends StatelessWidget {
   const _Card({required this.child});
 
@@ -860,9 +1034,9 @@ String _minuteLabel(int value) =>
     '${(value ~/ 60).toString().padLeft(2, '0')}:${(value % 60).toString().padLeft(2, '0')}';
 
 String _formatDate(DateTime date) {
-  final month = date.month.toString().padLeft(2, '0');
-  final day = date.day.toString().padLeft(2, '0');
-  return '${date.year}-$month-$day';
+  return '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
 }
 
 _TripDatePickerRange _datePickerRange(DateTime selectedDate) {
@@ -893,6 +1067,25 @@ String _vehicleType(VehicleProfile vehicle) {
     VehicleServiceType.taxi => 'Taxi',
     VehicleServiceType.private => 'Particular',
   };
+}
+
+String _vehicleCategoryLabel(
+  VehicleProfile? vehicle,
+  TripVehicleConfiguration configuration,
+) {
+  if (configuration == TripVehicleConfiguration.unsupported) {
+    return 'Configuración no soportada';
+  }
+  return _standardCategoryLabel(vehicle);
+}
+
+String _standardCategoryLabel(VehicleProfile? vehicle) {
+  if (vehicle == null) return 'Categoría pendiente';
+  if (vehicle.kind == VehicleKind.motorcycle) return 'Moto · categoría propia';
+  if (vehicle.serviceType == VehicleServiceType.taxi) {
+    return 'Taxi · categoría propia';
+  }
+  return 'Particular · 2 ejes';
 }
 
 String _restrictionLabel(RestrictionDayStatus status) {

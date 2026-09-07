@@ -81,7 +81,8 @@ class _TripScreenState extends ConsumerState<TripScreen>
   VehicleProfile? _lastVehicle;
   var _selectedDate = DateUtils.dateOnly(bogotaWallClock(DateTime.now()));
   int? _departureMinute;
-  String? _confirmedVehicleId;
+  var _vehicleConfiguration = TripVehicleConfiguration.standardTwoAxle;
+  var _vehicleCategorySource = TripVehicleCategorySource.defaultStandard;
   String? _originError;
   String? _destinationError;
   String? _timeError;
@@ -140,7 +141,6 @@ class _TripScreenState extends ConsumerState<TripScreen>
     final municipalities = ref.watch(tripMunicipalityCatalogProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Planea tu viaje')),
       body: SafeArea(
         child: !_draftLoadComplete
             ? _draftLoadError == null
@@ -182,7 +182,8 @@ class _TripScreenState extends ConsumerState<TripScreen>
     // Provider updates can remove or edit a vehicle while a request is pending.
     if (!identical(_lastVehicle, selectedVehicle)) {
       _invalidatePlan();
-      _confirmedVehicleId = null;
+      _vehicleConfiguration = TripVehicleConfiguration.standardTwoAxle;
+      _vehicleCategorySource = TripVehicleCategorySource.defaultStandard;
       _lastVehicle = selectedVehicle;
     }
     final origin =
@@ -192,7 +193,9 @@ class _TripScreenState extends ConsumerState<TripScreen>
         catalog.findExact(_destinationController.text);
     final date = DateUtils.dateOnly(_selectedDate);
     final departureUtc = _departureMinute == null
-        ? null
+        ? _request?.departureMode == TripDepartureMode.now
+              ? _request?.departureUtc
+              : null
         : bogotaScheduledTime(
             date: date,
             minuteOfDay: _departureMinute!,
@@ -245,11 +248,11 @@ class _TripScreenState extends ConsumerState<TripScreen>
       destinationError: _destinationError,
       timeError: _timeError,
       vehicleError: _vehicleError,
-      standardVehicleConfirmed:
-          selectedVehicle != null && _confirmedVehicleId == selectedVehicle.id,
-      onStandardVehicleChanged: (value) => setState(() {
+      vehicleConfiguration: _vehicleConfiguration,
+      onVehicleConfigurationChanged: (value) => setState(() {
         _invalidatePlan();
-        _confirmedVehicleId = value ? selectedVehicle?.id : null;
+        _vehicleConfiguration = value;
+        _vehicleCategorySource = TripVehicleCategorySource.userSelected;
         _vehicleError = null;
       }),
       onTimeChanged: (value) => setState(() {
@@ -299,24 +302,33 @@ class _TripScreenState extends ConsumerState<TripScreen>
             )
           else
             const Text(
-              'Origen / salida: confirma la hora para evaluar ese instante.',
+              'Origen / salida: se muestran las reglas y ventanas del día; no hay veredicto para una hora exacta.',
             ),
           const SizedBox(height: AppSpacing.m),
-          if (selectedRoute != null && currentRequest != null)
+          if (selectedRoute != null &&
+              currentRequest != null &&
+              currentRequest.departureUtc != null)
             TripInstantEndpoint(
               key: ValueKey('trip-destination-instant-${selectedRoute.id}'),
               label: 'Destino / llegada aproximada',
-              instantUtc: selectedRoute.arrivalUtc(currentRequest.departureUtc),
+              instantUtc: selectedRoute.arrivalUtc(
+                currentRequest.departureUtc!,
+              ),
               onSource: _openSource,
               evaluation: ref.watch(
                 tripInstantRestrictionProvider((
                   municipality: currentRequest.destination,
                   vehicle: currentRequest.vehicle,
                   instantUtc: selectedRoute.arrivalUtc(
-                    currentRequest.departureUtc,
+                    currentRequest.departureUtc!,
                   ),
                 )),
               ),
+            )
+          else if (selectedRoute != null &&
+              currentRequest?.departureMode == TripDepartureMode.dateOnly)
+            const Text(
+              'Destino / llegada: la fecha real depende de la ruta y puede cambiar al día siguiente.',
             )
           else
             const Text(
@@ -341,9 +353,25 @@ class _TripScreenState extends ConsumerState<TripScreen>
       originRestriction: originRestriction,
       destinationRestriction: destinationRestriction,
       draftRestored: _draftRestored,
+      localConsultationStarted:
+          currentRequest != null ||
+          (_planError != null &&
+              _originError == null &&
+              _destinationError == null &&
+              _vehicleError != null),
+      localDepartureLabel: currentRequest == null
+          ? null
+          : switch (currentRequest.departureMode) {
+              TripDepartureMode.now => 'Salida: ahora',
+              TripDepartureMode.dateOnly =>
+                'Salida: Hora opcional · Sin definir',
+              TripDepartureMode.specified =>
+                'Salida: ${tripInstantLabel(currentRequest.departureUtc!)}',
+            },
       onVehicleChanged: (id) => setState(() {
         _invalidatePlan();
-        _confirmedVehicleId = null;
+        _vehicleConfiguration = TripVehicleConfiguration.standardTwoAxle;
+        _vehicleCategorySource = TripVehicleCategorySource.defaultStandard;
         _vehicleError = null;
         _selectedVehicleId = id;
         _restoredVehicleId = null;
@@ -440,6 +468,8 @@ class _TripScreenState extends ConsumerState<TripScreen>
       _destinationController.text = draft.destination;
       _selectedDate = DateUtils.dateOnly(draft.date);
       _departureMinute = draft.departureMinute;
+      _vehicleConfiguration = draft.vehicleConfiguration;
+      _vehicleCategorySource = draft.vehicleCategorySource;
       _completedChecklist = draft.completedChecklist;
       _draftRestored = true;
       _restoredVehicleId = draft.activeVehicleId;
@@ -515,7 +545,8 @@ class _TripScreenState extends ConsumerState<TripScreen>
     setState(() {
       _invalidatePlan();
       _departureMinute = null;
-      _confirmedVehicleId = null;
+      _vehicleConfiguration = TripVehicleConfiguration.standardTwoAxle;
+      _vehicleCategorySource = TripVehicleCategorySource.defaultStandard;
       _originError = null;
       _destinationError = null;
       _timeError = null;
@@ -613,6 +644,8 @@ class _TripScreenState extends ConsumerState<TripScreen>
       destination: _destinationController.text,
       date: _selectedDate,
       departureMinute: _departureMinute,
+      vehicleConfiguration: _vehicleConfiguration,
+      vehicleCategorySource: _vehicleCategorySource,
       activeVehicleId: activeVehicleId,
       completedChecklist: _completedChecklist,
     );
@@ -699,7 +732,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
   }
 
   void _scrollToMap() {
-    unawaited(_reveal(_mapAnchorKey));
+    unawaited(_reveal(_mapAnchorKey, alignment: 0.25));
   }
 
   Future<void> _reveal(
@@ -777,13 +810,18 @@ class _TripScreenState extends ConsumerState<TripScreen>
           : origin?.code == destination.code
           ? 'Elige otro municipio: no se ha definido un trayecto urbano.'
           : null;
-      _timeError = _departureMinute == null
-          ? 'Confirma la hora de salida.'
-          : null;
+      _timeError = null;
       _vehicleError = vehicle == null
           ? 'Selecciona un vehículo para este viaje.'
-          : _confirmedVehicleId != vehicle.id
-          ? 'Confirma las características del vehículo.'
+          : _vehicleConfiguration == TripVehicleConfiguration.unsupported
+          ? 'Esta configuración no tiene una categoría de tarifa compatible.'
+          : null;
+      _planError =
+          origin != null &&
+              destination != null &&
+              vehicle != null &&
+              _vehicleConfiguration == TripVehicleConfiguration.unsupported
+          ? tripPlanErrorText('unsupported_vehicle')
           : null;
     });
     if (_originError != null ||
@@ -794,6 +832,22 @@ class _TripScreenState extends ConsumerState<TripScreen>
       return;
     }
     FocusScope.of(context).unfocus();
+    final selectedDate = DateUtils.dateOnly(_selectedDate);
+    final nowUtc = DateTime.now().toUtc();
+    final today = DateUtils.dateOnly(bogotaWallClock(nowUtc));
+    final departureMode = _departureMinute != null
+        ? TripDepartureMode.specified
+        : selectedDate == today
+        ? TripDepartureMode.now
+        : TripDepartureMode.dateOnly;
+    final departureUtc = switch (departureMode) {
+      TripDepartureMode.now => nowUtc,
+      TripDepartureMode.specified => bogotaScheduledTime(
+        date: selectedDate,
+        minuteOfDay: _departureMinute!,
+      ).toUtc(),
+      TripDepartureMode.dateOnly => null,
+    };
     final request = TripPlanRequest(
       requestId: List.generate(
         16,
@@ -802,11 +856,11 @@ class _TripScreenState extends ConsumerState<TripScreen>
       origin: origin!,
       destination: destination!,
       vehicle: vehicle!,
-      standardVehicleConfirmed: true,
-      departureUtc: bogotaScheduledTime(
-        date: _selectedDate,
-        minuteOfDay: _departureMinute!,
-      ).toUtc(),
+      departureMode: departureMode,
+      departureDate: selectedDate,
+      departureUtc: departureUtc,
+      vehicleConfiguration: _vehicleConfiguration,
+      vehicleCategorySource: _vehicleCategorySource,
     );
     final token = CancelToken();
     final scrollRevision = _userScrollRevision;

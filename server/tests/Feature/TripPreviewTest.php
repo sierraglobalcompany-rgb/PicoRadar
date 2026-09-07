@@ -73,6 +73,35 @@ class TripPreviewTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_date_only_request_is_accepted_without_inventing_an_hour_or_spending(): void
+    {
+        config(['trips.enabled' => true]);
+        $request = $this->request();
+        $request['departureMode'] = 'date_only';
+        $request['departureDate'] = '2026-09-06';
+        $request['departureUtc'] = null;
+
+        $this->postJson('/api/v1/trips/preview', $request)
+            ->assertStatus(503)->assertExactJson(['error' => ['code' => 'not_configured']]);
+
+        Http::assertNothingSent();
+        $this->assertSame($this->ledger(), Cache::store('database')->get(self::LEDGER));
+    }
+
+    public function test_now_request_accepts_and_preserves_the_single_recent_capture(): void
+    {
+        config(['trips.enabled' => true]);
+        $request = $this->request();
+        $request['departureMode'] = 'now';
+        $request['departureDate'] = '2026-09-05';
+        $request['departureUtc'] = '2026-09-05T11:59:59Z';
+
+        $this->postJson('/api/v1/trips/preview', $request)->assertOk();
+
+        Http::assertSent(fn (Request $sent): bool => $sent['departure_time'] === '2026-09-05T11:59:59Z');
+        Http::assertSentCount(1);
+    }
+
     public function test_production_route_is_registered_and_throttled_without_account(): void
     {
         $route = Route::getRoutes()->getByName('api.v1.trips.preview');

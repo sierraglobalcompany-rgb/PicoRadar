@@ -50,7 +50,7 @@ void main() {
     },
   );
 
-  test('unconfirmed vehicle never reaches adapter', () async {
+  test('unsupported vehicle configuration never reaches adapter', () async {
     await expectLater(
       client.preview(_request(confirmed: false)),
       throwsA(
@@ -141,6 +141,8 @@ void main() {
         'requestId',
         'origin',
         'destination',
+        'departureMode',
+        'departureDate',
         'departureUtc',
         'timeZone',
         'vehicleCategory',
@@ -151,7 +153,7 @@ void main() {
       expect(jsonEncode(body), isNot(contains('private-vehicle')));
       expect(adapter.last!.uri.path, '/api/v1/trips/preview');
       expect(
-        plan.routes.single.arrivalUtc(_request().departureUtc),
+        plan.routes.single.arrivalUtc(_request().departureUtc!),
         DateTime.utc(2026, 9, 7, 8),
       );
       expect(plan.routes.single.tolls.totalMinor, 1200000);

@@ -19,6 +19,34 @@ enum TripChecklistItem {
   }
 }
 
+enum TripVehicleConfiguration {
+  standardTwoAxle('standard_two_axle'),
+  unsupported('unsupported');
+
+  const TripVehicleConfiguration(this.key);
+
+  final String key;
+
+  static TripVehicleConfiguration fromKey(Object? value) => switch (value) {
+    'unsupported' => unsupported,
+    _ => standardTwoAxle,
+  };
+}
+
+enum TripVehicleCategorySource {
+  defaultStandard('default_standard'),
+  userSelected('user_selected');
+
+  const TripVehicleCategorySource(this.key);
+
+  final String key;
+
+  static TripVehicleCategorySource fromKey(Object? value) => switch (value) {
+    'user_selected' => userSelected,
+    _ => defaultStandard,
+  };
+}
+
 class TripDraft {
   const TripDraft({
     required this.origin,
@@ -26,6 +54,8 @@ class TripDraft {
     required this.date,
     this.activeVehicleId,
     this.departureMinute,
+    this.vehicleConfiguration = TripVehicleConfiguration.standardTwoAxle,
+    this.vehicleCategorySource = TripVehicleCategorySource.defaultStandard,
     this.completedChecklist = const {},
   });
 
@@ -34,6 +64,8 @@ class TripDraft {
   final DateTime date;
   final String? activeVehicleId;
   final int? departureMinute;
+  final TripVehicleConfiguration vehicleConfiguration;
+  final TripVehicleCategorySource vehicleCategorySource;
   final Set<TripChecklistItem> completedChecklist;
 
   Map<String, Object?> toJson() {
@@ -43,6 +75,8 @@ class TripDraft {
       'date': _dateOnlyIso(date),
       'activeVehicleId': _optionalText(activeVehicleId),
       'departureMinute': departureMinute,
+      'vehicleConfiguration': vehicleConfiguration.key,
+      'vehicleCategorySource': vehicleCategorySource.key,
       'completedChecklist': [for (final item in completedChecklist) item.key],
     };
   }
@@ -76,6 +110,12 @@ class TripDraft {
       date: DateTime.parse(rawDate),
       activeVehicleId: _optionalText(json['activeVehicleId']),
       departureMinute: minute as int?,
+      vehicleConfiguration: TripVehicleConfiguration.fromKey(
+        json['vehicleConfiguration'],
+      ),
+      vehicleCategorySource: TripVehicleCategorySource.fromKey(
+        json['vehicleCategorySource'],
+      ),
       completedChecklist: completedChecklist,
     );
   }

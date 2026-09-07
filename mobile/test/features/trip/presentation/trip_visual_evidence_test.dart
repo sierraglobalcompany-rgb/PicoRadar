@@ -439,6 +439,7 @@ Future<void> _submitFixture(
   await _reveal(tester, const ValueKey('trip-standard-vehicle'));
   await tester.tap(find.byKey(const ValueKey('trip-standard-vehicle')));
   await tester.pumpAndSettle();
+  await _reveal(tester, const ValueKey('trip-preview'));
   await tester.tap(find.byKey(const ValueKey('trip-preview')).hitTestable());
   await tester.pump();
   expect(client.requests, hasLength(1));

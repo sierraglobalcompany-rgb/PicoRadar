@@ -7,6 +7,7 @@ use App\Models\GeographicUnit;
 use App\Services\TollGuruTripPreview;
 use App\Support\GeographicNameNormalizer;
 use DateTimeImmutable;
+use DateTimeZone;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -57,26 +58,20 @@ final class TripPreviewController
         } catch (JsonException) {
             throw new DomainException('validation');
         }
-        $this->exactKeys($input, ['requestId', 'origin', 'destination', 'departureUtc', 'timeZone', 'vehicleCategory', 'paymentMethod', 'alternatives']);
+        if (! is_array($input)) {
+            throw new DomainException('validation');
+        }
+        $legacyRequest = ! array_key_exists('departureMode', $input);
+        $this->exactKeys($input, $legacyRequest
+            ? ['requestId', 'origin', 'destination', 'departureUtc', 'timeZone', 'vehicleCategory', 'paymentMethod', 'alternatives']
+            : ['requestId', 'origin', 'destination', 'departureMode', 'departureDate', 'departureUtc', 'timeZone', 'vehicleCategory', 'paymentMethod', 'alternatives']);
         if (! is_string($input['requestId']) || ! preg_match('/\A[a-zA-Z0-9_-]{1,128}\z/', $input['requestId'])
             || $input['timeZone'] !== 'America/Bogota' || $input['paymentMethod'] !== 'cash'
             || ! in_array($input['vehicleCategory'], ['car', 'motorcycle', 'taxi'], true)
             || ! is_int($input['alternatives']) || $input['alternatives'] < 1 || $input['alternatives'] > 3) {
             throw new DomainException('validation');
         }
-        if (! is_string($input['departureUtc']) || ! preg_match('/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z\z/', $input['departureUtc'])) {
-            throw new DomainException('validation');
-        }
-        $format = str_contains($input['departureUtc'], '.') ? '!Y-m-d\TH:i:s.u\Z' : '!Y-m-d\TH:i:s\Z';
-        $departure = DateTimeImmutable::createFromFormat($format, $input['departureUtc'], new \DateTimeZone('UTC'));
-        $errors = DateTimeImmutable::getLastErrors();
-        if ($departure === false || ($errors !== false && ($errors['warning_count'] || $errors['error_count']))) {
-            throw new DomainException('validation');
-        }
-        $now = now()->utc();
-        if ($departure < $now || $departure > $now->copy()->addDays($this->maxFutureDays())) {
-            throw new DomainException('departure_window');
-        }
+        $this->validateDeparture($input, $legacyRequest);
         foreach (['origin', 'destination'] as $key) {
             $point = $input[$key];
             $this->exactKeys($point, ['code', 'municipality', 'department']);
@@ -103,6 +98,82 @@ final class TripPreviewController
         }
 
         return $input;
+    }
+
+    private function validateDeparture(array &$input, bool $legacyRequest): void
+    {
+        $bogota = new DateTimeZone('America/Bogota');
+        $now = now()->utc();
+        $mode = $legacyRequest ? 'specified' : $input['departureMode'];
+        if (! in_array($mode, ['now', 'date_only', 'specified'], true)) {
+            throw new DomainException('validation');
+        }
+
+        if ($mode === 'date_only') {
+            $date = $this->parseDate($input['departureDate'] ?? null, $bogota);
+            if (($input['departureUtc'] ?? null) !== null) {
+                throw new DomainException('validation');
+            }
+            $today = DateTimeImmutable::createFromInterface($now)->setTimezone($bogota)->setTime(0, 0);
+            if ($date <= $today || $date > $today->modify('+'.$this->maxFutureDays().' days')) {
+                throw new DomainException('departure_window');
+            }
+
+            return;
+        }
+
+        $departure = $this->parseUtc($input['departureUtc'] ?? null);
+        if ($mode === 'now') {
+            $date = $this->parseDate($input['departureDate'] ?? null, $bogota);
+            $today = DateTimeImmutable::createFromInterface($now)->setTimezone($bogota)->setTime(0, 0);
+            if ($date != $today || $departure < DateTimeImmutable::createFromInterface($now)->modify('-5 minutes') || $departure > DateTimeImmutable::createFromInterface($now)->modify('+1 minute')) {
+                throw new DomainException('departure_window');
+            }
+        } else {
+            if ($departure < $now || $departure > $now->copy()->addDays($this->maxFutureDays())) {
+                throw new DomainException('departure_window');
+            }
+            if (! $legacyRequest) {
+                $date = $this->parseDate($input['departureDate'] ?? null, $bogota);
+                if ($departure->setTimezone($bogota)->format('Y-m-d') !== $date->format('Y-m-d')) {
+                    throw new DomainException('validation');
+                }
+            }
+        }
+
+        if ($legacyRequest) {
+            $input['departureMode'] = 'specified';
+            $input['departureDate'] = $departure->setTimezone($bogota)->format('Y-m-d');
+        }
+    }
+
+    private function parseDate(mixed $value, DateTimeZone $zone): DateTimeImmutable
+    {
+        if (! is_string($value) || ! preg_match('/\A\d{4}-\d{2}-\d{2}\z/', $value)) {
+            throw new DomainException('validation');
+        }
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value, $zone);
+        $errors = DateTimeImmutable::getLastErrors();
+        if ($date === false || ($errors !== false && ($errors['warning_count'] || $errors['error_count']))) {
+            throw new DomainException('validation');
+        }
+
+        return $date;
+    }
+
+    private function parseUtc(mixed $value): DateTimeImmutable
+    {
+        if (! is_string($value) || ! preg_match('/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z\z/', $value)) {
+            throw new DomainException('validation');
+        }
+        $format = str_contains($value, '.') ? '!Y-m-d\TH:i:s.u\Z' : '!Y-m-d\TH:i:s\Z';
+        $departure = DateTimeImmutable::createFromFormat($format, $value, new DateTimeZone('UTC'));
+        $errors = DateTimeImmutable::getLastErrors();
+        if ($departure === false || ($errors !== false && ($errors['warning_count'] || $errors['error_count']))) {
+            throw new DomainException('validation');
+        }
+
+        return $departure;
     }
 
     private function maxFutureDays(): int
