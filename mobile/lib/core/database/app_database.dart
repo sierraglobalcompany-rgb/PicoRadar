@@ -191,10 +191,16 @@ class AppDatabase extends _$AppDatabase {
     }
 
     if (from == 5) {
-      await migrator.addColumn(
-        datasetVersions,
-        datasetVersions.publicationRevision,
+      final hasPublicationRevision = await _columnExists(
+        'dataset_versions',
+        'publication_revision',
       );
+      if (!hasPublicationRevision) {
+        await migrator.addColumn(
+          datasetVersions,
+          datasetVersions.publicationRevision,
+        );
+      }
       from = 6;
     }
 
@@ -205,5 +211,10 @@ class AppDatabase extends _$AppDatabase {
     throw UnsupportedError(
       'No Drift migration path is defined from schema $from to $to.',
     );
+  }
+
+  Future<bool> _columnExists(String tableName, String columnName) async {
+    final columns = await customSelect('PRAGMA table_info($tableName)').get();
+    return columns.any((row) => row.read<String>('name') == columnName);
   }
 }

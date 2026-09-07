@@ -358,6 +358,50 @@ void main() {
         await _deleteTempDir(tempDir);
       }
     });
+
+    test(
+      'recovers schema v5 with preexisting publication revision column',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'picoradar_migration_v5_partial_',
+        );
+        final dbPath = '${tempDir.path}${Platform.pathSeparator}app.sqlite';
+
+        try {
+          _createLegacyV5Database(dbPath);
+          final sqlite = sqlite3.open(dbPath);
+          try {
+            sqlite.execute(
+              'ALTER TABLE dataset_versions '
+              'ADD COLUMN publication_revision INTEGER NOT NULL DEFAULT 0',
+            );
+            sqlite.execute('PRAGMA user_version = 5');
+          } finally {
+            sqlite.close();
+          }
+
+          final migrated = AppDatabase(NativeDatabase(File(dbPath)));
+          final selected = await migrated
+              .customSelect(
+                'SELECT version, sha256, publication_revision '
+                'FROM dataset_versions WHERE dataset_key = ?',
+                variables: [Variable.withString('tolls_inventory')],
+              )
+              .getSingle();
+          final version = await migrated
+              .customSelect('PRAGMA user_version')
+              .get();
+          await migrated.close();
+
+          expect(version.single.data['user_version'], 6);
+          expect(selected.read<String>('version'), 'opaque-v1');
+          expect(selected.read<String>('sha256'), 'a' * 64);
+          expect(selected.read<int>('publication_revision'), 0);
+        } finally {
+          await _deleteTempDir(tempDir);
+        }
+      },
+    );
   });
 }
 
