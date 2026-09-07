@@ -9,7 +9,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:picoradar/app/app_providers.dart';
+import 'package:picoradar/app/shell/app_shell.dart';
 import 'package:picoradar/core/database/app_database.dart';
+import 'package:picoradar/core/design_system/navigation.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/driving/domain/traffic_camera.dart';
@@ -117,6 +119,43 @@ void main() {
         FocusManager.instance.primaryFocus?.debugLabel,
         isNot('trip-vehicle-focus'),
       );
+    },
+  );
+
+  testWidgets(
+    'VIAJE-R2C keeps initial CTA above floating shell nav at 360x800',
+    (tester) async {
+      await TripDraftStore(preferences).saveDraft(
+        TripDraft(
+          origin: 'Bogotá',
+          destination: 'Medellín',
+          date: DateTime(2026, 9, 7),
+          departureMinute: 600,
+        ),
+      );
+      await _pumpScreen(
+        tester,
+        preferences: preferences,
+        activeVehicle: _vehicle(),
+        size: const Size(360, 800),
+        shellOverlay: Align(
+          alignment: Alignment.bottomCenter,
+          child: _testBottomNav(),
+        ),
+      );
+
+      final preview = find.byKey(const ValueKey('trip-preview'));
+      final bottomNav = find.byKey(const ValueKey('app-bottom-navigation'));
+
+      expect(preview.hitTestable(), findsOneWidget);
+      expect(
+        tester.getRect(preview).bottom,
+        lessThanOrEqualTo(tester.getRect(bottomNav).top),
+      );
+
+      await tester.tap(preview);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
     },
   );
 
@@ -2399,6 +2438,7 @@ Future<void> _pumpScreen(
   TripCameraPackSnapshot? cameraSnapshot,
   TripRouteMapConfig? mapConfig,
   TripRouteAssociationResolver? associationResolver,
+  Widget? shellOverlay,
 }) async {
   final ownedRestrictionStore = restrictionStore == null
       ? _FakeTripRestrictionStore()
@@ -2472,7 +2512,12 @@ Future<void> _pumpScreen(
           ),
           child: child!,
         ),
-        home: TickerMode(enabled: tickerEnabled, child: const TripScreen()),
+        home: TickerMode(
+          enabled: tickerEnabled,
+          child: shellOverlay == null
+              ? const TripScreen()
+              : Stack(children: [const TripScreen(), shellOverlay]),
+        ),
       ),
     ),
   );
@@ -2480,6 +2525,23 @@ Future<void> _pumpScreen(
   if (settle) {
     await tester.pumpAndSettle();
   }
+}
+
+Widget _testBottomNav() {
+  return AppBottomNav(
+    destinations: [
+      for (final tab in AppTab.values)
+        AppBottomNavDestination(
+          label: tab.label,
+          icon: tab.icon,
+          selectedIcon: tab.selectedIcon,
+          color: tab.color,
+          keyName: tab.name,
+        ),
+    ],
+    currentIndex: AppTab.trip.index,
+    onSelect: (_) {},
+  );
 }
 
 String _formatTestDate(DateTime date) {

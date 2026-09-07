@@ -123,6 +123,13 @@ class TripContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final hasPlan = planResult != null;
+    final mediaSize = MediaQuery.sizeOf(context);
+    final compactInitialPlanner =
+        !hasPlan && mediaSize.width <= 360 && mediaSize.height <= 800;
+    final bottomPadding =
+        112.0 +
+        MediaQuery.paddingOf(context).bottom +
+        MediaQuery.viewInsetsOf(context).bottom;
     final endpointSummary =
         '${originController.text.trim().isEmpty ? 'Origen pendiente' : originController.text.trim()} → '
         '${destinationController.text.trim().isEmpty ? 'Destino pendiente' : destinationController.text.trim()}';
@@ -158,6 +165,7 @@ class TripContent extends ConsumerWidget {
       ],
     );
     final preparation = _Card(
+      padding: compactInitialPlanner ? AppSpacing.m : AppSpacing.l,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -176,10 +184,11 @@ class TripContent extends ConsumerWidget {
             onDestinationSelected: onDestinationSelected,
             onSwapLocations: onSwapLocations,
           ),
-          const SizedBox(height: AppSpacing.m),
+          SizedBox(height: compactInitialPlanner ? AppSpacing.s : AppSpacing.m),
           _TripDepartureGroup(
             selectedDate: selectedDate,
             departureMinute: departureMinute,
+            compactLayout: compactInitialPlanner,
             timeFocusNode: timeFocusNode,
             timeError: timeError,
             onDateChanged: onDateChanged,
@@ -216,11 +225,11 @@ class TripContent extends ConsumerWidget {
       child: ListView(
         controller: scrollController,
         key: const ValueKey('trip-screen'),
-        padding: const EdgeInsets.fromLTRB(
+        padding: EdgeInsets.fromLTRB(
           AppSpacing.l,
+          compactInitialPlanner ? AppSpacing.m : AppSpacing.l,
           AppSpacing.l,
-          AppSpacing.l,
-          96,
+          bottomPadding,
         ),
         children: [
           Align(
@@ -246,16 +255,26 @@ class TripContent extends ConsumerWidget {
                       capsuleKey: const ValueKey('trip-user-controls-capsule'),
                       bellKey: const ValueKey('trip-notification-bell'),
                     ),
-                    const SizedBox(height: AppSpacing.m),
-                    Text('Planea tu viaje', style: AppTextStyles.h1),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Compara rutas, peajes, cámaras y restricciones antes de salir.',
-                      style: AppTextStyles.body.copyWith(
-                        color: AppColors.navy.withValues(alpha: 0.72),
-                      ),
+                    SizedBox(
+                      height: compactInitialPlanner
+                          ? AppSpacing.xs
+                          : AppSpacing.m,
                     ),
-                    const SizedBox(height: AppSpacing.m),
+                    Text('Planea tu viaje', style: AppTextStyles.h1),
+                    if (!compactInitialPlanner) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'Compara rutas, peajes, cámaras y restricciones antes de salir.',
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.navy.withValues(alpha: 0.72),
+                        ),
+                      ),
+                    ],
+                    SizedBox(
+                      height: compactInitialPlanner
+                          ? AppSpacing.xs
+                          : AppSpacing.m,
+                    ),
                     if (hasPlan)
                       ExpansionTile(
                         key: const ValueKey('trip-preparation-compact'),
@@ -393,6 +412,7 @@ class _TripDepartureGroup extends StatelessWidget {
   const _TripDepartureGroup({
     required this.selectedDate,
     required this.departureMinute,
+    required this.compactLayout,
     required this.timeFocusNode,
     required this.timeError,
     required this.onDateChanged,
@@ -409,6 +429,7 @@ class _TripDepartureGroup extends StatelessWidget {
 
   final DateTime selectedDate;
   final int? departureMinute;
+  final bool compactLayout;
   final FocusNode timeFocusNode;
   final String? timeError;
   final ValueChanged<DateTime> onDateChanged;
@@ -424,71 +445,114 @@ class _TripDepartureGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dateButton = OutlinedButton.icon(
+      key: const ValueKey('trip-date-button'),
+      onPressed: () async {
+        final range = _datePickerRange(selectedDate);
+        final selected = await showDatePicker(
+          context: context,
+          initialDate: selectedDate,
+          firstDate: range.firstDate,
+          lastDate: range.lastDate,
+        );
+        if (context.mounted && selected != null) {
+          onDateChanged(DateUtils.dateOnly(selected));
+        }
+      },
+      icon: const Icon(Icons.calendar_today_outlined),
+      label: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          compactLayout
+              ? 'Fecha ${_formatDate(selectedDate)}'
+              : 'Fecha · ${_formatDate(selectedDate)}',
+        ),
+      ),
+    );
+    final timeButton = OutlinedButton.icon(
+      key: const ValueKey('trip-time-button'),
+      focusNode: timeFocusNode,
+      onPressed: () async {
+        final minute = departureMinute;
+        final selected = await showTimePicker(
+          context: context,
+          initialTime: minute == null
+              ? const TimeOfDay(hour: 8, minute: 0)
+              : TimeOfDay(hour: minute ~/ 60, minute: minute % 60),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+            child: child!,
+          ),
+        );
+        if (context.mounted && selected != null) {
+          onTimeChanged(selected.hour * 60 + selected.minute);
+        }
+      },
+      icon: const Icon(Icons.schedule),
+      label: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          departureMinute == null
+              ? (compactLayout
+                    ? 'Hora opcional'
+                    : 'Hora opcional · Sin definir')
+              : compactLayout
+              ? 'Hora ${_minuteLabel(departureMinute!)}'
+              : 'Hora de salida · ${_minuteLabel(departureMinute!)}',
+        ),
+      ),
+    );
+    final timeControl = Row(
+      children: [
+        Expanded(child: timeButton),
+        if (departureMinute != null) ...[
+          const SizedBox(width: AppSpacing.xs),
+          IconButton.outlined(
+            key: const ValueKey('trip-clear-time'),
+            tooltip: 'Quitar hora de salida',
+            onPressed: () => onTimeChanged(null),
+            icon: const Icon(Icons.close),
+          ),
+        ],
+      ],
+    );
+    final category = GestureDetector(
+      key: const ValueKey('trip-standard-vehicle'),
+      behavior: HitTestBehavior.translucent,
+      onTap: () => onVehicleConfigurationChanged(
+        TripVehicleConfiguration.standardTwoAxle,
+      ),
+      child: Text(
+        _vehicleCategoryLabel(vehicle, vehicleConfiguration),
+        key: const ValueKey('trip-vehicle-category'),
+        style: AppTextStyles.caption.copyWith(color: AppColors.teal),
+      ),
+    );
+    final options = TextButton.icon(
+      key: const ValueKey('trip-vehicle-options'),
+      onPressed: vehicle == null ? null : () => _showVehicleOptions(context),
+      icon: const Icon(Icons.tune, size: 18),
+      label: Text(compactLayout ? 'Opciones' : 'Opciones del vehículo'),
+    );
+
     return Column(
       key: const ValueKey('trip-departure-group'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        OutlinedButton.icon(
-          key: const ValueKey('trip-date-button'),
-          onPressed: () async {
-            final range = _datePickerRange(selectedDate);
-            final selected = await showDatePicker(
-              context: context,
-              initialDate: selectedDate,
-              firstDate: range.firstDate,
-              lastDate: range.lastDate,
-            );
-            if (context.mounted && selected != null) {
-              onDateChanged(DateUtils.dateOnly(selected));
-            }
-          },
-          icon: const Icon(Icons.calendar_today_outlined),
-          label: Text('Fecha · ${_formatDate(selectedDate)}'),
-        ),
-        const SizedBox(height: AppSpacing.s),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                key: const ValueKey('trip-time-button'),
-                focusNode: timeFocusNode,
-                onPressed: () async {
-                  final minute = departureMinute;
-                  final selected = await showTimePicker(
-                    context: context,
-                    initialTime: minute == null
-                        ? const TimeOfDay(hour: 8, minute: 0)
-                        : TimeOfDay(hour: minute ~/ 60, minute: minute % 60),
-                    builder: (context, child) => MediaQuery(
-                      data: MediaQuery.of(context)
-                          .copyWith(alwaysUse24HourFormat: true),
-                      child: child!,
-                    ),
-                  );
-                  if (context.mounted && selected != null) {
-                    onTimeChanged(selected.hour * 60 + selected.minute);
-                  }
-                },
-                icon: const Icon(Icons.schedule),
-                label: Text(
-                  departureMinute == null
-                      ? 'Hora opcional · Sin definir'
-                      : 'Hora de salida · ${_minuteLabel(departureMinute!)}',
-                ),
-              ),
-            ),
-            if (departureMinute != null) ...[
+        if (compactLayout)
+          Row(
+            children: [
+              Expanded(child: dateButton),
               const SizedBox(width: AppSpacing.s),
-              IconButton.outlined(
-                key: const ValueKey('trip-clear-time'),
-                tooltip: 'Quitar hora de salida',
-                onPressed: () => onTimeChanged(null),
-                icon: const Icon(Icons.close),
-              ),
+              Expanded(child: timeControl),
             ],
-          ],
-        ),
-        const Text('Hora de Colombia', style: AppTextStyles.caption),
+          )
+        else ...[
+          dateButton,
+          const SizedBox(height: AppSpacing.s),
+          timeControl,
+          const Text('Hora de Colombia', style: AppTextStyles.caption),
+        ],
         if (timeError != null) _FieldError(timeError!),
         const SizedBox(height: AppSpacing.s),
         _VehicleCard(
@@ -499,29 +563,18 @@ class _TripDepartureGroup extends StatelessWidget {
           onChanged: onVehicleChanged,
         ),
         const SizedBox(height: AppSpacing.xs),
-        GestureDetector(
-          key: const ValueKey('trip-standard-vehicle'),
-          behavior: HitTestBehavior.translucent,
-          onTap: () => onVehicleConfigurationChanged(
-            TripVehicleConfiguration.standardTwoAxle,
-          ),
-          child: Text(
-            _vehicleCategoryLabel(vehicle, vehicleConfiguration),
-            key: const ValueKey('trip-vehicle-category'),
-            style: AppTextStyles.caption.copyWith(color: AppColors.teal),
-          ),
-        ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton.icon(
-            key: const ValueKey('trip-vehicle-options'),
-            onPressed: vehicle == null
-                ? null
-                : () => _showVehicleOptions(context),
-            icon: const Icon(Icons.tune, size: 18),
-            label: const Text('Opciones del vehículo'),
-          ),
-        ),
+        if (compactLayout)
+          Row(
+            children: [
+              Expanded(child: category),
+              const SizedBox(width: AppSpacing.s),
+              options,
+            ],
+          )
+        else ...[
+          category,
+          Align(alignment: Alignment.centerRight, child: options),
+        ],
         if (vehicleConfiguration == TripVehicleConfiguration.unsupported)
           const Text(
             'Tarifas no soportadas para remolque o configuración distinta. Los datos locales siguen disponibles.',
@@ -995,9 +1048,10 @@ class _RoutesUnavailable extends StatelessWidget {
 }
 
 class _Card extends StatelessWidget {
-  const _Card({required this.child});
+  const _Card({required this.child, this.padding = AppSpacing.l});
 
   final Widget child;
+  final double padding;
 
   @override
   Widget build(BuildContext context) {
@@ -1007,7 +1061,7 @@ class _Card extends StatelessWidget {
         border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(AppRadius.card),
       ),
-      child: Padding(padding: const EdgeInsets.all(AppSpacing.l), child: child),
+      child: Padding(padding: EdgeInsets.all(padding), child: child),
     );
   }
 }
