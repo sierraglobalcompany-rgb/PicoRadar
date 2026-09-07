@@ -100,11 +100,17 @@ void main() {
           findsOneWidget,
         );
       }
-      expect(preview.hitTestable(), findsOneWidget);
+      expect(
+        tester.getTopLeft(preview).dy,
+        greaterThan(tester.getTopLeft(departureGroup).dy),
+      );
       expect(
         tester.getTopLeft(preview).dy,
         lessThan(tester.getTopLeft(secondaryContent).dy),
       );
+      await tester.ensureVisible(preview);
+      await tester.pumpAndSettle();
+      expect(preview.hitTestable(), findsOneWidget);
       await tester.tap(preview);
       await tester.pumpAndSettle();
       expect(
@@ -629,6 +635,49 @@ void main() {
     expect(find.text('Rutas y precios todavía no disponibles'), findsOneWidget);
     expect(find.textContaining('Tarifas no soportadas'), findsOneWidget);
   });
+
+  testWidgets(
+    'advanced vehicle configuration restored from draft is not reset on first build',
+    (tester) async {
+      final vehicle = _vehicle(id: 'vehicle-a', plate: 'ABC123');
+      await TripDraftStore(preferences).saveDraft(
+        TripDraft(
+          origin: 'Bogotá',
+          destination: 'Medellín',
+          date: DateTime(2026, 9, 7),
+          activeVehicleId: vehicle.id,
+          vehicleConfiguration: TripVehicleConfiguration.unsupported,
+          vehicleCategorySource: TripVehicleCategorySource.userSelected,
+        ),
+      );
+
+      await _pumpScreen(
+        tester,
+        preferences: preferences,
+        activeVehicle: vehicle,
+        vehicles: [vehicle],
+        size: const Size(390, 1000),
+      );
+
+      expect(find.text('Configuración no soportada'), findsOneWidget);
+      _pressButtonByKey(tester, 'trip-preview');
+      await tester.pumpAndSettle();
+
+      final restored = await TripDraftStore(preferences).loadDraft();
+      expect(
+        restored?.vehicleConfiguration,
+        TripVehicleConfiguration.unsupported,
+      );
+      expect(
+        restored?.vehicleCategorySource,
+        TripVehicleCategorySource.userSelected,
+      );
+      expect(
+        find.text('Rutas y precios todavía no disponibles'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('not configured keeps useful local result visible', (
     tester,

@@ -35,9 +35,6 @@ final class TollGuruTripPreview
 
     public function preview(array $request): array
     {
-        if (($request['departureMode'] ?? 'specified') === 'date_only') {
-            throw new DomainException('not_configured');
-        }
         if (! isset(self::VEHICLES[$request['vehicleCategory'] ?? ''])) {
             throw new DomainException('unsupported_vehicle');
         }
@@ -190,7 +187,7 @@ final class TollGuruTripPreview
                 ])->post(self::ENDPOINT, [
                     'from' => ['address' => $address($request['origin'])], 'to' => ['address' => $address($request['destination'])],
                     'vehicle' => ['type' => self::VEHICLES[$request['vehicleCategory']]], 'serviceProvider' => 'here',
-                    'departure_time' => $request['departureUtc'], 'units' => ['currency' => 'COP'], 'allowFerry' => false,
+                    'departure_time' => $this->providerDepartureTime($request), 'units' => ['currency' => 'COP'], 'allowFerry' => false,
                 ]);
             $stream = $response->toPsrResponse()->getBody();
             if (! $response->successful()) {
@@ -228,6 +225,19 @@ final class TollGuruTripPreview
         } finally {
             $stream?->close();
         }
+    }
+
+    private function providerDepartureTime(array $request): string
+    {
+        if (($request['departureMode'] ?? 'specified') !== 'date_only') {
+            return $request['departureUtc'];
+        }
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $request['departureDate'].' 12:00:00', new DateTimeZone('America/Bogota'));
+        if ($date === false) {
+            throw new DomainException('validation');
+        }
+
+        return $date->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d\TH:i:s\Z');
     }
 
     public function normalizeResponse(string $body, array $request): array

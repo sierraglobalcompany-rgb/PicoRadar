@@ -130,6 +130,7 @@ class TripContent extends ConsumerWidget {
         ? 'Vehículo pendiente'
         : '${_vehicleType(selectedVehicle!)} · ${selectedVehicle!.plate}';
     final previewAction = Column(
+      key: const ValueKey('trip-preview-action-group'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         FilledButton.icon(
@@ -255,8 +256,6 @@ class TripContent extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: AppSpacing.m),
-                    previewAction,
-                    const SizedBox(height: AppSpacing.m),
                     if (hasPlan)
                       ExpansionTile(
                         key: const ValueKey('trip-preparation-compact'),
@@ -288,6 +287,8 @@ class TripContent extends ConsumerWidget {
                         key: const ValueKey('trip-preparation-expanded'),
                         child: preparation,
                       ),
+                    const SizedBox(height: AppSpacing.m),
+                    previewAction,
                     if (planResult != null) ...[
                       const SizedBox(height: AppSpacing.l),
                       SizedBox(key: resultsAnchorKey),

@@ -78,7 +78,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
   final _originController = TextEditingController();
   final _destinationController = TextEditingController();
   final _random = Random.secure();
-  VehicleProfile? _lastVehicle;
+  _TripVehicleIdentity? _lastVehicle;
   var _selectedDate = DateUtils.dateOnly(bogotaWallClock(DateTime.now()));
   int? _departureMinute;
   var _vehicleConfiguration = TripVehicleConfiguration.standardTwoAxle;
@@ -180,12 +180,13 @@ class _TripScreenState extends ConsumerState<TripScreen>
   }) {
     final selectedVehicle = _selectedVehicle(vehicles, activeVehicle);
     // Provider updates can remove or edit a vehicle while a request is pending.
-    if (!identical(_lastVehicle, selectedVehicle)) {
+    final selectedVehicleIdentity = _TripVehicleIdentity.from(selectedVehicle);
+    if (_lastVehicle != null && _lastVehicle != selectedVehicleIdentity) {
       _invalidatePlan();
       _vehicleConfiguration = TripVehicleConfiguration.standardTwoAxle;
       _vehicleCategorySource = TripVehicleCategorySource.defaultStandard;
-      _lastVehicle = selectedVehicle;
     }
+    _lastVehicle = selectedVehicleIdentity;
     final origin =
         _originMunicipality ?? catalog.findExact(_originController.text);
     final destination =
@@ -924,6 +925,36 @@ class _TripScreenState extends ConsumerState<TripScreen>
     }
     if (mounted && !opened) _showSnackBar('No pudimos abrir la fuente.');
   }
+}
+
+class _TripVehicleIdentity {
+  const _TripVehicleIdentity({
+    required this.id,
+    required this.kind,
+    required this.serviceType,
+  });
+
+  factory _TripVehicleIdentity.from(VehicleProfile? vehicle) =>
+      _TripVehicleIdentity(
+        id: vehicle?.id,
+        kind: vehicle?.kind,
+        serviceType: vehicle?.serviceType,
+      );
+
+  final String? id;
+  final VehicleKind? kind;
+  final VehicleServiceType? serviceType;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _TripVehicleIdentity &&
+          id == other.id &&
+          kind == other.kind &&
+          serviceType == other.serviceType;
+
+  @override
+  int get hashCode => Object.hash(id, kind, serviceType);
 }
 
 class _TripPlanWithLocalData extends StatelessWidget {

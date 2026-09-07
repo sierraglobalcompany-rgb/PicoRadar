@@ -73,7 +73,7 @@ class TripPreviewTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_date_only_request_is_accepted_without_inventing_an_hour_or_spending(): void
+    public function test_date_only_request_uses_explicit_local_noon_reference_without_user_hour(): void
     {
         config(['trips.enabled' => true]);
         $request = $this->request();
@@ -82,10 +82,16 @@ class TripPreviewTest extends TestCase
         $request['departureUtc'] = null;
 
         $this->postJson('/api/v1/trips/preview', $request)
-            ->assertStatus(503)->assertExactJson(['error' => ['code' => 'not_configured']]);
+            ->assertOk()
+            ->assertJsonPath('routes.0.timeBasis', 'static');
 
-        Http::assertNothingSent();
-        $this->assertSame($this->ledger(), Cache::store('database')->get(self::LEDGER));
+        Http::assertSent(function (Request $sent): bool {
+            $this->assertSame('2026-09-06T17:00:00Z', $sent['departure_time']);
+
+            return true;
+        });
+        Http::assertSentCount(1);
+        $this->assertSame($this->ledger(1, 21, 300), Cache::store('database')->get(self::LEDGER));
     }
 
     public function test_now_request_accepts_and_preserves_the_single_recent_capture(): void
