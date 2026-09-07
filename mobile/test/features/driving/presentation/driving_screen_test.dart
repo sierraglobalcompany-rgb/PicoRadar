@@ -22,6 +22,8 @@ import 'package:picoradar/features/vehicle_status/platform/external_launcher.dar
 
 import '../../../test_app_harness.dart';
 
+final _testBaseTime = _roundedFutureTestBaseTime();
+
 void main() {
   test('default driving map config does not activate external tiles', () {
     final config = DrivingMapConfig.fromEnvironment();
@@ -1853,6 +1855,11 @@ TrafficCamera _camera({
   );
 }
 
+DateTime _roundedFutureTestBaseTime() {
+  final now = DateTime.now().toUtc().add(const Duration(minutes: 5));
+  return DateTime.utc(now.year, now.month, now.day, now.hour, now.minute);
+}
+
 double _northDegrees(double distanceMeters, double bearingDegrees) {
   return math.cos(bearingDegrees * math.pi / 180) * distanceMeters / 111320.0;
 }
@@ -1879,7 +1886,7 @@ DrivingPoint _point({
     accuracyMeters: 12,
     speedKmh: speedKmh,
     headingDegrees: 0,
-    recordedAt: DateTime.utc(2026, 8, 31, 12, 0, seconds),
+    recordedAt: _testBaseTime.add(Duration(seconds: seconds)),
   );
 }
 

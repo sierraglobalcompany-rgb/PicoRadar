@@ -68,6 +68,10 @@ final drivingGpsStaleAfterProvider = Provider<Duration>((ref) {
   return const Duration(seconds: 3);
 });
 
+final drivingClockProvider = Provider<DateTime Function()>((ref) {
+  return () => DateTime.now().toUtc();
+});
+
 final drivingHudActiveProvider =
     NotifierProvider<DrivingHudActiveNotifier, bool>(
       DrivingHudActiveNotifier.new,
@@ -279,7 +283,12 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   var _processingPoint = false;
   DrivingPoint? _pendingPoint;
   var _feedbackActive = false;
-  ({DrivingPreferences preferences, DrivingAlert alert, int sessionSerial})?
+  ({
+    DrivingPreferences preferences,
+    DrivingAlert alert,
+    int sessionSerial,
+    String? episodeKey,
+  })?
   _pendingFeedback;
   Timer? _gpsStaleTimer;
 
@@ -467,7 +476,13 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     if (cameraId == null) {
       return;
     }
+    _pendingFeedback = null;
     state = AsyncData(current.copyWith(dismissedCameraId: cameraId));
+    try {
+      await ref.read(drivingFeedbackGatewayProvider).stopOngoingFeedback();
+    } catch (_) {
+      // Alert dismissal is best-effort and must not break the session.
+    }
   }
 
   Future<void> savePreferences(DrivingPreferences preferences) async {
@@ -543,8 +558,27 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       return;
     }
     final alertEngine = _alertEngine ??= _alertEngineFor(current.preferences);
+    if (_isGpsSampleStale(point)) {
+      _previousPoint = null;
+      _pendingFeedback = null;
+      _gpsStaleTimer?.cancel();
+      alertEngine.markNoMatch(point.recordedAt);
+      state = AsyncData(
+        current.copyWith(
+          status: DrivingSessionStatus.active,
+          currentPoint: point,
+          clearNearestCamera: true,
+          clearLastAlert: true,
+          clearDismissedCamera: true,
+          clearErrorMessage: true,
+          gpsStale: true,
+        ),
+      );
+      return;
+    }
     if (point.accuracyMeters > 60) {
       _previousPoint = null;
+      _pendingFeedback = null;
       alertEngine.markNoMatch(point.recordedAt);
       final keepLastAlert =
           current.lastAlert != null &&
@@ -639,7 +673,12 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     state = AsyncData(nextState);
     _armGpsStaleTimer(point, sessionSerial);
     if (visibleAlert != null) {
-      _enqueueFeedback(current.preferences, visibleAlert, sessionSerial);
+      _enqueueFeedback(
+        current.preferences,
+        visibleAlert,
+        sessionSerial,
+        episodeKey,
+      );
     } else if (nextState.isOverspeeding &&
         !wasOverspeeding &&
         current.preferences.vibrationEnabled &&
@@ -650,59 +689,98 @@ class DrivingController extends AsyncNotifier<DrivingState> {
 
   void _armGpsStaleTimer(DrivingPoint point, int sessionSerial) {
     _gpsStaleTimer?.cancel();
-    _gpsStaleTimer = Timer(ref.read(drivingGpsStaleAfterProvider), () {
-      if (!_isActiveSession(sessionSerial)) {
-        return;
-      }
-      final current = state.asData?.value;
-      if (current == null || current.currentPoint != point) {
-        return;
-      }
-      _previousPoint = null;
-      state = AsyncData(
-        current.copyWith(
-          gpsStale: true,
-          clearNearestCamera: true,
-          clearLastAlert: true,
-          clearDismissedCamera: true,
-        ),
-      );
+    final remaining = _gpsStaleRemaining(point);
+    if (remaining <= Duration.zero) {
+      _markCurrentPointStale(point, sessionSerial);
+      return;
+    }
+    _gpsStaleTimer = Timer(remaining, () {
+      _markCurrentPointStale(point, sessionSerial);
     });
+  }
+
+  void _markCurrentPointStale(DrivingPoint point, int sessionSerial) {
+    if (!_isActiveSession(sessionSerial)) {
+      return;
+    }
+    final current = state.asData?.value;
+    if (current == null || current.currentPoint != point) {
+      return;
+    }
+    _previousPoint = null;
+    _pendingFeedback = null;
+    state = AsyncData(
+      current.copyWith(
+        gpsStale: true,
+        clearNearestCamera: true,
+        clearLastAlert: true,
+        clearDismissedCamera: true,
+      ),
+    );
+  }
+
+  Duration _gpsStaleRemaining(DrivingPoint point) {
+    final staleAfter = ref.read(drivingGpsStaleAfterProvider);
+    final age = ref
+        .read(drivingClockProvider)()
+        .difference(point.recordedAt.toUtc());
+    return staleAfter - age;
+  }
+
+  bool _isGpsSampleStale(DrivingPoint point) {
+    return _gpsStaleRemaining(point) <= Duration.zero;
   }
 
   void _enqueueFeedback(
     DrivingPreferences preferences,
     DrivingAlert alert,
     int sessionSerial,
+    String? episodeKey,
   ) {
     if (_feedbackActive) {
       _pendingFeedback = (
         preferences: preferences,
         alert: alert,
         sessionSerial: sessionSerial,
+        episodeKey: episodeKey,
       );
       return;
     }
     _feedbackActive = true;
-    unawaited(_drainFeedback(preferences, alert, sessionSerial));
+    unawaited(_drainFeedback(preferences, alert, sessionSerial, episodeKey));
   }
 
   Future<void> _drainFeedback(
     DrivingPreferences preferences,
     DrivingAlert alert,
     int sessionSerial,
+    String? episodeKey,
   ) async {
     var next = (
       preferences: preferences,
       alert: alert,
       sessionSerial: sessionSerial,
+      episodeKey: episodeKey,
     );
     try {
       while (_isActiveSession(next.sessionSerial)) {
-        try {
-          await _notify(next.preferences, next.alert, next.sessionSerial);
-        } catch (_) {
-          // Feedback failures must never stop GPS processing.
+        if (_isCurrentFeedbackTarget(
+          next.alert,
+          next.sessionSerial,
+          next.episodeKey,
+        )) {
+          try {
+            final currentPreferences =
+                state.asData?.value.preferences ?? next.preferences;
+            await _notify(
+              currentPreferences,
+              next.alert,
+              next.sessionSerial,
+              next.episodeKey,
+            );
+          } catch (_) {
+            _showFeedbackError(next.sessionSerial);
+          }
         }
         final pending = _pendingFeedback;
         _pendingFeedback = null;
@@ -720,9 +798,43 @@ class DrivingController extends AsyncNotifier<DrivingState> {
           pending.preferences,
           pending.alert,
           pending.sessionSerial,
+          pending.episodeKey,
         );
       }
     }
+  }
+
+  bool _isCurrentFeedbackTarget(
+    DrivingAlert alert,
+    int sessionSerial,
+    String? episodeKey,
+  ) {
+    if (!_isActiveSession(sessionSerial)) {
+      return false;
+    }
+    final current = state.asData?.value;
+    if (current == null || current.gpsStale) {
+      return false;
+    }
+    if (current.dismissedCameraId == alert.cameraId) {
+      return false;
+    }
+    if (current.nearestCamera?.camera.id != alert.cameraId) {
+      return false;
+    }
+    return episodeKey == null || current.cameraEpisodeKey == episodeKey;
+  }
+
+  void _showFeedbackError(int sessionSerial) {
+    if (!_isActiveSession(sessionSerial)) {
+      return;
+    }
+    const message = 'No se pudo reproducir el audio de alerta.';
+    final current = state.asData?.value;
+    if (current == null || current.errorMessage == message) {
+      return;
+    }
+    state = AsyncData(current.copyWith(errorMessage: message));
   }
 
   bool _isActiveSession(int sessionSerial) {
@@ -755,29 +867,34 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     DrivingPreferences preferences,
     DrivingAlert alert,
     int sessionSerial,
+    String? episodeKey,
   ) async {
     final feedback = ref.read(drivingFeedbackGatewayProvider);
     if (preferences.voiceEnabled || preferences.soundEnabled) {
       if (!_isActiveSession(sessionSerial)) {
         return;
       }
-      await feedback.playAlert(
-        message: preferences.voiceEnabled ? _voiceMessage(alert) : null,
-        playSound: preferences.soundEnabled,
-        output: preferences.alertOutput,
-        musicBehavior: preferences.musicBehavior,
-        volume: preferences.alertVolume,
-      );
+      try {
+        await feedback.playAlert(
+          message: preferences.voiceEnabled ? _voiceMessage(alert) : null,
+          playSound: preferences.soundEnabled,
+          output: preferences.alertOutput,
+          musicBehavior: preferences.musicBehavior,
+          volume: preferences.alertVolume,
+        );
+      } catch (_) {
+        _showFeedbackError(sessionSerial);
+      }
       if (!_isActiveSession(sessionSerial)) {
         return;
       }
     }
     if (preferences.vibrationEnabled) {
-      if (!_isActiveSession(sessionSerial)) {
+      if (!_isCurrentFeedbackTarget(alert, sessionSerial, episodeKey)) {
         return;
       }
       await feedback.vibrate();
-      if (!_isActiveSession(sessionSerial)) {
+      if (!_isCurrentFeedbackTarget(alert, sessionSerial, episodeKey)) {
         return;
       }
     }

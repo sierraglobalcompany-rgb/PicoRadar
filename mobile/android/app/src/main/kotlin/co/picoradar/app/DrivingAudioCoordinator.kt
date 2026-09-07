@@ -31,6 +31,9 @@ class DrivingAudioCoordinator(private val context: Context) {
     private var ttsReady = false
     private var initializationFailed = false
     private var activeResult: MethodChannel.Result? = null
+    private var activeOperationId = 0L
+    private var operationSerial = 0L
+    private var activeTimeout: Runnable? = null
     private var activeUtteranceId: String? = null
     private var focusRequest: AudioFocusRequest? = null
     private var legacyFocusListener: AudioManager.OnAudioFocusChangeListener? = null
@@ -74,14 +77,22 @@ class DrivingAudioCoordinator(private val context: Context) {
             result.error("audio_focus_denied", "Android no concedió el foco de audio.", null)
             return
         }
+        operationSerial += 1
+        val operationId = operationSerial
+        activeOperationId = operationId
         activeResult = result
+        scheduleTimeout(operationId)
 
-        if (volume == 0.0) {
-            finishSuccess()
-        } else if (output == "phoneSpeaker") {
-            playOnPhoneSpeaker(message, playSound, volume.toFloat())
-        } else {
-            playAutomatically(message, playSound, volume.toFloat())
+        try {
+            if (volume == 0.0) {
+                finishSuccess(operationId)
+            } else if (output == "phoneSpeaker") {
+                playOnPhoneSpeaker(message, playSound, volume.toFloat(), operationId)
+            } else {
+                playAutomatically(message, playSound, volume.toFloat(), operationId)
+            }
+        } catch (_: Exception) {
+            finishError("driving_audio_failed", "No se pudo reproducir el aviso.", operationId)
         }
     }
 
@@ -96,10 +107,16 @@ class DrivingAudioCoordinator(private val context: Context) {
         ttsReady = false
     }
 
-    private fun playAutomatically(message: String, playSound: Boolean, volume: Float) {
-        val speak = {
+    private fun playAutomatically(
+        message: String,
+        playSound: Boolean,
+        volume: Float,
+        operationId: Long,
+    ) {
+        val speak = speak@{
+            if (!isActiveOperation(operationId)) return@speak
             if (message.isEmpty()) {
-                finishSuccess()
+                finishSuccess(operationId)
             } else {
                 val utteranceId = "driving-alert-${System.nanoTime()}"
                 activeUtteranceId = utteranceId
@@ -108,14 +125,14 @@ class DrivingAudioCoordinator(private val context: Context) {
                 }
                 val status = tts?.speak(message, TextToSpeech.QUEUE_FLUSH, params, utteranceId)
                 if (status != TextToSpeech.SUCCESS) {
-                    finishError("tts_enqueue_failed", "No se pudo iniciar la voz de navegación.")
+                    finishError("tts_enqueue_failed", "No se pudo iniciar la voz de navegación.", operationId)
                 }
             }
         }
         if (playSound) {
             toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, (volume * 100).toInt())
             if (!toneGenerator!!.startTone(ToneGenerator.TONE_PROP_BEEP, 180)) {
-                finishError("tone_failed", "No se pudo reproducir el tono de alerta.")
+                finishError("tone_failed", "No se pudo reproducir el tono de alerta.", operationId)
                 return
             }
             handler.postDelayed(speak, 220)
@@ -124,15 +141,24 @@ class DrivingAudioCoordinator(private val context: Context) {
         }
     }
 
-    private fun playOnPhoneSpeaker(message: String, playSound: Boolean, volume: Float) {
+    private fun playOnPhoneSpeaker(
+        message: String,
+        playSound: Boolean,
+        volume: Float,
+        operationId: Long,
+    ) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-            finishError("speaker_output_unsupported", "Esta versión de Android no permite confirmar el altavoz.")
+            finishError(
+                "speaker_output_unsupported",
+                "Esta versión de Android no permite confirmar el altavoz.",
+                operationId,
+            )
             return
         }
         requestedSpeaker = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
             .firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
         if (requestedSpeaker == null) {
-            finishError("speaker_output_unavailable", "No se encontró el altavoz integrado.")
+            finishError("speaker_output_unavailable", "No se encontró el altavoz integrado.", operationId)
             return
         }
 
@@ -143,7 +169,7 @@ class DrivingAudioCoordinator(private val context: Context) {
             speakerQueue.add(createToneFile("alert-tone", volume.toDouble(), silenceMs = 30, toneMs = 180))
         }
         if (message.isEmpty()) {
-            playNextSpeakerFile(volume)
+            playNextSpeakerFile(volume, operationId)
             return
         }
 
@@ -153,45 +179,66 @@ class DrivingAudioCoordinator(private val context: Context) {
         activeUtteranceId = utteranceId
         val status = tts?.synthesizeToFile(message, Bundle(), speechFile, utteranceId)
         if (status != TextToSpeech.SUCCESS) {
-            finishError("tts_synthesis_failed", "No se pudo preparar la voz para el altavoz.")
+            finishError("tts_synthesis_failed", "No se pudo preparar la voz para el altavoz.", operationId)
         } else {
             speakerQueue.add(speechFile)
         }
     }
 
-    private fun playNextSpeakerFile(volume: Float) {
+    private fun playNextSpeakerFile(volume: Float, operationId: Long) {
+        if (!isActiveOperation(operationId)) return
         val file = speakerQueue.removeFirstOrNull()
         if (file == null) {
-            finishSuccess()
+            finishSuccess(operationId)
             return
         }
-        mediaPlayer = MediaPlayer().apply {
-            setAudioAttributes(attributes)
-            setDataSource(file.absolutePath)
-            setPreferredDevice(requestedSpeaker)
-            setVolume(volume, volume)
-            setOnCompletionListener {
-                it.release()
-                mediaPlayer = null
-                playNextSpeakerFile(volume)
-            }
-            setOnErrorListener { player, _, _ ->
+        val speaker = requestedSpeaker
+        if (speaker == null) {
+            finishError("speaker_output_unavailable", "No se encontró el altavoz integrado.", operationId)
+            return
+        }
+        try {
+            val player = MediaPlayer()
+            mediaPlayer = player
+            player.setAudioAttributes(attributes)
+            player.setDataSource(file.absolutePath)
+            if (!player.setPreferredDevice(speaker)) {
                 player.release()
                 mediaPlayer = null
-                finishError("speaker_playback_failed", "Falló la reproducción por el altavoz.")
+                finishError("speaker_route_unconfirmed", "No se pudo aplicar esta salida.", operationId)
+                return
+            }
+            player.setVolume(volume, volume)
+            player.setOnCompletionListener {
+                it.release()
+                mediaPlayer = null
+                if (isActiveOperation(operationId)) {
+                    playNextSpeakerFile(volume, operationId)
+                }
+            }
+            player.setOnErrorListener { failedPlayer, _, _ ->
+                failedPlayer.release()
+                mediaPlayer = null
+                finishError(
+                    "speaker_playback_failed",
+                    "Falló la reproducción por el altavoz.",
+                    operationId,
+                )
                 true
             }
-            prepare()
-            start()
+            player.prepare()
+            player.start()
+        } catch (_: Exception) {
+            finishError("speaker_playback_failed", "Falló la reproducción por el altavoz.", operationId)
+            return
         }
-        if (file.name.startsWith("route-probe")) {
-            handler.postDelayed({
-                val routed = mediaPlayer?.routedDevice
-                if (routed?.type != AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) {
-                    finishError("speaker_route_unconfirmed", "No se pudo aplicar esta salida.")
-                }
-            }, 60)
-        }
+        handler.postDelayed({
+            if (!isActiveOperation(operationId)) return@postDelayed
+            val routed = mediaPlayer?.routedDevice
+            if (routed?.type != AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) {
+                finishError("speaker_route_unconfirmed", "No se pudo aplicar esta salida.", operationId)
+            }
+        }, if (file.name.startsWith("route-probe")) 60 else 20)
     }
 
     private fun installTtsCallbacks() {
@@ -201,10 +248,11 @@ class DrivingAudioCoordinator(private val context: Context) {
             override fun onDone(utteranceId: String?) {
                 handler.post {
                     if (utteranceId != activeUtteranceId) return@post
+                    val operationId = activeOperationId
                     if (utteranceId?.startsWith("synth-") == true) {
-                        playNextSpeakerFile(speakerVolume)
+                        playNextSpeakerFile(speakerVolume, operationId)
                     } else {
-                        finishSuccess()
+                        finishSuccess(operationId)
                     }
                 }
             }
@@ -213,7 +261,11 @@ class DrivingAudioCoordinator(private val context: Context) {
             override fun onError(utteranceId: String?) {
                 handler.post {
                     if (utteranceId == activeUtteranceId) {
-                        finishError("tts_playback_failed", "La voz de navegación falló.")
+                        finishError(
+                            "tts_playback_failed",
+                            "La voz de navegación falló.",
+                            activeOperationId,
+                        )
                     }
                 }
             }
@@ -232,7 +284,13 @@ class DrivingAudioCoordinator(private val context: Context) {
             if (change == AudioManager.AUDIOFOCUS_LOSS ||
                 change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT
             ) {
-                handler.post { finishError("audio_focus_lost", "El aviso cedió el audio a otra aplicación.") }
+                handler.post {
+                    finishError(
+                        "audio_focus_lost",
+                        "El aviso cedió el audio a otra aplicación.",
+                        activeOperationId,
+                    )
+                }
             }
         }
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -262,17 +320,40 @@ class DrivingAudioCoordinator(private val context: Context) {
         legacyFocusListener = null
     }
 
-    private fun finishSuccess() {
+    private fun isActiveOperation(operationId: Long): Boolean {
+        return operationId != 0L && operationId == activeOperationId && activeResult != null
+    }
+
+    private fun scheduleTimeout(operationId: Long) {
+        val timeout = Runnable {
+            finishError("driving_audio_timeout", "El aviso de audio tardó demasiado.", operationId)
+        }
+        activeTimeout = timeout
+        handler.postDelayed(timeout, 12_000)
+    }
+
+    private fun cancelTimeout() {
+        activeTimeout?.let(handler::removeCallbacks)
+        activeTimeout = null
+    }
+
+    private fun finishSuccess(operationId: Long) {
+        if (!isActiveOperation(operationId)) return
         val result = activeResult ?: return
         activeResult = null
+        activeOperationId = 0L
+        cancelTimeout()
         stopPlaybackOnly()
         abandonFocus()
         result.success(null)
     }
 
-    private fun finishError(code: String, message: String) {
+    private fun finishError(code: String, message: String, operationId: Long) {
+        if (!isActiveOperation(operationId)) return
         val result = activeResult ?: return
         activeResult = null
+        activeOperationId = 0L
+        cancelTimeout()
         stopPlaybackOnly()
         abandonFocus()
         result.error(code, message, null)
@@ -281,6 +362,8 @@ class DrivingAudioCoordinator(private val context: Context) {
     private fun stopInternal(completePending: Boolean) {
         val result = activeResult
         activeResult = null
+        activeOperationId = 0L
+        cancelTimeout()
         stopPlaybackOnly()
         abandonFocus()
         if (completePending) result?.success(null)
@@ -292,7 +375,11 @@ class DrivingAudioCoordinator(private val context: Context) {
         toneGenerator?.stopTone()
         toneGenerator?.release()
         toneGenerator = null
-        mediaPlayer?.stop()
+        try {
+            mediaPlayer?.stop()
+        } catch (_: Exception) {
+            // Player may already be unprepared or completed.
+        }
         mediaPlayer?.release()
         mediaPlayer = null
         activeUtteranceId = null
