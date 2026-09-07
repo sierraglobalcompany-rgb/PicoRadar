@@ -50,6 +50,7 @@ class TripRoutePreviewMap extends StatefulWidget {
     required this.cameraPackVersion,
     required this.associations,
     required this.config,
+    this.demoLabel,
     this.mapController,
     this.allowFullscreen = true,
     super.key,
@@ -63,6 +64,7 @@ class TripRoutePreviewMap extends StatefulWidget {
     required this.cameraPackVersion,
     required this.config,
     required this.associations,
+    this.demoLabel,
   }) : mapController = null,
        allowFullscreen = false;
 
@@ -73,6 +75,7 @@ class TripRoutePreviewMap extends StatefulWidget {
   final String cameraPackVersion;
   final TripRouteAssociations associations;
   final TripRouteMapConfig config;
+  final String? demoLabel;
   final MapController? mapController;
   final bool allowFullscreen;
 
@@ -424,8 +427,16 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
               tollInventory: widget.tollInventory,
               cameraPack: widget.cameraPack,
               cameraPackVersion: widget.cameraPackVersion,
+              demoLabel: widget.demoLabel,
               onClose: () => setState(() => _selectedLocation = null),
             ),
+          ),
+        if (widget.demoLabel case final label?)
+          Positioned(
+            left: AppSpacing.s,
+            right: 58,
+            top: AppSpacing.s,
+            child: _MapDemoBanner(label: label),
           ),
       ],
     );
@@ -563,6 +574,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
                 cameraPackVersion: widget.cameraPackVersion,
                 config: widget.config,
                 associations: widget.associations,
+                demoLabel: widget.demoLabel,
               ),
             ),
           ),
@@ -769,6 +781,7 @@ class _MarkerDetails extends StatelessWidget {
     required this.tollInventory,
     required this.cameraPack,
     required this.cameraPackVersion,
+    required this.demoLabel,
     required this.onClose,
   });
 
@@ -776,6 +789,7 @@ class _MarkerDetails extends StatelessWidget {
   final TollInventoryDataset tollInventory;
   final CameraPack cameraPack;
   final String cameraPackVersion;
+  final String? demoLabel;
   final VoidCallback onClose;
 
   @override
@@ -822,6 +836,16 @@ class _MarkerDetails extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(title, style: AppTextStyles.bodyStrong),
+                      if (demoLabel != null) ...[
+                        Text(
+                          demoLabel!,
+                          key: const ValueKey('trip-demo-marker-detail'),
+                          style: AppTextStyles.caption.copyWith(
+                            color: const Color(0xFF5D4100),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
                       for (final line in lines)
                         Text(line, style: AppTextStyles.caption),
                     ],
@@ -839,6 +863,30 @@ class _MarkerDetails extends StatelessWidget {
       ),
     );
   }
+}
+
+class _MapDemoBanner extends StatelessWidget {
+  const _MapDemoBanner({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: const Color(0xFFFFF3C4).withValues(alpha: 0.94),
+    borderRadius: BorderRadius.circular(AppRadius.card),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      child: Text(
+        label,
+        key: const ValueKey('trip-demo-map-banner'),
+        textAlign: TextAlign.center,
+        style: AppTextStyles.caption.copyWith(
+          color: const Color(0xFF5D4100),
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    ),
+  );
 }
 
 String _dateOnly(DateTime value) =>

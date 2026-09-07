@@ -13,6 +13,7 @@ import '../../home/presentation/pico_notification_sheet.dart';
 import '../application/trip_services.dart';
 import '../data/trip_municipality_catalog.dart';
 import '../domain/trip_draft.dart';
+import '../domain/trip_plan.dart';
 
 class TripContent extends ConsumerWidget {
   const TripContent({
@@ -40,6 +41,8 @@ class TripContent extends ConsumerWidget {
     required this.planError,
     required this.onPreview,
     required this.onCancelPreview,
+    required this.demoEnabled,
+    required this.onDemoScenarioSelected,
     required this.planResult,
     required this.instantRestrictions,
     required this.completedChecklist,
@@ -93,6 +96,8 @@ class TripContent extends ConsumerWidget {
   final String? planError;
   final VoidCallback onPreview;
   final VoidCallback onCancelPreview;
+  final bool demoEnabled;
+  final ValueChanged<TripDemoScenario> onDemoScenarioSelected;
   final Widget? planResult;
   final Widget instantRestrictions;
   final Set<TripChecklistItem> completedChecklist;
@@ -275,6 +280,14 @@ class TripContent extends ConsumerWidget {
                           ? AppSpacing.xs
                           : AppSpacing.m,
                     ),
+                    if (demoEnabled) ...[
+                      _TripDemoPanel(onSelected: onDemoScenarioSelected),
+                      SizedBox(
+                        height: compactInitialPlanner
+                            ? AppSpacing.s
+                            : AppSpacing.m,
+                      ),
+                    ],
                     if (hasPlan)
                       ExpansionTile(
                         key: const ValueKey('trip-preparation-compact'),
@@ -406,6 +419,71 @@ class TripContent extends ConsumerWidget {
       ),
     );
   }
+}
+
+enum TripDemoScenario {
+  medellinBogota('Medellín → Bogotá', '05001', '11001', 420),
+  unknownCoverage('Cobertura incierta', '52001', '52356', 480);
+
+  const TripDemoScenario(
+    this.label,
+    this.originCode,
+    this.destinationCode,
+    this.departureMinute,
+  );
+
+  final String label;
+  final String originCode;
+  final String destinationCode;
+  final int departureMinute;
+}
+
+class _TripDemoPanel extends StatelessWidget {
+  const _TripDemoPanel({required this.onSelected});
+
+  final ValueChanged<TripDemoScenario> onSelected;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: tripDemoWarningLabel,
+    container: true,
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3C4),
+        border: Border.all(color: const Color(0xFFE4B443)),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.m),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              tripDemoWarningLabel,
+              style: AppTextStyles.caption.copyWith(
+                color: const Color(0xFF5D4100),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s),
+            Wrap(
+              spacing: AppSpacing.s,
+              runSpacing: AppSpacing.s,
+              children: [
+                for (final scenario in TripDemoScenario.values)
+                  OutlinedButton.icon(
+                    key: ValueKey('trip-demo-${scenario.name}'),
+                    onPressed: () => onSelected(scenario),
+                    icon: const Icon(Icons.science_outlined),
+                    label: Text('Cargar ${scenario.label}'),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _TripDepartureGroup extends StatelessWidget {

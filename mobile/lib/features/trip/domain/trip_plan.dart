@@ -2,6 +2,8 @@ import '../../garage/data/vehicle_profile.dart';
 import '../data/trip_municipality_catalog.dart';
 import 'trip_draft.dart';
 
+const tripDemoWarningLabel = 'DEMO · DATOS DE PRUEBA · NO USAR PARA VIAJAR';
+
 enum TripDepartureMode {
   now('now'),
   dateOnly('date_only'),

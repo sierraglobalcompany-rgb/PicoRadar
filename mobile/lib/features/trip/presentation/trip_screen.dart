@@ -265,6 +265,9 @@ class _TripScreenState extends ConsumerState<TripScreen>
       planError: _planError,
       onPreview: () => _preview(catalog, selectedVehicle),
       onCancelPreview: () => setState(_invalidatePlan),
+      demoEnabled: tripDemoEnabled,
+      onDemoScenarioSelected: (scenario) =>
+          _loadDemoScenario(catalog, scenario),
       planResult:
           currentPlan != null && currentRequest != null && selectedRoute != null
           ? _TripPlanWithLocalData(
@@ -569,6 +572,10 @@ class _TripScreenState extends ConsumerState<TripScreen>
     if (!_validateTripFields()) {
       return;
     }
+    if (_plan?.attribution == tripDemoWarningLabel) {
+      _showSnackBar('DEMO: navegación externa desactivada.');
+      return;
+    }
     final navigation = ref.read(tripExternalNavigationProvider);
     var opened = false;
     try {
@@ -591,6 +598,10 @@ class _TripScreenState extends ConsumerState<TripScreen>
 
   Future<void> _openWaze() async {
     if (!_validateTripFields()) {
+      return;
+    }
+    if (_plan?.attribution == tripDemoWarningLabel) {
+      _showSnackBar('DEMO: navegación externa desactivada.');
       return;
     }
     final navigation = ref.read(tripExternalNavigationProvider);
@@ -679,6 +690,46 @@ class _TripScreenState extends ConsumerState<TripScreen>
       _originError = null;
       _destinationError = null;
     });
+  }
+
+  void _loadDemoScenario(
+    TripMunicipalityCatalog catalog,
+    TripDemoScenario scenario,
+  ) {
+    final origin = _municipalityByCode(catalog, scenario.originCode);
+    final destination = _municipalityByCode(catalog, scenario.destinationCode);
+    if (origin == null || destination == null) {
+      _showSnackBar('No pudimos cargar los municipios DEMO.');
+      return;
+    }
+    setState(() {
+      _invalidatePlan();
+      _originMunicipality = origin;
+      _destinationMunicipality = destination;
+      _originController.text = origin.displayName;
+      _destinationController.text = destination.displayName;
+      _selectedDate = DateTime(2026, 9, 8);
+      _departureMinute = scenario.departureMinute;
+      _vehicleConfiguration = TripVehicleConfiguration.standardTwoAxle;
+      _vehicleCategorySource = TripVehicleCategorySource.userSelected;
+      _originError = null;
+      _destinationError = null;
+      _timeError = null;
+      _vehicleError = null;
+      _planError = null;
+    });
+  }
+
+  TripMunicipality? _municipalityByCode(
+    TripMunicipalityCatalog catalog,
+    String code,
+  ) {
+    for (final municipality in catalog.records) {
+      if (municipality.code == code) {
+        return municipality;
+      }
+    }
+    return null;
   }
 
   void _focusFirstInvalid() {
@@ -1144,6 +1195,9 @@ class _TripPlanWithAssociationsState extends State<_TripPlanWithAssociations> {
         cameraPackVersion: widget.cameras.version,
         associations: associations,
         config: widget.mapConfig,
+        demoLabel: widget.plan.attribution == tripDemoWarningLabel
+            ? tripDemoWarningLabel
+            : null,
       ),
     };
 

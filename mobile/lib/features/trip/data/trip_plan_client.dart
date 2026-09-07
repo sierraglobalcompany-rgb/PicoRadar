@@ -2,11 +2,20 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/trip_plan.dart';
 
+const tripDemoEnabled =
+    bool.fromEnvironment('PICORADAR_TRIP_DEMO_ENABLED') &&
+    String.fromEnvironment('APP_ENV') == 'dev' &&
+    !kReleaseMode;
+
 final tripPlanClientProvider = Provider<TripPlanClient>((ref) {
+  if (tripDemoEnabled) {
+    return const _DemoTripPlanClient();
+  }
   final dio = Dio(
     BaseOptions(
       connectTimeout: const Duration(seconds: 10),
@@ -22,16 +31,26 @@ final tripPlanClientProvider = Provider<TripPlanClient>((ref) {
 // Must match TollGuruTripPreview::MAX_GEOMETRY_POINTS.
 const _maximumGeometryPoints = 3000;
 
-class TripPlanClient {
-  TripPlanClient({
-    required this._dio,
-    this._baseUri,
-    this._operationTimeout = const Duration(seconds: 30),
-  });
+abstract interface class TripPlanClient {
+  factory TripPlanClient({
+    required Dio dio,
+    Uri? baseUri,
+    Duration operationTimeout = const Duration(seconds: 30),
+  }) {
+    return _HttpTripPlanClient._(dio, baseUri, operationTimeout);
+  }
+
+  Future<TripPlan> preview(TripPlanRequest request, {CancelToken? cancelToken});
+}
+
+class _HttpTripPlanClient implements TripPlanClient {
+  _HttpTripPlanClient._(this._dio, this._baseUri, this._operationTimeout);
+
   final Dio _dio;
   final Uri? _baseUri;
   final Duration _operationTimeout;
 
+  @override
   Future<TripPlan> preview(
     TripPlanRequest request, {
     CancelToken? cancelToken,
@@ -130,6 +149,159 @@ class TripPlanClient {
     }
   }
 }
+
+class _DemoTripPlanClient implements TripPlanClient {
+  const _DemoTripPlanClient();
+
+  @override
+  Future<TripPlan> preview(
+    TripPlanRequest request, {
+    CancelToken? cancelToken,
+  }) async {
+    if (cancelToken?.isCancelled ?? false) {
+      throw const TripPlanFailure('cancelled');
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 180));
+    if (cancelToken?.isCancelled ?? false) {
+      throw const TripPlanFailure('cancelled');
+    }
+    final medellinBogota =
+        request.origin.code == '05001' && request.destination.code == '11001';
+    return TripPlan(
+      requestId: request.requestId,
+      generatedAtUtc: DateTime.utc(2026, 9, 7, 15),
+      provider: 'DEMO local PicoRadar',
+      attribution: tripDemoWarningLabel,
+      origin: TripResolvedPoint(
+        label: request.origin.displayName,
+        latitude: medellinBogota ? 6.2442 : 1.2136,
+        longitude: medellinBogota ? -75.5812 : -77.2811,
+      ),
+      destination: TripResolvedPoint(
+        label: request.destination.displayName,
+        latitude: medellinBogota ? 4.7110 : 0.8303,
+        longitude: medellinBogota ? -74.0721 : -77.6446,
+      ),
+      routes: medellinBogota
+          ? _medellinBogotaRoutes(request.vehicleCategory)
+          : _unknownCoverageRoutes(request.vehicleCategory),
+    );
+  }
+}
+
+List<TripRouteOption> _medellinBogotaRoutes(String category) => [
+  TripRouteOption(
+    id: 'demo-magdalena',
+    summary: 'Ruta DEMO Magdalena Medio',
+    distanceMeters: 415000,
+    durationSeconds: 26400,
+    timeBasis: 'static',
+    geometry: const [
+      TripCoordinate(latitude: 6.2442, longitude: -75.5812),
+      TripCoordinate(latitude: 6.155, longitude: -75.365),
+      TripCoordinate(latitude: 5.885, longitude: -74.85),
+      TripCoordinate(latitude: 5.45, longitude: -74.7),
+      TripCoordinate(latitude: 5.08, longitude: -74.45),
+      TripCoordinate(latitude: 4.711, longitude: -74.0721),
+    ],
+    tolls: TripTolls(
+      coverage: TripTollCoverage.complete,
+      vehicleCategory: category,
+      stationCount: 2,
+      payableCount: 2,
+      totalMinor: 5800000,
+      charges: const [
+        TripTollCharge(
+          name: 'Peaje DEMO Alfa',
+          amountMinor: 2800000,
+          effectiveAt: '2026-09-01',
+          sourceUrl: 'https://example.test/viaje-demo/peaje-alfa',
+        ),
+        TripTollCharge(
+          name: 'Peaje DEMO Beta',
+          amountMinor: 3000000,
+          effectiveAt: '2026-09-01',
+          sourceUrl: 'https://example.test/viaje-demo/peaje-beta',
+        ),
+      ],
+    ),
+  ),
+  TripRouteOption(
+    id: 'demo-pintada',
+    summary: 'Ruta DEMO La Pintada',
+    distanceMeters: 428000,
+    durationSeconds: 28200,
+    timeBasis: 'static',
+    geometry: const [
+      TripCoordinate(latitude: 6.2442, longitude: -75.5812),
+      TripCoordinate(latitude: 5.74, longitude: -75.62),
+      TripCoordinate(latitude: 5.32, longitude: -75.05),
+      TripCoordinate(latitude: 5.05, longitude: -74.55),
+      TripCoordinate(latitude: 4.711, longitude: -74.0721),
+    ],
+    tolls: TripTolls(
+      coverage: TripTollCoverage.partial,
+      vehicleCategory: category,
+      stationCount: 3,
+      payableCount: 1,
+      subtotalMinor: 3150000,
+      missingRates: 2,
+      charges: const [
+        TripTollCharge(
+          name: 'Peaje DEMO Gamma',
+          amountMinor: 3150000,
+          effectiveAt: '2026-08-15',
+          sourceUrl: 'https://example.test/viaje-demo/peaje-gamma',
+        ),
+        TripTollCharge(name: 'Peaje DEMO sin tarifa confirmada'),
+      ],
+    ),
+  ),
+];
+
+List<TripRouteOption> _unknownCoverageRoutes(String category) => [
+  TripRouteOption(
+    id: 'demo-unknown',
+    summary: 'Ruta DEMO con cobertura incierta',
+    distanceMeters: 86200,
+    durationSeconds: 7200,
+    timeBasis: 'static',
+    geometry: const [
+      TripCoordinate(latitude: 1.2136, longitude: -77.2811),
+      TripCoordinate(latitude: 1.12, longitude: -77.36),
+      TripCoordinate(latitude: 0.98, longitude: -77.49),
+      TripCoordinate(latitude: 0.8303, longitude: -77.6446),
+    ],
+    tolls: TripTolls(
+      coverage: TripTollCoverage.unknown,
+      vehicleCategory: category,
+      stationCount: null,
+      missingRates: 1,
+    ),
+  ),
+  TripRouteOption(
+    id: 'demo-local',
+    summary: 'Alternativa DEMO sin tarifa verificada',
+    distanceMeters: 94300,
+    durationSeconds: 8100,
+    timeBasis: 'static',
+    geometry: const [
+      TripCoordinate(latitude: 1.2136, longitude: -77.2811),
+      TripCoordinate(latitude: 1.05, longitude: -77.25),
+      TripCoordinate(latitude: 0.91, longitude: -77.42),
+      TripCoordinate(latitude: 0.8303, longitude: -77.6446),
+    ],
+    tolls: TripTolls(
+      coverage: TripTollCoverage.partial,
+      vehicleCategory: category,
+      stationCount: 2,
+      payableCount: 0,
+      subtotalMinor: 0,
+      missingRates: 1,
+      charges: const [TripTollCharge(name: 'Peaje DEMO por verificar')],
+    ),
+  ),
+];
 
 String _safeCode(Object? code, int? status) {
   const allowed = {

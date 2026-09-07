@@ -39,6 +39,9 @@ class TripPlanResult extends StatelessWidget {
     final selected = routes
         .where((route) => route.id == selectedRouteId)
         .firstOrNull;
+    final demoLabel = plan.attribution == tripDemoWarningLabel
+        ? tripDemoWarningLabel
+        : null;
     final comparable = routes
         .where(
           (route) =>
@@ -68,6 +71,10 @@ class TripPlanResult extends StatelessWidget {
           '${request.origin.displayName} → ${request.destination.displayName}',
           style: AppTextStyles.bodyStrong,
         ),
+        if (demoLabel != null) ...[
+          const SizedBox(height: AppSpacing.s),
+          _DemoBanner(label: demoLabel),
+        ],
         Text(
           'Vehículo: ${request.vehicle.plate} · ${_category(request.vehicleCategory)}',
         ),
@@ -403,6 +410,39 @@ class _TripSummary extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DemoBanner extends StatelessWidget {
+  const _DemoBanner({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: label,
+    container: true,
+    child: Container(
+      key: const ValueKey('trip-demo-result-banner'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.m,
+        vertical: AppSpacing.s,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3C4),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: const Color(0xFFE4B443)),
+      ),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: AppTextStyles.caption.copyWith(
+          color: const Color(0xFF5D4100),
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    ),
+  );
 }
 
 class _SummaryMetric extends StatelessWidget {

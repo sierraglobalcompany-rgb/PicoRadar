@@ -251,6 +251,64 @@ void main() {
     launcher = _FakeExternalLauncher();
   });
 
+  testWidgets('VIAJE DEMO is gated by dart-define and keeps visible labels', (
+    tester,
+  ) async {
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: _vehicle(),
+      launcher: launcher,
+      size: const Size(390, 1000),
+    );
+
+    if (!tripDemoEnabled) {
+      expect(
+        find.byKey(const ValueKey('trip-demo-medellinBogota')),
+        findsNothing,
+      );
+      expect(find.text(tripDemoWarningLabel), findsNothing);
+      return;
+    }
+
+    expect(
+      find.byKey(const ValueKey('trip-demo-medellinBogota')),
+      findsOneWidget,
+    );
+    expect(find.text(tripDemoWarningLabel), findsWidgets);
+
+    await _tapByKey(tester, 'trip-demo-medellinBogota');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('trip-plan-result')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('trip-demo-result-banner')),
+      findsOneWidget,
+    );
+    expect(find.text('Ruta DEMO Magdalena Medio'), findsOneWidget);
+    expect(find.text('Ruta DEMO La Pintada'), findsOneWidget);
+    expect(find.byType(TripRoutePreviewMap), findsOneWidget);
+    expect(find.byKey(const ValueKey('trip-demo-map-banner')), findsOneWidget);
+
+    await _tapByKey(tester, 'trip-open-google-maps');
+    expect(find.text('DEMO: navegación externa desactivada.'), findsOneWidget);
+    await _tapByKey(tester, 'trip-open-waze');
+    expect(launcher.opened, isEmpty);
+
+    await _tapByKey(tester, 'trip-demo-unknownCoverage');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ruta DEMO con cobertura incierta'), findsOneWidget);
+    expect(find.text('Alternativa DEMO sin tarifa verificada'), findsOneWidget);
+    expect(find.textContaining('Por confirmar'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('trip-demo-result-banner')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets(
     'VIAJE-R1 review6 resume refreshes both local endpoints without paid call',
     (tester) async {
