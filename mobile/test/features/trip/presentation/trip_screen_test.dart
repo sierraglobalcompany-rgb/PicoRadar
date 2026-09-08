@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:dio/dio.dart';
@@ -25,6 +26,7 @@ import 'package:picoradar/features/trip/application/trip_route_associations.dart
 import 'package:picoradar/features/trip/application/trip_services.dart';
 import 'package:picoradar/features/trip/data/trip_plan_client.dart';
 import 'package:picoradar/features/trip/data/toll_inventory.dart';
+import 'package:picoradar/features/trip/data/toll_tariff_catalog.dart';
 import 'package:picoradar/features/trip/data/trip_route_preview_data.dart';
 import 'package:picoradar/features/trip/domain/trip_plan.dart';
 import 'package:picoradar/features/trip/data/trip_municipality_catalog.dart';
@@ -36,6 +38,7 @@ import 'package:picoradar/features/vehicle_status/platform/external_launcher.dar
 import '../../../test_app_harness.dart';
 
 late TripMunicipalityCatalog _tripCatalog;
+late TollTariffCatalog _tollTariffCatalog;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -48,6 +51,9 @@ void main() {
     _tripCatalog = TripMunicipalityCatalog.fromJson(
       jsonDecode(raw) as Map<String, Object?>,
     );
+    _tollTariffCatalog = TollTariffCatalog.fromJsonString(
+      File('assets/catalogs/tolls_tariffs_v1.json').readAsStringSync(),
+    );
   });
 
   tearDownAll(_FakeTripRestrictionStore.closeDatabase);
@@ -55,6 +61,23 @@ void main() {
   testWidgets('VIAJE-R1 exposes an explicit plan CTA', (tester) async {
     await _pumpScreen(tester, preferences: preferences);
     expect(find.text('Ver plan de viaje'), findsOneWidget);
+  });
+
+  testWidgets('toll tariffs are searchable before route provider is used', (
+    tester,
+  ) async {
+    await _pumpScreen(tester, preferences: preferences);
+    final search = find.byKey(const ValueKey('trip-toll-tariff-query'));
+    await tester.ensureVisible(search);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(search, 'guarne');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tarifas propias de peajes'), findsOneWidget);
+    expect(find.text('GUARNE'), findsOneWidget);
+    expect(find.textContaining(r'Cat I: $18.500'), findsOneWidget);
+    expect(find.textContaining('No requiere TollGuru'), findsOneWidget);
   });
 
   testWidgets(
@@ -1782,7 +1805,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.byType(Scrollable), findsOneWidget);
+        expect(find.byKey(const ValueKey('trip-screen')), findsOneWidget);
         expect(
           find.byKey(const ValueKey('trip-preparation-summary')),
           findsOneWidget,
@@ -2542,6 +2565,9 @@ Future<void> _pumpScreen(
           (ref) =>
               tollInventoryLoader?.call() ??
               Future.value(tollInventory ?? _emptyTollInventory()),
+        ),
+        tripTollTariffCatalogProvider.overrideWith(
+          (ref) async => _tollTariffCatalog,
         ),
         tripCameraPackSnapshotProvider.overrideWith(
           (ref) async => cameraSnapshot ?? _emptyCameraSnapshot(),

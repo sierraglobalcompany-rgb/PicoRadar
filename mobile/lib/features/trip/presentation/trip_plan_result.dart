@@ -6,6 +6,7 @@ import '../../pico_placa/domain/bogota_time.dart';
 import '../../pico_placa/domain/restriction_day_evaluation.dart';
 import '../../pico_placa/domain/restriction_engine.dart';
 import '../application/trip_services.dart';
+import '../data/toll_tariff_catalog.dart';
 import '../domain/trip_plan.dart';
 
 class TripPlanResult extends StatelessWidget {
@@ -19,6 +20,7 @@ class TripPlanResult extends StatelessWidget {
     this.mapAnchorKey,
     this.onViewMap,
     this.cameraLocationCount,
+    this.localTollPricing,
     super.key,
   });
 
@@ -31,6 +33,7 @@ class TripPlanResult extends StatelessWidget {
   final GlobalKey? mapAnchorKey;
   final VoidCallback? onViewMap;
   final int? cameraLocationCount;
+  final LocalTollPricingBreakdown? localTollPricing;
 
   @override
   Widget build(BuildContext context) {
@@ -273,6 +276,65 @@ class TripPlanResult extends StatelessWidget {
                         )
                       else
                         const Text('Fuente de tarifa no informada.'),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        if (selected != null && localTollPricing != null)
+          ExpansionTile(
+            key: ValueKey('trip-local-toll-pricing-${selected.id}'),
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(bottom: AppSpacing.m),
+            title: Text(
+              'Tarifas propias sobre peajes candidatos',
+              style: AppTextStyles.bodyStrong,
+            ),
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Estimación local por ID físico cercano a la geometría. No confirma cruce, sentido ni cobro activo.',
+                    ),
+                    Text(_localCoverageText(localTollPricing!)),
+                    Text(
+                      'Subtotal con datos: ${_cop(localTollPricing!.subtotalMinor)}',
+                    ),
+                    if (localTollPricing!.totalMinor == null)
+                      Text(
+                        'Total no publicado: faltan ${localTollPricing!.missingRates} tarifa(s).',
+                      )
+                    else
+                      Text(
+                        'Total local: ${_cop(localTollPricing!.totalMinor!)}',
+                      ),
+                    for (final (index, charge)
+                        in localTollPricing!.charges.indexed) ...[
+                      const Divider(),
+                      Text(
+                        '${index + 1}. ${charge.name}',
+                        style: AppTextStyles.bodyStrong,
+                      ),
+                      Text('Categoría operador: ${charge.categoryCode}'),
+                      Text(
+                        charge.amountMinor == null
+                            ? 'Tarifa no informada; no equivale a gratis.'
+                            : _cop(charge.amountMinor!),
+                      ),
+                      Text(
+                        '${charge.publicationControl ?? 'Control no informado'} · '
+                        '${charge.sourceType ?? 'fuente no informada'}'
+                        '${charge.sourceDate == null ? '' : ' · ${charge.sourceDate}'}',
+                      ),
+                      if (charge.sourceUrl != null)
+                        _SourceButton(
+                          url: charge.sourceUrl!,
+                          onSource: onSource,
+                        ),
                     ],
                   ],
                 ),
@@ -578,6 +640,17 @@ String _cop(int minor) {
   );
   final cents = minor % 100;
   return 'COP $pesos${cents == 0 ? '' : ',${cents.toString().padLeft(2, '0')}'}';
+}
+
+String _localCoverageText(LocalTollPricingBreakdown pricing) {
+  return switch (pricing.coverage) {
+    LocalTollPricingCoverage.complete =>
+      'Cobertura local completa para los pasos candidatos listados.',
+    LocalTollPricingCoverage.partial =>
+      'Cobertura local parcial: ${pricing.missingRates} tarifa(s) sin dato.',
+    LocalTollPricingCoverage.unsupportedCategory =>
+      'Categoría local no soportada para estimación.',
+  };
 }
 
 String _category(String value) => switch (value) {

@@ -33,6 +33,7 @@ import '../features/pico_placa/platform/pico_notifications.dart';
 import '../features/pico_placa/platform/pico_widget_bridge.dart';
 import '../features/peritajes/data/peritajes_draft_store.dart';
 import '../features/trip/data/toll_inventory.dart';
+import '../features/trip/data/toll_tariff_catalog.dart';
 import '../features/trip/data/trip_route_preview_data.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
@@ -110,6 +111,10 @@ final tripTollInventoryProvider = FutureProvider<TollInventoryDataset>((
   ref,
 ) async {
   return (await ref.watch(tollInventoryStoreProvider.future)).load();
+});
+
+final tripTollTariffCatalogProvider = FutureProvider<TollTariffCatalog>((ref) {
+  return loadTollTariffCatalog(rootBundle);
 });
 
 final datasetSyncServiceProvider = FutureProvider<DatasetSyncService?>((

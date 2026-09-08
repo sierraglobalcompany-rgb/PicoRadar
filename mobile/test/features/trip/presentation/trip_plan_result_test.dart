@@ -5,6 +5,7 @@ import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.
 import 'package:picoradar/features/pico_placa/domain/restriction_engine.dart';
 import 'package:picoradar/features/trip/application/trip_services.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
+import 'package:picoradar/features/trip/data/toll_tariff_catalog.dart';
 import 'package:picoradar/features/trip/data/trip_municipality_catalog.dart';
 import 'package:picoradar/features/trip/domain/trip_plan.dart';
 import 'package:picoradar/features/trip/presentation/trip_plan_result.dart';
@@ -115,6 +116,7 @@ void main() {
     List<TripRouteOption> routes, {
     double scale = 1,
     Size size = const Size(360, 800),
+    LocalTollPricingBreakdown? localTollPricing,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = size;
@@ -134,6 +136,7 @@ void main() {
                   selectedRouteId: selected,
                   onRouteSelected: (id) => setState(() => selected = id),
                   onSource: (_) {},
+                  localTollPricing: localTollPricing,
                 ),
               ),
             ),
@@ -218,6 +221,71 @@ void main() {
       expect(find.text('Menor duración'), findsOneWidget);
     },
   );
+
+  testWidgets('shows local owner toll pricing as candidate breakdown', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      [
+        route(
+          'priced',
+          TripTolls(coverage: TripTollCoverage.unknown, vehicleCategory: 'car'),
+        ),
+      ],
+      localTollPricing: const LocalTollPricingBreakdown(
+        coverage: LocalTollPricingCoverage.partial,
+        subtotalMinor: 1850000,
+        totalMinor: null,
+        missingRates: 1,
+        charges: [
+          LocalTollPricingCharge(
+            stationId: 'INV-GUARNE-3A941FAFD9',
+            name: 'GUARNE',
+            categoryCode: 'I',
+            amountMinor: 1850000,
+            publicationControl: 'VALIDAR_RUTA_Y_CATEGORIA',
+            sourceType: 'Oficial',
+            sourceDate: '2026-01-10',
+            sourceUrl: 'https://example.test/source',
+          ),
+          LocalTollPricingCharge(
+            stationId: 'INV-PAPIROS-2F4F657C0E',
+            name: 'PAPIROS',
+            categoryCode: 'I',
+            amountMinor: null,
+            publicationControl: 'APLICAR_SUSPENSION_PARCIAL',
+            sourceType: null,
+            sourceDate: null,
+            sourceUrl: null,
+          ),
+        ],
+      ),
+    );
+
+    final localPricing = find.byKey(
+      const ValueKey('trip-local-toll-pricing-priced'),
+    );
+    await tester.ensureVisible(localPricing);
+    await tester.pumpAndSettle();
+    await tester.tap(localPricing);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Tarifas propias sobre peajes candidatos'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Cobertura local parcial'), findsOneWidget);
+    expect(find.text('Subtotal con datos: COP 18.500'), findsOneWidget);
+    expect(
+      find.text('Total no publicado: faltan 1 tarifa(s).'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Tarifa no informada; no equivale a gratis.'),
+      findsOneWidget,
+    );
+  });
 
   for (final size in [
     const Size(360, 780),

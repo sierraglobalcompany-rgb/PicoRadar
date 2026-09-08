@@ -16,6 +16,7 @@ import '../application/trip_route_associations.dart';
 import '../application/trip_services.dart';
 import '../application/trip_tile_config.dart';
 import '../data/toll_inventory.dart';
+import '../data/toll_tariff_catalog.dart';
 import '../domain/trip_draft.dart';
 import '../data/trip_municipality_catalog.dart';
 import '../data/trip_plan_client.dart';
@@ -209,6 +210,9 @@ class _TripScreenState extends ConsumerState<TripScreen>
     final tollInventory = selectedRoute == null
         ? null
         : ref.watch(tripTollInventoryProvider);
+    final tollTariffCatalog = selectedRoute == null
+        ? null
+        : ref.watch(tripTollTariffCatalogProvider);
     final cameraSnapshot = selectedRoute == null
         ? null
         : ref.watch(tripCameraPackSnapshotProvider);
@@ -279,6 +283,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
               mapAnchorKey: _mapAnchorKey,
               onViewMap: _scrollToMap,
               tollInventory: tollInventory!,
+              tollTariffCatalog: tollTariffCatalog!,
               cameraSnapshot: cameraSnapshot!,
               mapConfig: ref.watch(tripRouteMapConfigProvider),
               resolver: ref.watch(tripRouteAssociationResolverProvider),
@@ -414,6 +419,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
         vehicleSelectionRequired: missingRestoredVehicle,
       ),
       onDeleteDraft: _deleteDraft,
+      onSource: _openSource,
       onGoogleMaps: _openGoogleMaps,
       onWaze: _openWaze,
       onInvias: _openInvias,
@@ -1018,6 +1024,7 @@ class _TripPlanWithLocalData extends StatelessWidget {
     required this.mapAnchorKey,
     required this.onViewMap,
     required this.tollInventory,
+    required this.tollTariffCatalog,
     required this.cameraSnapshot,
     required this.mapConfig,
     required this.resolver,
@@ -1033,6 +1040,7 @@ class _TripPlanWithLocalData extends StatelessWidget {
   final GlobalKey mapAnchorKey;
   final VoidCallback onViewMap;
   final AsyncValue<TollInventoryDataset> tollInventory;
+  final AsyncValue<TollTariffCatalog> tollTariffCatalog;
   final AsyncValue<TripCameraPackSnapshot> cameraSnapshot;
   final TripRouteMapConfig mapConfig;
   final TripRouteAssociationResolver resolver;
@@ -1047,6 +1055,7 @@ class _TripPlanWithLocalData extends StatelessWidget {
         plan: plan,
         route: route,
         tolls: tolls,
+        tollTariffCatalog: tollTariffCatalog.asData?.value,
         cameras: cameras,
         mapConfig: mapConfig,
         resolver: resolver,
@@ -1080,6 +1089,7 @@ class _TripPlanWithAssociations extends StatefulWidget {
     required this.plan,
     required this.route,
     required this.tolls,
+    required this.tollTariffCatalog,
     required this.cameras,
     required this.mapConfig,
     required this.resolver,
@@ -1093,6 +1103,7 @@ class _TripPlanWithAssociations extends StatefulWidget {
   final TripPlan plan;
   final TripRouteOption route;
   final TollInventoryDataset tolls;
+  final TollTariffCatalog? tollTariffCatalog;
   final TripCameraPackSnapshot cameras;
   final TripRouteMapConfig mapConfig;
   final TripRouteAssociationResolver resolver;
@@ -1180,6 +1191,21 @@ class _TripPlanWithAssociationsState extends State<_TripPlanWithAssociations> {
   @override
   Widget build(BuildContext context) {
     final snapshot = _snapshot;
+    final localTollPricing =
+        snapshot == null ||
+            snapshot.geometryQuality != RouteGeometryQuality.polyline ||
+            widget.tollTariffCatalog == null
+        ? null
+        : priceExplicitTollPassages(
+            catalog: widget.tollTariffCatalog!,
+            passages: snapshot.currentTolls.map(
+              (association) => association.location,
+            ),
+            operatorCategoryCode:
+                widget.request.vehicleCategory == 'unsupported_vehicle'
+                ? ''
+                : 'I',
+          );
     final cameraCount =
         snapshot?.geometryQuality == RouteGeometryQuality.polyline
         ? snapshot?.uniqueCameraLocationCount
@@ -1191,6 +1217,7 @@ class _TripPlanWithAssociationsState extends State<_TripPlanWithAssociations> {
         routeId: widget.route.id,
         geometry: widget.route.geometry,
         tollInventory: widget.tolls,
+        tollTariffCatalog: widget.tollTariffCatalog,
         cameraPack: widget.cameras.pack,
         cameraPackVersion: widget.cameras.version,
         associations: associations,
@@ -1211,6 +1238,7 @@ class _TripPlanWithAssociationsState extends State<_TripPlanWithAssociations> {
       mapAnchorKey: widget.mapAnchorKey,
       onViewMap: widget.onViewMap,
       cameraLocationCount: cameraCount,
+      localTollPricing: localTollPricing,
     );
   }
 }

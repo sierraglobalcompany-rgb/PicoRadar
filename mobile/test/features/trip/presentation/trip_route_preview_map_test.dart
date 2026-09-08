@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/features/driving/domain/traffic_camera.dart';
 import 'package:picoradar/features/trip/application/trip_route_associations.dart';
 import 'package:picoradar/features/trip/data/toll_inventory.dart';
+import 'package:picoradar/features/trip/data/toll_tariff_catalog.dart';
 import 'package:picoradar/features/trip/domain/trip_plan.dart';
 import 'package:picoradar/features/trip/presentation/trip_route_preview_map.dart';
 
@@ -22,7 +23,28 @@ void main() {
     expect(find.byKey(const ValueKey('trip-route-end')), findsOneWidget);
     expect(find.textContaining('1 peaje inventariado próximo'), findsOneWidget);
     expect(find.textContaining('1 cámara registrada próxima'), findsOneWidget);
-    expect(find.textContaining('tarifas no disponibles'), findsOneWidget);
+    expect(find.textContaining('tarifas locales cargando'), findsOneWidget);
+  });
+
+  testWidgets('toll marker shows owner tariff by physical id', (tester) async {
+    await tester.pumpWidget(
+      _app(config: _neutralConfig(), tollTariffCatalog: _tariffCatalog()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Cat I disponible para 1 de 1'), findsOneWidget);
+
+    _openTollDetails(tester);
+    await tester.pump();
+
+    expect(find.text('Peaje de prueba'), findsWidgets);
+    expect(find.textContaining('Tarifas propias'), findsOneWidget);
+    expect(find.textContaining(r'Cat I: $18.500'), findsOneWidget);
+    expect(find.textContaining('Oficial · 2026-09-08'), findsOneWidget);
+    expect(
+      find.textContaining('Este punto físico no confirma un cobro activo'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('zero nearby cameras never claims the route is camera-free', (
@@ -428,7 +450,7 @@ void main() {
     await tester.pump();
     expect(find.text('Peaje de prueba'), findsOneWidget);
     expect(find.textContaining('no confirma un cobro activo'), findsOneWidget);
-    expect(find.text('Tarifa actual no disponible'), findsOneWidget);
+    expect(find.textContaining('Tarifas propias cargando'), findsOneWidget);
     expect(find.text('Inventario v1 · corte 2026-08-31'), findsOneWidget);
     expect(
       find.text('El corte no confirma vigencia operativa.'),
@@ -615,7 +637,7 @@ void main() {
     for (final summary in [
       find.descendant(
         of: fullscreen,
-        matching: find.textContaining('tarifas no disponibles'),
+        matching: find.textContaining('tarifas locales cargando'),
       ),
       find.descendant(
         of: fullscreen,
@@ -644,6 +666,7 @@ Widget _app({
   MapController? mapController,
   TripRouteAssociations? associations,
   TollInventoryDataset? tollInventory,
+  TollTariffCatalog? tollTariffCatalog,
   CameraPack? cameraPack,
   String cameraPackVersion = '2026.08.31-ansv',
   double textScale = 1,
@@ -666,6 +689,7 @@ Widget _app({
         routeId: routeId,
         geometry: geometry,
         tollInventory: tolls,
+        tollTariffCatalog: tollTariffCatalog,
         cameraPack: cameras,
         cameraPackVersion: cameraPackVersion,
         associations: snapshot,
@@ -770,6 +794,64 @@ TollInventoryRecord _toll({
   },
   inventorySource: 'https://example.test/inventory',
   gpsSource: 'https://example.test/gps',
+);
+
+TollTariffCatalog _tariffCatalog() => TollTariffCatalog(
+  version: '2026.09.08-upload-a',
+  currency: 'COP',
+  amountUnit: 'whole_pesos',
+  source: const TollTariffSource(
+    fileName: 'PicoRadar_Peajes_Colombia_AUDITADO_2026-09-08.xlsx',
+    sha256: 'source-sha',
+    consultationCutoffAsStated: '2026-09-08',
+    independentExternalReverification: false,
+    jsonFileName: 'tolls_tariffs_source_2026_09_08.json',
+    jsonSha256: 'json-sha',
+  ),
+  counts: const TollTariffCounts(
+    stations: 1,
+    generalRates: 1,
+    specialRates: 0,
+    numericGeneralRates: 1,
+    officialGeneralRates: 1,
+    secondaryGeneralRates: 0,
+    candidatesOutsideBase: 0,
+  ),
+  stations: [
+    TollTariffStation(
+      id: 'toll-1',
+      name: 'Peaje de prueba',
+      department: 'Antioquia',
+      latitude: 6.2402,
+      longitude: -75.575,
+      operationStatus: 'Tarifa publicada',
+      publicationControl: 'VALIDAR_RUTA_Y_CATEGORIA',
+      routeRule: 'Aplicar una tarifa por paso según categoría y sentido.',
+      logicalChargeGroup: null,
+      evidenceQuality: 'OFICIAL_2026',
+      generalRates: const [
+        TollTariffRate(
+          categoryCode: 'I',
+          vehicleDescription: 'Clasificación local I',
+          rateType: 'General',
+          amountCop: 18500,
+          collectionMultiplier: 1,
+          boothBaseChargeCop: 18500,
+          dataStatus: 'PUBLICADA_2026',
+          sourceDate: '2026-09-08',
+          sourceDatePrecision: 'Día',
+          consultedOn: '2026-09-08',
+          sourceType: 'Oficial',
+          amountSourceId: 'OWNER',
+          amountSourceUrl: 'https://example.test/tarifas',
+          chargeSourceUrl: 'https://example.test/tarifas',
+          conditions: 'No sumar inventario.',
+          publicationControl: 'VALIDAR_RUTA_Y_CATEGORIA',
+        ),
+      ],
+      specialRates: const [],
+    ),
+  ],
 );
 
 TrafficCamera _camera({

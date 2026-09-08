@@ -11,6 +11,7 @@ import '../../pico_placa/domain/restriction_day_evaluation.dart';
 import '../../pico_placa/data/pico_preferences.dart';
 import '../../home/presentation/pico_notification_sheet.dart';
 import '../application/trip_services.dart';
+import '../data/toll_tariff_catalog.dart';
 import '../data/trip_municipality_catalog.dart';
 import '../domain/trip_draft.dart';
 import '../domain/trip_plan.dart';
@@ -66,6 +67,7 @@ class TripContent extends ConsumerWidget {
     required this.onChecklistChanged,
     required this.onSaveDraft,
     required this.onDeleteDraft,
+    required this.onSource,
     required this.onGoogleMaps,
     required this.onWaze,
     required this.onInvias,
@@ -121,6 +123,7 @@ class TripContent extends ConsumerWidget {
   final void Function(TripChecklistItem item, bool selected) onChecklistChanged;
   final VoidCallback onSaveDraft;
   final VoidCallback onDeleteDraft;
+  final ValueChanged<String> onSource;
   final VoidCallback onGoogleMaps;
   final VoidCallback onWaze;
   final VoidCallback onInvias;
@@ -321,6 +324,8 @@ class TripContent extends ConsumerWidget {
                       ),
                     const SizedBox(height: AppSpacing.m),
                     previewAction,
+                    const SizedBox(height: AppSpacing.l),
+                    _TollTariffLookupCard(onSource: onSource),
                     if (planResult != null) ...[
                       const SizedBox(height: AppSpacing.l),
                       SizedBox(key: resultsAnchorKey),
@@ -1054,6 +1059,186 @@ class _ChecklistCard extends StatelessWidget {
   }
 }
 
+class _TollTariffLookupCard extends ConsumerStatefulWidget {
+  const _TollTariffLookupCard({required this.onSource});
+
+  final ValueChanged<String> onSource;
+
+  @override
+  ConsumerState<_TollTariffLookupCard> createState() =>
+      _TollTariffLookupCardState();
+}
+
+class _TollTariffLookupCardState extends ConsumerState<_TollTariffLookupCard> {
+  final _controller = TextEditingController();
+  var _query = '';
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final catalog = ref.watch(tripTollTariffCatalogProvider);
+    return _Card(
+      child: Column(
+        key: const ValueKey('trip-toll-tariff-lookup'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Tarifas propias de peajes', style: AppTextStyles.h2),
+          const SizedBox(height: AppSpacing.xs),
+          const Text(
+            'Consulta local por estación. No requiere TollGuru ni servicio de rutas.',
+          ),
+          const SizedBox(height: AppSpacing.m),
+          TextField(
+            key: const ValueKey('trip-toll-tariff-query'),
+            controller: _controller,
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.search_rounded),
+              labelText: 'Buscar peaje',
+              hintText: 'Guarne, Cocorná, Amagá...',
+            ),
+            textInputAction: TextInputAction.search,
+            onChanged: (value) => setState(() => _query = value),
+          ),
+          const SizedBox(height: AppSpacing.m),
+          catalog.when(
+            loading: () => const Text('Cargando tarifas locales'),
+            error: (_, _) => const Text(
+              'No se pudieron cargar las tarifas locales de peajes.',
+            ),
+            data: (data) => _TollTariffLookupResults(
+              catalog: data,
+              query: _query,
+              onSource: widget.onSource,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TollTariffLookupResults extends StatelessWidget {
+  const _TollTariffLookupResults({
+    required this.catalog,
+    required this.query,
+    required this.onSource,
+  });
+
+  final TollTariffCatalog catalog;
+  final String query;
+  final ValueChanged<String> onSource;
+
+  @override
+  Widget build(BuildContext context) {
+    final matches = catalog.search(query, limit: 6);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          '${catalog.counts.stations} estaciones · '
+          '${catalog.counts.numericGeneralRates} tarifas publicadas · '
+          'corte ${catalog.source.consultationCutoffAsStated}',
+          style: AppTextStyles.caption,
+        ),
+        const SizedBox(height: AppSpacing.s),
+        if (matches.isEmpty)
+          const Text('No encontramos una estación con ese texto.')
+        else
+          for (final station in matches) ...[
+            _TollTariffStationTile(station: station, onSource: onSource),
+            const SizedBox(height: AppSpacing.s),
+          ],
+      ],
+    );
+  }
+}
+
+class _TollTariffStationTile extends StatelessWidget {
+  const _TollTariffStationTile({required this.station, required this.onSource});
+
+  final TollTariffStation station;
+  final ValueChanged<String> onSource;
+
+  @override
+  Widget build(BuildContext context) {
+    final categoryI = station.categoryI;
+    final sourceUrl = station.generalRates
+        .map((rate) => rate.chargeSourceUrl ?? rate.amountSourceUrl)
+        .whereType<String>()
+        .firstOrNull;
+    final visibleGeneralRates = station.generalRates
+        .where((rate) => rate.categoryCode.length <= 4)
+        .take(10)
+        .toList(growable: false);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.m),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(station.name, style: AppTextStyles.bodyStrong),
+            if (station.department != null) Text(station.department!),
+            Text(
+              'Cat I: ${categoryI?.amountCop == null ? 'Sin dato' : _copFromPesos(categoryI!.amountCop!)}',
+              key: ValueKey('trip-toll-tariff-${station.id}-cat-i'),
+            ),
+            Text(
+              '${station.publicationControl ?? 'Control no informado'} · '
+              '${categoryI?.sourceType ?? 'Fuente no informada'}'
+              '${categoryI?.sourceDate == null ? '' : ' · ${categoryI!.sourceDate}'}',
+              style: AppTextStyles.caption,
+            ),
+            const SizedBox(height: AppSpacing.s),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                for (final rate in visibleGeneralRates)
+                  Chip(
+                    visualDensity: VisualDensity.compact,
+                    label: Text(
+                      '${rate.categoryCode}: '
+                      '${rate.amountCop == null ? 'Sin dato' : _copFromPesos(rate.amountCop!)}',
+                    ),
+                  ),
+              ],
+            ),
+            if (station.specialRates.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.s),
+              Text(
+                '${station.specialRates.length} tarifa(s) especial(es) no aplicadas sin elegibilidad.',
+                style: AppTextStyles.caption,
+              ),
+            ],
+            if (station.routeRule != null) ...[
+              const SizedBox(height: AppSpacing.s),
+              Text(station.routeRule!, style: AppTextStyles.caption),
+            ],
+            if (sourceUrl != null) ...[
+              const SizedBox(height: AppSpacing.s),
+              TextButton.icon(
+                onPressed: () => onSource(sourceUrl),
+                icon: const Icon(Icons.open_in_new_rounded),
+                label: const Text('Ver fuente'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ExternalNotice extends StatelessWidget {
   const _ExternalNotice({required this.draftRestored});
 
@@ -1170,6 +1355,19 @@ String _formatDate(DateTime date) {
   return '${date.year.toString().padLeft(4, '0')}-'
       '${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')}';
+}
+
+String _copFromPesos(int pesos) {
+  final digits = pesos.abs().toString();
+  final buffer = StringBuffer(r'$');
+  if (pesos < 0) buffer.write('-');
+  for (var index = 0; index < digits.length; index++) {
+    if (index > 0 && (digits.length - index) % 3 == 0) {
+      buffer.write('.');
+    }
+    buffer.write(digits[index]);
+  }
+  return buffer.toString();
 }
 
 _TripDatePickerRange _datePickerRange(DateTime selectedDate) {

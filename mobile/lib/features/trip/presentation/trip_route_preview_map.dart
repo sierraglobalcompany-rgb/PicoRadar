@@ -10,6 +10,7 @@ import '../application/route_geometry_index.dart';
 import '../application/trip_route_associations.dart';
 import '../application/trip_tile_config.dart';
 import '../data/toll_inventory.dart';
+import '../data/toll_tariff_catalog.dart';
 import '../domain/trip_plan.dart';
 
 class TripRouteMapConfig {
@@ -51,6 +52,7 @@ class TripRoutePreviewMap extends StatefulWidget {
     required this.associations,
     required this.config,
     this.demoLabel,
+    this.tollTariffCatalog,
     this.mapController,
     this.allowFullscreen = true,
     super.key,
@@ -65,12 +67,14 @@ class TripRoutePreviewMap extends StatefulWidget {
     required this.config,
     required this.associations,
     this.demoLabel,
+    this.tollTariffCatalog,
   }) : mapController = null,
        allowFullscreen = false;
 
   final String routeId;
   final List<TripCoordinate> geometry;
   final TollInventoryDataset tollInventory;
+  final TollTariffCatalog? tollTariffCatalog;
   final CameraPack cameraPack;
   final String cameraPackVersion;
   final TripRouteAssociations associations;
@@ -111,6 +115,8 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
         !identical(oldWidget.geometry, widget.geometry);
     final tollDatasetChanged =
         oldWidget.tollInventory.version != widget.tollInventory.version ||
+        oldWidget.tollTariffCatalog?.version !=
+            widget.tollTariffCatalog?.version ||
         !identical(
           oldWidget.tollInventory.records,
           widget.tollInventory.records,
@@ -288,10 +294,25 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
         ? 'Históricos visibles: ${_locationCount(historical)} · '
               '${_passageCount(widget.associations.historicalTolls.length)}'
         : 'Históricos: $historical en capa separada oculta';
+    final currentIds = widget.associations.currentTolls
+        .map((association) => association.location.id)
+        .toSet();
+    final pricedCount = widget.tollTariffCatalog == null
+        ? 0
+        : currentIds
+              .where(
+                (id) =>
+                    widget.tollTariffCatalog!.byId(id)?.categoryI?.amountCop !=
+                    null,
+              )
+              .length;
+    final tariffSummary = widget.tollTariffCatalog == null
+        ? 'tarifas locales cargando'
+        : 'Cat I disponible para $pricedCount de ${currentIds.length} ubicaciones';
     return '$count $noun: ${_locationCount(count)} · '
         '${_passageCount(widget.associations.currentTolls.length)}. '
         '$historicalSummary; '
-        'tarifas no disponibles y cobro activo no confirmado.';
+        '$tariffSummary; cobro activo no confirmado.';
   }
 
   String get _cameraSummary {
@@ -425,6 +446,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
             child: _MarkerDetails(
               location: location,
               tollInventory: widget.tollInventory,
+              tollTariffCatalog: widget.tollTariffCatalog,
               cameraPack: widget.cameraPack,
               cameraPackVersion: widget.cameraPackVersion,
               demoLabel: widget.demoLabel,
@@ -570,6 +592,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
                 routeId: widget.routeId,
                 geometry: widget.geometry,
                 tollInventory: widget.tollInventory,
+                tollTariffCatalog: widget.tollTariffCatalog,
                 cameraPack: widget.cameraPack,
                 cameraPackVersion: widget.cameraPackVersion,
                 config: widget.config,
@@ -779,6 +802,7 @@ class _MarkerDetails extends StatelessWidget {
   const _MarkerDetails({
     required this.location,
     required this.tollInventory,
+    required this.tollTariffCatalog,
     required this.cameraPack,
     required this.cameraPackVersion,
     required this.demoLabel,
@@ -787,6 +811,7 @@ class _MarkerDetails extends StatelessWidget {
 
   final Object location;
   final TollInventoryDataset tollInventory;
+  final TollTariffCatalog? tollTariffCatalog;
   final CameraPack cameraPack;
   final String cameraPackVersion;
   final String? demoLabel;
@@ -795,18 +820,7 @@ class _MarkerDetails extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (title, lines) = switch (location) {
-      TollInventoryRecord record => (
-        record.name,
-        [
-          record.previewOperationLabel,
-          'Este punto físico no confirma un cobro activo.',
-          'Tarifa actual no disponible',
-          'Inventario ${tollInventory.version} · corte ${_dateOnly(tollInventory.sourceTimestamp)}',
-          'El corte no confirma vigencia operativa.',
-          'Fuente inventario: ${record.inventorySource}',
-          'Fuente GPS: ${record.gpsSource}',
-        ],
-      ),
+      TollInventoryRecord record => _tollDetails(record),
       TrafficCamera camera => (
         camera.address ?? camera.locality,
         [
@@ -863,6 +877,31 @@ class _MarkerDetails extends StatelessWidget {
       ),
     );
   }
+
+  (String, List<String>) _tollDetails(TollInventoryRecord record) {
+    final station = tollTariffCatalog?.byId(record.id);
+    final rateLines = station == null
+        ? ['Tarifas propias cargando o no disponibles para este ID.']
+        : [
+            'Tarifas propias ${tollTariffCatalog!.version} · Cat I: ${_copPesosOrNoData(station.categoryI?.amountCop)}',
+            _compactCategories(station.generalRates),
+            '${station.publicationControl ?? 'Control no informado'} · ${station.categoryI?.sourceType ?? 'fuente no informada'}${station.categoryI?.sourceDate == null ? '' : ' · ${station.categoryI!.sourceDate}'}',
+            if (station.specialRates.isNotEmpty)
+              '${station.specialRates.length} tarifa(s) especial(es) no aplicadas sin elegibilidad.',
+          ];
+    return (
+      station?.name ?? record.name,
+      [
+        record.previewOperationLabel,
+        'Este punto físico no confirma un cobro activo.',
+        ...rateLines,
+        'Inventario ${tollInventory.version} · corte ${_dateOnly(tollInventory.sourceTimestamp)}',
+        'El corte no confirma vigencia operativa.',
+        'Fuente inventario: ${record.inventorySource}',
+        'Fuente GPS: ${record.gpsSource}',
+      ],
+    );
+  }
 }
 
 class _MapDemoBanner extends StatelessWidget {
@@ -902,3 +941,28 @@ String _locationCount(int count) =>
 
 String _passageCount(int count) =>
     count == 1 ? '1 paso candidato' : '$count pasos candidatos';
+
+String _compactCategories(List<TollTariffRate> rates) {
+  final visible = rates.where((rate) => rate.categoryCode.length <= 4).take(7);
+  return visible
+      .map(
+        (rate) => '${rate.categoryCode} ${_copPesosOrNoData(rate.amountCop)}',
+      )
+      .join(' · ');
+}
+
+String _copPesosOrNoData(int? pesos) {
+  if (pesos == null) {
+    return 'sin dato';
+  }
+  final digits = pesos.abs().toString();
+  final buffer = StringBuffer(r'$');
+  if (pesos < 0) buffer.write('-');
+  for (var index = 0; index < digits.length; index++) {
+    if (index > 0 && (digits.length - index) % 3 == 0) {
+      buffer.write('.');
+    }
+    buffer.write(digits[index]);
+  }
+  return buffer.toString();
+}
