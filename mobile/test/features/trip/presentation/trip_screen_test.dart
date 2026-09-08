@@ -2206,10 +2206,7 @@ void main() {
           version: 'test-tolls-v1',
           sourceTimestamp: DateTime.utc(2026, 8, 31),
           records: [
-            _tollRecordForRoute(
-              id: 'INV-GUARNE-3A941FAFD9',
-              name: 'GUARNE',
-            ),
+            _tollRecordForRoute(id: 'INV-GUARNE-3A941FAFD9', name: 'GUARNE'),
             _tollRecordForRoute(
               id: 'INV-AMAGA-ABD7881C50',
               name: 'AMAGÁ',
