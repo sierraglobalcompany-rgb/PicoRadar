@@ -233,7 +233,7 @@ class TripPreviewTest extends TestCase
             $this->assertStringStartsWith('https://osrm.test/route/v1/driving/-75.5812,6.2442;-75.374,6.1533', $request->url());
             $query = [];
             parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
-            $this->assertSame('full', $query['overview'] ?? null);
+            $this->assertSame('simplified', $query['overview'] ?? null);
             $this->assertSame('geojson', $query['geometries'] ?? null);
             $this->assertSame('false', $query['steps'] ?? null);
             $this->assertSame('true', $query['alternatives'] ?? null);

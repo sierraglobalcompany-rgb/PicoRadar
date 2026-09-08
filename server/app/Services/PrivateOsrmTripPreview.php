@@ -81,7 +81,7 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
                 ->timeout($settings['timeout_seconds'])
                 ->withOptions(['allow_redirects' => false, 'verify' => true])
                 ->get($settings['base_url'].$path, [
-                    'overview' => 'full',
+                    'overview' => 'simplified',
                     'geometries' => 'geojson',
                     'steps' => 'false',
                     'alternatives' => $request['alternatives'] > 1 ? 'true' : 'false',
