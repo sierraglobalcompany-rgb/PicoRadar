@@ -2185,6 +2185,64 @@ void main() {
     );
   });
 
+  testWidgets('prices route candidate tolls from local catalog only for current records', (
+    tester,
+  ) async {
+    final client = _PendingPlanClient();
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(2026, 9, 7),
+        departureMinute: 600,
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: _vehicle(),
+      planClient: client,
+      tollInventory: TollInventoryDataset(
+        version: 'test-tolls-v1',
+        sourceTimestamp: DateTime.utc(2026, 8, 31),
+        records: [
+          _tollRecordForRoute(
+            id: 'INV-GUARNE-3A941FAFD9',
+            name: 'GUARNE',
+          ),
+          _tollRecordForRoute(
+            id: 'INV-AMAGA-ABD7881C50',
+            name: 'AMAGÁ',
+            classification: TollOperationClassification.nonOperationalHistorical,
+          ),
+        ],
+      ),
+    );
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    client.completions.single.complete(
+      _testPlan(client.requests.single, withGeometry: true),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Cat I disponible para 1 de 1'), findsOneWidget);
+
+    final localPricing = find.byKey(
+      const ValueKey('trip-local-toll-pricing-test-route'),
+    );
+    await tester.ensureVisible(localPricing);
+    await tester.pumpAndSettle();
+    await tester.tap(localPricing);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tarifas propias sobre peajes candidatos'), findsOneWidget);
+    expect(find.textContaining('Cobertura local completa'), findsOneWidget);
+    expect(find.text('Subtotal con datos: COP 18.500'), findsOneWidget);
+    expect(find.text('Total local: COP 18.500'), findsOneWidget);
+    expect(find.textContaining('AMAGÁ'), findsNothing);
+  });
+
   testWidgets(
     'VIAJE-R2 defers local associations and discards a stale route result',
     (tester) async {
@@ -2722,6 +2780,35 @@ TollInventoryDataset _emptyTollInventory() => TollInventoryDataset(
   version: 'test-tolls-v1',
   sourceTimestamp: DateTime.utc(2026, 8, 31),
   records: const [],
+);
+
+TollInventoryRecord _tollRecordForRoute({
+  required String id,
+  required String name,
+  TollOperationClassification classification =
+      TollOperationClassification.inventoriedOperationNotConfirmed,
+}) => TollInventoryRecord(
+  id: id,
+  name: name,
+  exactSourceName: name,
+  department: 'Antioquia',
+  recordKind: TollRecordKind.physicalStation,
+  operationStatusRaw: 'Inventariado',
+  operationClassification: classification,
+  latitude: 5.4,
+  longitude: -74.8,
+  chargeEventVerified: false,
+  tariffsBySourceCategoryCop: const {
+    'category_1': null,
+    'category_2': null,
+    'category_3': null,
+    'category_4': null,
+    'category_5': null,
+    'category_6': null,
+    'category_7': null,
+  },
+  inventorySource: 'https://example.test/tolls',
+  gpsSource: 'https://example.test/tolls-gps',
 );
 
 TripCameraPackSnapshot _emptyCameraSnapshot() => const TripCameraPackSnapshot(
