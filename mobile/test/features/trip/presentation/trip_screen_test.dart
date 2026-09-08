@@ -67,9 +67,13 @@ void main() {
     tester,
   ) async {
     await _pumpScreen(tester, preferences: preferences);
-    final search = find.byKey(const ValueKey('trip-toll-tariff-query'));
-    await tester.ensureVisible(search);
+    final launcher = find.byKey(const ValueKey('trip-open-toll-tariffs'));
+    await tester.ensureVisible(launcher);
     await tester.pumpAndSettle();
+    await tester.tap(launcher);
+    await tester.pumpAndSettle();
+
+    final search = find.byKey(const ValueKey('trip-toll-tariff-query'));
 
     await tester.enterText(search, 'guarne');
     await tester.pumpAndSettle();
@@ -2245,6 +2249,107 @@ void main() {
       expect(find.text('Subtotal con datos: COP 18.500'), findsOneWidget);
       expect(find.text('Total local: COP 18.500'), findsOneWidget);
       expect(find.textContaining('AMAGÁ'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'motorcycle route candidate tolls do not inherit car category I pricing',
+    (tester) async {
+      final client = _PendingPlanClient();
+      await TripDraftStore(preferences).saveDraft(
+        TripDraft(
+          origin: 'Bogotá',
+          destination: 'Medellín',
+          date: DateTime(2026, 9, 7),
+          departureMinute: 600,
+        ),
+      );
+      await _pumpScreen(
+        tester,
+        preferences: preferences,
+        activeVehicle: _vehicle(kind: VehicleKind.motorcycle),
+        planClient: client,
+        tollInventory: TollInventoryDataset(
+          version: 'test-tolls-v1',
+          sourceTimestamp: DateTime.utc(2026, 8, 31),
+          records: [
+            _tollRecordForRoute(id: 'INV-GUARNE-3A941FAFD9', name: 'GUARNE'),
+          ],
+        ),
+      );
+      await _tapByKey(tester, 'trip-standard-vehicle');
+      _pressButtonByKey(tester, 'trip-preview');
+      await tester.pump();
+      client.completions.single.complete(
+        _testPlan(client.requests.single, withGeometry: true),
+      );
+      await tester.pumpAndSettle();
+
+      final localPricing = find.byKey(
+        const ValueKey('trip-local-toll-pricing-test-route'),
+      );
+      await tester.ensureVisible(localPricing);
+      await tester.pumpAndSettle();
+      await tester.tap(localPricing);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Categoría local no soportada'),
+        findsOneWidget,
+      );
+      expect(find.text('Subtotal con datos: COP 18.500'), findsNothing);
+      expect(find.text('Total local: COP 18.500'), findsNothing);
+      expect(find.text('Categoría operador: I'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'route result appears before tariff lookup launcher after preview',
+    (tester) async {
+      final client = _PendingPlanClient();
+      await TripDraftStore(preferences).saveDraft(
+        TripDraft(
+          origin: 'Bogotá',
+          destination: 'Medellín',
+          date: DateTime(2026, 9, 7),
+          departureMinute: 600,
+        ),
+      );
+      await _pumpScreen(
+        tester,
+        preferences: preferences,
+        activeVehicle: _vehicle(),
+        planClient: client,
+        size: const Size(390, 1000),
+      );
+      await _tapByKey(tester, 'trip-standard-vehicle');
+      _pressButtonByKey(tester, 'trip-preview');
+      await tester.pump();
+      client.completions.single.complete(_testPlan(client.requests.single));
+      await tester.pumpAndSettle();
+
+      final result = find.byKey(const ValueKey('trip-plan-result'));
+      final launcher = find.byKey(const ValueKey('trip-open-toll-tariffs'));
+      await tester.ensureVisible(launcher);
+      await tester.pumpAndSettle();
+
+      expect(result, findsOneWidget);
+      expect(launcher, findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('trip-toll-tariff-lookup')),
+        findsNothing,
+      );
+      expect(
+        tester.getTopLeft(result).dy,
+        lessThan(tester.getTopLeft(launcher).dy),
+      );
+
+      await tester.tap(launcher);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('trip-toll-tariff-lookup')),
+        findsOneWidget,
+      );
     },
   );
 

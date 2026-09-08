@@ -103,6 +103,30 @@ void main() {
       expect(computations, 2);
     },
   );
+
+  test('resolver keeps only a bounded set of completed associations', () async {
+    var computations = 0;
+    final resolver = CachedTripRouteAssociationResolver(
+      maxEntries: 3,
+      compute: (input) async {
+        computations++;
+        return const TripRouteAssociator().associate(
+          routeId: input.routeId,
+          geometry: input.geometry,
+          tolls: input.tolls,
+          cameras: input.cameras,
+        );
+      },
+    );
+
+    await resolver.resolve(request(routeId: 'route-1'));
+    await resolver.resolve(request(routeId: 'route-2'));
+    await resolver.resolve(request(routeId: 'route-3'));
+    await resolver.resolve(request(routeId: 'route-4'));
+    await resolver.resolve(request(routeId: 'route-1'));
+
+    expect(computations, 5);
+  });
 }
 
 TollInventoryRecord _toll() => const TollInventoryRecord(

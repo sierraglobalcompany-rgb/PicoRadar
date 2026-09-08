@@ -153,6 +153,97 @@ class TripPreviewTest extends TestCase
         $this->assertSame($this->ledger(1, 21, 300), Cache::store('database')->get(self::LEDGER));
     }
 
+    public function test_unknown_trip_provider_fails_closed_without_spending_or_http(): void
+    {
+        config(['trips.enabled' => true, 'trips.provider' => 'unknown-provider']);
+
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertStatus(503)->assertExactJson(['error' => ['code' => 'not_configured']]);
+
+        Http::assertNothingSent();
+        $this->assertSame($this->ledger(), Cache::store('database')->get(self::LEDGER));
+    }
+
+    public function test_private_osrm_provider_requires_authorized_versioned_route_points_without_spending(): void
+    {
+        config([
+            'trips.enabled' => true,
+            'trips.provider' => 'private_osrm',
+            'trips.private_osrm.enabled' => true,
+            'trips.private_osrm.access_authorized' => true,
+            'trips.private_osrm.source_authorized' => true,
+            'trips.private_osrm.base_url' => 'https://osrm.test',
+        ]);
+
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertStatus(503)->assertExactJson(['error' => ['code' => 'not_configured']]);
+
+        Http::assertNothingSent();
+        $this->assertSame($this->ledger(), Cache::store('database')->get(self::LEDGER));
+    }
+
+    public function test_private_osrm_provider_returns_geometry_without_claiming_toll_totals_or_spending_tollguru_budget(): void
+    {
+        config([
+            'trips.enabled' => true,
+            'trips.provider' => 'private_osrm',
+            'trips.private_osrm.enabled' => true,
+            'trips.private_osrm.access_authorized' => true,
+            'trips.private_osrm.source_authorized' => true,
+            'trips.private_osrm.base_url' => 'https://osrm.test',
+            'trips.private_osrm.attribution' => 'OSRM; OpenStreetMap contributors',
+        ]);
+        $this->routePoint('05001', 6.2442, -75.5812);
+        $this->routePoint('05615', 6.1533, -75.3740);
+        $this->fakeProvider(['https://osrm.test/route/v1/driving/*' => Http::response([
+            'code' => 'Ok',
+            'routes' => [[
+                'distance' => 42000.4,
+                'duration' => 3600.2,
+                'geometry' => [
+                    'type' => 'LineString',
+                    'coordinates' => [
+                        [-75.5812, 6.2442],
+                        [-75.48, 6.2],
+                        [-75.374, 6.1533],
+                    ],
+                ],
+            ]],
+            'waypoints' => [
+                ['name' => 'Medellin', 'location' => [-75.5812, 6.2442]],
+                ['name' => 'Rionegro', 'location' => [-75.374, 6.1533]],
+            ],
+        ], 200, ['Content-Type' => 'application/json'])]);
+
+        $this->postJson('/api/v1/trips/preview', $this->request())
+            ->assertOk()
+            ->assertJsonPath('provider', 'Private OSRM')
+            ->assertJsonPath('attribution', 'OSRM; OpenStreetMap contributors')
+            ->assertJsonPath('origin.latitude', 6.2442)
+            ->assertJsonPath('destination.longitude', -75.374)
+            ->assertJsonPath('routes.0.distanceMeters', 42000)
+            ->assertJsonPath('routes.0.durationSeconds', 3600)
+            ->assertJsonPath('routes.0.geometry.coordinates.0', [-75.5812, 6.2442])
+            ->assertJsonPath('routes.0.tolls.coverage', 'unknown')
+            ->assertJsonPath('routes.0.tolls.totalMinor', null)
+            ->assertJsonPath('routes.0.tolls.stationCount', null);
+
+        Http::assertSent(function (Request $request): bool {
+            $this->assertSame('GET', $request->method());
+            $this->assertStringStartsWith('https://osrm.test/route/v1/driving/-75.5812,6.2442;-75.374,6.1533', $request->url());
+            $query = [];
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+            $this->assertSame('full', $query['overview'] ?? null);
+            $this->assertSame('geojson', $query['geometries'] ?? null);
+            $this->assertSame('false', $query['steps'] ?? null);
+            $this->assertSame('true', $query['alternatives'] ?? null);
+
+            return true;
+        });
+        Http::assertSentCount(1);
+        $this->assertSame($this->ledger(), Cache::store('database')->get(self::LEDGER));
+    }
+
     public function test_confirmed_free_trial_allows_zero_money_and_reserves_non_money_quota(): void
     {
         $this->enableConfirmedFreeTrial();
@@ -768,5 +859,19 @@ class TripPreviewTest extends TestCase
             'level' => $level, 'parent_id' => $parent, 'is_active' => true,
             'source_system' => 'test', 'source_version' => 'v1',
         ]);
+    }
+
+    private function routePoint(string $code, float $latitude, float $longitude): void
+    {
+        $unit = GeographicUnit::query()->where('code', $code)->firstOrFail();
+        $unit->metadata = [
+            'routePoint' => [
+                'latitude' => $latitude,
+                'longitude' => $longitude,
+                'source' => 'test-routing-points',
+                'version' => 'v1',
+            ],
+        ];
+        $unit->save();
     }
 }

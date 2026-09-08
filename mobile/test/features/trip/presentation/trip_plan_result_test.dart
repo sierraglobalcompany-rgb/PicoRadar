@@ -287,6 +287,40 @@ void main() {
     );
   });
 
+  testWidgets('local no-passages pricing never reads as complete COP zero', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      [
+        route(
+          'no-passages',
+          TripTolls(coverage: TripTollCoverage.unknown, vehicleCategory: 'car'),
+        ),
+      ],
+      localTollPricing: const LocalTollPricingBreakdown(
+        coverage: LocalTollPricingCoverage.noPassages,
+        subtotalMinor: 0,
+        totalMinor: null,
+        missingRates: 0,
+        charges: [],
+      ),
+    );
+
+    final localPricing = find.byKey(
+      const ValueKey('trip-local-toll-pricing-no-passages'),
+    );
+    await tester.ensureVisible(localPricing);
+    await tester.pumpAndSettle();
+    await tester.tap(localPricing);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Sin peajes candidatos'), findsOneWidget);
+    expect(find.text('Subtotal con datos: COP 0'), findsNothing);
+    expect(find.text('Total local: COP 0'), findsNothing);
+    expect(find.textContaining('faltan 0 tarifa'), findsNothing);
+  });
+
   for (final size in [
     const Size(360, 780),
     const Size(360, 800),

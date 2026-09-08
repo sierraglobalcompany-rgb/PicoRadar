@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Contracts\TripPreviewProvider;
 use App\Support\GeographicNameNormalizer;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -18,7 +19,7 @@ use JsonException;
 use Psr\Http\Message\ResponseInterface;
 use Throwable;
 
-final class TollGuruTripPreview
+final class TollGuruTripPreview implements TripPreviewProvider
 {
     private const MAX_MOBILE_RESPONSE_BYTES = 262144;
 

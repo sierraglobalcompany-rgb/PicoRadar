@@ -407,7 +407,12 @@ class LocalTollPricingBreakdown {
   final List<LocalTollPricingCharge> charges;
 }
 
-enum LocalTollPricingCoverage { complete, partial, unsupportedCategory }
+enum LocalTollPricingCoverage {
+  complete,
+  partial,
+  noPassages,
+  unsupportedCategory,
+}
 
 class LocalTollPricingCharge {
   const LocalTollPricingCharge({
@@ -436,6 +441,16 @@ LocalTollPricingBreakdown priceExplicitTollPassages({
   required Iterable<TollInventoryRecord> passages,
   required String operatorCategoryCode,
 }) {
+  final explicitPassages = passages.toList(growable: false);
+  if (explicitPassages.isEmpty) {
+    return const LocalTollPricingBreakdown(
+      coverage: LocalTollPricingCoverage.noPassages,
+      subtotalMinor: 0,
+      totalMinor: null,
+      missingRates: 0,
+      charges: [],
+    );
+  }
   final categoryCode = operatorCategoryCode.trim().toUpperCase();
   if (categoryCode.isEmpty) {
     return const LocalTollPricingBreakdown(
@@ -449,7 +464,7 @@ LocalTollPricingBreakdown priceExplicitTollPassages({
   var subtotalMinor = 0;
   var missingRates = 0;
   final charges = <LocalTollPricingCharge>[];
-  for (final passage in passages) {
+  for (final passage in explicitPassages) {
     final station = catalog.byId(passage.id);
     final rate = station?.generalRateByCategory(categoryCode);
     final amountMinor = rate?.amountMinor;

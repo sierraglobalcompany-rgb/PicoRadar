@@ -109,6 +109,20 @@ void main() {
     expect(partial.totalMinor, isNull);
     expect(partial.missingRates, 1);
   });
+
+  test('does not treat an empty candidate list as a complete zero budget', () {
+    final empty = priceExplicitTollPassages(
+      catalog: catalog,
+      passages: const [],
+      operatorCategoryCode: 'I',
+    );
+
+    expect(empty.coverage, LocalTollPricingCoverage.noPassages);
+    expect(empty.subtotalMinor, 0);
+    expect(empty.totalMinor, isNull);
+    expect(empty.missingRates, 0);
+    expect(empty.charges, isEmpty);
+  });
 }
 
 int? _amount(String stationId, String category) =>

@@ -324,8 +324,10 @@ class TripContent extends ConsumerWidget {
                       ),
                     const SizedBox(height: AppSpacing.m),
                     previewAction,
-                    const SizedBox(height: AppSpacing.l),
-                    _TollTariffLookupCard(onSource: onSource),
+                    if (!hasPlan) ...[
+                      const SizedBox(height: AppSpacing.l),
+                      _TollTariffLookupLauncher(onSource: onSource),
+                    ],
                     if (planResult != null) ...[
                       const SizedBox(height: AppSpacing.l),
                       SizedBox(key: resultsAnchorKey),
@@ -337,6 +339,8 @@ class TripContent extends ConsumerWidget {
                           child: planResult!,
                         ),
                       ),
+                      const SizedBox(height: AppSpacing.l),
+                      _TollTariffLookupLauncher(onSource: onSource),
                     ],
                     if (localConsultationStarted) ...[
                       const SizedBox(height: AppSpacing.l),
@@ -1308,6 +1312,46 @@ class _RoutesUnavailable extends StatelessWidget {
       ],
     ),
   );
+}
+
+class _TollTariffLookupLauncher extends StatelessWidget {
+  const _TollTariffLookupLauncher({required this.onSource});
+
+  final ValueChanged<String> onSource;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      key: const ValueKey('trip-open-toll-tariffs'),
+      onPressed: () => showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        useRootNavigator: true,
+        builder: (context) {
+          final bottomPadding =
+              AppSpacing.l + MediaQuery.paddingOf(context).bottom;
+          return SafeArea(
+            top: false,
+            child: FractionallySizedBox(
+              heightFactor: 0.86,
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.l,
+                  0,
+                  AppSpacing.l,
+                  bottomPadding,
+                ),
+                child: _TollTariffLookupCard(onSource: onSource),
+              ),
+            ),
+          );
+        },
+      ),
+      icon: const Icon(Icons.receipt_long_outlined),
+      label: const Text('Consultar tarifas de peajes'),
+    );
+  }
 }
 
 class _Card extends StatelessWidget {

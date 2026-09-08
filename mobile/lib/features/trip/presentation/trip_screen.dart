@@ -1201,10 +1201,9 @@ class _TripPlanWithAssociationsState extends State<_TripPlanWithAssociations> {
             passages: snapshot.currentTolls.map(
               (association) => association.location,
             ),
-            operatorCategoryCode:
-                widget.request.vehicleCategory == 'unsupported_vehicle'
-                ? ''
-                : 'I',
+            operatorCategoryCode: _localTollOperatorCategoryCode(
+              widget.request.vehicleCategory,
+            ),
           );
     final cameraCount =
         snapshot?.geometryQuality == RouteGeometryQuality.polyline
@@ -1242,6 +1241,9 @@ class _TripPlanWithAssociationsState extends State<_TripPlanWithAssociations> {
     );
   }
 }
+
+String _localTollOperatorCategoryCode(String vehicleCategory) =>
+    vehicleCategory == 'car' ? 'I' : '';
 
 class _LoadingPane extends StatelessWidget {
   const _LoadingPane();

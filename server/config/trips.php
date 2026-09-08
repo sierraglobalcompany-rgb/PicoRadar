@@ -3,6 +3,7 @@
 return [
     // A key alone never authorizes usage. No live calls until all owner gates are satisfied.
     'enabled' => env('TRIPS_ENABLED', false),
+    'provider' => env('TRIPS_PROVIDER', 'tollguru'),
     'api_key' => env('TOLLGURU_API_KEY'),
     'access_authorized' => env('TRIPS_ACCESS_AUTHORIZED', false),
     'license_authorized' => env('TRIPS_LICENSE_AUTHORIZED', false),
@@ -26,6 +27,17 @@ return [
     'max_routes' => 3,
     'max_tolls' => 200,
     'max_future_days' => 30,
+    'private_osrm' => [
+        'enabled' => env('PRIVATE_OSRM_ENABLED', false),
+        'base_url' => env('PRIVATE_OSRM_BASE_URL'),
+        'profile' => env('PRIVATE_OSRM_PROFILE', 'driving'),
+        'access_authorized' => env('PRIVATE_OSRM_ACCESS_AUTHORIZED', false),
+        'source_authorized' => env('PRIVATE_OSRM_SOURCE_AUTHORIZED', false),
+        'attribution' => env('PRIVATE_OSRM_ATTRIBUTION', 'OSRM; OpenStreetMap contributors'),
+        'timeout_seconds' => 10,
+        'connect_timeout_seconds' => 3,
+        'max_response_bytes' => 262144,
+    ],
 
     // Existing durable cache only. Before enabling, an authorized operator must seed
     // trips:tollguru:budget:v1 under trips:tollguru:operation:v1 with reconciled usage:

@@ -301,17 +301,20 @@ class TripPlanResult extends StatelessWidget {
                       'Estimación local por ID físico cercano a la geometría. No confirma cruce, sentido ni cobro activo.',
                     ),
                     Text(_localCoverageText(localTollPricing!)),
-                    Text(
-                      'Subtotal con datos: ${_cop(localTollPricing!.subtotalMinor)}',
-                    ),
-                    if (localTollPricing!.totalMinor == null)
+                    if (localTollPricing!.coverage !=
+                        LocalTollPricingCoverage.noPassages) ...[
                       Text(
-                        'Total no publicado: faltan ${localTollPricing!.missingRates} tarifa(s).',
-                      )
-                    else
-                      Text(
-                        'Total local: ${_cop(localTollPricing!.totalMinor!)}',
+                        'Subtotal con datos: ${_cop(localTollPricing!.subtotalMinor)}',
                       ),
+                      if (localTollPricing!.totalMinor == null)
+                        Text(
+                          'Total no publicado: faltan ${localTollPricing!.missingRates} tarifa(s).',
+                        )
+                      else
+                        Text(
+                          'Total local: ${_cop(localTollPricing!.totalMinor!)}',
+                        ),
+                    ],
                     for (final (index, charge)
                         in localTollPricing!.charges.indexed) ...[
                       const Divider(),
@@ -648,6 +651,7 @@ String _localCoverageText(LocalTollPricingBreakdown pricing) {
       'Cobertura local completa para los pasos candidatos listados.',
     LocalTollPricingCoverage.partial =>
       'Cobertura local parcial: ${pricing.missingRates} tarifa(s) sin dato.',
+    LocalTollPricingCoverage.noPassages => 'Sin peajes candidatos identificados sobre la geometría. No equivale a ruta libre de cobro.',
     LocalTollPricingCoverage.unsupportedCategory =>
       'Categoría local no soportada para estimación.',
   };

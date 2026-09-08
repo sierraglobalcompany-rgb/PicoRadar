@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Contracts\TripPreviewProvider;
 use App\Enums\OperatorRole;
 use App\Models\User;
+use App\Services\ConfiguredTripPreviewProvider;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -17,7 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(TripPreviewProvider::class, ConfiguredTripPreviewProvider::class);
     }
 
     /**

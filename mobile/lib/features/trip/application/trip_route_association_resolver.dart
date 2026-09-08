@@ -33,10 +33,15 @@ typedef TripRouteAssociationCompute = Future<TripRouteAssociations> Function(
 
 class CachedTripRouteAssociationResolver
     implements TripRouteAssociationResolver {
-  CachedTripRouteAssociationResolver({TripRouteAssociationCompute? compute})
-    : _compute = compute ?? _computeInIsolate;
+  CachedTripRouteAssociationResolver({
+    TripRouteAssociationCompute? compute,
+    int maxEntries = 3,
+  }) : assert(maxEntries > 0),
+       _compute = compute ?? _computeInIsolate,
+       _maxEntries = maxEntries;
 
   final TripRouteAssociationCompute _compute;
+  final int _maxEntries;
   final Map<_AssociationCacheKey, Future<TripRouteAssociations>> _cache = {};
 
   @override
@@ -53,6 +58,9 @@ class CachedTripRouteAssociationResolver
     }
     final pending = _compute(request);
     _cache[key] = pending;
+    while (_cache.length > _maxEntries) {
+      _cache.remove(_cache.keys.first);
+    }
     pending.then<void>(
       (_) {},
       onError: (_, _) {

@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Contracts\TripPreviewProvider;
 use App\Enums\GeographicUnitLevel;
 use App\Models\GeographicUnit;
-use App\Services\TollGuruTripPreview;
 use App\Support\GeographicNameNormalizer;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -16,7 +16,7 @@ use Throwable;
 
 final class TripPreviewController
 {
-    public function __invoke(Request $request, TollGuruTripPreview $provider): JsonResponse
+    public function __invoke(Request $request, TripPreviewProvider $provider): JsonResponse
     {
         try {
             $input = $this->validate($request);
@@ -91,7 +91,12 @@ final class TripPreviewController
                 || GeographicNameNormalizer::normalize($point['department']) !== $department->normalized_name) {
                 throw new DomainException('validation');
             }
-            $input[$key] = ['code' => $unit->code, 'municipality' => $unit->name, 'department' => $department->name];
+            $resolved = ['code' => $unit->code, 'municipality' => $unit->name, 'department' => $department->name];
+            $routePoint = $this->routePoint($unit);
+            if ($routePoint !== null) {
+                $resolved['routePoint'] = $routePoint;
+            }
+            $input[$key] = $resolved;
         }
         if ($input['origin']['code'] === $input['destination']['code']) {
             throw new DomainException('validation');
@@ -186,5 +191,34 @@ final class TripPreviewController
         if (! is_array($value) || count($value) !== count($keys) || array_diff($keys, array_keys($value))) {
             throw new DomainException('validation');
         }
+    }
+
+    private function routePoint(GeographicUnit $unit): ?array
+    {
+        $routePoint = is_array($unit->metadata) ? ($unit->metadata['routePoint'] ?? null) : null;
+        if (! is_array($routePoint)) {
+            return null;
+        }
+        $latitude = $routePoint['latitude'] ?? null;
+        $longitude = $routePoint['longitude'] ?? null;
+        $source = $routePoint['source'] ?? null;
+        $version = $routePoint['version'] ?? null;
+        if (! $this->colombiaPoint($latitude, $longitude) || ! is_string($source) || trim($source) === ''
+            || ! is_string($version) || trim($version) === '' || strlen($source) > 120 || strlen($version) > 64) {
+            return null;
+        }
+
+        return [
+            'latitude' => (float) $latitude,
+            'longitude' => (float) $longitude,
+            'source' => $source,
+            'version' => $version,
+        ];
+    }
+
+    private function colombiaPoint(mixed $lat, mixed $lng): bool
+    {
+        return (is_float($lat) || is_int($lat)) && (is_float($lng) || is_int($lng)) && is_finite((float) $lat) && is_finite((float) $lng)
+            && $lat >= -4.3 && $lat <= 13.6 && $lng >= -82 && $lng <= -66.8;
     }
 }
