@@ -94,7 +94,40 @@ class TripPlanResult extends StatelessWidget {
             cameraLocationCount: cameraLocationCount,
           ),
         const SizedBox(height: AppSpacing.l),
-        Text('Opciones de ruta · ${routes.length}', style: AppTextStyles.h2),
+        Text('Mapa del viaje', style: AppTextStyles.h2),
+        const SizedBox(height: AppSpacing.xs),
+        if (selected != null)
+          Text(
+            'Ruta seleccionada: ${selected.summary}',
+            style: AppTextStyles.caption,
+          ),
+        const SizedBox(height: AppSpacing.s),
+        SizedBox(
+          key: mapAnchorKey,
+          child: GestureDetector(
+            key: const ValueKey('trip-map-preview-slot'),
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 240),
+              padding: const EdgeInsets.all(AppSpacing.l),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(AppRadius.card),
+              ),
+              child:
+                  mapPreview ??
+                  const Center(
+                    child: Text(
+                      'Vista previa de ruta no disponible. Conserva las alternativas y sus detalles.',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.l),
+        Text('Otras rutas · ${routes.length}', style: AppTextStyles.h2),
         const SizedBox(height: AppSpacing.m),
         for (final route in routes) ...[
           Container(
@@ -199,33 +232,6 @@ class TripPlanResult extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.m),
         ],
-        Text('Vista previa de la ruta', style: AppTextStyles.h2),
-        const SizedBox(height: AppSpacing.s),
-        SizedBox(
-          key: mapAnchorKey,
-          child: GestureDetector(
-            key: const ValueKey('trip-map-preview-slot'),
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 240),
-              padding: const EdgeInsets.all(AppSpacing.l),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                border: Border.all(color: AppColors.border),
-                borderRadius: BorderRadius.circular(AppRadius.card),
-              ),
-              child:
-                  mapPreview ??
-                  const Center(
-                    child: Text(
-                      'Vista previa de ruta no disponible. Conserva las alternativas y sus detalles.',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-            ),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.m),
         if (selected != null)
           ExpansionTile(
             key: ValueKey('trip-toll-details-${selected.id}'),

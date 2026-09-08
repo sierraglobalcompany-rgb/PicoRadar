@@ -2,3 +2,5 @@ graphify-out/
 artifacts/ui-audit/
 temp/
 server/storage/testing-camera-dataset*
+.superpowers/
+__pycache__/

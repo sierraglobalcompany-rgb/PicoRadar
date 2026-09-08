@@ -19,6 +19,8 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
 
     private const MAX_GEOMETRY_POINTS = 3000;
 
+    private const MAX_UPSTREAM_RESPONSE_BYTES = 5242880;
+
     public function preview(array $request): array
     {
         if (($request['vehicleCategory'] ?? null) !== 'car') {
@@ -62,6 +64,7 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
             'timeout_seconds' => $this->positiveInt('trips.private_osrm.timeout_seconds', 20),
             'connect_timeout_seconds' => $this->positiveInt('trips.private_osrm.connect_timeout_seconds', 5),
             'max_response_bytes' => min(self::MAX_MOBILE_RESPONSE_BYTES, $this->positiveInt('trips.private_osrm.max_response_bytes', self::MAX_MOBILE_RESPONSE_BYTES)),
+            'max_upstream_response_bytes' => $this->positiveInt('trips.private_osrm.max_upstream_response_bytes', self::MAX_UPSTREAM_RESPONSE_BYTES),
         ];
     }
 
@@ -81,7 +84,7 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
                 ->timeout($settings['timeout_seconds'])
                 ->withOptions(['allow_redirects' => false, 'verify' => true])
                 ->get($settings['base_url'].$path, [
-                    'overview' => 'simplified',
+                    'overview' => 'full',
                     'geometries' => 'geojson',
                     'steps' => 'false',
                     'alternatives' => $request['alternatives'] > 1 ? 'true' : 'false',
@@ -97,7 +100,7 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
                 throw new DomainException('invalid_upstream');
             }
             $body = $response->body();
-            if (strlen($body) > $settings['max_response_bytes']) {
+            if (strlen($body) > $settings['max_upstream_response_bytes']) {
                 throw new DomainException('invalid_upstream');
             }
 
@@ -171,6 +174,12 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
         }
         $routes = array_values($routes);
         usort($routes, fn (array $a, array $b): int => [$a['durationSeconds'], $a['id']] <=> [$b['durationSeconds'], $b['id']]);
+        $routes = array_slice($routes, 0, min(3, $request['alternatives']));
+        $pointsPerRoute = max(2, intdiv(self::MAX_GEOMETRY_POINTS, max(1, count($routes))));
+        foreach ($routes as &$route) {
+            $route['geometry']['coordinates'] = $this->thinGeometry($route['geometry']['coordinates'], $pointsPerRoute);
+        }
+        unset($route);
 
         $plan = [
             'requestId' => $request['requestId'],
@@ -179,7 +188,7 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
             'attribution' => $settings['attribution'],
             'origin' => $origin,
             'destination' => $destination,
-            'routes' => array_slice($routes, 0, min(3, $request['alternatives'])),
+            'routes' => $routes,
         ];
         try {
             if (strlen(json_encode($plan, JSON_THROW_ON_ERROR)) > self::MAX_MOBILE_RESPONSE_BYTES) {
@@ -221,7 +230,7 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
 
     private function geometry(mixed $coordinates): array
     {
-        if (! is_array($coordinates) || ! array_is_list($coordinates) || count($coordinates) < 2 || count($coordinates) > self::MAX_GEOMETRY_POINTS) {
+        if (! is_array($coordinates) || ! array_is_list($coordinates) || count($coordinates) < 2) {
             throw new DomainException('invalid_upstream');
         }
         $points = [];
@@ -236,6 +245,32 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
         }
 
         return $points;
+    }
+
+    private function thinGeometry(array $points, int $maxPoints): array
+    {
+        $count = count($points);
+        if ($count <= $maxPoints) {
+            return $points;
+        }
+        $last = $count - 1;
+        $result = [];
+        $previous = -1;
+        for ($index = 0; $index < $maxPoints; $index++) {
+            $source = (int) round(($index * $last) / ($maxPoints - 1));
+            if ($source <= $previous) {
+                $source = $previous + 1;
+            }
+            if ($source > $last) {
+                $source = $last;
+            }
+            $result[] = $points[$source];
+            $previous = $source;
+        }
+        $result[0] = $points[0];
+        $result[array_key_last($result)] = $points[$last];
+
+        return $result;
     }
 
     private function colombiaPoint(mixed $lat, mixed $lng): bool

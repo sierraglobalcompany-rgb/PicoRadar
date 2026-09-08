@@ -4,10 +4,12 @@ import 'dart:io';
 
 import 'package:drift/native.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/shell/app_shell.dart';
@@ -318,9 +320,11 @@ void main() {
     expect(find.byType(TripRoutePreviewMap), findsOneWidget);
     expect(find.byKey(const ValueKey('trip-demo-map-banner')), findsOneWidget);
 
-    await _tapByKey(tester, 'trip-open-google-maps');
+    await _tapByKey(tester, 'trip-open-navigation');
+    await _tapByKey(tester, 'trip-navigation-google-maps');
     expect(find.text('DEMO: navegación externa desactivada.'), findsOneWidget);
-    await _tapByKey(tester, 'trip-open-waze');
+    await _tapByKey(tester, 'trip-open-navigation');
+    await _tapByKey(tester, 'trip-navigation-waze');
     expect(launcher.opened, isEmpty);
 
     await _tapByKey(tester, 'trip-demo-unknownCoverage');
@@ -1472,14 +1476,15 @@ void main() {
   ) async {
     await _pumpScreen(tester, preferences: preferences, launcher: launcher);
 
-    await _tapByKey(tester, 'trip-open-google-maps');
+    await _tapByKey(tester, 'trip-open-navigation');
+    await _tapByKey(tester, 'trip-navigation-google-maps');
 
     expect(find.text('Ingresa el origen.'), findsOneWidget);
     expect(find.text('Ingresa el destino.'), findsOneWidget);
     expect(launcher.opened, isEmpty);
   });
 
-  testWidgets('opens Google Maps Waze and INVÍAS with exact URLs', (
+  testWidgets('opens navigation choices and INVÍAS with exact URLs', (
     tester,
   ) async {
     await _pumpScreen(tester, preferences: preferences, launcher: launcher);
@@ -1492,8 +1497,10 @@ void main() {
       'Medellín',
     );
 
-    await _tapByKey(tester, 'trip-open-google-maps');
-    await _tapByKey(tester, 'trip-open-waze');
+    await _tapByKey(tester, 'trip-open-navigation');
+    await _tapByKey(tester, 'trip-navigation-google-maps');
+    await _tapByKey(tester, 'trip-open-navigation');
+    await _tapByKey(tester, 'trip-navigation-waze');
     await _tapByKey(tester, 'trip-open-invias');
 
     expect(launcher.opened, [
@@ -1514,9 +1521,21 @@ void main() {
     tester,
   ) async {
     for (final failureCase in [
-      (key: 'trip-open-google-maps', message: 'No pudimos abrir Google Maps.'),
-      (key: 'trip-open-waze', message: 'No pudimos abrir Waze.'),
-      (key: 'trip-open-invias', message: 'No pudimos abrir INVÍAS.'),
+      (
+        key: 'trip-navigation-google-maps',
+        message: 'No pudimos abrir Google Maps.',
+        opensSheet: true,
+      ),
+      (
+        key: 'trip-navigation-waze',
+        message: 'No pudimos abrir Waze.',
+        opensSheet: true,
+      ),
+      (
+        key: 'trip-open-invias',
+        message: 'No pudimos abrir INVÍAS.',
+        opensSheet: false,
+      ),
     ]) {
       final failingLauncher = _FakeExternalLauncher()..openResult = false;
       await _pumpScreen(
@@ -1534,6 +1553,9 @@ void main() {
         'Medellín',
       );
 
+      if (failureCase.opensSheet) {
+        await _tapByKey(tester, 'trip-open-navigation');
+      }
       await _tapByKey(tester, failureCase.key);
 
       expect(find.text(failureCase.message), findsOneWidget);
@@ -1546,9 +1568,21 @@ void main() {
     tester,
   ) async {
     for (final failureCase in [
-      (key: 'trip-open-google-maps', message: 'No pudimos abrir Google Maps.'),
-      (key: 'trip-open-waze', message: 'No pudimos abrir Waze.'),
-      (key: 'trip-open-invias', message: 'No pudimos abrir INVÍAS.'),
+      (
+        key: 'trip-navigation-google-maps',
+        message: 'No pudimos abrir Google Maps.',
+        opensSheet: true,
+      ),
+      (
+        key: 'trip-navigation-waze',
+        message: 'No pudimos abrir Waze.',
+        opensSheet: true,
+      ),
+      (
+        key: 'trip-open-invias',
+        message: 'No pudimos abrir INVÍAS.',
+        opensSheet: false,
+      ),
     ]) {
       final failingLauncher = _FakeExternalLauncher()..throwOnOpen = true;
       await _pumpScreen(
@@ -1566,6 +1600,9 @@ void main() {
         'Medellín',
       );
 
+      if (failureCase.opensSheet) {
+        await _tapByKey(tester, 'trip-open-navigation');
+      }
       await _tapByKey(tester, failureCase.key);
 
       expect(find.text(failureCase.message), findsOneWidget);
@@ -1877,8 +1914,9 @@ void main() {
         final tollRect = tester.getRect(
           find.byKey(const ValueKey('trip-toll-details-test-route')),
         );
-        expect(secondRect.bottom, lessThan(mapRect.top));
-        expect(mapRect.bottom, lessThanOrEqualTo(tollRect.top));
+        expect(metricRects.last.bottom, lessThan(mapRect.top));
+        expect(mapRect.bottom, lessThan(firstRect.top));
+        expect(secondRect.bottom, lessThanOrEqualTo(tollRect.top));
 
         await tester.ensureVisible(
           find.byKey(const ValueKey('trip-view-map-test-route')),
@@ -2067,11 +2105,14 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Bogotá → Medellín'), findsOneWidget);
+      expect(find.text('Editar viaje'), findsOneWidget);
+      expect(find.byKey(const ValueKey('trip-preview')), findsNothing);
       expect(find.textContaining('ABC123'), findsWidgets);
       expect(find.byKey(const ValueKey('trip-origin-field')), findsNothing);
       expect(find.byKey(const ValueKey('trip-plan-result')), findsOneWidget);
 
       await _tapByKey(tester, 'trip-preparation-compact');
+      expect(find.byKey(const ValueKey('trip-preview')), findsOneWidget);
       expect(
         tester
             .widget<TextFormField>(
@@ -2483,6 +2524,56 @@ void main() {
 
     expect(find.byType(TripRoutePreviewMap), findsOneWidget);
     expect(find.byKey(const ValueKey('trip-route-map')), findsOneWidget);
+  });
+
+  testWidgets('tile retry never requests a new route plan', (tester) async {
+    final client = _PendingPlanClient();
+    await TripDraftStore(preferences).saveDraft(
+      TripDraft(
+        origin: 'Bogotá',
+        destination: 'Medellín',
+        date: DateTime(2026, 9, 7),
+        departureMinute: 600,
+      ),
+    );
+    await _pumpScreen(
+      tester,
+      preferences: preferences,
+      activeVehicle: _vehicle(),
+      planClient: client,
+      mapConfig: TripRouteMapConfig(
+        tileUrlTemplate: 'https://tiles.test/{z}/{x}/{y}.png',
+        attributionLabel: 'Proveedor cartográfico de prueba',
+        userAgentPackageName: 'co.picoradar.app.dev',
+        approved: true,
+        tileReadyTimeout: const Duration(milliseconds: 20),
+        tileProvider: _NeverTileProvider(),
+      ),
+    );
+    await _tapByKey(tester, 'trip-standard-vehicle');
+    _pressButtonByKey(tester, 'trip-preview');
+    await tester.pump();
+    client.completions.single.complete(
+      _testPlan(client.requests.single, withGeometry: true),
+    );
+    await tester.pumpAndSettle();
+
+    expect(client.requests, hasLength(1));
+    await tester.ensureVisible(find.byKey(const ValueKey('trip-route-map')));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 25));
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('trip-map-tile-failure')), findsOneWidget);
+    expect(client.requests, hasLength(1));
+    tester
+        .widget<TextButton>(find.widgetWithText(TextButton, 'Reintentar mapa'))
+        .onPressed!();
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(TileLayer), findsOneWidget);
+    expect(client.requests, hasLength(1));
   });
 
   testWidgets('VIAJE-R2 offstage success never changes scroll position', (
@@ -2940,6 +3031,33 @@ TripRouteMapConfig _neutralTripMapConfig() => const TripRouteMapConfig(
   userAgentPackageName: 'co.picoradar.app.dev',
   forceNeutralFallback: true,
 );
+
+class _NeverTileProvider extends TileProvider {
+  @override
+  ImageProvider<Object> getImage(
+    TileCoordinates coordinates,
+    TileLayer options,
+  ) {
+    return const _NeverImageProvider();
+  }
+}
+
+class _NeverImageProvider extends ImageProvider<_NeverImageProvider> {
+  const _NeverImageProvider();
+
+  @override
+  Future<_NeverImageProvider> obtainKey(ImageConfiguration configuration) {
+    return SynchronousFuture<_NeverImageProvider>(this);
+  }
+
+  @override
+  ImageStreamCompleter loadImage(
+    _NeverImageProvider key,
+    ImageDecoderCallback decode,
+  ) {
+    return OneFrameImageStreamCompleter(Completer<ImageInfo>().future);
+  }
+}
 
 TripPlan _testPlanWithTwoRoutes(
   TripPlanRequest request, {

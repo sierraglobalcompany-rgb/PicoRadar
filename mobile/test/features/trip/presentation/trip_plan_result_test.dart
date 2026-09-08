@@ -146,81 +146,74 @@ void main() {
     );
   }
 
-  testWidgets(
-    'VIAJE-R2 summary is 2x3, routes are vertical, and map slot follows routes',
-    (tester) async {
-      final routes = [
-        route(
-          'fast',
-          TripTolls(
-            coverage: TripTollCoverage.complete,
-            vehicleCategory: 'car',
-            stationCount: 2,
-            payableCount: 2,
-            totalMinor: 2400000,
-          ),
+  testWidgets('summary is followed by a useful map before route alternatives', (
+    tester,
+  ) async {
+    final routes = [
+      route(
+        'fast',
+        TripTolls(
+          coverage: TripTollCoverage.complete,
+          vehicleCategory: 'car',
+          stationCount: 2,
+          payableCount: 2,
+          totalMinor: 2400000,
         ),
-        route(
-          'slow',
-          TripTolls(coverage: TripTollCoverage.unknown, vehicleCategory: 'car'),
-          seconds: 10800,
-        ),
-      ];
+      ),
+      route(
+        'slow',
+        TripTolls(coverage: TripTollCoverage.unknown, vehicleCategory: 'car'),
+        seconds: 10800,
+      ),
+    ];
 
-      await pump(tester, routes);
+    await pump(tester, routes);
 
-      expect(find.text('Tu plan de viaje'), findsOneWidget);
-      final metrics = [
-        find.byKey(const ValueKey('trip-summary-distance')),
-        find.byKey(const ValueKey('trip-summary-duration')),
-        find.byKey(const ValueKey('trip-summary-arrival')),
-        find.byKey(const ValueKey('trip-summary-tolls')),
-        find.byKey(const ValueKey('trip-summary-cost')),
-        find.byKey(const ValueKey('trip-summary-cameras')),
-      ];
-      for (final metric in metrics) {
-        expect(metric, findsOneWidget);
-      }
-      expect(
-        tester.getTopLeft(metrics[0]).dx,
-        tester.getTopLeft(metrics[2]).dx,
-      );
-      expect(
-        tester.getTopLeft(metrics[1]).dx,
-        tester.getTopLeft(metrics[3]).dx,
-      );
-      expect(
-        tester.getTopLeft(metrics[0]).dx,
-        tester.getTopLeft(metrics[4]).dx,
-      );
-      expect(
-        tester.getTopLeft(metrics[1]).dx,
-        tester.getTopLeft(metrics[5]).dx,
-      );
-      expect(find.text('Cámaras registradas'), findsOneWidget);
-      expect(find.text('Por confirmar'), findsOneWidget);
+    expect(find.text('Tu plan de viaje'), findsOneWidget);
+    final metrics = [
+      find.byKey(const ValueKey('trip-summary-distance')),
+      find.byKey(const ValueKey('trip-summary-duration')),
+      find.byKey(const ValueKey('trip-summary-arrival')),
+      find.byKey(const ValueKey('trip-summary-tolls')),
+      find.byKey(const ValueKey('trip-summary-cost')),
+      find.byKey(const ValueKey('trip-summary-cameras')),
+    ];
+    for (final metric in metrics) {
+      expect(metric, findsOneWidget);
+    }
+    expect(tester.getTopLeft(metrics[0]).dx, tester.getTopLeft(metrics[2]).dx);
+    expect(tester.getTopLeft(metrics[1]).dx, tester.getTopLeft(metrics[3]).dx);
+    expect(tester.getTopLeft(metrics[0]).dx, tester.getTopLeft(metrics[4]).dx);
+    expect(tester.getTopLeft(metrics[1]).dx, tester.getTopLeft(metrics[5]).dx);
+    expect(find.text('Cámaras registradas'), findsOneWidget);
+    expect(find.text('Por confirmar'), findsOneWidget);
 
-      final firstRoute = find.byKey(const ValueKey('trip-route-fast'));
-      final secondRoute = find.byKey(const ValueKey('trip-route-slow'));
-      final mapSlot = find.byKey(const ValueKey('trip-map-preview-slot'));
-      final tollDetails = find.byKey(const ValueKey('trip-toll-details-fast'));
-      expect(tester.getSize(firstRoute).width, greaterThan(300));
-      expect(
-        tester.getTopLeft(secondRoute).dy,
-        greaterThan(tester.getBottomLeft(firstRoute).dy),
-      );
-      expect(
-        tester.getTopLeft(mapSlot).dy,
-        greaterThan(tester.getBottomLeft(secondRoute).dy),
-      );
-      expect(
-        tester.getTopLeft(tollDetails).dy,
-        greaterThan(tester.getBottomLeft(mapSlot).dy),
-      );
-      expect(find.text('Ruta recomendada'), findsNothing);
-      expect(find.text('Menor duración'), findsOneWidget);
-    },
-  );
+    final firstRoute = find.byKey(const ValueKey('trip-route-fast'));
+    final secondRoute = find.byKey(const ValueKey('trip-route-slow'));
+    final mapSlot = find.byKey(const ValueKey('trip-map-preview-slot'));
+    final tollDetails = find.byKey(const ValueKey('trip-toll-details-fast'));
+    final routeHeading = find.text('Otras rutas · 2');
+    expect(tester.getSize(firstRoute).width, greaterThan(300));
+    expect(
+      tester.getTopLeft(secondRoute).dy,
+      greaterThan(tester.getBottomLeft(firstRoute).dy),
+    );
+    expect(
+      tester.getTopLeft(mapSlot).dy,
+      greaterThan(tester.getBottomLeft(metrics.last).dy),
+    );
+    expect(tester.getSize(mapSlot).height, greaterThanOrEqualTo(240));
+    expect(
+      tester.getTopLeft(routeHeading).dy,
+      greaterThan(tester.getBottomLeft(mapSlot).dy),
+    );
+    expect(
+      tester.getTopLeft(tollDetails).dy,
+      greaterThan(tester.getBottomLeft(routeHeading).dy),
+    );
+    expect(find.text('Opciones de ruta · 2'), findsNothing);
+    expect(find.text('Menor duración'), findsOneWidget);
+  });
 
   testWidgets('shows local owner toll pricing as candidate breakdown', (
     tester,

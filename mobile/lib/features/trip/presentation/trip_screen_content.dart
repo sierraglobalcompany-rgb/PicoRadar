@@ -312,18 +312,21 @@ class TripContent extends ConsumerWidget {
                             Text(vehicleSummary),
                           ],
                         ),
-                        subtitle: const Text(
-                          'Toca para editar sin perder tus datos',
-                        ),
-                        children: [preparation],
+                        subtitle: const Text('Editar viaje'),
+                        children: [
+                          preparation,
+                          const SizedBox(height: AppSpacing.m),
+                          previewAction,
+                        ],
                       )
-                    else
+                    else ...[
                       KeyedSubtree(
                         key: const ValueKey('trip-preparation-expanded'),
                         child: preparation,
                       ),
-                    const SizedBox(height: AppSpacing.m),
-                    previewAction,
+                      const SizedBox(height: AppSpacing.m),
+                      previewAction,
+                    ],
                     if (!hasPlan) ...[
                       const SizedBox(height: AppSpacing.l),
                       _TollTariffLookupLauncher(onSource: onSource),
@@ -379,18 +382,9 @@ class TripContent extends ConsumerWidget {
                     const SizedBox(height: AppSpacing.l),
                     _ExternalNotice(draftRestored: draftRestored),
                     const SizedBox(height: AppSpacing.l),
-                    OutlinedButton.icon(
-                      key: const ValueKey('trip-open-google-maps'),
-                      onPressed: onGoogleMaps,
-                      icon: const Icon(Icons.map_outlined),
-                      label: const Text('Abrir Google Maps'),
-                    ),
-                    const SizedBox(height: AppSpacing.s),
-                    OutlinedButton.icon(
-                      key: const ValueKey('trip-open-waze'),
-                      onPressed: onWaze,
-                      icon: const Icon(Icons.navigation_outlined),
-                      label: const Text('Abrir Waze'),
+                    _OpenNavigationButton(
+                      onGoogleMaps: onGoogleMaps,
+                      onWaze: onWaze,
                     ),
                     const SizedBox(height: AppSpacing.s),
                     OutlinedButton.icon(
@@ -1237,6 +1231,71 @@ class _TollTariffStationTile extends StatelessWidget {
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OpenNavigationButton extends StatelessWidget {
+  const _OpenNavigationButton({
+    required this.onGoogleMaps,
+    required this.onWaze,
+  });
+
+  final VoidCallback onGoogleMaps;
+  final VoidCallback onWaze;
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton.icon(
+    key: const ValueKey('trip-open-navigation'),
+    onPressed: () => _showOptions(context),
+    icon: const Icon(Icons.navigation_outlined),
+    label: const Text('Abrir navegación'),
+  );
+
+  void _showOptions(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.l,
+            0,
+            AppSpacing.l,
+            AppSpacing.l,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Abrir navegación', style: AppTextStyles.h2),
+              const SizedBox(height: AppSpacing.xs),
+              const Text(
+                'Maps y Waze pueden recalcular el recorrido fuera de PicoRadar.',
+              ),
+              const SizedBox(height: AppSpacing.m),
+              ListTile(
+                key: const ValueKey('trip-navigation-google-maps'),
+                leading: const Icon(Icons.map_outlined),
+                title: const Text('Google Maps'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  onGoogleMaps();
+                },
+              ),
+              ListTile(
+                key: const ValueKey('trip-navigation-waze'),
+                leading: const Icon(Icons.navigation_outlined),
+                title: const Text('Waze'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  onWaze();
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );

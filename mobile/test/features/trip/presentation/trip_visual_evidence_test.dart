@@ -119,13 +119,10 @@ void main() {
 
         expect(beforeReveal, 0);
         expect(_tripScroll(tester).position.pixels, greaterThan(0));
-        _expectNotPartiallyClippedAtTop(
-          tester,
-          find.text('Toca para editar sin perder tus datos'),
-        );
+        _expectNotPartiallyClippedAtTop(tester, find.text('Editar viaje'));
         expect(find.text(_evidenceLabel), findsOneWidget);
         expect(_semanticsWithLabel(_evidenceLabel), findsOneWidget);
-        expect(find.text('Opciones de ruta · 3'), findsOneWidget);
+        expect(find.text('Otras rutas · 3'), findsOneWidget);
         expect(
           find.byKey(const ValueKey('trip-route-complete')),
           findsOneWidget,

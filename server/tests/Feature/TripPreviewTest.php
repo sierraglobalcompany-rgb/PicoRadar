@@ -233,7 +233,7 @@ class TripPreviewTest extends TestCase
             $this->assertStringStartsWith('https://osrm.test/route/v1/driving/-75.5812,6.2442;-75.374,6.1533', $request->url());
             $query = [];
             parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
-            $this->assertSame('simplified', $query['overview'] ?? null);
+            $this->assertSame('full', $query['overview'] ?? null);
             $this->assertSame('geojson', $query['geometries'] ?? null);
             $this->assertSame('false', $query['steps'] ?? null);
             $this->assertSame('true', $query['alternatives'] ?? null);
@@ -242,6 +242,46 @@ class TripPreviewTest extends TestCase
         });
         Http::assertSentCount(1);
         $this->assertSame($this->ledger(), Cache::store('database')->get(self::LEDGER));
+    }
+
+    public function test_private_osrm_thins_full_geometry_to_the_mobile_transport_contract(): void
+    {
+        config([
+            'trips.enabled' => true,
+            'trips.provider' => 'private_osrm',
+            'trips.private_osrm.enabled' => true,
+            'trips.private_osrm.access_authorized' => true,
+            'trips.private_osrm.source_authorized' => true,
+            'trips.private_osrm.base_url' => 'https://osrm.test',
+            'trips.private_osrm.attribution' => 'OSRM; OpenStreetMap contributors',
+        ]);
+        $this->routePoint('05001', 6.2442, -75.5812);
+        $this->routePoint('05615', 6.1533, -75.3740);
+        $coordinates = $this->osrmLineCoordinates(12001, [-75.5812, 6.2442], [-75.374, 6.1533]);
+        $providerBody = json_encode([
+            'code' => 'Ok',
+            'routes' => [[
+                'distance' => 42000.4,
+                'duration' => 3600.2,
+                'geometry' => ['type' => 'LineString', 'coordinates' => $coordinates],
+            ]],
+        ], JSON_THROW_ON_ERROR);
+        $this->assertGreaterThan(262144, strlen($providerBody));
+        $this->fakeProvider(['https://osrm.test/route/v1/driving/*' => Http::response($providerBody, 200, ['Content-Type' => 'application/json'])]);
+
+        $response = $this->postJson('/api/v1/trips/preview', $this->request());
+
+        $response->assertOk()
+            ->assertJsonPath('routes.0.geometry.coordinates.0', [-75.5812, 6.2442])
+            ->assertJsonPath('routes.0.geometry.coordinates.2999', [-75.374, 6.1533]);
+        $this->assertCount(3000, $response->json('routes.0.geometry.coordinates'));
+        $this->assertLessThanOrEqual(262144, strlen($response->getContent()));
+        Http::assertSent(function (Request $request): bool {
+            $query = [];
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+            return ($query['overview'] ?? null) === 'full';
+        });
     }
 
     public function test_confirmed_free_trial_allows_zero_money_and_reserves_non_money_quota(): void
@@ -873,5 +913,19 @@ class TripPreviewTest extends TestCase
             ],
         ];
         $unit->save();
+    }
+
+    private function osrmLineCoordinates(int $count, array $start, array $end): array
+    {
+        $coordinates = [];
+        for ($index = 0; $index < $count; $index++) {
+            $ratio = $count === 1 ? 0 : $index / ($count - 1);
+            $coordinates[] = [
+                round($start[0] + (($end[0] - $start[0]) * $ratio), 8),
+                round($start[1] + (($end[1] - $start[1]) * $ratio), 8),
+            ];
+        }
+
+        return $coordinates;
     }
 }
