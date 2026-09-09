@@ -945,7 +945,7 @@ class TripPreviewTest extends TestCase
             foreach ([$lat - $previousLat, $lng - $previousLng] as $delta) {
                 $value = $delta < 0 ? ~($delta << 1) : $delta << 1;
                 while ($value >= 0x20) {
-                    $encoded .= chr((0x20 | ($value & 0x1f)) + 63);
+                    $encoded .= chr((0x20 | ($value & 0x1F)) + 63);
                     $value >>= 5;
                 }
                 $encoded .= chr($value + 63);

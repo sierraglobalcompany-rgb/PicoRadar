@@ -272,10 +272,10 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
                         throw new DomainException('invalid_upstream');
                     }
                     $byte = ord($encoded[$offset++]) - 63;
-                    if ($byte < 0 || $byte > 0x5f) {
+                    if ($byte < 0 || $byte > 0x5F) {
                         throw new DomainException('invalid_upstream');
                     }
-                    $result |= ($byte & 0x1f) << $shift;
+                    $result |= ($byte & 0x1F) << $shift;
                     $shift += 5;
                 } while ($byte >= 0x20);
                 $delta[] = ($result & 1) !== 0 ? ~($result >> 1) : ($result >> 1);
@@ -306,7 +306,7 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
             foreach ([$lat - $previousLat, $lng - $previousLng] as $delta) {
                 $value = $delta < 0 ? ~($delta << 1) : $delta << 1;
                 while ($value >= 0x20) {
-                    $encoded .= chr((0x20 | ($value & 0x1f)) + 63);
+                    $encoded .= chr((0x20 | ($value & 0x1F)) + 63);
                     $value >>= 5;
                 }
                 $encoded .= chr($value + 63);
