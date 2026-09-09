@@ -224,11 +224,9 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Información desactualizada'), findsOneWidget);
-      expect(
-        find.textContaining('Subtotal conocido: COP 31.500'),
-        findsWidgets,
-      );
-      expect(find.text('COP 31.500 parcial'), findsOneWidget);
+      expect(find.text('Peajes de esta ruta'), findsOneWidget);
+      // Provider prices cannot override the route-local tariff catalog.
+      expect(find.text('COP 31.500 parcial'), findsNothing);
       expect(tester.takeException(), isNull);
       await _capture(tester, 'interaction-partial-390x844-scale-1.5');
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);

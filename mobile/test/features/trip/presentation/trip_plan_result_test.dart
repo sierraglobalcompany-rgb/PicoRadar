@@ -117,6 +117,8 @@ void main() {
     double scale = 1,
     Size size = const Size(360, 800),
     LocalTollPricingBreakdown? localTollPricing,
+    Map<String, LocalTollPricingBreakdown> localPricingByRoute = const {},
+    ValueNotifier<Map<String, LocalTollPricingBreakdown>>? pricingChanges,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = size;
@@ -136,7 +138,10 @@ void main() {
                   selectedRouteId: selected,
                   onRouteSelected: (id) => setState(() => selected = id),
                   onSource: (_) {},
-                  localTollPricing: localTollPricing,
+                  localTollPricing:
+                      localPricingByRoute[selected] ?? localTollPricing,
+                  localPricingByRoute: localPricingByRoute,
+                  pricingChanges: pricingChanges,
                 ),
               ),
             ),
@@ -273,23 +278,189 @@ void main() {
       ),
     );
 
+    final summary = find.byKey(const ValueKey('trip-summary-cost'));
+    expect(
+      find.descendant(of: summary, matching: find.text('COP 18.500')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: summary, matching: find.text('Estimación parcial')),
+      findsOneWidget,
+    );
     await openTolls(tester, 'priced');
-
+    final sheet = find.byKey(const ValueKey('trip-toll-sheet-priced'));
     expect(
-      find.text('Tarifas propias sobre peajes candidatos'),
-      findsOneWidget,
-    );
-    expect(find.textContaining('Cobertura local parcial'), findsOneWidget);
-    expect(find.text('Subtotal con datos: COP 18.500'), findsOneWidget);
-    expect(
-      find.text('Total no publicado: faltan 1 tarifa(s).'),
+      find.descendant(of: sheet, matching: find.text('COP 18.500')),
       findsOneWidget,
     );
     expect(
-      find.text('Tarifa no informada; no equivale a gratis.'),
+      find.text('1 cobros pendientes, excluidos de la estimación.'),
       findsOneWidget,
     );
+    expect(find.text('1. GUARNE'), findsOneWidget);
+    expect(find.text('2. PAPIROS'), findsOneWidget);
+    expect(find.text('Cat. I · Cobro pendiente'), findsOneWidget);
+    expect(find.textContaining('COP 0'), findsNothing);
   });
+
+  testWidgets(
+    'open toll sheet updates when local prices arrive without reopening',
+    (tester) async {
+      final prices = ValueNotifier<Map<String, LocalTollPricingBreakdown>>({});
+      addTearDown(prices.dispose);
+      await pump(tester, [
+        route(
+          'a',
+          TripTolls(coverage: TripTollCoverage.unknown, vehicleCategory: 'car'),
+        ),
+        route(
+          'b',
+          TripTolls(coverage: TripTollCoverage.unknown, vehicleCategory: 'car'),
+        ),
+      ], pricingChanges: prices);
+      await openTolls(tester, 'a');
+      final sheet = find.byKey(const ValueKey('trip-toll-sheet-a'));
+      final sheetElement = tester.element(sheet);
+      expect(
+        find.descendant(of: sheet, matching: find.text('Peajes por confirmar')),
+        findsOneWidget,
+      );
+
+      prices.value = {
+        'b': _localPricing([('Solo otra ruta', 900000)]),
+      };
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Solo otra ruta'), findsNothing);
+      expect(tester.element(sheet), same(sheetElement));
+      expect(
+        find.descendant(of: sheet, matching: find.text('Peajes por confirmar')),
+        findsOneWidget,
+      );
+      prices.value = {
+        ...prices.value,
+        'a': _localPricing([('Peaje de esta ruta', 1850000)]),
+      };
+      await tester.pumpAndSettle();
+      expect(tester.element(sheet), same(sheetElement));
+      expect(
+        find.descendant(of: sheet, matching: find.text('COP 18.500')),
+        findsOneWidget,
+      );
+      expect(find.text('1. Peaje de esta ruta'), findsOneWidget);
+      expect(find.textContaining('Solo otra ruta'), findsNothing);
+      expect(
+        find.descendant(of: sheet, matching: find.text('Peajes por confirmar')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'open alternatives update local amounts and cheapest after data arrives',
+    (tester) async {
+      final prices = ValueNotifier<Map<String, LocalTollPricingBreakdown>>({});
+      addTearDown(prices.dispose);
+      await pump(tester, [
+        route(
+          'a',
+          TripTolls(
+            coverage: TripTollCoverage.complete,
+            vehicleCategory: 'car',
+            totalMinor: 99999999,
+          ),
+        ),
+        route(
+          'b',
+          TripTolls(
+            coverage: TripTollCoverage.complete,
+            vehicleCategory: 'car',
+            totalMinor: 0,
+          ),
+        ),
+      ], pricingChanges: prices);
+      await openRoutes(tester);
+      final routeA = find.byKey(const ValueKey('trip-route-a'));
+      final routeB = find.byKey(const ValueKey('trip-route-b'));
+      final elementA = tester.element(routeA);
+      final elementB = tester.element(routeB);
+      expect(
+        find.descendant(
+          of: routeA,
+          matching: find.text('Peajes por confirmar'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Menor estimación'), findsNothing);
+      expect(
+        find.descendant(
+          of: routeB,
+          matching: find.text('Peajes por confirmar'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('COP 0'), findsNothing);
+      prices.value = {
+        'a': _localPricing([('Peaje A', 1200000)]),
+        'b': _localPricing([('Peaje B', 2400000)]),
+      };
+      await tester.pumpAndSettle();
+      expect(tester.element(routeA), same(elementA));
+      expect(
+        find.descendant(of: routeA, matching: find.text('COP 12.000')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: routeB, matching: find.text('COP 24.000')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: routeA,
+          matching: find.textContaining('Menor estimación'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: routeB,
+          matching: find.textContaining('Menor estimación'),
+        ),
+        findsNothing,
+      );
+      expect(find.textContaining('COP 0'), findsNothing);
+      prices.value = {
+        ...prices.value,
+        'b': _localPricing([('Peaje B', 900000)]),
+      };
+      await tester.pumpAndSettle();
+      expect(tester.element(routeA), same(elementA));
+      expect(tester.element(routeB), same(elementB));
+      expect(
+        find.descendant(of: routeB, matching: find.text('COP 9.000')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: routeB, matching: find.text('COP 24.000')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: routeA,
+          matching: find.textContaining('Menor estimación'),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: routeB,
+          matching: find.textContaining('Menor estimación'),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('local no-passages pricing never reads as complete COP zero', (
     tester,
@@ -313,7 +484,14 @@ void main() {
 
     await openTolls(tester, 'no-passages');
 
-    expect(find.textContaining('Sin peajes candidatos'), findsOneWidget);
+    expect(find.text('Sin pasos identificados'), findsWidgets);
+    expect(
+      find.text(
+        'No hay pasos identificados para esta ruta. No significa que sea gratuita.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('COP 0'), findsNothing);
     expect(find.text('Subtotal con datos: COP 0'), findsNothing);
     expect(find.text('Total local: COP 0'), findsNothing);
     expect(find.textContaining('faltan 0 tarifa'), findsNothing);
@@ -403,7 +581,17 @@ void main() {
           seconds: 10800,
         ),
       ];
-      await pump(tester, routes);
+      await pump(
+        tester,
+        routes,
+        localPricingByRoute: {
+          'a': _localPricing([
+            ('Estación A', 1200000),
+            ('Estación A', 1200000),
+          ]),
+          'b': _localPricing([('Estación B', 500000), ('Sin tarifa', null)]),
+        },
+      );
       await openRoutes(tester);
       expect(
         find.descendant(
@@ -426,34 +614,54 @@ void main() {
       await openTolls(tester, 'b');
       expect(find.textContaining('Estación B'), findsOneWidget);
       expect(find.textContaining('Estación A'), findsNothing);
-      expect(find.textContaining('Subtotal conocido'), findsWidgets);
+      expect(
+        find.text('Estimación parcial · cobros pendientes'),
+        findsOneWidget,
+      );
+      expect(find.text('Cat. I · Cobro pendiente'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('trip-toll-sheet-b')),
+          matching: find.text('COP 5.000'),
+        ),
+        findsOneWidget,
+      );
     },
   );
 
   testWidgets('unknown cannot win cheapest and empty unknown is not zero', (
     tester,
   ) async {
-    await pump(tester, [
-      route(
-        'unknown',
-        TripTolls(coverage: TripTollCoverage.unknown, vehicleCategory: 'car'),
-      ),
-      route(
-        'paid',
-        TripTolls(
-          coverage: TripTollCoverage.complete,
-          vehicleCategory: 'car',
-          totalMinor: 1200000,
-          charges: const [TripTollCharge(name: 'Peaje', amountMinor: 1200000)],
+    await pump(
+      tester,
+      [
+        route(
+          'unknown',
+          TripTolls(coverage: TripTollCoverage.unknown, vehicleCategory: 'car'),
         ),
-      ),
-    ]);
+        route(
+          'paid',
+          TripTolls(
+            coverage: TripTollCoverage.complete,
+            vehicleCategory: 'car',
+            totalMinor: 1200000,
+            charges: const [
+              TripTollCharge(name: 'Peaje', amountMinor: 1200000),
+            ],
+          ),
+        ),
+      ],
+      localPricingByRoute: {
+        'unknown': _localPricing([('Sin tarifa', null)]),
+        'paid': _localPricing([('Peaje', 1200000)]),
+      },
+    );
     await openRoutes(tester);
     final unknown = find.byKey(const ValueKey('trip-route-unknown'));
     expect(
       find.descendant(
         of: unknown,
-        matching: find.textContaining('Menor costo'),
+        matching: find.textContaining('Menor estimación'),
       ),
       findsNothing,
     );
@@ -465,91 +673,125 @@ void main() {
       find.descendant(of: unknown, matching: find.textContaining('0 peajes')),
       findsNothing,
     );
-    expect(find.textContaining('Menor costo de peajes'), findsNothing);
+    expect(find.textContaining('Menor estimación'), findsNothing);
   });
 
   testWidgets(
-    'station count and payable count do not come from charge list length',
+    'route details use local passages without promoting server station counts',
     (tester) async {
-      await pump(tester, [
-        route(
-          'count',
-          TripTolls(
-            coverage: TripTollCoverage.partial,
-            vehicleCategory: 'car',
-            stationCount: 7,
-            payableCount: 4,
-            subtotalMinor: 1200000,
-            missingRates: 3,
-            charges: const [
-              TripTollCharge(name: 'Una tarifa conocida', amountMinor: 1200000),
-            ],
+      await pump(
+        tester,
+        [
+          route(
+            'count',
+            TripTolls(
+              coverage: TripTollCoverage.partial,
+              vehicleCategory: 'car',
+              stationCount: 7,
+              payableCount: 4,
+              subtotalMinor: 1200000,
+              missingRates: 3,
+              charges: const [
+                TripTollCharge(
+                  name: 'Una tarifa conocida',
+                  amountMinor: 1200000,
+                ),
+              ],
+            ),
           ),
-        ),
-      ]);
+        ],
+        localPricingByRoute: {
+          'count': _localPricing([
+            ('Paso local', 1850000),
+            ('Pendiente', null),
+          ]),
+        },
+      );
       await openRoutes(tester);
-      expect(find.textContaining('7 estaciones de peaje'), findsOneWidget);
-      expect(find.textContaining('4 cobros aplicables'), findsOneWidget);
+      expect(find.text('COP 18.500'), findsWidgets);
+      expect(find.textContaining('7 estaciones de peaje'), findsNothing);
+      expect(find.textContaining('4 cobros aplicables'), findsNothing);
       expect(find.textContaining('1 estaciones'), findsNothing);
+      await closeSheet(tester);
+      expect(find.text('Peajes de esta ruta · 2'), findsOneWidget);
+      await openTolls(tester, 'count');
+      expect(find.text('1. Paso local'), findsOneWidget);
+      expect(find.text('2. Pendiente'), findsOneWidget);
     },
   );
 
   testWidgets(
     'cheapest compares complete totals and preserves repeated station visits',
     (tester) async {
-      await pump(tester, [
-        route(
-          'expensive',
-          TripTolls(
-            coverage: TripTollCoverage.complete,
-            vehicleCategory: 'car',
-            totalMinor: 2400000,
-            charges: const [
-              TripTollCharge(name: 'Paso', amountMinor: 1200000),
-              TripTollCharge(name: 'Paso', amountMinor: 1200000),
-            ],
+      await pump(
+        tester,
+        [
+          route(
+            'expensive',
+            TripTolls(
+              coverage: TripTollCoverage.complete,
+              vehicleCategory: 'car',
+              totalMinor: 2400000,
+              charges: const [
+                TripTollCharge(name: 'Paso', amountMinor: 1200000),
+                TripTollCharge(name: 'Paso', amountMinor: 1200000),
+              ],
+            ),
           ),
-        ),
-        route(
-          'cheap',
-          TripTolls(
-            coverage: TripTollCoverage.complete,
-            vehicleCategory: 'car',
-            totalMinor: 1200000,
-            charges: const [TripTollCharge(name: 'Otro', amountMinor: 1200000)],
+          route(
+            'cheap',
+            TripTolls(
+              coverage: TripTollCoverage.complete,
+              vehicleCategory: 'car',
+              totalMinor: 1200000,
+              charges: const [
+                TripTollCharge(name: 'Otro', amountMinor: 1200000),
+              ],
+            ),
           ),
-        ),
-        route(
-          'partial',
-          TripTolls(
-            coverage: TripTollCoverage.partial,
-            vehicleCategory: 'car',
-            subtotalMinor: 100000,
-            missingRates: 2,
+          route(
+            'partial',
+            TripTolls(
+              coverage: TripTollCoverage.partial,
+              vehicleCategory: 'car',
+              subtotalMinor: 100000,
+              missingRates: 2,
+            ),
           ),
-        ),
-      ]);
+        ],
+        localPricingByRoute: {
+          'expensive': _localPricing([('Paso', 1200000), ('Paso', 1200000)]),
+          'cheap': _localPricing([('Otro', 1200000)]),
+          'partial': _localPricing([('Con dato', 100000), ('Sin dato', null)]),
+        },
+      );
       await openRoutes(tester);
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('trip-route-cheap')),
-          matching: find.textContaining('Menor costo de peajes'),
+          matching: find.text(
+            'Menor estimación entre opciones con datos completos',
+          ),
         ),
         findsOneWidget,
       );
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('trip-route-partial')),
-          matching: find.textContaining('Menor costo de peajes'),
+          matching: find.textContaining('Menor estimación'),
         ),
         findsNothing,
       );
-      expect(find.text('Total estimado de peajes: COP 24.000'), findsOneWidget);
+      await closeSheet(tester);
+      expect(find.text('COP 24.000'), findsOneWidget);
+      await openTolls(tester, 'expensive');
+      expect(find.text('1. Paso'), findsOneWidget);
+      expect(find.text('2. Paso'), findsOneWidget);
     },
   );
 
   testWidgets(
-    'outside restriction window keeps day warning and source verification',
+    'outside restriction window shows one instant status and day schedule',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -559,6 +801,7 @@ void main() {
                 label: 'Origen / salida',
                 instantUtc: DateTime.utc(2026, 9, 5, 23),
                 onSource: (_) {},
+                onCity: () {},
                 evaluation: AsyncData(
                   TripEndpointRestriction(
                     status: RestrictionDayStatus.restricted,
@@ -578,14 +821,15 @@ void main() {
       expect(find.text('Sin restricción a la hora evaluada'), findsOneWidget);
       expect(
         find.text('Este día tiene restricción para el vehículo.'),
-        findsOneWidget,
+        findsNothing,
       );
       expect(find.text('Horario restringido: 06:00–09:00'), findsOneWidget);
-      expect(find.text('Consultar fuente'), findsOneWidget);
+      expect(find.text('Consultar fuente'), findsNothing);
       expect(
         find.textContaining('Fuente verificada: 2026-09-01 07:00'),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(find.widgetWithText(ListTile, 'Origen / salida'), findsOneWidget);
     },
   );
 
@@ -628,14 +872,40 @@ void main() {
           await tester.tap(find.byKey(const ValueKey('trip-toll-details-one')));
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
-          if (coverage == TripTollCoverage.noChargeConfirmed) {
-            expect(find.textContaining('Sin cobro confirmado'), findsWidgets);
-          }
-          if (coverage == TripTollCoverage.unsupportedVehicle) {
-            expect(find.textContaining('Categoría no soportada'), findsWidgets);
-          }
+          expect(find.text('Peajes por confirmar'), findsWidgets);
+          expect(find.textContaining('COP 0'), findsNothing);
+          expect(find.textContaining('COP 12.000'), findsNothing);
         },
       );
     }
   }
+}
+
+LocalTollPricingBreakdown _localPricing(List<(String, int?)> passages) {
+  final missing = passages.where((passage) => passage.$2 == null).length;
+  final subtotal = passages.fold<int>(
+    0,
+    (sum, passage) => sum + (passage.$2 ?? 0),
+  );
+  return LocalTollPricingBreakdown(
+    coverage: missing == 0
+        ? LocalTollPricingCoverage.complete
+        : LocalTollPricingCoverage.partial,
+    subtotalMinor: subtotal,
+    totalMinor: missing == 0 ? subtotal : null,
+    missingRates: missing,
+    charges: [
+      for (final (index, passage) in passages.indexed)
+        LocalTollPricingCharge(
+          stationId: 'station-$index',
+          name: passage.$1,
+          categoryCode: 'I',
+          amountMinor: passage.$2,
+          publicationControl: null,
+          sourceType: 'Oficial',
+          sourceDate: '2026-09-01',
+          sourceUrl: 'https://example.test/toll',
+        ),
+    ],
+  );
 }

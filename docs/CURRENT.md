@@ -1,5 +1,13 @@
 # PicoRadar Current State
 
+## Active owner correction: Viaje toll estimates and contextual cities
+
+PR #55 remains on `integration/VIAJE-R1-real-planner`, without merge. The current owner-approved private OSRM pilot supersedes the historical provider-access blocker described below for this local pilot only; it does not authorize public deployment or TollGuru spending.
+
+Viaje now uses route-local toll estimates consistently in summary, alternatives, route-only tariff consultation and map details. Directional/conditional/blocked charges remain pending and nominal prices remain inspectable. Other operator categories are consultation-only. A single city-labeled Pico block opens transient jurisdictions without changing the global location; general caveats/checklist are collapsed under Informacion importante.
+
+Verification and physical evidence for this correction are recorded in the explicitly requested `temp/VIAJE_PEAJES_UX` handoff. This note does not claim physical or CI completion before their recorded results. The existing preview validator now accepts today's date-only query without inventing a user departure hour; past dates and the 30-day ceiling remain rejected. No new dependencies, schemas, permissions or endpoints are part of this correction.
+
 ## V01B merged; VIAJE-R2C verified locally, owner toll tariffs added, provider access still pending
 
 Owner-authorized PR #54 squash: `e9ef37511df3110ffb0fc006ef06be781df432ac`, parent `c1010b5a2d23b2c3c4f8cf00874f4ecfd2780d44`. It preserves the approved V01B HEAD `d84a1765224481e629ab60586e79da35b3cc9841` tree `3e3a6c05bf09c1b059262ba5cf311d3e6b348b6f`. Postmerge Mobile CI `33988444392` passed on that squash. Server CI did not trigger for the visual-only merge. This is bounded V01B approval, not approval of all 43 screens or historical P07/F01/F02 gates.

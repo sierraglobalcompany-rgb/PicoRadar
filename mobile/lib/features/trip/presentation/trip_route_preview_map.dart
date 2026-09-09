@@ -12,6 +12,7 @@ import '../application/trip_tile_config.dart';
 import '../data/toll_inventory.dart';
 import '../data/toll_tariff_catalog.dart';
 import '../domain/trip_plan.dart';
+import 'trip_toll_sheet.dart';
 
 class TripRouteMapConfig {
   const TripRouteMapConfig({
@@ -53,6 +54,7 @@ class TripRoutePreviewMap extends StatefulWidget {
     required this.config,
     this.demoLabel,
     this.tollTariffCatalog,
+    this.localTollPricing,
     this.mapController,
     this.allowFullscreen = true,
     this.compact = false,
@@ -69,6 +71,7 @@ class TripRoutePreviewMap extends StatefulWidget {
     required this.associations,
     this.demoLabel,
     this.tollTariffCatalog,
+    this.localTollPricing,
   }) : mapController = null,
        allowFullscreen = false,
        compact = false;
@@ -76,6 +79,7 @@ class TripRoutePreviewMap extends StatefulWidget {
   final String routeId;
   final List<TripCoordinate> geometry;
   final TollInventoryDataset tollInventory;
+  final LocalTollPricingBreakdown? localTollPricing;
   final TollTariffCatalog? tollTariffCatalog;
   final CameraPack cameraPack;
   final String cameraPackVersion;
@@ -258,6 +262,9 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
   }
 
   String get _tollSummary {
+    if (widget.tollInventory.version == 'unavailable') {
+      return 'Inventario de peajes no disponible; cobros por confirmar.';
+    }
     final count = widget.associations.uniqueCurrentTollLocationCount;
     final noun = count == 1
         ? 'peaje inventariado próximo'
@@ -289,6 +296,9 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
   }
 
   String get _cameraSummary {
+    if (widget.cameraPackVersion == 'unavailable') {
+      return 'Datos de cámaras no disponibles.';
+    }
     final count = widget.associations.uniqueCameraLocationCount;
     if (count == 0) {
       return '0 cámaras próximas: 0 ubicaciones únicas · 0 pasos candidatos. '
@@ -428,6 +438,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
             child: _MarkerDetails(
               location: location,
               tollInventory: widget.tollInventory,
+              localTollPricing: widget.localTollPricing,
               tollTariffCatalog: widget.tollTariffCatalog,
               cameraPack: widget.cameraPack,
               cameraPackVersion: widget.cameraPackVersion,
@@ -587,6 +598,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
                 geometry: widget.geometry,
                 tollInventory: widget.tollInventory,
                 tollTariffCatalog: widget.tollTariffCatalog,
+                localTollPricing: widget.localTollPricing,
                 cameraPack: widget.cameraPack,
                 cameraPackVersion: widget.cameraPackVersion,
                 config: widget.config,
@@ -674,15 +686,23 @@ class _MapMarkerButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) => IconButton.filled(
+  Widget build(BuildContext context) => IconButton(
     tooltip: tooltip,
     onPressed: onPressed,
     style: IconButton.styleFrom(
-      backgroundColor: color,
-      foregroundColor: Colors.white,
-      side: const BorderSide(color: Colors.white, width: 2),
+      minimumSize: const Size(48, 48),
+      padding: EdgeInsets.zero,
     ),
-    icon: Icon(icon, size: 20),
+    icon: Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+      ),
+      child: Icon(icon, size: 16, color: Colors.white),
+    ),
   );
 }
 
@@ -927,6 +947,7 @@ class _MarkerDetails extends StatelessWidget {
   const _MarkerDetails({
     required this.location,
     required this.tollInventory,
+    this.localTollPricing,
     required this.tollTariffCatalog,
     required this.cameraPack,
     required this.cameraPackVersion,
@@ -936,6 +957,7 @@ class _MarkerDetails extends StatelessWidget {
 
   final Object location;
   final TollInventoryDataset tollInventory;
+  final LocalTollPricingBreakdown? localTollPricing;
   final TollTariffCatalog? tollTariffCatalog;
   final CameraPack cameraPack;
   final String cameraPackVersion;
@@ -1005,6 +1027,9 @@ class _MarkerDetails extends StatelessWidget {
 
   (String, List<String>) _tollDetails(TollInventoryRecord record) {
     final station = tollTariffCatalog?.byId(record.id);
+    final charge = localTollPricing?.charges
+        .where((entry) => entry.stationId == record.id)
+        .firstOrNull;
     final rateLines = station == null
         ? ['Tarifas propias cargando o no disponibles para este ID.']
         : [
@@ -1020,6 +1045,12 @@ class _MarkerDetails extends StatelessWidget {
         record.previewOperationLabel,
         'Este punto físico no confirma un cobro activo.',
         ...rateLines,
+        if (charge != null) ...[
+          charge.amountMinor == null
+              ? 'Cobro pendiente'
+              : 'Estimación: ${tripTollMoney(charge.amountMinor!)}',
+          if (charge.pendingReason != null) charge.pendingReason!,
+        ],
         'Inventario ${tollInventory.version} · corte ${_dateOnly(tollInventory.sourceTimestamp)}',
         'El corte no confirma vigencia operativa.',
         'Fuente inventario: ${record.inventorySource}',

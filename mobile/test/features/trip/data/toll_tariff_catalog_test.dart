@@ -123,6 +123,84 @@ void main() {
     expect(empty.missingRates, 0);
     expect(empty.charges, isEmpty);
   });
+
+  test('does not add directional tunnel booths as independent charges', () {
+    final pricing = priceExplicitTollPassages(
+      catalog: catalog,
+      passages: inventory.records.where(
+        (item) =>
+            item.id == 'SUP-SEMINARIO-5823DA6561' ||
+            item.id == 'SUP-SAJONIA-44E6331968',
+      ),
+      operatorCategoryCode: 'I',
+    );
+    expect(pricing.coverage, LocalTollPricingCoverage.partial);
+    expect(pricing.subtotalMinor, 0);
+    expect(pricing.totalMinor, isNull);
+    expect(pricing.charges, hasLength(2));
+    expect(
+      pricing.charges.every((charge) => charge.amountMinor == null),
+      isTrue,
+    );
+  });
+
+  test('suspension keeps nominal price outside the estimated subtotal', () {
+    final pricing = priceExplicitTollPassages(
+      catalog: catalog,
+      passages: inventory.records.where(
+        (item) => item.id == 'INV-TURBACO-E6A3364829',
+      ),
+      operatorCategoryCode: 'I',
+    );
+    expect(pricing.totalMinor, isNull);
+    expect(pricing.subtotalMinor, 0);
+    expect(pricing.missingRates, 1);
+  });
+
+  test(
+    'Los Santos uses literal vehicle code without doubling nominal price',
+    () {
+      final pricing = priceExplicitTollPassages(
+        catalog: catalog,
+        passages: inventory.records.where(
+          (item) => item.id == 'INV-LOS-SANTOS-85453C31BB',
+        ),
+        operatorCategoryCode: 'I',
+      );
+      final charge = pricing.charges.single;
+      expect(charge.categoryCode, 'AUTOMOVIL');
+      expect(charge.nominalMinor, 900000);
+      expect(charge.amountMinor, isNull);
+      expect(charge.pendingReason, contains('Sentido'));
+      expect(pricing.totalMinor, isNull);
+    },
+  );
+
+  test('distinct repeated passages retain each ordinary estimated charge', () {
+    final station = inventory.records.firstWhere(
+      (item) => item.id == 'INV-GUARNE-3A941FAFD9',
+    );
+    final pricing = priceExplicitTollPassages(
+      catalog: catalog,
+      passages: [station, station],
+      operatorCategoryCode: 'I',
+    );
+    expect(pricing.charges, hasLength(2));
+    expect(pricing.totalMinor, 3700000);
+  });
+
+  test('missing category keeps route station and an unknown amount', () {
+    final pricing = priceExplicitTollPassages(
+      catalog: catalog,
+      passages: inventory.records.where(
+        (item) => item.id == 'INV-GUARNE-3A941FAFD9',
+      ),
+      operatorCategoryCode: 'VIII',
+    );
+    expect(pricing.charges.single.categoryCode, 'VIII');
+    expect(pricing.charges.single.amountMinor, isNull);
+    expect(pricing.totalMinor, isNull);
+  });
 }
 
 int? _amount(String stationId, String category) =>

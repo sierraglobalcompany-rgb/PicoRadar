@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_tokens.dart';
@@ -8,6 +9,7 @@ import '../../pico_placa/domain/restriction_engine.dart';
 import '../application/trip_services.dart';
 import '../data/toll_tariff_catalog.dart';
 import '../domain/trip_plan.dart';
+import 'trip_toll_sheet.dart';
 
 class TripPlanResult extends StatelessWidget {
   const TripPlanResult({
@@ -21,6 +23,8 @@ class TripPlanResult extends StatelessWidget {
     this.onViewMap,
     this.cameraLocationCount,
     this.localTollPricing,
+    this.localPricingByRoute = const {},
+    this.pricingChanges,
     super.key,
   });
 
@@ -34,6 +38,8 @@ class TripPlanResult extends StatelessWidget {
   final VoidCallback? onViewMap;
   final int? cameraLocationCount;
   final LocalTollPricingBreakdown? localTollPricing;
+  final Map<String, LocalTollPricingBreakdown> localPricingByRoute;
+  final ValueListenable<Map<String, LocalTollPricingBreakdown>>? pricingChanges;
 
   @override
   Widget build(BuildContext context) {
@@ -48,17 +54,15 @@ class TripPlanResult extends StatelessWidget {
     final comparable = routes
         .where(
           (route) =>
-              (route.tolls.coverage == TripTollCoverage.complete ||
-                  route.tolls.coverage == TripTollCoverage.noChargeConfirmed) &&
-              route.tolls.totalMinor != null &&
-              route.tolls.vehicleCategory == request.vehicleCategory &&
-              route.tolls.paymentMethod == 'cash',
+              localPricingByRoute[route.id]?.coverage ==
+                  LocalTollPricingCoverage.complete &&
+              localPricingByRoute[route.id]?.totalMinor != null,
         )
         .toList();
     final cheapest = comparable.length < 2
         ? null
         : comparable
-              .map((route) => route.tolls.totalMinor!)
+              .map((route) => localPricingByRoute[route.id]!.totalMinor!)
               .reduce((a, b) => a < b ? a : b);
 
     return Column(
@@ -71,28 +75,16 @@ class TripPlanResult extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.s),
         Text(
-          '${request.origin.displayName} → ${request.destination.displayName}',
+          '${request.origin.municipality} → ${request.destination.municipality}',
           style: AppTextStyles.bodyStrong,
         ),
         if (demoLabel != null) ...[
           const SizedBox(height: AppSpacing.s),
           _DemoBanner(label: demoLabel),
         ],
-        Text(
-          'Vehículo: ${request.vehicle.plate} · ${_category(request.vehicleCategory)}',
-        ),
-        Text(_departureLabel(request)),
-        if (request.departureMode == TripDepartureMode.dateOnly)
-          const Text(
-            'La fecha real de llegada depende de la ruta y puede ser el día siguiente.',
-          ),
         const SizedBox(height: AppSpacing.m),
-        if (selected != null) _TripSummary(route: selected),
         if (selected != null)
-          Text(
-            'Mapa del viaje · ${selected.summary}',
-            style: AppTextStyles.caption,
-          ),
+          _TripSummary(route: selected, pricing: localTollPricing),
         const SizedBox(height: AppSpacing.s),
         SizedBox(
           key: mapAnchorKey,
@@ -131,6 +123,8 @@ class TripPlanResult extends StatelessWidget {
             onViewMap: onViewMap,
             cameraLocationCount: cameraLocationCount,
             localTollPricing: localTollPricing,
+            localPricingByRoute: localPricingByRoute,
+            pricingChanges: pricingChanges,
           ),
       ],
     );
@@ -138,9 +132,10 @@ class TripPlanResult extends StatelessWidget {
 }
 
 class _TripSummary extends StatelessWidget {
-  const _TripSummary({required this.route});
+  const _TripSummary({required this.route, this.pricing});
 
   final TripRouteOption route;
+  final LocalTollPricingBreakdown? pricing;
 
   @override
   Widget build(BuildContext context) {
@@ -160,8 +155,10 @@ class _TripSummary extends StatelessWidget {
       (
         key: 'cost',
         icon: Icons.payments_outlined,
-        value: _summaryCost(route.tolls),
-        label: 'Costo de peajes',
+        value: tripTollEstimate(pricing),
+        label: pricing?.coverage == LocalTollPricingCoverage.complete
+            ? 'Peajes estimados'
+            : 'Estimación parcial',
       ),
     ];
     return Container(
@@ -189,7 +186,9 @@ class _TripSummary extends StatelessWidget {
                   for (final metric in metrics)
                     SizedBox(
                       key: ValueKey('trip-summary-${metric.key}'),
-                      width: width,
+                      width: metric.key == 'cost'
+                          ? constraints.maxWidth
+                          : width,
                       child: _SummaryMetric(
                         icon: metric.icon,
                         value: metric.value,
@@ -198,6 +197,13 @@ class _TripSummary extends StatelessWidget {
                     ),
                 ],
               ),
+              if (pricing != null && pricing!.missingRates > 0)
+                Text(
+                  pricing!.missingRates == 1
+                      ? '1 cobro pendiente'
+                      : '${pricing!.missingRates} cobros pendientes',
+                  style: AppTextStyles.caption,
+                ),
             ],
           );
         },
@@ -252,6 +258,8 @@ class _DetailActions extends StatelessWidget {
     required this.onViewMap,
     required this.cameraLocationCount,
     required this.localTollPricing,
+    required this.localPricingByRoute,
+    this.pricingChanges,
   });
 
   final List<TripRouteOption> routes;
@@ -265,6 +273,8 @@ class _DetailActions extends StatelessWidget {
   final VoidCallback? onViewMap;
   final int? cameraLocationCount;
   final LocalTollPricingBreakdown? localTollPricing;
+  final Map<String, LocalTollPricingBreakdown> localPricingByRoute;
+  final ValueListenable<Map<String, LocalTollPricingBreakdown>>? pricingChanges;
 
   TripRouteOption get selected => routes.firstWhere(
     (route) => route.id == selectedRouteId,
@@ -286,9 +296,11 @@ class _DetailActions extends StatelessWidget {
         key: ValueKey('trip-toll-details-${selected.id}'),
         onPressed: () => _showTolls(context),
         icon: const Icon(Icons.toll_outlined),
-        label: const Text('Peajes'),
+        label: Text(
+          'Peajes de esta ruta · ${localTollPricing?.charges.length ?? '…'}',
+        ),
       ),
-      OutlinedButton.icon(
+      TextButton.icon(
         key: const ValueKey('trip-open-cameras-detail'),
         onPressed: () => _showCameras(context),
         icon: const Icon(Icons.photo_camera_outlined),
@@ -297,12 +309,6 @@ class _DetailActions extends StatelessWidget {
               ? 'Cámaras'
               : 'Cámaras · $cameraLocationCount',
         ),
-      ),
-      OutlinedButton.icon(
-        key: const ValueKey('trip-plan-source-details'),
-        onPressed: () => _showSources(context),
-        icon: const Icon(Icons.dataset_outlined),
-        label: const Text('Datos y fuentes'),
       ),
       if (onViewMap != null)
         TextButton.icon(
@@ -314,118 +320,71 @@ class _DetailActions extends StatelessWidget {
     ],
   );
 
+  Widget _livePricing(
+    Widget Function(Map<String, LocalTollPricingBreakdown>) builder,
+  ) {
+    final changes = pricingChanges;
+    if (changes == null) return builder(localPricingByRoute);
+    return ValueListenableBuilder<Map<String, LocalTollPricingBreakdown>>(
+      valueListenable: changes,
+      builder: (_, prices, _) => builder(prices),
+    );
+  }
+
   void _showRoutes(BuildContext context) {
     _showDetailSheet(
       context,
       title: 'Otras rutas · ${routes.length}',
-      builder: (sheetContext) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final route in routes) ...[
-            _RouteOptionCard(
-              route: route,
-              request: request,
-              selected: route.id == selectedRouteId,
-              cheapest: cheapest,
-              comparable: comparable,
-              onRouteSelected: (id) {
-                Navigator.of(sheetContext).pop();
-                onRouteSelected(id);
-              },
-            ),
-            const SizedBox(height: AppSpacing.m),
+      builder: (sheetContext) => _livePricing((prices) {
+        final available = routes
+            .where(
+              (route) =>
+                  prices[route.id]?.coverage ==
+                      LocalTollPricingCoverage.complete &&
+                  prices[route.id]?.totalMinor != null,
+            )
+            .toList();
+        final least = available.length < 2
+            ? null
+            : available
+                  .map((route) => prices[route.id]!.totalMinor!)
+                  .reduce((a, b) => a < b ? a : b);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final route in routes) ...[
+              _RouteOptionCard(
+                route: route,
+                request: request,
+                selected: route.id == selectedRouteId,
+                cheapest: least,
+                comparable: available,
+                localPricing: prices[route.id],
+                onRouteSelected: (id) {
+                  Navigator.of(sheetContext).pop();
+                  onRouteSelected(id);
+                },
+              ),
+              const SizedBox(height: AppSpacing.m),
+            ],
           ],
-        ],
-      ),
+        );
+      }),
     );
   }
 
   void _showTolls(BuildContext context) {
     _showDetailSheet(
       context,
-      title: 'Peajes y presupuesto',
-      child: Column(
-        key: ValueKey('trip-toll-sheet-${selected.id}'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text('Una ida. El regreso requiere otra consulta.'),
-          Text(_tollsText(selected.tolls)),
-          Text(
-            'Categoría: ${_category(selected.tolls.vehicleCategory)} · Método: ${_payment(selected.tolls.paymentMethod)}',
+      title: 'Peajes de esta ruta',
+      builder: (_) => _livePricing(
+        (prices) => KeyedSubtree(
+          key: ValueKey('trip-toll-sheet-${selected.id}'),
+          child: TripRouteTolls(
+            pricing: prices[selected.id] ?? localTollPricing,
+            onSource: onSource,
           ),
-          Text('Proveedor: ${plan.provider}'),
-          const Text(
-            'Estimación basada en tarifas disponibles; no garantiza tarifas futuras.',
-          ),
-          if (selected.tolls.charges.isEmpty)
-            const Text('No se recibió desglose de estaciones.'),
-          for (final (index, charge) in selected.tolls.charges.indexed) ...[
-            const Divider(),
-            Text(
-              '${index + 1}. ${charge.name}',
-              style: AppTextStyles.bodyStrong,
-            ),
-            Text(
-              charge.amountMinor == null
-                  ? 'Tarifa no disponible'
-                  : _cop(charge.amountMinor!),
-            ),
-            Text(
-              charge.effectiveAt == null
-                  ? 'Fecha de tarifa no informada'
-                  : 'Fecha de tarifa: ${charge.effectiveAt}',
-            ),
-            if (charge.sourceUrl != null)
-              _SourceButton(url: charge.sourceUrl!, onSource: onSource)
-            else
-              const Text('Fuente de tarifa no informada.'),
-          ],
-          if (localTollPricing != null) ...[
-            const Divider(),
-            Text(
-              'Tarifas propias sobre peajes candidatos',
-              key: ValueKey('trip-local-toll-pricing-${selected.id}'),
-              style: AppTextStyles.bodyStrong,
-            ),
-            const Text(
-              'Estimación local por ID físico cercano a la geometría. No confirma cruce, sentido ni cobro activo.',
-            ),
-            Text(_localCoverageText(localTollPricing!)),
-            if (localTollPricing!.coverage !=
-                LocalTollPricingCoverage.noPassages) ...[
-              Text(
-                'Subtotal con datos: ${_cop(localTollPricing!.subtotalMinor)}',
-              ),
-              if (localTollPricing!.totalMinor == null)
-                Text(
-                  'Total no publicado: faltan ${localTollPricing!.missingRates} tarifa(s).',
-                )
-              else
-                Text('Total local: ${_cop(localTollPricing!.totalMinor!)}'),
-            ],
-            for (final (index, charge)
-                in localTollPricing!.charges.indexed) ...[
-              const Divider(),
-              Text(
-                '${index + 1}. ${charge.name}',
-                style: AppTextStyles.bodyStrong,
-              ),
-              Text('Categoría operador: ${charge.categoryCode}'),
-              Text(
-                charge.amountMinor == null
-                    ? 'Tarifa no informada; no equivale a gratis.'
-                    : _cop(charge.amountMinor!),
-              ),
-              Text(
-                '${charge.publicationControl ?? 'Control no informado'} · '
-                '${charge.sourceType ?? 'fuente no informada'}'
-                '${charge.sourceDate == null ? '' : ' · ${charge.sourceDate}'}',
-              ),
-              if (charge.sourceUrl != null)
-                _SourceButton(url: charge.sourceUrl!, onSource: onSource),
-            ],
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -450,24 +409,6 @@ class _DetailActions extends StatelessWidget {
       ),
     );
   }
-
-  void _showSources(BuildContext context) {
-    _showDetailSheet(
-      context,
-      title: 'Datos y fuentes',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('Consulta: ${tripInstantLabel(plan.generatedAtUtc)}'),
-          Text('Punto de origen: ${plan.origin.label}'),
-          Text('Punto de destino: ${plan.destination.label}'),
-          const Text('Estimación entre puntos de referencia de las ciudades'),
-          Text('Proveedor: ${plan.provider}'),
-          Text(plan.attribution),
-        ],
-      ),
-    );
-  }
 }
 
 class _RouteOptionCard extends StatelessWidget {
@@ -478,6 +419,7 @@ class _RouteOptionCard extends StatelessWidget {
     required this.cheapest,
     required this.comparable,
     required this.onRouteSelected,
+    this.localPricing,
   });
 
   final TripRouteOption route;
@@ -486,6 +428,7 @@ class _RouteOptionCard extends StatelessWidget {
   final int? cheapest;
   final List<TripRouteOption> comparable;
   final ValueChanged<String> onRouteSelected;
+  final LocalTollPricingBreakdown? localPricing;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -534,12 +477,16 @@ class _RouteOptionCard extends StatelessWidget {
               ? 'Estimación con datos de tráfico del proveedor'
               : 'Duración estática; no predice el tráfico de la salida',
         ),
-        Text(_countText(route.tolls)),
-        Text(_tollsText(route.tolls)),
+        Text(tripTollEstimate(localPricing)),
+        Text(
+          localPricing?.coverage == LocalTollPricingCoverage.complete
+              ? 'Peajes estimados'
+              : 'Estimación parcial',
+        ),
         if (cheapest != null &&
             comparable.contains(route) &&
-            route.tolls.totalMinor == cheapest)
-          const Text('Menor costo de peajes entre opciones con total completo'),
+            localPricing?.totalMinor == cheapest)
+          const Text('Menor estimación entre opciones con datos completos'),
         const SizedBox(height: AppSpacing.s),
         OutlinedButton.icon(
           key: ValueKey('trip-select-route-${route.id}'),
@@ -629,19 +576,35 @@ class TripInstantEndpoint extends StatelessWidget {
     required this.instantUtc,
     required this.evaluation,
     required this.onSource,
+    this.onCity,
+    this.dateOnly = false,
     super.key,
   });
   final String label;
   final DateTime instantUtc;
   final AsyncValue<TripEndpointRestriction> evaluation;
   final ValueChanged<String> onSource;
+  final VoidCallback? onCity;
+  final bool dateOnly;
 
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Text(label, style: AppTextStyles.bodyStrong),
-      Text(tripInstantLabel(instantUtc)),
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(label, style: AppTextStyles.bodyStrong),
+        trailing: onCity == null ? null : const Icon(Icons.chevron_right),
+        onTap: onCity,
+        subtitle: onCity == null
+            ? const Text('Ciudad sin cobertura identificada')
+            : null,
+      ),
+      Text(
+        dateOnly
+            ? tripInstantLabel(instantUtc).split(' ').first
+            : tripInstantLabel(instantUtc),
+      ),
       evaluation.when(
         skipLoadingOnReload: false,
         skipLoadingOnRefresh: false,
@@ -652,21 +615,28 @@ class TripInstantEndpoint extends StatelessWidget {
         data: (result) => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(switch (result.instantStatus) {
-              RestrictionStatus.allowed => 'Sin restricción a la hora evaluada',
-              RestrictionStatus.restricted => 'No circula a la hora evaluada',
-              RestrictionStatus.stale => 'Información desactualizada',
-              RestrictionStatus.unknown ||
-              null => 'Estado a esta hora no disponible',
-            }),
-            Text(switch (result.status) {
-              RestrictionDayStatus.restricted =>
-                'Este día tiene restricción para el vehículo.',
-              RestrictionDayStatus.allowed =>
-                'Sin restricción para el vehículo en este día.',
-              RestrictionDayStatus.stale => 'Reglas del día desactualizadas.',
-              RestrictionDayStatus.unknown => 'Reglas del día no disponibles.',
-            }),
+            Text(
+              dateOnly
+                  ? switch (result.status) {
+                      RestrictionDayStatus.allowed =>
+                        'Sin restricción para ese día',
+                      RestrictionDayStatus.restricted =>
+                        'Tiene restricción ese día',
+                      RestrictionDayStatus.stale =>
+                        'Información desactualizada',
+                      RestrictionDayStatus.unknown =>
+                        'Reglas del día no disponibles',
+                    }
+                  : switch (result.instantStatus) {
+                      RestrictionStatus.allowed =>
+                        'Sin restricción a la hora evaluada',
+                      RestrictionStatus.restricted =>
+                        'No circula a la hora evaluada',
+                      RestrictionStatus.stale => 'Información desactualizada',
+                      RestrictionStatus.unknown ||
+                      null => 'Estado a esta hora no disponible',
+                    },
+            ),
             if (result.windows.isNotEmpty)
               Text(
                 'Horario restringido: ${result.windows.map((window) => '${_minute(window.startMinute)}–${_minute(window.endMinute)}').join(', ')}',
@@ -675,33 +645,10 @@ class TripInstantEndpoint extends StatelessWidget {
                 (result.instantStatus == RestrictionStatus.unknown &&
                     result.engineReason != null))
               Text(_restrictionReason(result)),
-            if (result.verifiedAt != null)
-              Text(
-                'Fuente verificada: ${tripInstantLabel(result.verifiedAt!)}',
-              ),
-            if (result.sourceUrl != null)
-              _SourceButton(url: result.sourceUrl!, onSource: onSource)
-            else
-              const Text('Fuente de reglas no disponible.'),
           ],
         ),
       ),
     ],
-  );
-}
-
-class _SourceButton extends StatelessWidget {
-  const _SourceButton({required this.url, required this.onSource});
-  final String url;
-  final ValueChanged<String> onSource;
-  @override
-  Widget build(BuildContext context) => Align(
-    alignment: Alignment.centerLeft,
-    child: TextButton.icon(
-      onPressed: () => onSource(url),
-      icon: const Icon(Icons.open_in_new),
-      label: const Text('Consultar fuente'),
-    ),
   );
 }
 
@@ -718,75 +665,6 @@ String _duration(int seconds) {
       ? '$minutes min'
       : '${minutes ~/ 60} h ${minutes % 60} min';
 }
-
-String _cop(int minor) {
-  final pesos = (minor ~/ 100).toString().replaceAllMapped(
-    RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-    (match) => '${match[1]}.',
-  );
-  final cents = minor % 100;
-  return 'COP $pesos${cents == 0 ? '' : ',${cents.toString().padLeft(2, '0')}'}';
-}
-
-String _localCoverageText(LocalTollPricingBreakdown pricing) {
-  return switch (pricing.coverage) {
-    LocalTollPricingCoverage.complete =>
-      'Cobertura local completa para los pasos candidatos listados.',
-    LocalTollPricingCoverage.partial =>
-      'Cobertura local parcial: ${pricing.missingRates} tarifa(s) sin dato.',
-    LocalTollPricingCoverage.noPassages => 'Sin peajes candidatos identificados sobre la geometría. No equivale a ruta libre de cobro.',
-    LocalTollPricingCoverage.unsupportedCategory =>
-      'Categoría local no soportada para estimación.',
-  };
-}
-
-String _category(String value) => switch (value) {
-  'car' => 'Carro de 2 ejes',
-  'motorcycle' => 'Moto de 2 ejes',
-  'taxi' => 'Taxi',
-  _ => 'Categoría no soportada',
-};
-
-String _departureLabel(TripPlanRequest request) =>
-    switch (request.departureMode) {
-      TripDepartureMode.now => 'Salida: ahora',
-      TripDepartureMode.dateOnly => 'Salida: Hora opcional · Sin definir',
-      TripDepartureMode.specified =>
-        'Salida: ${tripInstantLabel(request.departureUtc!)}',
-    };
-String _payment(String value) => value == 'cash' ? 'Efectivo' : 'No informado';
-String _countText(TripTolls tolls) {
-  final stations = tolls.stationCount;
-  final payable = tolls.payableCount;
-  return '${stations == null ? 'Cantidad de peajes no confirmada' : '$stations estaciones de peaje'}'
-      '${payable == null ? '' : ' · $payable cobros aplicables'}';
-}
-
-String _tollsText(TripTolls tolls) => switch (tolls.coverage) {
-  TripTollCoverage.complete =>
-    tolls.totalMinor == null
-        ? 'Total de peajes no disponible'
-        : 'Total estimado de peajes: ${_cop(tolls.totalMinor!)}',
-  TripTollCoverage.partial =>
-    'Subtotal conocido: ${tolls.subtotalMinor == null ? 'no disponible' : _cop(tolls.subtotalMinor!)} · ${tolls.missingRates} tarifas faltantes',
-  TripTollCoverage.unknown => 'Costo de peajes desconocido',
-  TripTollCoverage.noChargeConfirmed =>
-    'Sin cobro confirmado para este vehículo (COP 0)',
-  TripTollCoverage.unsupportedVehicle =>
-    'Categoría no soportada para tarifas de peajes',
-};
-
-String _summaryCost(TripTolls tolls) => switch (tolls.coverage) {
-  TripTollCoverage.complete =>
-    tolls.totalMinor == null ? 'Por confirmar' : _cop(tolls.totalMinor!),
-  TripTollCoverage.partial =>
-    tolls.subtotalMinor == null
-        ? 'Parcial'
-        : '${_cop(tolls.subtotalMinor!)} parcial',
-  TripTollCoverage.noChargeConfirmed => 'Sin cobro confirmado',
-  TripTollCoverage.unknown => 'Por confirmar',
-  TripTollCoverage.unsupportedVehicle => 'No disponible',
-};
 
 String _restrictionReason(TripEndpointRestriction result) {
   if (result.instantStatus == RestrictionStatus.unknown &&

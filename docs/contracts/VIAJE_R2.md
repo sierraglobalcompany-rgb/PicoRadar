@@ -4,11 +4,23 @@ Authority: `PicoRadar_VIAJE_R2_DATOS_MOCKUP_KISS.zip` (2026-09-05). This contrac
 
 ## Workflow and UI
 
+### Owner toll/UX correction (2026-09-08)
+
+The map-first result uses one route-local pricing result for the summary, alternatives, passage list and map detail. Category I is the ordinary car estimate; Los Santos uses its explicit AUTOMOVIL source code. Other operator categories are consultation-only per station, with source descriptions or an explicit missing-description label. They do not change the garage vehicle or authorize heavy-vehicle routes.
+
+Nominal amounts remain inspectable. Unresolved directional groups (Oriente, La Linea, Garzones), Los Santos collection conditions, suspensions, blocked records and inconsistent base/multiplier amounts stay outside the estimate with a visible pending reason. No automatic interpretation of legal prose. Empty candidates do not prove a free route. Ordinary repeated passages retain separate estimates.
+
+The route sheet filters only selected-route passages and updates when asynchronous local pricing arrives. Missing local data never becomes an endless loading claim. General caveats, checklist and source metadata live under collapsed Informacion importante; errors, partial costs and restriction statuses stay visible.
+
+City Pico links use a transient jurisdiction without changing global preferences. Unknown explicit cities do not fall back to a different city. Without departure time, including today, origin retains day evaluation and destination arrival remains undetermined. The existing preview validator accepts date-only today through day 30; it still rejects past dates. An unavailable local inventory never removes valid route geometry; its counts and costs remain explicitly unknown.
+
+This correction adds no provider, endpoint, dependency, permission or schema migration. The private engine remains a car-route pilot.
+
 Viaje remains one portrait phone page: preparation, explicit preview CTA, result summary, vertical alternatives, pre-trip map, restrictions/toll disclosures, and external Google Maps/Waze handoff. A successful request reveals its result once. Rebuilds, route selection, local restriction refresh, cancellation, stale responses, offstage completion and user interaction do not repeat or steal that reveal. Reduced motion, keyboard focus, 360x780/800, 390x844 and 412x915 at text scales 1.0/1.5/2.0 are required.
 
 ## Route geometry
 
-Each route carries one bounded GeoJSON LineString decoded as immutable ordered latitude/longitude coordinates. Transport order is `[longitude, latitude]`. Two to 3,000 points and the existing 262,144-byte mobile response ceiling apply. Missing, malformed, non-finite or entirely zero-length geometry is unavailable; no straight-line fallback is permitted. Geometry reuses the existing provider response and does not make a second route call or persist a trip.
+Each route carries bounded GeoJSON or polyline6 decoded as immutable ordered latitude/longitude coordinates. GeoJSON transport order is `[longitude, latitude]`. The private-pilot bounds are two to 50,000 points and 524,288 response bytes. Missing, malformed, non-finite or entirely zero-length geometry is unavailable; no straight-line fallback is permitted. Geometry reuses the existing provider response and does not make a second route call or persist a trip.
 
 ## Local associations
 

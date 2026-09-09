@@ -94,6 +94,34 @@ class TripPreviewTest extends TestCase
         $this->assertSame($this->ledger(1, 21, 300), Cache::store('database')->get(self::LEDGER));
     }
 
+    #[DataProvider('dateOnlyWindowCases')]
+    public function test_date_only_window_includes_today_without_inventing_user_hour(string $date, int $status): void
+    {
+        config(['trips.enabled' => true]);
+        $request = $this->request();
+        $request['departureMode'] = 'date_only';
+        $request['departureDate'] = $date;
+        $request['departureUtc'] = null;
+
+        $response = $this->postJson('/api/v1/trips/preview', $request)->assertStatus($status);
+        if ($status === 200) {
+            $response->assertJsonPath('routes.0.timeBasis', 'static');
+        } else {
+            $response->assertJsonPath('error.code', 'departure_window');
+            Http::assertNothingSent();
+        }
+    }
+
+    public static function dateOnlyWindowCases(): array
+    {
+        return [
+            'today' => ['2026-09-05', 200],
+            'last allowed day' => ['2026-10-05', 200],
+            'yesterday' => ['2026-09-04', 422],
+            'beyond window' => ['2026-10-06', 422],
+        ];
+    }
+
     public function test_now_request_accepts_and_preserves_the_single_recent_capture(): void
     {
         config(['trips.enabled' => true]);

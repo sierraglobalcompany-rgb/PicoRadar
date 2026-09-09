@@ -1069,19 +1069,27 @@ void main() {
     testWidgets('three vehicles center restricted card without auto advance', (
       tester,
     ) async {
-      await _createVehicle(harness, plate: 'AAA111');
-      await _createVehicle(
+      final first = await _createVehicle(harness, plate: 'AAA111');
+      final restricted = await _createVehicle(
         harness,
         plate: 'TST453',
         nickname: 'Familiar',
         year: 2026,
       );
-      await _createVehicle(
+      final last = await _createVehicle(
         harness,
         plate: 'MOT789',
         kind: VehicleKind.motorcycle,
         nickname: 'Moto QA',
       );
+      // SQLite stores seconds; distinct fixture times make ordering deterministic.
+      await _setVehicleCreatedAt(harness, first.id, DateTime.utc(2026, 1, 1));
+      await _setVehicleCreatedAt(
+        harness,
+        restricted.id,
+        DateTime.utc(2026, 1, 2),
+      );
+      await _setVehicleCreatedAt(harness, last.id, DateTime.utc(2026, 1, 3));
       await harness.preferences.setString(
         picoJurisdictionPreferenceKey,
         'co-ant-medellin',

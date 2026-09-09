@@ -424,6 +424,9 @@ class LocalTollPricingCharge {
     required this.sourceType,
     required this.sourceDate,
     required this.sourceUrl,
+    this.nominalMinor,
+    this.pendingReason,
+    this.station,
   });
 
   final String stationId;
@@ -434,6 +437,9 @@ class LocalTollPricingCharge {
   final String? sourceType;
   final String? sourceDate;
   final String? sourceUrl;
+  final int? nominalMinor;
+  final String? pendingReason;
+  final TollTariffStation? station;
 }
 
 LocalTollPricingBreakdown priceExplicitTollPassages({
@@ -466,8 +472,15 @@ LocalTollPricingBreakdown priceExplicitTollPassages({
   final charges = <LocalTollPricingCharge>[];
   for (final passage in explicitPassages) {
     final station = catalog.byId(passage.id);
-    final rate = station?.generalRateByCategory(categoryCode);
-    final amountMinor = rate?.amountMinor;
+    final localCategory =
+        categoryCode == 'I' && station?.id == 'INV-LOS-SANTOS-85453C31BB'
+        ? 'AUTOMOVIL'
+        : categoryCode;
+    final rate = station?.generalRateByCategory(localCategory);
+    final pendingReason = _pendingChargeReason(station, rate, passage);
+    final amountMinor = pendingReason == null
+        ? rate?.boothBaseChargeMinor ?? rate?.amountMinor
+        : null;
     if (amountMinor == null) {
       missingRates++;
     } else {
@@ -477,8 +490,11 @@ LocalTollPricingBreakdown priceExplicitTollPassages({
       LocalTollPricingCharge(
         stationId: passage.id,
         name: station?.name ?? passage.name,
-        categoryCode: categoryCode,
+        categoryCode: localCategory,
         amountMinor: amountMinor,
+        nominalMinor: rate?.amountMinor,
+        pendingReason: pendingReason,
+        station: station,
         publicationControl:
             rate?.publicationControl ?? station?.publicationControl,
         sourceType: rate?.sourceType,
@@ -496,6 +512,63 @@ LocalTollPricingBreakdown priceExplicitTollPassages({
     missingRates: missingRates,
     charges: List.unmodifiable(charges),
   );
+}
+
+String? _pendingChargeReason(
+  TollTariffStation? station,
+  TollTariffRate? rate,
+  TollInventoryRecord passage,
+) {
+  if (passage.operationClassification ==
+          TollOperationClassification.nonOperationalHistorical ||
+      passage.operationClassification ==
+          TollOperationClassification.damagedReviewRequired) {
+    return 'Operación pendiente de verificar';
+  }
+  final controls = [station?.publicationControl, rate?.publicationControl];
+  if (controls.any(
+    (value) =>
+        value?.startsWith('BLOQUEADO_') == true ||
+        value == 'EXCLUIR_ESTACION_RETIRADA',
+  )) {
+    return 'Cobro bloqueado por revisión de datos';
+  }
+  if (controls.contains('APLICAR_SUSPENSION_PARCIAL')) {
+    return 'Suspensión: vigencia y categoría por confirmar';
+  }
+  // These source-defined groups need direction evidence that proximity lacks.
+  if (const {
+        'TÚNEL DE ORIENTE',
+        'TÚNEL DE LA LÍNEA',
+        'LOS GARZONES',
+      }.contains(station?.logicalChargeGroup) ||
+      station?.id == 'INV-LOS-SANTOS-85453C31BB' ||
+      controls.contains('VALIDAR_CODIGO_Y_SENTIDO')) {
+    return 'Sentido y condición de cobro por confirmar';
+  }
+  if (rate?.dataStatus == 'SOLO_PASO_EXCEPCIONAL_AUTORIZADO') {
+    return 'Paso excepcional: requiere autorización';
+  }
+  if (rate?.amountMinor == null) {
+    return 'Tarifa de esta categoría no disponible';
+  }
+  if ((rate?.collectionMultiplier ?? 1) != 1 ||
+      (rate?.boothBaseChargeMinor != null &&
+          rate?.boothBaseChargeMinor != rate?.amountMinor)) {
+    return 'Condición del importe de cobro por confirmar';
+  }
+  return null;
+}
+
+String tollVehicleDescription(TollTariffRate rate) {
+  final description = rate.vehicleDescription;
+  if (description == null ||
+      description.startsWith('Clasificación local') ||
+      description.startsWith('Código no publicado') ||
+      description.contains('pendiente de confirmación')) {
+    return 'Descripción no disponible';
+  }
+  return description;
 }
 
 Map<String, dynamic> _requiredMap(Map<String, dynamic> json, String key) {

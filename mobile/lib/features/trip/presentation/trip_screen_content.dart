@@ -7,11 +7,9 @@ import '../../../app/shell/picoradar_app_header.dart';
 import '../../../app/theme/app_tokens.dart';
 import '../../garage/data/vehicle_profile.dart';
 import '../../garage/presentation/vehicle_display.dart';
-import '../../pico_placa/domain/restriction_day_evaluation.dart';
 import '../../pico_placa/data/pico_preferences.dart';
 import '../../home/presentation/pico_notification_sheet.dart';
 import '../application/trip_services.dart';
-import '../data/toll_tariff_catalog.dart';
 import '../data/trip_municipality_catalog.dart';
 import '../domain/trip_draft.dart';
 import '../domain/trip_plan.dart';
@@ -71,10 +69,12 @@ class TripContent extends ConsumerWidget {
     required this.onGoogleMaps,
     required this.onWaze,
     required this.onInvias,
+    this.planInformation,
     super.key,
   });
 
   final ScrollController scrollController;
+  final Widget? planInformation;
   final GlobalKey resultsAnchorKey;
   final FocusNode resultsFocusNode;
   final FocusNode originFocusNode;
@@ -166,10 +166,6 @@ class TripContent extends ConsumerWidget {
             label: const Text('Cancelar consulta'),
           ),
         ],
-        const SizedBox(height: AppSpacing.s),
-        const Text(
-          'Al consultar se envían municipios, salida y categoría al servicio de rutas. La placa permanece en este dispositivo.',
-        ),
       ],
     );
     final preparation = _Card(
@@ -268,8 +264,9 @@ class TripContent extends ConsumerWidget {
                           ? AppSpacing.xs
                           : AppSpacing.m,
                     ),
-                    Text('Planea tu viaje', style: AppTextStyles.h1),
-                    if (!compactInitialPlanner) ...[
+                    if (!hasPlan)
+                      Text('Planea tu viaje', style: AppTextStyles.h1),
+                    if (!hasPlan && !compactInitialPlanner) ...[
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         'Compara rutas, peajes, cámaras y restricciones antes de salir.',
@@ -305,10 +302,9 @@ class TripContent extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Preparación del viaje',
+                              endpointSummary,
                               style: AppTextStyles.bodyStrong,
                             ),
-                            Text(endpointSummary),
                             Text(vehicleSummary),
                           ],
                         ),
@@ -327,10 +323,6 @@ class TripContent extends ConsumerWidget {
                       const SizedBox(height: AppSpacing.m),
                       previewAction,
                     ],
-                    if (!hasPlan) ...[
-                      const SizedBox(height: AppSpacing.l),
-                      _TollTariffLookupLauncher(onSource: onSource),
-                    ],
                     if (planResult != null) ...[
                       const SizedBox(height: AppSpacing.l),
                       SizedBox(key: resultsAnchorKey),
@@ -342,57 +334,88 @@ class TripContent extends ConsumerWidget {
                           child: planResult!,
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.l),
-                      _TollTariffLookupLauncher(onSource: onSource),
                     ],
-                    if (localConsultationStarted) ...[
-                      const SizedBox(height: AppSpacing.l),
-                      Text(
-                        'Lo que ya podemos consultar',
-                        style: AppTextStyles.h2,
+                    if (planError != null) ...[
+                      const SizedBox(height: AppSpacing.m),
+                      Semantics(
+                        liveRegion: true,
+                        child: _RoutesUnavailable(reason: planError!),
                       ),
-                      if (localDepartureLabel != null)
-                        Text(localDepartureLabel!),
-                      if (planError != null) ...[
-                        const SizedBox(height: AppSpacing.m),
-                        Semantics(
-                          liveRegion: true,
-                          child: _RoutesUnavailable(reason: planError!),
-                        ),
-                      ],
                     ],
                     const SizedBox(height: AppSpacing.l),
                     Text('Pico y placa del viaje', style: AppTextStyles.h2),
                     const SizedBox(height: AppSpacing.m),
                     instantRestrictions,
                     const SizedBox(height: AppSpacing.l),
-                    const Text(
-                      'Vista previa por fecha, sin evaluar la hora de llegada.',
-                    ),
-                    _RestrictionSummary(
-                      date: selectedDate,
-                      origin: originRestriction,
-                      destination: destinationRestriction,
-                    ),
-                    const SizedBox(height: AppSpacing.l),
-                    _ChecklistCard(
-                      completedChecklist: completedChecklist,
-                      onChanged: onChecklistChanged,
-                    ),
-                    const SizedBox(height: AppSpacing.l),
-                    _ExternalNotice(draftRestored: draftRestored),
-                    const SizedBox(height: AppSpacing.l),
                     _OpenNavigationButton(
                       onGoogleMaps: onGoogleMaps,
                       onWaze: onWaze,
                     ),
                     const SizedBox(height: AppSpacing.s),
-                    OutlinedButton.icon(
-                      key: const ValueKey('trip-open-invias'),
-                      onPressed: onInvias,
-                      icon: const Icon(Icons.account_balance_outlined),
-                      label: const Text('Consultar estado vial en INVÍAS'),
+                    ExpansionTile(
+                      key: const ValueKey('trip-important-information'),
+                      initiallyExpanded: false,
+                      tilePadding: EdgeInsets.zero,
+                      childrenPadding: const EdgeInsets.only(
+                        bottom: AppSpacing.m,
+                      ),
+                      title: Text(
+                        'Información importante',
+                        style: AppTextStyles.bodyStrong,
+                      ),
+                      subtitle: Text(
+                        'Checklist: ${completedChecklist.length}/${TripChecklistItem.values.length}',
+                      ),
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _Checklist(
+                              completedChecklist: completedChecklist,
+                              onChanged: onChecklistChanged,
+                            ),
+                            const SizedBox(height: AppSpacing.m),
+                            const _ExternalNotice(),
+                            if (planInformation != null) ...[
+                              const SizedBox(height: AppSpacing.m),
+                              planInformation!,
+                            ],
+                            const SizedBox(height: AppSpacing.s),
+                            const Text(
+                              'Se evalúan solo origen y destino. La llegada estimada no indica la hora de entrada a una zona restringida. Sin hora de salida no se confirma la restricción a la llegada.',
+                            ),
+                            const SizedBox(height: AppSpacing.s),
+                            OutlinedButton.icon(
+                              key: const ValueKey('trip-open-invias'),
+                              onPressed: onInvias,
+                              icon: const Icon(Icons.account_balance_outlined),
+                              label: const Text(
+                                'Consultar estado vial en INVÍAS',
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.m),
+                            const Text(
+                              'Al consultar se envían municipios, salida y categoría al servicio de rutas. La placa permanece en este dispositivo.',
+                            ),
+                            if (localConsultationStarted &&
+                                localDepartureLabel != null) ...[
+                              const SizedBox(height: AppSpacing.s),
+                              Text(localDepartureLabel!),
+                            ],
+                          ],
+                        ),
+                      ],
                     ),
+                    if (draftRestored) ...[
+                      const SizedBox(height: AppSpacing.s),
+                      Text(
+                        'Borrador local restaurado.',
+                        key: const ValueKey('trip-draft-restored'),
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.teal,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: AppSpacing.l),
                     Row(
                       children: [
@@ -609,12 +632,23 @@ class _TripDepartureGroup extends StatelessWidget {
         style: AppTextStyles.caption.copyWith(color: AppColors.teal),
       ),
     );
-    final options = TextButton.icon(
-      key: const ValueKey('trip-vehicle-options'),
-      onPressed: vehicle == null ? null : () => _showVehicleOptions(context),
-      icon: const Icon(Icons.tune, size: 18),
-      label: Text(compactLayout ? 'Opciones' : 'Opciones del vehículo'),
-    );
+    final options = compactLayout
+        ? IconButton(
+            key: const ValueKey('trip-vehicle-options'),
+            tooltip: 'Opciones del vehículo',
+            onPressed: vehicle == null
+                ? null
+                : () => _showVehicleOptions(context),
+            icon: const Icon(Icons.tune),
+          )
+        : TextButton.icon(
+            key: const ValueKey('trip-vehicle-options'),
+            onPressed: vehicle == null
+                ? null
+                : () => _showVehicleOptions(context),
+            icon: const Icon(Icons.tune, size: 18),
+            label: const Text('Opciones del vehículo'),
+          );
 
     return Column(
       key: const ValueKey('trip-departure-group'),
@@ -955,284 +989,32 @@ class _MunicipalitySuggestions extends StatelessWidget {
   }
 }
 
-class _RestrictionSummary extends StatelessWidget {
-  const _RestrictionSummary({
-    required this.date,
-    required this.origin,
-    required this.destination,
-  });
-
-  final DateTime date;
-  final AsyncValue<TripEndpointRestriction> origin;
-  final AsyncValue<TripEndpointRestriction> destination;
-
-  @override
-  Widget build(BuildContext context) {
-    return _Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Pico y placa', style: AppTextStyles.h2),
-          const SizedBox(height: AppSpacing.s),
-          _RestrictionEndpoint(label: 'Origen', date: date, evaluation: origin),
-          const SizedBox(height: AppSpacing.m),
-          _RestrictionEndpoint(
-            label: 'Destino',
-            date: date,
-            evaluation: destination,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RestrictionEndpoint extends StatelessWidget {
-  const _RestrictionEndpoint({
-    required this.label,
-    required this.date,
-    required this.evaluation,
-  });
-
-  final String label;
-  final DateTime date;
-  final AsyncValue<TripEndpointRestriction> evaluation;
-
-  @override
-  Widget build(BuildContext context) {
-    return evaluation.when(
-      loading: () => Text('$label · Consultando'),
-      error: (error, stackTrace) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('$label · Sin información vigente'),
-          const Text('Fuente de reglas no disponible.'),
-          Text('Consultado para ${_formatDate(date)}'),
-        ],
-      ),
-      data: (result) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('$label · ${_restrictionLabel(result.status)}'),
-          Text(result.sourceUrl ?? 'Fuente de reglas no disponible.'),
-          Text('Consultado para ${_formatDate(date)}'),
-        ],
-      ),
-    );
-  }
-}
-
-class _ChecklistCard extends StatelessWidget {
-  const _ChecklistCard({
-    required this.completedChecklist,
-    required this.onChanged,
-  });
+class _Checklist extends StatelessWidget {
+  const _Checklist({required this.completedChecklist, required this.onChanged});
 
   final Set<TripChecklistItem> completedChecklist;
   final void Function(TripChecklistItem item, bool selected) onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return _Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Checklist temporal', style: AppTextStyles.h2),
-          const SizedBox(height: AppSpacing.s),
-          for (final item in TripChecklistItem.values)
-            Material(
-              type: MaterialType.transparency,
-              child: CheckboxListTile(
-                key: ValueKey('trip-checklist-${item.key}'),
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                title: Text(item.label),
-                value: completedChecklist.contains(item),
-                onChanged: (value) => onChanged(item, value ?? false),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TollTariffLookupCard extends ConsumerStatefulWidget {
-  const _TollTariffLookupCard({required this.onSource});
-
-  final ValueChanged<String> onSource;
-
-  @override
-  ConsumerState<_TollTariffLookupCard> createState() =>
-      _TollTariffLookupCardState();
-}
-
-class _TollTariffLookupCardState extends ConsumerState<_TollTariffLookupCard> {
-  final _controller = TextEditingController();
-  var _query = '';
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final catalog = ref.watch(tripTollTariffCatalogProvider);
-    return _Card(
-      child: Column(
-        key: const ValueKey('trip-toll-tariff-lookup'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('Tarifas propias de peajes', style: AppTextStyles.h2),
-          const SizedBox(height: AppSpacing.xs),
-          const Text(
-            'Consulta local por estación. No requiere TollGuru ni servicio de rutas.',
-          ),
-          const SizedBox(height: AppSpacing.m),
-          TextField(
-            key: const ValueKey('trip-toll-tariff-query'),
-            controller: _controller,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search_rounded),
-              labelText: 'Buscar peaje',
-              hintText: 'Guarne, Cocorná, Amagá...',
-            ),
-            textInputAction: TextInputAction.search,
-            onChanged: (value) => setState(() => _query = value),
-          ),
-          const SizedBox(height: AppSpacing.m),
-          catalog.when(
-            loading: () => const Text('Cargando tarifas locales'),
-            error: (_, _) => const Text(
-              'No se pudieron cargar las tarifas locales de peajes.',
-            ),
-            data: (data) => _TollTariffLookupResults(
-              catalog: data,
-              query: _query,
-              onSource: widget.onSource,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TollTariffLookupResults extends StatelessWidget {
-  const _TollTariffLookupResults({
-    required this.catalog,
-    required this.query,
-    required this.onSource,
-  });
-
-  final TollTariffCatalog catalog;
-  final String query;
-  final ValueChanged<String> onSource;
-
-  @override
-  Widget build(BuildContext context) {
-    final matches = catalog.search(query, limit: 6);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          '${catalog.counts.stations} estaciones · '
-          '${catalog.counts.numericGeneralRates} tarifas publicadas · '
-          'corte ${catalog.source.consultationCutoffAsStated}',
-          style: AppTextStyles.caption,
-        ),
+        Text('Checklist temporal', style: AppTextStyles.bodyStrong),
         const SizedBox(height: AppSpacing.s),
-        if (matches.isEmpty)
-          const Text('No encontramos una estación con ese texto.')
-        else
-          for (final station in matches) ...[
-            _TollTariffStationTile(station: station, onSource: onSource),
-            const SizedBox(height: AppSpacing.s),
-          ],
+        for (final item in TripChecklistItem.values)
+          Material(
+            type: MaterialType.transparency,
+            child: CheckboxListTile(
+              key: ValueKey('trip-checklist-${item.key}'),
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(item.label),
+              value: completedChecklist.contains(item),
+              onChanged: (value) => onChanged(item, value ?? false),
+            ),
+          ),
       ],
-    );
-  }
-}
-
-class _TollTariffStationTile extends StatelessWidget {
-  const _TollTariffStationTile({required this.station, required this.onSource});
-
-  final TollTariffStation station;
-  final ValueChanged<String> onSource;
-
-  @override
-  Widget build(BuildContext context) {
-    final categoryI = station.categoryI;
-    final sourceUrl = station.generalRates
-        .map((rate) => rate.chargeSourceUrl ?? rate.amountSourceUrl)
-        .whereType<String>()
-        .firstOrNull;
-    final visibleGeneralRates = station.generalRates
-        .where((rate) => rate.categoryCode.length <= 4)
-        .take(10)
-        .toList(growable: false);
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.m),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(station.name, style: AppTextStyles.bodyStrong),
-            if (station.department != null) Text(station.department!),
-            Text(
-              'Cat I: ${categoryI?.amountCop == null ? 'Sin dato' : _copFromPesos(categoryI!.amountCop!)}',
-              key: ValueKey('trip-toll-tariff-${station.id}-cat-i'),
-            ),
-            Text(
-              '${station.publicationControl ?? 'Control no informado'} · '
-              '${categoryI?.sourceType ?? 'Fuente no informada'}'
-              '${categoryI?.sourceDate == null ? '' : ' · ${categoryI!.sourceDate}'}',
-              style: AppTextStyles.caption,
-            ),
-            const SizedBox(height: AppSpacing.s),
-            Wrap(
-              spacing: AppSpacing.xs,
-              runSpacing: AppSpacing.xs,
-              children: [
-                for (final rate in visibleGeneralRates)
-                  Chip(
-                    visualDensity: VisualDensity.compact,
-                    label: Text(
-                      '${rate.categoryCode}: '
-                      '${rate.amountCop == null ? 'Sin dato' : _copFromPesos(rate.amountCop!)}',
-                    ),
-                  ),
-              ],
-            ),
-            if (station.specialRates.isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.s),
-              Text(
-                '${station.specialRates.length} tarifa(s) especial(es) no aplicadas sin elegibilidad.',
-                style: AppTextStyles.caption,
-              ),
-            ],
-            if (station.routeRule != null) ...[
-              const SizedBox(height: AppSpacing.s),
-              Text(station.routeRule!, style: AppTextStyles.caption),
-            ],
-            if (sourceUrl != null) ...[
-              const SizedBox(height: AppSpacing.s),
-              TextButton.icon(
-                onPressed: () => onSource(sourceUrl),
-                icon: const Icon(Icons.open_in_new_rounded),
-                label: const Text('Ver fuente'),
-              ),
-            ],
-          ],
-        ),
-      ),
     );
   }
 }
@@ -1303,47 +1085,27 @@ class _OpenNavigationButton extends StatelessWidget {
 }
 
 class _ExternalNotice extends StatelessWidget {
-  const _ExternalNotice({required this.draftRestored});
-
-  final bool draftRestored;
+  const _ExternalNotice();
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.l),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'La navegación y el estado vial se consultan en servicios externos.',
-              key: const ValueKey('trip-external-services-copy'),
-              style: AppTextStyles.body,
-            ),
-            const SizedBox(height: AppSpacing.s),
-            const Text(
-              'Google Maps y Waze pueden recalcular el recorrido y cambiar los tiempos y peajes. La alternativa seleccionada no se conserva en el enlace.',
-            ),
-            const SizedBox(height: AppSpacing.s),
-            const Text(
-              'INVÍAS es una fuente vial separada; sus cierres no están confirmados en este plan.',
-            ),
-            if (draftRestored) ...[
-              const SizedBox(height: AppSpacing.s),
-              Text(
-                'Borrador local restaurado.',
-                key: const ValueKey('trip-draft-restored'),
-                style: AppTextStyles.caption.copyWith(color: AppColors.teal),
-              ),
-            ],
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'La navegación y el estado vial se consultan en servicios externos.',
+          key: const ValueKey('trip-external-services-copy'),
+          style: AppTextStyles.body,
         ),
-      ),
+        const SizedBox(height: AppSpacing.s),
+        const Text(
+          'Google Maps y Waze pueden recalcular el recorrido y cambiar los tiempos y peajes. La alternativa seleccionada no se conserva en el enlace.',
+        ),
+        const SizedBox(height: AppSpacing.s),
+        const Text(
+          'INVÍAS es una fuente vial separada; sus cierres no están confirmados en este plan.',
+        ),
+      ],
     );
   }
 }
@@ -1371,46 +1133,6 @@ class _RoutesUnavailable extends StatelessWidget {
       ],
     ),
   );
-}
-
-class _TollTariffLookupLauncher extends StatelessWidget {
-  const _TollTariffLookupLauncher({required this.onSource});
-
-  final ValueChanged<String> onSource;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      key: const ValueKey('trip-open-toll-tariffs'),
-      onPressed: () => showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        showDragHandle: true,
-        useRootNavigator: true,
-        builder: (context) {
-          final bottomPadding =
-              AppSpacing.l + MediaQuery.paddingOf(context).bottom;
-          return SafeArea(
-            top: false,
-            child: FractionallySizedBox(
-              heightFactor: 0.86,
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  AppSpacing.l,
-                  0,
-                  AppSpacing.l,
-                  bottomPadding,
-                ),
-                child: _TollTariffLookupCard(onSource: onSource),
-              ),
-            ),
-          );
-        },
-      ),
-      icon: const Icon(Icons.receipt_long_outlined),
-      label: const Text('Consultar tarifas de peajes'),
-    );
-  }
 }
 
 class _Card extends StatelessWidget {
@@ -1460,19 +1182,6 @@ String _formatDate(DateTime date) {
       '${date.day.toString().padLeft(2, '0')}';
 }
 
-String _copFromPesos(int pesos) {
-  final digits = pesos.abs().toString();
-  final buffer = StringBuffer(r'$');
-  if (pesos < 0) buffer.write('-');
-  for (var index = 0; index < digits.length; index++) {
-    if (index > 0 && (digits.length - index) % 3 == 0) {
-      buffer.write('.');
-    }
-    buffer.write(digits[index]);
-  }
-  return buffer.toString();
-}
-
 _TripDatePickerRange _datePickerRange(DateTime selectedDate) {
   final currentYear = DateTime.now().year;
   final selectedYear = selectedDate.year;
@@ -1519,14 +1228,5 @@ String _standardCategoryLabel(VehicleProfile? vehicle) {
   if (vehicle.serviceType == VehicleServiceType.taxi) {
     return 'Taxi · categoría propia';
   }
-  return 'Particular · 2 ejes';
-}
-
-String _restrictionLabel(RestrictionDayStatus status) {
-  return switch (status) {
-    RestrictionDayStatus.allowed => 'Sin restricción para ese día',
-    RestrictionDayStatus.restricted => 'No circula',
-    RestrictionDayStatus.unknown => 'Sin información vigente',
-    RestrictionDayStatus.stale => 'Información desactualizada',
-  };
+  return 'Automóvil o camioneta · categoría I';
 }

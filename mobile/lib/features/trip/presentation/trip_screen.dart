@@ -4,9 +4,11 @@ import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/theme/app_tokens.dart';
+import '../../driving/domain/traffic_camera.dart';
 import '../../garage/data/vehicle_profile.dart';
 import '../../pico_placa/domain/bogota_time.dart';
 import '../../vehicle_status/platform/external_launcher.dart';
@@ -266,6 +268,22 @@ class _TripScreenState extends ConsumerState<TripScreen>
         _timeError = null;
       }),
       isPlanning: _cancelToken != null,
+      planInformation: currentPlan == null
+          ? null
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Datos y fuentes', style: AppTextStyles.bodyStrong),
+                Text(
+                  'Consulta: ${tripInstantLabel(currentPlan.generatedAtUtc)}',
+                ),
+                Text('Proveedor: ${currentPlan.provider}'),
+                Text(currentPlan.attribution),
+                const Text(
+                  'Estimación entre puntos de referencia de las ciudades. La duración no predice el tráfico.',
+                ),
+              ],
+            ),
       planError: _planError,
       onPreview: () => _preview(catalog, selectedVehicle),
       onCancelPreview: () => setState(_invalidatePlan),
@@ -274,22 +292,35 @@ class _TripScreenState extends ConsumerState<TripScreen>
           _loadDemoScenario(catalog, scenario),
       planResult:
           currentPlan != null && currentRequest != null && selectedRoute != null
-          ? _TripPlanWithLocalData(
-              request: currentRequest,
-              plan: currentPlan,
-              route: selectedRoute,
-              onRouteSelected: (id) => setState(() => _selectedRouteId = id),
-              onSource: _openSource,
-              mapAnchorKey: _mapAnchorKey,
-              onViewMap: _scrollToMap,
-              tollInventory: tollInventory!,
-              tollTariffCatalog: tollTariffCatalog!,
-              cameraSnapshot: cameraSnapshot!,
-              mapConfig: ref.watch(tripRouteMapConfigProvider),
-              resolver: ref.watch(tripRouteAssociationResolverProvider),
-              onRetryTolls: () => ref.invalidate(tripTollInventoryProvider),
-              onRetryCameras: () =>
-                  ref.invalidate(tripCameraPackSnapshotProvider),
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _TripPlanWithLocalData(
+                  request: currentRequest,
+                  plan: currentPlan,
+                  route: selectedRoute,
+                  onRouteSelected: (id) =>
+                      setState(() => _selectedRouteId = id),
+                  onSource: _openSource,
+                  mapAnchorKey: _mapAnchorKey,
+                  onViewMap: _scrollToMap,
+                  tollInventory: tollInventory!,
+                  tollTariffCatalog: tollTariffCatalog!,
+                  cameraSnapshot: cameraSnapshot!,
+                  mapConfig: ref.watch(tripRouteMapConfigProvider),
+                  resolver: ref.watch(tripRouteAssociationResolverProvider),
+                  onRetryTolls: () => ref.invalidate(tripTollInventoryProvider),
+                  onRetryCameras: () =>
+                      ref.invalidate(tripCameraPackSnapshotProvider),
+                ),
+                if (tollTariffCatalog.hasError)
+                  TextButton.icon(
+                    onPressed: () =>
+                        ref.invalidate(tripTollTariffCatalogProvider),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('No se cargaron las tarifas. Reintentar'),
+                  ),
+              ],
             )
           : null,
       instantRestrictions: Column(
@@ -298,7 +329,12 @@ class _TripScreenState extends ConsumerState<TripScreen>
           if (departureUtc != null)
             TripInstantEndpoint(
               key: const ValueKey('trip-origin-instant'),
-              label: 'Origen / salida',
+              label: 'Salida · ${origin?.municipality ?? 'Origen'}',
+              onCity: origin?.jurisdictionId == null
+                  ? null
+                  : () => context.push(
+                      '/pico?jurisdictionId=${Uri.encodeComponent(origin!.jurisdictionId!)}',
+                    ),
               instantUtc: departureUtc,
               onSource: _openSource,
               evaluation: ref.watch(
@@ -309,17 +345,34 @@ class _TripScreenState extends ConsumerState<TripScreen>
                 )),
               ),
             )
-          else
-            const Text(
-              'Origen / salida: se muestran las reglas y ventanas del día; no hay veredicto para una hora exacta.',
+          else ...[
+            TripInstantEndpoint(
+              label: 'Salida · ${origin?.municipality ?? 'Origen'}',
+              instantUtc: bogotaScheduledTime(date: date, minuteOfDay: 0),
+              dateOnly: true,
+              evaluation: originRestriction,
+              onSource: _openSource,
+              onCity: origin?.jurisdictionId == null
+                  ? null
+                  : () => context.push(
+                      '/pico?jurisdictionId=${Uri.encodeComponent(origin!.jurisdictionId!)}',
+                    ),
             ),
+            const Text('Sin hora de salida. Consulta las reglas del día.'),
+          ],
           const SizedBox(height: AppSpacing.m),
           if (selectedRoute != null &&
               currentRequest != null &&
               currentRequest.departureUtc != null)
             TripInstantEndpoint(
               key: ValueKey('trip-destination-instant-${selectedRoute.id}'),
-              label: 'Destino / llegada aproximada',
+              label:
+                  'Llegada estimada · ${currentRequest.destination.municipality}',
+              onCity: currentRequest.destination.jurisdictionId == null
+                  ? null
+                  : () => context.push(
+                      '/pico?jurisdictionId=${Uri.encodeComponent(currentRequest.destination.jurisdictionId!)}',
+                    ),
               instantUtc: selectedRoute.arrivalUtc(
                 currentRequest.departureUtc!,
               ),
@@ -334,19 +387,17 @@ class _TripScreenState extends ConsumerState<TripScreen>
                 )),
               ),
             )
-          else if (selectedRoute != null &&
-              currentRequest?.departureMode == TripDepartureMode.dateOnly)
-            const Text(
-              'Destino / llegada: la fecha real depende de la ruta y puede cambiar al día siguiente.',
-            )
-          else
-            const Text(
-              'Destino / llegada: no disponible hasta obtener una ruta.',
-            ),
-          const SizedBox(height: AppSpacing.s),
-          const Text(
-            'Se evalúan solo los dos extremos. La llegada al destino no indica la hora de entrada a una zona restringida. Revisa los horarios: la llegada es aproximada.',
-          ),
+          else ...[
+            Text('Llegada · ${destination?.municipality ?? 'Destino'}'),
+            const Text('Llegada por determinar'),
+            if (destination?.jurisdictionId != null)
+              TextButton(
+                onPressed: () => context.push(
+                  '/pico?jurisdictionId=${Uri.encodeComponent(destination!.jurisdictionId!)}',
+                ),
+                child: const Text('Ver pico y placa de destino'),
+              ),
+          ],
         ],
       ),
       completedChecklist: _completedChecklist,
@@ -891,21 +942,15 @@ class _TripScreenState extends ConsumerState<TripScreen>
     }
     FocusScope.of(context).unfocus();
     final selectedDate = DateUtils.dateOnly(_selectedDate);
-    final nowUtc = DateTime.now().toUtc();
-    final today = DateUtils.dateOnly(bogotaWallClock(nowUtc));
     final departureMode = _departureMinute != null
         ? TripDepartureMode.specified
-        : selectedDate == today
-        ? TripDepartureMode.now
         : TripDepartureMode.dateOnly;
-    final departureUtc = switch (departureMode) {
-      TripDepartureMode.now => nowUtc,
-      TripDepartureMode.specified => bogotaScheduledTime(
-        date: selectedDate,
-        minuteOfDay: _departureMinute!,
-      ).toUtc(),
-      TripDepartureMode.dateOnly => null,
-    };
+    final departureUtc = _departureMinute == null
+        ? null
+        : bogotaScheduledTime(
+            date: selectedDate,
+            minuteOfDay: _departureMinute!,
+          ).toUtc();
     final request = TripPlanRequest(
       requestId: List.generate(
         16,
@@ -1014,7 +1059,7 @@ class _TripVehicleIdentity {
   int get hashCode => Object.hash(id, kind, serviceType);
 }
 
-class _TripPlanWithLocalData extends StatelessWidget {
+class _TripPlanWithLocalData extends StatefulWidget {
   const _TripPlanWithLocalData({
     required this.request,
     required this.plan,
@@ -1048,43 +1093,84 @@ class _TripPlanWithLocalData extends StatelessWidget {
   final VoidCallback onRetryCameras;
 
   @override
-  Widget build(BuildContext context) => tollInventory.when(
-    data: (tolls) => cameraSnapshot.when(
-      data: (cameras) => _TripPlanWithAssociations(
-        request: request,
-        plan: plan,
-        route: route,
-        tolls: tolls,
-        tollTariffCatalog: tollTariffCatalog.asData?.value,
-        cameras: cameras,
-        mapConfig: mapConfig,
-        resolver: resolver,
-        onRouteSelected: onRouteSelected,
-        onSource: onSource,
-        mapAnchorKey: mapAnchorKey,
-        onViewMap: onViewMap,
+  State<_TripPlanWithLocalData> createState() => _TripPlanWithLocalDataState();
+}
+
+class _TripPlanWithLocalDataState extends State<_TripPlanWithLocalData> {
+  final _pricing = ValueNotifier<Map<String, LocalTollPricingBreakdown>>({});
+  final _unavailableTolls = TollInventoryDataset(
+    version: 'unavailable',
+    sourceTimestamp: DateTime.utc(1970),
+    records: const [],
+  );
+  static const _unavailableCameras = TripCameraPackSnapshot(
+    version: 'unavailable',
+    pack: CameraPack(
+      source: CameraPackSource(
+        name: 'Datos no disponibles',
+        pageUrl: '',
+        dataUrl: '',
+        fetchedAtUtc: '',
       ),
-      loading: () => _result(const _TripMapLoading()),
-      error: (_, _) => _result(_TripMapLoadError(onRetry: onRetryCameras)),
+      cameras: [],
     ),
-    loading: () => _result(const _TripMapLoading()),
-    error: (_, _) => _result(_TripMapLoadError(onRetry: onRetryTolls)),
   );
 
-  Widget _result(Widget mapPreview) => TripPlanResult(
-    request: request,
-    plan: plan,
-    selectedRouteId: route.id,
-    onRouteSelected: onRouteSelected,
-    onSource: onSource,
-    mapPreview: mapPreview,
-    mapAnchorKey: mapAnchorKey,
-    onViewMap: onViewMap,
+  @override
+  void didUpdateWidget(covariant _TripPlanWithLocalData oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.plan, widget.plan) ||
+        !identical(oldWidget.tollInventory, widget.tollInventory) ||
+        !identical(oldWidget.cameraSnapshot, widget.cameraSnapshot) ||
+        !identical(oldWidget.tollTariffCatalog, widget.tollTariffCatalog)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _pricing.value = {};
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _pricing.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _TripPlanWithAssociations(
+        request: widget.request,
+        plan: widget.plan,
+        route: widget.route,
+        tolls: widget.tollInventory.asData?.value ?? _unavailableTolls,
+        tollTariffCatalog: widget.tollTariffCatalog.asData?.value,
+        cameras: widget.cameraSnapshot.asData?.value ?? _unavailableCameras,
+        mapConfig: widget.mapConfig,
+        resolver: widget.resolver,
+        onRouteSelected: widget.onRouteSelected,
+        onSource: widget.onSource,
+        mapAnchorKey: widget.mapAnchorKey,
+        onViewMap: widget.onViewMap,
+        pricingChanges: _pricing,
+      ),
+      if (widget.tollInventory.hasError || widget.cameraSnapshot.hasError)
+        _TripMapLoadError(
+          onRetry: () {
+            if (widget.tollInventory.hasError) widget.onRetryTolls();
+            if (widget.cameraSnapshot.hasError) widget.onRetryCameras();
+          },
+        )
+      else if (widget.tollInventory.isLoading ||
+          widget.cameraSnapshot.isLoading)
+        const Text('Cargando datos locales; el recorrido sigue disponible.'),
+    ],
   );
 }
 
 class _TripPlanWithAssociations extends StatefulWidget {
   const _TripPlanWithAssociations({
+    required this.pricingChanges,
     required this.request,
     required this.plan,
     required this.route,
@@ -1100,6 +1186,7 @@ class _TripPlanWithAssociations extends StatefulWidget {
   });
 
   final TripPlanRequest request;
+  final ValueNotifier<Map<String, LocalTollPricingBreakdown>> pricingChanges;
   final TripPlan plan;
   final TripRouteOption route;
   final TollInventoryDataset tolls;
@@ -1119,6 +1206,9 @@ class _TripPlanWithAssociations extends StatefulWidget {
 
 class _TripPlanWithAssociationsState extends State<_TripPlanWithAssociations> {
   TripRouteAssociations? _snapshot;
+  final Map<String, TripRouteAssociations> _routeSnapshots = {};
+  ValueNotifier<Map<String, LocalTollPricingBreakdown>> get _pricingByRoute =>
+      widget.pricingChanges;
   Object? _error;
   var _generation = 0;
 
@@ -1131,12 +1221,19 @@ class _TripPlanWithAssociationsState extends State<_TripPlanWithAssociations> {
   @override
   void didUpdateWidget(covariant _TripPlanWithAssociations oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.route.id != widget.route.id ||
+    if (!identical(oldWidget.plan, widget.plan) ||
+        oldWidget.route.id != widget.route.id ||
         !identical(oldWidget.route.geometry, widget.route.geometry) ||
         oldWidget.tolls.version != widget.tolls.version ||
         oldWidget.cameras.version != widget.cameras.version ||
-        !identical(oldWidget.resolver, widget.resolver)) {
+        !identical(oldWidget.resolver, widget.resolver) ||
+        !identical(oldWidget.tollTariffCatalog, widget.tollTariffCatalog)) {
       _snapshot = null;
+      if (!identical(oldWidget.plan, widget.plan) ||
+          oldWidget.tolls.version != widget.tolls.version ||
+          oldWidget.cameras.version != widget.cameras.version) {
+        _routeSnapshots.clear();
+      }
       _error = null;
       _scheduleResolveAfterFrame();
     }
@@ -1148,36 +1245,48 @@ class _TripPlanWithAssociationsState extends State<_TripPlanWithAssociations> {
       if (!mounted || generation != _generation) {
         return;
       }
+      setState(_refreshPricing);
       _resolve(generation);
     });
   }
 
-  void _resolve(int generation) {
-    final request = TripRouteAssociationRequest(
-      routeId: widget.route.id,
-      geometry: widget.route.geometry,
-      tollVersion: widget.tolls.version,
-      tolls: widget.tolls.records,
-      cameraVersion: widget.cameras.version,
-      cameras: widget.cameras.pack.cameras,
-    );
-    Future.sync(() => widget.resolver.resolve(request)).then(
-      (snapshot) {
-        if (!mounted || generation != _generation) {
-          return;
-        }
-        setState(() {
-          _snapshot = snapshot;
-          _error = null;
-        });
-      },
-      onError: (Object error, StackTrace stackTrace) {
-        if (!mounted || generation != _generation) {
-          return;
-        }
-        setState(() => _error = error);
-      },
-    );
+  Future<void> _resolve(int generation) async {
+    final routes = [
+      widget.route,
+      ...widget.plan.routes.where((route) => route.id != widget.route.id),
+    ];
+    for (final route in routes) {
+      if (!mounted || generation != _generation) return;
+      final request = TripRouteAssociationRequest(
+        routeId: route.id,
+        geometry: route.geometry,
+        tollVersion: widget.tolls.version,
+        tolls: widget.tolls.records,
+        cameraVersion: widget.cameras.version,
+        cameras: widget.cameras.pack.cameras,
+      );
+      await Future.sync(() => widget.resolver.resolve(request)).then(
+        (snapshot) {
+          if (!mounted || generation != _generation) {
+            return;
+          }
+          setState(() {
+            _routeSnapshots[route.id] = snapshot;
+            _refreshPricing();
+            if (route.id == widget.route.id) {
+              _snapshot = snapshot;
+              _error = null;
+            }
+          });
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          if (!mounted || generation != _generation) {
+            return;
+          }
+          if (route.id == widget.route.id) setState(() => _error = error);
+        },
+      );
+    }
   }
 
   void _retry() {
@@ -1188,25 +1297,32 @@ class _TripPlanWithAssociationsState extends State<_TripPlanWithAssociations> {
     _resolve(++_generation);
   }
 
+  void _refreshPricing() {
+    _pricingByRoute.value = <String, LocalTollPricingBreakdown>{
+      if (widget.tollTariffCatalog != null &&
+          widget.tolls.version != 'unavailable')
+        for (final entry in _routeSnapshots.entries)
+          if (entry.value.geometryQuality == RouteGeometryQuality.polyline)
+            entry.key: priceExplicitTollPassages(
+              catalog: widget.tollTariffCatalog!,
+              passages: entry.value.currentTolls.map(
+                (association) => association.location,
+              ),
+              operatorCategoryCode: _localTollOperatorCategoryCode(
+                widget.request.vehicleCategory,
+              ),
+            ),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final snapshot = _snapshot;
-    final localTollPricing =
-        snapshot == null ||
-            snapshot.geometryQuality != RouteGeometryQuality.polyline ||
-            widget.tollTariffCatalog == null
-        ? null
-        : priceExplicitTollPassages(
-            catalog: widget.tollTariffCatalog!,
-            passages: snapshot.currentTolls.map(
-              (association) => association.location,
-            ),
-            operatorCategoryCode: _localTollOperatorCategoryCode(
-              widget.request.vehicleCategory,
-            ),
-          );
+    final pricingByRoute = _pricingByRoute.value;
+    final localTollPricing = pricingByRoute[widget.route.id];
     final cameraCount =
-        snapshot?.geometryQuality == RouteGeometryQuality.polyline
+        widget.cameras.version != 'unavailable' &&
+            snapshot?.geometryQuality == RouteGeometryQuality.polyline
         ? snapshot?.uniqueCameraLocationCount
         : null;
     final mapPreview = switch ((_error, snapshot)) {
@@ -1217,6 +1333,7 @@ class _TripPlanWithAssociationsState extends State<_TripPlanWithAssociations> {
         geometry: widget.route.geometry,
         tollInventory: widget.tolls,
         tollTariffCatalog: widget.tollTariffCatalog,
+        localTollPricing: localTollPricing,
         cameraPack: widget.cameras.pack,
         cameraPackVersion: widget.cameras.version,
         associations: associations,
@@ -1239,6 +1356,8 @@ class _TripPlanWithAssociationsState extends State<_TripPlanWithAssociations> {
       onViewMap: widget.onViewMap,
       cameraLocationCount: cameraCount,
       localTollPricing: localTollPricing,
+      localPricingByRoute: pricingByRoute,
+      pricingChanges: _pricingByRoute,
     );
   }
 }

@@ -120,7 +120,7 @@ final class TripPreviewController
                 throw new DomainException('validation');
             }
             $today = DateTimeImmutable::createFromInterface($now)->setTimezone($bogota)->setTime(0, 0);
-            if ($date <= $today || $date > $today->modify('+'.$this->maxFutureDays().' days')) {
+            if ($date < $today || $date > $today->modify('+'.$this->maxFutureDays().' days')) {
                 throw new DomainException('departure_window');
             }
 
