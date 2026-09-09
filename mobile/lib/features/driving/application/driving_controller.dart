@@ -6,12 +6,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/app_providers.dart';
 import '../../location/platform/device_location_gateway.dart';
+import '../../trip/data/toll_inventory.dart';
+import '../../trip/data/toll_tariff_catalog.dart';
 import '../data/camera_pack_loader.dart';
 import '../data/driving_preferences.dart';
 import '../data/driving_regional_demo.dart';
 import '../domain/camera_matcher.dart';
 import '../domain/driving_alert_engine.dart';
 import '../domain/traffic_camera.dart';
+import '../domain/toll_matcher.dart';
+import '../domain/toll_alert_session.dart';
 import '../platform/driving_feedback_gateway.dart';
 import '../platform/driving_location_gateway.dart';
 
@@ -30,6 +34,7 @@ enum DrivingSimulationScenario {
   lateralApproach,
   turnAway,
   gpsWeak,
+  cocorna,
   niquiaToEstrella,
   estrellaToNiquia;
 
@@ -40,6 +45,7 @@ enum DrivingSimulationScenario {
     lateralApproach => 'Radar 500 m',
     turnAway => 'Giro antes',
     gpsWeak => 'GPS débil',
+    cocorna => 'Simulación · Peaje Cocorná',
     niquiaToEstrella => 'Niquía → La Estrella',
     estrellaToNiquia => 'La Estrella → Niquía',
   };
@@ -133,6 +139,12 @@ class DrivingState {
     this.dismissedCameraId,
     this.errorMessage,
     this.simulationName,
+    this.nearestToll,
+    this.referenceCharge,
+    this.tollEpisodeKey,
+    this.tollDataError,
+    this.reliableHeadingDegrees,
+    this.visualAlertPulseKey,
   });
 
   final DrivingSessionStatus status;
@@ -147,6 +159,19 @@ class DrivingState {
   final String? dismissedCameraId;
   final String? errorMessage;
   final String? simulationName;
+  final TollMatch? nearestToll;
+  final LocalTollPricingCharge? referenceCharge;
+  final String? tollEpisodeKey;
+  final String? tollDataError;
+  final double? reliableHeadingDegrees;
+  final String? visualAlertPulseKey;
+
+  bool get showTollAlertPanel =>
+      isActive &&
+      canEvaluateAlerts &&
+      preferences.tollAlertsEnabled &&
+      nearestToll != null &&
+      !showCameraAlertPanel;
 
   bool get isActive => status == DrivingSessionStatus.active;
 
@@ -164,31 +189,15 @@ class DrivingState {
     return camera.speedLimitKmh;
   }
 
-  int get speedDeltaKmh {
-    final reported = reportedCameraSpeedKmh;
-    if (reported == null) {
-      return 0;
-    }
-    return speedKmh - reported;
-  }
+  int get speedDeltaKmh => 0;
 
   DrivingSpeedState get speedState {
     final camera = currentCamera;
     if (!isActive || camera == null) {
       return DrivingSpeedState.noCamera;
     }
-    final reported = camera.speedLimitKmh;
-    if (reported == null) {
-      return DrivingSpeedState.unknownReportedSpeed;
-    }
-    // UI hysteresis only: avoids color jitter. This is not a legal tolerance.
-    if (speedKmh > reported + drivingOverspeedVisualMarginKmh) {
-      return DrivingSpeedState.over;
-    }
-    if (speedKmh >= reported - 5) {
-      return DrivingSpeedState.near;
-    }
-    return DrivingSpeedState.within;
+    // ANSV metadata is not a verified speed limit for the current road.
+    return DrivingSpeedState.unknownReportedSpeed;
   }
 
   bool get isOverspeeding => speedState == DrivingSpeedState.over;
@@ -237,9 +246,35 @@ class DrivingState {
     bool clearLastAlert = false,
     bool clearDismissedCamera = false,
     bool clearErrorMessage = false,
+    TollMatch? nearestToll,
+    LocalTollPricingCharge? referenceCharge,
+    String? tollEpisodeKey,
+    String? tollDataError,
+    double? reliableHeadingDegrees,
+    bool clearNearestToll = false,
+    bool clearTollDataError = false,
+    bool clearReliableHeading = false,
+    String? visualAlertPulseKey,
+    bool clearVisualAlertPulse = false,
   }) {
     return DrivingState(
       status: status ?? this.status,
+      nearestToll: clearNearestToll ? null : nearestToll ?? this.nearestToll,
+      referenceCharge: clearNearestToll
+          ? null
+          : referenceCharge ?? this.referenceCharge,
+      tollEpisodeKey: clearNearestToll
+          ? null
+          : tollEpisodeKey ?? this.tollEpisodeKey,
+      tollDataError: clearTollDataError
+          ? null
+          : tollDataError ?? this.tollDataError,
+      reliableHeadingDegrees: clearReliableHeading
+          ? null
+          : reliableHeadingDegrees ?? this.reliableHeadingDegrees,
+      visualAlertPulseKey: clearVisualAlertPulse
+          ? null
+          : visualAlertPulseKey ?? this.visualAlertPulseKey,
       preferences: preferences ?? this.preferences,
       cameraCount: cameraCount ?? this.cameraCount,
       cameraSpeedKnownCount:
@@ -272,11 +307,20 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   StreamSubscription<DrivingPoint>? _subscription;
   DrivingPoint? _previousPoint;
   DrivingAlertEngine? _alertEngine;
-  bool _wasOverspeeding = false;
   String? _activeCameraId;
   var _cameraEpisodeSerial = 0;
   var _sessionSerial = 0;
   Future<void> _pointProcessing = Future<void>.value();
+  CameraPack? _sessionPack;
+  TollAlertSession _tollSession = TollAlertSession();
+  List<TollInventoryRecord> _tolls = const [];
+  Map<String, LocalTollPricingCharge> _tollCharges = const {};
+  Future<void>? _tollLoading;
+  String? _tollLoadError;
+  String? _feedbackTarget;
+  var _feedbackSerial = 0;
+  var _visualPulseSerial = 0;
+  Future<void> _feedbackStop = Future<void>.value();
 
   @override
   Future<DrivingState> build() async {
@@ -341,6 +385,11 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         : null;
     _sessionSerial += 1;
     final sessionSerial = _sessionSerial;
+    // Loading is independent of GPS startup and never happens per location.
+    if (current.preferences.tollAlertsEnabled ||
+        scenario == DrivingSimulationScenario.cocorna) {
+      unawaited(_ensureTollData());
+    }
     _pointProcessing = Future<void>.value();
     state = AsyncData(
       current.copyWith(
@@ -349,6 +398,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         simulationName: scenario?.label,
         clearSimulation: !wantsSimulation,
         clearCurrentPoint: true,
+        clearVisualAlertPulse: true,
       ),
     );
     final pack = await ref.read(cameraPackProvider.future);
@@ -364,7 +414,22 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       clearSimulation: !wantsSimulation,
       clearCurrentPoint: true,
     );
-    if (scenario != null && scenario.isRegional) {
+    if (scenario == DrivingSimulationScenario.cocorna) {
+      await _ensureTollData();
+      if (!_isCurrentStart(sessionSerial)) return;
+      final toll = _tolls
+          .where((toll) => toll.id == 'INV-COCORNA-6A6F1282D1')
+          .firstOrNull;
+      if (toll == null) {
+        await _setStopped(
+          readyState,
+          DrivingSessionStatus.locationUnavailable,
+          'No se pudo cargar el peaje real para la simulación.',
+        );
+        return;
+      }
+      drivingStream = _simulatedTollStream(toll);
+    } else if (scenario != null && scenario.isRegional) {
       try {
         final route = await ref.read(drivingRegionalDemoLoaderProvider)(
           scenario.name,
@@ -433,13 +498,21 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       return;
     }
     _previousPoint = null;
-    _wasOverspeeding = false;
+    _sessionPack = pack;
+    _tollSession = TollAlertSession();
     _activeCameraId = null;
-    _alertEngine = _alertEngineFor(readyState.preferences);
+    final latestPreferences =
+        state.asData?.value.preferences ?? readyState.preferences;
+    _alertEngine = _alertEngineFor(latestPreferences);
     state = AsyncData(
       readyState.copyWith(
         status: DrivingSessionStatus.active,
+        preferences: latestPreferences,
         clearNearestCamera: true,
+        clearNearestToll: true,
+        clearReliableHeading: true,
+        tollDataError: _tollLoadError,
+        clearTollDataError: _tollLoadError == null,
         clearLastAlert: true,
         clearDismissedCamera: true,
         clearErrorMessage: true,
@@ -463,7 +536,9 @@ class DrivingController extends AsyncNotifier<DrivingState> {
           ),
         );
       },
-      onDone: scenario?.isRegional == true
+      onDone:
+          scenario?.isRegional == true ||
+              scenario == DrivingSimulationScenario.cocorna
           ? () => unawaited(_finishSimulation(sessionSerial))
           : null,
       cancelOnError: false,
@@ -486,12 +561,15 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     state = AsyncData(
       current.copyWith(
         status: DrivingSessionStatus.idle,
+        clearNearestToll: true,
+        clearReliableHeading: true,
         clearNearestCamera: true,
         clearLastAlert: true,
         clearDismissedCamera: true,
         clearErrorMessage: true,
         clearSimulation: true,
         clearCurrentPoint: true,
+        clearVisualAlertPulse: true,
       ),
     );
   }
@@ -502,16 +580,54 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     if (cameraId == null) {
       return;
     }
-    state = AsyncData(current.copyWith(dismissedCameraId: cameraId));
+    state = AsyncData(
+      current.copyWith(
+        dismissedCameraId: cameraId,
+        clearVisualAlertPulse: true,
+      ),
+    );
+    await _invalidateFeedback();
+  }
+
+  Future<void> dismissCurrentToll() async {
+    final current = state.asData?.value;
+    if (current == null || current.nearestToll == null) return;
+    _tollSession.dismissCurrent();
+    state = AsyncData(
+      current.copyWith(clearNearestToll: true, clearVisualAlertPulse: true),
+    );
+    if (_feedbackTarget?.startsWith('toll:') == true) {
+      await _invalidateFeedback();
+    }
   }
 
   Future<void> savePreferences(DrivingPreferences preferences) async {
-    await saveDrivingPreferences(ref.read(appPreferencesProvider), preferences);
+    final storage = ref.read(appPreferencesProvider);
     final current = state.asData?.value ?? await build();
     if (_shouldResetAlertEngine(current.preferences, preferences, current)) {
       _alertEngine = _alertEngineFor(preferences);
     }
-    state = AsyncData(current.copyWith(preferences: preferences));
+    if (!preferences.tollAlertsEnabled) _tollSession.disable();
+    state = AsyncData(
+      current.copyWith(
+        preferences: preferences,
+        clearNearestToll: !preferences.tollAlertsEnabled,
+        clearVisualAlertPulse: !preferences.visualAlertsEnabled,
+      ),
+    );
+    if (current.preferences.tollAlertsEnabled !=
+            preferences.tollAlertsEnabled ||
+        current.preferences.voiceEnabled != preferences.voiceEnabled ||
+        current.preferences.soundEnabled != preferences.soundEnabled ||
+        current.preferences.vibrationEnabled != preferences.vibrationEnabled ||
+        current.preferences.cameraTargetingConeDegrees !=
+            preferences.cameraTargetingConeDegrees) {
+      await _invalidateFeedback();
+    }
+    if (preferences.tollAlertsEnabled && ref.mounted) {
+      unawaited(_ensureTollData());
+    }
+    await saveDrivingPreferences(storage, preferences);
   }
 
   void _enqueuePoint(DrivingPoint point, int sessionSerial) {
@@ -549,12 +665,14 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         !point.recordedAt.isAfter(latestPoint.recordedAt)) {
       return;
     }
-    final pack = await ref.read(cameraPackProvider.future);
+    final pack = _sessionPack;
+    if (pack == null) return;
     if (!_isActiveSession(sessionSerial)) {
       return;
     }
     final alertEngine = _alertEngine ??= _alertEngineFor(current.preferences);
     if (point.accuracyMeters > 60) {
+      unawaited(_invalidateFeedback());
       _previousPoint = null;
       alertEngine.markNoMatch(point.recordedAt);
       final keepLastAlert =
@@ -569,9 +687,12 @@ class DrivingController extends AsyncNotifier<DrivingState> {
           status: DrivingSessionStatus.active,
           currentPoint: point,
           clearNearestCamera: true,
+          clearNearestToll: true,
+          clearReliableHeading: true,
           clearLastAlert: !keepLastAlert,
           clearDismissedCamera: !keepDismissal,
           clearErrorMessage: true,
+          clearVisualAlertPulse: true,
         ),
       );
       return;
@@ -586,9 +707,12 @@ class DrivingController extends AsyncNotifier<DrivingState> {
           status: DrivingSessionStatus.active,
           currentPoint: point,
           clearNearestCamera: true,
+          clearNearestToll: true,
+          clearReliableHeading: true,
           clearLastAlert: current.lastAlert == null,
           clearDismissedCamera: !keepDismissal,
           clearErrorMessage: true,
+          clearVisualAlertPulse: true,
         ),
       );
       return;
@@ -599,6 +723,10 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       previous: _previousPoint,
       cameras: pack.cameras,
       targetingConeDegrees: current.preferences.cameraTargetingConeDegrees,
+    );
+    final reliableHeading = reliableDrivingCourseDegrees(
+      current: point,
+      previous: _previousPoint,
     );
     final sameActiveEpisode =
         match != null &&
@@ -611,18 +739,11 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       speedKmh: point.speedKmh,
       now: point.recordedAt,
     );
-    _previousPoint = point;
     final dismissedCurrentEpisode =
         match != null &&
         current.dismissedCameraId == match.camera.id &&
         sameActiveEpisode;
     final visibleAlert = dismissedCurrentEpisode ? null : alert;
-    if (visibleAlert != null) {
-      await _notify(current.preferences, visibleAlert, sessionSerial);
-      if (!_isActiveSession(sessionSerial)) {
-        return;
-      }
-    }
     final keepLastAlert =
         current.lastAlert != null &&
         alertEngine.hasActiveEpisode(
@@ -645,31 +766,72 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       clearLastAlert: visibleAlert == null && !keepLastAlert,
       clearDismissedCamera: clearDismissedCamera,
       clearErrorMessage: true,
+      reliableHeadingDegrees: reliableHeading,
+      clearReliableHeading: reliableHeading == null,
     );
-    if (nextState.isOverspeeding &&
-        !_wasOverspeeding &&
-        current.preferences.vibrationEnabled &&
-        visibleAlert == null &&
-        !dismissedCurrentEpisode) {
-      if (!_isActiveSession(sessionSerial)) {
-        return;
-      }
-      await ref.read(drivingFeedbackGatewayProvider).vibrate();
-      if (!_isActiveSession(sessionSerial)) {
-        return;
-      }
+    final tollThreshold = current.preferences.tollAlertsEnabled
+        ? _tollSession.evaluate(
+            current: point,
+            previous: _previousPoint,
+            tolls: _tolls,
+            targetingConeDegrees:
+                current.preferences.cameraTargetingConeDegrees,
+            thresholdsMeters: current.preferences.activeThresholdsMeters,
+            cameraHasPriority: nextState.showCameraAlertPanel,
+          )
+        : null;
+    _previousPoint = point;
+    final toll = current.preferences.tollAlertsEnabled
+        ? _tollSession.nearestToll
+        : null;
+    var updated = nextState.copyWith(
+      nearestToll: toll,
+      referenceCharge: _tollCharges[toll?.toll.id],
+      tollEpisodeKey: _tollSession.episodeKey,
+      clearNearestToll: toll == null,
+      clearVisualAlertPulse: !nextState.showCameraAlertPanel && toll == null,
+    );
+    final target = updated.showCameraAlertPanel && match!.approaching
+        ? 'camera:${updated.cameraEpisodeKey}'
+        : updated.showTollAlertPanel && toll!.approaching
+        ? 'toll:${updated.tollEpisodeKey}'
+        : null;
+    final pendingStop = target != _feedbackTarget
+        ? _invalidateFeedback()
+        : _feedbackStop;
+    _feedbackTarget = target;
+    final message = visibleAlert != null
+        ? _voiceMessage(visibleAlert)
+        : tollThreshold != null && updated.showTollAlertPanel
+        ? 'Peaje ${toll!.toll.name} a $tollThreshold metros.'
+        : null;
+    if (updated.preferences.visualAlertsEnabled &&
+        message != null &&
+        target != null) {
+      _visualPulseSerial += 1;
+      updated = updated.copyWith(
+        visualAlertPulseKey: '$target:${_visualPulseSerial.toString()}',
+      );
     }
-    _wasOverspeeding = nextState.isOverspeeding;
-    state = AsyncData(nextState);
+    state = AsyncData(updated);
+    if (message != null && target != null) {
+      final feedbackSerial = ++_feedbackSerial;
+      // Native speech completion must not block GPS or priority changes.
+      unawaited(
+        _notifyMessage(message, sessionSerial, feedbackSerial, pendingStop),
+      );
+    }
   }
 
   bool _isActiveSession(int sessionSerial) {
-    return sessionSerial == _sessionSerial &&
+    return ref.mounted &&
+        sessionSerial == _sessionSerial &&
         state.asData?.value.status == DrivingSessionStatus.active;
   }
 
   bool _isCurrentStart(int sessionSerial) {
-    return sessionSerial == _sessionSerial &&
+    return ref.mounted &&
+        sessionSerial == _sessionSerial &&
         state.asData?.value.status == DrivingSessionStatus.starting;
   }
 
@@ -689,39 +851,145 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     return '$cameraId:$_cameraEpisodeSerial';
   }
 
-  Future<void> _notify(
-    DrivingPreferences preferences,
-    DrivingAlert alert,
+  Future<void> _notifyMessage(
+    String message,
     int sessionSerial,
+    int feedbackSerial,
+    Future<void> pendingStop,
   ) async {
+    bool valid() =>
+        _isActiveSession(sessionSerial) && feedbackSerial == _feedbackSerial;
+    try {
+      await pendingStop;
+      if (!valid()) return;
+      final feedback = ref.read(drivingFeedbackGatewayProvider);
+      if (state.asData!.value.preferences.voiceEnabled) {
+        await feedback.speak(message);
+      }
+      if (!valid()) return;
+      if (state.asData!.value.preferences.soundEnabled) {
+        await feedback.playSound();
+      }
+      if (!valid()) return;
+      if (state.asData!.value.preferences.vibrationEnabled) {
+        await feedback.vibrate();
+      }
+    } catch (_) {
+      if (valid()) _reportFeedbackError();
+    }
+  }
+
+  Future<void> _invalidateFeedback() {
+    _feedbackSerial++;
+    final hadTarget = _feedbackTarget != null;
+    _feedbackTarget = null;
+    if (!hadTarget || !ref.mounted) return _feedbackStop;
     final feedback = ref.read(drivingFeedbackGatewayProvider);
-    if (preferences.voiceEnabled) {
-      if (!_isActiveSession(sessionSerial)) {
-        return;
-      }
-      await feedback.speak(_voiceMessage(alert));
-      if (!_isActiveSession(sessionSerial)) {
-        return;
-      }
+    _feedbackStop = _feedbackStop
+        .then((_) => feedback.stopOngoingFeedback())
+        .catchError((Object _) {
+          if (ref.mounted) _reportFeedbackError();
+        });
+    return _feedbackStop;
+  }
+
+  void _reportFeedbackError() {
+    final current = state.asData?.value;
+    if (current != null) {
+      state = AsyncData(
+        current.copyWith(
+          errorMessage:
+              'No se pudo reproducir o detener el aviso de conducción.',
+        ),
+      );
     }
-    if (preferences.soundEnabled) {
-      if (!_isActiveSession(sessionSerial)) {
-        return;
-      }
-      await feedback.playSound();
-      if (!_isActiveSession(sessionSerial)) {
-        return;
-      }
+  }
+
+  Future<void> _ensureTollData() => _tollLoading ??= _loadTollData();
+
+  Future<void> _loadTollData() async {
+    TollInventoryDataset? inventory;
+    TollTariffCatalog? catalog;
+    final errors = <String>[];
+    await Future.wait([
+      ref
+          .read(tripTollInventoryProvider.future)
+          .then((value) {
+            inventory = value;
+          })
+          .catchError((Object _) {
+            errors.add('Inventario de peajes no disponible.');
+          }),
+      ref
+          .read(tripTollTariffCatalogProvider.future)
+          .then((value) {
+            catalog = value;
+          })
+          .catchError((Object _) {
+            errors.add('Tarifas de referencia no disponibles.');
+          }),
+    ]);
+    if (!ref.mounted) return;
+    _tolls = inventory?.records ?? const [];
+    _tollCharges = catalog == null
+        ? {
+            for (final toll in _tolls)
+              toll.id: LocalTollPricingCharge(
+                stationId: toll.id,
+                name: toll.name,
+                categoryCode: 'I',
+                amountMinor: null,
+                publicationControl: null,
+                sourceType: null,
+                sourceDate: null,
+                sourceUrl: null,
+                pendingReason: 'Tarifa de referencia no disponible',
+              ),
+          }
+        : {
+            for (final charge in priceExplicitTollPassages(
+              catalog: catalog!,
+              passages: _tolls,
+              operatorCategoryCode: 'I',
+            ).charges)
+              charge.stationId: _referenceCharge(charge),
+          };
+    _tollLoadError = errors.isEmpty ? null : errors.join(' ');
+    final current = state.asData?.value;
+    if (current != null) {
+      state = AsyncData(
+        current.copyWith(
+          tollDataError: _tollLoadError,
+          clearTollDataError: _tollLoadError == null,
+        ),
+      );
     }
-    if (preferences.vibrationEnabled) {
-      if (!_isActiveSession(sessionSerial)) {
-        return;
-      }
-      await feedback.vibrate();
-      if (!_isActiveSession(sessionSerial)) {
-        return;
-      }
-    }
+  }
+
+  LocalTollPricingCharge _referenceCharge(LocalTollPricingCharge charge) {
+    final station = charge.station;
+    final rate = station?.categoryI;
+    final blocked = [station?.publicationControl, rate?.publicationControl].any(
+      (control) =>
+          control?.startsWith('BLOQUEADO_') == true ||
+          control == 'EXCLUIR_ESTACION_RETIRADA',
+    );
+    if (!blocked && rate != null) return charge;
+    return LocalTollPricingCharge(
+      stationId: charge.stationId,
+      name: charge.name,
+      categoryCode: 'I',
+      amountMinor: null,
+      nominalMinor: null,
+      station: station,
+      publicationControl: charge.publicationControl,
+      sourceType: charge.sourceType,
+      sourceDate: charge.sourceDate,
+      sourceUrl: charge.sourceUrl,
+      pendingReason: blocked
+          ? 'Importe bloqueado por revisión de datos'
+          : 'Tarifa de referencia de Categoría I no disponible',
+    );
   }
 
   Future<void> _setStopped(
@@ -739,11 +1007,14 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       previous.copyWith(
         status: status,
         errorMessage: message,
+        clearNearestToll: true,
+        clearReliableHeading: true,
         clearNearestCamera: true,
         clearLastAlert: true,
         clearDismissedCamera: true,
         clearSimulation: true,
         clearCurrentPoint: true,
+        clearVisualAlertPulse: true,
       ),
     );
   }
@@ -801,6 +1072,10 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     _previousPoint = null;
     _alertEngine = null;
     _activeCameraId = null;
+    _sessionPack = null;
+    _tollSession = TollAlertSession();
+    _feedbackSerial++;
+    _feedbackTarget = null;
     await subscription?.cancel();
   }
 
@@ -838,19 +1113,8 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   }
 
   String _voiceMessage(DrivingAlert alert) {
-    final reported = alert.reportedSpeedKmh;
-    if (reported == null) {
-      return 'Cámara de fotodetección en operación a '
-          '${alert.thresholdMeters} metros.';
-    }
-    if (alert.overspeed) {
-      return 'Cámara a ${alert.thresholdMeters} metros. '
-          'Velocidad reportada: $reported. '
-          'Vas a ${alert.currentSpeedKmh}. Reduce la velocidad.';
-    }
-    return 'Cámara de fotodetección en operación a '
-        '${alert.thresholdMeters} metros. '
-        'Velocidad reportada: $reported kilómetros por hora.';
+    return 'Cámara a ${alert.thresholdMeters} metros. '
+        'Respeta la señalización de la vía.';
   }
 
   int _knownSpeedCount(CameraPack pack) {
@@ -889,6 +1153,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         (camera) => camera.speedLimitKmh != null,
       ),
       DrivingSimulationScenario.niquiaToEstrella ||
+      DrivingSimulationScenario.cocorna ||
       DrivingSimulationScenario.estrellaToNiquia => null,
     };
   }
@@ -944,6 +1209,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       DrivingSimulationScenario.turnAway => [52.0, 56.0, 60.0, 58.0, 54.0],
       DrivingSimulationScenario.gpsWeak => [0.0, 0.0, 0.0, 0.0, 0.0],
       DrivingSimulationScenario.niquiaToEstrella ||
+      DrivingSimulationScenario.cocorna ||
       DrivingSimulationScenario.estrellaToNiquia => throw StateError(
         'Regional demo uses road geometry.',
       ),
@@ -963,6 +1229,22 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       const Duration(milliseconds: 800),
       (index) => points[index],
     ).take(points.length);
+  }
+
+  Stream<DrivingPoint> _simulatedTollStream(TollInventoryRecord toll) {
+    final now = DateTime.now().toUtc();
+    const south = [650.0, 490.0, 290.0, 90.0, 40.0, -60.0, -180.0, -750.0];
+    return Stream<DrivingPoint>.periodic(
+      const Duration(milliseconds: 1000),
+      (index) => DrivingPoint(
+        latitude: toll.latitude - south[index] / 111320,
+        longitude: toll.longitude,
+        accuracyMeters: 12,
+        speedKmh: 50,
+        headingDegrees: 0,
+        recordedAt: now.add(Duration(seconds: index * 20)),
+      ),
+    ).take(south.length);
   }
 
   Stream<DrivingPoint> _simulatedLateralApproachStream(TrafficCamera camera) {

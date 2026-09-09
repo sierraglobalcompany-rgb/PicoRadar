@@ -129,10 +129,12 @@ class TripTollChargeDetails extends StatelessWidget {
   const TripTollChargeDetails({
     required this.charge,
     required this.onSource,
+    this.referenceOnly = false,
     super.key,
   });
   final LocalTollPricingCharge charge;
   final ValueChanged<String> onSource;
+  final bool referenceOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -143,8 +145,13 @@ class TripTollChargeDetails extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (charge.amountMinor == null) ...[
-            Text(_tollExclusionExplanation(charge), style: AppTextStyles.body),
+          if (referenceOnly || charge.amountMinor == null) ...[
+            Text(
+              referenceOnly
+                  ? 'Tarifas de referencia. No confirman un cobro en este paso.'
+                  : _tollExclusionExplanation(charge),
+              style: AppTextStyles.body,
+            ),
             const SizedBox(height: AppSpacing.l),
           ],
           if (station != null)
@@ -170,9 +177,17 @@ class TripTollChargeDetails extends StatelessWidget {
                 children: [
                   _TollNamePrice(
                     name: 'Categoría ${rate.categoryCode}',
-                    amount: rate.amountMinor,
+                    amount:
+                        referenceOnly && _referenceRateBlocked(station, rate)
+                        ? null
+                        : rate.amountMinor,
                     strongName: false,
                   ),
+                  if (referenceOnly && _referenceRateBlocked(station, rate))
+                    const Text(
+                      'Publicación bloqueada: tarifa en revisión.',
+                      style: AppTextStyles.caption,
+                    ),
                   if (tollVehicleDescription(rate) !=
                       'Descripción no disponible')
                     Text(
@@ -221,12 +236,17 @@ class TripTollChargeDetails extends StatelessWidget {
                         style: AppTextStyles.bodyStrong,
                       ),
                       Text(tollVehicleDescription(rate)),
-                      if (rate.boothBaseChargeMinor != null &&
+                      if (!(referenceOnly &&
+                              _referenceRateBlocked(station, rate)) &&
+                          rate.boothBaseChargeMinor != null &&
                           rate.boothBaseChargeMinor != rate.amountMinor)
                         Text(
                           'Importe condicionado: ${tripTollMoney(rate.boothBaseChargeMinor!)}',
                         ),
-                      if (rate.conditions != null) Text(rate.conditions!),
+                      if (rate.conditions != null &&
+                          !(referenceOnly &&
+                              _referenceRateBlocked(station, rate)))
+                        Text(rate.conditions!),
                       if (rate.sourceDate != null)
                         Text('Fecha de la fuente: ${rate.sourceDate}'),
                       if ((rate.chargeSourceUrl ??
@@ -253,6 +273,13 @@ class TripTollChargeDetails extends StatelessWidget {
     );
   }
 }
+
+bool _referenceRateBlocked(TollTariffStation? station, TollTariffRate rate) =>
+    [station?.publicationControl, rate.publicationControl].any(
+      (control) =>
+          control?.startsWith('BLOQUEADO_') == true ||
+          control == 'EXCLUIR_ESTACION_RETIRADA',
+    );
 
 class _TollNamePrice extends StatelessWidget {
   const _TollNamePrice({

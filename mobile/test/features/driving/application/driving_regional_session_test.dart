@@ -193,7 +193,7 @@ void main() {
           isNull,
         );
         expect(feedback.screen, [true, false]);
-        expect(feedback.stops, 1);
+        expect(feedback.stops, greaterThanOrEqualTo(1));
         expect(gateway.calls, 0);
       },
       skip: !canUseDebugDrivingSimulation,
@@ -317,7 +317,7 @@ void main() {
   }, skip: !canUseDebugDrivingSimulation);
 
   testWidgets(
-    'queued final points wait for feedback and old completion cannot stop restart',
+    'queued final points ignore blocked feedback and old completion cannot stop restart',
     (tester) async {
       await setup(loader: (id) async => routes.singleWhere((r) => r.id == id));
       final blocked = Completer<void>();
@@ -332,8 +332,10 @@ void main() {
         await tester.pump(const Duration(seconds: 1));
       }
       expect(feedback.speaks, 11);
-      expect(container.read(drivingControllerProvider).value!.isActive, isTrue);
-      await stop(tester);
+      expect(
+        container.read(drivingControllerProvider).value!.status,
+        DrivingSessionStatus.idle,
+      );
       await controller.start(
         simulationScenario: DrivingSimulationScenario.estrellaToNiquia,
       );

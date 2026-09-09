@@ -8,6 +8,51 @@ import '../domain/camera_matcher.dart';
 const drivingRadarSweepDuration = Duration(milliseconds: 3000);
 const drivingRadarTrailWidthDegrees = 24.0;
 
+enum DrivingVisualTargetKind { camera, toll }
+
+/// Presentation data only: selection and heading reliability belong to the caller.
+class DrivingVisualTarget {
+  const DrivingVisualTarget({
+    required this.id,
+    required this.latitude,
+    required this.longitude,
+    required this.distanceMeters,
+    required this.relativeBearingDegrees,
+    required this.kind,
+  });
+
+  factory DrivingVisualTarget.fromCameraMatch(CameraMatch match) =>
+      DrivingVisualTarget(
+        id: match.camera.id,
+        latitude: match.camera.latitude,
+        longitude: match.camera.longitude,
+        distanceMeters: match.distanceMeters,
+        relativeBearingDegrees: match.relativeBearingDegrees,
+        kind: DrivingVisualTargetKind.camera,
+      );
+
+  final String id;
+  final double latitude;
+  final double longitude;
+  final double distanceMeters;
+  final double? relativeBearingDegrees;
+  final DrivingVisualTargetKind kind;
+}
+
+Offset drivingVehicleAnchor(Size size, int coneDegrees) =>
+    Offset(size.width / 2, size.height * (coneDegrees >= 360 ? 0.5 : 0.72));
+
+double drivingRadarRadius(Size size, int coneDegrees) {
+  final anchor = drivingVehicleAnchor(size, coneDegrees);
+  return math.max(
+    0,
+    math.min(
+      size.width / 2 - 22,
+      coneDegrees >= 360 ? size.height / 2 - 22 : anchor.dy - 22,
+    ),
+  );
+}
+
 class DrivingRadarSweepSnapshot {
   const DrivingRadarSweepSnapshot({
     required this.angleDegrees,
@@ -22,16 +67,20 @@ class DrivingRadarSweepSnapshot {
 
 class DrivingRadarView extends StatefulWidget {
   const DrivingRadarView({
-    required this.match,
+    this.match,
+    this.target,
     required this.currentPoint,
     required this.targetingConeDegrees,
     required this.alertColor,
     this.testSweepProgress,
     this.forceReducedMotionForTesting = false,
     super.key,
-  });
+  }) : assert(match != null || target != null);
 
-  final CameraMatch match;
+  final CameraMatch? match;
+  final DrivingVisualTarget? target;
+  DrivingVisualTarget get visualTarget =>
+      target ?? DrivingVisualTarget.fromCameraMatch(match!);
   final DrivingPoint currentPoint;
   final int targetingConeDegrees;
   final Color alertColor;
@@ -115,13 +164,14 @@ class _DrivingRadarViewState extends State<DrivingRadarView>
     final animation = _canAnimate ? _controller : null;
     final fallbackProgress = widget.testSweepProgress ?? _controller.value;
     return Semantics(
-      label: 'Radar de cámara a ${widget.match.distanceMeters.round()} metros',
+      label:
+          'Radar de ${widget.visualTarget.kind == DrivingVisualTargetKind.camera ? 'cámara' : 'peaje'} a ${widget.visualTarget.distanceMeters.round()} metros',
       image: true,
       child: RepaintBoundary(
         child: CustomPaint(
           key: ValueKey('driving-radar-cone-${widget.targetingConeDegrees}'),
           painter: DrivingRadarPainter(
-            match: widget.match,
+            target: widget.visualTarget,
             currentPoint: widget.currentPoint,
             targetingConeDegrees: widget.targetingConeDegrees,
             alertColor: widget.alertColor,
@@ -138,7 +188,8 @@ class _DrivingRadarViewState extends State<DrivingRadarView>
 
 class DrivingRadarPainter extends CustomPainter {
   DrivingRadarPainter({
-    required this.match,
+    this.match,
+    DrivingVisualTarget? target,
     required this.currentPoint,
     required this.targetingConeDegrees,
     required this.alertColor,
@@ -146,9 +197,11 @@ class DrivingRadarPainter extends CustomPainter {
     required this.reducedMotion,
     this.sweepAnimation,
     this.trailWidthDegrees = drivingRadarTrailWidthDegrees,
-  }) : super(repaint: sweepAnimation);
+  }) : target = target ?? DrivingVisualTarget.fromCameraMatch(match!),
+       super(repaint: sweepAnimation);
 
-  final CameraMatch match;
+  final CameraMatch? match;
+  final DrivingVisualTarget target;
   final DrivingPoint currentPoint;
   final int targetingConeDegrees;
   final Color alertColor;
@@ -162,15 +215,15 @@ class DrivingRadarPainter extends CustomPainter {
     final background = Paint()..color = const Color(0xFF07111B);
     canvas.drawRect(Offset.zero & size, background);
 
-    final user = Offset(size.width / 2, size.height * 0.68);
-    final radarRadius = math.min(size.width, size.height) * 0.43;
-    final radarRangeMeters = radarRangeForCameraDistance(match.distanceMeters);
+    final user = drivingVehicleAnchor(size, targetingConeDegrees);
+    final radarRadius = drivingRadarRadius(size, targetingConeDegrees);
+    final radarRangeMeters = radarRangeForCameraDistance(target.distanceMeters);
     final coneDegrees = targetingConeDegrees.clamp(45, 360);
     final progress = sweepAnimation?.value ?? sweepProgress;
     final sweep = drivingRadarSweepSnapshot(
       targetingConeDegrees: coneDegrees,
       progress: progress,
-      relativeBearingDegrees: match.relativeBearingDegrees,
+      relativeBearingDegrees: target.relativeBearingDegrees,
       reducedMotion: reducedMotion,
       trailWidthDegrees: trailWidthDegrees,
     );
@@ -180,16 +233,17 @@ class DrivingRadarPainter extends CustomPainter {
     _drawRadarGeometry(canvas, user, radarRadius, coneDegrees);
     _drawSweep(canvas, user, radarRadius, coneDegrees, sweep);
 
-    final cameraPoint = radarCameraPoint(
-      size: size,
+    final cameraPoint = drivingRadarTargetPoint(
       user: user,
-      match: match,
+      target: target,
       radarRadius: radarRadius,
       radarRangeMeters: radarRangeMeters,
     );
-    _drawCameraEcho(canvas, cameraPoint, sweep.echoIntensity);
+    if (cameraPoint != null) {
+      _drawCameraEcho(canvas, cameraPoint, sweep.echoIntensity);
+      _drawCameraMarker(canvas, cameraPoint);
+    }
     _drawUserMarker(canvas, user);
-    _drawCameraMarker(canvas, cameraPoint);
     _drawRadarRangeLabel(canvas, radarRangeMeters);
   }
 
@@ -364,6 +418,26 @@ class DrivingRadarPainter extends CustomPainter {
     );
     canvas.drawCircle(cameraPoint, 10, Paint()..color = alertColor);
     canvas.drawCircle(cameraPoint, 4.5, Paint()..color = Colors.white);
+    if (target.kind == DrivingVisualTargetKind.toll) {
+      final bar = Paint()
+        ..color = Colors.white
+        ..strokeWidth = 2;
+      canvas.drawLine(
+        cameraPoint + const Offset(-7, -5),
+        cameraPoint + const Offset(7, -5),
+        bar,
+      );
+      canvas.drawLine(
+        cameraPoint + const Offset(-6, -5),
+        cameraPoint + const Offset(-6, 6),
+        bar,
+      );
+      canvas.drawLine(
+        cameraPoint + const Offset(6, -5),
+        cameraPoint + const Offset(6, 6),
+        bar,
+      );
+    }
   }
 
   void _drawRadial(
@@ -402,9 +476,10 @@ class DrivingRadarPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant DrivingRadarPainter oldDelegate) {
-    return oldDelegate.match.distanceMeters != match.distanceMeters ||
-        oldDelegate.match.relativeBearingDegrees !=
-            match.relativeBearingDegrees ||
+    return oldDelegate.target.distanceMeters != target.distanceMeters ||
+        oldDelegate.target.relativeBearingDegrees !=
+            target.relativeBearingDegrees ||
+        oldDelegate.target.kind != target.kind ||
         oldDelegate.currentPoint.latitude != currentPoint.latitude ||
         oldDelegate.currentPoint.longitude != currentPoint.longitude ||
         oldDelegate.targetingConeDegrees != targetingConeDegrees ||
@@ -473,7 +548,21 @@ double radarRangeForCameraDistance(double distanceMeters) {
   if (distanceMeters <= 320) {
     return 320;
   }
-  return cameraAwarenessRadiusMeters;
+  return math.max(cameraAwarenessRadiusMeters, distanceMeters);
+}
+
+Offset? drivingRadarTargetPoint({
+  required Offset user,
+  required DrivingVisualTarget target,
+  required double radarRadius,
+  required double radarRangeMeters,
+}) {
+  final bearing = target.relativeBearingDegrees;
+  if (bearing == null || !bearing.isFinite) return null;
+  final radius =
+      radarRadius * (target.distanceMeters / radarRangeMeters).clamp(0.0, 1.0);
+  final angle = bearing * math.pi / 180;
+  return user + Offset(math.sin(angle) * radius, -math.cos(angle) * radius);
 }
 
 Offset radarCameraPoint({

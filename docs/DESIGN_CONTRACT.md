@@ -9,6 +9,26 @@ Este contrato traduce el baseline visual a reglas operables para Flutter. Autori
 - Salida y llegada comparten ciudad, fecha/hora, estado y chevron en toda la fila. No mezclar un enlace por ciudad con un boton distinto para destino. Sin hora de salida no se inventa llegada ni resultado de restriccion.
 - Mantener nombres legibles, precios alineados, cierre explicito de hojas y reflujo vertical con texto ampliado. Las capturas fisicas se revisan aparte de los tests funcionales; no equivalen a aprobacion visual del owner.
 
+## Conducir: mapa, proximidad y peajes (2026-09-09)
+
+- El valor ANSV solo vive en detalles con fuente, fecha y advertencia: no confirma el limite vigente. No produce senal de limite, exceso numerico, rojo/pulso del velocimetro ni voz/vibracion de exceso. El velocimetro conserva velocidad propia centrada y un indicador compacto de camara durante el aviso.
+- Mapa orientado al rumbo fiable, flecha arriba, vehiculo al 50% horizontal y 72% vertical en conos frontales; centrado en 360 grados. El objetivo conserva su posicion geografica, incluso lateral o posterior. Los angulos son aperturas totales, no semianchos.
+- Una sola instancia de mapa: radar completo hasta cubrir el encuadre con todas sus teselas. Error o timeout de tres segundos fija radar durante el episodio; reintento explicito o nuevo episodio permite recuperar. No mostrar mosaicos parciales como listos.
+- Peajes inicialmente OFF, con interruptor propio y distancias/angulo/voz/sonido/vibracion compartidos. Una tarjeta principal, con prioridad de camara. Precio de categoria I como referencia, nunca cobro acumulado o confirmado; desconocidos y restricciones de publicacion se explican.
+- Las tarifas completas se abren solo por accion explicita, tambien en marcha para un acompanante; una camara prioritaria cierra esa ficha. HUD conserva informacion breve sin mapa ni fichas nuevas.
+- Sin GPS continuo al servidor, historial de recorrido, nuevos permisos ni navegacion giro a giro. Simulaciones identificadas, separadas de conduccion real. Esta decision sustituye la relacion velocimetro/senal del feedback V01A para R15/R16.
+
+## Conducir: composicion activa y alerta visual (2026-09-09)
+
+- La pantalla activa reserva primero SafeArea, cabecera y controles inferiores. El velocimetro permanece centrado sin objetivo y se desplaza arriba al aparecer una alerta. En texto normal, velocimetro y tarjeta caben completos; con texto ampliado, el contenido usa un unico scroll y la barra queda fija.
+- La cabecera muestra marca, estado GPS y preferencia de voz. `Voz activa` significa que la preferencia esta habilitada, no que exista reproduccion garantizada. La simulacion se identifica en una linea independiente.
+- La camara se reconoce mediante un disco blanco de 68 dp, borde rojo y silueta oscura de camara vial. Es un indicador estatico: no usa alternancia roja/azul ni tapa graduaciones o la velocidad propia.
+- La tarjeta de camara usa encabezado rojo oscuro, `Camara de fotomulta`, `Camara cercana`, cierre de 48 dp, distancia y acciones independientes. El mapa/radar y los datos se presentan lado a lado cuando caben y en secuencia vertical con texto ampliado.
+- Los controles activos son `Configuracion`, `HUD`, `Espejo` y `Finalizar`. Comparten una fila con texto normal y una cuadricula 2x2 con texto ampliado. HUD y Espejo son acciones explicitas, no estados ambiguos.
+- `Alerta visual` inicia apagada y se guarda localmente. Un umbral valido produce dos pulsos suaves de fondo completo: azul al 22 % y blanco al 12 %, cada uno con entrada 400 ms, meseta 200 ms, salida 400 ms y descanso 200 ms. No cambia el brillo del dispositivo.
+- El pulso es independiente de voz, sonido y vibracion; se consume una vez por sesion, objetivo y umbral. No se repite por rebuild, mapa o GPS. Camara interrumpe peaje y no se encolan efectos. Se cancela al descartar, perder objetivo, finalizar, apagar la preferencia o salir de primer plano.
+- Movimiento reducido elimina el pulso y conserva el aviso estatico. La misma capa visual se aplica a normal, HUD y espejo. Se prohiben strober rapido, blanco pleno y destellos rojo/azul tipo patrulla.
+
 ## Tokens
 
 - Color primario: navy `#17324D`.

@@ -97,9 +97,12 @@ void main() {
       final state = container.read(drivingControllerProvider).value!;
       expect(state.nearestCamera, isNotNull);
       expect(state.speedKmh, 42);
-      expect(state.speedState, DrivingSpeedState.within);
+      expect(state.speedState, DrivingSpeedState.unknownReportedSpeed);
       expect(feedback.spokenMessages.single, contains('500 metros'));
-      expect(feedback.spokenMessages.single, contains('Velocidad reportada'));
+      expect(
+        feedback.spokenMessages.single,
+        'Cámara a 500 metros. Respeta la señalización de la vía.',
+      );
       expect(feedback.soundCalls, 1);
       expect(feedback.vibrationCalls, 1);
 
@@ -144,6 +147,68 @@ void main() {
     expect(state.lastAlert, isNull);
     expect(feedback.spokenMessages, isEmpty);
   });
+
+  test(
+    'visual camera pulse fires once per crossed threshold without audio',
+    () async {
+      final gateway = _FakeDrivingLocationGateway();
+      final feedback = _FakeDrivingFeedbackGateway();
+      final container = ProviderContainer(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+        ],
+      );
+      addTearDown(container.dispose);
+      final controller = container.read(drivingControllerProvider.notifier);
+      await container.read(drivingControllerProvider.future);
+      await controller.savePreferences(
+        defaultDrivingPreferences.copyWith(
+          visualAlertsEnabled: true,
+          voiceEnabled: false,
+          soundEnabled: false,
+          vibrationEnabled: false,
+        ),
+      );
+      await controller.start();
+
+      gateway.add(_point(latitude: 6.239, speedKmh: 50, seconds: 0));
+      await _flushController();
+      gateway.add(_point(latitude: 6.241, speedKmh: 50, seconds: 20));
+      await _flushController();
+      final firstPulse = container
+          .read(drivingControllerProvider)
+          .value!
+          .visualAlertPulseKey;
+      expect(firstPulse, isNotNull);
+      expect(feedback.spokenMessages, isEmpty);
+      expect(feedback.soundCalls, 0);
+      expect(feedback.vibrationCalls, 0);
+
+      gateway.add(_point(latitude: 6.2411, speedKmh: 50, seconds: 21));
+      await _flushController();
+      expect(
+        container.read(drivingControllerProvider).value!.visualAlertPulseKey,
+        firstPulse,
+      );
+
+      gateway.add(_point(latitude: 6.242, speedKmh: 50, seconds: 40));
+      await _flushController();
+      expect(
+        container.read(drivingControllerProvider).value!.visualAlertPulseKey,
+        isNot(firstPulse),
+      );
+
+      gateway.add(_point(latitude: 6.252, speedKmh: 50, seconds: 70));
+      await _flushController();
+      expect(
+        container.read(drivingControllerProvider).value!.visualAlertPulseKey,
+        isNull,
+      );
+    },
+  );
 
   test(
     'poor GPS accuracy keeps speed but blocks camera alert stages',
@@ -191,7 +256,7 @@ void main() {
   );
 
   test(
-    'continuous speed state updates while the camera episode persists',
+    'ANSV detail never produces numeric comparison or delta haptics',
     () async {
       final gateway = _FakeDrivingLocationGateway();
       final feedback = _FakeDrivingFeedbackGateway();
@@ -212,22 +277,27 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(
         container.read(drivingControllerProvider).value!.speedState,
-        DrivingSpeedState.within,
+        DrivingSpeedState.unknownReportedSpeed,
       );
 
       gateway.add(_point(latitude: 6.242, speedKmh: 70, seconds: 21));
       await Future<void>.delayed(Duration.zero);
       expect(
         container.read(drivingControllerProvider).value!.speedState,
-        DrivingSpeedState.over,
+        DrivingSpeedState.unknownReportedSpeed,
       );
 
       gateway.add(_point(latitude: 6.243, speedKmh: 54, seconds: 22));
       await Future<void>.delayed(Duration.zero);
       expect(
         container.read(drivingControllerProvider).value!.speedState,
-        DrivingSpeedState.within,
+        DrivingSpeedState.unknownReportedSpeed,
       );
+      final current = container.read(drivingControllerProvider).value!;
+      expect(current.reportedCameraSpeedKmh, 60);
+      expect(current.speedDeltaKmh, 0);
+      expect(current.isOverspeeding, isFalse);
+      expect(feedback.vibrationCalls, 1);
     },
   );
 
@@ -260,6 +330,46 @@ void main() {
       isNot(contains('Velocidad reportada')),
     );
   });
+
+  test(
+    '360 visual episode stays stable without speech and respects dismissal',
+    () async {
+      final gateway = _FakeDrivingLocationGateway();
+      final feedback = _FakeDrivingFeedbackGateway();
+      final container = ProviderContainer(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+        ],
+      );
+      addTearDown(container.dispose);
+      final controller = container.read(drivingControllerProvider.notifier);
+      await container.read(drivingControllerProvider.future);
+      await controller.savePreferences(
+        defaultDrivingPreferences.copyWith(cameraTargetingConeDegrees: 360),
+      );
+      await controller.start();
+      gateway.add(_point(latitude: 6.2442, speedKmh: 50, seconds: 0));
+      await _flushController();
+      gateway.add(_point(latitude: 6.2444, speedKmh: 50, seconds: 1));
+      await _flushController();
+      final first = container.read(drivingControllerProvider).value!;
+      expect(first.nearestCamera!.approaching, isFalse);
+      expect(first.showCameraAlertPanel, isTrue);
+      expect(first.cameraEpisodeKey, isNotNull);
+      await controller.dismissCurrentCameraAlert();
+      gateway.add(_point(latitude: 6.2446, speedKmh: 50, seconds: 2));
+      await _flushController();
+      final next = container.read(drivingControllerProvider).value!;
+      expect(next.cameraEpisodeKey, first.cameraEpisodeKey);
+      expect(next.showCameraAlertPanel, isFalse);
+      expect(feedback.spokenMessages, isEmpty);
+      expect(feedback.vibrationCalls, 0);
+      await controller.stop();
+    },
+  );
 
   test('manual dismissal silences feedback through transient no-match and rearms later', () async {
     final gateway = _FakeDrivingLocationGateway();
@@ -614,7 +724,7 @@ void main() {
       gateway.add(_point(latitude: 6.243, speedKmh: 74, seconds: 22));
       await _flushController();
 
-      expect(container.read(drivingControllerProvider).value!.speedKmh, 50);
+      expect(container.read(drivingControllerProvider).value!.speedKmh, 74);
       feedback.releaseBlockedSpeak();
       await _flushController();
 

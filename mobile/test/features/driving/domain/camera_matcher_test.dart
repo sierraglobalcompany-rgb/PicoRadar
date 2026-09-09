@@ -5,6 +5,20 @@ import 'package:picoradar/features/driving/domain/camera_matcher.dart';
 import 'package:picoradar/features/driving/domain/traffic_camera.dart';
 
 void main() {
+  test('360 prioritizes an approaching camera over a closer rear camera', () {
+    final current = _point(latitude: 6.241, longitude: -75.57, heading: 0);
+    final approaching = _camera(latitude: 6.244, longitude: -75.57);
+    final rear = _camera(latitude: 6.2409, longitude: -75.57);
+    final match = matchNearestCamera(
+      current: current,
+      previous: _point(latitude: 6.2405, longitude: -75.57, heading: 0),
+      cameras: [rear, approaching],
+      targetingConeDegrees: 360,
+    );
+    expect(match!.camera, same(approaching));
+    expect(match.approaching, isTrue);
+  });
+
   test('matches an approaching camera using distance and heading', () {
     final camera = _camera(latitude: 6.244, longitude: -75.57);
 
@@ -54,7 +68,7 @@ void main() {
     expect(match, isNull);
   });
 
-  test('targeting cone does not bypass the road corridor gate', () {
+  test('only 360 degrees admits off-corridor visual candidates', () {
     final camera = _camera(latitude: 6.244, longitude: -75.5664);
     final previous = _point(latitude: 6.2393, longitude: -75.57, heading: 0);
     final current = _point(latitude: 6.244, longitude: -75.57, heading: 0);
@@ -80,7 +94,7 @@ void main() {
 
     expect(narrow, isNull);
     expect(wideButOffCorridor, isNull);
-    expect(aroundButOffCorridor, isNull);
+    expect(aroundButOffCorridor, isNotNull);
     expect(
       isRelativeBearingInsideTargetingCone(
         relativeBearingDegrees: 90,
@@ -193,7 +207,7 @@ void main() {
   });
 
   test(
-    '360 degree cone allows side bearing but still rejects receding target',
+    '360 degree cone retains receding target without approach eligibility',
     () {
       final camera = _camera(latitude: 6.244, longitude: -75.57);
       final approachingPrevious = _pointBehindCamera(
@@ -227,7 +241,8 @@ void main() {
 
       expect(accepted, isNotNull);
       expect(accepted!.relativeBearingDegrees, closeTo(150, 1));
-      expect(rejected, isNull);
+      expect(rejected, isNotNull);
+      expect(rejected!.approaching, isFalse);
     },
   );
 
@@ -251,7 +266,8 @@ void main() {
     );
 
     expect(frontHemisphere, isNull);
-    expect(fullRadar, isNull);
+    expect(fullRadar, isNotNull);
+    expect(fullRadar!.approaching, isFalse);
     expect(
       isRelativeBearingInsideTargetingCone(
         relativeBearingDegrees: 150,
@@ -352,7 +368,7 @@ void main() {
   });
 
   test(
-    'cross-track gate rejects a 450 meter lateral camera for every cone',
+    'cross-track gate applies to directional cones but not 360 visual mode',
     () {
       final current = _point(latitude: 6.241, longitude: -75.57, heading: 0);
       final previous = _point(latitude: 6.2405, longitude: -75.57, heading: 0);
@@ -370,37 +386,38 @@ void main() {
           targetingConeDegrees: cone,
         );
 
-        expect(match, isNull, reason: 'cone $cone');
+        expect(match, cone == 360 ? isNotNull : isNull, reason: 'cone $cone');
       }
     },
   );
 
-  test(
-    'close parallel cameras at 90 and 110 meters stay rejected for every cone',
-    () {
-      final current = _point(latitude: 6.241, longitude: -75.57, heading: 0);
-      final previous = _point(latitude: 6.2409, longitude: -75.57, heading: 0);
+  test('close parallel cameras remain visual candidates only in 360 mode', () {
+    final current = _point(latitude: 6.241, longitude: -75.57, heading: 0);
+    final previous = _point(latitude: 6.2409, longitude: -75.57, heading: 0);
 
-      for (final distance in [90.0, 110.0]) {
-        final camera = _cameraAtBearingDistance(
+    for (final distance in [90.0, 110.0]) {
+      final camera = _cameraAtBearingDistance(
+        current: current,
+        bearingDegrees: 88,
+        distanceMeters: distance,
+      );
+
+      for (final cone in [45, 90, 180, 360]) {
+        final match = matchNearestCamera(
+          previous: previous,
           current: current,
-          bearingDegrees: 88,
-          distanceMeters: distance,
+          cameras: [camera],
+          targetingConeDegrees: cone,
         );
 
-        for (final cone in [45, 90, 180, 360]) {
-          final match = matchNearestCamera(
-            previous: previous,
-            current: current,
-            cameras: [camera],
-            targetingConeDegrees: cone,
-          );
-
-          expect(match, isNull, reason: 'distance $distance cone $cone');
-        }
+        expect(
+          match,
+          cone == 360 ? isNotNull : isNull,
+          reason: 'distance $distance cone $cone',
+        );
       }
-    },
-  );
+    }
+  });
 
   test('near cameras outside 45 90 and 180 degree cones are rejected', () {
     final current = _point(latitude: 6.241, longitude: -75.57, heading: 0);
@@ -446,7 +463,7 @@ void main() {
   });
 
   test(
-    '360 degree cone rejects rear or side cameras without real approach',
+    '360 degree cone displays rear and side cameras without real approach',
     () {
       final current = _point(latitude: 6.241, longitude: -75.57, heading: 0);
       final rear = _cameraAtBearingDistance(
@@ -466,7 +483,7 @@ void main() {
           cameras: [rear],
           targetingConeDegrees: 360,
         ),
-        isNull,
+        isNotNull,
       );
       expect(
         matchNearestCamera(
@@ -474,13 +491,13 @@ void main() {
           cameras: [side],
           targetingConeDegrees: 360,
         ),
-        isNull,
+        isNotNull,
       );
     },
   );
 
   test(
-    '360 degree cone can match a rear camera with real approach evidence',
+    'rear camera remains visual only when distance and heading disagree',
     () {
       final current = _point(latitude: 6.241, longitude: -75.57, heading: 0);
       final previous = _point(latitude: 6.242, longitude: -75.57, heading: 0);
@@ -498,7 +515,7 @@ void main() {
       );
 
       expect(match, isNotNull);
-      expect(match!.approaching, isTrue);
+      expect(match!.approaching, isFalse);
     },
   );
 
