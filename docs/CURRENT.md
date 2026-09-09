@@ -8,6 +8,8 @@ Viaje now uses route-local toll estimates consistently in summary, alternatives,
 
 Verification and physical evidence for this correction are recorded in the explicitly requested `temp/VIAJE_PEAJES_UX` handoff. This note does not claim physical or CI completion before their recorded results. The existing preview validator now accepts today's date-only query without inventing a user departure hour; past dates and the 30-day ceiling remain rejected. No new dependencies, schemas, permissions or endpoints are part of this correction.
 
+The owner subsequently rejected the first toll/Pico presentation. Followup work simplifies tolls to names/prices plus expandable categories/location, folds technical sources, and makes both Pico city rows consistent. Public road fixtures for two explicitly requested debug simulations (Niquia/La Estrella, 80 km/h) are separate from real user GPS and camera data. Final tests, physical captures and outstanding frame-performance measurements must be read in the current handoff, not inferred as passed from this note. PR #55 remains unmerged.
+
 ## V01B merged; VIAJE-R2C verified locally, owner toll tariffs added, provider access still pending
 
 Owner-authorized PR #54 squash: `e9ef37511df3110ffb0fc006ef06be781df432ac`, parent `c1010b5a2d23b2c3c4f8cf00874f4ecfd2780d44`. It preserves the approved V01B HEAD `d84a1765224481e629ab60586e79da35b3cc9841` tree `3e3a6c05bf09c1b059262ba5cf311d3e6b348b6f`. Postmerge Mobile CI `33988444392` passed on that squash. Server CI did not trigger for the visual-only merge. This is bounded V01B approval, not approval of all 43 screens or historical P07/F01/F02 gates.

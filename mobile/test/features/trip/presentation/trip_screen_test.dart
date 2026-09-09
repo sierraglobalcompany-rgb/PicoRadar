@@ -650,7 +650,9 @@ void main() {
     );
     expect(
       tester
-          .widget<TripInstantEndpoint>(find.byType(TripInstantEndpoint))
+          .widget<TripInstantEndpoint>(
+            find.byKey(const ValueKey('trip-origin-instant')),
+          )
           .dateOnly,
       isTrue,
     );
@@ -846,8 +848,8 @@ void main() {
 
     expect(find.text('Pico y placa del viaje'), findsOneWidget);
     expect(find.text('Rutas y precios todavía no disponibles'), findsOneWidget);
-    expect(find.textContaining('Salida ·'), findsOneWidget);
-    expect(find.textContaining('Llegada ·'), findsOneWidget);
+    expect(find.text('Salida'), findsOneWidget);
+    expect(find.text('Llegada estimada'), findsOneWidget);
   });
 
   testWidgets('VIAJE-R2 route selection updates locally without auto-scroll', (
@@ -1262,19 +1264,24 @@ void main() {
       await tester.tap(find.text('Medellín · Antioquia'));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('Sin hora de salida. Consulta las reglas del día.'),
-        findsOneWidget,
-      );
+      expect(find.text('5 sep 2026 · Sin hora de salida'), findsOneWidget);
       expect(find.text('Llegada por determinar'), findsOneWidget);
       expect(find.text('Tiene restricción ese día'), findsOneWidget);
       expect(
         tester
-            .widget<TripInstantEndpoint>(find.byType(TripInstantEndpoint))
+            .widget<TripInstantEndpoint>(
+              find.byKey(const ValueKey('trip-origin-instant')),
+            )
             .dateOnly,
         isTrue,
       );
-      expect(find.text('Ver pico y placa de destino'), findsOneWidget);
+      final arrival = tester.widget<TripInstantEndpoint>(
+        find.byKey(const ValueKey('trip-destination-instant-unknown')),
+      );
+      expect(arrival.onCity, isNotNull);
+      expect(arrival.instantUtc, isNull);
+      expect(arrival.evaluation, isNull);
+      expect(find.text('No circula a la hora evaluada'), findsNothing);
       expect(find.text('Origen · No circula'), findsNothing);
       expect(find.text('Destino · Sin información vigente'), findsNothing);
       expect(find.text('Consultado para 2026-09-05'), findsNothing);
@@ -1311,16 +1318,22 @@ void main() {
     expect(find.text('Información desactualizada'), findsOneWidget);
     expect(
       tester
-          .widget<TripInstantEndpoint>(find.byType(TripInstantEndpoint))
+          .widget<TripInstantEndpoint>(
+            find.byKey(const ValueKey('trip-origin-instant')),
+          )
           .dateOnly,
       isTrue,
     );
     expect(find.text('Origen · Sin restricción para ese día'), findsNothing);
   });
 
-  for (final withPlan in [false, true]) {
+  for (final (withPlan, withTime) in [
+    (false, false),
+    (true, true),
+    (true, false),
+  ]) {
     testWidgets(
-      'city links preserve origin and destination jurisdiction with plan=$withPlan',
+      'city links preserve symmetric endpoints with plan=$withPlan time=$withTime',
       (tester) async {
         final client = _PendingPlanClient();
         Uri? cityUri;
@@ -1346,7 +1359,7 @@ void main() {
             origin: 'Bogotá',
             destination: 'Medellín',
             date: DateTime(2026, 9, 7),
-            departureMinute: withPlan ? 600 : null,
+            departureMinute: withTime ? 600 : null,
           ),
         );
         await _pumpScreen(
@@ -1363,10 +1376,85 @@ void main() {
           await tester.pumpAndSettle();
         }
 
-        final origin = find.widgetWithText(ListTile, 'Salida · Bogotá, D.C.');
-        await tester.ensureVisible(origin);
+        final origin = find.byKey(const ValueKey('trip-origin-instant'));
+        final destination = find.byKey(
+          ValueKey(
+            withPlan && withTime
+                ? 'trip-destination-instant-test-route'
+                : 'trip-destination-instant-unknown',
+          ),
+        );
+        expect(find.byType(TripInstantEndpoint), findsNWidgets(2));
+        final originWidget = tester.widget<TripInstantEndpoint>(origin);
+        final destinationWidget = tester.widget<TripInstantEndpoint>(
+          destination,
+        );
+        expect(originWidget.label, 'Salida');
+        expect(destinationWidget.label, 'Llegada estimada');
+        expect(originWidget.city, 'Bogotá, D.C.');
+        expect(destinationWidget.city, 'Medellín');
+        for (final endpoint in [origin, destination]) {
+          final endpointWidget = tester.widget<TripInstantEndpoint>(endpoint);
+          expect(endpointWidget.onCity, isNotNull);
+          expect(
+            find.descendant(of: endpoint, matching: find.byType(InkWell)),
+            findsOneWidget,
+          );
+          expect(
+            find.descendant(
+              of: endpoint,
+              matching: find.byIcon(Icons.chevron_right),
+            ),
+            findsOneWidget,
+          );
+          expect(
+            find.descendant(
+              of: endpoint,
+              matching: find.byWidgetPredicate(
+                (widget) =>
+                    widget is Semantics &&
+                    widget.properties.button == true &&
+                    widget.properties.label ==
+                        'Ver pico y placa de ${endpointWidget.city}',
+              ),
+            ),
+            findsOneWidget,
+          );
+        }
+        if (!withTime) {
+          expect(originWidget.dateOnly, isTrue);
+          expect(originWidget.evaluation, isNotNull);
+          expect(destinationWidget.instantUtc, isNull);
+          expect(destinationWidget.evaluation, isNull);
+          expect(
+            find.descendant(
+              of: destination,
+              matching: find.text('Llegada por determinar'),
+            ),
+            findsOneWidget,
+          );
+          if (withPlan) {
+            expect(
+              client.requests.single.departureMode,
+              TripDepartureMode.dateOnly,
+            );
+            expect(client.requests.single.departureUtc, isNull);
+          }
+        } else {
+          expect(originWidget.instantUtc, client.requests.single.departureUtc);
+          expect(
+            destinationWidget.instantUtc,
+            client.requests.single.departureUtc!.add(const Duration(hours: 10)),
+          );
+          expect(destinationWidget.evaluation, isNotNull);
+        }
+        final originTap = find.descendant(
+          of: origin,
+          matching: find.byType(InkWell),
+        );
+        await tester.ensureVisible(originTap);
         await tester.pumpAndSettle();
-        await tester.tap(origin);
+        await tester.tap(originTap);
         await tester.pumpAndSettle();
         expect(find.text('City: co-dc-bogota'), findsOneWidget);
         expect(cityUri?.path, '/pico');
@@ -1374,12 +1462,13 @@ void main() {
         router.pop();
         await tester.pumpAndSettle();
 
-        final destination = withPlan
-            ? find.widgetWithText(ListTile, 'Llegada estimada · Medellín')
-            : find.text('Ver pico y placa de destino');
-        await tester.ensureVisible(destination);
+        final destinationTap = find.descendant(
+          of: destination,
+          matching: find.byType(InkWell),
+        );
+        await tester.ensureVisible(destinationTap);
         await tester.pumpAndSettle();
-        await tester.tap(destination);
+        await tester.tap(destinationTap);
         await tester.pumpAndSettle();
         expect(find.text('City: co-ant-medellin'), findsOneWidget);
         expect(cityUri?.queryParameters, {'jurisdictionId': 'co-ant-medellin'});
@@ -1424,7 +1513,7 @@ void main() {
       find.byKey(const ValueKey('trip-origin-instant')),
     );
     expect(
-      endpoint.evaluation.requireValue.sourceUrl,
+      endpoint.evaluation!.requireValue.sourceUrl,
       'https://example.test/bogota-source',
     );
     expect(endpoint.onCity, isNotNull);
@@ -1787,8 +1876,16 @@ void main() {
 
       await _pumpScreen(tester, preferences: preferences);
 
-      expect(find.text('Cali'), findsOneWidget);
-      expect(find.text('Pereira'), findsOneWidget);
+      final restoredOrigin = find.descendant(
+        of: find.byKey(const ValueKey('trip-origin-field')),
+        matching: find.text('Cali'),
+      );
+      final restoredDestination = find.descendant(
+        of: find.byKey(const ValueKey('trip-destination-field')),
+        matching: find.text('Pereira'),
+      );
+      expect(restoredOrigin, findsOneWidget);
+      expect(restoredDestination, findsOneWidget);
       expect(find.text('Fecha · 2026-09-05'), findsOneWidget);
       expect(find.byKey(const ValueKey('trip-draft-restored')), findsOneWidget);
       expect(find.text('Checklist: 1/4'), findsOneWidget);
@@ -1814,16 +1911,16 @@ void main() {
       await _tapByKey(tester, 'trip-delete-cancel');
 
       expect(await preferences.getString(tripDraftPreferenceKey), isNotNull);
-      expect(find.text('Cali'), findsOneWidget);
-      expect(find.text('Pereira'), findsOneWidget);
+      expect(restoredOrigin, findsOneWidget);
+      expect(restoredDestination, findsOneWidget);
 
       await _tapByKey(tester, 'trip-delete-draft');
       await _tapByKey(tester, 'trip-delete-confirm');
 
       expect(await preferences.getString(tripDraftPreferenceKey), isNull);
       expect(find.text('Borrador eliminado.'), findsOneWidget);
-      expect(find.text('Cali'), findsNothing);
-      expect(find.text('Pereira'), findsNothing);
+      expect(restoredOrigin, findsNothing);
+      expect(restoredDestination, findsNothing);
     },
   );
 
@@ -2393,9 +2490,9 @@ void main() {
         find.descendant(of: localPricing, matching: find.text('COP 18.500')),
         findsOneWidget,
       );
-      expect(find.text('1. GUARNE'), findsOneWidget);
-      expect(find.textContaining('AMAGÁ'), findsNothing);
-      expect(find.textContaining('PAPIROS'), findsNothing);
+      expect(find.text('1. Guarne'), findsOneWidget);
+      expect(find.textContaining('Amagá'), findsNothing);
+      expect(find.textContaining('Papiros'), findsNothing);
       expect(
         find.byKey(const ValueKey('trip-toll-tariff-lookup')),
         findsNothing,
@@ -2477,7 +2574,7 @@ void main() {
         find.descendant(of: sheet, matching: find.text('COP 18.500')),
         findsOneWidget,
       );
-      expect(find.text('1. GUARNE'), findsOneWidget);
+      expect(find.text('1. Guarne'), findsOneWidget);
       expect(
         find.descendant(of: sheet, matching: find.text('Peajes por confirmar')),
         findsNothing,
@@ -2584,9 +2681,94 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('1. GUARNE'), findsNothing);
+      expect(find.text('1. Guarne'), findsNothing);
+      expect(find.text(r'$ 18.500'), findsNothing);
       expect(find.textContaining('COP 18.500'), findsNothing);
       expect(find.textContaining('COP 0'), findsNothing);
+      expect(client.requests, hasLength(1));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'VIAJE-R2 same-version inventory refresh retains local prices in open sheet',
+    (tester) async {
+      final client = _PendingPlanClient();
+      var inventoryLoads = 0;
+      await TripDraftStore(preferences).saveDraft(
+        TripDraft(
+          origin: 'Bogotá',
+          destination: 'Medellín',
+          date: DateTime(2026, 9, 7),
+          departureMinute: 600,
+        ),
+      );
+      await _pumpScreen(
+        tester,
+        preferences: preferences,
+        activeVehicle: _vehicle(),
+        planClient: client,
+        tollInventoryLoader: () async {
+          inventoryLoads++;
+          return TollInventoryDataset(
+            version: 'test-tolls-v1',
+            sourceTimestamp: DateTime.utc(2026, 8, 31),
+            records: [
+              _tollRecordForRoute(id: 'INV-GUARNE-3A941FAFD9', name: 'GUARNE'),
+            ],
+          );
+        },
+      );
+      await _tapByKey(tester, 'trip-standard-vehicle');
+      _pressButtonByKey(tester, 'trip-preview');
+      await tester.pump();
+      client.completions.single.complete(
+        _testPlan(client.requests.single, withGeometry: true),
+      );
+      await tester.pumpAndSettle();
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(TripScreen)),
+      );
+      final previousInventory = container.read(tripTollInventoryProvider);
+      final pricingChanges = tester
+          .widget<TripPlanResult>(find.byType(TripPlanResult))
+          .pricingChanges!;
+      expect(pricingChanges.value['test-route']?.totalMinor, 1850000);
+      _pressButtonByKey(tester, 'trip-toll-details-test-route');
+      await tester.pumpAndSettle();
+      final sheet = find.byKey(const ValueKey('trip-toll-sheet-test-route'));
+      final sheetElement = tester.element(sheet);
+      expect(
+        find.descendant(of: sheet, matching: find.text('COP 18.500')),
+        findsOneWidget,
+      );
+
+      // Complete the same-version refresh before the next widget frame.
+      container.invalidate(tripTollInventoryProvider);
+      final refreshed = await container.read(tripTollInventoryProvider.future);
+      expect(inventoryLoads, 2);
+      expect(refreshed.version, previousInventory.requireValue.version);
+      expect(identical(refreshed, previousInventory.requireValue), isFalse);
+      expect(
+        identical(container.read(tripTollInventoryProvider), previousInventory),
+        isFalse,
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.element(sheet), same(sheetElement));
+      final result = tester.widget<TripPlanResult>(find.byType(TripPlanResult));
+      expect(result.pricingChanges, same(pricingChanges));
+      expect(result.localTollPricing?.totalMinor, 1850000);
+      expect(pricingChanges.value['test-route']?.totalMinor, 1850000);
+      expect(
+        find.descendant(of: sheet, matching: find.text('COP 18.500')),
+        findsOneWidget,
+      );
+      expect(find.text('1. Guarne'), findsOneWidget);
+      expect(
+        find.descendant(of: sheet, matching: find.text('Peajes por confirmar')),
+        findsNothing,
+      );
       expect(client.requests, hasLength(1));
       expect(tester.takeException(), isNull);
     },
@@ -2688,7 +2870,7 @@ void main() {
     );
     expect(find.text('Peajes por confirmar'), findsWidgets);
     expect(find.textContaining('COP 0'), findsNothing);
-    expect(find.textContaining('GUARNE'), findsNothing);
+    expect(find.textContaining('Guarne'), findsNothing);
     expect(client.requests, hasLength(1));
   });
 
@@ -2902,7 +3084,7 @@ void main() {
       );
       _pressButtonByKey(tester, 'trip-toll-details-test-route');
       await tester.pumpAndSettle();
-      expect(find.text('1. GUARNE'), findsOneWidget);
+      expect(find.text('1. Guarne'), findsOneWidget);
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('trip-toll-sheet-test-route')),

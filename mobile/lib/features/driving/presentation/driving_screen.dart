@@ -60,6 +60,7 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
     return asyncState.when(
       loading: () => _DrivingDashboard(
         state: _initialDrivingState,
+        onDebugRegional: canUseDebugDrivingSimulation ? _startRegional : null,
         onStart: () => ref.read(drivingControllerProvider.notifier).start(),
         onDebugRouteKnown: canUseDebugDrivingSimulation
             ? () => ref
@@ -105,7 +106,12 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
       ),
       error: (error, stackTrace) => _DrivingError(message: error.toString()),
       data: (state) {
-        if (_hudMode) {
+        if (_hudMode && !state.isActive) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _hudMode) _leaveHudMode();
+          });
+        }
+        if (_hudMode && state.isActive) {
           _setImmersiveActive(true);
           return _HudView(
             state: state,
@@ -116,6 +122,7 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
         _setImmersiveActive(state.isActive);
         return _DrivingDashboard(
           state: state,
+          onDebugRegional: canUseDebugDrivingSimulation ? _startRegional : null,
           onStart: () => ref.read(drivingControllerProvider.notifier).start(),
           onDebugRouteKnown: canUseDebugDrivingSimulation
               ? () => ref
@@ -171,6 +178,14 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
               : null,
         );
       },
+    );
+  }
+
+  void _startRegional(DrivingSimulationScenario scenario) {
+    unawaited(
+      ref
+          .read(drivingControllerProvider.notifier)
+          .start(simulated: true, simulationScenario: scenario),
     );
   }
 
@@ -288,6 +303,7 @@ class _DrivingDashboard extends StatelessWidget {
     required this.onDebugRouteLateralApproach,
     required this.onDebugRouteTurnAway,
     required this.onDebugRouteGpsWeak,
+    required this.onDebugRegional,
     required this.onStop,
     required this.onSettings,
     required this.onHud,
@@ -302,6 +318,7 @@ class _DrivingDashboard extends StatelessWidget {
   final VoidCallback? onDebugRouteLateralApproach;
   final VoidCallback? onDebugRouteTurnAway;
   final VoidCallback? onDebugRouteGpsWeak;
+  final ValueChanged<DrivingSimulationScenario>? onDebugRegional;
   final VoidCallback onStop;
   final VoidCallback onSettings;
   final VoidCallback? onHud;
@@ -332,11 +349,24 @@ class _DrivingDashboard extends StatelessWidget {
                     context,
                     const Duration(milliseconds: 320),
                   );
+                  final simulationName = state.simulationName;
+                  final simulationHeight = simulationName == null
+                      ? 0.0
+                      : _simulationLabelHeight(
+                          context,
+                          constraints.maxWidth,
+                          simulationName,
+                        );
                   final gaugeHeight = hasAlertSpace
                       ? (constraints.maxHeight * 0.48)
                             .clamp(282.0, 344.0)
                             .toDouble()
-                      : math.max(360.0, constraints.maxHeight - 168);
+                      : simulationName == null
+                      ? math.max(360.0, constraints.maxHeight - 168)
+                      : math.max(
+                          300.0,
+                          constraints.maxHeight - 168 - simulationHeight,
+                        );
                   return Column(
                     children: [
                       _DrivingTopBar(
@@ -344,6 +374,20 @@ class _DrivingDashboard extends StatelessWidget {
                         onHud: onHud,
                         onMirrorHud: onMirrorHud,
                       ),
+                      if (state.simulationName case final name?)
+                        SizedBox(
+                          height: simulationHeight,
+                          child: Center(
+                            child: Text(
+                              'SIMULACION · $name',
+                              key: const ValueKey('driving-simulation-label'),
+                              textAlign: TextAlign.center,
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.plateYellow,
+                              ),
+                            ),
+                          ),
+                        ),
                       AnimatedContainer(
                         duration: motionDuration,
                         curve: Curves.easeOutCubic,
@@ -555,6 +599,21 @@ class _DrivingDashboard extends StatelessWidget {
               label: const Text('Ruta demo · GPS débil'),
             ),
           ],
+          if (onDebugRegional != null)
+            for (final scenario in [
+              DrivingSimulationScenario.niquiaToEstrella,
+              DrivingSimulationScenario.estrellaToNiquia,
+            ]) ...[
+              const SizedBox(height: AppSpacing.s),
+              OutlinedButton.icon(
+                key: ValueKey('debug-driving-${scenario.name}'),
+                onPressed: state.status == DrivingSessionStatus.starting
+                    ? null
+                    : () => onDebugRegional!(scenario),
+                icon: const Icon(Icons.route),
+                label: Text('SIMULACION · ${scenario.label} · 80 km/h'),
+              ),
+            ],
           const SizedBox(height: AppSpacing.m),
           TextButton.icon(
             key: const ValueKey('driving-legal-notice-action'),
@@ -592,6 +651,17 @@ class _GaugeSpeedLimitBadge extends StatelessWidget {
       ),
     );
   }
+}
+
+double _simulationLabelHeight(BuildContext context, double width, String name) {
+  final painter = TextPainter(
+    text: TextSpan(text: 'SIMULACION · $name', style: AppTextStyles.caption),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+  )..layout(maxWidth: width);
+  final height = painter.height + AppSpacing.s;
+  painter.dispose();
+  return height;
 }
 
 class _CameraAlertSwitcher extends StatelessWidget {
@@ -706,21 +776,29 @@ class _DrivingTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final connection = _TopStatusChip(
+      key: const ValueKey('driving-connection-chip'),
+      icon: Icons.circle,
+      label: state.gpsQuality.label,
+      color: state.canEvaluateAlerts ? AppColors.teal : AppColors.orange,
+    );
     return Row(
       children: [
-        _TopStatusChip(
-          key: const ValueKey('driving-connection-chip'),
-          icon: Icons.circle,
-          label: state.gpsQuality.label,
-          color: state.canEvaluateAlerts ? AppColors.teal : AppColors.orange,
-        ),
+        if (state.simulationName == null)
+          connection
+        else
+          Flexible(
+            child: FittedBox(fit: BoxFit.scaleDown, child: connection),
+          ),
         const Spacer(),
-        _TopStatusChip(
-          key: const ValueKey('driving-country-chip'),
-          icon: Icons.flag_outlined,
-          label: 'Colombia',
-          color: AppColors.plateYellow,
-        ),
+        if (state.simulationName == null ||
+            MediaQuery.textScalerOf(context).scale(14) <= 20)
+          _TopStatusChip(
+            key: const ValueKey('driving-country-chip'),
+            icon: Icons.flag_outlined,
+            label: 'Colombia',
+            color: AppColors.plateYellow,
+          ),
         IconButton(
           tooltip: 'HUD',
           onPressed: onHud,
@@ -2493,6 +2571,19 @@ class _HudView extends StatelessWidget {
                 icon: const Icon(Icons.close),
               ),
             ),
+            if (state.simulationName case final name?)
+              Positioned(
+                top: AppSpacing.l,
+                left: AppSpacing.l,
+                right: 64,
+                child: Text(
+                  'SIMULACION · $name',
+                  key: const ValueKey('driving-simulation-label'),
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.plateYellow,
+                  ),
+                ),
+              ),
           ],
         ),
       ),

@@ -124,3 +124,14 @@ Antes de correr `build_runner`, revisar si cambiaron entradas de generacion: tab
 - Tests usan `TileProvider` falso o fallback neutral; no solicitan tiles publicos.
 - Un fallo de tiles no borra geometria, marcadores, conteos ni detalles del plan.
 - Habilitar basemap no autoriza proveedor de rutas, gasto, deploy publico, GPS, background ni navegacion giro a giro.
+
+## SOP-09 Regional Driving Simulation
+
+- Owner-requested QA only: build dev debug with `--dart-define=PICORADAR_DRIVING_SIMULATION=true`. The normal APK and profile/release do not expose these controls.
+- In Conducir, use the existing debug simulation controls: `Niquia -> La Estrella` or `La Estrella -> Niquia`. The active screen identifies the simulation; stop it before switching direction.
+- Both scenarios use `mobile/assets/config/driving_regional_demo_v1.json`: independently computed local OSRM v5.27.1 driving geometries along the Regional/Norte/Sur corridor and legal station access connections, not the reversal of one coordinate list.
+- Endpoints are vehicle-access points near Metro Niquia in Bello and Metro La Estrella in Sabaneta. The latter is not a station in Caldas. Distances returned by OSRM: 26,131.3 m southbound and 24,905.1 m northbound.
+- The sampler advances at 80 km/h with one point per second, changing heading with the road geometry. This is a synthetic test speed, not a recommendation or a claim about legal speed limits. The final partial step stops at the endpoint.
+- The route runs locally without the device location gateway or per-position backend calls. The existing camera dataset, matcher, alert settings and feedback remain authoritative; cameras are not invented to force an alert.
+- The recording is public road geometry, not a stored user journey. Source URLs and OpenStreetMap attribution are inside the fixture. No account, permission, dependency or public service was added.
+- Capture both directions with the simulation label, a camera episode if encountered, and manual stop. Whole-route offline tests exercise the complete geometry; short physical captures do not certify camera coverage, field GPS accuracy, Bluetooth or legal road suitability.

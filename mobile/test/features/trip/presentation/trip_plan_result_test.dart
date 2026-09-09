@@ -293,13 +293,12 @@ void main() {
       find.descendant(of: sheet, matching: find.text('COP 18.500')),
       findsOneWidget,
     );
-    expect(
-      find.text('1 cobros pendientes, excluidos de la estimación.'),
-      findsOneWidget,
-    );
-    expect(find.text('1. GUARNE'), findsOneWidget);
-    expect(find.text('2. PAPIROS'), findsOneWidget);
-    expect(find.text('Cat. I · Cobro pendiente'), findsOneWidget);
+    expect(find.text('Estimación parcial'), findsWidgets);
+    expect(find.text('1. Guarne'), findsOneWidget);
+    expect(find.text('2. Papiros'), findsOneWidget);
+    expect(find.text('Categoría I'), findsNWidgets(2));
+    expect(find.textContaining('Tarifa de referencia'), findsNothing);
+    expect(find.text('Tarifa no disponible'), findsOneWidget);
     expect(find.textContaining('COP 0'), findsNothing);
   });
 
@@ -350,6 +349,63 @@ void main() {
       expect(find.textContaining('Solo otra ruta'), findsNothing);
       expect(
         find.descendant(of: sheet, matching: find.text('Peajes por confirmar')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'open priced toll sheet clears stale fallback when pricing notifier clears',
+    (tester) async {
+      final initialPricing = _localPricing([('Peaje anterior', 1850000)]);
+      final prices = ValueNotifier<Map<String, LocalTollPricingBreakdown>>({
+        'a': initialPricing,
+      });
+      addTearDown(prices.dispose);
+      await pump(
+        tester,
+        [
+          route(
+            'a',
+            TripTolls(
+              coverage: TripTollCoverage.unknown,
+              vehicleCategory: 'car',
+            ),
+          ),
+        ],
+        localTollPricing: initialPricing,
+        localPricingByRoute: prices.value,
+        pricingChanges: prices,
+      );
+      await openTolls(tester, 'a');
+      final sheet = find.byKey(const ValueKey('trip-toll-sheet-a'));
+      final sheetElement = tester.element(sheet);
+      expect(
+        find.descendant(of: sheet, matching: find.text('COP 18.500')),
+        findsOneWidget,
+      );
+      expect(find.text('1. Peaje anterior'), findsOneWidget);
+
+      prices.value = {};
+      await tester.pumpAndSettle();
+
+      expect(tester.element(sheet), same(sheetElement));
+      expect(
+        find.descendant(of: sheet, matching: find.text('Peajes por confirmar')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: sheet, matching: find.textContaining('COP 18.500')),
+        findsNothing,
+      );
+      expect(find.text('1. Peaje anterior'), findsNothing);
+      expect(
+        find.descendant(of: sheet, matching: find.text(r'$ 18.500')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: sheet, matching: find.textContaining('COP 0')),
         findsNothing,
       );
       expect(tester.takeException(), isNull);
@@ -614,11 +670,9 @@ void main() {
       await openTolls(tester, 'b');
       expect(find.textContaining('Estación B'), findsOneWidget);
       expect(find.textContaining('Estación A'), findsNothing);
-      expect(
-        find.text('Estimación parcial · cobros pendientes'),
-        findsOneWidget,
-      );
-      expect(find.text('Cat. I · Cobro pendiente'), findsOneWidget);
+      expect(find.text('Estimación parcial'), findsWidgets);
+      expect(find.text('Categoría I'), findsNWidgets(2));
+      expect(find.textContaining('Tarifa de referencia'), findsNothing);
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('trip-toll-sheet-b')),
@@ -791,7 +845,7 @@ void main() {
   );
 
   testWidgets(
-    'outside restriction window shows one instant status and day schedule',
+    'outside restriction window shows evaluated time without implying current restriction',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -823,15 +877,164 @@ void main() {
         find.text('Este día tiene restricción para el vehículo.'),
         findsNothing,
       );
-      expect(find.text('Horario restringido: 06:00–09:00'), findsOneWidget);
+      expect(find.text('5 sep 2026 · 18:00'), findsOneWidget);
+      expect(find.text('Horario restringido: 06:00–09:00'), findsNothing);
       expect(find.text('Consultar fuente'), findsNothing);
       expect(
         find.textContaining('Fuente verificada: 2026-09-01 07:00'),
         findsNothing,
       );
-      expect(find.widgetWithText(ListTile, 'Origen / salida'), findsOneWidget);
+      final surface = find.descendant(
+        of: find.byType(TripInstantEndpoint),
+        matching: find.byType(InkWell),
+      );
+      expect(surface, findsOneWidget);
+      expect(tester.widget<InkWell>(surface).onTap, isNotNull);
     },
   );
+
+  for (final dateOnly in [false, true]) {
+    testWidgets(
+      'restricted day with unknown instant keeps mode-specific reason with dateOnly=$dateOnly',
+      (tester) async {
+        const reason =
+            'No se pudo determinar el origen de matrícula necesario para esta regla.';
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: TripInstantEndpoint(
+                label: 'Salida',
+                city: 'Bogotá',
+                instantUtc: DateTime.utc(2026, 9, 5, 12, 30),
+                dateOnly: dateOnly,
+                onSource: (_) {},
+                evaluation: const AsyncData(
+                  TripEndpointRestriction(
+                    status: RestrictionDayStatus.restricted,
+                    instantStatus: RestrictionStatus.unknown,
+                    reason: 'no_coverage',
+                    engineReason:
+                        RestrictionReasonCode.unknownRegistrationOrigin,
+                    windows: [
+                      RestrictionDayWindow(startMinute: 360, endMinute: 420),
+                      RestrictionDayWindow(startMinute: 480, endMinute: 540),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        expect(
+          find.text('Tiene restricción ese día'),
+          dateOnly ? findsOneWidget : findsNothing,
+        );
+        expect(
+          find.text('Horario restringido: 06:00–07:00, 08:00–09:00'),
+          dateOnly ? findsOneWidget : findsNothing,
+        );
+        expect(
+          find.text('Estado a esta hora no disponible'),
+          dateOnly ? findsNothing : findsOneWidget,
+        );
+        expect(find.text(reason), dateOnly ? findsNothing : findsOneWidget);
+        expect(find.text('Reglas del día no disponibles'), findsNothing);
+        expect(find.text('No circula a la hora evaluada'), findsNothing);
+        expect(find.text('Sin restricción a la hora evaluada'), findsNothing);
+        expect(
+          find.text('Sin cobertura de reglas para este municipio y vehículo.'),
+          findsNothing,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'restricted endpoint preserves status and window with dateOnly=$dateOnly',
+      (tester) async {
+        var cityVisits = 0;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: TripInstantEndpoint(
+                label: 'Salida',
+                city: 'Bogotá',
+                instantUtc: DateTime.utc(2026, 9, 5, 11, 30),
+                dateOnly: dateOnly,
+                onSource: (_) {},
+                onCity: () => cityVisits++,
+                evaluation: const AsyncData(
+                  TripEndpointRestriction(
+                    status: RestrictionDayStatus.restricted,
+                    instantStatus: RestrictionStatus.restricted,
+                    windows: [
+                      RestrictionDayWindow(startMinute: 360, endMinute: 540),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        expect(
+          find.text(
+            dateOnly
+                ? 'Tiene restricción ese día'
+                : 'No circula a la hora evaluada',
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            dateOnly ? '5 sep 2026 · Sin hora de salida' : '5 sep 2026 · 06:30',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Horario restringido: 06:00–09:00'), findsOneWidget);
+        expect(find.text('Sin restricción a la hora evaluada'), findsNothing);
+        await tester.tap(find.text('Bogotá'));
+        expect(cityVisits, 1);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  for (final missing in [1, 2]) {
+    testWidgets(
+      'summary labels $missing tolls excluded from its partial amount',
+      (tester) async {
+        await pump(
+          tester,
+          [
+            route(
+              'partial-count',
+              TripTolls(
+                coverage: TripTollCoverage.unknown,
+                vehicleCategory: 'car',
+              ),
+            ),
+          ],
+          localTollPricing: _localPricing([
+            ('Con tarifa', 1200000),
+            for (var index = 0; index < missing; index++)
+              ('Sin tarifa $index', null),
+          ]),
+        );
+        expect(
+          find.text(missing == 1 ? '1 peaje sin sumar' : '2 peajes sin sumar'),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('trip-summary-cost')),
+            matching: find.text('COP 12.000'),
+          ),
+          findsOneWidget,
+        );
+        expect(find.textContaining('cobros pendientes'), findsNothing);
+      },
+    );
+  }
 
   for (final coverage in TripTollCoverage.values) {
     for (final scale in [1.0, 1.5, 2.0]) {

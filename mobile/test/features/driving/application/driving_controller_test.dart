@@ -18,6 +18,33 @@ import '../../../test_app_harness.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('disabled simulation requests never fall back to real GPS', () async {
+    if (canUseDebugDrivingSimulation) return;
+    final gateway = _FakeDrivingLocationGateway();
+    final container = ProviderContainer(
+      overrides: [
+        appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+        cameraPackProvider.overrideWith((ref) async => _pack()),
+        drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingFeedbackGatewayProvider.overrideWithValue(
+          _FakeDrivingFeedbackGateway(),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(drivingControllerProvider.future);
+    final controller = container.read(drivingControllerProvider.notifier);
+    await controller.start(simulated: true);
+    expect(gateway.requestPermissionCalls, 0);
+    expect(gateway.listenCalls, 0);
+    expect(container.read(drivingControllerProvider).value!.isActive, isFalse);
+    await controller.start(
+      simulationScenario: DrivingSimulationScenario.knownSpeed,
+    );
+    expect(gateway.requestPermissionCalls, 0);
+    expect(gateway.listenCalls, 0);
+  });
+
   test(
     'requests location only when the driver starts a foreground session',
     () async {
@@ -739,6 +766,69 @@ void main() {
     expect(feedback.stopOngoingFeedbackCalls, greaterThanOrEqualTo(1));
   });
 
+  for (final restartBeforeCleanup in [false, true]) {
+    test(
+      'cancelled start cleanup cannot disable restart (starting before cleanup: $restartBeforeCleanup)',
+      () async {
+        final gateway = _ControllableStartGateway(
+          checkPermissionResult: DeviceLocationPermission.denied,
+        );
+        final feedback = _ControllableDrivingFeedbackGateway()
+          ..blockNextKeepScreenOnEnable();
+        final container = ProviderContainer(
+          overrides: [
+            appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+            cameraPackProvider.overrideWith((ref) async => _pack()),
+            drivingLocationGatewayProvider.overrideWithValue(gateway),
+            drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+          ],
+        );
+        addTearDown(container.dispose);
+        addTearDown(feedback.releaseBlockedStopOngoingFeedback);
+        await container.read(drivingControllerProvider.future);
+        final controller = container.read(drivingControllerProvider.notifier);
+        final firstStart = controller.start();
+        await gateway.waitForRequestPermission();
+        gateway.completeRequestPermission(DeviceLocationPermission.granted);
+        await feedback.waitForBlockedKeepScreenOnEnable();
+        await controller.stop();
+
+        Future<void>? restart;
+        if (restartBeforeCleanup) {
+          restart = controller.start();
+          await _flushController();
+          expect(
+            container.read(drivingControllerProvider).value!.status,
+            DrivingSessionStatus.starting,
+          );
+        }
+        feedback.blockNextStopOngoingFeedback();
+        feedback.releaseBlockedKeepScreenOnEnable();
+        await _flushController();
+        final cleanupCalls = feedback.stopOngoingFeedbackCalls;
+        restart ??= controller.start();
+        await _flushController();
+        gateway.completeRequestPermission(DeviceLocationPermission.granted);
+        await restart;
+        final screenBeforeRelease = [...feedback.keepScreenOnStates];
+        expect(screenBeforeRelease, [true, false, true]);
+
+        feedback.releaseBlockedStopOngoingFeedback();
+        await firstStart;
+        await _flushController();
+        expect(
+          container.read(drivingControllerProvider).value!.isActive,
+          isTrue,
+        );
+        expect(gateway.listenCalls, 1);
+        expect(feedback.keepScreenOnStates, screenBeforeRelease);
+        expect(cleanupCalls, restartBeforeCleanup ? 1 : 2);
+        await controller.stop();
+        expect(feedback.keepScreenOnStates.last, isFalse);
+      },
+    );
+  }
+
   test('double start while starting creates only one subscription', () async {
     final gateway = _ControllableStartGateway(
       checkPermissionResult: DeviceLocationPermission.denied,
@@ -1055,10 +1145,32 @@ class _FakeDrivingFeedbackGateway implements DrivingFeedbackGateway {
 }
 
 class _ControllableDrivingFeedbackGateway extends _FakeDrivingFeedbackGateway {
+  Completer<void>? _blockedStopOngoingFeedback;
   Completer<void>? _blockedSpeak;
   Completer<void>? _speakStarted;
   Completer<void>? _blockedKeepScreenOnEnable;
   Completer<void>? _keepScreenOnEnableStarted;
+
+  void blockNextStopOngoingFeedback() {
+    _blockedStopOngoingFeedback = Completer<void>();
+  }
+
+  void releaseBlockedStopOngoingFeedback() {
+    final blocked = _blockedStopOngoingFeedback;
+    if (blocked != null && !blocked.isCompleted) blocked.complete();
+  }
+
+  @override
+  Future<void> stopOngoingFeedback() async {
+    stopOngoingFeedbackCalls += 1;
+    final blocked = _blockedStopOngoingFeedback;
+    if (blocked != null) {
+      await blocked.future;
+      if (identical(_blockedStopOngoingFeedback, blocked)) {
+        _blockedStopOngoingFeedback = null;
+      }
+    }
+  }
 
   void blockNextSpeak() {
     _blockedSpeak = Completer<void>();

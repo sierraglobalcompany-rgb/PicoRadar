@@ -329,7 +329,8 @@ class _TripScreenState extends ConsumerState<TripScreen>
           if (departureUtc != null)
             TripInstantEndpoint(
               key: const ValueKey('trip-origin-instant'),
-              label: 'Salida · ${origin?.municipality ?? 'Origen'}',
+              label: 'Salida',
+              city: origin?.municipality ?? 'Origen',
               onCity: origin?.jurisdictionId == null
                   ? null
                   : () => context.push(
@@ -345,9 +346,11 @@ class _TripScreenState extends ConsumerState<TripScreen>
                 )),
               ),
             )
-          else ...[
+          else
             TripInstantEndpoint(
-              label: 'Salida · ${origin?.municipality ?? 'Origen'}',
+              key: const ValueKey('trip-origin-instant'),
+              label: 'Salida',
+              city: origin?.municipality ?? 'Origen',
               instantUtc: bogotaScheduledTime(date: date, minuteOfDay: 0),
               dateOnly: true,
               evaluation: originRestriction,
@@ -358,16 +361,14 @@ class _TripScreenState extends ConsumerState<TripScreen>
                       '/pico?jurisdictionId=${Uri.encodeComponent(origin!.jurisdictionId!)}',
                     ),
             ),
-            const Text('Sin hora de salida. Consulta las reglas del día.'),
-          ],
-          const SizedBox(height: AppSpacing.m),
+          const Divider(height: 1, color: AppColors.border),
           if (selectedRoute != null &&
               currentRequest != null &&
               currentRequest.departureUtc != null)
             TripInstantEndpoint(
               key: ValueKey('trip-destination-instant-${selectedRoute.id}'),
-              label:
-                  'Llegada estimada · ${currentRequest.destination.municipality}',
+              label: 'Llegada estimada',
+              city: currentRequest.destination.municipality,
               onCity: currentRequest.destination.jurisdictionId == null
                   ? null
                   : () => context.push(
@@ -387,17 +388,20 @@ class _TripScreenState extends ConsumerState<TripScreen>
                 )),
               ),
             )
-          else ...[
-            Text('Llegada · ${destination?.municipality ?? 'Destino'}'),
-            const Text('Llegada por determinar'),
-            if (destination?.jurisdictionId != null)
-              TextButton(
-                onPressed: () => context.push(
-                  '/pico?jurisdictionId=${Uri.encodeComponent(destination!.jurisdictionId!)}',
-                ),
-                child: const Text('Ver pico y placa de destino'),
-              ),
-          ],
+          else
+            TripInstantEndpoint(
+              key: const ValueKey('trip-destination-instant-unknown'),
+              label: 'Llegada estimada',
+              city: destination?.municipality ?? 'Destino',
+              instantUtc: null,
+              evaluation: null,
+              onSource: _openSource,
+              onCity: destination?.jurisdictionId == null
+                  ? null
+                  : () => context.push(
+                      '/pico?jurisdictionId=${Uri.encodeComponent(destination!.jurisdictionId!)}',
+                    ),
+            ),
         ],
       ),
       completedChecklist: _completedChecklist,
@@ -1115,19 +1119,6 @@ class _TripPlanWithLocalDataState extends State<_TripPlanWithLocalData> {
       cameras: [],
     ),
   );
-
-  @override
-  void didUpdateWidget(covariant _TripPlanWithLocalData oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!identical(oldWidget.plan, widget.plan) ||
-        !identical(oldWidget.tollInventory, widget.tollInventory) ||
-        !identical(oldWidget.cameraSnapshot, widget.cameraSnapshot) ||
-        !identical(oldWidget.tollTariffCatalog, widget.tollTariffCatalog)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _pricing.value = {};
-      });
-    }
-  }
 
   @override
   void dispose() {

@@ -471,6 +471,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
 
   List<Marker> _markers(List<LatLng> coordinates) => [
     Marker(
+      key: const ValueKey('trip-marker-position-start'),
       point: coordinates.first,
       width: 38,
       height: 38,
@@ -482,6 +483,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
       ),
     ),
     Marker(
+      key: const ValueKey('trip-marker-position-end'),
       point: coordinates.last,
       width: 38,
       height: 38,
@@ -495,6 +497,9 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
     if (_showTolls)
       for (final association in widget.associations.currentTolls)
         Marker(
+          key: ValueKey(
+            'toll-position-${association.location.id}-${association.passageIndex}',
+          ),
           point: LatLng(
             association.location.latitude,
             association.location.longitude,
@@ -515,6 +520,9 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
     if (_showHistoricalTolls)
       for (final association in widget.associations.historicalTolls)
         Marker(
+          key: ValueKey(
+            'historical-position-${association.location.id}-${association.passageIndex}',
+          ),
           point: LatLng(
             association.location.latitude,
             association.location.longitude,
@@ -536,6 +544,9 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
     if (_showCameras)
       for (final association in widget.associations.cameras)
         Marker(
+          key: ValueKey(
+            'camera-position-${association.location.id}-${association.passageIndex}',
+          ),
           point: LatLng(
             association.location.latitude,
             association.location.longitude,

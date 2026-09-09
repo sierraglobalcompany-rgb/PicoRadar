@@ -200,8 +200,8 @@ class _TripSummary extends StatelessWidget {
               if (pricing != null && pricing!.missingRates > 0)
                 Text(
                   pricing!.missingRates == 1
-                      ? '1 cobro pendiente'
-                      : '${pricing!.missingRates} cobros pendientes',
+                      ? '1 peaje sin sumar'
+                      : '${pricing!.missingRates} peajes sin sumar',
                   style: AppTextStyles.caption,
                 ),
             ],
@@ -381,7 +381,9 @@ class _DetailActions extends StatelessWidget {
         (prices) => KeyedSubtree(
           key: ValueKey('trip-toll-sheet-${selected.id}'),
           child: TripRouteTolls(
-            pricing: prices[selected.id] ?? localTollPricing,
+            pricing: pricingChanges == null
+                ? prices[selected.id] ?? localTollPricing
+                : prices[selected.id],
             onSource: onSource,
           ),
         ),
@@ -514,6 +516,7 @@ void _showDetailSheet(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
+    backgroundColor: AppColors.surface,
     useRootNavigator: true,
     builder: (sheetContext) => SafeArea(
       top: false,
@@ -529,7 +532,16 @@ void _showDetailSheet(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(title, style: AppTextStyles.h2),
+              Row(
+                children: [
+                  Expanded(child: Text(title, style: AppTextStyles.h2)),
+                  IconButton(
+                    tooltip: 'Cerrar',
+                    onPressed: () => Navigator.of(sheetContext).pop(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
               const SizedBox(height: AppSpacing.m),
               child ?? builder!(sheetContext),
             ],
@@ -577,79 +589,142 @@ class TripInstantEndpoint extends StatelessWidget {
     required this.evaluation,
     required this.onSource,
     this.onCity,
+    this.city,
     this.dateOnly = false,
     super.key,
   });
   final String label;
-  final DateTime instantUtc;
-  final AsyncValue<TripEndpointRestriction> evaluation;
+  final String? city;
+  final DateTime? instantUtc;
+  final AsyncValue<TripEndpointRestriction>? evaluation;
   final ValueChanged<String> onSource;
   final VoidCallback? onCity;
   final bool dateOnly;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      ListTile(
-        contentPadding: EdgeInsets.zero,
-        title: Text(label, style: AppTextStyles.bodyStrong),
-        trailing: onCity == null ? null : const Icon(Icons.chevron_right),
+  Widget build(BuildContext context) => Semantics(
+    button: onCity != null,
+    label: onCity == null ? null : 'Ver pico y placa de ${city ?? label}',
+    child: Material(
+      color: Colors.transparent,
+      child: InkWell(
         onTap: onCity,
-        subtitle: onCity == null
-            ? const Text('Ciudad sin cobertura identificada')
-            : null,
-      ),
-      Text(
-        dateOnly
-            ? tripInstantLabel(instantUtc).split(' ').first
-            : tripInstantLabel(instantUtc),
-      ),
-      evaluation.when(
-        skipLoadingOnReload: false,
-        skipLoadingOnRefresh: false,
-        loading: () => const Text('Consultando reglas locales'),
-        error: (_, _) => const Text(
-          'No se pudieron cargar las reglas locales. Estado no disponible.',
-        ),
-        data: (result) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              dateOnly
-                  ? switch (result.status) {
-                      RestrictionDayStatus.allowed =>
-                        'Sin restricción para ese día',
-                      RestrictionDayStatus.restricted =>
-                        'Tiene restricción ese día',
-                      RestrictionDayStatus.stale =>
-                        'Información desactualizada',
-                      RestrictionDayStatus.unknown =>
-                        'Reglas del día no disponibles',
-                    }
-                  : switch (result.instantStatus) {
-                      RestrictionStatus.allowed =>
-                        'Sin restricción a la hora evaluada',
-                      RestrictionStatus.restricted =>
-                        'No circula a la hora evaluada',
-                      RestrictionStatus.stale => 'Información desactualizada',
-                      RestrictionStatus.unknown ||
-                      null => 'Estado a esta hora no disponible',
-                    },
-            ),
-            if (result.windows.isNotEmpty)
-              Text(
-                'Horario restringido: ${result.windows.map((window) => '${_minute(window.startMinute)}–${_minute(window.endMinute)}').join(', ')}',
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.l),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Icon(Icons.location_on_outlined, color: AppColors.teal),
+              const SizedBox(width: AppSpacing.l),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (city != null) Text(label, style: AppTextStyles.caption),
+                    Text(city ?? label, style: AppTextStyles.h2),
+                    const SizedBox(height: AppSpacing.xs),
+                    if (instantUtc case final DateTime instant)
+                      Text(
+                        dateOnly
+                            ? '${_endpointDate(instant)} · Sin hora de salida'
+                            : '${_endpointDate(instant)} · ${_minute(bogotaWallClock(instant).hour * 60 + bogotaWallClock(instant).minute)}',
+                        style: AppTextStyles.caption,
+                      )
+                    else
+                      const Text(
+                        'Llegada por determinar',
+                        style: AppTextStyles.caption,
+                      ),
+                    const SizedBox(height: AppSpacing.s),
+                    if (evaluation != null) _evaluationText(context),
+                    if (onCity == null)
+                      const Text(
+                        'Ciudad sin cobertura identificada',
+                        style: AppTextStyles.caption,
+                      ),
+                  ],
+                ),
               ),
-            if (result.reason != null ||
-                (result.instantStatus == RestrictionStatus.unknown &&
-                    result.engineReason != null))
-              Text(_restrictionReason(result)),
-          ],
+              if (onCity != null) ...[
+                const SizedBox(width: AppSpacing.s),
+                const Icon(Icons.chevron_right, color: AppColors.teal),
+              ],
+            ],
+          ),
         ),
       ),
-    ],
+    ),
   );
+
+  Widget _evaluationText(BuildContext context) => DefaultTextStyle.merge(
+    style: AppTextStyles.body,
+    child: evaluation!.when(
+      skipLoadingOnReload: false,
+      skipLoadingOnRefresh: false,
+      loading: () => const Text('Consultando reglas locales'),
+      error: (_, _) => const Text(
+        'No se pudieron cargar las reglas locales. Estado no disponible.',
+      ),
+      data: (result) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            dateOnly
+                ? switch (result.status) {
+                    RestrictionDayStatus.allowed =>
+                      'Sin restricción para ese día',
+                    RestrictionDayStatus.restricted =>
+                      'Tiene restricción ese día',
+                    RestrictionDayStatus.stale => 'Información desactualizada',
+                    RestrictionDayStatus.unknown =>
+                      'Reglas del día no disponibles',
+                  }
+                : switch (result.instantStatus) {
+                    RestrictionStatus.allowed =>
+                      'Sin restricción a la hora evaluada',
+                    RestrictionStatus.restricted =>
+                      'No circula a la hora evaluada',
+                    RestrictionStatus.stale => 'Información desactualizada',
+                    RestrictionStatus.unknown ||
+                    null => 'Estado a esta hora no disponible',
+                  },
+          ),
+          if (result.windows.isNotEmpty &&
+              (dateOnly
+                  ? result.status == RestrictionDayStatus.restricted
+                  : result.instantStatus == RestrictionStatus.restricted))
+            Text(
+              'Horario restringido: ${result.windows.map((window) => '${_minute(window.startMinute)}–${_minute(window.endMinute)}').join(', ')}',
+            ),
+          if ((dateOnly
+                  ? result.status == RestrictionDayStatus.unknown
+                  : result.instantStatus == RestrictionStatus.unknown ||
+                        result.instantStatus == null) &&
+              (result.reason != null || result.engineReason != null))
+            Text(_restrictionReason(result), style: AppTextStyles.caption),
+        ],
+      ),
+    ),
+  );
+}
+
+String _endpointDate(DateTime instant) {
+  const months = [
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'may',
+    'jun',
+    'jul',
+    'ago',
+    'sep',
+    'oct',
+    'nov',
+    'dic',
+  ];
+  final date = bogotaWallClock(instant);
+  return '${date.day} ${months[date.month - 1]} ${date.year}';
 }
 
 String tripInstantLabel(DateTime instant) {

@@ -8,6 +8,7 @@ import '../../../app/app_providers.dart';
 import '../../location/platform/device_location_gateway.dart';
 import '../data/camera_pack_loader.dart';
 import '../data/driving_preferences.dart';
+import '../data/driving_regional_demo.dart';
 import '../domain/camera_matcher.dart';
 import '../domain/driving_alert_engine.dart';
 import '../domain/traffic_camera.dart';
@@ -29,6 +30,21 @@ enum DrivingSimulationScenario {
   lateralApproach,
   turnAway,
   gpsWeak,
+  niquiaToEstrella,
+  estrellaToNiquia;
+
+  String get label => switch (this) {
+    knownSpeed => 'Con velocidad',
+    unknownSpeed => 'Sin velocidad',
+    sidePass => 'Cámara lateral',
+    lateralApproach => 'Radar 500 m',
+    turnAway => 'Giro antes',
+    gpsWeak => 'GPS débil',
+    niquiaToEstrella => 'Niquía → La Estrella',
+    estrellaToNiquia => 'La Estrella → Niquía',
+  };
+
+  bool get isRegional => this == niquiaToEstrella || this == estrellaToNiquia;
 }
 
 enum DrivingSpeedState { noCamera, unknownReportedSpeed, within, near, over }
@@ -116,6 +132,7 @@ class DrivingState {
     this.lastAlert,
     this.dismissedCameraId,
     this.errorMessage,
+    this.simulationName,
   });
 
   final DrivingSessionStatus status;
@@ -129,6 +146,7 @@ class DrivingState {
   final DrivingAlert? lastAlert;
   final String? dismissedCameraId;
   final String? errorMessage;
+  final String? simulationName;
 
   bool get isActive => status == DrivingSessionStatus.active;
 
@@ -212,6 +230,9 @@ class DrivingState {
     DrivingAlert? lastAlert,
     String? dismissedCameraId,
     String? errorMessage,
+    String? simulationName,
+    bool clearSimulation = false,
+    bool clearCurrentPoint = false,
     bool clearNearestCamera = false,
     bool clearLastAlert = false,
     bool clearDismissedCamera = false,
@@ -224,7 +245,12 @@ class DrivingState {
       cameraSpeedKnownCount:
           cameraSpeedKnownCount ?? this.cameraSpeedKnownCount,
       cameraPackSource: cameraPackSource ?? this.cameraPackSource,
-      currentPoint: currentPoint ?? this.currentPoint,
+      currentPoint: clearCurrentPoint
+          ? null
+          : currentPoint ?? this.currentPoint,
+      simulationName: clearSimulation
+          ? null
+          : simulationName ?? this.simulationName,
       nearestCamera: clearNearestCamera
           ? null
           : nearestCamera ?? this.nearestCamera,
@@ -259,7 +285,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       _sessionSerial += 1;
       _pointProcessing = Future<void>.value();
       unawaited(_cancelSubscription());
-      unawaited(_stopNativeSessionCleanup(cleanupFeedback));
+      unawaited(_stopNativeSessionCleanup(gateway: cleanupFeedback));
     });
     final preferences = await ref.watch(drivingPreferencesProvider.future);
     final pack = await ref.watch(cameraPackProvider.future);
@@ -297,6 +323,22 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         current.status == DrivingSessionStatus.active) {
       return;
     }
+    final wantsSimulation = simulated || simulationScenario != null;
+    if (wantsSimulation && !canUseDebugDrivingSimulation) {
+      state = AsyncData(
+        current.copyWith(
+          status: DrivingSessionStatus.locationUnavailable,
+          errorMessage:
+              'La simulación solo está disponible en debug habilitado.',
+          clearSimulation: true,
+          clearCurrentPoint: true,
+        ),
+      );
+      return;
+    }
+    final scenario = wantsSimulation
+        ? simulationScenario ?? DrivingSimulationScenario.knownSpeed
+        : null;
     _sessionSerial += 1;
     final sessionSerial = _sessionSerial;
     _pointProcessing = Future<void>.value();
@@ -304,6 +346,9 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       current.copyWith(
         status: DrivingSessionStatus.starting,
         clearErrorMessage: true,
+        simulationName: scenario?.label,
+        clearSimulation: !wantsSimulation,
+        clearCurrentPoint: true,
       ),
     );
     final pack = await ref.read(cameraPackProvider.future);
@@ -315,9 +360,27 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       cameraCount: pack.cameras.length,
       cameraSpeedKnownCount: _knownSpeedCount(pack),
       cameraPackSource: pack.source,
+      simulationName: scenario?.label,
+      clearSimulation: !wantsSimulation,
+      clearCurrentPoint: true,
     );
-    final scenario = simulationScenario;
-    if ((simulated || scenario != null) && canUseDebugDrivingSimulation) {
+    if (scenario != null && scenario.isRegional) {
+      try {
+        final route = await ref.read(drivingRegionalDemoLoaderProvider)(
+          scenario.name,
+        );
+        if (!_isCurrentStart(sessionSerial)) return;
+        drivingStream = route.play();
+      } catch (_) {
+        if (!_isCurrentStart(sessionSerial)) return;
+        await _setStopped(
+          readyState,
+          DrivingSessionStatus.locationUnavailable,
+          'No se pudo cargar la ruta de simulación local.',
+        );
+        return;
+      }
+    } else if (scenario != null) {
       final camera = _simulationCamera(pack, scenario);
       if (camera == null) {
         await _setStopped(
@@ -327,10 +390,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         );
         return;
       }
-      drivingStream = _simulatedApproachStream(
-        camera,
-        scenario ?? DrivingSimulationScenario.knownSpeed,
-      );
+      drivingStream = _simulatedApproachStream(camera, scenario);
     } else {
       final gateway = ref.read(drivingLocationGatewayProvider);
       if (!await gateway.isLocationServiceEnabled()) {
@@ -387,12 +447,13 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     );
     await ref.read(drivingFeedbackGatewayProvider).setKeepScreenOn(true);
     if (!_isActiveSession(sessionSerial)) {
-      await _stopNativeSessionCleanup();
+      await _stopNativeSessionCleanup(onlyWhenInactive: true);
       return;
     }
     _subscription = drivingStream.listen(
       (point) => _enqueuePoint(point, sessionSerial),
       onError: (_) {
+        if (!_isActiveSession(sessionSerial)) return;
         final latest = state.asData?.value ?? current;
         unawaited(
           _setStopped(
@@ -402,16 +463,26 @@ class DrivingController extends AsyncNotifier<DrivingState> {
           ),
         );
       },
+      onDone: scenario?.isRegional == true
+          ? () => unawaited(_finishSimulation(sessionSerial))
+          : null,
       cancelOnError: false,
     );
+  }
+
+  Future<void> _finishSimulation(int sessionSerial) async {
+    await _pointProcessing;
+    if (_isActiveSession(sessionSerial)) await stop();
   }
 
   Future<void> stop() async {
     final current = state.asData?.value ?? await build();
     _sessionSerial += 1;
+    final sessionSerial = _sessionSerial;
     _pointProcessing = Future<void>.value();
     await _cancelSubscription();
     await _stopNativeSessionCleanup();
+    if (!ref.mounted || sessionSerial != _sessionSerial) return;
     state = AsyncData(
       current.copyWith(
         status: DrivingSessionStatus.idle,
@@ -419,6 +490,8 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         clearLastAlert: true,
         clearDismissedCamera: true,
         clearErrorMessage: true,
+        clearSimulation: true,
+        clearCurrentPoint: true,
       ),
     );
   }
@@ -657,9 +730,11 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     String message,
   ) async {
     _sessionSerial += 1;
+    final sessionSerial = _sessionSerial;
     _pointProcessing = Future<void>.value();
     await _cancelSubscription();
     await _stopNativeSessionCleanup();
+    if (!ref.mounted || sessionSerial != _sessionSerial) return;
     state = AsyncData(
       previous.copyWith(
         status: status,
@@ -667,13 +742,25 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         clearNearestCamera: true,
         clearLastAlert: true,
         clearDismissedCamera: true,
+        clearSimulation: true,
+        clearCurrentPoint: true,
       ),
     );
   }
 
-  Future<void> _stopNativeSessionCleanup([
+  Future<void> _stopNativeSessionCleanup({
     DrivingFeedbackGateway? gateway,
-  ]) async {
+    bool onlyWhenInactive = false,
+  }) async {
+    bool canCleanUp() {
+      if (!onlyWhenInactive) return true;
+      if (!ref.mounted) return false;
+      final status = state.asData?.value.status;
+      return status != DrivingSessionStatus.starting &&
+          status != DrivingSessionStatus.active;
+    }
+
+    if (!canCleanUp()) return;
     final DrivingFeedbackGateway feedback =
         gateway ?? ref.read(drivingFeedbackGatewayProvider);
     try {
@@ -681,6 +768,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     } catch (_) {
       // Cleanup must be idempotent and must not crash the UI.
     }
+    if (!canCleanUp()) return;
     try {
       await feedback.setKeepScreenOn(false);
     } catch (_) {
@@ -708,11 +796,12 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   }
 
   Future<void> _cancelSubscription() async {
-    await _subscription?.cancel();
+    final subscription = _subscription;
     _subscription = null;
     _previousPoint = null;
     _alertEngine = null;
     _activeCameraId = null;
+    await subscription?.cancel();
   }
 
   bool _shouldResetAlertEngine(
@@ -799,6 +888,8 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         pack,
         (camera) => camera.speedLimitKmh != null,
       ),
+      DrivingSimulationScenario.niquiaToEstrella ||
+      DrivingSimulationScenario.estrellaToNiquia => null,
     };
   }
 
@@ -852,6 +943,10 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       ],
       DrivingSimulationScenario.turnAway => [52.0, 56.0, 60.0, 58.0, 54.0],
       DrivingSimulationScenario.gpsWeak => [0.0, 0.0, 0.0, 0.0, 0.0],
+      DrivingSimulationScenario.niquiaToEstrella ||
+      DrivingSimulationScenario.estrellaToNiquia => throw StateError(
+        'Regional demo uses road geometry.',
+      ),
     };
     final points = [
       for (var index = 0; index < metersSouth.length; index += 1)

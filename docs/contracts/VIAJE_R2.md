@@ -4,6 +4,12 @@ Authority: `PicoRadar_VIAJE_R2_DATOS_MOCKUP_KISS.zip` (2026-09-05). This contrac
 
 ## Workflow and UI
 
+### Owner readability correction and separate simulation request (2026-09-09)
+
+The first route-toll/Pico presentation was rejected by the owner. The revised toll list prioritizes name and amount, shows every general category amount when expanded, opens the public station coordinates in Google Maps, and folds technical conditions/sources. Excluded nominal prices are explicitly reference prices, not confirmed charges or user debts. Origin and destination use the same tappable city/date/status row, including undetermined arrival. Missing descriptions remain available under sources; exceptional transit still carries a visible authorization warning.
+
+The owner additionally authorized two debug-only Conducir simulations after this UI correction: Metro Niquia (Bello) to Metro La Estrella (Sabaneta), and independently routed return, along the Regional/Norte/Sur corridor at a fixed test speed of 80 km/h. This does not authorize real road testing, new camera records, production GPS substitution, public deployment, route-history persistence or a navigation engine. It is an explicit extension of the current PR, not a new product module.
+
 ### Owner toll/UX correction (2026-09-08)
 
 The map-first result uses one route-local pricing result for the summary, alternatives, passage list and map detail. Category I is the ordinary car estimate; Los Santos uses its explicit AUTOMOVIL source code. Other operator categories are consultation-only per station, with source descriptions or an explicit missing-description label. They do not change the garage vehicle or authorize heavy-vehicle routes.
