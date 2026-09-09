@@ -1221,6 +1221,7 @@ class _TripPlanWithAssociationsState extends State<_TripPlanWithAssociations> {
         cameraPackVersion: widget.cameras.version,
         associations: associations,
         config: widget.mapConfig,
+        compact: true,
         demoLabel: widget.plan.attribution == tripDemoWarningLabel
             ? tripDemoWarningLabel
             : null,

@@ -28,8 +28,9 @@ final tripPlanClientProvider = Provider<TripPlanClient>((ref) {
   return TripPlanClient(dio: dio, baseUri: Uri.tryParse(configured));
 });
 
-// Must match TollGuruTripPreview::MAX_GEOMETRY_POINTS.
-const _maximumGeometryPoints = 3000;
+// Must match the private OSRM compact transport ceiling.
+const _maximumGeometryPoints = 50000;
+const _maximumResponseBytes = 524288;
 
 abstract interface class TripPlanClient {
   factory TripPlanClient({
@@ -105,7 +106,7 @@ class _HttpTripPlanClient implements TripPlanClient {
         await for (final chunk in body.stream.timeout(
           const Duration(seconds: 25),
         )) {
-          if (bytes.length + chunk.length > 262144) {
+          if (bytes.length + chunk.length > _maximumResponseBytes) {
             throw const FormatException();
           }
           bytes.addAll(chunk);
@@ -374,6 +375,17 @@ TripPlan _parsePlan(Map<String, dynamic> json, String category) {
 List<TripCoordinate> _geometry(Object? value) {
   final json = _object(value);
   if (json['type'] != 'LineString') throw const FormatException();
+  if (json['encoding'] == 'polyline6') {
+    final encoded = _text(json['coordinates'], maximum: _maximumResponseBytes);
+    final points = _decodePolyline6(encoded);
+    final reported = json['pointCount'];
+    if (reported != null &&
+        _integer(reported, minimum: 2, maximum: _maximumGeometryPoints) !=
+            points.length) {
+      throw const FormatException();
+    }
+    return points;
+  }
   final rows = json['coordinates'];
   if (rows is! List ||
       rows.length < 2 ||
@@ -401,6 +413,53 @@ List<TripCoordinate> _geometry(Object? value) {
     );
   }
   return points;
+}
+
+List<TripCoordinate> _decodePolyline6(String encoded) {
+  final points = <TripCoordinate>[];
+  var offset = 0;
+  var latitude = 0;
+  var longitude = 0;
+  while (offset < encoded.length) {
+    final latitudeDelta = _decodePolylineDelta(encoded, offset);
+    offset = latitudeDelta.nextOffset;
+    final longitudeDelta = _decodePolylineDelta(encoded, offset);
+    offset = longitudeDelta.nextOffset;
+    latitude += latitudeDelta.value;
+    longitude += longitudeDelta.value;
+    final point = TripCoordinate(
+      latitude: latitude / 1000000,
+      longitude: longitude / 1000000,
+    );
+    if (!point.latitude.isFinite ||
+        !point.longitude.isFinite ||
+        point.latitude.abs() > 90 ||
+        point.longitude.abs() > 180 ||
+        points.length >= _maximumGeometryPoints) {
+      throw const FormatException();
+    }
+    points.add(point);
+  }
+  if (points.length < 2) throw const FormatException();
+  return List.unmodifiable(points);
+}
+
+({int value, int nextOffset}) _decodePolylineDelta(String encoded, int offset) {
+  var result = 0;
+  var shift = 0;
+  var currentOffset = offset;
+  int byte;
+  do {
+    if (currentOffset >= encoded.length || shift > 30) {
+      throw const FormatException();
+    }
+    byte = encoded.codeUnitAt(currentOffset++) - 63;
+    if (byte < 0 || byte > 0x5f) throw const FormatException();
+    result |= (byte & 0x1f) << shift;
+    shift += 5;
+  } while (byte >= 0x20);
+  final value = (result & 1) == 1 ? ~(result >> 1) : (result >> 1);
+  return (value: value, nextOffset: currentOffset);
 }
 
 TripResolvedPoint _point(Object? value) {

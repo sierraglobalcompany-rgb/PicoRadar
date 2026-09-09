@@ -195,6 +195,11 @@ class TripPreviewTest extends TestCase
         ]);
         $this->routePoint('05001', 6.2442, -75.5812);
         $this->routePoint('05615', 6.1533, -75.3740);
+        $coordinates = [
+            [-75.5812, 6.2442],
+            [-75.48, 6.2],
+            [-75.374, 6.1533],
+        ];
         $this->fakeProvider(['https://osrm.test/route/v1/driving/*' => Http::response([
             'code' => 'Ok',
             'routes' => [[
@@ -202,11 +207,7 @@ class TripPreviewTest extends TestCase
                 'duration' => 3600.2,
                 'geometry' => [
                     'type' => 'LineString',
-                    'coordinates' => [
-                        [-75.5812, 6.2442],
-                        [-75.48, 6.2],
-                        [-75.374, 6.1533],
-                    ],
+                    'coordinates' => $coordinates,
                 ],
             ]],
             'waypoints' => [
@@ -215,7 +216,9 @@ class TripPreviewTest extends TestCase
             ],
         ], 200, ['Content-Type' => 'application/json'])]);
 
-        $this->postJson('/api/v1/trips/preview', $this->request())
+        $response = $this->postJson('/api/v1/trips/preview', $this->request());
+
+        $response
             ->assertOk()
             ->assertJsonPath('provider', 'Private OSRM')
             ->assertJsonPath('attribution', 'OSRM; OpenStreetMap contributors')
@@ -223,10 +226,12 @@ class TripPreviewTest extends TestCase
             ->assertJsonPath('destination.longitude', -75.374)
             ->assertJsonPath('routes.0.distanceMeters', 42000)
             ->assertJsonPath('routes.0.durationSeconds', 3600)
-            ->assertJsonPath('routes.0.geometry.coordinates.0', [-75.5812, 6.2442])
+            ->assertJsonPath('routes.0.geometry.encoding', 'polyline6')
+            ->assertJsonPath('routes.0.geometry.pointCount', 3)
             ->assertJsonPath('routes.0.tolls.coverage', 'unknown')
             ->assertJsonPath('routes.0.tolls.totalMinor', null)
             ->assertJsonPath('routes.0.tolls.stationCount', null);
+        $this->assertSame($this->polyline6($coordinates), $response->json('routes.0.geometry.coordinates'));
 
         Http::assertSent(function (Request $request): bool {
             $this->assertSame('GET', $request->method());
@@ -234,7 +239,7 @@ class TripPreviewTest extends TestCase
             $query = [];
             parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
             $this->assertSame('full', $query['overview'] ?? null);
-            $this->assertSame('geojson', $query['geometries'] ?? null);
+            $this->assertSame('polyline6', $query['geometries'] ?? null);
             $this->assertSame('false', $query['steps'] ?? null);
             $this->assertSame('true', $query['alternatives'] ?? null);
 
@@ -244,7 +249,7 @@ class TripPreviewTest extends TestCase
         $this->assertSame($this->ledger(), Cache::store('database')->get(self::LEDGER));
     }
 
-    public function test_private_osrm_thins_full_geometry_to_the_mobile_transport_contract(): void
+    public function test_private_osrm_preserves_full_geometry_with_compact_mobile_transport(): void
     {
         config([
             'trips.enabled' => true,
@@ -258,29 +263,29 @@ class TripPreviewTest extends TestCase
         $this->routePoint('05001', 6.2442, -75.5812);
         $this->routePoint('05615', 6.1533, -75.3740);
         $coordinates = $this->osrmLineCoordinates(12001, [-75.5812, 6.2442], [-75.374, 6.1533]);
+        $encoded = $this->polyline6($coordinates);
         $providerBody = json_encode([
             'code' => 'Ok',
             'routes' => [[
                 'distance' => 42000.4,
                 'duration' => 3600.2,
-                'geometry' => ['type' => 'LineString', 'coordinates' => $coordinates],
+                'geometry' => $encoded,
             ]],
         ], JSON_THROW_ON_ERROR);
-        $this->assertGreaterThan(262144, strlen($providerBody));
         $this->fakeProvider(['https://osrm.test/route/v1/driving/*' => Http::response($providerBody, 200, ['Content-Type' => 'application/json'])]);
 
         $response = $this->postJson('/api/v1/trips/preview', $this->request());
 
         $response->assertOk()
-            ->assertJsonPath('routes.0.geometry.coordinates.0', [-75.5812, 6.2442])
-            ->assertJsonPath('routes.0.geometry.coordinates.2999', [-75.374, 6.1533]);
-        $this->assertCount(3000, $response->json('routes.0.geometry.coordinates'));
-        $this->assertLessThanOrEqual(262144, strlen($response->getContent()));
+            ->assertJsonPath('routes.0.geometry.encoding', 'polyline6')
+            ->assertJsonPath('routes.0.geometry.pointCount', 12001)
+            ->assertJsonPath('routes.0.geometry.coordinates', $encoded);
+        $this->assertLessThanOrEqual(524288, strlen($response->getContent()));
         Http::assertSent(function (Request $request): bool {
             $query = [];
             parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
 
-            return ($query['overview'] ?? null) === 'full';
+            return ($query['overview'] ?? null) === 'full' && ($query['geometries'] ?? null) === 'polyline6';
         });
     }
 
@@ -927,5 +932,28 @@ class TripPreviewTest extends TestCase
         }
 
         return $coordinates;
+    }
+
+    private function polyline6(array $coordinates): string
+    {
+        $encoded = '';
+        $previousLat = 0;
+        $previousLng = 0;
+        foreach ($coordinates as $point) {
+            $lat = (int) round($point[1] * 1000000);
+            $lng = (int) round($point[0] * 1000000);
+            foreach ([$lat - $previousLat, $lng - $previousLng] as $delta) {
+                $value = $delta < 0 ? ~($delta << 1) : $delta << 1;
+                while ($value >= 0x20) {
+                    $encoded .= chr((0x20 | ($value & 0x1f)) + 63);
+                    $value >>= 5;
+                }
+                $encoded .= chr($value + 63);
+            }
+            $previousLat = $lat;
+            $previousLng = $lng;
+        }
+
+        return $encoded;
     }
 }

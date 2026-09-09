@@ -229,6 +229,24 @@ void main() {
       );
     },
   );
+  test('decodes compact polyline6 transport as full route geometry', () async {
+    final coordinates = _colombianCoordinates(12001);
+    adapter.body = _plan();
+    adapter.body['routes'][0]['geometry'] = {
+      'type': 'LineString',
+      'encoding': 'polyline6',
+      'coordinates': _polyline6(coordinates),
+      'pointCount': coordinates.length,
+    };
+
+    final route = (await client.preview(_request())).routes.single;
+
+    expect(route.geometry, hasLength(12001));
+    expect(route.geometry.first.latitude, closeTo(6.24, 0.000001));
+    expect(route.geometry.first.longitude, closeTo(-75.58, 0.000001));
+    expect(route.geometry.last.latitude, closeTo(4.60, 0.000001));
+    expect(route.geometry.last.longitude, closeTo(-74.08, 0.000001));
+  });
   test('accepts the PHP-normalized boundary fixture', () async {
     adapter.body = jsonDecode(
       File('test/fixtures/trip/tollguru_normalized_plan.json')
@@ -250,27 +268,24 @@ void main() {
     expect(route.geometry.last.longitude, -75.374);
     expect(route.tolls.totalMinor, 1800030);
   });
-  test(
-    'accepts three routes at the 3000-coordinate transport ceiling',
-    () async {
-      adapter.body = _planWithRoutes(3000);
-      final encodedPayload = utf8.encode(jsonEncode(adapter.body));
+  test('accepts three compact routes under the response ceiling', () async {
+    adapter.body = _planWithRoutes(12001, compact: true);
+    final encodedPayload = utf8.encode(jsonEncode(adapter.body));
 
-      expect(encodedPayload.length, greaterThan(150000));
-      expect(encodedPayload.length, lessThanOrEqualTo(262144));
+    expect(encodedPayload.length, greaterThan(100000));
+    expect(encodedPayload.length, lessThanOrEqualTo(524288));
 
-      final routes = (await client.preview(_request())).routes;
+    final routes = (await client.preview(_request())).routes;
 
-      expect(routes, hasLength(3));
-      for (final route in routes) {
-        expect(route.geometry, hasLength(3000));
-      }
-    },
-  );
-  test('rejects route geometry above the 3000-coordinate ceiling', () async {
+    expect(routes, hasLength(3));
+    for (final route in routes) {
+      expect(route.geometry, hasLength(12001));
+    }
+  });
+  test('rejects route geometry above the compact transport ceiling', () async {
     adapter.body = _plan();
     adapter.body['routes'][0]['geometry']['coordinates'] =
-        _colombianCoordinates(3001);
+        _colombianCoordinates(50001);
 
     await expectLater(
       client.preview(_request()),
@@ -433,17 +448,22 @@ TripPlanRequest _request({
   standardVehicleConfirmed: confirmed,
 );
 
-Map<String, dynamic> _planWithRoutes(int vertices) {
+Map<String, dynamic> _planWithRoutes(int vertices, {bool compact = false}) {
   final plan = _plan();
   final template = plan['routes'][0];
   plan['routes'] = List.generate(3, (index) {
     final route = jsonDecode(jsonEncode(template)) as Map<String, dynamic>;
     route['id'] = 'route-${index + 1}';
     route['durationSeconds'] = 14400 + (index * 600);
-    route['geometry']['coordinates'] = _colombianCoordinates(
-      vertices,
-      variant: index,
-    );
+    final coordinates = _colombianCoordinates(vertices, variant: index);
+    route['geometry'] = compact
+        ? {
+            'type': 'LineString',
+            'encoding': 'polyline6',
+            'coordinates': _polyline6(coordinates),
+            'pointCount': coordinates.length,
+          }
+        : {'type': 'LineString', 'coordinates': coordinates};
     return route;
   });
   return plan;
@@ -461,6 +481,27 @@ List<List<double>> _colombianCoordinates(int count, {int variant = 0}) =>
       );
       return [longitude, latitude];
     }, growable: false);
+
+String _polyline6(List<List<double>> coordinates) {
+  final buffer = StringBuffer();
+  var previousLat = 0;
+  var previousLng = 0;
+  for (final point in coordinates) {
+    final lng = (point[0] * 1000000).round();
+    final lat = (point[1] * 1000000).round();
+    for (final delta in [lat - previousLat, lng - previousLng]) {
+      var value = delta < 0 ? ~(delta << 1) : delta << 1;
+      while (value >= 0x20) {
+        buffer.writeCharCode((0x20 | (value & 0x1f)) + 63);
+        value >>= 5;
+      }
+      buffer.writeCharCode(value + 63);
+    }
+    previousLat = lat;
+    previousLng = lng;
+  }
+  return buffer.toString();
+}
 
 Map<String, dynamic> _plan() => {
   'requestId': 'request-1',

@@ -36,7 +36,7 @@ return [
         'attribution' => env('PRIVATE_OSRM_ATTRIBUTION', 'OSRM; OpenStreetMap contributors'),
         'timeout_seconds' => 10,
         'connect_timeout_seconds' => 3,
-        'max_response_bytes' => 262144,
+        'max_response_bytes' => 524288,
         'max_upstream_response_bytes' => 5242880,
     ],
 

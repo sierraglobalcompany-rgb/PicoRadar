@@ -15,9 +15,9 @@ use Throwable;
 
 final class PrivateOsrmTripPreview implements TripPreviewProvider
 {
-    private const MAX_MOBILE_RESPONSE_BYTES = 262144;
+    private const MAX_MOBILE_RESPONSE_BYTES = 524288;
 
-    private const MAX_GEOMETRY_POINTS = 3000;
+    private const MAX_GEOMETRY_POINTS = 50000;
 
     private const MAX_UPSTREAM_RESPONSE_BYTES = 5242880;
 
@@ -85,7 +85,7 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
                 ->withOptions(['allow_redirects' => false, 'verify' => true])
                 ->get($settings['base_url'].$path, [
                     'overview' => 'full',
-                    'geometries' => 'geojson',
+                    'geometries' => 'polyline6',
                     'steps' => 'false',
                     'alternatives' => $request['alternatives'] > 1 ? 'true' : 'false',
                 ]);
@@ -144,7 +144,7 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
                 || (! is_int($duration) && ! is_float($duration)) || ! is_finite((float) $duration) || $duration < 1 || $duration > 604800) {
                 throw new DomainException('invalid_upstream');
             }
-            $coordinates = $this->geometry($route['geometry']['coordinates'] ?? null);
+            $coordinates = $this->geometry($route['geometry'] ?? null);
             foreach ([[$coordinates[0], $origin], [$coordinates[array_key_last($coordinates)], $destination]] as [$point, $endpoint]) {
                 if (abs($point[1] - $endpoint['latitude']) > 0.05 || abs($point[0] - $endpoint['longitude']) > 0.05) {
                     throw new DomainException('invalid_upstream');
@@ -157,7 +157,12 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
                 'distanceMeters' => (int) round($distance),
                 'durationSeconds' => (int) round($duration),
                 'timeBasis' => 'static',
-                'geometry' => ['type' => 'LineString', 'coordinates' => $coordinates],
+                'geometry' => [
+                    'type' => 'LineString',
+                    'encoding' => 'polyline6',
+                    'coordinates' => $this->encodePolyline6($coordinates),
+                    'pointCount' => count($coordinates),
+                ],
                 'tolls' => [
                     'coverage' => 'unknown',
                     'currency' => 'COP',
@@ -175,12 +180,6 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
         $routes = array_values($routes);
         usort($routes, fn (array $a, array $b): int => [$a['durationSeconds'], $a['id']] <=> [$b['durationSeconds'], $b['id']]);
         $routes = array_slice($routes, 0, min(3, $request['alternatives']));
-        $pointsPerRoute = max(2, intdiv(self::MAX_GEOMETRY_POINTS, max(1, count($routes))));
-        foreach ($routes as &$route) {
-            $route['geometry']['coordinates'] = $this->thinGeometry($route['geometry']['coordinates'], $pointsPerRoute);
-        }
-        unset($route);
-
         $plan = [
             'requestId' => $request['requestId'],
             'generatedAtUtc' => now()->utc()->format('Y-m-d\TH:i:s\Z'),
@@ -228,9 +227,16 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
         ];
     }
 
-    private function geometry(mixed $coordinates): array
+    private function geometry(mixed $geometry): array
     {
+        if (is_string($geometry)) {
+            return $this->decodePolyline6($geometry);
+        }
+        $coordinates = is_array($geometry) ? ($geometry['coordinates'] ?? null) : null;
         if (! is_array($coordinates) || ! array_is_list($coordinates) || count($coordinates) < 2) {
+            throw new DomainException('invalid_upstream');
+        }
+        if (count($coordinates) > self::MAX_GEOMETRY_POINTS) {
             throw new DomainException('invalid_upstream');
         }
         $points = [];
@@ -247,30 +253,69 @@ final class PrivateOsrmTripPreview implements TripPreviewProvider
         return $points;
     }
 
-    private function thinGeometry(array $points, int $maxPoints): array
+    private function decodePolyline6(string $encoded): array
     {
-        $count = count($points);
-        if ($count <= $maxPoints) {
-            return $points;
+        if (strlen($encoded) < 4 || strlen($encoded) > self::MAX_MOBILE_RESPONSE_BYTES) {
+            throw new DomainException('invalid_upstream');
         }
-        $last = $count - 1;
-        $result = [];
-        $previous = -1;
-        for ($index = 0; $index < $maxPoints; $index++) {
-            $source = (int) round(($index * $last) / ($maxPoints - 1));
-            if ($source <= $previous) {
-                $source = $previous + 1;
+        $points = [];
+        $offset = 0;
+        $lat = 0;
+        $lng = 0;
+        while ($offset < strlen($encoded)) {
+            $delta = [];
+            foreach ([0, 1] as $_) {
+                $result = 0;
+                $shift = 0;
+                do {
+                    if ($offset >= strlen($encoded) || $shift > 30) {
+                        throw new DomainException('invalid_upstream');
+                    }
+                    $byte = ord($encoded[$offset++]) - 63;
+                    if ($byte < 0 || $byte > 0x5f) {
+                        throw new DomainException('invalid_upstream');
+                    }
+                    $result |= ($byte & 0x1f) << $shift;
+                    $shift += 5;
+                } while ($byte >= 0x20);
+                $delta[] = ($result & 1) !== 0 ? ~($result >> 1) : ($result >> 1);
             }
-            if ($source > $last) {
-                $source = $last;
+            $lat += $delta[0];
+            $lng += $delta[1];
+            $point = [$lng / 1000000, $lat / 1000000];
+            if (! $this->colombiaPoint($point[1], $point[0]) || count($points) >= self::MAX_GEOMETRY_POINTS) {
+                throw new DomainException('invalid_upstream');
             }
-            $result[] = $points[$source];
-            $previous = $source;
+            $points[] = $point;
         }
-        $result[0] = $points[0];
-        $result[array_key_last($result)] = $points[$last];
+        if (count($points) < 2 || $points[0] === $points[array_key_last($points)]) {
+            throw new DomainException('invalid_upstream');
+        }
 
-        return $result;
+        return $points;
+    }
+
+    private function encodePolyline6(array $points): string
+    {
+        $encoded = '';
+        $previousLat = 0;
+        $previousLng = 0;
+        foreach ($points as $point) {
+            $lat = (int) round($point[1] * 1000000);
+            $lng = (int) round($point[0] * 1000000);
+            foreach ([$lat - $previousLat, $lng - $previousLng] as $delta) {
+                $value = $delta < 0 ? ~($delta << 1) : $delta << 1;
+                while ($value >= 0x20) {
+                    $encoded .= chr((0x20 | ($value & 0x1f)) + 63);
+                    $value >>= 5;
+                }
+                $encoded .= chr($value + 63);
+            }
+            $previousLat = $lat;
+            $previousLng = $lng;
+        }
+
+        return $encoded;
     }
 
     private function colombiaPoint(mixed $lat, mixed $lng): bool

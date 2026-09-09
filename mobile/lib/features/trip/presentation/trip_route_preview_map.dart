@@ -55,6 +55,7 @@ class TripRoutePreviewMap extends StatefulWidget {
     this.tollTariffCatalog,
     this.mapController,
     this.allowFullscreen = true,
+    this.compact = false,
     super.key,
   });
 
@@ -69,7 +70,8 @@ class TripRoutePreviewMap extends StatefulWidget {
     this.demoLabel,
     this.tollTariffCatalog,
   }) : mapController = null,
-       allowFullscreen = false;
+       allowFullscreen = false,
+       compact = false;
 
   final String routeId;
   final List<TripCoordinate> geometry;
@@ -82,6 +84,7 @@ class TripRoutePreviewMap extends StatefulWidget {
   final String? demoLabel;
   final MapController? mapController;
   final bool allowFullscreen;
+  final bool compact;
 
   @override
   State<TripRoutePreviewMap> createState() => _TripRoutePreviewMapState();
@@ -207,57 +210,27 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
     if (widget.associations.geometryQuality != RouteGeometryQuality.polyline) {
       return const _MissingGeometry();
     }
-    final layerControls = Wrap(
-      spacing: AppSpacing.s,
-      runSpacing: AppSpacing.s,
-      children: [
-        FilterChip(
-          key: const ValueKey('trip-map-toggle-route'),
-          selected: _showRoute,
-          avatar: const Icon(Icons.route_rounded, size: 18),
-          label: const Text('Ruta'),
-          onSelected: (value) => setState(() => _showRoute = value),
-        ),
-        FilterChip(
-          key: const ValueKey('trip-map-toggle-tolls'),
-          selected: _showTolls,
-          avatar: const Icon(Icons.toll_rounded, size: 18),
-          label: const Text('Peajes'),
-          onSelected: (value) => setState(() => _showTolls = value),
-        ),
-        FilterChip(
-          key: const ValueKey('trip-map-toggle-historical-tolls'),
-          selected: _showHistoricalTolls,
-          avatar: const Icon(Icons.history_rounded, size: 18),
-          label: const Text('Históricos'),
-          onSelected: (value) => setState(() => _showHistoricalTolls = value),
-        ),
-        FilterChip(
-          key: const ValueKey('trip-map-toggle-cameras'),
-          selected: _showCameras,
-          avatar: const Icon(Icons.photo_camera_rounded, size: 18),
-          label: const Text('Cámaras'),
-          onSelected: (value) => setState(() => _showCameras = value),
-        ),
-      ],
-    );
     Widget content(Widget map) => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        layerControls,
-        const SizedBox(height: AppSpacing.s),
+        if (!widget.compact) ...[
+          _buildLayerControls(),
+          const SizedBox(height: AppSpacing.s),
+        ],
         map,
-        const SizedBox(height: AppSpacing.s),
-        Text(_tollSummary, style: AppTextStyles.caption),
-        const SizedBox(height: AppSpacing.xs),
-        Text(_cameraSummary, style: AppTextStyles.caption),
+        if (!widget.compact) ...[
+          const SizedBox(height: AppSpacing.s),
+          Text(_tollSummary, style: AppTextStyles.caption),
+          const SizedBox(height: AppSpacing.xs),
+          Text(_cameraSummary, style: AppTextStyles.caption),
+        ],
       ],
     );
 
     if (widget.allowFullscreen) {
       return content(
         SizedBox(
-          height: 260,
+          height: widget.compact ? 304 : 260,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.card),
             child: _buildMap(context),
@@ -422,13 +395,22 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
         Positioned(
           right: AppSpacing.s,
           top: AppSpacing.s,
-          child: _MapControls(
-            onZoomIn: () => _moveZoom(1),
-            onZoomOut: () => _moveZoom(-1),
-            onReframe: _reframe,
-            onFullscreen: widget.allowFullscreen
-                ? () => _showFullscreen(context)
-                : null,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.compact) ...[
+                _buildLayerControls(),
+                const SizedBox(height: AppSpacing.xs),
+              ],
+              _MapControls(
+                onZoomIn: () => _moveZoom(1),
+                onZoomOut: () => _moveZoom(-1),
+                onReframe: _reframe,
+                onFullscreen: widget.allowFullscreen
+                    ? () => _showFullscreen(context)
+                    : null,
+              ),
+            ],
           ),
         ),
         if (_tilesUnavailable)
@@ -463,6 +445,18 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
       ],
     );
   }
+
+  Widget _buildLayerControls() => _LayerControls(
+    showRoute: _showRoute,
+    showTolls: _showTolls,
+    showHistoricalTolls: _showHistoricalTolls,
+    showCameras: _showCameras,
+    compact: widget.compact,
+    onRoute: (value) => setState(() => _showRoute = value),
+    onTolls: (value) => setState(() => _showTolls = value),
+    onHistoricalTolls: (value) => setState(() => _showHistoricalTolls = value),
+    onCameras: (value) => setState(() => _showCameras = value),
+  );
 
   List<Marker> _markers(List<LatLng> coordinates) => [
     Marker(
@@ -742,6 +736,137 @@ class _MapControls extends StatelessWidget {
     tooltip: tooltip,
     onPressed: onPressed,
     icon: Icon(icon),
+  );
+}
+
+class _LayerControls extends StatelessWidget {
+  const _LayerControls({
+    required this.showRoute,
+    required this.showTolls,
+    required this.showHistoricalTolls,
+    required this.showCameras,
+    required this.compact,
+    required this.onRoute,
+    required this.onTolls,
+    required this.onHistoricalTolls,
+    required this.onCameras,
+  });
+
+  final bool showRoute;
+  final bool showTolls;
+  final bool showHistoricalTolls;
+  final bool showCameras;
+  final bool compact;
+  final ValueChanged<bool> onRoute;
+  final ValueChanged<bool> onTolls;
+  final ValueChanged<bool> onHistoricalTolls;
+  final ValueChanged<bool> onCameras;
+
+  @override
+  Widget build(BuildContext context) {
+    final chips = [
+      _LayerToggle(
+        keyName: 'trip-map-toggle-route',
+        selected: showRoute,
+        icon: Icons.route_rounded,
+        label: 'Ruta',
+        onSelected: onRoute,
+      ),
+      _LayerToggle(
+        keyName: 'trip-map-toggle-tolls',
+        selected: showTolls,
+        icon: Icons.toll_rounded,
+        label: 'Peajes',
+        onSelected: onTolls,
+      ),
+      _LayerToggle(
+        keyName: 'trip-map-toggle-historical-tolls',
+        selected: showHistoricalTolls,
+        icon: Icons.history_rounded,
+        label: 'Históricos',
+        onSelected: onHistoricalTolls,
+      ),
+      _LayerToggle(
+        keyName: 'trip-map-toggle-cameras',
+        selected: showCameras,
+        icon: Icons.photo_camera_rounded,
+        label: 'Cámaras',
+        onSelected: onCameras,
+      ),
+    ];
+    if (!compact) {
+      return Wrap(
+        spacing: AppSpacing.s,
+        runSpacing: AppSpacing.s,
+        children: chips,
+      );
+    }
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      elevation: 2,
+      child: PopupMenuButton<String>(
+        key: const ValueKey('trip-map-layer-menu'),
+        tooltip: 'Capas del mapa',
+        icon: const Icon(Icons.layers_outlined),
+        itemBuilder: (context) => [
+          _menuItem('route', 'Ruta', showRoute),
+          _menuItem('tolls', 'Peajes', showTolls),
+          _menuItem('historical', 'Históricos', showHistoricalTolls),
+          _menuItem('cameras', 'Cámaras', showCameras),
+        ],
+        onSelected: (value) {
+          switch (value) {
+            case 'route':
+              onRoute(!showRoute);
+            case 'tolls':
+              onTolls(!showTolls);
+            case 'historical':
+              onHistoricalTolls(!showHistoricalTolls);
+            case 'cameras':
+              onCameras(!showCameras);
+          }
+        },
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _menuItem(String value, String label, bool selected) {
+    return PopupMenuItem<String>(
+      value: value,
+      child: Row(
+        children: [
+          Icon(selected ? Icons.check_box : Icons.check_box_outline_blank),
+          const SizedBox(width: AppSpacing.s),
+          Text(label),
+        ],
+      ),
+    );
+  }
+}
+
+class _LayerToggle extends StatelessWidget {
+  const _LayerToggle({
+    required this.keyName,
+    required this.selected,
+    required this.icon,
+    required this.label,
+    required this.onSelected,
+  });
+
+  final String keyName;
+  final bool selected;
+  final IconData icon;
+  final String label;
+  final ValueChanged<bool> onSelected;
+
+  @override
+  Widget build(BuildContext context) => FilterChip(
+    key: ValueKey(keyName),
+    selected: selected,
+    avatar: Icon(icon, size: 18),
+    label: Text(label),
+    onSelected: onSelected,
   );
 }
 

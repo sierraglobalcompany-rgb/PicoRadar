@@ -123,20 +123,13 @@ void main() {
         expect(find.text(_evidenceLabel), findsOneWidget);
         expect(_semanticsWithLabel(_evidenceLabel), findsOneWidget);
         expect(find.text('Otras rutas · 3'), findsOneWidget);
+        expect(find.byKey(const ValueKey('trip-route-complete')), findsNothing);
+        expect(find.byKey(const ValueKey('trip-route-partial')), findsNothing);
+        expect(find.byKey(const ValueKey('trip-route-unknown')), findsNothing);
         expect(
-          find.byKey(const ValueKey('trip-route-complete')),
+          find.byKey(const ValueKey('trip-toll-details-complete')),
           findsOneWidget,
         );
-        expect(
-          find.byKey(const ValueKey('trip-route-partial')),
-          findsOneWidget,
-        );
-        expect(
-          find.byKey(const ValueKey('trip-route-unknown')),
-          findsOneWidget,
-        );
-        expect(find.textContaining('Total estimado de peajes'), findsWidgets);
-        expect(find.textContaining('Subtotal conocido'), findsWidgets);
         expect(
           find.byKey(const ValueKey('trip-map-camera-camera-a-0')),
           findsOneWidget,
@@ -145,14 +138,7 @@ void main() {
         expect(find.text('No circula a la hora evaluada'), findsOneWidget);
         if (scale == 2) {
           final metricRects = [
-            for (final key in const [
-              'distance',
-              'duration',
-              'arrival',
-              'tolls',
-              'cost',
-              'cameras',
-            ])
+            for (final key in const ['distance', 'duration', 'cost'])
               tester.getRect(find.byKey(ValueKey('trip-summary-$key'))),
           ];
           expect(
@@ -206,9 +192,13 @@ void main() {
       );
       await _capture(tester, 'interaction-complete-390x844-scale-1.5');
 
+      await _reveal(tester, const ValueKey('trip-open-routes-detail'));
+      await tester.tap(
+        find.byKey(const ValueKey('trip-open-routes-detail')).hitTestable(),
+      );
+      await tester.pumpAndSettle();
       await _reveal(tester, const ValueKey('trip-select-route-partial'));
       final readingOffset = _tripScroll(tester).position.pixels;
-      final readingFocus = FocusManager.instance.primaryFocus;
       await tester.tap(
         find.byKey(const ValueKey('trip-select-route-partial')).hitTestable(),
       );
@@ -216,7 +206,10 @@ void main() {
 
       expect(harness.client.requests, hasLength(1));
       expect(_tripScroll(tester).position.pixels, readingOffset);
-      expect(FocusManager.instance.primaryFocus, same(readingFocus));
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'trip-results-focus',
+      );
       expect(
         find.byKey(const ValueKey('trip-toll-details-partial')),
         findsOneWidget,
@@ -225,6 +218,11 @@ void main() {
         find.byKey(const ValueKey('trip-toll-details-complete')),
         findsNothing,
       );
+      await _reveal(tester, const ValueKey('trip-toll-details-partial'));
+      await tester.tap(
+        find.byKey(const ValueKey('trip-toll-details-partial')).hitTestable(),
+      );
+      await tester.pumpAndSettle();
       expect(find.text('Información desactualizada'), findsOneWidget);
       expect(
         find.textContaining('Subtotal conocido: COP 31.500'),
@@ -233,10 +231,13 @@ void main() {
       expect(find.text('COP 31.500 parcial'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await _capture(tester, 'interaction-partial-390x844-scale-1.5');
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      final afterDetailsOffset = _tripScroll(tester).position.pixels;
 
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pumpAndSettle();
-      expect(_tripScroll(tester).position.pixels, readingOffset);
+      expect(_tripScroll(tester).position.pixels, afterDetailsOffset);
       expect(harness.client.requests, hasLength(1));
 
       await _reveal(tester, const ValueKey('trip-map-fullscreen'));

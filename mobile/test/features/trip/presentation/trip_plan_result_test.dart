@@ -146,6 +146,25 @@ void main() {
     );
   }
 
+  Future<void> openRoutes(WidgetTester tester) async {
+    final button = find.byKey(const ValueKey('trip-open-routes-detail'));
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> openTolls(WidgetTester tester, String routeId) async {
+    final button = find.byKey(ValueKey('trip-toll-details-$routeId'));
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> closeSheet(WidgetTester tester) async {
+    await tester.tapAt(const Offset(12, 12));
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('summary is followed by a useful map before route alternatives', (
     tester,
   ) async {
@@ -173,46 +192,44 @@ void main() {
     final metrics = [
       find.byKey(const ValueKey('trip-summary-distance')),
       find.byKey(const ValueKey('trip-summary-duration')),
-      find.byKey(const ValueKey('trip-summary-arrival')),
-      find.byKey(const ValueKey('trip-summary-tolls')),
       find.byKey(const ValueKey('trip-summary-cost')),
-      find.byKey(const ValueKey('trip-summary-cameras')),
     ];
     for (final metric in metrics) {
       expect(metric, findsOneWidget);
     }
-    expect(tester.getTopLeft(metrics[0]).dx, tester.getTopLeft(metrics[2]).dx);
-    expect(tester.getTopLeft(metrics[1]).dx, tester.getTopLeft(metrics[3]).dx);
-    expect(tester.getTopLeft(metrics[0]).dx, tester.getTopLeft(metrics[4]).dx);
-    expect(tester.getTopLeft(metrics[1]).dx, tester.getTopLeft(metrics[5]).dx);
-    expect(find.text('Cámaras registradas'), findsOneWidget);
-    expect(find.text('Por confirmar'), findsOneWidget);
+    expect(find.byKey(const ValueKey('trip-summary-arrival')), findsNothing);
+    expect(find.byKey(const ValueKey('trip-summary-tolls')), findsNothing);
+    expect(find.byKey(const ValueKey('trip-summary-cameras')), findsNothing);
 
     final firstRoute = find.byKey(const ValueKey('trip-route-fast'));
     final secondRoute = find.byKey(const ValueKey('trip-route-slow'));
     final mapSlot = find.byKey(const ValueKey('trip-map-preview-slot'));
     final tollDetails = find.byKey(const ValueKey('trip-toll-details-fast'));
     final routeHeading = find.text('Otras rutas · 2');
-    expect(tester.getSize(firstRoute).width, greaterThan(300));
-    expect(
-      tester.getTopLeft(secondRoute).dy,
-      greaterThan(tester.getBottomLeft(firstRoute).dy),
-    );
+    expect(firstRoute, findsNothing);
+    expect(secondRoute, findsNothing);
     expect(
       tester.getTopLeft(mapSlot).dy,
       greaterThan(tester.getBottomLeft(metrics.last).dy),
     );
-    expect(tester.getSize(mapSlot).height, greaterThanOrEqualTo(240));
+    expect(tester.getSize(mapSlot).height, greaterThanOrEqualTo(300));
     expect(
       tester.getTopLeft(routeHeading).dy,
       greaterThan(tester.getBottomLeft(mapSlot).dy),
     );
     expect(
       tester.getTopLeft(tollDetails).dy,
-      greaterThan(tester.getBottomLeft(routeHeading).dy),
+      greaterThanOrEqualTo(tester.getTopLeft(routeHeading).dy),
     );
     expect(find.text('Opciones de ruta · 2'), findsNothing);
-    expect(find.text('Menor duración'), findsOneWidget);
+
+    await openRoutes(tester);
+    expect(find.byKey(const ValueKey('trip-route-fast')), findsOneWidget);
+    expect(find.byKey(const ValueKey('trip-route-slow')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('trip-select-route-slow')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('shows local owner toll pricing as candidate breakdown', (
@@ -256,13 +273,7 @@ void main() {
       ),
     );
 
-    final localPricing = find.byKey(
-      const ValueKey('trip-local-toll-pricing-priced'),
-    );
-    await tester.ensureVisible(localPricing);
-    await tester.pumpAndSettle();
-    await tester.tap(localPricing);
-    await tester.pumpAndSettle();
+    await openTolls(tester, 'priced');
 
     expect(
       find.text('Tarifas propias sobre peajes candidatos'),
@@ -300,13 +311,7 @@ void main() {
       ),
     );
 
-    final localPricing = find.byKey(
-      const ValueKey('trip-local-toll-pricing-no-passages'),
-    );
-    await tester.ensureVisible(localPricing);
-    await tester.pumpAndSettle();
-    await tester.tap(localPricing);
-    await tester.pumpAndSettle();
+    await openTolls(tester, 'no-passages');
 
     expect(find.textContaining('Sin peajes candidatos'), findsOneWidget);
     expect(find.text('Subtotal con datos: COP 0'), findsNothing);
@@ -399,6 +404,7 @@ void main() {
         ),
       ];
       await pump(tester, routes);
+      await openRoutes(tester);
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('trip-route-a')),
@@ -406,23 +412,18 @@ void main() {
         ),
         findsOneWidget,
       );
-      await tester.ensureVisible(
-        find.byKey(const ValueKey('trip-toll-details-a')),
-      );
-      await tester.tap(find.byKey(const ValueKey('trip-toll-details-a')));
-      await tester.pumpAndSettle();
+      await closeSheet(tester);
+      await openTolls(tester, 'a');
       expect(find.textContaining('Estación A'), findsNWidgets(2));
+      await closeSheet(tester);
+      await openRoutes(tester);
       await tester.ensureVisible(
         find.byKey(const ValueKey('trip-select-route-b')),
       );
       await tester.tap(find.byKey(const ValueKey('trip-select-route-b')));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('trip-toll-details-a')), findsNothing);
-      await tester.ensureVisible(
-        find.byKey(const ValueKey('trip-toll-details-b')),
-      );
-      await tester.tap(find.byKey(const ValueKey('trip-toll-details-b')));
-      await tester.pumpAndSettle();
+      await openTolls(tester, 'b');
       expect(find.textContaining('Estación B'), findsOneWidget);
       expect(find.textContaining('Estación A'), findsNothing);
       expect(find.textContaining('Subtotal conocido'), findsWidgets);
@@ -447,6 +448,7 @@ void main() {
         ),
       ),
     ]);
+    await openRoutes(tester);
     final unknown = find.byKey(const ValueKey('trip-route-unknown'));
     expect(
       find.descendant(
@@ -485,10 +487,9 @@ void main() {
           ),
         ),
       ]);
-      expect(
-        find.text('7 estaciones de peaje · 4 cobros aplicables'),
-        findsOneWidget,
-      );
+      await openRoutes(tester);
+      expect(find.textContaining('7 estaciones de peaje'), findsOneWidget);
+      expect(find.textContaining('4 cobros aplicables'), findsOneWidget);
       expect(find.textContaining('1 estaciones'), findsNothing);
     },
   );
@@ -528,6 +529,7 @@ void main() {
           ),
         ),
       ]);
+      await openRoutes(tester);
       expect(
         find.descendant(
           of: find.byKey(const ValueKey('trip-route-cheap')),

@@ -893,13 +893,15 @@ void main() {
       find.byKey(const ValueKey('trip-destination-instant-test-route')),
       findsOneWidget,
     );
-    final routeButton = find.byKey(const ValueKey('trip-select-route-slow'));
-    await tester.ensureVisible(routeButton);
-    await tester.pumpAndSettle();
     final scrollable = tester.state<ScrollableState>(
       find.byType(Scrollable).first,
     );
     final offsetBeforeSelection = scrollable.position.pixels;
+    _pressButtonByKey(tester, 'trip-open-routes-detail');
+    await tester.pumpAndSettle();
+    final routeButton = find.byKey(const ValueKey('trip-select-route-slow'));
+    await tester.ensureVisible(routeButton);
+    await tester.pumpAndSettle();
     _pressButtonByKey(tester, 'trip-select-route-slow');
     await tester.pumpAndSettle();
     expect(scrollable.position.pixels, offsetBeforeSelection);
@@ -1852,23 +1854,18 @@ void main() {
           findsOneWidget,
         );
         expect(find.byKey(const ValueKey('trip-plan-result')), findsOneWidget);
-        const metricKeys = [
-          'distance',
-          'duration',
-          'arrival',
-          'tolls',
-          'cost',
-          'cameras',
-        ];
+        const metricKeys = ['distance', 'duration', 'cost'];
         for (final metric in metricKeys) {
           expect(find.byKey(ValueKey('trip-summary-$metric')), findsOneWidget);
         }
         expect(
-          find.descendant(
-            of: find.byKey(const ValueKey('trip-summary-cameras')),
-            matching: find.text('Por confirmar'),
-          ),
-          findsOneWidget,
+          find.byKey(const ValueKey('trip-summary-arrival')),
+          findsNothing,
+        );
+        expect(find.byKey(const ValueKey('trip-summary-tolls')), findsNothing);
+        expect(
+          find.byKey(const ValueKey('trip-summary-cameras')),
+          findsNothing,
         );
         final metricRects = [
           for (final metric in metricKeys)
@@ -1884,30 +1881,13 @@ void main() {
           }
         } else {
           expect(metricRects[0].left, closeTo(metricRects[2].left, 0.01));
-          expect(metricRects[0].left, closeTo(metricRects[4].left, 0.01));
-          expect(metricRects[1].left, closeTo(metricRects[3].left, 0.01));
-          expect(metricRects[1].left, closeTo(metricRects[5].left, 0.01));
           expect(metricRects[0].top, closeTo(metricRects[1].top, 0.01));
-          expect(metricRects[2].top, closeTo(metricRects[3].top, 0.01));
-          expect(metricRects[4].top, closeTo(metricRects[5].top, 0.01));
         }
 
         final firstRoute = find.byKey(const ValueKey('trip-route-test-route'));
         final secondRoute = find.byKey(const ValueKey('trip-route-scenic'));
-        final firstRect = tester.getRect(firstRoute);
-        final secondRect = tester.getRect(secondRoute);
-        expect(firstRect.left, closeTo(secondRect.left, 0.01));
-        expect(firstRect.width, closeTo(secondRect.width, 0.01));
-        expect(
-          firstRect.width,
-          closeTo(
-            tester
-                .getSize(find.byKey(const ValueKey('trip-plan-result')))
-                .width,
-            0.01,
-          ),
-        );
-        expect(firstRect.bottom, lessThan(secondRect.top));
+        expect(firstRoute, findsNothing);
+        expect(secondRoute, findsNothing);
         final mapRect = tester.getRect(
           find.byKey(const ValueKey('trip-map-preview-slot')),
         );
@@ -1915,8 +1895,8 @@ void main() {
           find.byKey(const ValueKey('trip-toll-details-test-route')),
         );
         expect(metricRects.last.bottom, lessThan(mapRect.top));
-        expect(mapRect.bottom, lessThan(firstRect.top));
-        expect(secondRect.bottom, lessThanOrEqualTo(tollRect.top));
+        expect(mapRect.height, greaterThanOrEqualTo(300));
+        expect(mapRect.bottom, lessThanOrEqualTo(tollRect.top));
 
         await tester.ensureVisible(
           find.byKey(const ValueKey('trip-view-map-test-route')),
@@ -2217,13 +2197,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(
-      find.descendant(
-        of: find.byKey(const ValueKey('trip-summary-cameras')),
-        matching: find.text('1'),
-      ),
-      findsOneWidget,
-    );
+    expect(find.widgetWithText(OutlinedButton, 'Cámaras · 1'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('trip-map-camera-local-camera-0')),
       findsOneWidget,
@@ -2269,18 +2243,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(
-        find.textContaining('Cat I disponible para 1 de 1'),
-        findsOneWidget,
-      );
-
+      _pressButtonByKey(tester, 'trip-toll-details-test-route');
+      await tester.pumpAndSettle();
       final localPricing = find.byKey(
         const ValueKey('trip-local-toll-pricing-test-route'),
       );
       await tester.ensureVisible(localPricing);
-      await tester.pumpAndSettle();
-      await tester.tap(localPricing);
-      await tester.pumpAndSettle();
 
       expect(
         find.text('Tarifas propias sobre peajes candidatos'),
@@ -2326,13 +2294,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      _pressButtonByKey(tester, 'trip-toll-details-test-route');
+      await tester.pumpAndSettle();
       final localPricing = find.byKey(
         const ValueKey('trip-local-toll-pricing-test-route'),
       );
       await tester.ensureVisible(localPricing);
-      await tester.pumpAndSettle();
-      await tester.tap(localPricing);
-      await tester.pumpAndSettle();
 
       expect(
         find.textContaining('Categoría local no soportada'),
@@ -2426,18 +2393,11 @@ void main() {
       expect(find.byKey(const ValueKey('trip-plan-result')), findsOneWidget);
       expect(associations.requests, hasLength(1));
       expect(associations.schedulerPhases, [SchedulerPhase.postFrameCallbacks]);
-      expect(
-        find.descendant(
-          of: find.byKey(const ValueKey('trip-summary-cameras')),
-          matching: find.text('Por confirmar'),
-        ),
-        findsOneWidget,
-      );
+      expect(find.widgetWithText(OutlinedButton, 'Cámaras'), findsOneWidget);
 
-      await tester.ensureVisible(
-        find.byKey(const ValueKey('trip-select-route-scenic')),
-      );
+      _pressButtonByKey(tester, 'trip-open-routes-detail');
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
       _pressButtonByKey(tester, 'trip-select-route-scenic');
       await tester.pump();
       expect(associations.requests, hasLength(2));
@@ -2449,29 +2409,25 @@ void main() {
         ),
       );
       await tester.pump();
-      expect(
-        find.descendant(
-          of: find.byKey(const ValueKey('trip-summary-cameras')),
-          matching: find.text('Por confirmar'),
-        ),
-        findsOneWidget,
-      );
+      expect(find.widgetWithText(OutlinedButton, 'Cámaras'), findsOneWidget);
 
       associations.completions.last.complete(
         _associationResult(associations.requests.last, cameras: const []),
       );
       await tester.pumpAndSettle();
       expect(
-        find.descendant(
-          of: find.byKey(const ValueKey('trip-summary-cameras')),
-          matching: find.text('0'),
-        ),
+        find.widgetWithText(OutlinedButton, 'Cámaras · 0'),
         findsOneWidget,
       );
+      _pressButtonByKey(tester, 'trip-open-cameras-detail');
+      await tester.pumpAndSettle();
       expect(
-        find.textContaining('no significa que la ruta esté libre de cámaras'),
+        find.textContaining('0 cámaras registradas próximas al recorrido'),
         findsWidgets,
       );
+      expect(find.textContaining('La proximidad no confirma'), findsWidgets);
+      await tester.tapAt(const Offset(12, 12));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('trip-map-fullscreen')));
       await tester.pumpAndSettle();
@@ -2512,13 +2468,7 @@ void main() {
 
     expect(find.byKey(const ValueKey('trip-plan-result')), findsOneWidget);
     expect(find.byKey(const ValueKey('trip-map-data-retry')), findsOneWidget);
-    expect(
-      find.descendant(
-        of: find.byKey(const ValueKey('trip-summary-cameras')),
-        matching: find.text('Por confirmar'),
-      ),
-      findsOneWidget,
-    );
+    expect(find.widgetWithText(OutlinedButton, 'Cámaras'), findsOneWidget);
     failTolls = false;
     await _tapByKey(tester, 'trip-map-data-retry');
 
