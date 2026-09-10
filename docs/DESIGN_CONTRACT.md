@@ -14,6 +14,11 @@ Este contrato traduce el baseline visual a reglas operables para Flutter. Autori
   medicion fisica, no solo tests verdes, acreditan esta conservacion.
 - No se apaga GPS al cambiar de pestana ni se elimina una alerta aprobada para
   aparentar mayor fluidez. Las limitaciones de rendimiento se declaran aparte.
+- Con texto ampliado, la marca de Conducir respeta el ancho del encabezado
+  mediante reflujo; no se reduce la fuente ni se recorta el nombre.
+- La comparacion fisica conserva el contenido de Inicio. El indicador GPS
+  puede cambiar por su estado real. El crossfade nativo/Flutter aun muestra
+  un breve desplazamiento de la marca; no se declara continuidad perfecta.
 
 ## Inicio: vehiculos protagonistas y layout adaptable (2026-09-09)
 
