@@ -12,11 +12,14 @@ import 'package:picoradar/features/trip/data/toll_inventory.dart';
 import 'package:picoradar/features/trip/data/toll_tariff_catalog.dart';
 import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
+import '../../home/presentation/v01b_test_font.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late TollInventoryRecord toll;
   late LocalTollPricingCharge charge;
   setUpAll(() async {
+    await loadV01bTestFont();
     final inventory = TollInventoryDataset.fromJsonString(
       await rootBundle.loadString(bundledTollInventoryAsset),
     );
@@ -66,7 +69,10 @@ void main() {
     double scale = 1,
     DrivingState? value,
   }) async {
-    tester.view.physicalSize = Size(width, 800);
+    tester.view.physicalSize = Size(
+      width,
+      width == 360 ? 800 : (width == 390 ? 844 : 915),
+    );
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -80,6 +86,7 @@ void main() {
         child: MaterialApp(
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context).copyWith(
+              padding: const EdgeInsets.only(top: 35, bottom: 48),
               textScaler: TextScaler.linear(scale),
               disableAnimations: true,
             ),
@@ -109,6 +116,15 @@ void main() {
             findsNothing,
           );
           expect(tester.takeException(), isNull);
+          if (scale == 1) {
+            final panel = tester.getRect(
+              find.byKey(const ValueKey('driving-toll-alert-panel')),
+            );
+            final controls = tester.getRect(
+              find.byKey(const ValueKey('driving-active-controls')),
+            );
+            expect(panel.bottom, lessThanOrEqualTo(controls.top - 8));
+          }
           await tester.ensureVisible(
             find.byKey(const ValueKey('driving-toll-reference-price')),
           );

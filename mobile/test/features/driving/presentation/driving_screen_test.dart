@@ -1,13 +1,17 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
+import 'package:picoradar/app/theme/app_tokens.dart';
 import 'package:picoradar/features/driving/application/driving_controller.dart';
 import 'package:picoradar/features/driving/data/camera_pack_loader.dart';
 import 'package:picoradar/features/driving/data/driving_preferences.dart';
@@ -23,8 +27,23 @@ import 'package:picoradar/features/location/platform/device_location_gateway.dar
 import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
 import '../../../test_app_harness.dart';
+import '../../home/presentation/v01b_test_font.dart';
 
 void main() {
+  setUpAll(() async {
+    await loadV01bTestFont();
+    final artifacts = File(Platform.resolvedExecutable).parent.parent.parent;
+    final iconFont = Directory('${artifacts.path}/material_fonts')
+        .listSync()
+        .whereType<File>()
+        .singleWhere(
+          (file) =>
+              file.path.toLowerCase().endsWith('materialicons-regular.otf'),
+        );
+    final icons = FontLoader('MaterialIcons')
+      ..addFont(iconFont.readAsBytes().then(ByteData.sublistView));
+    await icons.load();
+  });
   test('live GPS stream error publishes location-unavailable state', () async {
     final stages = <String>[];
     final gateway = _ControlledErrorGateway(stages);
@@ -815,6 +834,14 @@ void main() {
       find.byKey(const ValueKey('driving-camera-dismissed')),
       findsOneWidget,
     );
+    final centeredGauge = tester.getRect(
+      find.byKey(const ValueKey('driving-speed-gauge')),
+    );
+    final content = tester.getRect(
+      find.byKey(const ValueKey('driving-active-scroll')),
+    );
+    expect(centeredGauge.width, closeTo(324, 0.1));
+    expect(centeredGauge.center.dy, closeTo(content.center.dy, 1));
   });
 
   testWidgets('minor downward movement does not dismiss the alert panel', (
@@ -1446,7 +1473,7 @@ void main() {
       );
       expect(
         tester.getSize(find.byKey(const ValueKey('gauge-camera-indicator'))),
-        const Size(68, 68),
+        const Size(72, 72),
       );
       expect(find.byKey(const ValueKey('camera-speed-sign')), findsNothing);
       expect(find.text('Vel. Max.'), findsNothing);
@@ -1496,7 +1523,7 @@ void main() {
     );
     expect(
       tester.getSize(find.byKey(const ValueKey('gauge-camera-indicator'))),
-      const Size(68, 68),
+      const Size(72, 72),
     );
     expect(tester.takeException(), isNull);
   });
@@ -1570,7 +1597,12 @@ void main() {
             ProviderScope(
               overrides: [
                 appPreferencesProvider.overrideWithValue(MemoryPreferences()),
-                cameraPackProvider.overrideWith((ref) async => _pack()),
+                cameraPackProvider.overrideWith(
+                  (ref) async => _pack(
+                    address:
+                        'AVENIDA REGIONAL CON CALLE 67 SUR Sentido SUR - NORTE',
+                  ),
+                ),
                 drivingLocationGatewayProvider.overrideWithValue(gateway),
                 drivingFeedbackGatewayProvider.overrideWithValue(
                   _NoopDrivingFeedbackGateway(),
@@ -1581,9 +1613,15 @@ void main() {
               ],
               child: MaterialApp(
                 builder: (context, child) => MediaQuery(
-                  data: MediaQuery.of(context)
-                      .copyWith(textScaler: TextScaler.linear(textScale)),
-                  child: child!,
+                  data: MediaQuery.of(context).copyWith(
+                    size: viewport,
+                    padding: const EdgeInsets.only(top: 35, bottom: 48),
+                    textScaler: TextScaler.linear(textScale),
+                  ),
+                  child: RepaintBoundary(
+                    key: const ValueKey('compact-evidence-root'),
+                    child: child!,
+                  ),
                 ),
                 home: const DrivingScreen(),
               ),
@@ -1608,16 +1646,66 @@ void main() {
           expect(controls.left, greaterThanOrEqualTo(0));
           expect(controls.right, lessThanOrEqualTo(viewport.width));
           expect(controls.bottom, lessThanOrEqualTo(viewport.height));
+          await _captureCompactEvidence(
+            tester,
+            '${viewport.width.toInt()}-$textScale-camera',
+          );
           expect(
             find.byKey(const ValueKey('driving-active-scroll')),
             findsOneWidget,
           );
 
           if (textScale == 1) {
+            final gauge = tester.getRect(
+              find.byKey(const ValueKey('driving-speed-gauge')),
+            );
+            final indicator = tester.getRect(
+              find.byKey(const ValueKey('gauge-camera-indicator')),
+            );
+            final speed = tester.getRect(
+              find.byKey(const ValueKey('driving-speed')),
+            );
+            expect(gauge.width, closeTo(viewport.width * 0.8 + 12, 0.1));
+            expect(gauge.center.dx, closeTo(viewport.width / 2, 0.1));
+            expect(speed.center.dx, closeTo(gauge.center.dx, 0.1));
+            expect(speed.overlaps(indicator), isFalse);
+            expect(indicator.top, lessThan(gauge.center.dy));
+            final brand = tester.getRect(
+              find.byKey(const ValueKey('driving-brand')),
+            );
+            final gps = tester.getRect(
+              find.byKey(const ValueKey('driving-connection-chip')),
+            );
+            final voice = tester.getRect(
+              find.byKey(const ValueKey('driving-voice-chip')),
+            );
+            expect(gps.center.dy, closeTo(brand.center.dy, 3));
+            expect(voice.center.dy, closeTo(gps.center.dy, 0.1));
+            expect(brand.right + 8, lessThanOrEqualTo(gps.left));
+            expect(find.text('Voz activa'), findsNothing);
+            expect(find.text('Configuración'), findsNothing);
+            expect(find.text('HUD'), findsNothing);
+            expect(find.text('Espejo'), findsNothing);
+            for (final key in [
+              'driving-active-settings',
+              'driving-active-hud',
+              'driving-active-mirror',
+            ]) {
+              expect(
+                tester.getSize(find.byKey(ValueKey(key))),
+                const Size(48, 56),
+              );
+            }
+            final stop = tester.getRect(
+              find.byKey(const ValueKey('stop-driving')),
+            );
+            expect(stop.width, greaterThanOrEqualTo(160));
+            expect(stop.height, 56);
             final panel = tester.getRect(
               find.byKey(const ValueKey('driving-camera-alert-panel')),
             );
             expect(panel.top, greaterThanOrEqualTo(0));
+            expect(panel.top, greaterThanOrEqualTo(gauge.bottom));
             expect(panel.bottom, lessThanOrEqualTo(controls.top));
           } else {
             final before = controls;
@@ -1630,6 +1718,62 @@ void main() {
                 find.byKey(const ValueKey('driving-active-controls')),
               ),
               before,
+            );
+          }
+          expect(tester.takeException(), isNull);
+          gateway.add(_point(latitude: 6.2411, seconds: 21, speedKmh: 123));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 400));
+          final speed = tester.getRect(
+            find.byKey(const ValueKey('driving-speed')),
+          );
+          final gauge = tester.getRect(
+            find.byKey(const ValueKey('driving-speed-gauge')),
+          );
+          final indicator = tester.getRect(
+            find.byKey(const ValueKey('gauge-camera-indicator')),
+          );
+          expect(gauge.contains(speed.center), isTrue);
+          expect(speed.overlaps(indicator), isFalse);
+          expect(speed.left, greaterThan(gauge.left + gauge.width * 0.20));
+          expect(speed.right, lessThan(gauge.right - gauge.width * 0.20));
+          expect(tester.takeException(), isNull);
+          expect(
+            tester.widget<Text>(find.text('GPS')).style!.color,
+            AppColors.green,
+          );
+          final container = ProviderScope.containerOf(
+            tester.element(find.byType(DrivingScreen)),
+          );
+          final notifier = container.read(drivingControllerProvider.notifier);
+          final preferences = container
+              .read(drivingControllerProvider)
+              .requireValue
+              .preferences;
+          await notifier.savePreferences(
+            preferences.copyWith(voiceEnabled: false),
+          );
+          await tester.pump();
+          expect(
+            tester.widget<Text>(find.text('Voz')).style!.color,
+            AppColors.red,
+          );
+          expect(find.byTooltip('Voz deshabilitada'), findsOneWidget);
+          for (final sample in [
+            (40.0, AppColors.orange),
+            (90.0, AppColors.red),
+          ]) {
+            gateway.add(
+              _point(
+                latitude: 6.242,
+                seconds: sample.$1.toInt(),
+                accuracyMeters: sample.$1,
+              ),
+            );
+            await tester.pump();
+            expect(
+              tester.widget<Text>(find.text('GPS')).style!.color,
+              sample.$2,
             );
           }
           expect(tester.takeException(), isNull);
@@ -2076,6 +2220,23 @@ Future<ImageInfo> _onePixelImage() {
   return SynchronousFuture(ImageInfo(image: image));
 }
 
+Future<void> _captureCompactEvidence(WidgetTester tester, String name) async {
+  const directory = String.fromEnvironment('DRIVING_VISUAL_EVIDENCE_DIR');
+  if (directory.isEmpty) return;
+  await tester.runAsync(() async {
+    final boundary = tester.renderObject<RenderRepaintBoundary>(
+      find.byKey(const ValueKey('compact-evidence-root')),
+    );
+    final image = await boundary.toImage();
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    final output = Directory(directory);
+    await output.create(recursive: true);
+    await File('${output.path}/$name.png')
+        .writeAsBytes(bytes!.buffer.asUint8List());
+  });
+}
+
 CameraPack _emptyPack() {
   return const CameraPack(
     source: CameraPackSource(
@@ -2089,6 +2250,7 @@ CameraPack _emptyPack() {
 }
 
 CameraPack _pack({
+  String address = 'Avenida 80',
   int? speedLimitKmh = 60,
   String? operationStatus = 'Operando',
   double cameraLatitude = 6.244,
@@ -2107,6 +2269,7 @@ CameraPack _pack({
         [
           _camera(
             id: 'cam-1',
+            address: address,
             latitude: cameraLatitude,
             longitude: cameraLongitude,
             speedLimitKmh: speedLimitKmh,
@@ -2117,6 +2280,7 @@ CameraPack _pack({
 }
 
 TrafficCamera _camera({
+  String address = 'Avenida 80',
   required String id,
   required double latitude,
   double longitude = -75.57,
@@ -2128,7 +2292,7 @@ TrafficCamera _camera({
     department: 'ANTIOQUIA',
     municipality: 'MEDELLIN',
     jurisdiction: 'Municipal',
-    address: 'Avenida 80',
+    address: address,
     latitude: latitude,
     longitude: longitude,
     status: 'Aprobada',
@@ -2162,11 +2326,12 @@ DrivingPoint _point({
   required double latitude,
   required int seconds,
   double speedKmh = 42,
+  double accuracyMeters = 12,
 }) {
   return DrivingPoint(
     latitude: latitude,
     longitude: -75.57,
-    accuracyMeters: 12,
+    accuracyMeters: accuracyMeters,
     speedKmh: speedKmh,
     headingDegrees: 0,
     recordedAt: DateTime.utc(2026, 8, 31, 12, 0, seconds),
