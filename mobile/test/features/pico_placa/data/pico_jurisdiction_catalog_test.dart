@@ -24,11 +24,24 @@ void main() {
       containsAll([
         'co-dc-bogota',
         'co-ant-medellin',
-        'co-vac-cali',
-        'co-bol-cartagena',
         'co-san-bucaramanga',
+        'co-met-villavicencio',
+        'co-cal-manizales',
+        'co-atl-barranquilla',
         'co-cau-popayan',
       ]),
+    );
+    expect(
+      catalog.records
+          .singleWhere((entry) => entry.id == 'co-vac-cali')
+          .classification,
+      'CONDITIONED_SOURCE',
+    );
+    expect(
+      catalog.records
+          .singleWhere((entry) => entry.id == 'co-bol-cartagena')
+          .classification,
+      'CONDITIONED_SOURCE',
     );
     expect(
       catalog.records
@@ -46,7 +59,7 @@ void main() {
       catalog.records
           .singleWhere((entry) => entry.id == 'co-met-villavicencio')
           .classification,
-      'PENDING_EXACT_RULES',
+      'SUPPORTED_CURRENT',
     );
   });
 
@@ -64,9 +77,9 @@ void main() {
     );
     expect(
       records.singleWhere(
-        (entry) => entry['id'] == 'co-met-villavicencio',
+        (entry) => entry['id'] == 'co-vac-cali',
       )['pendingReason'],
-      'CONDITIONAL_REGISTRATION_MODEL_EXEMPTION_UNSUPPORTED',
+      'R4_CONDITIONED_SOURCE_NOT_AUTOMATIC',
     );
   });
 

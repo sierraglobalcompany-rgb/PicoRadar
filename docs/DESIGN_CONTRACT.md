@@ -2,6 +2,16 @@
 
 Este contrato traduce el baseline visual a reglas operables para Flutter. Autoridad: `docs/baseline/02_Wireframes_Design_System_v1.docx` y flujos 01-08, subordinados a seguridad, privacidad, store, Cierre Global y Arquitectura Tecnica.
 
+## Inicio: vehiculos protagonistas y layout adaptable (2026-09-09)
+
+- Cabecera: marca PicoRadar a la izquierda; avatar, pin de ubicacion y notificaciones a la derecha, en ese orden. Los controles conservan objetivo tactil de 48 dp, pero el circulo visible es mas pequeno para no competir con el carrusel. El pin abre la hoja existente de ubicacion/manual/GPS, no solicita permisos por renderizar Inicio. Garaje y Viaje conservan su cabecera salvo que pasen explicitamente un control final.
+- La tarjeta independiente de ciudad/GPS desaparece. La jurisdiccion que gobierna el calculo vive bajo "Pico y placa" en la franja inferior; sin ciudad seleccionada se muestra "Seleccionar ciudad" y no se tranquiliza al usuario.
+- Las restricciones se calculan por la ciudad efectiva actual, ya sea manual o detectada por GPS, no por la ciudad de matricula del vehiculo. Una placa registrada en Bogota ubicada en Medellin usa las reglas de Medellin. La deteccion GPS solo selecciona ciudades con cobertura activa en el dataset local; ciudades en preparacion o evento temporal no se inventan como vigentes.
+- Carrusel: vehiculo como protagonista, altura derivada del espacio real disponible, orientativa 236-360 dp. Primero intenta ajustar tarjetas y carrusel para evitar scroll en telefonos normales; con texto ampliado o alto insuficiente conserva un unico scroll vertical por accesibilidad. La tarjeta central ocupa cerca del 64% del ancho en telefonos, con laterales visibles y sin avance automatico. El foco del carrusel no cambia el vehiculo activo sin accion explicita.
+- Estado: "Puede circular" aparece solo en la franja superior del vehiculo. Si hay restriccion, la franja superior dice "Pico y placa hoy" y el detalle bajo tipo/placa muestra las ventanas aplicables. No duplicar "Estado hoy" ni afirmar restriccion de todo el dia si existen horarios.
+- Tipo y placa comparten fila con texto normal; con texto ampliado se apilan sin recortar placa ni bajar el objetivo tactil. Estados desconocido/vencido no se pintan verde ni autorizan circular.
+- Franja inferior: toda la tarjeta "Pico y placa / ciudad / horario" abre Pico del vehiculo enfocado. La ubicacion se cambia solo desde el pin superior para evitar gestos ambiguos. SOAT, Tecnomecanica y banner mantienen orden y destinos. Un solo scroll vertical se permite solo si los minimos legibles exceden el alto util; sin scroll interno ni reduccion artificial de fuentes.
+
 ## Viaje: correccion owner de lectura (2026-09-09)
 
 - Peajes: nombre y precio visibles en cada fila; importes nominales excluidos se identifican como tarifa de referencia no sumada, nunca como una deuda del usuario. No repetir advertencias tecnicas antes del listado.

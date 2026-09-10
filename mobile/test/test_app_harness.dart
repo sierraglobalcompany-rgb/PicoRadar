@@ -174,6 +174,7 @@ class TestAppHarness {
     for (var i = 0; i < 5; i += 1) {
       await tester.pump(const Duration(seconds: 1));
     }
+    await tester.pump();
   }
 
   String _nextDocumentId() {

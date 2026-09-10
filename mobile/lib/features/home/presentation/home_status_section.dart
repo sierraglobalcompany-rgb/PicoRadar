@@ -1,9 +1,13 @@
 part of 'home_screen.dart';
 
 class _FocusedStatusGrid extends ConsumerWidget {
-  const _FocusedStatusGrid({required this.snapshot});
+  const _FocusedStatusGrid({
+    required this.snapshot,
+    required this.selectedJurisdiction,
+  });
 
   final HomeVehicleSnapshot snapshot;
+  final RestrictionJurisdiction? selectedJurisdiction;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -11,7 +15,11 @@ class _FocusedStatusGrid extends ConsumerWidget {
       vehicleObligationsProvider(snapshot.vehicle.id),
     );
     return obligations.when(
-      data: (items) => _StatusGrid(snapshot: snapshot, obligations: items),
+      data: (items) => _StatusGrid(
+        snapshot: snapshot,
+        obligations: items,
+        selectedJurisdiction: selectedJurisdiction,
+      ),
       loading: () => const _StatusGridSkeleton(),
       error: (error, stackTrace) => _LoadError(message: error.toString()),
     );
@@ -19,10 +27,15 @@ class _FocusedStatusGrid extends ConsumerWidget {
 }
 
 class _StatusGrid extends ConsumerWidget {
-  const _StatusGrid({required this.snapshot, required this.obligations});
+  const _StatusGrid({
+    required this.snapshot,
+    required this.obligations,
+    required this.selectedJurisdiction,
+  });
 
   final HomeVehicleSnapshot snapshot;
   final List<VehicleObligation> obligations;
+  final RestrictionJurisdiction? selectedJurisdiction;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -77,7 +90,10 @@ class _StatusGrid extends ConsumerWidget {
         return Column(
           key: const ValueKey('home-status-grid'),
           children: [
-            _TomorrowStatusStrip(snapshot: snapshot),
+            _TomorrowStatusStrip(
+              snapshot: snapshot,
+              selectedJurisdiction: selectedJurisdiction,
+            ),
             const SizedBox(height: AppSpacing.s),
             Wrap(
               spacing: AppSpacing.s,
@@ -99,35 +115,40 @@ class _StatusGrid extends ConsumerWidget {
 }
 
 class _TomorrowStatusStrip extends StatelessWidget {
-  const _TomorrowStatusStrip({required this.snapshot});
+  const _TomorrowStatusStrip({
+    required this.snapshot,
+    required this.selectedJurisdiction,
+  });
 
   final HomeVehicleSnapshot snapshot;
+  final RestrictionJurisdiction? selectedJurisdiction;
 
   @override
   Widget build(BuildContext context) {
+    final cityLabel = selectedJurisdiction == null
+        ? 'Seleccionar ciudad'
+        : _displayJurisdictionName(selectedJurisdiction!);
+    void openPico() => context.push(
+      picoShellLocation(
+        origin: PicoRouteOrigin.home,
+        vehicleId: snapshot.vehicle.id,
+      ),
+    );
+
     return Semantics(
       button: true,
       label: 'Ver pico y placa',
       value:
           '${_tomorrowValue(snapshot.tomorrow)}, ${_tomorrowMessage(snapshot.tomorrow)}',
       child: Material(
-        key: const ValueKey('home-status-tomorrow'),
         color: AppColors.orange.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(AppRadius.input),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => context.push(
-            picoShellLocation(
-              origin: PicoRouteOrigin.home,
-              vehicleId: snapshot.vehicle.id,
-            ),
-          ),
+          key: const ValueKey('home-status-tomorrow'),
+          onTap: openPico,
           child: Container(
-            constraints: const BoxConstraints(minHeight: 50),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.m,
-              vertical: AppSpacing.s,
-            ),
+            constraints: const BoxConstraints(minHeight: 66),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppRadius.input),
               border: Border.all(
@@ -136,65 +157,109 @@ class _TomorrowStatusStrip extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: const BoxDecoration(
-                    color: AppColors.surface,
-                    shape: BoxShape.circle,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.m,
+                    AppSpacing.s,
+                    AppSpacing.s,
+                    AppSpacing.s,
                   ),
-                  child: const Icon(
-                    Icons.calendar_month_rounded,
-                    color: AppColors.orange,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.s),
-                SizedBox(
-                  width: 72,
-                  child: _ScaleDownText(
-                    'Pico y placa',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.orange,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.s),
-                Container(
-                  width: 1,
-                  height: 32,
-                  color: AppColors.orange.withValues(alpha: 0.2),
-                ),
-                const SizedBox(width: AppSpacing.s),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      _ScaleDownText(
-                        _tomorrowValue(snapshot.tomorrow),
-                        style: AppTextStyles.bodyStrong.copyWith(
-                          fontSize: 14.5,
-                          color: AppColors.navy,
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: const BoxDecoration(
+                          color: AppColors.surface,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.calendar_month_rounded,
+                          color: AppColors.orange,
+                          size: 22,
                         ),
                       ),
-                      Text(
-                        'Mañana · ${_tomorrowMessage(snapshot.tomorrow)}',
-                        style: AppTextStyles.caption.copyWith(
-                          fontSize: 12,
-                          color: AppColors.navy.withValues(alpha: 0.72),
+                      const SizedBox(width: AppSpacing.s),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 116),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _ScaleDownText(
+                              'Pico y placa',
+                              style: AppTextStyles.bodyStrong.copyWith(
+                                color: AppColors.orange,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              cityLabel,
+                              maxLines: 2,
+                              overflow: TextOverflow.visible,
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.navy.withValues(alpha: 0.72),
+                                fontSize: 13,
+                                height: 1.05,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: AppSpacing.xs),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppColors.orange,
-                  size: 20,
+                Container(
+                  width: 1,
+                  height: 42,
+                  color: AppColors.orange.withValues(alpha: 0.2),
+                ),
+                Expanded(
+                  key: const ValueKey('home-status-pico-action'),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.m,
+                      AppSpacing.s,
+                      AppSpacing.m,
+                      AppSpacing.s,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _ScaleDownText(
+                                _tomorrowValue(snapshot.tomorrow),
+                                style: AppTextStyles.bodyStrong.copyWith(
+                                  fontSize: 18,
+                                  color: AppColors.navy,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              _ScaleDownText(
+                                'Mañana · ${_tomorrowMessage(snapshot.tomorrow)}',
+                                style: AppTextStyles.caption.copyWith(
+                                  fontSize: 13,
+                                  height: 1.05,
+                                  color: AppColors.navy.withValues(alpha: 0.72),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: AppColors.orange,
+                          size: 22,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),

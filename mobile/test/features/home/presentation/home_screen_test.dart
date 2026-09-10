@@ -135,7 +135,7 @@ void main() {
       expect(find.text('Puede circular'), findsNothing);
     });
 
-    testWidgets('location card is compact and does not prompt on startup', (
+    testWidgets('location pin is compact and does not prompt on startup', (
       tester,
     ) async {
       final gateway = _FakeDeviceLocationGateway()
@@ -154,8 +154,7 @@ void main() {
       expect(find.text('Bogotá'), findsOneWidget);
       final locationSize = tester.getSize(locationCard);
       expect(locationSize.height, 48);
-      expect(locationSize.width, lessThanOrEqualTo(220));
-      expect(locationSize.width, greaterThanOrEqualTo(190));
+      expect(locationSize.width, 48);
       expect(
         tester.getTopLeft(locationCard).dy,
         lessThan(
@@ -177,7 +176,7 @@ void main() {
       );
     });
 
-    testWidgets('location card stays compact at small phone width', (
+    testWidgets('location pin stays compact at small phone width', (
       tester,
     ) async {
       await _readyHome(
@@ -192,8 +191,7 @@ void main() {
         find.byKey(const ValueKey('home-location-card')),
       );
       expect(locationSize.height, 48);
-      expect(locationSize.width, lessThanOrEqualTo(212));
-      expect(locationSize.width, greaterThanOrEqualTo(184));
+      expect(locationSize.width, 48);
     });
 
     for (final viewport in <({Size size, double textScale})>[
@@ -205,7 +203,7 @@ void main() {
       (size: const Size(412, 915), textScale: 2),
     ]) {
       testWidgets(
-        'location keeps full Medellín at ${viewport.size.width.toInt()} '
+        'status strip keeps full Medellín at ${viewport.size.width.toInt()} '
         'text scale ${viewport.textScale}',
         (tester) async {
           await _readyHome(
@@ -221,7 +219,7 @@ void main() {
             textScaleFactor: viewport.textScale,
           );
 
-          final card = find.byKey(const ValueKey('home-location-card'));
+          final card = find.byKey(const ValueKey('home-status-tomorrow'));
           final city = find.descendant(
             of: card,
             matching: find.text('Medellín'),
@@ -244,37 +242,38 @@ void main() {
       );
     }
 
-    testWidgets('long location label wraps at 360 and text scale 2', (
-      tester,
-    ) async {
-      await _readyHome(
-        harness,
-        plate: 'ABC124',
-        jurisdictionId: 'co-san-bucaramanga-metro',
-      );
+    testWidgets(
+      'long city label wraps in status strip at 360 and text scale 2',
+      (tester) async {
+        await _readyHome(
+          harness,
+          plate: 'ABC124',
+          jurisdictionId: 'co-san-bucaramanga-metro',
+        );
 
-      await _pumpHome(
-        tester,
-        harness,
-        viewportSize: const Size(360, 800),
-        textScaleFactor: 2,
-      );
+        await _pumpHome(
+          tester,
+          harness,
+          viewportSize: const Size(360, 800),
+          textScaleFactor: 2,
+        );
 
-      final card = find.byKey(const ValueKey('home-location-card'));
-      final city = find.descendant(
-        of: card,
-        matching: find.text('Área metropolitana de Bucaramanga'),
-      );
-      final cityWidget = tester.widget<Text>(city);
-      final cardRect = tester.getRect(card);
-      final cityRect = tester.getRect(city);
+        final card = find.byKey(const ValueKey('home-status-tomorrow'));
+        final city = find.descendant(
+          of: card,
+          matching: find.text('Área metropolitana de Bucaramanga'),
+        );
+        final cityWidget = tester.widget<Text>(city);
+        final cardRect = tester.getRect(card);
+        final cityRect = tester.getRect(city);
 
-      expect(cityWidget.maxLines, greaterThanOrEqualTo(2));
-      expect(cityWidget.overflow, isNot(TextOverflow.ellipsis));
-      expect(cityRect.right, lessThanOrEqualTo(cardRect.right));
-      expect(cityRect.bottom, lessThanOrEqualTo(cardRect.bottom));
-      expect(tester.takeException(), isNull);
-    });
+        expect(cityWidget.maxLines, greaterThanOrEqualTo(2));
+        expect(cityWidget.overflow, isNot(TextOverflow.ellipsis));
+        expect(cityRect.right, lessThanOrEqualTo(cardRect.right));
+        expect(cityRect.bottom, lessThanOrEqualTo(cardRect.bottom));
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets('location sheet switches manual jurisdiction from Home', (
       tester,
@@ -337,7 +336,7 @@ void main() {
         find.byKey(const ValueKey('home-location-card')),
       );
       expect(gpsCardSize.height, 48);
-      expect(gpsCardSize.width, lessThanOrEqualTo(220));
+      expect(gpsCardSize.width, 48);
       expect(find.text('GPS activo'), findsNothing);
       final satellite = tester.widget<Icon>(
         find.byKey(const ValueKey('home-location-satellite-status')),
@@ -755,6 +754,63 @@ void main() {
       );
     });
 
+    testWidgets(
+      'Home GPS auto refreshes city despite a recent cached jurisdiction',
+      (tester) async {
+        harness.now = DateTime(2026, 9, 10, 0, 2);
+        final gateway = _FakeDeviceLocationGateway()
+          ..permission = DeviceLocationPermission.granted
+          ..point = const DeviceLocationPoint(
+            latitude: 6.2442,
+            longitude: -75.5812,
+            accuracyMeters: 35,
+          );
+        final vehicle = await _readyHome(
+          harness,
+          plate: 'BOG126',
+          jurisdictionId: 'co-dc-bogota',
+        );
+        await harness.preferences.setString(
+          locationModePreferenceKey,
+          LocationMode.gpsAuto.value,
+        );
+        await harness.preferences.setInt(
+          lastGpsRefreshAtPreferenceKey,
+          harness.now
+              .toUtc()
+              .subtract(const Duration(minutes: 2))
+              .millisecondsSinceEpoch,
+        );
+
+        await _pumpHome(tester, harness, deviceLocationGateway: gateway);
+
+        expect(gateway.requestPermissionCalls, 0);
+        expect(gateway.positionCalls, 1);
+        expect(
+          await harness.preferences.getString(picoJurisdictionPreferenceKey),
+          'co-ant-medellin',
+        );
+        expect(find.text('Medellín'), findsWidgets);
+        final vehicleCard = find.byKey(
+          ValueKey('home-vehicle-card-${vehicle.id}'),
+        );
+        expect(
+          find.descendant(
+            of: vehicleCard,
+            matching: find.text('Pico y placa hoy'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: vehicleCard,
+            matching: find.text('No puede circular de 05:00 - 20:00'),
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
     testWidgets('one vehicle hides the counter and renders the status grid', (
       tester,
     ) async {
@@ -857,14 +913,25 @@ void main() {
         tester
             .getSize(find.byKey(const ValueKey('picoradar-avatar-control')))
             .height,
-        52,
+        48,
       );
       expect(
         tester
             .getSize(find.byKey(const ValueKey('picoradar-bell-control')))
             .width,
-        52,
+        48,
       );
+      final avatarLeft = tester
+          .getTopLeft(find.byKey(const ValueKey('picoradar-avatar-control')))
+          .dx;
+      final locationLeft = tester
+          .getTopLeft(find.byKey(const ValueKey('home-location-card')))
+          .dx;
+      final bellLeft = tester
+          .getTopLeft(find.byKey(const ValueKey('picoradar-bell-control')))
+          .dx;
+      expect(avatarLeft, lessThan(locationLeft));
+      expect(locationLeft, lessThan(bellLeft));
       expect(find.text('¡Hola!'), findsNothing);
       expect(find.text('Así están tus vehículos hoy'), findsNothing);
     });
@@ -1102,12 +1169,11 @@ void main() {
 
       expect(pageView.controller?.viewportFraction, closeTo(0.64, 0.001));
       expect(pageView.pageSnapping, isTrue);
-      expect(
-        tester
-            .getSize(find.byKey(const ValueKey('home-vehicle-carousel')))
-            .height,
-        216,
-      );
+      final carouselHeight = tester
+          .getSize(find.byKey(const ValueKey('home-vehicle-carousel')))
+          .height;
+      expect(carouselHeight, greaterThanOrEqualTo(236));
+      expect(carouselHeight, lessThanOrEqualTo(360));
       expect(
         find.byKey(const ValueKey('home-carousel-counter')),
         findsOneWidget,
@@ -1117,9 +1183,10 @@ void main() {
       expect(find.byKey(const ValueKey('home-carousel-dot-1')), findsOneWidget);
       expect(find.byKey(const ValueKey('home-carousel-dot-2')), findsOneWidget);
       expect(find.text('TST453'), findsOneWidget);
-      expect(find.text('Hoy no puedes circular'), findsOneWidget);
+      expect(find.text('Pico y placa hoy'), findsOneWidget);
+      expect(find.text('No puede circular de 05:00 - 20:00'), findsOneWidget);
       final restrictedSummary = tester.widget<Text>(
-        find.text('Hoy no puedes circular'),
+        find.text('Pico y placa hoy'),
       );
       expect(restrictedSummary.overflow, isNot(TextOverflow.ellipsis));
 
@@ -2689,6 +2756,55 @@ void main() {
       expect(find.text('Datos desactualizados'), findsWidgets);
       expect(find.text('Puedes circular'), findsNothing);
     });
+
+    testWidgets(
+      'Bogota plate is evaluated by effective Medellin city, not registration',
+      (tester) async {
+        harness.now = DateTime(2026, 9, 10, 0, 2);
+        final vehicle = await _readyHome(
+          harness,
+          plate: 'BOG126',
+          jurisdictionId: 'co-ant-medellin',
+        );
+
+        await _pumpHome(tester, harness);
+
+        final vehicleCard = find.byKey(
+          ValueKey('home-vehicle-card-${vehicle.id}'),
+        );
+        expect(find.text('Medellín'), findsWidgets);
+        expect(
+          find.descendant(
+            of: vehicleCard,
+            matching: find.text('Pico y placa hoy'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: vehicleCard,
+            matching: find.text('No puede circular de 05:00 - 20:00'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: vehicleCard,
+            matching: find.text('Puede circular'),
+          ),
+          findsNothing,
+        );
+
+        await _pumpDetail(tester, harness, vehicleId: vehicle.id);
+
+        expect(
+          find.textContaining('Medellín · Fuente oficial:'),
+          findsAtLeastNWidgets(1),
+        );
+        expect(find.text('No puedes circular'), findsWidgets);
+        expect(find.text('05:00-20:00'), findsWidgets);
+      },
+    );
 
     testWidgets('invalid explicit vehicle falls back to active without crash', (
       tester,

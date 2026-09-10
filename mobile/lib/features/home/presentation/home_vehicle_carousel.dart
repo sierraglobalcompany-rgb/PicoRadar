@@ -1,7 +1,24 @@
 part of 'home_screen.dart';
 
 const _homeCarouselViewportFraction = 0.64;
-const _homeCarouselBaseHeight = 216.0;
+const _homeCarouselBaseHeight = 300.0;
+
+double _homeCarouselHeightForLayout(BuildContext context, double maxHeight) {
+  final scale = MediaQuery.textScalerOf(context).scale(1);
+  if (!maxHeight.isFinite) {
+    return _homeCarouselBaseHeight;
+  }
+  if (scale >= 1.8) {
+    return (maxHeight * 0.34).clamp(260.0, 336.0);
+  }
+  if (scale >= 1.4) {
+    return (maxHeight * 0.36).clamp(248.0, 324.0);
+  }
+  const fixedHomeChrome = 362.0;
+  final fitHeight = maxHeight - fixedHomeChrome;
+  final proportionalHeight = maxHeight * 0.38;
+  return math.min(proportionalHeight, fitHeight).clamp(236.0, 360.0);
+}
 
 class _VehicleCarousel extends StatelessWidget {
   const _VehicleCarousel({
@@ -9,12 +26,14 @@ class _VehicleCarousel extends StatelessWidget {
     required this.snapshots,
     required this.focusedIndex,
     required this.onChanged,
+    required this.height,
   });
 
   final PageController controller;
   final List<HomeVehicleSnapshot> snapshots;
   final int focusedIndex;
   final ValueChanged<int> onChanged;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +41,7 @@ class _VehicleCarousel extends StatelessWidget {
       label: 'Carrusel de vehículos',
       child: SizedBox(
         key: const ValueKey('home-vehicle-carousel'),
-        height: _carouselHeight(context),
+        height: height,
         child: PageView.builder(
           key: const ValueKey('home-vehicle-page-view'),
           controller: controller,
@@ -67,11 +86,6 @@ class _VehicleCarousel extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  double _carouselHeight(BuildContext context) {
-    final scale = MediaQuery.textScalerOf(context).scale(1);
-    return scale >= 1.8 ? 352 : (scale >= 1.4 ? 312 : _homeCarouselBaseHeight);
   }
 }
 
@@ -173,47 +187,34 @@ class _HomeVehicleCardState extends State<_HomeVehicleCard>
               ),
             );
           },
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.m,
-              AppSpacing.xs,
-              AppSpacing.m,
-              AppSpacing.xs,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _TodayChip(status: widget.snapshot.today.status),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.xs,
-                    ),
-                    child: _GenericVehicleVisual(
-                      vehicle: widget.snapshot.vehicle,
-                      useProductionAsset: true,
-                    ),
+          child: Column(
+            children: [
+              _TodayStatusBand(status: widget.snapshot.today.status),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.s,
+                    AppSpacing.s,
+                    AppSpacing.s,
+                    0,
+                  ),
+                  child: _GenericVehicleVisual(
+                    vehicle: widget.snapshot.vehicle,
+                    useProductionAsset: true,
                   ),
                 ),
-                Text(
-                  _vehicleCompactLabel(widget.snapshot.vehicle),
-                  key: ValueKey(
-                    'home-vehicle-label-${widget.snapshot.vehicle.id}',
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.h2.copyWith(fontSize: 16.5),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.m,
+                  0,
+                  AppSpacing.m,
+                  AppSpacing.s,
                 ),
-                const SizedBox(height: 2),
-                ColombianPlateBadge(
-                  plate: widget.snapshot.vehicle.plate,
-                  compact: true,
-                ),
-                const SizedBox(height: 2),
-                _TodaySummary(evaluation: widget.snapshot.today),
-              ],
-            ),
+                child: _VehicleIdentityRow(vehicle: widget.snapshot.vehicle),
+              ),
+              _RestrictionFooter(evaluation: widget.snapshot.today),
+            ],
           ),
         ),
       ),
@@ -233,8 +234,8 @@ class _HomeVehicleCardState extends State<_HomeVehicleCard>
   }
 }
 
-class _TodayChip extends StatelessWidget {
-  const _TodayChip({required this.status});
+class _TodayStatusBand extends StatelessWidget {
+  const _TodayStatusBand({required this.status});
 
   final RestrictionDayStatus status;
 
@@ -242,25 +243,26 @@ class _TodayChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = statusColor(status);
     return Container(
-      constraints: const BoxConstraints(minHeight: 26),
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 46),
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.s,
-        vertical: 3,
+        horizontal: AppSpacing.m,
+        vertical: AppSpacing.s,
       ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppRadius.chip),
-      ),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1)),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(statusIcon(status), color: color, size: 15),
-          const SizedBox(width: AppSpacing.xs),
+          Icon(statusIcon(status), color: color, size: 25),
+          const SizedBox(width: AppSpacing.s),
           Flexible(
             child: Text(
               todayStatusText(status),
-              style: AppTextStyles.caption.copyWith(
-                fontSize: 12,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.visible,
+              style: AppTextStyles.h2.copyWith(
+                fontSize: 20,
                 color: color,
                 fontWeight: FontWeight.w800,
               ),
@@ -268,6 +270,48 @@ class _TodayChip extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _VehicleIdentityRow extends StatelessWidget {
+  const _VehicleIdentityRow({required this.vehicle});
+
+  final VehicleProfile vehicle;
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = MediaQuery.textScalerOf(context).scale(1);
+    final type = Text(
+      shortVehicleTypeLabel(vehicle),
+      key: ValueKey('home-vehicle-label-${vehicle.id}'),
+      maxLines: 1,
+      overflow: TextOverflow.visible,
+      style: AppTextStyles.h2.copyWith(fontSize: scale >= 1.6 ? 17 : 19),
+    );
+    final plate = ColombianPlateBadge(plate: vehicle.plate, compact: true);
+
+    if (scale >= 1.6) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          FittedBox(fit: BoxFit.scaleDown, child: type),
+          const SizedBox(height: AppSpacing.xs),
+          plate,
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: FittedBox(fit: BoxFit.scaleDown, child: type),
+        ),
+        const SizedBox(width: AppSpacing.s),
+        Flexible(
+          child: Align(alignment: Alignment.centerRight, child: plate),
+        ),
+      ],
     );
   }
 }
@@ -501,60 +545,53 @@ class _VehiclePainter extends CustomPainter {
   }
 }
 
-class _TodaySummary extends StatelessWidget {
-  const _TodaySummary({required this.evaluation});
+class _RestrictionFooter extends StatelessWidget {
+  const _RestrictionFooter({required this.evaluation});
 
   final RestrictionDayEvaluation evaluation;
 
   @override
   Widget build(BuildContext context) {
     final status = evaluation.status;
+    if (status == RestrictionDayStatus.allowed) {
+      return const SizedBox.shrink();
+    }
     final color = statusColor(status);
     final windows = _formatWindows(evaluation.effectiveWindows);
     final main = switch (status) {
-      RestrictionDayStatus.restricted => 'Hoy no puedes circular',
-      RestrictionDayStatus.allowed => 'Estado hoy',
+      RestrictionDayStatus.restricted =>
+        windows == null
+            ? 'No puede circular hoy'
+            : 'No puede circular de $windows',
       RestrictionDayStatus.unknown => 'Sin confirmar',
       RestrictionDayStatus.stale => 'Datos pendientes',
+      RestrictionDayStatus.allowed => '',
     };
-    final detail = status == RestrictionDayStatus.restricted && windows != null
-        ? 'Aplica $windows'
-        : todayStatusText(status);
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 38),
+      constraints: const BoxConstraints(minHeight: 34),
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.s,
-        vertical: 3,
+        horizontal: AppSpacing.m,
+        vertical: AppSpacing.xs,
       ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppRadius.input),
-      ),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.08)),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(statusIcon(status), color: color, size: 16),
           const SizedBox(width: AppSpacing.s),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _ScaleDownText(
-                  main,
-                  style: AppTextStyles.caption.copyWith(
-                    color: color,
-                    fontSize: 10.8,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  detail,
-                  style: AppTextStyles.caption.copyWith(
-                    fontSize: 10.8,
-                    color: AppColors.navy.withValues(alpha: 0.78),
-                  ),
-                ),
-              ],
+          Flexible(
+            child: Text(
+              main,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.visible,
+              style: AppTextStyles.caption.copyWith(
+                color: color,
+                fontSize: 11.8,
+                fontWeight: FontWeight.w800,
+                height: 1.05,
+              ),
             ),
           ),
         ],

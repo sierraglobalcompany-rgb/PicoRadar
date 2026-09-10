@@ -632,7 +632,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('vehicle-guard-add')));
     await _pumpRoute(tester);
 
-    expect(find.text('Agregar vehículo'), findsOneWidget);
+    expect(find.text('¿Qué conduces?'), findsOneWidget);
   });
 
   testWidgets(
