@@ -30,6 +30,7 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   late final DrivingHudActiveNotifier _hudActiveNotifier;
   late final AnimationController _visualPulseController;
+  final _activeScrollController = ScrollController(keepScrollOffset: false);
   bool _hudMode = false;
   bool _hudMirror = false;
 
@@ -48,6 +49,7 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _visualPulseController.dispose();
+    _activeScrollController.dispose();
     _leaveHudMode(updateState: false);
     super.dispose();
   }
@@ -90,6 +92,7 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
     final asyncState = ref.watch(drivingControllerProvider);
     final content = asyncState.when(
       loading: () => _DrivingDashboard(
+        scrollController: _activeScrollController,
         state: _initialDrivingState,
         onDebugRegional: canUseDebugDrivingSimulation ? _startRegional : null,
         onStart: () => ref.read(drivingControllerProvider.notifier).start(),
@@ -153,6 +156,7 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
         _setImmersiveActive(state.isActive);
         return _DrivingDashboard(
           state: state,
+          scrollController: _activeScrollController,
           onDebugRegional: canUseDebugDrivingSimulation ? _startRegional : null,
           onStart: () => ref.read(drivingControllerProvider.notifier).start(),
           onDebugRouteKnown: canUseDebugDrivingSimulation
@@ -302,6 +306,7 @@ const _initialDrivingState = DrivingState(
 class _DrivingDashboard extends StatelessWidget {
   const _DrivingDashboard({
     required this.state,
+    required this.scrollController,
     required this.onStart,
     required this.onDebugRouteKnown,
     required this.onDebugRouteUnknown,
@@ -317,6 +322,7 @@ class _DrivingDashboard extends StatelessWidget {
   });
 
   final DrivingState state;
+  final ScrollController scrollController;
   final VoidCallback onStart;
   final VoidCallback? onDebugRouteKnown;
   final VoidCallback? onDebugRouteUnknown;
@@ -335,9 +341,9 @@ class _DrivingDashboard extends StatelessWidget {
     final active = state.isActive;
     if (active) {
       return Scaffold(
-        backgroundColor: const Color(0xFF071622),
+        backgroundColor: const Color(0xFF03090D),
         body: ColoredBox(
-          color: const Color(0xFF071622),
+          color: const Color(0xFF03090D),
           child: SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -398,86 +404,98 @@ class _DrivingDashboard extends StatelessWidget {
                                             : 8),
                                     mainConstraints.maxHeight,
                                   );
-                            return SingleChildScrollView(
-                              key: const ValueKey('driving-active-scroll'),
-                              physics: const ClampingScrollPhysics(),
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  minHeight: mainConstraints.maxHeight,
+                            return Scrollbar(
+                              controller: scrollController,
+                              thumbVisibility:
+                                  MediaQuery.textScalerOf(context).scale(14) >
+                                  17,
+                              thickness: 3,
+                              interactive: false,
+                              child: SingleChildScrollView(
+                                key: const ValueKey('driving-active-scroll'),
+                                controller: scrollController,
+                                physics: const ClampingScrollPhysics(),
+                                padding: EdgeInsets.only(
+                                  bottom:
+                                      MediaQuery.textScalerOf(context)
+                                              .scale(14) >
+                                          17
+                                      ? 16
+                                      : 0,
                                 ),
-                                child: Column(
-                                  mainAxisAlignment: hasAlertSpace
-                                      ? MainAxisAlignment.start
-                                      : MainAxisAlignment.center,
-                                  children: [
-                                    AnimatedContainer(
-                                      duration: motionDuration,
-                                      curve: Curves.easeOutCubic,
-                                      height: gaugeHeight,
-                                      child: LayoutBuilder(
-                                        builder: (context, gaugeConstraints) {
-                                          return Stack(
-                                            clipBehavior: Clip.none,
-                                            alignment: Alignment.center,
-                                            children: [
-                                              AnimatedAlign(
-                                                duration: motionDuration,
-                                                curve: Curves.easeOutCubic,
-                                                alignment: hasAlertSpace
-                                                    ? Alignment.topCenter
-                                                    : Alignment.center,
-                                                child: _SpeedGauge(
-                                                  key: const ValueKey(
-                                                    'driving-speed-gauge',
-                                                  ),
-                                                  state: state,
-                                                  diameter: diameter,
-                                                  speedFontSize:
-                                                      diameter * 0.46,
-                                                ),
-                                              ),
-                                              if (state.showCameraAlertPanel)
-                                                const Positioned(
-                                                  top: 2,
-                                                  right: 0,
-                                                  child:
-                                                      _GaugeCameraIndicator(),
-                                                ),
-                                              if (!hasAlertSpace &&
-                                                  state.dismissedCameraId !=
-                                                      null)
-                                                Positioned(
-                                                  bottom: 0,
-                                                  left: 0,
-                                                  right: 0,
-                                                  child: _CameraAlertSwitcher(
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    minHeight: mainConstraints.maxHeight,
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: hasAlertSpace
+                                        ? MainAxisAlignment.start
+                                        : MainAxisAlignment.center,
+                                    children: [
+                                      AnimatedContainer(
+                                        duration: motionDuration,
+                                        curve: Curves.easeOutCubic,
+                                        height: gaugeHeight,
+                                        child: LayoutBuilder(
+                                          builder: (context, gaugeConstraints) {
+                                            return Stack(
+                                              clipBehavior: Clip.none,
+                                              alignment: Alignment.center,
+                                              children: [
+                                                AnimatedAlign(
+                                                  duration: motionDuration,
+                                                  curve: Curves.easeOutCubic,
+                                                  alignment: hasAlertSpace
+                                                      ? Alignment.topCenter
+                                                      : Alignment.center,
+                                                  child: _SpeedGauge(
+                                                    key: const ValueKey(
+                                                      'driving-speed-gauge',
+                                                    ),
                                                     state: state,
+                                                    diameter: diameter,
+                                                    speedFontSize:
+                                                        diameter * 0.46,
                                                   ),
                                                 ),
-                                            ],
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    if (hasAlertSpace) ...[
-                                      const SizedBox(height: AppSpacing.xs),
-                                      _CameraAlertSwitcher(state: state),
-                                      if (state.preferences.tollAlertsEnabled &&
-                                          state.tollDataError != null)
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: AppSpacing.s,
-                                          ),
-                                          child: Text(
-                                            state.tollDataError!,
-                                            style: AppTextStyles.caption
-                                                .copyWith(
-                                                  color: Colors.white70,
-                                                ),
-                                          ),
+                                                if (!hasAlertSpace &&
+                                                    state.dismissedCameraId !=
+                                                        null)
+                                                  Positioned(
+                                                    bottom: 0,
+                                                    left: 0,
+                                                    right: 0,
+                                                    child: _CameraAlertSwitcher(
+                                                      state: state,
+                                                    ),
+                                                  ),
+                                              ],
+                                            );
+                                          },
                                         ),
+                                      ),
+                                      if (hasAlertSpace) ...[
+                                        const SizedBox(height: AppSpacing.xs),
+                                        _CameraAlertSwitcher(state: state),
+                                        if (state
+                                                .preferences
+                                                .tollAlertsEnabled &&
+                                            state.tollDataError != null)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: AppSpacing.s,
+                                            ),
+                                            child: Text(
+                                              state.tollDataError!,
+                                              style: AppTextStyles.caption
+                                                  .copyWith(
+                                                    color: Colors.white70,
+                                                  ),
+                                            ),
+                                          ),
+                                      ],
                                     ],
-                                  ],
+                                  ),
                                 ),
                               ),
                             );
@@ -692,47 +710,53 @@ class _RoadCameraPainter extends CustomPainter {
       ..color = color == Colors.white ? const Color(0xFF851926) : Colors.white;
     canvas.save();
     canvas.scale(size.width / 100, size.height / 100);
-    // Side housing, projecting hood and lens face share one road-camera outline.
+    // Long side housing and a broad lens face follow the owner's road camera.
     canvas.drawPath(
       Path()
-        ..moveTo(9, 29)
-        ..lineTo(63, 13)
-        ..lineTo(91, 24)
-        ..lineTo(89, 68)
-        ..lineTo(61, 72)
-        ..lineTo(10, 62)
+        ..moveTo(8, 31)
+        ..lineTo(57, 14)
+        ..lineTo(57, 63)
+        ..lineTo(12, 70)
+        ..quadraticBezierTo(6, 70, 6, 64)
+        ..lineTo(5, 38)
+        ..quadraticBezierTo(5, 33, 8, 31)
         ..close(),
       paint,
     );
     canvas.drawPath(
       Path()
-        ..moveTo(7, 25)
-        ..lineTo(63, 8)
-        ..lineTo(96, 21)
-        ..lineTo(93, 29)
-        ..lineTo(62, 19)
-        ..lineTo(7, 35)
+        ..moveTo(57, 14)
+        ..lineTo(97, 22)
+        ..quadraticBezierTo(100, 23, 99, 27)
+        ..lineTo(94, 73)
+        ..quadraticBezierTo(93, 77, 89, 76)
+        ..lineTo(58, 67)
         ..close(),
       paint,
     );
     canvas.drawPath(
       Path()
-        ..moveTo(65, 25)
-        ..lineTo(85, 31)
-        ..lineTo(83, 62)
-        ..lineTo(64, 65)
+        ..moveTo(66, 25)
+        ..lineTo(89, 30)
+        ..quadraticBezierTo(93, 31, 92, 35)
+        ..lineTo(88, 64)
+        ..quadraticBezierTo(88, 68, 84, 67)
+        ..lineTo(65, 62)
+        ..quadraticBezierTo(62, 61, 62, 58)
+        ..lineTo(63, 29)
+        ..quadraticBezierTo(63, 25, 66, 25)
         ..close(),
       Paint()
         ..color = contrast.color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.3,
+        ..strokeWidth = 2.5,
     );
-    canvas.drawOval(const Rect.fromLTWH(68, 34, 13, 23), contrast);
-    canvas.drawOval(const Rect.fromLTWH(71, 38, 7, 15), paint);
+    canvas.drawOval(const Rect.fromLTWH(68, 33, 18, 26), contrast);
+    canvas.drawOval(const Rect.fromLTWH(71, 37, 12, 18), paint);
     canvas.drawPath(
       Path()
-        ..moveTo(15, 39)
-        ..lineTo(55, 28),
+        ..moveTo(11, 41)
+        ..lineTo(51, 28),
       Paint()
         ..color = contrast.color
         ..style = PaintingStyle.stroke
@@ -740,14 +764,14 @@ class _RoadCameraPainter extends CustomPainter {
     );
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        const Rect.fromLTWH(33, 64, 20, 10),
+        const Rect.fromLTWH(27, 71, 23, 10),
         const Radius.circular(3),
       ),
       paint,
     );
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        const Rect.fromLTWH(38, 70, 12, 28),
+        const Rect.fromLTWH(34, 77, 11, 23),
         const Radius.circular(2),
       ),
       paint,
@@ -1613,21 +1637,9 @@ class _CameraPanelState extends ConsumerState<_CameraPanel> {
     ref.read(drivingControllerProvider.notifier).dismissCurrentCameraAlert();
   }
 
-  void _handleDragUpdate(DragUpdateDetails details) {
-    _verticalDragOffset += details.primaryDelta ?? 0;
-    if (_verticalDragOffset > 64) _dismissAlert();
-  }
-
   void _handlePointerMove(PointerMoveEvent event) {
     _verticalDragOffset += event.delta.dy;
     if (_verticalDragOffset > 64) _dismissAlert();
-  }
-
-  void _handleDragEnd(DragEndDetails details) {
-    if ((details.primaryVelocity ?? 0) > 180 || _verticalDragOffset > 64) {
-      _dismissAlert();
-    }
-    _resetDrag();
   }
 
   @override
@@ -1638,25 +1650,22 @@ class _CameraPanelState extends ConsumerState<_CameraPanel> {
     final compactPanel = MediaQuery.sizeOf(context).height < 860;
     final mapHeight = compactPanel ? 132.0 : 156.0;
 
-    return GestureDetector(
+    return KeyedSubtree(
       key: const ValueKey('driving-camera-alert-panel'),
-      onVerticalDragStart: (_) => _resetDrag(),
-      onVerticalDragEnd: _handleDragEnd,
-      onVerticalDragUpdate: _handleDragUpdate,
       child: Listener(
         onPointerDown: (_) => _resetDrag(),
         onPointerMove: _handlePointerMove,
         child: Material(
-          color: const Color(0xF20B1D2C),
+          color: const Color(0xFF061118),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.card),
-            side: BorderSide(color: color, width: 1.5),
+            side: const BorderSide(color: Color(0xFFF43E49), width: 1.5),
           ),
           clipBehavior: Clip.antiAlias,
           child: LayoutBuilder(
             builder: (context, constraints) {
               final stacked =
-                  MediaQuery.textScalerOf(context).scale(14) > 17 ||
+                  MediaQuery.textScalerOf(context).scale(14) > 21 ||
                   constraints.maxWidth < 330;
               final map = DrivingProximityMap(
                 key: const ValueKey('driving-mini-map'),
@@ -1676,14 +1685,10 @@ class _CameraPanelState extends ConsumerState<_CameraPanel> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  GestureDetector(
+                  KeyedSubtree(
                     key: const ValueKey('driving-camera-alert-header'),
-                    behavior: HitTestBehavior.opaque,
-                    onVerticalDragStart: (_) => _resetDrag(),
-                    onVerticalDragEnd: _handleDragEnd,
-                    onVerticalDragUpdate: _handleDragUpdate,
                     child: ColoredBox(
-                      color: const Color(0xFF8D1622),
+                      color: const Color(0xFF59121C),
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(
                           AppSpacing.m,
@@ -1696,9 +1701,9 @@ class _CameraPanelState extends ConsumerState<_CameraPanel> {
                             const _RoadCameraGlyph(
                               key: ValueKey('driving-camera-alert-icon-camera'),
                               color: Colors.white,
-                              size: 42,
+                              size: 38,
                             ),
-                            const SizedBox(width: AppSpacing.m),
+                            const SizedBox(width: AppSpacing.s),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1708,6 +1713,7 @@ class _CameraPanelState extends ConsumerState<_CameraPanel> {
                                     style: AppTextStyles.bodyStrong.copyWith(
                                       color: Colors.white,
                                       fontSize: 18,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                   Text(
@@ -1716,7 +1722,7 @@ class _CameraPanelState extends ConsumerState<_CameraPanel> {
                                       color: Colors.white.withValues(
                                         alpha: 0.82,
                                       ),
-                                      fontWeight: FontWeight.w800,
+                                      fontWeight: FontWeight.w400,
                                     ),
                                   ),
                                 ],
@@ -1753,7 +1759,8 @@ class _CameraPanelState extends ConsumerState<_CameraPanel> {
                                 _cameraDistanceLabel(match),
                                 key: const ValueKey('camera-distance-pill'),
                                 style: AppTextStyles.bodyStrong.copyWith(
-                                  color: color,
+                                  color: const Color(0xFFFF6B72),
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
@@ -1940,6 +1947,8 @@ class _CameraFactBlock extends StatelessWidget {
           label,
           style: AppTextStyles.caption.copyWith(
             color: Colors.white.withValues(alpha: 0.58),
+            fontSize: 13,
+            fontWeight: FontWeight.w400,
             height: 1.05,
           ),
         ),
@@ -1948,7 +1957,8 @@ class _CameraFactBlock extends StatelessWidget {
           value,
           style: AppTextStyles.caption.copyWith(
             color: Colors.white,
-            fontWeight: FontWeight.w800,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
             height: 1.12,
           ),
         ),
@@ -1997,7 +2007,7 @@ String _cameraDistanceLabel(CameraMatch match) {
   if (status == null || status.isEmpty) {
     return 'A ${match.distanceMeters.round()} m';
   }
-  return 'A ${match.distanceMeters.round()} m · $status según fuente';
+  return 'A ${match.distanceMeters.round()} m · $status (reportado)';
 }
 
 Uri _cameraMapUri(TrafficCamera camera) {
@@ -2173,33 +2183,45 @@ class _SpeedGauge extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(
-                    width: diameter * 0.58,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        '${state.speedKmh}',
-                        key: const ValueKey('driving-speed'),
-                        maxLines: 1,
-                        style: TextStyle(
-                          color: speedColor,
-                          fontSize: speedFontSize * 0.88,
-                          fontWeight: FontWeight.w900,
-                          height: 0.78,
-                          shadows: [
-                            Shadow(
-                              color: speedColor.withValues(alpha: 0.34),
-                              blurRadius: 14,
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      SizedBox(
+                        width: diameter * 0.58,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '${state.speedKmh}',
+                            key: const ValueKey('driving-speed'),
+                            maxLines: 1,
+                            style: TextStyle(
+                              color: speedColor,
+                              fontSize: speedFontSize * 0.88,
+                              fontWeight: FontWeight.w900,
+                              height: 0.78,
+                              shadows: [
+                                Shadow(
+                                  color: speedColor.withValues(alpha: 0.34),
+                                  blurRadius: 14,
+                                ),
+                                Shadow(
+                                  color: Colors.black.withValues(alpha: 0.44),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                            Shadow(
-                              color: Colors.black.withValues(alpha: 0.44),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
-                    ),
+                      if (state.showCameraAlertPanel)
+                        Positioned(
+                          top: 0,
+                          bottom: 0,
+                          right: -diameter * 0.21 - 12,
+                          child: const Center(child: _GaugeCameraIndicator()),
+                        ),
+                    ],
                   ),
                   Text(
                     'km/h',

@@ -1582,6 +1582,7 @@ void main() {
   });
 
   for (final viewport in const [
+    Size(360, 780),
     Size(360, 800),
     Size(390, 844),
     Size(412, 915),
@@ -1643,12 +1644,29 @@ void main() {
           final controls = tester.getRect(
             find.byKey(const ValueKey('driving-active-controls')),
           );
+          expect(
+            tester
+                .widget<Scaffold>(find.byType(Scaffold).first)
+                .backgroundColor,
+            const Color(0xFF03090D),
+          );
+          expect(find.textContaining('(reportado)'), findsOneWidget);
+          if (textScale <= 1.5) {
+            final map = tester.getRect(
+              find.byKey(const ValueKey('driving-mini-map')),
+            );
+            final address = tester.getRect(
+              find.byKey(const ValueKey('driving-camera-address')),
+            );
+            expect(address.left, greaterThan(map.right));
+            expect(address.top, closeTo(map.top, 1));
+          }
           expect(controls.left, greaterThanOrEqualTo(0));
           expect(controls.right, lessThanOrEqualTo(viewport.width));
           expect(controls.bottom, lessThanOrEqualTo(viewport.height));
           await _captureCompactEvidence(
             tester,
-            '${viewport.width.toInt()}-$textScale-camera',
+            '${viewport.width.toInt()}x${viewport.height.toInt()}-$textScale-camera',
           );
           expect(
             find.byKey(const ValueKey('driving-active-scroll')),
@@ -1669,7 +1687,7 @@ void main() {
             expect(gauge.center.dx, closeTo(viewport.width / 2, 0.1));
             expect(speed.center.dx, closeTo(gauge.center.dx, 0.1));
             expect(speed.overlaps(indicator), isFalse);
-            expect(indicator.top, lessThan(gauge.center.dy));
+            expect(indicator.center.dy, closeTo(speed.center.dy, 0.1));
             final brand = tester.getRect(
               find.byKey(const ValueKey('driving-brand')),
             );
@@ -1709,10 +1727,45 @@ void main() {
             expect(panel.bottom, lessThanOrEqualTo(controls.top));
           } else {
             final before = controls;
+            final scroll = tester.state<ScrollableState>(
+              find
+                  .descendant(
+                    of: find.byKey(const ValueKey('driving-active-scroll')),
+                    matching: find.byType(Scrollable),
+                  )
+                  .first,
+            );
+            final initialOffset = scroll.position.pixels;
+            await tester.drag(
+              find.byKey(const ValueKey('driving-camera-alert-header')),
+              const Offset(0, -220),
+            );
+            await tester.pumpAndSettle();
+            expect(scroll.position.pixels, greaterThan(initialOffset));
+            expect(
+              find.byKey(const ValueKey('driving-camera-alert-panel')),
+              findsOneWidget,
+            );
             await tester.ensureVisible(
-              find.byKey(const ValueKey('driving-camera-address')),
+              find.byKey(const ValueKey('camera-authority-row')),
             );
             await tester.pump();
+            final visible = tester.getRect(
+              find.byKey(const ValueKey('driving-active-scroll')),
+            );
+            for (final key in [
+              'driving-camera-address',
+              'camera-authority-row',
+            ]) {
+              final facts = tester.getRect(find.byKey(ValueKey(key)));
+              expect(facts.top, greaterThanOrEqualTo(visible.top));
+              expect(facts.bottom, lessThanOrEqualTo(visible.bottom));
+              expect(facts.bottom + 8, lessThanOrEqualTo(controls.top));
+            }
+            await _captureCompactEvidence(
+              tester,
+              '${viewport.width.toInt()}x${viewport.height.toInt()}-$textScale-address-complete',
+            );
             expect(
               tester.getRect(
                 find.byKey(const ValueKey('driving-active-controls')),
