@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,6 +31,16 @@ part 'home_status_section.dart';
 part 'home_notification_sheet.dart';
 part 'home_banner_slot.dart';
 
+const _defaultHomeAlertPreferences = PicoAlertPreferences(
+  enabled: true,
+  dayBeforeEnabled: true,
+  sameDayEnabled: true,
+  dayBeforeMinute: 19 * 60,
+  sameDayMinute: 5 * 60,
+  permissionRequested: false,
+  permissionGranted: false,
+);
+
 final homeFocusedVehicleIdProvider =
     NotifierProvider<HomeFocusedVehicleNotifier, String?>(
       HomeFocusedVehicleNotifier.new,
@@ -50,18 +59,17 @@ final homeVehicleSnapshotsProvider =
       if (request.selectedJurisdiction == null) {
         return [
           for (final vehicle in request.vehicles)
-            HomeVehicleSnapshot(
-              vehicle: vehicle,
-              today: _unknownEvaluation,
-              tomorrow: _unknownEvaluation,
-            ),
+            HomeVehicleSnapshot(vehicle: vehicle, today: _unknownEvaluation),
         ];
       }
 
       final store = ref.watch(restrictionStoreProvider);
-      final currentInstant = ref.watch(currentInstantProvider);
-      final now = ref.watch(bogotaNowProvider);
-      final tomorrow = DateTime(now.year, now.month, now.day + 1);
+      final (year, month, day) = ref.watch(
+        bogotaNowProvider.select((now) => (now.year, now.month, now.day)),
+      );
+      final currentInstant = ref.read(currentInstantProvider);
+      final now = DateTime(year, month, day);
+      await ref.watch(bundledRestrictionsProvider.future);
       final snapshots = <HomeVehicleSnapshot>[];
       for (final vehicle in request.vehicles) {
         final rules = await store.loadCoverage(
@@ -80,14 +88,6 @@ final homeVehicleSnapshotsProvider =
               vehicleKind: vehicle.kind,
               serviceType: vehicle.serviceType,
               date: now,
-            ),
-            tomorrow: evaluateRestrictionDay(
-              ruleSet: rules,
-              jurisdictionId: request.selectedJurisdiction!.id,
-              plate: vehicle.plate,
-              vehicleKind: vehicle.kind,
-              serviceType: vehicle.serviceType,
-              date: tomorrow,
             ),
           ),
         );
@@ -117,18 +117,34 @@ class HomeScreen extends ConsumerWidget {
     final alertPreferences = ref.watch(picoAlertPreferencesProvider);
 
     return PicoSurface(
-      child: seed.when(
-        data: (_) => vehicles.when(
-          data: (items) => active.when(
-            data: (activeVehicle) => jurisdictions.when(
-              data: (cities) => selectedJurisdiction.when(
-                data: (jurisdictionId) => alertPreferences.when(
-                  data: (alerts) => _HomeDataGate(
-                    vehicles: items,
-                    activeVehicleId: activeVehicle?.id,
-                    jurisdictions: cities,
-                    selectedJurisdictionId: jurisdictionId,
-                    alertPreferences: alerts,
+      child: vehicles.when(
+        data: (items) {
+          if (items.isEmpty) {
+            return alertPreferences.when(
+              data: (alerts) => _HomeEmpty(alertPreferences: alerts),
+              loading: () => const _HomeEmpty(
+                alertPreferences: _defaultHomeAlertPreferences,
+              ),
+              error: (error, stackTrace) => const _HomeEmpty(
+                alertPreferences: _defaultHomeAlertPreferences,
+              ),
+            );
+          }
+          return seed.when(
+            data: (_) => active.when(
+              data: (activeVehicle) => jurisdictions.when(
+                data: (cities) => selectedJurisdiction.when(
+                  data: (jurisdictionId) => alertPreferences.when(
+                    data: (alerts) => _HomeDataGate(
+                      vehicles: items,
+                      activeVehicleId: activeVehicle?.id,
+                      jurisdictions: cities,
+                      selectedJurisdictionId: jurisdictionId,
+                      alertPreferences: alerts,
+                    ),
+                    loading: () => const _HomeSkeleton(),
+                    error: (error, stackTrace) =>
+                        _LoadError(message: error.toString()),
                   ),
                   loading: () => const _HomeSkeleton(),
                   error: (error, stackTrace) =>
@@ -144,10 +160,8 @@ class HomeScreen extends ConsumerWidget {
             ),
             loading: () => const _HomeSkeleton(),
             error: (error, stackTrace) => _LoadError(message: error.toString()),
-          ),
-          loading: () => const _HomeSkeleton(),
-          error: (error, stackTrace) => _LoadError(message: error.toString()),
-        ),
+          );
+        },
         loading: () => const _HomeSkeleton(),
         error: (error, stackTrace) => _LoadError(message: error.toString()),
       ),
@@ -156,15 +170,10 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class HomeVehicleSnapshot {
-  const HomeVehicleSnapshot({
-    required this.vehicle,
-    required this.today,
-    required this.tomorrow,
-  });
+  const HomeVehicleSnapshot({required this.vehicle, required this.today});
 
   final VehicleProfile vehicle;
   final RestrictionDayEvaluation today;
-  final RestrictionDayEvaluation tomorrow;
 }
 
 class HomeVehicleSnapshotsRequest {
@@ -296,16 +305,39 @@ class _HomeDataGate extends ConsumerWidget {
     );
     return snapshots.when(
       skipLoadingOnRefresh: true,
+      skipLoadingOnReload: true,
       data: (items) {
         return _HomeReady(
-          snapshots: items,
+          snapshots: snapshots.isLoading
+              ? [
+                  for (final item in items)
+                    HomeVehicleSnapshot(
+                      vehicle: item.vehicle,
+                      today: _unknownEvaluation,
+                    ),
+                ]
+              : items,
           activeVehicleId: activeVehicleId,
           jurisdictions: jurisdictions,
           selectedJurisdiction: jurisdiction,
           alertPreferences: alertPreferences,
         );
       },
-      loading: () => const _HomeSkeleton(),
+      loading: () => ref.read(homeFocusedVehicleIdProvider) == null
+          ? const _HomeSkeleton()
+          : _HomeReady(
+              snapshots: [
+                for (final vehicle in vehicles)
+                  HomeVehicleSnapshot(
+                    vehicle: vehicle,
+                    today: _unknownEvaluation,
+                  ),
+              ],
+              activeVehicleId: activeVehicleId,
+              jurisdictions: jurisdictions,
+              selectedJurisdiction: jurisdiction,
+              alertPreferences: alertPreferences,
+            ),
       error: (error, stackTrace) => _LoadError(message: error.toString()),
     );
   }
@@ -343,18 +375,45 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
   late int _focusedIndex;
   late PageController _controller;
   final _lifecycleObserver = _HomeLocationLifecycleObserver();
+  final _headerLayoutKey = GlobalKey();
+  final _footerLayoutKey = GlobalKey();
+  double? _measuredChromeHeight;
+  bool _chromeMeasurementScheduled = false;
+
+  void _scheduleChromeMeasurement() {
+    if (_chromeMeasurementScheduled) return;
+    _chromeMeasurementScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _chromeMeasurementScheduled = false;
+      if (!mounted) return;
+      final header = _headerLayoutKey.currentContext?.size;
+      final footer = _footerLayoutKey.currentContext?.size;
+      if (header == null || footer == null) return;
+      final height = header.height + footer.height;
+      if (_measuredChromeHeight == null ||
+          (height - _measuredChromeHeight!).abs() > 0.5) {
+        setState(() => _measuredChromeHeight = height);
+      }
+    });
+  }
 
   @override
   void initState() {
     super.initState();
     _lifecycleObserver.onResume = () {
-      ref.read(locationStateProvider.notifier).refreshGpsIfDue();
+      _refreshAutoGpsForCurrentCity();
     };
     WidgetsBinding.instance.addObserver(_lifecycleObserver);
-    _focusedIndex = pickInitialHomeVehicleIndex(
-      snapshots: widget.snapshots,
-      activeVehicleId: widget.activeVehicleId,
+    final rememberedId = ref.read(homeFocusedVehicleIdProvider);
+    final rememberedIndex = widget.snapshots.indexWhere(
+      (snapshot) => snapshot.vehicle.id == rememberedId,
     );
+    _focusedIndex = rememberedIndex >= 0
+        ? rememberedIndex
+        : pickInitialHomeVehicleIndex(
+            snapshots: widget.snapshots,
+            activeVehicleId: widget.activeVehicleId,
+          );
     _syncFocusedVehicle();
     _controller = PageController(
       initialPage: _focusedIndex,
@@ -362,7 +421,7 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        ref.read(locationStateProvider.notifier).refreshGpsIfDue();
+        _refreshAutoGpsForCurrentCity();
       }
     });
   }
@@ -370,19 +429,25 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
   @override
   void didUpdateWidget(covariant _HomeReady oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_focusedIndex >= widget.snapshots.length) {
-      _focusedIndex = pickInitialHomeVehicleIndex(
-        snapshots: widget.snapshots,
-        activeVehicleId: widget.activeVehicleId,
-      );
-      _syncFocusedVehicle();
+    final previousId = oldWidget.snapshots[_focusedIndex].vehicle.id;
+    final retainedIndex = widget.snapshots.indexWhere(
+      (snapshot) => snapshot.vehicle.id == previousId,
+    );
+    final nextIndex = retainedIndex >= 0
+        ? retainedIndex
+        : pickInitialHomeVehicleIndex(
+            snapshots: widget.snapshots,
+            activeVehicleId: widget.activeVehicleId,
+          );
+    if (_focusedIndex != nextIndex) {
+      _focusedIndex = nextIndex;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _controller.hasClients) {
           _controller.jumpToPage(_focusedIndex);
         }
       });
-    } else if (oldWidget.snapshots[_focusedIndex].vehicle.id !=
-        widget.snapshots[_focusedIndex].vehicle.id) {
+    }
+    if (previousId != widget.snapshots[_focusedIndex].vehicle.id) {
       _syncFocusedVehicle();
     }
   }
@@ -411,6 +476,26 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
     _syncFocusedVehicle();
   }
 
+  Future<void> _refreshAutoGpsForCurrentCity() async {
+    final state = await ref.read(locationStateProvider.future);
+    if (!mounted || state.mode != LocationMode.gpsAuto) {
+      return;
+    }
+    final lastRefresh = state.lastGpsRefreshAt;
+    if (lastRefresh != null) {
+      final age = ref
+          .read(currentInstantProvider)
+          .toUtc()
+          .difference(lastRefresh);
+      if (!age.isNegative && age < const Duration(seconds: 5)) {
+        return;
+      }
+    }
+    await ref
+        .read(locationStateProvider.notifier)
+        .refreshGps(requestPermission: false, force: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final focused = widget.snapshots[_focusedIndex];
@@ -419,51 +504,106 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
         final horizontalPadding = constraints.maxWidth < 380
             ? AppSpacing.l
             : AppSpacing.xl;
-        return SingleChildScrollView(
-          key: const ValueKey('home-v2-scroll'),
-          padding: EdgeInsets.fromLTRB(
-            horizontalPadding,
-            AppSpacing.xs,
-            horizontalPadding,
-            0,
-          ),
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _HomeHeader(alertPreferences: widget.alertPreferences),
-                  const SizedBox(height: 2),
-                  _HomeLocationCard(
-                    jurisdictions: widget.jurisdictions,
-                    selectedJurisdiction: widget.selectedJurisdiction,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  _VehicleCarousel(
-                    controller: _controller,
-                    snapshots: widget.snapshots,
-                    focusedIndex: _focusedIndex,
-                    onChanged: _setFocusedIndex,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  _CarouselIndicator(
-                    count: widget.snapshots.length,
-                    index: _focusedIndex,
-                  ),
-                  if (widget.selectedJurisdiction == null) ...[
-                    const SizedBox(height: AppSpacing.l),
-                    _NoCityCard(
-                      vehicle: focused.vehicle,
-                      jurisdictions: widget.jurisdictions,
+        _scheduleChromeMeasurement();
+        final availableHeight = _measuredChromeHeight == null
+            ? _homeCarouselMinimumHeight
+            : constraints.maxHeight - _measuredChromeHeight!;
+        final carouselHeight = _homeCarouselHeightForLayout(
+          context,
+          availableHeight,
+        );
+        final fits =
+            _measuredChromeHeight != null &&
+            carouselHeight + _measuredChromeHeight! <= constraints.maxHeight;
+        return NotificationListener<SizeChangedLayoutNotification>(
+          onNotification: (_) {
+            _scheduleChromeMeasurement();
+            return false;
+          },
+          child: SingleChildScrollView(
+            key: const ValueKey('home-v2-scroll'),
+            physics: fits
+                ? const NeverScrollableScrollPhysics()
+                : const ClampingScrollPhysics(),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizeChangedLayoutNotifier(
+                      child: Padding(
+                        key: _headerLayoutKey,
+                        padding: EdgeInsets.fromLTRB(
+                          horizontalPadding,
+                          AppSpacing.xs,
+                          horizontalPadding,
+                          AppSpacing.s,
+                        ),
+                        child: _HomeHeader(
+                          alertPreferences: widget.alertPreferences,
+                          jurisdictions: widget.jurisdictions,
+                          selectedJurisdiction: widget.selectedJurisdiction,
+                        ),
+                      ),
+                    ),
+                    _VehicleCarousel(
+                      controller: _controller,
+                      snapshots: widget.snapshots,
+                      focusedIndex: _focusedIndex,
+                      onChanged: _setFocusedIndex,
+                      height: carouselHeight,
+                    ),
+                    SizeChangedLayoutNotifier(
+                      child: Padding(
+                        key: _footerLayoutKey,
+                        padding: const EdgeInsets.only(
+                          top: AppSpacing.s,
+                          bottom: AppSpacing.m,
+                        ),
+                        child: Column(
+                          children: [
+                            _CarouselIndicator(
+                              count: widget.snapshots.length,
+                              index: _focusedIndex,
+                            ),
+                            if (widget.selectedJurisdiction == null) ...[
+                              const SizedBox(height: AppSpacing.m),
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: horizontalPadding,
+                                ),
+                                child: _NoCityCard(
+                                  vehicle: focused.vehicle,
+                                  jurisdictions: widget.jurisdictions,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: AppSpacing.s),
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: horizontalPadding,
+                              ),
+                              child: _FocusedStatusGrid(
+                                snapshot: focused,
+                                selectedJurisdiction:
+                                    widget.selectedJurisdiction,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.s),
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: horizontalPadding,
+                              ),
+                              child: const HomeBannerSlot(),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
-                  const SizedBox(height: AppSpacing.xs),
-                  _FocusedStatusGrid(snapshot: focused),
-                  const SizedBox(height: AppSpacing.xs),
-                  const HomeBannerSlot(),
-                ],
+                ),
               ),
             ),
           ),
@@ -485,9 +625,15 @@ class _HomeLocationLifecycleObserver extends WidgetsBindingObserver {
 }
 
 class _HomeHeader extends StatelessWidget {
-  const _HomeHeader({required this.alertPreferences});
+  const _HomeHeader({
+    required this.alertPreferences,
+    required this.jurisdictions,
+    required this.selectedJurisdiction,
+  });
 
   final PicoAlertPreferences alertPreferences;
+  final List<RestrictionJurisdiction> jurisdictions;
+  final RestrictionJurisdiction? selectedJurisdiction;
 
   @override
   Widget build(BuildContext context) {
@@ -504,6 +650,10 @@ class _HomeHeader extends StatelessWidget {
       brandKey: const ValueKey('home-brand-lockup'),
       capsuleKey: const ValueKey('home-user-controls-capsule'),
       bellKey: const ValueKey('home-notification-bell'),
+      trailingControl: _HomeLocationButton(
+        jurisdictions: jurisdictions,
+        selectedJurisdiction: selectedJurisdiction,
+      ),
     );
   }
 }
@@ -558,8 +708,8 @@ class _NoCityCard extends ConsumerWidget {
   }
 }
 
-class _HomeLocationCard extends ConsumerStatefulWidget {
-  const _HomeLocationCard({
+class _HomeLocationButton extends ConsumerStatefulWidget {
+  const _HomeLocationButton({
     required this.jurisdictions,
     required this.selectedJurisdiction,
   });
@@ -568,12 +718,13 @@ class _HomeLocationCard extends ConsumerStatefulWidget {
   final RestrictionJurisdiction? selectedJurisdiction;
 
   @override
-  ConsumerState<_HomeLocationCard> createState() => _HomeLocationCardState();
+  ConsumerState<_HomeLocationButton> createState() =>
+      _HomeLocationButtonState();
 }
 
 enum _HomeGpsAvailability { unknown, available, disabled }
 
-class _HomeLocationCardState extends ConsumerState<_HomeLocationCard>
+class _HomeLocationButtonState extends ConsumerState<_HomeLocationButton>
     with WidgetsBindingObserver {
   _HomeGpsAvailability _gpsAvailability = _HomeGpsAvailability.unknown;
   int _gpsProbeGeneration = 0;
@@ -667,104 +818,29 @@ class _HomeLocationCardState extends ConsumerState<_HomeLocationCard>
       now: ref.watch(homeGpsClockProvider)(),
     );
     _scheduleGpsVisualExpiry(state);
-    final textScale = MediaQuery.textScalerOf(context).scale(1);
-    final compactText = textScale >= 1.4;
-    final iconSize = compactText ? 22.0 : 24.0;
-    final screenWidth = MediaQuery.sizeOf(context).width;
+    final gpsLabel = _homeGpsVisualLabel(gpsVisualState);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = _locationCardWidth(
-          screenWidth: screenWidth,
-          availableWidth: constraints.maxWidth,
-          accessibleText: compactText,
-        );
-        return Align(
-          alignment: Alignment.centerLeft,
-          child: ConstrainedBox(
-            constraints: BoxConstraints.tightFor(width: cardWidth),
-            child: Semantics(
-              button: true,
-              container: true,
-              explicitChildNodes: true,
-              label: 'Ubicación ${city ?? 'sin ciudad'}',
-              child: Material(
-                color: AppColors.surface,
-                elevation: 3,
-                shadowColor: AppColors.navy.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  key: const ValueKey('home-location-card'),
-                  onTap: _openLocationSettings,
-                  child: Container(
-                    height: compactText ? null : 48,
-                    constraints: BoxConstraints(
-                      minHeight: compactText ? 64 : 48,
-                    ),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.m,
-                      vertical: compactText ? AppSpacing.s : 0,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(AppRadius.card),
-                      border: Border.all(
-                        color: AppColors.border.withValues(alpha: 0.72),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          color: AppColors.navy,
-                          size: iconSize,
-                        ),
-                        SizedBox(
-                          width: compactText ? AppSpacing.s : AppSpacing.m,
-                        ),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                city ?? 'Sin ciudad',
-                                maxLines: compactText ? 3 : 1,
-                                overflow: compactText
-                                    ? TextOverflow.visible
-                                    : TextOverflow.ellipsis,
-                                style: AppTextStyles.bodyStrong.copyWith(
-                                  color: AppColors.navy,
-                                  fontSize: compactText ? 15 : 15.5,
-                                  height: 1.05,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          width: 1,
-                          height: compactText ? 32 : 30,
-                          color: AppColors.border,
-                          margin: EdgeInsets.symmetric(
-                            horizontal: compactText
-                                ? AppSpacing.s
-                                : AppSpacing.m,
-                          ),
-                        ),
-                        _HomeSatelliteStatus(
-                          state: gpsVisualState,
-                          iconSize: compactText ? 20 : 21,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+    return _CircularHomeControl(
+      key: const ValueKey('home-location-card'),
+      semanticsLabel: 'Ubicación ${city ?? 'sin ciudad'}. $gpsLabel',
+      tooltip: city == null ? 'Seleccionar ciudad' : 'Ubicación: $city',
+      onTap: _openLocationSettings,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          const Icon(
+            Icons.location_on_outlined,
+            color: AppColors.navy,
+            size: 28,
           ),
-        );
-      },
+          Positioned(
+            right: 6,
+            top: 6,
+            child: _HomeGpsStatusDot(state: gpsVisualState),
+          ),
+        ],
+      ),
     );
   }
 
@@ -822,19 +898,22 @@ _HomeGpsVisualState _homeGpsVisualState({
   return _HomeGpsVisualState.active;
 }
 
-class _HomeSatelliteStatus extends StatelessWidget {
-  const _HomeSatelliteStatus({required this.state, required this.iconSize});
+String _homeGpsVisualLabel(_HomeGpsVisualState state) {
+  return switch (state) {
+    _HomeGpsVisualState.active => 'GPS activo',
+    _HomeGpsVisualState.disabled => 'GPS desactivado',
+    _HomeGpsVisualState.unknown => 'Estado GPS desconocido',
+  };
+}
+
+class _HomeGpsStatusDot extends StatelessWidget {
+  const _HomeGpsStatusDot({required this.state});
 
   final _HomeGpsVisualState state;
-  final double iconSize;
 
   @override
   Widget build(BuildContext context) {
-    final label = switch (state) {
-      _HomeGpsVisualState.active => 'GPS activo',
-      _HomeGpsVisualState.disabled => 'GPS desactivado',
-      _HomeGpsVisualState.unknown => 'Estado GPS desconocido',
-    };
+    final label = _homeGpsVisualLabel(state);
     final color = switch (state) {
       _HomeGpsVisualState.active => AppColors.green,
       _HomeGpsVisualState.disabled => AppColors.navy.withValues(alpha: 0.42),
@@ -845,25 +924,25 @@ class _HomeSatelliteStatus extends StatelessWidget {
       child: Tooltip(
         message: label,
         child: SizedBox.square(
-          dimension: 32,
+          dimension: 18,
           child: Stack(
             alignment: Alignment.center,
             children: [
               Icon(
-                Icons.satellite_alt_outlined,
+                Icons.circle,
                 key: const ValueKey('home-location-satellite-status'),
                 color: color,
-                size: iconSize,
+                size: 9,
               ),
               if (state == _HomeGpsVisualState.disabled)
                 Positioned(
-                  right: 1,
-                  bottom: 1,
+                  right: 0,
+                  bottom: 0,
                   child: Icon(
                     Icons.lock_rounded,
                     key: const ValueKey('home-location-satellite-lock'),
                     color: color,
-                    size: 12,
+                    size: 10,
                   ),
                 ),
             ],
@@ -874,20 +953,46 @@ class _HomeSatelliteStatus extends StatelessWidget {
   }
 }
 
-double _locationCardWidth({
-  required double screenWidth,
-  required double availableWidth,
-  required bool accessibleText,
-}) {
-  if (accessibleText) {
-    return availableWidth;
+class _CircularHomeControl extends StatelessWidget {
+  const _CircularHomeControl({
+    required this.child,
+    required this.semanticsLabel,
+    required this.tooltip,
+    required this.onTap,
+    super.key,
+  });
+
+  final Widget child;
+  final String semanticsLabel;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: semanticsLabel,
+      child: Tooltip(
+        message: tooltip,
+        child: SizedBox.square(
+          dimension: 48,
+          child: Center(
+            child: Material(
+              color: AppColors.surface,
+              elevation: 3,
+              shadowColor: AppColors.navy.withValues(alpha: 0.14),
+              shape: const CircleBorder(),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: onTap,
+                child: SizedBox.square(dimension: 42, child: child),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
-  final targetWidth = switch (screenWidth) {
-    < 380 => 212.0,
-    < 400 => 220.0,
-    _ => 228.0,
-  };
-  return math.min(targetWidth, availableWidth);
 }
 
 class _HomeEmpty extends StatelessWidget {
@@ -902,7 +1007,11 @@ class _HomeEmpty extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _HomeHeader(alertPreferences: alertPreferences),
+          _HomeHeader(
+            alertPreferences: alertPreferences,
+            jurisdictions: const [],
+            selectedJurisdiction: null,
+          ),
           const SizedBox(height: AppSpacing.xl),
           EmptyState(
             key: const ValueKey('home-empty-state'),
@@ -1006,14 +1115,14 @@ Color statusColor(RestrictionDayStatus status) {
   return switch (status) {
     RestrictionDayStatus.restricted => AppColors.red,
     RestrictionDayStatus.allowed => AppColors.green,
-    RestrictionDayStatus.unknown => AppColors.blue,
+    RestrictionDayStatus.unknown => AppColors.orange,
     RestrictionDayStatus.stale => AppColors.orange,
   };
 }
 
 IconData statusIcon(RestrictionDayStatus status) {
   return switch (status) {
-    RestrictionDayStatus.restricted => Icons.warning_amber_rounded,
+    RestrictionDayStatus.restricted => Icons.block_rounded,
     RestrictionDayStatus.allowed => Icons.check_circle_outline,
     RestrictionDayStatus.unknown => Icons.help_outline,
     RestrictionDayStatus.stale => Icons.update,
@@ -1023,49 +1132,9 @@ IconData statusIcon(RestrictionDayStatus status) {
 String todayStatusText(RestrictionDayStatus status) {
   return switch (status) {
     RestrictionDayStatus.restricted => 'Pico y placa hoy',
-    RestrictionDayStatus.allowed => 'Puede circular',
+    RestrictionDayStatus.allowed => 'Sin pico y placa hoy',
     RestrictionDayStatus.unknown => 'Sin confirmar',
     RestrictionDayStatus.stale => 'Datos pendientes',
-  };
-}
-
-String _vehiclePrimaryLabel(VehicleProfile vehicle) {
-  if (vehicle.nickname != null && vehicle.nickname!.trim().isNotEmpty) {
-    return vehicle.nickname!.trim();
-  }
-  if (vehicle.subtype != null && vehicle.subtype!.trim().isNotEmpty) {
-    return vehicle.subtype!.trim();
-  }
-  if (vehicle.serviceType == VehicleServiceType.taxi) {
-    return 'Taxi';
-  }
-  return shortVehicleTypeLabel(vehicle);
-}
-
-String _vehicleCompactLabel(VehicleProfile vehicle) {
-  final primary = _vehiclePrimaryLabel(vehicle);
-  if (vehicle.year == null) {
-    return primary;
-  }
-  return '$primary · ${vehicle.year}';
-}
-
-String _tomorrowValue(RestrictionDayEvaluation evaluation) {
-  return switch (evaluation.status) {
-    RestrictionDayStatus.restricted =>
-      _formatWindows(evaluation.effectiveWindows) ?? 'Pico y placa',
-    RestrictionDayStatus.allowed => 'Puede circular',
-    RestrictionDayStatus.unknown => 'Sin confirmar',
-    RestrictionDayStatus.stale => 'Datos pendientes',
-  };
-}
-
-String _tomorrowMessage(RestrictionDayEvaluation evaluation) {
-  return switch (evaluation.status) {
-    RestrictionDayStatus.restricted => 'Pico y placa',
-    RestrictionDayStatus.allowed => 'Sin restricción local',
-    RestrictionDayStatus.unknown => 'Verifica ciudad y datos',
-    RestrictionDayStatus.stale => 'Actualiza datos locales',
   };
 }
 
@@ -1504,32 +1573,4 @@ RestrictionJurisdiction? _suggestedJurisdiction(
     }
   }
   return null;
-}
-
-String? _formatWindows(List<RestrictionDayWindow> windows) {
-  if (windows.isEmpty) {
-    return null;
-  }
-  return windows
-      .map(
-        (window) =>
-            '${_formatMinute(window.startMinute)} - ${_formatMinute(window.endMinute)}',
-      )
-      .join(', ');
-}
-
-String _formatMinute(int minute) {
-  if (minute == 1440) {
-    return '24:00';
-  }
-  final hour = minute ~/ 60;
-  final minutes = minute % 60;
-  return '${hour.toString().padLeft(2, '0')}:'
-      '${minutes.toString().padLeft(2, '0')}';
-}
-
-bool _reduceMotion(BuildContext context) {
-  final mediaQuery = MediaQuery.maybeOf(context);
-  return (mediaQuery?.disableAnimations ?? false) ||
-      (mediaQuery?.accessibleNavigation ?? false);
 }

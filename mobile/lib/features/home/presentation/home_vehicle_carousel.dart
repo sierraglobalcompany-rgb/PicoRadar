@@ -1,7 +1,24 @@
 part of 'home_screen.dart';
 
 const _homeCarouselViewportFraction = 0.64;
-const _homeCarouselBaseHeight = 216.0;
+const _homeCarouselBaseHeight = 300.0;
+const _homeCarouselMinimumHeight = 188.0;
+
+double _homeCarouselHeightForLayout(
+  BuildContext context,
+  double availableHeight,
+) {
+  final scale = MediaQuery.textScalerOf(context).scale(1);
+  if (!availableHeight.isFinite) {
+    return _homeCarouselBaseHeight;
+  }
+  final minimum = scale >= 1.8
+      ? 320.0
+      : scale >= 1.4
+      ? 260.0
+      : _homeCarouselMinimumHeight;
+  return availableHeight.floorToDouble().clamp(minimum, 360.0);
+}
 
 class _VehicleCarousel extends StatelessWidget {
   const _VehicleCarousel({
@@ -9,12 +26,14 @@ class _VehicleCarousel extends StatelessWidget {
     required this.snapshots,
     required this.focusedIndex,
     required this.onChanged,
+    required this.height,
   });
 
   final PageController controller;
   final List<HomeVehicleSnapshot> snapshots;
   final int focusedIndex;
   final ValueChanged<int> onChanged;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +41,7 @@ class _VehicleCarousel extends StatelessWidget {
       label: 'Carrusel de vehículos',
       child: SizedBox(
         key: const ValueKey('home-vehicle-carousel'),
-        height: _carouselHeight(context),
+        height: height,
         child: PageView.builder(
           key: const ValueKey('home-vehicle-page-view'),
           controller: controller,
@@ -68,14 +87,9 @@ class _VehicleCarousel extends StatelessWidget {
       ),
     );
   }
-
-  double _carouselHeight(BuildContext context) {
-    final scale = MediaQuery.textScalerOf(context).scale(1);
-    return scale >= 1.8 ? 352 : (scale >= 1.4 ? 312 : _homeCarouselBaseHeight);
-  }
 }
 
-class _HomeVehicleCard extends StatefulWidget {
+class _HomeVehicleCard extends StatelessWidget {
   const _HomeVehicleCard({
     required this.snapshot,
     required this.focused,
@@ -87,186 +101,101 @@ class _HomeVehicleCard extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<_HomeVehicleCard> createState() => _HomeVehicleCardState();
-}
-
-class _HomeVehicleCardState extends State<_HomeVehicleCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: AppMotion.restrictedPulse,
-    );
-    _syncAnimation();
-  }
-
-  @override
-  void didUpdateWidget(covariant _HomeVehicleCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _syncAnimation();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final reduceMotion = _reduceMotion(context);
-    final restricted =
-        widget.snapshot.today.status == RestrictionDayStatus.restricted;
-    final border = restricted
-        ? AppColors.red.withValues(alpha: widget.focused ? 0.72 : 0.42)
-        : AppColors.border.withValues(alpha: widget.focused ? 1 : 0.78);
+    final status = snapshot.today.status;
+    final color = statusColor(status);
+    final vehicle = snapshot.vehicle;
+    final nickname = vehicle.nickname?.trim();
+    final brand = vehicle.brand?.trim();
+    final registrationCity = vehicle.registrationCity?.trim();
+    final registrationLabel =
+        vehicle.kind == VehicleKind.motorcycle ||
+            registrationCity == null ||
+            registrationCity.isEmpty
+        ? 'COLOMBIA'
+        : registrationCity;
+    final name = nickname != null && nickname.isNotEmpty
+        ? nickname
+        : brand != null && brand.isNotEmpty
+        ? brand
+        : 'Mi vehículo';
     return Semantics(
       button: true,
-      label:
-          '${widget.snapshot.vehicle.plate}, ${todayStatusText(widget.snapshot.today.status)}',
-      child: GestureDetector(
-        key: ValueKey('home-vehicle-card-${widget.snapshot.vehicle.id}'),
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            final pulse = reduceMotion
-                ? 0.0
-                : (0.5 + (math.sin(_controller.value * math.pi * 2) * 0.5));
-            final redGlow = reduceMotion ? 0.18 : 0.14 + (pulse * 0.16);
-            final blueGlow = reduceMotion ? 0.12 : 0.14 + ((1 - pulse) * 0.16);
-            return DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                boxShadow: restricted && widget.focused
-                    ? [
-                        BoxShadow(
-                          color: AppColors.red.withValues(alpha: redGlow),
-                          blurRadius: 18,
-                          spreadRadius: 1,
-                          offset: const Offset(-4, 0),
-                        ),
-                        BoxShadow(
-                          color: AppColors.blue.withValues(alpha: blueGlow),
-                          blurRadius: 18,
-                          spreadRadius: 1,
-                          offset: const Offset(4, 0),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Material(
-                color: AppColors.surface,
-                elevation: widget.focused ? 2 : 1,
-                shadowColor: AppColors.navy.withValues(alpha: 0.08),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.card),
-                  side: BorderSide(color: border, width: restricted ? 1.4 : 1),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: child,
-              ),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.m,
-              AppSpacing.xs,
-              AppSpacing.m,
-              AppSpacing.xs,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _TodayChip(status: widget.snapshot.today.status),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.xs,
-                    ),
-                    child: _GenericVehicleVisual(
-                      vehicle: widget.snapshot.vehicle,
-                      useProductionAsset: true,
-                    ),
-                  ),
-                ),
-                Text(
-                  _vehicleCompactLabel(widget.snapshot.vehicle),
-                  key: ValueKey(
-                    'home-vehicle-label-${widget.snapshot.vehicle.id}',
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.h2.copyWith(fontSize: 16.5),
-                ),
-                const SizedBox(height: 2),
-                ColombianPlateBadge(
-                  plate: widget.snapshot.vehicle.plate,
-                  compact: true,
-                ),
-                const SizedBox(height: 2),
-                _TodaySummary(evaluation: widget.snapshot.today),
-              ],
-            ),
+      label: '${snapshot.vehicle.plate}, ${todayStatusText(status)}',
+      child: Material(
+        color: AppColors.surface,
+        elevation: focused ? 4 : 2,
+        shadowColor: color.withValues(alpha: 0.4),
+        animationDuration: Duration.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          side: BorderSide(
+            color: color.withValues(alpha: focused ? 0.8 : 0.45),
+            width: 1.4,
           ),
         ),
-      ),
-    );
-  }
-
-  void _syncAnimation() {
-    final shouldAnimate =
-        widget.focused &&
-        widget.snapshot.today.status == RestrictionDayStatus.restricted;
-    if (shouldAnimate && !_controller.isAnimating) {
-      _controller.repeat();
-    } else if (!shouldAnimate && _controller.isAnimating) {
-      _controller.stop();
-      _controller.value = 0;
-    }
-  }
-}
-
-class _TodayChip extends StatelessWidget {
-  const _TodayChip({required this.status});
-
-  final RestrictionDayStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = statusColor(status);
-    return Container(
-      constraints: const BoxConstraints(minHeight: 26),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.s,
-        vertical: 3,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppRadius.chip),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(statusIcon(status), color: color, size: 15),
-          const SizedBox(width: AppSpacing.xs),
-          Flexible(
-            child: Text(
-              todayStatusText(status),
-              style: AppTextStyles.caption.copyWith(
-                fontSize: 12,
-                color: color,
-                fontWeight: FontWeight.w800,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: ValueKey('home-vehicle-card-${snapshot.vehicle.id}'),
+          onTap: onTap,
+          child: Column(
+            children: [
+              Container(
+                key: ValueKey('home-vehicle-name-band-${vehicle.id}'),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                color: color.withValues(alpha: 0.12),
+                child: Row(
+                  children: [
+                    Icon(
+                      statusIcon(status),
+                      key: ValueKey('home-vehicle-status-${vehicle.id}'),
+                      semanticLabel: todayStatusText(status),
+                      color: color,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        name,
+                        key: ValueKey('home-vehicle-name-${vehicle.id}'),
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.bodyStrong.copyWith(
+                          fontSize: 16,
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: _GenericVehicleVisual(
+                    vehicle: snapshot.vehicle,
+                    useProductionAsset: true,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                child: Center(
+                  child: ColombianPlateBadge(
+                    plate: snapshot.vehicle.plate,
+                    compact: true,
+                    registrationLabel: registrationLabel,
+                    publicService:
+                        vehicle.serviceType == VehicleServiceType.taxi,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -498,68 +427,6 @@ class _VehiclePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _VehiclePainter oldDelegate) {
     return oldDelegate.vehicle != vehicle || oldDelegate.color != color;
-  }
-}
-
-class _TodaySummary extends StatelessWidget {
-  const _TodaySummary({required this.evaluation});
-
-  final RestrictionDayEvaluation evaluation;
-
-  @override
-  Widget build(BuildContext context) {
-    final status = evaluation.status;
-    final color = statusColor(status);
-    final windows = _formatWindows(evaluation.effectiveWindows);
-    final main = switch (status) {
-      RestrictionDayStatus.restricted => 'Hoy no puedes circular',
-      RestrictionDayStatus.allowed => 'Estado hoy',
-      RestrictionDayStatus.unknown => 'Sin confirmar',
-      RestrictionDayStatus.stale => 'Datos pendientes',
-    };
-    final detail = status == RestrictionDayStatus.restricted && windows != null
-        ? 'Aplica $windows'
-        : todayStatusText(status);
-    return Container(
-      width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 38),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.s,
-        vertical: 3,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppRadius.input),
-      ),
-      child: Row(
-        children: [
-          Icon(statusIcon(status), color: color, size: 16),
-          const SizedBox(width: AppSpacing.s),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _ScaleDownText(
-                  main,
-                  style: AppTextStyles.caption.copyWith(
-                    color: color,
-                    fontSize: 10.8,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  detail,
-                  style: AppTextStyles.caption.copyWith(
-                    fontSize: 10.8,
-                    color: AppColors.navy.withValues(alpha: 0.78),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

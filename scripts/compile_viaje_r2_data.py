@@ -443,7 +443,22 @@ def _runtime_dataset_reasons(payload: object) -> list[str]:
                 "jurisdictionName": jurisdiction_name,
                 **coverage,
             }
-            reasons.extend(_runtime_coverage_reasons(runtime))
+            coverage_reasons = _runtime_coverage_reasons(runtime)
+            rules = coverage.get("rules")
+            if (
+                isinstance(rules, list)
+                and not rules
+                and _iso_datetime(coverage.get("verifiedAt")) is not None
+                and _iso_datetime(coverage.get("staleAfter")) is not None
+                and isinstance(coverage.get("sourceUrls"), list)
+                and coverage["sourceUrls"]
+            ):
+                coverage_reasons = [
+                    reason
+                    for reason in coverage_reasons
+                    if reason != "runtime_rules_missing"
+                ]
+            reasons.extend(coverage_reasons)
             coverage_id = (
                 jurisdiction_id,
                 coverage.get("vehicleKind"),
@@ -452,7 +467,6 @@ def _runtime_dataset_reasons(payload: object) -> list[str]:
             if coverage_id in coverage_ids:
                 reasons.append("runtime_coverage_duplicate")
             coverage_ids.add(coverage_id)
-            rules = coverage.get("rules")
             if not isinstance(rules, list):
                 continue
             for rule in rules:

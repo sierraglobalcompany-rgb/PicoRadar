@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,6 +26,552 @@ void main() {
   tearDown(() async {
     await harness.dispose();
   });
+
+  for (final scenario in [
+    (hour: 4, minute: 59, label: 'Empieza a las 5:00 a. m.'),
+    (hour: 5, minute: 0, label: 'No puede circular'),
+    (hour: 12, minute: 0, label: 'No puede circular'),
+    (hour: 19, minute: 59, label: 'No puede circular'),
+    (hour: 20, minute: 0, label: 'Restricción finalizada'),
+    (hour: 21, minute: 0, label: 'Restricción finalizada'),
+  ]) {
+    testWidgets(
+      'personal daily and instant states at ${scenario.hour}:${scenario.minute}',
+      (tester) async {
+        final vehicle = await harness.repository.createVehicle(
+          plate: 'ABC125',
+          kind: VehicleKind.car,
+          serviceType: VehicleServiceType.private,
+          registrationCity: 'Medellín',
+        );
+        await _pumpCityPico(
+          tester,
+          harness,
+          store: _WeeklyRestrictionStore(harness.database),
+          vehicle: vehicle,
+          now: DateTime(2026, 8, 31, scenario.hour, scenario.minute),
+          viewportSize: const Size(390, 2400),
+        );
+
+        final hero = find.byKey(const ValueKey('pico-personal-screen'));
+        expect(
+          find.descendant(of: hero, matching: find.text('Pico y placa hoy')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: hero,
+            matching: find.text('Hoy tienes pico y placa'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: hero,
+            matching: find.text('5:00 a. m. – 8:00 p. m.'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: hero, matching: find.text('No puede circular')),
+          findsNothing,
+        );
+        expect(
+          tester
+              .widget<Text>(
+                find.byKey(const ValueKey('pico-immediate-verdict')),
+              )
+              .data,
+          scenario.label,
+        );
+        expect(find.text('Hoy · Lun 31/08/2026'), findsOneWidget);
+        expect(find.text('Próxima restricción'), findsOneWidget);
+        expect(
+          tester
+              .widget<Text>(find.byKey(const ValueKey('pico-next-restriction')))
+              .data,
+          startsWith('Lun 07/09/2026'),
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  for (final scenario in [
+    (hour: 6, label: 'No puede circular'),
+    (hour: 12, label: 'Sin restricción ahora'),
+    (hour: 17, label: 'No puede circular'),
+    (hour: 21, label: 'Restricción finalizada'),
+  ]) {
+    testWidgets('personal split windows at ${scenario.hour}', (tester) async {
+      final vehicle = await harness.repository.createVehicle(
+        plate: 'ABC125',
+        kind: VehicleKind.car,
+        serviceType: VehicleServiceType.private,
+        registrationCity: 'Medellín',
+      );
+      await _pumpCityPico(
+        tester,
+        harness,
+        store: _WeeklyRestrictionStore(
+          harness.database,
+          windows: const [
+            RestrictionTimeWindow(startMinute: 300, endMinute: 480),
+            RestrictionTimeWindow(startMinute: 960, endMinute: 1200),
+          ],
+        ),
+        vehicle: vehicle,
+        now: DateTime(2026, 8, 31, scenario.hour),
+        viewportSize: const Size(390, 2400),
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('pico-immediate-verdict')))
+            .data,
+        scenario.label,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('pico-personal-screen')),
+          matching: find.text(
+            '5:00 a. m. – 8:00 a. m.\n4:00 p. m. – 8:00 p. m.',
+          ),
+        ),
+        findsOneWidget,
+      );
+      if (scenario.hour == 12) {
+        expect(find.text('Vuelve a empezar a las 4:00 p. m.'), findsOneWidget);
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final status in ['allowed', 'unknown', 'stale']) {
+    testWidgets('personal instant $status stays honest', (tester) async {
+      final vehicle = await harness.repository.createVehicle(
+        plate: 'ABC123',
+        kind: VehicleKind.car,
+        serviceType: VehicleServiceType.private,
+        registrationCity: 'Medellín',
+      );
+      await _pumpCityPico(
+        tester,
+        harness,
+        store: switch (status) {
+          'unknown' => _NoCoverageStore(harness.database),
+          'stale' => _StaleCoverageStore(harness.database),
+          _ => _WeeklyRestrictionStore(harness.database),
+        },
+        vehicle: vehicle,
+        viewportSize: const Size(390, 2400),
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('pico-immediate-verdict')))
+            .data,
+        switch (status) {
+          'unknown' => 'Por verificar',
+          'stale' => 'Datos vencidos',
+          _ => 'Sin pico y placa hoy',
+        },
+      );
+      expect(find.text('Hoy · Lun 31/08/2026'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('personal minute tick updates phase without reloading coverage', (
+    tester,
+  ) async {
+    final vehicle = await harness.repository.createVehicle(
+      plate: 'ABC125',
+      kind: VehicleKind.car,
+      serviceType: VehicleServiceType.private,
+      registrationCity: 'Medellín',
+    );
+    final clock = ValueNotifier(DateTime(2026, 8, 31, 4, 59));
+    addTearDown(clock.dispose);
+    final store = _WeeklyRestrictionStore(harness.database);
+    await _pumpCityPico(
+      tester,
+      harness,
+      store: store,
+      vehicle: vehicle,
+      clock: clock,
+      viewportSize: const Size(390, 2400),
+    );
+    expect(find.text('Empieza a las 5:00 a. m.'), findsOneWidget);
+    final requestCount = store.requestedJurisdictions.length;
+    clock.value = DateTime(2026, 8, 31, 5);
+    await tester.pumpAndSettle();
+    expect(find.text('No puede circular'), findsOneWidget);
+    clock.value = DateTime(2026, 8, 31, 20);
+    await tester.pumpAndSettle();
+    expect(find.text('Restricción finalizada'), findsOneWidget);
+    expect(store.requestedJurisdictions.length, requestCount);
+  });
+
+  testWidgets(
+    'midnight clears old green while coverage loads and refreshes upcoming days',
+    (tester) async {
+      final vehicle = await harness.repository.createVehicle(
+        plate: 'ABC121',
+        kind: VehicleKind.car,
+        serviceType: VehicleServiceType.private,
+        registrationCity: 'Medellín',
+      );
+      final clock = ValueNotifier(DateTime(2026, 8, 31, 23, 59));
+      addTearDown(clock.dispose);
+      final store = _DelayedRestrictionStore(harness.database);
+      await _pumpCityPico(
+        tester,
+        harness,
+        store: store,
+        vehicle: vehicle,
+        clock: clock,
+        viewportSize: const Size(390, 2400),
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('pico-immediate-verdict')))
+            .data,
+        'Sin pico y placa hoy',
+      );
+      store.pending = Completer<void>();
+      clock.value = DateTime(2026, 9, 1);
+      await tester.pump();
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('pico-immediate-verdict')))
+            .data,
+        'Por verificar',
+      );
+      expect(find.text('Hoy · Mar 01/09/2026'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('pico-calendar-day-1')),
+          matching: find.text('2'),
+        ),
+        findsOneWidget,
+      );
+      store.pending!.complete();
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('pico-immediate-verdict')))
+            .data,
+        'Empieza a las 5:00 a. m.',
+      );
+      expect(find.text('Hoy tienes pico y placa'), findsOneWidget);
+    },
+  );
+
+  for (final navigate in [false, true]) {
+    testWidgets(
+      'midnight month rollover preserves consulted month: $navigate',
+      (tester) async {
+        final vehicle = await harness.repository.createVehicle(
+          plate: 'ABC125',
+          kind: VehicleKind.car,
+          serviceType: VehicleServiceType.private,
+          registrationCity: 'Medellín',
+        );
+        final clock = ValueNotifier(DateTime(2026, 8, 31, 23, 59));
+        addTearDown(clock.dispose);
+        await _pumpCityPico(
+          tester,
+          harness,
+          store: _WeeklyRestrictionStore(harness.database),
+          vehicle: vehicle,
+          clock: clock,
+          viewportSize: const Size(390, 2400),
+        );
+        await tester.tap(find.text('Mes'));
+        await tester.pumpAndSettle();
+        Finder todayMarker(String date, String status) => find.ancestor(
+          of: find.byKey(ValueKey('pico-month-day-$date')),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Semantics &&
+                widget.properties.label == 'Hoy · $date $status' &&
+                widget.properties.selected == true,
+          ),
+        );
+        // Rendered semantics may merge the date label with the day number.
+        expect(todayMarker('2026-08-31', 'Con pico y placa'), findsOneWidget);
+        if (navigate) {
+          await tester.tap(find.byKey(const ValueKey('pico-month-previous')));
+          await tester.pumpAndSettle();
+        }
+        clock.value = DateTime(2026, 9, 1);
+        await tester.pumpAndSettle();
+        expect(
+          find.text(navigate ? 'Julio 2026' : 'Septiembre 2026'),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('pico-personal-month-calendar')),
+          findsOneWidget,
+        );
+        expect(find.text('Hoy · Mar 01/09/2026'), findsOneWidget);
+        expect(todayMarker('2026-08-31', 'Con pico y placa'), findsNothing);
+        if (!navigate) {
+          expect(todayMarker('2026-09-01', 'Sin pico y placa'), findsOneWidget);
+        }
+        expect(
+          await harness.preferences.getString(picoJurisdictionPreferenceKey),
+          'co-ant-medellin',
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets(
+    'personal coverage error preserves consulted calendar through recovery',
+    (tester) async {
+      final vehicle = await harness.repository.createVehicle(
+        plate: 'ABC125',
+        kind: VehicleKind.car,
+        serviceType: VehicleServiceType.private,
+        registrationCity: 'Medellín',
+      );
+      final clock = ValueNotifier(DateTime(2026, 8, 31, 23, 59));
+      addTearDown(clock.dispose);
+      final store = _DelayedRestrictionStore(harness.database);
+      await _pumpCityPico(
+        tester,
+        harness,
+        store: store,
+        vehicle: vehicle,
+        clock: clock,
+        viewportSize: const Size(390, 2400),
+      );
+      await tester.tap(find.text('Mes'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('pico-month-previous')));
+      await tester.pumpAndSettle();
+      expect(find.text('Julio 2026'), findsOneWidget);
+
+      store.pending = Completer<void>();
+      clock.value = DateTime(2026, 9, 1);
+      await tester.pump();
+      store.pending!.completeError(StateError('Test coverage failure'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('No pudimos cargar la cobertura. Estado sin confirmar.'),
+        findsOneWidget,
+      );
+      expect(find.text('Julio 2026'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('pico-personal-month-calendar')),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('pico-immediate-verdict')))
+            .data,
+        'Por verificar',
+      );
+
+      store.pending = null;
+      clock.value = DateTime(2026, 9, 2);
+      await tester.pumpAndSettle();
+      expect(
+        find.text('No pudimos cargar la cobertura. Estado sin confirmar.'),
+        findsNothing,
+      );
+      expect(find.text('Julio 2026'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('pico-personal-month-calendar')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('city change stays neutral until new coverage completes', (
+    tester,
+  ) async {
+    final store = _DelayedRestrictionStore(harness.database);
+    await _pumpCityPico(
+      tester,
+      harness,
+      store: store,
+      viewportSize: const Size(390, 1600),
+    );
+    final hero = find.byKey(const ValueKey('pico-city-hero'));
+    expect(
+      find.descendant(of: hero, matching: find.text('Restricción hoy')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('pico-city-change')));
+    await tester.pumpAndSettle();
+    final option = find.byKey(const ValueKey('pico-city-option-co-dc-bogota'));
+    await tester.ensureVisible(option);
+    store.pending = Completer<void>();
+    await tester.tap(option);
+    await tester.pumpAndSettle();
+    expect(find.text('Bogotá'), findsWidgets);
+    expect(
+      find.descendant(of: hero, matching: find.text('Sin confirmar')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: hero, matching: find.text('Sin restricción hoy')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: hero, matching: find.text('Restricción hoy')),
+      findsNothing,
+    );
+    expect(
+      await harness.preferences.getString(picoJurisdictionPreferenceKey),
+      'co-ant-medellin',
+    );
+    store.pending!.complete();
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: hero, matching: find.text('Sin restricción hoy')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final change in ['date', 'seed']) {
+    testWidgets(
+      'city $change renewal discards old coverage and caches minute ticks',
+      (tester) async {
+        final clock = ValueNotifier(DateTime(2026, 8, 31, 23, 58));
+        addTearDown(clock.dispose);
+        final store = _DelayedRestrictionStore(harness.database);
+        await _pumpCityPico(
+          tester,
+          harness,
+          store: store,
+          clock: clock,
+          viewportSize: const Size(390, 1600),
+        );
+        final hero = find.byKey(const ValueKey('pico-city-hero'));
+        expect(
+          find.descendant(of: hero, matching: find.text('Restricción hoy')),
+          findsOneWidget,
+        );
+        final requestCount = store.requestedJurisdictions.length;
+        clock.value = DateTime(2026, 8, 31, 23, 59);
+        await tester.pumpAndSettle();
+        expect(store.requestedJurisdictions.length, requestCount);
+        await tester.tap(
+          find.byKey(const ValueKey('pico-city-category-motorcycles')),
+        );
+        await tester.pumpAndSettle();
+        expect(store.requestedJurisdictions.length, requestCount);
+        store.pending = Completer<void>();
+        if (change == 'date') {
+          clock.value = DateTime(2026, 9, 1);
+        } else {
+          ProviderScope.containerOf(
+            tester.element(find.byType(PicoDetailScreen)),
+          ).invalidate(bundledRestrictionsProvider);
+        }
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(of: hero, matching: find.text('Sin confirmar')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: hero, matching: find.text('Sin restricción hoy')),
+          findsNothing,
+        );
+        expect(
+          find.descendant(of: hero, matching: find.text('Restricción hoy')),
+          findsNothing,
+        );
+        store.pending!.complete();
+        await tester.pumpAndSettle();
+        expect(store.requestedJurisdictions.length, requestCount + 3);
+        expect(
+          find.descendant(of: hero, matching: find.text('Restringidos:')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: hero,
+            matching: find.text(change == 'date' ? '2 · 4' : '7 · 9'),
+          ),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  for (final width in [360.0, 390.0, 412.0]) {
+    for (final scale in [1.0, 1.5, 2.0]) {
+      testWidgets(
+        'personal state and split hours wrap at $width scale $scale',
+        (tester) async {
+          final vehicle = await harness.repository.createVehicle(
+            plate: 'ABC125',
+            kind: VehicleKind.car,
+            serviceType: VehicleServiceType.private,
+            registrationCity: 'Medellín',
+          );
+          await _pumpCityPico(
+            tester,
+            harness,
+            store: _WeeklyRestrictionStore(
+              harness.database,
+              windows: const [
+                RestrictionTimeWindow(startMinute: 300, endMinute: 480),
+                RestrictionTimeWindow(startMinute: 960, endMinute: 1200),
+              ],
+            ),
+            vehicle: vehicle,
+            viewportSize: Size(width, 915),
+            textScaleFactor: scale,
+          );
+          expect(tester.takeException(), isNull);
+          final metrics = find.byKey(
+            const ValueKey('pico-personal-status-grid'),
+          );
+          await tester.ensureVisible(metrics);
+          await tester.pumpAndSettle();
+          final hours = find.descendant(
+            of: metrics,
+            matching: find.text(
+              '5:00 a. m. – 8:00 a. m.\n4:00 p. m. – 8:00 p. m.',
+            ),
+          );
+          final hoursText = tester.widget<Text>(hours);
+          expect(hoursText.maxLines, isNull);
+          expect(hoursText.overflow, isNot(TextOverflow.ellipsis));
+          expect(tester.takeException(), isNull);
+          await tester.scrollUntilVisible(
+            find.byKey(const ValueKey('pico-immediate-verdict')),
+            250,
+            scrollable: find.byType(Scrollable).first,
+          );
+          expect(
+            tester
+                .widget<Text>(
+                  find.byKey(const ValueKey('pico-immediate-verdict')),
+                )
+                .maxLines,
+            isNull,
+          );
+          expect(tester.takeException(), isNull);
+          await tester.scrollUntilVisible(
+            find.byKey(const ValueKey('pico-personal-calendar')),
+            250,
+            scrollable: find.byType(Scrollable).first,
+          );
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
 
   testWidgets('explicit city is consulted without changing global preference', (
     tester,
@@ -379,6 +927,7 @@ Future<void> _pumpCityPico(
   Size viewportSize = const Size(390, 844),
   double textScaleFactor = 1,
   DateTime? now,
+  ValueNotifier<DateTime>? clock,
 }) async {
   tester.view.physicalSize = viewportSize;
   tester.view.devicePixelRatio = 1;
@@ -407,8 +956,23 @@ Future<void> _pumpCityPico(
         ),
         activeVehicleProvider.overrideWith((ref) async => vehicle),
         restrictionStoreProvider.overrideWithValue(store),
-        bogotaNowProvider.overrideWithValue(currentDate),
-        currentInstantProvider.overrideWithValue(currentDate.toUtc()),
+        bogotaNowProvider.overrideWith((ref) {
+          if (clock != null) {
+            clock.addListener(ref.invalidateSelf);
+            ref.onDispose(() => clock.removeListener(ref.invalidateSelf));
+          }
+          return clock?.value ?? currentDate;
+        }),
+        currentInstantProvider.overrideWith((ref) {
+          final local = ref.watch(bogotaNowProvider);
+          return DateTime.utc(
+            local.year,
+            local.month,
+            local.day,
+            local.hour + 5,
+            local.minute,
+          );
+        }),
       ],
       child: MaterialApp(
         home: PicoDetailScreen(
@@ -422,7 +986,9 @@ Future<void> _pumpCityPico(
 }
 
 class _WeeklyRestrictionStore extends RestrictionStore {
-  _WeeklyRestrictionStore(super.database);
+  _WeeklyRestrictionStore(super.database, {this.windows});
+
+  final List<RestrictionTimeWindow>? windows;
 
   final requestedJurisdictions = <String>[];
 
@@ -449,21 +1015,42 @@ class _WeeklyRestrictionStore extends RestrictionStore {
           DateTime.monday,
           motorcycle ? {7, 9} : {5, 8},
           vehicleKind: vehicleKind,
+          timeWindows: windows,
         ),
         _rule(
           'tuesday',
           DateTime.tuesday,
           motorcycle ? {2, 4} : {1, 4},
           vehicleKind: vehicleKind,
+          timeWindows: windows,
         ),
         _rule(
           'wednesday',
           DateTime.wednesday,
           motorcycle ? {1, 3, 5, 7, 9} : {0, 1, 2, 3, 4},
           vehicleKind: vehicleKind,
+          timeWindows: windows,
         ),
       ],
     );
+  }
+}
+
+class _DelayedRestrictionStore extends _WeeklyRestrictionStore {
+  _DelayedRestrictionStore(super.database);
+
+  Completer<void>? pending;
+
+  @override
+  Future<RestrictionRuleSet> loadCoverage(
+    String jurisdictionId,
+    VehicleKind vehicleKind,
+    VehicleServiceType serviceType,
+    DateTime now,
+  ) async {
+    final wait = pending;
+    if (wait != null) await wait.future;
+    return super.loadCoverage(jurisdictionId, vehicleKind, serviceType, now);
   }
 }
 
@@ -533,6 +1120,7 @@ RestrictionRule _rule(
   Set<int> digits, {
   VehicleKind vehicleKind = VehicleKind.car,
   bool appliesOnHolidays = true,
+  List<RestrictionTimeWindow>? timeWindows,
 }) {
   return RestrictionRule(
     id: id,
@@ -546,9 +1134,9 @@ RestrictionRule _rule(
     weekdays: {weekday},
     digitPosition: RestrictionDigitPosition.lastNumeric,
     digits: digits,
-    timeWindows: const [
-      RestrictionTimeWindow(startMinute: 300, endMinute: 1200),
-    ],
+    timeWindows:
+        timeWindows ??
+        const [RestrictionTimeWindow(startMinute: 300, endMinute: 1200)],
     appliesOnHolidays: appliesOnHolidays,
   );
 }

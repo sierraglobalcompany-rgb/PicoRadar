@@ -60,34 +60,127 @@ class ColombianPlateBadge extends StatelessWidget {
   const ColombianPlateBadge({
     required this.plate,
     this.compact = false,
+    this.registrationLabel,
+    this.publicService = false,
     super.key,
   });
 
   final String plate;
   final bool compact;
+  final String? registrationLabel;
+  final bool publicService;
 
   @override
   Widget build(BuildContext context) {
     final textScale = MediaQuery.textScalerOf(context).scale(1);
-    final showCountry = !compact && textScale <= 1.6;
+    final registration = registrationLabel?.trim();
+    final hasRegistration = registration != null && registration.isNotEmpty;
+    final showCountry = !hasRegistration && !compact && textScale <= 1.6;
+    final plateNumber = plate.toUpperCase();
+    final separatedNumber =
+        hasRegistration &&
+        RegExp(r'^[A-Z]{3}(?:[0-9]{3}|[0-9]{2}[A-Z])$').hasMatch(plateNumber);
+    final displayNumber = separatedNumber
+        ? '${plateNumber.substring(0, 3)} ${plateNumber.substring(3)}'
+        : plateNumber;
+    final number = Text(
+      displayNumber,
+      maxLines: 1,
+      style: AppTextStyles.h2.copyWith(
+        color: hasRegistration ? Colors.black : const Color(0xFF101820),
+        fontFamily: hasRegistration ? 'monospace' : null,
+        fontSize: hasRegistration ? (compact ? 22 : 24) : null,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0,
+        height: 1,
+      ),
+    );
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          // Monospaced groups leave the middle space clear for decoration.
+          child: separatedNumber
+              ? Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    number,
+                    Positioned(
+                      width: compact ? 5 : 6,
+                      height: compact ? 5 : 6,
+                      child: DecoratedBox(
+                        key: const ValueKey('colombian-plate-separator'),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.black, width: 1.2),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : number,
+        ),
+        if (hasRegistration) ...[
+          const SizedBox(height: 2),
+          Text(
+            registration,
+            key: const ValueKey('colombian-plate-registration-label'),
+            textAlign: TextAlign.center,
+            softWrap: true,
+            style: AppTextStyles.caption.copyWith(
+              color: Colors.black,
+              fontSize: compact ? 10 : 11,
+              fontWeight: FontWeight.w800,
+              height: 1.2,
+              letterSpacing: 0,
+            ),
+          ),
+        ] else if (showCountry) ...[
+          const SizedBox(height: 2),
+          Text(
+            'COLOMBIA',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.navy,
+              fontSize: 8,
+              fontWeight: FontWeight.w800,
+              height: 1,
+              letterSpacing: 0,
+            ),
+          ),
+        ],
+      ],
+    );
 
     return Semantics(
-      label: 'Placa ${plate.toUpperCase()}',
+      label: hasRegistration
+          ? 'Placa ${plate.toUpperCase()}, $registration'
+          : 'Placa ${plate.toUpperCase()}',
+      excludeSemantics: hasRegistration,
       child: Container(
         key: const ValueKey('colombian-plate-badge'),
         constraints: BoxConstraints(
-          minWidth: compact ? 82 : 104,
+          minWidth: hasRegistration ? 116 : (compact ? 82 : 104),
           minHeight: compact ? 32 : 40,
-          maxWidth: compact ? 116 : 148,
+          maxWidth: hasRegistration ? 160 : (compact ? 116 : 148),
         ),
-        padding: EdgeInsets.symmetric(
-          horizontal: compact ? AppSpacing.s : AppSpacing.m,
-          vertical: compact ? AppSpacing.xs : AppSpacing.s,
-        ),
+        padding: hasRegistration
+            ? const EdgeInsets.all(4)
+            : EdgeInsets.symmetric(
+                horizontal: compact ? AppSpacing.s : AppSpacing.m,
+                vertical: compact ? AppSpacing.xs : AppSpacing.s,
+              ),
         decoration: BoxDecoration(
-          color: AppColors.plateYellow,
+          color: hasRegistration && publicService
+              ? Colors.white
+              : AppColors.plateYellow,
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: AppColors.navy, width: 1.4),
+          border: Border.all(
+            color: hasRegistration ? Colors.black : AppColors.navy,
+            width: 1.4,
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.08),
@@ -96,39 +189,46 @@ class ColombianPlateBadge extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                plate.toUpperCase(),
-                maxLines: 1,
-                style: AppTextStyles.h2.copyWith(
-                  color: const Color(0xFF101820),
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0,
-                  height: 1,
+        child: hasRegistration
+            ? Container(
+                key: const ValueKey('colombian-plate-inner-border'),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: Colors.black, width: 1.2),
                 ),
-              ),
-            ),
-            if (showCountry) ...[
-              const SizedBox(height: 2),
-              Text(
-                'COLOMBIA',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.caption.copyWith(
-                  color: AppColors.navy,
-                  fontSize: 8,
-                  fontWeight: FontWeight.w800,
-                  height: 1,
-                  letterSpacing: 0,
+                child: Stack(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: compact ? 4 : 7,
+                      ),
+                      child: content,
+                    ),
+                    for (final top in [true, false])
+                      for (final left in [true, false])
+                        Positioned(
+                          top: top ? 2 : null,
+                          bottom: top ? null : 2,
+                          left: left ? 3 : null,
+                          right: left ? null : 3,
+                          child: SizedBox.square(
+                            dimension: 3,
+                            child: DecoratedBox(
+                              key: ValueKey(
+                                'colombian-plate-fixing-${top ? 'top' : 'bottom'}-${left ? 'left' : 'right'}',
+                              ),
+                              decoration: const BoxDecoration(
+                                color: Colors.black,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ),
+                  ],
                 ),
-              ),
-            ],
-          ],
-        ),
+              )
+            : content,
       ),
     );
   }

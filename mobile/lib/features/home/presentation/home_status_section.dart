@@ -1,9 +1,13 @@
 part of 'home_screen.dart';
 
 class _FocusedStatusGrid extends ConsumerWidget {
-  const _FocusedStatusGrid({required this.snapshot});
+  const _FocusedStatusGrid({
+    required this.snapshot,
+    required this.selectedJurisdiction,
+  });
 
   final HomeVehicleSnapshot snapshot;
+  final RestrictionJurisdiction? selectedJurisdiction;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -11,7 +15,11 @@ class _FocusedStatusGrid extends ConsumerWidget {
       vehicleObligationsProvider(snapshot.vehicle.id),
     );
     return obligations.when(
-      data: (items) => _StatusGrid(snapshot: snapshot, obligations: items),
+      data: (items) => _StatusGrid(
+        snapshot: snapshot,
+        obligations: items,
+        selectedJurisdiction: selectedJurisdiction,
+      ),
       loading: () => const _StatusGridSkeleton(),
       error: (error, stackTrace) => _LoadError(message: error.toString()),
     );
@@ -19,14 +27,22 @@ class _FocusedStatusGrid extends ConsumerWidget {
 }
 
 class _StatusGrid extends ConsumerWidget {
-  const _StatusGrid({required this.snapshot, required this.obligations});
+  const _StatusGrid({
+    required this.snapshot,
+    required this.obligations,
+    required this.selectedJurisdiction,
+  });
 
   final HomeVehicleSnapshot snapshot;
   final List<VehicleObligation> obligations;
+  final RestrictionJurisdiction? selectedJurisdiction;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final now = ref.watch(bogotaNowProvider);
+    final (year, month, day) = ref.watch(
+      bogotaNowProvider.select((now) => (now.year, now.month, now.day)),
+    );
+    final now = DateTime(year, month, day);
     return LayoutBuilder(
       builder: (context, constraints) {
         final textScale = MediaQuery.textScalerOf(context).scale(1);
@@ -77,7 +93,10 @@ class _StatusGrid extends ConsumerWidget {
         return Column(
           key: const ValueKey('home-status-grid'),
           children: [
-            _TomorrowStatusStrip(snapshot: snapshot),
+            _TodayRestrictionSummary(
+              snapshot: snapshot,
+              selectedJurisdiction: selectedJurisdiction,
+            ),
             const SizedBox(height: AppSpacing.s),
             Wrap(
               spacing: AppSpacing.s,
@@ -98,103 +117,224 @@ class _StatusGrid extends ConsumerWidget {
   }
 }
 
-class _TomorrowStatusStrip extends StatelessWidget {
-  const _TomorrowStatusStrip({required this.snapshot});
+class _TodayRestrictionSummary extends ConsumerWidget {
+  const _TodayRestrictionSummary({
+    required this.snapshot,
+    required this.selectedJurisdiction,
+  });
 
   final HomeVehicleSnapshot snapshot;
+  final RestrictionJurisdiction? selectedJurisdiction;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final now = ref.watch(bogotaNowProvider);
+    final evaluation = snapshot.today;
+    final phase = restrictionPhaseAt(evaluation, now);
+    final restrictedDay = evaluation.status == RestrictionDayStatus.restricted;
+    final unrestrictedDay = phase == RestrictionDayPhase.unrestricted;
+    final cityLabel = selectedJurisdiction == null
+        ? 'Seleccionar ciudad'
+        : _displayJurisdictionName(selectedJurisdiction!);
+    final nextStart = nextRestrictionStartMinute(evaluation, now);
+    final main = switch (phase) {
+      RestrictionDayPhase.unrestricted => 'Puede circular',
+      RestrictionDayPhase.before =>
+        nextStart == null
+            ? 'Horario por confirmar'
+            : 'Empieza a las ${formatRestrictionTime12(nextStart)}',
+      RestrictionDayPhase.active => 'No puede circular',
+      RestrictionDayPhase.between => 'Sin restricción ahora',
+      RestrictionDayPhase.finished => 'Restricción finalizada',
+      RestrictionDayPhase.unknown => 'Por verificar',
+      RestrictionDayPhase.stale => 'Datos vencidos',
+    };
+    final supporting = switch (phase) {
+      RestrictionDayPhase.unknown => 'Verifica ciudad y datos',
+      RestrictionDayPhase.stale => 'Actualiza datos locales',
+      _ =>
+        restrictedDay
+            ? formatRestrictionWindows12(evaluation.effectiveWindows)
+            : null,
+    };
+    final color = statusColor(evaluation.status);
+    const iconSize = 56.0;
+    void openPico() => context.push(
+      picoShellLocation(
+        origin: PicoRouteOrigin.home,
+        vehicleId: snapshot.vehicle.id,
+      ),
+    );
     return Semantics(
       button: true,
+      onTap: openPico,
       label: 'Ver pico y placa',
-      value:
-          '${_tomorrowValue(snapshot.tomorrow)}, ${_tomorrowMessage(snapshot.tomorrow)}',
+      value: '$main, ${supporting ?? ''}, $cityLabel',
+      excludeSemantics: true,
       child: Material(
-        key: const ValueKey('home-status-tomorrow'),
-        color: AppColors.orange.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(AppRadius.input),
+        color: AppColors.navy,
+        borderRadius: BorderRadius.circular(AppRadius.card),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => context.push(
-            picoShellLocation(
-              origin: PicoRouteOrigin.home,
-              vehicleId: snapshot.vehicle.id,
-            ),
-          ),
+          key: const ValueKey('home-status-pico-action'),
+          onTap: openPico,
           child: Container(
-            constraints: const BoxConstraints(minHeight: 50),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.m,
-              vertical: AppSpacing.s,
-            ),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppRadius.input),
-              border: Border.all(
-                color: AppColors.orange.withValues(alpha: 0.2),
-              ),
-            ),
+            key: const ValueKey('home-status-today'),
+            color: Colors.transparent,
+            constraints: const BoxConstraints(minHeight: 100),
+            padding: const EdgeInsets.all(10),
             child: Row(
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
-                  decoration: const BoxDecoration(
-                    color: AppColors.surface,
+                  key: const ValueKey('home-summary-status-icon'),
+                  width: iconSize,
+                  height: iconSize,
+                  decoration: BoxDecoration(
+                    color: Color.lerp(Colors.white, color, 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.calendar_month_rounded,
-                    color: AppColors.orange,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.s),
-                SizedBox(
-                  width: 72,
-                  child: _ScaleDownText(
-                    'Pico y placa',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.orange,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w900,
+                  child: Center(
+                    child: SizedBox.square(
+                      dimension: iconSize * 0.76,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            snapshot.vehicle.kind == VehicleKind.motorcycle
+                                ? Icons.two_wheeler_rounded
+                                : Icons.directions_car_rounded,
+                            color: AppColors.navy,
+                            size: iconSize * 0.43,
+                          ),
+                          if (restrictedDay)
+                            Icon(
+                              Icons.block_rounded,
+                              color: color,
+                              size: iconSize * 0.76,
+                            )
+                          else
+                            Positioned(
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Icon(
+                                  unrestrictedDay
+                                      ? Icons.check_rounded
+                                      : Icons.priority_high_rounded,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.s),
-                Container(
-                  width: 1,
-                  height: 32,
-                  color: AppColors.orange.withValues(alpha: 0.2),
-                ),
-                const SizedBox(width: AppSpacing.s),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _ScaleDownText(
-                        _tomorrowValue(snapshot.tomorrow),
-                        style: AppTextStyles.bodyStrong.copyWith(
-                          fontSize: 14.5,
-                          color: AppColors.navy,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: restrictedDay
+                              ? Color.lerp(Colors.white, AppColors.red, 0.12)
+                              : Colors.white.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(AppRadius.chip),
+                        ),
+                        child: Text(
+                          restrictedDay ? 'Pico y placa hoy' : 'Pico y placa',
+                          key: const ValueKey('home-summary-label'),
+                          style: AppTextStyles.bodyStrong.copyWith(
+                            fontSize: 14,
+                            height: 1,
+                            color: restrictedDay
+                                ? AppColors.red
+                                : const Color(0xFFCDDBE6),
+                          ),
                         ),
                       ),
-                      Text(
-                        'Mañana · ${_tomorrowMessage(snapshot.tomorrow)}',
-                        style: AppTextStyles.caption.copyWith(
-                          fontSize: 12,
-                          color: AppColors.navy.withValues(alpha: 0.72),
+                      const SizedBox(height: 2),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          border: unrestrictedDay
+                              ? Border(
+                                  bottom: BorderSide(color: color, width: 2),
+                                )
+                              : null,
                         ),
+                        child: Text(
+                          _keepRestrictionTimesTogether(main),
+                          key: const ValueKey('home-summary-main'),
+                          style: AppTextStyles.bodyStrong.copyWith(
+                            fontSize: 18,
+                            height: 1.1,
+                            fontWeight: FontWeight.w800,
+                            color: unrestrictedDay
+                                ? Color.lerp(
+                                    Colors.white,
+                                    AppColors.green,
+                                    0.28,
+                                  )
+                                : Colors.white,
+                          ),
+                        ),
+                      ),
+                      if (supporting != null && supporting.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          _keepRestrictionTimesTogether(supporting),
+                          key: const ValueKey('home-summary-windows'),
+                          style: AppTextStyles.bodyStrong.copyWith(
+                            fontSize: 14,
+                            height: 1.15,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 2),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(top: 2),
+                            child: Icon(
+                              Icons.location_on_rounded,
+                              color: Color(0xFFCDDBE6),
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              cityLabel,
+                              key: const ValueKey('home-summary-city'),
+                              style: AppTextStyles.body.copyWith(
+                                fontSize: 14,
+                                height: 1.15,
+                                color: const Color(0xFFCDDBE6),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppColors.orange,
-                  size: 20,
                 ),
               ],
             ),
@@ -204,6 +344,10 @@ class _TomorrowStatusStrip extends StatelessWidget {
     );
   }
 }
+
+String _keepRestrictionTimesTogether(String text) => text
+    .replaceAll(' a. m.', '\u00a0a.\u00a0m.')
+    .replaceAll(' p. m.', '\u00a0p.\u00a0m.');
 
 class _ObligationStatusCard extends StatelessWidget {
   const _ObligationStatusCard({

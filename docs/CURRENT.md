@@ -1,5 +1,41 @@
 # PicoRadar Current State
 
+## Inicio/Garaje/Pico audit followup 2026-09-10
+
+PR #63 remains scoped to Home and its audited Garage/Pico/location interactions,
+targeting `integration/VIAJE-R1-real-planner`, without merge. The audit reproduced
+ambiguous city-wide personal verdicts, clipped city/source text, Home focus loss
+on a location refresh, and superseded GPS operations overwriting manual choice.
+Corrections retain focused vehicle IDs, separate collective and personal copy,
+reflow accessible text, and serialize current location preference snapshots.
+Garage favorite updates and initial active-vehicle loading are also audited.
+
+The unchanged `2026.09.10-r4-a` dataset contains 7 jurisdictions/12 coverages.
+Four-city checks exercise Medellin, Bogota, Bucaramanga and Manizales against
+that catalog; they do not certify national completeness or legal freshness.
+GPS resolves supported city radii, not municipal polygons or continuous driving
+jurisdiction tracking. Real Mi A3 GPS evidence covers the current Medellin
+location only. Gates and limitations belong to the indexed
+`temp/HOME_GARAGE_PICO_AUDIT_20260910` handoff, not inferred from this note.
+No Driving, backend, dataset, schema, dependency or permission change.
+
+## Inicio/Pico owner correction 2026-09-10
+
+`codex/home-owner-responsive` targets `integration/VIAJE-R1-real-planner` without
+merge. Physical audit reproduced a cached September 9 clock on September 10:
+Home/Pico showed an allowed day while the explicit calendar correctly restricted
+Thursday. Restarting the unchanged APK restored the correct day. The correction
+uses one lifecycle-aware UTC clock, separates daily and immediate state, and
+replaces Home's tomorrow strip with the owner-selected navy current-status card.
+The compact summary leaves space for a carousel sized from the measured viewport.
+The latest owner correction restores a nickname/brand band with a static status
+shadow. Home plates use yellow/private or white/taxi, inner borders/fixings and
+the stored registration city; motorcycles and absent city use COLOMBIA. This
+label never selects restriction jurisdiction. Other screens keep legacy plates.
+No backend, dependency, schema, permission or Driving change is authorized.
+Fresh automated, physical, APK and CI results are recorded in the requested
+HOME_PICO_SUMMARY handoff; this note alone does not certify those gates.
+
 ## Active owner correction: Viaje toll estimates and contextual cities
 
 PR #55 remains on `integration/VIAJE-R1-real-planner`, without merge. The current owner-approved private OSRM pilot supersedes the historical provider-access blocker described below for this local pilot only; it does not authorize public deployment or TollGuru spending.

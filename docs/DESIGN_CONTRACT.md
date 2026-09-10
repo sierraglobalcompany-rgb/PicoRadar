@@ -2,6 +2,77 @@
 
 Este contrato traduce el baseline visual a reglas operables para Flutter. Autoridad: `docs/baseline/02_Wireframes_Design_System_v1.docx` y flujos 01-08, subordinados a seguridad, privacidad, store, Cierre Global y Arquitectura Tecnica.
 
+## Inicio: vehiculos protagonistas y layout adaptable (2026-09-09)
+
+### Auditoria Inicio/Garaje/Pico 2026-09-10
+
+- Pico por ciudad describe la regulacion colectiva: "Restriccion hoy" con sus
+  digitos y ventanas completas. No afirma "No puedes circular" sin evaluar un
+  vehiculo. Mi Pico conserva los estados personales del dia y del instante.
+- Nombre de ciudad, fuente, vigencia, selector y ventanas de 12 horas se
+  reorganizan sin ellipsis. Texto ampliado admite mas altura y scroll util,
+  nunca una fuente encogida para ocultar un recorte.
+- Inicio conserva el ID enfocado al cambiar ciudad o recargar evaluaciones;
+  los resultados pendientes son neutros, no una autorizacion anterior.
+- Garaje espera el activo inicial antes de elegir foco, conserva titulos
+  completos y ofrece 48 dp tactiles en Favoritos aunque el circulo sea menor.
+  "Ciudad de matricula" identifica el dato registral, no la ciudad de Pico.
+- El banner existente conserva contenido/destino y permite reflujo; no activa
+  publicidad. No cambia la barra compartida ni el diseno de Conducir.
+
+### Revision owner 2026-09-10: resumen unico y reloj vivo
+
+Esta revision reemplaza la franja hoy/manana, la banda textual y el pie de horarios
+del carrusel descritos en la referencia historica siguiente. Referencia owner:
+[home_summary_owner_20260910.png](design/reference/home_summary_owner_20260910.png) (tarjeta navy,
+simbolo circular de vehiculo, mensaje, horario de 12 horas y ciudad).
+
+- Carrusel: asset aprobado completo y placa centrada; sin etiqueta Particular ni
+  pie horario. La correccion owner posterior restaura una franja superior con el
+  apodo guardado o, si falta, la marca; si ambos faltan, "Mi vehiculo". La franja,
+  el indicador accesible y el borde son estaticos: rojo para dia restringido,
+  verde permitido, ambar desconocido/vencido. Sombra suave del mismo color,
+  estatica; sin glow animado ni texto de estado duplicado.
+- Placa de Inicio: particular amarilla, taxi blanca, caracteres negros y borde
+  interior redondeado; debajo del numero, ciudad de matricula guardada para carro
+  y taxi, COLOMBIA para moto y tambien cuando falta ciudad registrada. Cuatro
+  fijaciones y separador circular estilizado. No inferir ciudad de las letras
+  de la placa ni del GPS. Referencias del owner del 2026-09-10;
+  adaptacion grafica propia, sin sellos oficiales ni marcas de agua. Este opt-in
+  no cambia las placas de otras pantallas ni la jurisdiccion de restricciones.
+- Medir cabecera y secciones inferiores para asignar al carrusel el espacio
+  restante: reducirlo en telefono pequeno y ampliarlo donde haya altura real.
+  No rellenar con separadores ni permitir scroll sobrante en texto normal.
+- Resumen: tarjeta navy tactil completa que abre Pico del vehiculo enfocado.
+  Simbolo de carro/moto a la izquierda; etiqueta, estado, ventanas y ciudad a la
+  derecha. No hay informacion de manana en Inicio ni accion separada en ciudad.
+- Distinguir dia e instante: "No puede circular" solo durante ventana activa;
+  antes: "Empieza a las ..."; entre ventanas: "Sin restriccion ahora";
+  despues: "Restriccion finalizada". Sin ventanas: "Puede circular", con acento
+  verde subrayado y vehiculo con verificacion para evitar repetir Pico y placa.
+  Datos desconocidos/vencidos no autorizan circular.
+- Horarios de 12 horas (5:00 a. m. - 8:00 p. m.), mensaje de 18 sp y horario/ciudad
+  de al menos 14 sp. No reducir mensajes con FittedBox ni partir horas. Altura
+  flexible para ciudad larga, multiples ventanas y escala accesible. Resumen
+  compacto con minimo de 100 dp e icono de 56 dp; el texto nunca se reduce para
+  forzar ese minimo. Scroll solo cuando los minimos legibles excedan la pantalla.
+- Un reloj UTC compartido deriva la fecha de Bogota; se actualiza al reanudar y
+  en cada minuto en primer plano. El calendario marca hoy real y "Estado inmediato"
+  muestra fecha actual. Las fechas futuras se identifican como proxima restriccion.
+- Los ticks no solicitan GPS/red ni reprograman notificaciones cada minuto.
+  Jurisdiccion efectiva manual/GPS, placa editada y datasets actualizados deben
+  invalidar los resultados correspondientes sin cambiar el foco del vehiculo.
+
+### Referencia historica 2026-09-09 (sustituida donde contradiga la revision)
+
+- Cabecera: marca PicoRadar a la izquierda; avatar, pin de ubicacion y notificaciones a la derecha, en ese orden. Los controles conservan objetivo tactil de 48 dp, pero el circulo visible es mas pequeno para no competir con el carrusel. El pin abre la hoja existente de ubicacion/manual/GPS, no solicita permisos por renderizar Inicio. Garaje y Viaje conservan su cabecera salvo que pasen explicitamente un control final.
+- La tarjeta independiente de ciudad/GPS desaparece. La jurisdiccion que gobierna el calculo vive bajo "Pico y placa" en la franja inferior; sin ciudad seleccionada se muestra "Seleccionar ciudad" y no se tranquiliza al usuario.
+- Las restricciones se calculan por la ciudad efectiva actual, ya sea manual o detectada por GPS, no por la ciudad de matricula del vehiculo. Una placa registrada en Bogota ubicada en Medellin usa las reglas de Medellin. La deteccion GPS solo selecciona ciudades con cobertura activa en el dataset local; ciudades en preparacion o evento temporal no se inventan como vigentes.
+- Carrusel: vehiculo como protagonista, altura derivada del espacio real disponible, orientativa 236-360 dp. Primero intenta ajustar tarjetas y carrusel para evitar scroll en telefonos normales; con texto ampliado o alto insuficiente conserva un unico scroll vertical por accesibilidad. La tarjeta central ocupa cerca del 64% del ancho en telefonos, con laterales visibles y sin avance automatico. El foco del carrusel no cambia el vehiculo activo sin accion explicita.
+- Estado: "Puede circular" aparece solo en la franja superior del vehiculo. Si hay restriccion, la franja superior dice "Pico y placa hoy" y el detalle bajo tipo/placa muestra las ventanas aplicables. No duplicar "Estado hoy" ni afirmar restriccion de todo el dia si existen horarios.
+- Tipo y placa comparten fila con texto normal; con texto ampliado se apilan sin recortar placa ni bajar el objetivo tactil. Estados desconocido/vencido no se pintan verde ni autorizan circular.
+- Franja inferior: toda la tarjeta "Pico y placa / ciudad / horario" abre Pico del vehiculo enfocado. La ubicacion se cambia solo desde el pin superior para evitar gestos ambiguos. SOAT, Tecnomecanica y banner mantienen orden y destinos. Un solo scroll vertical se permite solo si los minimos legibles exceden el alto util; sin scroll interno ni reduccion artificial de fuentes.
+
 ## Viaje: correccion owner de lectura (2026-09-09)
 
 - Peajes: nombre y precio visibles en cada fila; importes nominales excluidos se identifican como tarifa de referencia no sumada, nunca como una deuda del usuario. No repetir advertencias tecnicas antes del listado.

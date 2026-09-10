@@ -7,6 +7,77 @@ import 'restriction_rule.dart';
 
 enum RestrictionDayStatus { allowed, restricted, unknown, stale }
 
+enum RestrictionDayPhase {
+  unrestricted,
+  before,
+  active,
+  between,
+  finished,
+  unknown,
+  stale,
+}
+
+// Daily windows remain authoritative; the phase only describes this local minute.
+RestrictionDayPhase restrictionPhaseAt(
+  RestrictionDayEvaluation evaluation,
+  DateTime now,
+) {
+  switch (evaluation.status) {
+    case RestrictionDayStatus.unknown:
+      return RestrictionDayPhase.unknown;
+    case RestrictionDayStatus.stale:
+      return RestrictionDayPhase.stale;
+    case RestrictionDayStatus.allowed:
+      return RestrictionDayPhase.unrestricted;
+    case RestrictionDayStatus.restricted:
+      break;
+  }
+  final windows = evaluation.effectiveWindows;
+  if (windows.isEmpty) return RestrictionDayPhase.unknown;
+  final minute = now.hour * 60 + now.minute;
+  if (windows.any((w) => minute >= w.startMinute && minute < w.endMinute)) {
+    return RestrictionDayPhase.active;
+  }
+  final first = windows
+      .map((w) => w.startMinute)
+      .reduce((a, b) => a < b ? a : b);
+  final last = windows.map((w) => w.endMinute).reduce((a, b) => a > b ? a : b);
+  if (minute < first) return RestrictionDayPhase.before;
+  if (minute >= last) return RestrictionDayPhase.finished;
+  return RestrictionDayPhase.between;
+}
+
+int? nextRestrictionStartMinute(
+  RestrictionDayEvaluation evaluation,
+  DateTime now,
+) {
+  if (evaluation.status != RestrictionDayStatus.restricted) return null;
+  final minute = now.hour * 60 + now.minute;
+  int? next;
+  for (final window in evaluation.effectiveWindows) {
+    if (window.startMinute > minute &&
+        (next == null || window.startMinute < next)) {
+      next = window.startMinute;
+    }
+  }
+  return next;
+}
+
+String formatRestrictionTime12(int minuteOfDay) {
+  assert(minuteOfDay >= 0 && minuteOfDay <= 1440);
+  final hour = (minuteOfDay ~/ 60) % 24;
+  final displayHour = hour % 12 == 0 ? 12 : hour % 12;
+  final minute = (minuteOfDay % 60).toString().padLeft(2, '0');
+  return '$displayHour:$minute ${hour < 12 ? 'a. m.' : 'p. m.'}';
+}
+
+String formatRestrictionWindows12(List<RestrictionDayWindow> windows) => windows
+    .map(
+      (w) =>
+          '${formatRestrictionTime12(w.startMinute)} – ${formatRestrictionTime12(w.endMinute)}',
+    )
+    .join('\n');
+
 class RestrictionDayEvaluation {
   const RestrictionDayEvaluation({
     required this.status,

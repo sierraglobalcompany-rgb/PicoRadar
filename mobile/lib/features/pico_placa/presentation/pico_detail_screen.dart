@@ -127,6 +127,8 @@ class _PersonalPicoView extends ConsumerStatefulWidget {
 
 class _PersonalPicoViewState extends ConsumerState<_PersonalPicoView> {
   String? _transientJurisdictionId;
+  Object? _coverageKey;
+  Future<RestrictionRuleSet>? _coverageFuture;
 
   @override
   Widget build(BuildContext context) {
@@ -143,20 +145,41 @@ class _PersonalPicoViewState extends ConsumerState<_PersonalPicoView> {
           data: (value) => value,
           orElse: () => _defaultAlertPreferences,
         );
+    final store = ref.watch(restrictionStoreProvider);
+    final seed = ref.watch(bundledRestrictionsProvider.future);
+    final vehicle = widget.vehicle;
+    final coverageKey = (
+      store,
+      seed,
+      jurisdiction.id,
+      vehicle.kind,
+      vehicle.serviceType,
+      DateUtils.dateOnly(now),
+    );
+    if (_coverageKey != coverageKey) {
+      _coverageKey = coverageKey;
+      final instant = ref.read(currentInstantProvider);
+      _coverageFuture = seed.then(
+        (_) => store.loadCoverage(
+          jurisdiction.id,
+          vehicle.kind,
+          vehicle.serviceType,
+          instant,
+        ),
+      );
+    }
     return FutureBuilder<RestrictionRuleSet>(
-      future: ref
-          .read(restrictionStoreProvider)
-          .loadCoverage(
-            jurisdiction.id,
-            widget.vehicle.kind,
-            widget.vehicle.serviceType,
-            ref.read(currentInstantProvider),
-          ),
+      future: _coverageFuture,
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const _Loading();
-        }
-        final ruleSet = snapshot.data!;
+        // FutureBuilder retains the previous result while a new day loads.
+        final ruleSet =
+            snapshot.connectionState == ConnectionState.done && snapshot.hasData
+            ? snapshot.data!
+            : const RestrictionRuleSet(
+                coverageKnown: false,
+                dataIsStale: false,
+                rules: [],
+              );
         final today = _evaluate(ruleSet, jurisdiction, widget.vehicle, now);
         final tomorrowDate = DateTime(now.year, now.month, now.day + 1);
         final tomorrow = _evaluate(
@@ -193,6 +216,12 @@ class _PersonalPicoViewState extends ConsumerState<_PersonalPicoView> {
               isTransient: jurisdiction.id != widget.jurisdiction.id,
               onSelect: () => _showPersonalCitySelector(context, jurisdiction),
             ),
+            if (snapshot.hasError)
+              const _InfoFootnote(
+                text: 'No pudimos cargar la cobertura. Estado sin confirmar.',
+              )
+            else
+              const SizedBox.shrink(),
             const SizedBox(height: AppSpacing.m),
             _PersonalHero(
               vehicle: widget.vehicle,
@@ -259,6 +288,10 @@ class _CityPicoView extends ConsumerStatefulWidget {
 class _CityPicoViewState extends ConsumerState<_CityPicoView> {
   String? _consultedJurisdictionId;
   PicoVehicleCategory _category = PicoVehicleCategory.cars;
+  Object? _coverageKey;
+  Future<List<_CategoryCoverage>>? _coverageFuture;
+  Object? _shortcutsKey;
+  Future<List<_VehicleShortcutData>>? _shortcutsFuture;
 
   @override
   void initState() {
@@ -287,14 +320,43 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
     }
     final isTransient =
         globalJurisdiction != null && jurisdiction.id != globalJurisdiction.id;
+    final store = ref.watch(restrictionStoreProvider);
+    final seed = ref.watch(bundledRestrictionsProvider.future);
+    final coverageKey = (store, seed, jurisdiction.id, DateUtils.dateOnly(now));
+    final instant = ref.read(currentInstantProvider);
+    if (_coverageKey != coverageKey) {
+      _coverageKey = coverageKey;
+      _coverageFuture = seed.then(
+        (_) => _loadCategoryCoverages(store, jurisdiction, instant),
+      );
+    }
+    final vehicles = widget.vehicles;
+    final shortcutsKey = (coverageKey, vehicles);
+    if (_shortcutsKey != shortcutsKey) {
+      _shortcutsKey = shortcutsKey;
+      _shortcutsFuture = seed.then(
+        (_) =>
+            _loadVehicleShortcuts(store, jurisdiction, vehicles, now, instant),
+      );
+    }
 
     return FutureBuilder<List<_CategoryCoverage>>(
-      future: _loadCategoryCoverages(ref, jurisdiction, now),
+      future: _coverageFuture,
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const _Loading();
-        }
-        final coverages = snapshot.data!;
+        final coverages =
+            snapshot.connectionState == ConnectionState.done && snapshot.hasData
+            ? snapshot.data!
+            : [
+                for (final category in PicoVehicleCategory.values)
+                  _CategoryCoverage(
+                    category: category,
+                    ruleSet: const RestrictionRuleSet(
+                      coverageKnown: false,
+                      dataIsStale: false,
+                      rules: [],
+                    ),
+                  ),
+              ];
         final currentCoverage = coverages.firstWhere(
           (item) => item.category == _category,
           orElse: () => coverages.first,
@@ -336,6 +398,12 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
               onSelect: () => _showCitySelector(context),
               onAdopt: isTransient ? () => _adoptCity(jurisdiction) : null,
             ),
+            if (snapshot.hasError)
+              const _InfoFootnote(
+                text: 'No pudimos cargar la cobertura. Estado sin confirmar.',
+              )
+            else
+              const SizedBox.shrink(),
             const SizedBox(height: AppSpacing.m),
             _CategorySegment(
               coverages: coverages,
@@ -361,15 +429,12 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
             ),
             const SizedBox(height: AppSpacing.m),
             FutureBuilder<List<_VehicleShortcutData>>(
-              future: _loadVehicleShortcuts(
-                ref,
-                jurisdiction,
-                widget.vehicles,
-                now,
-              ),
+              future: _shortcutsFuture,
               builder: (context, shortcuts) {
                 return _VehicleShortcuts(
-                  items: shortcuts.data ?? const [],
+                  items: shortcuts.connectionState == ConnectionState.done
+                      ? shortcuts.data ?? const []
+                      : const [],
                   consultedJurisdictionId: isTransient ? jurisdiction.id : null,
                 );
               },
@@ -684,26 +749,29 @@ class _PicoCatalogCityTile extends StatelessWidget {
       key: ValueKey('pico-city-option-${entry.id}'),
       enabled: available,
       minVerticalPadding: AppSpacing.s,
-      title: Text(entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        available
-            ? availability?.description ?? 'Verificando cobertura'
-            : '${entry.department} · Cobertura en preparación',
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+      title: Text(entry.name),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _AvailabilityChip(
-            key: ValueKey('pico-city-status-${entry.id}'),
-            label: statusLabel,
-            available: available,
+          Text(
+            available
+                ? availability?.description ?? 'Verificando cobertura'
+                : '${entry.department} · Cobertura en preparación',
           ),
-          if (selected) ...[
-            const SizedBox(width: AppSpacing.xs),
-            const Icon(Icons.check_rounded),
-          ],
+          const SizedBox(height: AppSpacing.xs),
+          Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              _AvailabilityChip(
+                key: ValueKey('pico-city-status-${entry.id}'),
+                label: statusLabel,
+                available: available,
+              ),
+              if (selected) const Icon(Icons.check_rounded),
+            ],
+          ),
         ],
       ),
       onTap: available ? () => Navigator.of(context).pop(entry.id) : null,
@@ -736,8 +804,6 @@ class _AvailabilityChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
         style: AppTextStyles.caption.copyWith(
           color: color,
           fontWeight: FontWeight.w800,
@@ -1014,36 +1080,36 @@ class _SourceStrip extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppRadius.input),
               border: Border.all(color: AppColors.border),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.location_on_outlined, color: AppColors.blue),
-                const SizedBox(width: AppSpacing.m),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
+                      color: AppColors.blue,
+                    ),
+                    const SizedBox(width: AppSpacing.m),
+                    Expanded(
+                      child: Text(
                         '${jurisdiction.name}, Colombia',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.bodyStrong.copyWith(
                           color: AppColors.teal,
                         ),
                       ),
-                      Text(
-                        isTransient
-                            ? 'Consulta temporal · ${_sourceLabel(ruleSet)}'
-                            : _sourceLabel(ruleSet),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption,
-                      ),
-                    ],
-                  ),
+                    ),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: AppColors.teal,
+                    ),
+                  ],
                 ),
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: AppColors.teal,
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  isTransient
+                      ? 'Consulta temporal · ${_sourceLabel(ruleSet)}'
+                      : _sourceLabel(ruleSet),
+                  style: AppTextStyles.caption,
                 ),
               ],
             ),
@@ -1055,11 +1121,17 @@ class _SourceStrip extends StatelessWidget {
 }
 
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label, required this.color, this.icon});
+  const _StatusPill({
+    required this.label,
+    required this.color,
+    this.icon,
+    this.wrap = false,
+  });
 
   final String label;
   final Color color;
   final IconData? icon;
+  final bool wrap;
 
   @override
   Widget build(BuildContext context) {
@@ -1082,8 +1154,8 @@ class _StatusPill extends StatelessWidget {
           Flexible(
             child: Text(
               label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              maxLines: wrap ? null : 1,
+              overflow: wrap ? TextOverflow.visible : TextOverflow.ellipsis,
               style: AppTextStyles.caption.copyWith(
                 color: color,
                 fontWeight: FontWeight.w800,
@@ -1126,56 +1198,46 @@ class _PersonalHero extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: AppSpacing.s,
+            runSpacing: AppSpacing.s,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.m,
-                    vertical: AppSpacing.s,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.navy,
-                    borderRadius: BorderRadius.circular(AppRadius.input),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.person_outline_rounded,
-                        size: 17,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      Flexible(
-                        child: Text(
-                          'MI VEHÍCULO',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.caption.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                          ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.m,
+                  vertical: AppSpacing.s,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.navy,
+                  borderRadius: BorderRadius.circular(AppRadius.input),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.person_outline_rounded,
+                      size: 17,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Flexible(
+                      child: Text(
+                        'MI VEHÍCULO',
+                        style: AppTextStyles.caption.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: AppSpacing.s),
-              Flexible(
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      'MI PICO Y PLACA',
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.teal,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
+              Text(
+                'MI PICO Y PLACA',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.teal,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ],
@@ -1210,8 +1272,9 @@ class _PersonalHero extends StatelessWidget {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: _StatusPill(
-                        label: _statusText(today.status),
+                        label: _todayStatusText(today.status),
                         color: statusColor,
+                        wrap: true,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.m),
@@ -1266,9 +1329,7 @@ class _PersonalHero extends StatelessWidget {
                     const SizedBox(width: AppSpacing.s),
                     Expanded(
                       child: Text(
-                        'Pico y placa',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        'Pico y placa hoy',
                         style: AppTextStyles.bodyStrong,
                       ),
                     ),
@@ -1295,16 +1356,16 @@ class _PersonalHero extends StatelessWidget {
                     Expanded(
                       child: Text(
                         '${jurisdiction.name} · ${_sourceLabel(ruleSet)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.caption,
                       ),
                     ),
-                    _StatusPill(
-                      label: 'Mañana: ${_compactStatusText(tomorrow.status)}',
-                      color: _statusColor(tomorrow.status),
-                    ),
                   ],
+                ),
+                const SizedBox(height: AppSpacing.s),
+                _StatusPill(
+                  label: 'Mañana: ${_dailyStatusText(tomorrow.status)}',
+                  color: _statusColor(tomorrow.status),
+                  wrap: true,
                 ),
               ],
             ),
@@ -1330,13 +1391,19 @@ class _PersonalStatusGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _statusColor(status);
     final items = [
-      _StatusMetric(label: 'Estado', value: _statusText(status), color: color),
+      _StatusMetric(
+        label: 'Hoy',
+        value: _dailyStatusText(status),
+        color: color,
+      ),
       _StatusMetric(label: 'Horario', value: windows, color: AppColors.navy),
       _StatusMetric(label: 'Regla', value: rule, color: AppColors.navy),
     ];
     return LayoutBuilder(
+      key: const ValueKey('pico-personal-status-grid'),
       builder: (context, constraints) {
-        if (constraints.maxWidth < 230) {
+        if (constraints.maxWidth < 360 ||
+            MediaQuery.textScalerOf(context).scale(14) > 18) {
           return Column(
             children: [
               for (final item in items) ...[
@@ -1347,7 +1414,6 @@ class _PersonalStatusGrid extends StatelessWidget {
           );
         }
         return Row(
-          key: const ValueKey('pico-personal-status-grid'),
           children: [
             for (var i = 0; i < items.length; i += 1) ...[
               Expanded(child: items[i]),
@@ -1387,8 +1453,6 @@ class _StatusMetric extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text(
             value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyStrong.copyWith(color: color),
           ),
@@ -1426,7 +1490,11 @@ class _PersonalLowerModule extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _ImmediateState(evaluation: today, nextRestriction: nextRestriction),
+          _ImmediateState(
+            evaluation: today,
+            nextRestriction: nextRestriction,
+            now: now,
+          ),
           const SizedBox(height: AppSpacing.m),
           Container(height: 1, color: AppColors.border),
           const SizedBox(height: AppSpacing.m),
@@ -1456,15 +1524,45 @@ class _ImmediateState extends StatelessWidget {
   const _ImmediateState({
     required this.evaluation,
     required this.nextRestriction,
+    required this.now,
   });
 
   final RestrictionDayEvaluation evaluation;
   final _NextRestriction? nextRestriction;
+  final DateTime now;
 
   @override
   Widget build(BuildContext context) {
-    final color = _statusColor(evaluation.status);
+    final phase = restrictionPhaseAt(evaluation, now);
+    final nextStart = nextRestrictionStartMinute(evaluation, now);
+    final color = switch (phase) {
+      RestrictionDayPhase.active => AppColors.red,
+      RestrictionDayPhase.unknown ||
+      RestrictionDayPhase.stale => AppColors.orange,
+      _ => AppColors.green,
+    };
+    final icon = switch (phase) {
+      RestrictionDayPhase.active => Icons.block_rounded,
+      RestrictionDayPhase.unknown => Icons.help_outline_rounded,
+      RestrictionDayPhase.stale => Icons.update_rounded,
+      RestrictionDayPhase.before => Icons.schedule_rounded,
+      _ => Icons.check_circle_rounded,
+    };
+    final label = switch (phase) {
+      RestrictionDayPhase.active => 'No puede circular',
+      RestrictionDayPhase.before =>
+        nextStart == null
+            ? 'Horario por confirmar'
+            : 'Empieza a las ${formatRestrictionTime12(nextStart)}',
+      RestrictionDayPhase.between => 'Sin restricción ahora',
+      RestrictionDayPhase.finished => 'Restricción finalizada',
+      RestrictionDayPhase.unrestricted => 'Sin pico y placa hoy',
+      RestrictionDayPhase.unknown => 'Por verificar',
+      RestrictionDayPhase.stale => 'Datos vencidos',
+    };
     return Row(
+      key: const ValueKey('pico-immediate-state'),
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           width: 56,
@@ -1473,7 +1571,7 @@ class _ImmediateState extends StatelessWidget {
             color: color.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(_statusIcon(evaluation.status), color: color, size: 30),
+          child: Icon(icon, color: color, size: 30),
         ),
         const SizedBox(width: AppSpacing.m),
         Expanded(
@@ -1482,30 +1580,49 @@ class _ImmediateState extends StatelessWidget {
             children: [
               Text('Estado inmediato', style: AppTextStyles.bodyStrong),
               const SizedBox(height: AppSpacing.xs),
+              _StatusPill(
+                label: 'Hoy · ${_weekday(now)} ${_shortDate(now)}',
+                color: AppColors.blue,
+                icon: Icons.today_rounded,
+                wrap: true,
+              ),
+              const SizedBox(height: AppSpacing.xs),
               Text(
-                _statusText(evaluation.status),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                label,
+                key: const ValueKey('pico-immediate-verdict'),
                 style: AppTextStyles.bodyStrong.copyWith(color: color),
               ),
               Text(
                 _windowsOrControlled(evaluation),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.caption,
               ),
+              if (phase == RestrictionDayPhase.between && nextStart != null)
+                Text(
+                  'Vuelve a empezar a las ${formatRestrictionTime12(nextStart)}',
+                  style: AppTextStyles.caption,
+                ),
+              if (nextRestriction != null) ...[
+                const SizedBox(height: AppSpacing.s),
+                Text('Próxima restricción', style: AppTextStyles.bodyStrong),
+                Text(
+                  '${_weekday(nextRestriction!.date)} '
+                  '${_shortDate(nextRestriction!.date)}',
+                  key: const ValueKey('pico-next-restriction'),
+                  style: AppTextStyles.caption,
+                ),
+                Text(
+                  formatRestrictionWindows12(
+                        nextRestriction!.evaluation.effectiveWindows,
+                      )
+                      .replaceAll(' a. m.', '\u00a0a.\u00a0m.')
+                      .replaceAll(' p. m.', '\u00a0p.\u00a0m.'),
+                  key: const ValueKey('pico-next-restriction-windows'),
+                  style: AppTextStyles.caption,
+                ),
+              ],
             ],
           ),
         ),
-        if (nextRestriction != null) ...[
-          const SizedBox(width: AppSpacing.s),
-          _StatusPill(
-            label:
-                '${_weekday(nextRestriction!.date)} ${nextRestriction!.date.day}',
-            color: AppColors.blue,
-            icon: Icons.event_note_rounded,
-          ),
-        ],
       ],
     );
   }
@@ -1537,6 +1654,7 @@ class _PersonalCalendar extends StatefulWidget {
 class _PersonalCalendarState extends State<_PersonalCalendar> {
   _PersonalCalendarMode _mode = _PersonalCalendarMode.nextDays;
   late DateTime _visibleMonth;
+  bool _monthWasNavigated = false;
 
   @override
   void initState() {
@@ -1545,7 +1663,23 @@ class _PersonalCalendarState extends State<_PersonalCalendar> {
   }
 
   @override
+  void didUpdateWidget(covariant _PersonalCalendar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_monthWasNavigated &&
+        (oldWidget.now.year != widget.now.year ||
+            oldWidget.now.month != widget.now.month)) {
+      _visibleMonth = DateTime(widget.now.year, widget.now.month);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final maxWindows = widget.evaluations.fold<int>(
+      1,
+      (count, evaluation) => evaluation.effectiveWindows.length > count
+          ? evaluation.effectiveWindows.length
+          : count,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1582,7 +1716,9 @@ class _PersonalCalendarState extends State<_PersonalCalendar> {
         if (_mode == _PersonalCalendarMode.nextDays)
           SizedBox(
             key: const ValueKey('pico-personal-calendar'),
-            height: 116,
+            height:
+                28 +
+                MediaQuery.textScalerOf(context).scale(104 + 44.0 * maxWindows),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: widget.days.length,
@@ -1608,6 +1744,7 @@ class _PersonalCalendarState extends State<_PersonalCalendar> {
             sourceLabel: _sourceLabel(widget.ruleSet),
             onPrevious: () {
               setState(() {
+                _monthWasNavigated = true;
                 _visibleMonth = DateTime(
                   _visibleMonth.year,
                   _visibleMonth.month - 1,
@@ -1616,6 +1753,7 @@ class _PersonalCalendarState extends State<_PersonalCalendar> {
             },
             onNext: () {
               setState(() {
+                _monthWasNavigated = true;
                 _visibleMonth = DateTime(
                   _visibleMonth.year,
                   _visibleMonth.month + 1,
@@ -1654,7 +1792,7 @@ class _DayCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _statusColor(evaluation.status);
     return Container(
-      width: 74,
+      width: 156,
       padding: const EdgeInsets.all(AppSpacing.s),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
@@ -1673,9 +1811,7 @@ class _DayCard extends StatelessWidget {
           Icon(_statusIcon(evaluation.status), size: 16, color: color),
           const Spacer(),
           Text(
-            _compactStatusText(evaluation.status),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            _dailyStatusText(evaluation.status),
             style: AppTextStyles.caption.copyWith(
               fontWeight: FontWeight.w800,
               fontSize: 11,
@@ -1684,9 +1820,7 @@ class _DayCard extends StatelessWidget {
           if (evaluation.status == RestrictionDayStatus.restricted &&
               evaluation.effectiveWindows.isNotEmpty)
             Text(
-              _compactWindows(evaluation.effectiveWindows),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              formatRestrictionWindows12(evaluation.effectiveWindows),
               style: AppTextStyles.caption.copyWith(fontSize: 11),
             ),
         ],
@@ -1822,7 +1956,9 @@ class _MonthDayCell extends StatelessWidget {
     final restricted = status == RestrictionDayStatus.restricted;
     return Semantics(
       button: true,
-      label: '${_date(item.date)} ${_statusText(status)}',
+      selected: isToday,
+      label:
+          '${isToday ? 'Hoy · ' : ''}${_date(item.date)} ${_dailyStatusText(status)}',
       child: Material(
         color: restricted
             ? AppColors.red.withValues(alpha: 0.14)
@@ -1910,7 +2046,7 @@ void _showMonthDayDetail(
                   const SizedBox(width: AppSpacing.s),
                   Expanded(
                     child: Text(
-                      _statusText(evaluation.status),
+                      _dailyStatusText(evaluation.status),
                       style: AppTextStyles.h2.copyWith(color: color),
                     ),
                   ),
@@ -1957,16 +2093,56 @@ class _CityTopControls extends StatelessWidget {
       key: const ValueKey('pico-city-top-controls'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            _CitySelectorPill(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final selector = _CitySelectorPill(
               jurisdiction: jurisdiction,
               isTransient: isTransient,
               onSelect: onSelect,
-            ),
-            const SizedBox(width: AppSpacing.m),
-            Expanded(child: _FreshnessPill(ruleSet: ruleSet)),
-          ],
+            );
+            final freshness = _FreshnessPill(ruleSet: ruleSet);
+            final textScaler = MediaQuery.textScalerOf(context);
+            final cityStyle = DefaultTextStyle.of(context).style
+                .merge(AppTextStyles.bodyStrong);
+            final painter = TextPainter(
+              textDirection: Directionality.of(context),
+              textScaler: textScaler,
+              locale: Localizations.maybeLocaleOf(context),
+            );
+            var longestWordWidth = 0.0;
+            for (final word in jurisdiction.name.split(RegExp(r'\s+'))) {
+              painter.text = TextSpan(text: word, style: cityStyle);
+              painter.layout();
+              if (painter.width > longestWordWidth) {
+                longestWordWidth = painter.width;
+              }
+            }
+            painter.dispose();
+            final selectorMinWidth =
+                longestWordWidth +
+                2 * AppSpacing.m +
+                2 * _CitySelectorPill.borderWidth +
+                2 * AppIconSize.m +
+                AppSpacing.s;
+            final inlineWidth = (constraints.maxWidth - AppSpacing.m) / 2;
+            if (textScaler.scale(1) > 1.25 || inlineWidth < selectorMinWidth) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  selector,
+                  const SizedBox(height: AppSpacing.s),
+                  freshness,
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: selector),
+                const SizedBox(width: AppSpacing.m),
+                Expanded(child: freshness),
+              ],
+            );
+          },
         ),
         if (onAdopt != null) ...[
           const SizedBox(height: AppSpacing.s),
@@ -1992,6 +2168,7 @@ class _CitySelectorPill extends StatelessWidget {
   final RestrictionJurisdiction jurisdiction;
   final bool isTransient;
   final VoidCallback onSelect;
+  static const borderWidth = 1.0;
 
   @override
   Widget build(BuildContext context) {
@@ -2004,39 +2181,36 @@ class _CitySelectorPill extends StatelessWidget {
         onTap: onSelect,
         borderRadius: BorderRadius.circular(28),
         child: Container(
-          width: 168,
+          width: double.infinity,
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.m,
             vertical: AppSpacing.s,
           ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: AppColors.border, width: borderWidth),
           ),
           child: Row(
             children: [
-              const Icon(Icons.location_on_rounded, color: AppColors.teal),
+              const Icon(
+                Icons.location_on_rounded,
+                color: AppColors.teal,
+                size: AppIconSize.m,
+              ),
               const SizedBox(width: AppSpacing.s),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      jurisdiction.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.bodyStrong,
-                    ),
+                    Text(jurisdiction.name, style: AppTextStyles.bodyStrong),
                     Text(
                       isTransient ? 'Temporal' : 'Configurada',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.caption.copyWith(fontSize: 11),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.expand_more_rounded),
+              const Icon(Icons.expand_more_rounded, size: AppIconSize.m),
             ],
           ),
         ),
@@ -2077,8 +2251,6 @@ class _FreshnessPill extends StatelessWidget {
               Expanded(
                 child: Text(
                   stale ? 'Datos' : 'Verificado',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.caption.copyWith(
                     color: color,
                     fontWeight: FontWeight.w800,
@@ -2091,8 +2263,6 @@ class _FreshnessPill extends StatelessWidget {
             ruleSet.verifiedAt == null
                 ? (stale ? 'Sin cobertura' : 'Fuente oficial')
                 : _shortDate(ruleSet.verifiedAt!),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: AppTextStyles.caption,
           ),
         ],
@@ -2206,79 +2376,81 @@ class _CityHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _statusColor(summary.status);
+    final description = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(jurisdiction.name, style: AppTextStyles.caption),
+        const SizedBox(height: AppSpacing.xs),
+        _StatusPill(
+          label: 'Hoy · ${_weekday(summary.date)} ${summary.date.day}',
+          color: color,
+          icon: _statusIcon(summary.status),
+          wrap: true,
+        ),
+        const SizedBox(height: AppSpacing.m),
+        Text(
+          _statusText(summary.status),
+          style: AppTextStyles.h1.copyWith(color: color),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          '${ruleSummary.category.label} · ${summary.digitBasis.label}',
+          style: AppTextStyles.bodyStrong,
+        ),
+      ],
+    );
+    final art = SizedBox(
+      height: 146,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Semantics(
+          label: 'Ilustración de pico y placa en ciudad',
+          child: Image.asset(
+            _cityHeroArtAsset,
+            key: const ValueKey('pico-city-hero-art'),
+            fit: BoxFit.cover,
+            alignment: Alignment.centerRight,
+            cacheWidth: 520,
+          ),
+        ),
+      ),
+    );
     return AppCard(
       key: const ValueKey('pico-city-hero'),
       padding: const EdgeInsets.all(AppSpacing.l),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 58,
-            child: Column(
+          if (MediaQuery.textScalerOf(context).scale(1) > 1.25)
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(jurisdiction.name, style: AppTextStyles.caption),
-                const SizedBox(height: AppSpacing.xs),
-                _StatusPill(
-                  label: summary.status == RestrictionDayStatus.restricted
-                      ? 'No circula · Hoy · ${_weekday(summary.date)} '
-                            '${summary.date.day}'
-                      : 'Hoy · ${_weekday(summary.date)} ${summary.date.day}',
-                  color: color,
-                  icon: _statusIcon(summary.status),
-                ),
+                description,
                 const SizedBox(height: AppSpacing.m),
-                Text(
-                  _statusText(summary.status),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.h1.copyWith(color: color),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  '${ruleSummary.category.label} · ${summary.digitBasis.label}',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodyStrong,
-                ),
-                const SizedBox(height: AppSpacing.s),
-                _HeroFact(
-                  label: summary.status == RestrictionDayStatus.restricted
-                      ? 'Restringidos'
-                      : 'Estado',
-                  value: summary.status == RestrictionDayStatus.restricted
-                      ? _digitsOrRule(summary)
-                      : summary.ruleLabel,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  _heroScheduleText(summary.effectiveWindows),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption,
-                ),
+                SizedBox(width: 146, child: art),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(flex: 58, child: description),
+                const SizedBox(width: AppSpacing.m),
+                Expanded(flex: 42, child: art),
               ],
             ),
+          const SizedBox(height: AppSpacing.s),
+          _HeroFact(
+            label: summary.status == RestrictionDayStatus.restricted
+                ? 'Restringidos'
+                : 'Estado',
+            value: summary.status == RestrictionDayStatus.restricted
+                ? _digitsOrRule(summary)
+                : summary.ruleLabel,
           ),
-          const SizedBox(width: AppSpacing.m),
-          Expanded(
-            flex: 42,
-            child: SizedBox(
-              height: 146,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Semantics(
-                  label: 'Ilustración de pico y placa en ciudad',
-                  child: Image.asset(
-                    _cityHeroArtAsset,
-                    key: const ValueKey('pico-city-hero-art'),
-                    fit: BoxFit.cover,
-                    alignment: Alignment.centerRight,
-                    cacheWidth: 520,
-                  ),
-                ),
-              ),
-            ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            _heroScheduleText(summary.effectiveWindows),
+            style: AppTextStyles.caption,
           ),
         ],
       ),
@@ -2294,21 +2466,17 @@ class _HeroFact extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RichText(
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      text: TextSpan(
-        style: AppTextStyles.caption.copyWith(
-          color: AppColors.navy.withValues(alpha: 0.68),
-        ),
-        children: [
-          TextSpan(text: '$label: '),
-          TextSpan(
-            text: value,
-            style: AppTextStyles.bodyStrong.copyWith(color: AppColors.navy),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$label:',
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.navy.withValues(alpha: 0.68),
           ),
-        ],
-      ),
+        ),
+        Text(value, style: AppTextStyles.bodyStrong),
+      ],
     );
   }
 }
@@ -2369,12 +2537,7 @@ class _RuleSummaryLine extends StatelessWidget {
         children: [
           SizedBox(
             width: 118,
-            child: Text(
-              label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.caption,
-            ),
+            child: Text(label, style: AppTextStyles.caption),
           ),
           const SizedBox(width: AppSpacing.s),
           Expanded(child: Text(value, style: AppTextStyles.bodyStrong)),
@@ -2415,7 +2578,6 @@ class _RotationRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _statusColor(row.status);
-    final useStackedLayout = MediaQuery.textScalerOf(context).scale(1) > 1.25;
     return Container(
       key: ValueKey('pico-city-rotation-row-$index'),
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
@@ -2424,41 +2586,36 @@ class _RotationRow extends StatelessWidget {
           bottom: BorderSide(color: AppColors.border.withValues(alpha: 0.7)),
         ),
       ),
-      child: useStackedLayout
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(row.label, style: AppTextStyles.bodyStrong),
-                Text(
-                  _rotationDigits(row),
-                  style: AppTextStyles.bodyStrong.copyWith(color: color),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final date = Text(row.label, style: AppTextStyles.bodyStrong);
+          final digits = Text(
+            _rotationDigits(row),
+            style: AppTextStyles.bodyStrong.copyWith(color: color),
+          );
+          final stacked =
+              constraints.maxWidth < 320 ||
+              MediaQuery.textScalerOf(context).scale(1) > 1.25;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (stacked) ...[
+                date,
+                digits,
+              ] else
+                Row(
+                  children: [
+                    SizedBox(width: 92, child: date),
+                    const SizedBox(width: AppSpacing.s),
+                    Expanded(child: digits),
+                  ],
                 ),
-                Text(
-                  _compactWindows(row.windows),
-                  style: AppTextStyles.caption,
-                ),
-              ],
-            )
-          : Row(
-              children: [
-                SizedBox(
-                  width: 92,
-                  child: Text(row.label, style: AppTextStyles.bodyStrong),
-                ),
-                const SizedBox(width: AppSpacing.s),
-                Expanded(
-                  child: Text(
-                    _rotationDigits(row),
-                    style: AppTextStyles.bodyStrong.copyWith(color: color),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.s),
-                Text(
-                  _compactWindows(row.windows),
-                  style: AppTextStyles.caption,
-                ),
-              ],
-            ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(_compactWindows(row.windows), style: AppTextStyles.caption),
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -2868,11 +3025,10 @@ class _NextRestriction {
 }
 
 Future<List<_CategoryCoverage>> _loadCategoryCoverages(
-  WidgetRef ref,
+  RestrictionStore store,
   RestrictionJurisdiction jurisdiction,
-  DateTime now,
+  DateTime instant,
 ) async {
-  final store = ref.read(restrictionStoreProvider);
   return [
     for (final category in PicoVehicleCategory.values)
       _CategoryCoverage(
@@ -2881,26 +3037,26 @@ Future<List<_CategoryCoverage>> _loadCategoryCoverages(
           jurisdiction.id,
           category.kind,
           category.serviceType,
-          ref.read(currentInstantProvider),
+          instant,
         ),
       ),
   ];
 }
 
 Future<List<_VehicleShortcutData>> _loadVehicleShortcuts(
-  WidgetRef ref,
+  RestrictionStore store,
   RestrictionJurisdiction jurisdiction,
   List<VehicleProfile> vehicles,
   DateTime now,
+  DateTime instant,
 ) async {
-  final store = ref.read(restrictionStoreProvider);
   final items = <_VehicleShortcutData>[];
   for (final vehicle in vehicles.take(4)) {
     final ruleSet = await store.loadCoverage(
       jurisdiction.id,
       vehicle.kind,
       vehicle.serviceType,
-      ref.read(currentInstantProvider),
+      instant,
     );
     items.add(
       _VehicleShortcutData(
@@ -2987,10 +3143,28 @@ const _cityHeroArtAsset = 'assets/pico/pico_city_hero_art_owner_v1.png';
 
 String _statusText(RestrictionDayStatus status) {
   return switch (status) {
-    RestrictionDayStatus.restricted => 'No puedes circular',
-    RestrictionDayStatus.allowed => 'Puedes circular',
+    RestrictionDayStatus.restricted => 'Restricción hoy',
+    RestrictionDayStatus.allowed => 'Sin restricción hoy',
     RestrictionDayStatus.unknown => 'Sin confirmar',
     RestrictionDayStatus.stale => 'Datos desactualizados',
+  };
+}
+
+String _dailyStatusText(RestrictionDayStatus status) {
+  return switch (status) {
+    RestrictionDayStatus.restricted => 'Con pico y placa',
+    RestrictionDayStatus.allowed => 'Sin pico y placa',
+    RestrictionDayStatus.unknown => 'Por verificar',
+    RestrictionDayStatus.stale => 'Datos vencidos',
+  };
+}
+
+String _todayStatusText(RestrictionDayStatus status) {
+  return switch (status) {
+    RestrictionDayStatus.restricted => 'Hoy tienes pico y placa',
+    RestrictionDayStatus.allowed => 'Sin pico y placa hoy',
+    RestrictionDayStatus.unknown => 'Hoy: por verificar',
+    RestrictionDayStatus.stale => 'Hoy: datos vencidos',
   };
 }
 
@@ -3053,7 +3227,9 @@ IconData _statusIcon(RestrictionDayStatus status) {
 
 String _windowsOrControlled(RestrictionDayEvaluation evaluation) {
   if (evaluation.status == RestrictionDayStatus.restricted) {
-    return _windowsOrText(evaluation.effectiveWindows);
+    return evaluation.effectiveWindows.isEmpty
+        ? 'Horario no publicado'
+        : formatRestrictionWindows12(evaluation.effectiveWindows);
   }
   return switch (evaluation.status) {
     RestrictionDayStatus.allowed => 'Libre',
@@ -3111,13 +3287,7 @@ String _validity(DateTime? validFrom, DateTime? validUntil) {
 }
 
 String _compactWindows(List<RestrictionDayWindow> windows) {
-  if (windows.isEmpty) {
-    return 'Sin hora';
-  }
-  if (windows.length == 1) {
-    return '${_minute(windows.first.startMinute)}-${_minute(windows.first.endMinute)}';
-  }
-  return '${_minute(windows.first.startMinute)} +${windows.length - 1}';
+  return windows.isEmpty ? 'Sin hora' : formatRestrictionWindows12(windows);
 }
 
 String _dataState(bool coverageKnown, bool dataIsStale) {
@@ -3148,20 +3318,7 @@ String? _httpsSource(RestrictionRuleSet ruleSet) {
 }
 
 String _windows(List<RestrictionDayWindow> windows) {
-  return windows
-      .map(
-        (window) =>
-            '${_minute(window.startMinute)}-${_minute(window.endMinute)}',
-      )
-      .join(', ');
-}
-
-String _minute(int minute) {
-  if (minute == 1440) {
-    return '24:00';
-  }
-  return '${(minute ~/ 60).toString().padLeft(2, '0')}:'
-      '${(minute % 60).toString().padLeft(2, '0')}';
+  return formatRestrictionWindows12(windows);
 }
 
 String _date(DateTime date) {

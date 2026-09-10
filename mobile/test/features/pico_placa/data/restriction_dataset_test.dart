@@ -243,7 +243,7 @@ void main() {
       );
 
       expect(result.status, RestrictionStatus.restricted);
-      expect(result.matchedRuleId, 'medellin-car-private-2026h2-mon');
+      expect(result.matchedRuleId, 'medellin-car-private-2026-r4-lun');
     },
   );
 
@@ -270,105 +270,216 @@ void main() {
       );
 
       expect(result.status, RestrictionStatus.restricted);
-      expect(result.matchedRuleId, 'medellin-moto-private-2026h2-mon');
+      expect(result.matchedRuleId, 'medellin-moto-private-2026-r4-lun');
     },
   );
 
-  test('Bogota private car asset evaluates odd/even rules', () async {
-    await importRestrictionsDataset(db, await _assetDataset());
-    final loaded = await RestrictionStore(db).loadCoverage(
-      'co-dc-bogota',
-      VehicleKind.car,
-      VehicleServiceType.private,
-      DateTime.utc(2026, 8, 27),
-    );
+  test(
+    'Bogota private car asset evaluates September R4 parity rules',
+    () async {
+      await importRestrictionsDataset(db, await _assetDataset());
+      final loaded = await RestrictionStore(db).loadCoverage(
+        'co-dc-bogota',
+        VehicleKind.car,
+        VehicleServiceType.private,
+        DateTime.utc(2026, 9, 10),
+      );
 
-    final evenDay = const RestrictionEngine().evaluate(
-      _context(
-        loaded,
-        jurisdictionId: 'co-dc-bogota',
-        plate: 'ABC123',
-        localDateTime: DateTime(2026, 8, 26, 8),
-      ),
-      loaded.rules,
-    );
-    final oddDay = const RestrictionEngine().evaluate(
-      _context(
-        loaded,
-        jurisdictionId: 'co-dc-bogota',
-        plate: 'ABC126',
-        localDateTime: DateTime(2026, 8, 27, 8),
-      ),
-      loaded.rules,
-    );
+      final evenDay = const RestrictionEngine().evaluate(
+        _context(
+          loaded,
+          jurisdictionId: 'co-dc-bogota',
+          plate: 'ABC123',
+          localDateTime: DateTime(2026, 9, 10, 8),
+        ),
+        loaded.rules,
+      );
+      final oddDay = const RestrictionEngine().evaluate(
+        _context(
+          loaded,
+          jurisdictionId: 'co-dc-bogota',
+          plate: 'ABC126',
+          localDateTime: DateTime(2026, 9, 11, 8),
+        ),
+        loaded.rules,
+      );
+      final outsideWindow = const RestrictionEngine().evaluate(
+        _context(
+          loaded,
+          jurisdictionId: 'co-dc-bogota',
+          plate: 'ABC123',
+          localDateTime: DateTime(2026, 9, 10, 21),
+        ),
+        loaded.rules,
+      );
 
-    expect(evenDay.status, RestrictionStatus.restricted);
-    expect(oddDay.status, RestrictionStatus.restricted);
-  });
+      expect(evenDay.status, RestrictionStatus.restricted);
+      expect(oddDay.status, RestrictionStatus.restricted);
+      expect(outsideWindow.status, RestrictionStatus.allowed);
+    },
+  );
 
-  test('Bogota taxi asset keeps 24 to 31 August coverage', () async {
+  test('Bogota taxi asset uses September R4 calendar coverage', () async {
     await importRestrictionsDataset(db, await _assetDataset());
     final loaded = await RestrictionStore(db).loadCoverage(
       'co-dc-bogota',
       VehicleKind.car,
       VehicleServiceType.taxi,
-      DateTime.utc(2026, 8, 27),
+      DateTime.utc(2026, 9, 10),
     );
 
     expect(
-      _taxiStatus(loaded, day: 24, plate: 'TXI090'),
+      _taxiStatus(loaded, day: 9, plate: 'TXI078'),
       RestrictionStatus.restricted,
     );
     expect(
-      _taxiStatus(loaded, day: 25, plate: 'TXI001'),
+      _taxiStatus(loaded, day: 10, plate: 'TXI090'),
       RestrictionStatus.restricted,
     );
     expect(
-      _taxiStatus(loaded, day: 26, plate: 'TXI034'),
-      RestrictionStatus.restricted,
-    );
-    expect(
-      _taxiStatus(loaded, day: 27, plate: 'TXI056'),
-      RestrictionStatus.restricted,
-    );
-    expect(
-      _taxiStatus(loaded, day: 28, plate: 'TXI078'),
-      RestrictionStatus.restricted,
-    );
-    expect(
-      _taxiStatus(loaded, day: 29, plate: 'TXI090'),
-      RestrictionStatus.restricted,
-    );
-    expect(
-      _taxiStatus(loaded, day: 30, plate: 'TXI090'),
+      _taxiStatus(loaded, day: 10, plate: 'TXI078'),
       RestrictionStatus.allowed,
     );
     expect(
-      _taxiStatus(loaded, day: 31, plate: 'TXI001'),
+      _taxiStatus(loaded, day: 30, plate: 'TXI034'),
+      RestrictionStatus.restricted,
+    );
+  });
+
+  test('R4 automatic city assets evaluate verified 2026 car rules', () async {
+    await importRestrictionsDataset(db, await _assetDataset());
+
+    expect(
+      await _assetStatus(
+        db,
+        jurisdictionId: 'co-ant-medellin',
+        plate: 'BOG126',
+        localDateTime: DateTime(2026, 9, 10, 8),
+      ),
+      RestrictionStatus.restricted,
+    );
+    expect(
+      await _assetStatus(
+        db,
+        jurisdictionId: 'co-san-bucaramanga',
+        plate: 'ABC034',
+        localDateTime: DateTime(2026, 9, 10, 7),
+      ),
+      RestrictionStatus.restricted,
+    );
+    expect(
+      await _assetStatus(
+        db,
+        jurisdictionId: 'co-cau-popayan',
+        plate: 'ABC056',
+        localDateTime: DateTime(2026, 9, 10, 8),
+      ),
+      RestrictionStatus.restricted,
+    );
+    expect(
+      await _assetStatus(
+        db,
+        jurisdictionId: 'co-cal-manizales',
+        plate: 'ABC056',
+        localDateTime: DateTime(2026, 9, 10, 8),
+      ),
+      RestrictionStatus.restricted,
+    );
+    expect(
+      await _assetStatus(
+        db,
+        jurisdictionId: 'co-met-villavicencio',
+        plate: 'ABC012',
+        localDateTime: DateTime(2026, 9, 10, 8),
+      ),
       RestrictionStatus.restricted,
     );
   });
 
   test(
-    'C10B-A promoted city assets evaluate verified 2026 car rules',
+    'R4 conditioned cities fail closed without automatic runtime rules',
+    () async {
+      await importRestrictionsDataset(db, await _assetDataset());
+
+      final cali = await _assetEvaluation(
+        db,
+        jurisdictionId: 'co-vac-cali',
+        plate: 'ABC056',
+        localDateTime: DateTime(2026, 9, 10, 8),
+      );
+      final cartagena = await _assetEvaluation(
+        db,
+        jurisdictionId: 'co-bol-cartagena',
+        plate: 'ABC056',
+        localDateTime: DateTime(2026, 9, 10, 8),
+      );
+      final ibague = await _assetEvaluation(
+        db,
+        jurisdictionId: 'co-tol-ibague',
+        plate: 'ABC067',
+        localDateTime: DateTime(2026, 7, 6, 8),
+      );
+
+      expect(cali.status, RestrictionStatus.unknown);
+      expect(cali.reasonCode, RestrictionReasonCode.unknownCoverage);
+      expect(cartagena.status, RestrictionStatus.unknown);
+      expect(cartagena.reasonCode, RestrictionReasonCode.unknownCoverage);
+      expect(ibague.status, RestrictionStatus.unknown);
+      expect(ibague.reasonCode, RestrictionReasonCode.unknownCoverage);
+    },
+  );
+
+  test(
+    'R4 empty known coverages stay known without inventing restrictions',
+    () async {
+      await importRestrictionsDataset(db, await _assetDataset());
+
+      final bogotaMoto = await RestrictionStore(db).loadCoverage(
+        'co-dc-bogota',
+        VehicleKind.motorcycle,
+        VehicleServiceType.private,
+        DateTime.utc(2026, 9, 10),
+      );
+      final barranquillaTaxi = await RestrictionStore(db).loadCoverage(
+        'co-atl-barranquilla',
+        VehicleKind.car,
+        VehicleServiceType.taxi,
+        DateTime.utc(2026, 9, 10),
+      );
+
+      expect(bogotaMoto.coverageKnown, isTrue);
+      expect(bogotaMoto.rules, isEmpty);
+      expect(
+        const RestrictionEngine()
+            .evaluate(
+              _context(
+                bogotaMoto,
+                jurisdictionId: 'co-dc-bogota',
+                vehicleKind: VehicleKind.motorcycle,
+                plate: 'MOT123',
+                localDateTime: DateTime(2026, 9, 10, 8),
+              ),
+              bogotaMoto.rules,
+            )
+            .status,
+        RestrictionStatus.allowed,
+      );
+      expect(barranquillaTaxi.coverageKnown, isTrue);
+      expect(barranquillaTaxi.rules, isEmpty);
+    },
+  );
+
+  test(
+    'R4 Bucaramanga Saturday and Q4 rotations honor review window',
     () async {
       await importRestrictionsDataset(db, await _assetDataset());
 
       expect(
         await _assetStatus(
           db,
-          jurisdictionId: 'co-vac-cali',
-          plate: 'ABC990',
-          localDateTime: DateTime(2026, 7, 6, 8),
-        ),
-        RestrictionStatus.restricted,
-      );
-      expect(
-        await _assetStatus(
-          db,
-          jurisdictionId: 'co-bol-cartagena',
-          plate: 'ABC034',
-          localDateTime: DateTime(2026, 7, 1, 7, 30),
+          jurisdictionId: 'co-san-bucaramanga',
+          plate: 'ABC012',
+          localDateTime: DateTime(2026, 9, 12, 10),
         ),
         RestrictionStatus.restricted,
       );
@@ -376,103 +487,28 @@ void main() {
         await _assetStatus(
           db,
           jurisdictionId: 'co-san-bucaramanga',
-          plate: 'ABC178',
-          localDateTime: DateTime(2026, 7, 6, 7),
+          plate: 'ABC012',
+          localDateTime: DateTime(2026, 9, 19, 10),
         ),
-        RestrictionStatus.restricted,
+        RestrictionStatus.allowed,
       );
       expect(
         await _assetStatus(
           db,
-          jurisdictionId: 'co-cau-popayan',
-          plate: 'ABC090',
-          localDateTime: DateTime(2026, 7, 6, 8),
+          jurisdictionId: 'co-san-bucaramanga',
+          plate: 'ABC056',
+          localDateTime: DateTime(2026, 10, 5, 8),
         ),
-        RestrictionStatus.restricted,
+        RestrictionStatus.stale,
       );
     },
   );
-
-  test(
-    'C10B-A demoted conditional cities fail closed without runtime rules',
-    () async {
-      await importRestrictionsDataset(db, await _assetDataset());
-
-      final ibague = await _assetEvaluation(
-        db,
-        jurisdictionId: 'co-tol-ibague',
-        plate: 'ABC067',
-        localDateTime: DateTime(2026, 7, 6, 8),
-      );
-      final villavicencio = await _assetEvaluation(
-        db,
-        jurisdictionId: 'co-met-villavicencio',
-        plate: 'ABC056',
-        localDateTime: DateTime(2026, 1, 26, 7),
-      );
-
-      expect(ibague.status, RestrictionStatus.unknown);
-      expect(ibague.reasonCode, RestrictionReasonCode.unknownCoverage);
-      expect(villavicencio.status, RestrictionStatus.unknown);
-      expect(villavicencio.reasonCode, RestrictionReasonCode.unknownCoverage);
-    },
-  );
-
-  test(
-    'C10B-A Cartagena motorcycle asset uses the official long window',
-    () async {
-      await importRestrictionsDataset(db, await _assetDataset());
-
-      final loaded = await RestrictionStore(db).loadCoverage(
-        'co-bol-cartagena',
-        VehicleKind.motorcycle,
-        VehicleServiceType.private,
-        DateTime.utc(2026, 7, 1),
-      );
-      final result = const RestrictionEngine().evaluate(
-        _context(
-          loaded,
-          jurisdictionId: 'co-bol-cartagena',
-          vehicleKind: VehicleKind.motorcycle,
-          plate: 'MOT034',
-          localDateTime: DateTime(2026, 7, 1, 22),
-        ),
-        loaded.rules,
-      );
-
-      expect(result.status, RestrictionStatus.restricted);
-      expect(result.matchedRuleId, 'cartagena-motorcycle-private-2026-wed');
-    },
-  );
-
-  test('C10B-A Bucaramanga Saturday rotation is date-specific', () async {
-    await importRestrictionsDataset(db, await _assetDataset());
-
-    expect(
-      await _assetStatus(
-        db,
-        jurisdictionId: 'co-san-bucaramanga',
-        plate: 'ABC034',
-        localDateTime: DateTime(2026, 7, 11, 10),
-      ),
-      RestrictionStatus.restricted,
-    );
-    expect(
-      await _assetStatus(
-        db,
-        jurisdictionId: 'co-san-bucaramanga',
-        plate: 'ABC034',
-        localDateTime: DateTime(2026, 7, 18, 10),
-      ),
-      RestrictionStatus.allowed,
-    );
-  });
 
   test('bundled asset parses correctly', () async {
     await importRestrictionsDataset(db, await _assetDataset());
 
     final rows = await db.select(db.restrictionCoverages).get();
-    expect(rows, hasLength(9));
+    expect(rows, hasLength(12));
   });
 
   test('bundled staleAfter values represent Colombia midnight', () async {
@@ -485,35 +521,43 @@ void main() {
 
     expect(
       staleAfterById['co-ant-medellin:car:private'],
-      DateTime.utc(2027, 1, 1, 5),
+      DateTime.utc(2026, 9, 23, 5),
     );
     expect(
       staleAfterById['co-ant-medellin:motorcycle:private'],
-      DateTime.utc(2027, 1, 1, 5),
+      DateTime.utc(2026, 9, 23, 5),
     );
     expect(
       staleAfterById['co-dc-bogota:car:private'],
-      DateTime.utc(2026, 9, 1, 5),
+      DateTime.utc(2026, 9, 23, 5),
     );
     expect(
       staleAfterById['co-dc-bogota:car:taxi'],
-      DateTime.utc(2026, 9, 1, 5),
+      DateTime.utc(2026, 9, 28, 5),
     );
     expect(
-      staleAfterById['co-vac-cali:car:private'],
-      DateTime.utc(2027, 1, 1, 5),
-    );
-    expect(
-      staleAfterById['co-bol-cartagena:car:private'],
-      DateTime.utc(2026, 10, 3, 5),
+      staleAfterById['co-cal-manizales:car:private'],
+      DateTime.utc(2026, 9, 14, 5),
     );
     expect(
       staleAfterById['co-san-bucaramanga:car:private'],
-      DateTime.utc(2026, 10, 1, 5),
+      DateTime.utc(2026, 9, 28, 5),
+    );
+    expect(
+      staleAfterById['co-san-bucaramanga:motorcycle:private'],
+      DateTime.utc(2026, 9, 28, 5),
     );
     expect(
       staleAfterById['co-cau-popayan:car:private'],
-      DateTime.utc(2027, 1, 1, 5),
+      DateTime.utc(2026, 9, 23, 5),
+    );
+    expect(
+      staleAfterById['co-met-villavicencio:car:private'],
+      DateTime.utc(2026, 9, 23, 5),
+    );
+    expect(
+      staleAfterById['co-atl-barranquilla:car:taxi'],
+      DateTime.utc(2026, 9, 23, 5),
     );
   });
 }
@@ -567,7 +611,7 @@ RestrictionStatus _taxiStatus(
           jurisdictionId: 'co-dc-bogota',
           serviceType: VehicleServiceType.taxi,
           plate: plate,
-          localDateTime: DateTime(2026, 8, day, 6),
+          localDateTime: DateTime(2026, 9, day, 6),
         ),
         loaded.rules,
       )

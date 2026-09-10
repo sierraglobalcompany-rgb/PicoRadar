@@ -156,12 +156,16 @@ class _StartupGateState extends ConsumerState<StartupGate> {
             if (snapshot.connectionState != ConnectionState.done) {
               return const _StartupSurface();
             }
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted && !_ready) {
-                setState(() => _ready = true);
-              }
-            });
-            return const _StartupSurface();
+            _ready = true;
+            return AnimatedSwitcher(
+              duration: _reducedMotion(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 200),
+              child: KeyedSubtree(
+                key: const ValueKey('startup-ready-child'),
+                child: widget.child,
+              ),
+            );
           },
         );
       },

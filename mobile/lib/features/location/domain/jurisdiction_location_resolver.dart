@@ -31,6 +31,48 @@ const jurisdictionLocationHints = [
     centerLon: -75.5812,
     maxDetectionRadiusKm: 35,
   ),
+  JurisdictionLocationHint(
+    jurisdictionId: 'co-vac-cali',
+    centerLat: 3.4516,
+    centerLon: -76.5320,
+    maxDetectionRadiusKm: 30,
+  ),
+  JurisdictionLocationHint(
+    jurisdictionId: 'co-bol-cartagena',
+    centerLat: 10.3910,
+    centerLon: -75.4794,
+    maxDetectionRadiusKm: 30,
+  ),
+  JurisdictionLocationHint(
+    jurisdictionId: 'co-san-bucaramanga',
+    centerLat: 7.1193,
+    centerLon: -73.1227,
+    maxDetectionRadiusKm: 30,
+  ),
+  JurisdictionLocationHint(
+    jurisdictionId: 'co-atl-barranquilla',
+    centerLat: 10.9685,
+    centerLon: -74.7813,
+    maxDetectionRadiusKm: 30,
+  ),
+  JurisdictionLocationHint(
+    jurisdictionId: 'co-cal-manizales',
+    centerLat: 5.0703,
+    centerLon: -75.5138,
+    maxDetectionRadiusKm: 25,
+  ),
+  JurisdictionLocationHint(
+    jurisdictionId: 'co-cau-popayan',
+    centerLat: 2.4448,
+    centerLon: -76.6147,
+    maxDetectionRadiusKm: 25,
+  ),
+  JurisdictionLocationHint(
+    jurisdictionId: 'co-met-villavicencio',
+    centerLat: 4.1420,
+    centerLon: -73.6266,
+    maxDetectionRadiusKm: 30,
+  ),
 ];
 
 String? resolveJurisdictionForPosition({

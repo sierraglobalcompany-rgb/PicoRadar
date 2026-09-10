@@ -35,6 +35,7 @@ import '../features/peritajes/data/peritajes_draft_store.dart';
 import '../features/trip/data/toll_inventory.dart';
 import '../features/trip/data/toll_tariff_catalog.dart';
 import '../features/trip/data/trip_route_preview_data.dart';
+import 'app_clock.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   final database = AppDatabase();
@@ -319,16 +320,22 @@ final picoWidgetSyncProvider = FutureProvider<void>((ref) async {
 });
 
 final picoNotificationSyncProvider = FutureProvider<void>((ref) async {
+  var active = true;
+  ref.onDispose(() => active = false);
+  ref.watch(bogotaDateProvider);
   await ref.watch(bundledRestrictionsProvider.future);
+  if (!active) return;
   final vehicles = await ref.watch(vehicleListProvider.future);
+  if (!active) return;
   if (vehicles.isEmpty) {
     return;
   }
 
   final alertPreferences = await ref.watch(picoAlertPreferencesProvider.future);
+  if (!active) return;
   if (!alertPreferences.permissionGranted) {
     if (alertPreferences.permissionRequested) {
-      await _tryCancelPicoNotifications(ref);
+      await _tryCancelPicoNotifications(ref, () => active);
     }
     return;
   }
@@ -336,9 +343,11 @@ final picoNotificationSyncProvider = FutureProvider<void>((ref) async {
   final selectedJurisdictionId = await ref.watch(
     selectedPicoJurisdictionIdProvider.future,
   );
+  if (!active) return;
   final jurisdictions = await ref.watch(
     restrictionJurisdictionsProvider.future,
   );
+  if (!active) return;
   final jurisdiction = _jurisdiction(jurisdictions, selectedJurisdictionId);
   if (jurisdiction == null) {
     return;
@@ -347,18 +356,20 @@ final picoNotificationSyncProvider = FutureProvider<void>((ref) async {
   final scheduler = ref.watch(picoNotificationSchedulerProvider);
   try {
     await scheduler.initialize();
+    if (!active) return;
     if (!alertPreferences.enabled) {
       await scheduler.cancelPicoNotifications();
       return;
     }
     final plans = await buildPicoNotificationPlans(
       store: ref.watch(restrictionStoreProvider),
-      currentInstant: ref.watch(currentInstantProvider),
-      nowBogota: ref.watch(bogotaNowProvider),
+      currentInstant: ref.read(currentInstantProvider),
+      nowBogota: ref.read(bogotaNowProvider),
       vehicles: vehicles,
       jurisdiction: jurisdiction,
       alertPreferences: alertPreferences,
     );
+    if (!active) return;
     await scheduler.reschedule(plans);
   } on MissingPluginException {
     return;
@@ -366,17 +377,24 @@ final picoNotificationSyncProvider = FutureProvider<void>((ref) async {
 });
 
 final obligationNotificationSyncProvider = FutureProvider<void>((ref) async {
+  var active = true;
+  ref.onDispose(() => active = false);
+  ref.watch(bogotaDateProvider);
   final alertPreferences = await ref.watch(picoAlertPreferencesProvider.future);
+  if (!active) return;
   final scheduler = ref.watch(picoNotificationSchedulerProvider);
   final vehicles = await ref.watch(vehicleListProvider.future);
+  if (!active) return;
   final vehiclesById = {for (final vehicle in vehicles) vehicle.id: vehicle};
   final obligations = await ref.watch(vehicleObligationStoreProvider).listAll();
+  if (!active) return;
   try {
     await scheduler.initialize();
+    if (!active) return;
     final plans = planObligationNotifications(
       obligations: obligations,
       vehiclesById: vehiclesById,
-      nowBogota: ref.watch(bogotaNowProvider),
+      nowBogota: ref.read(bogotaNowProvider),
       permissionGranted: alertPreferences.permissionGranted,
     );
     if (plans.isEmpty) {
@@ -390,11 +408,18 @@ final obligationNotificationSyncProvider = FutureProvider<void>((ref) async {
 });
 
 final currentInstantProvider = Provider<DateTime>((ref) {
-  return DateTime.now().toUtc();
+  return ref.watch(appClockProvider);
 });
 
 final bogotaNowProvider = Provider<DateTime>((ref) {
-  return bogotaWallClock(DateTime.now());
+  return bogotaWallClock(ref.watch(currentInstantProvider));
+});
+
+final bogotaDateProvider = Provider<DateTime>((ref) {
+  final date = ref.watch(
+    bogotaNowProvider.select((now) => (now.year, now.month, now.day)),
+  );
+  return DateTime(date.$1, date.$2, date.$3);
 });
 
 RestrictionJurisdiction? _jurisdiction(
@@ -419,10 +444,14 @@ String? _jurisdictionName(
   return _jurisdiction(jurisdictions, selectedJurisdictionId)?.name;
 }
 
-Future<void> _tryCancelPicoNotifications(Ref ref) async {
+Future<void> _tryCancelPicoNotifications(
+  Ref ref,
+  bool Function() isActive,
+) async {
   try {
     final scheduler = ref.watch(picoNotificationSchedulerProvider);
     await scheduler.initialize();
+    if (!isActive()) return;
     await scheduler.cancelPicoNotifications();
   } on MissingPluginException {
     return;

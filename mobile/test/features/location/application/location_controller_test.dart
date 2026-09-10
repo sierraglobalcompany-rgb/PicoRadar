@@ -101,6 +101,37 @@ void main() {
   );
 
   test(
+    'GPS auto updates the effective city when the vehicle moves cities',
+    () async {
+      await preferences.setString(locationModePreferenceKey, 'gpsAuto');
+      await preferences.setString(
+        picoJurisdictionPreferenceKey,
+        'co-dc-bogota',
+      );
+      final ref = container();
+      addTearDown(ref.dispose);
+      gateway.point = const DeviceLocationPoint(
+        latitude: 6.2442,
+        longitude: -75.5812,
+        accuracyMeters: 35,
+      );
+
+      final result = await ref
+          .read(locationStateProvider.notifier)
+          .refreshGps(requestPermission: false, force: true);
+
+      final state = await ref.read(locationStateProvider.future);
+      expect(result, LocationRefreshStatus.detected);
+      expect(state.mode, LocationMode.gpsAuto);
+      expect(state.effectiveJurisdictionId, 'co-ant-medellin');
+      expect(
+        await preferences.getString(picoJurisdictionPreferenceKey),
+        'co-ant-medellin',
+      );
+    },
+  );
+
+  test(
     'GPS outside coverage preserves the last effective jurisdiction',
     () async {
       await preferences.setString(
