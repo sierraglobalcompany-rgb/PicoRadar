@@ -19,12 +19,43 @@ enum TripChecklistItem {
   }
 }
 
+enum TripVehicleConfiguration {
+  standardTwoAxle('standard_two_axle'),
+  unsupported('unsupported');
+
+  const TripVehicleConfiguration(this.key);
+
+  final String key;
+
+  static TripVehicleConfiguration fromKey(Object? value) => switch (value) {
+    'unsupported' => unsupported,
+    _ => standardTwoAxle,
+  };
+}
+
+enum TripVehicleCategorySource {
+  defaultStandard('default_standard'),
+  userSelected('user_selected');
+
+  const TripVehicleCategorySource(this.key);
+
+  final String key;
+
+  static TripVehicleCategorySource fromKey(Object? value) => switch (value) {
+    'user_selected' => userSelected,
+    _ => defaultStandard,
+  };
+}
+
 class TripDraft {
   const TripDraft({
     required this.origin,
     required this.destination,
     required this.date,
     this.activeVehicleId,
+    this.departureMinute,
+    this.vehicleConfiguration = TripVehicleConfiguration.standardTwoAxle,
+    this.vehicleCategorySource = TripVehicleCategorySource.defaultStandard,
     this.completedChecklist = const {},
   });
 
@@ -32,6 +63,9 @@ class TripDraft {
   final String destination;
   final DateTime date;
   final String? activeVehicleId;
+  final int? departureMinute;
+  final TripVehicleConfiguration vehicleConfiguration;
+  final TripVehicleCategorySource vehicleCategorySource;
   final Set<TripChecklistItem> completedChecklist;
 
   Map<String, Object?> toJson() {
@@ -40,6 +74,9 @@ class TripDraft {
       'destination': destination.trim(),
       'date': _dateOnlyIso(date),
       'activeVehicleId': _optionalText(activeVehicleId),
+      'departureMinute': departureMinute,
+      'vehicleConfiguration': vehicleConfiguration.key,
+      'vehicleCategorySource': vehicleCategorySource.key,
       'completedChecklist': [for (final item in completedChecklist) item.key],
     };
   }
@@ -63,11 +100,22 @@ class TripDraft {
       }
     }
 
+    final minute = json['departureMinute'];
+    if (minute != null && (minute is! int || minute < 0 || minute > 1439)) {
+      throw const FormatException('Trip draft time is invalid.');
+    }
     return TripDraft(
       origin: _requiredText(json['origin'], 'origin'),
       destination: _requiredText(json['destination'], 'destination'),
       date: DateTime.parse(rawDate),
       activeVehicleId: _optionalText(json['activeVehicleId']),
+      departureMinute: minute as int?,
+      vehicleConfiguration: TripVehicleConfiguration.fromKey(
+        json['vehicleConfiguration'],
+      ),
+      vehicleCategorySource: TripVehicleCategorySource.fromKey(
+        json['vehicleCategorySource'],
+      ),
       completedChecklist: completedChecklist,
     );
   }

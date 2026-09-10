@@ -1,0 +1,58 @@
+{
+  "requestId": "trip-test-001",
+  "generatedAtUtc": "2026-09-05T12:00:00Z",
+  "provider": "TollGuru",
+  "attribution": "TollGuru / MapUp; routing: HERE",
+  "origin": {
+    "label": "MEDELL\u00cdN, ANTIOQUIA",
+    "latitude": 6.2442,
+    "longitude": -75.5812
+  },
+  "destination": {
+    "label": "RIONEGRO, ANTIOQUIA",
+    "latitude": 6.1533,
+    "longitude": -75.374
+  },
+  "routes": [
+    {
+      "id": "b0e15b7c343826ec635f703f9ecda9dc23897181d986e6fae4b752434b00cb8f",
+      "summary": "Synthetic route",
+      "distanceMeters": 42000,
+      "durationSeconds": 3600,
+      "timeBasis": "static",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-75.5812, 6.2442],
+          [-75.48, 6.2],
+          [-75.374, 6.1533]
+        ]
+      },
+      "tolls": {
+        "coverage": "complete",
+        "currency": "COP",
+        "totalMinor": 1800030,
+        "subtotalMinor": null,
+        "paymentMethod": "cash",
+        "vehicleCategory": "car",
+        "charges": [
+          {
+            "name": "Test station A",
+            "amountMinor": 800010,
+            "sourceUrl": null,
+            "effectiveAt": null
+          },
+          {
+            "name": "Test station B",
+            "amountMinor": 1000020,
+            "sourceUrl": null,
+            "effectiveAt": null
+          }
+        ],
+        "missingRates": 0,
+        "stationCount": 2,
+        "payableCount": 2
+      }
+    }
+  ]
+}

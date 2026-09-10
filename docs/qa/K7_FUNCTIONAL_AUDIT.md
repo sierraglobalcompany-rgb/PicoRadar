@@ -46,6 +46,7 @@ This matrix documents all current production launcher call sites after K7 integr
 | `lib/features/services/presentation/services_screen.dart` | Google Maps service searches | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/vehicle_status/presentation/vehicle_status_screen.dart` | Phone actions, tax calendar portal, official status links | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/trip/application/trip_services.dart` | Google Maps route, Waze route, INVÍAS road status | Controlled visible snackbar in presentation | Controlled visible snackbar in presentation | PASS |
+| `lib/features/trip/presentation/trip_screen.dart` | VIAJE-R1 addition (2026-09-05): restriction and tariff source links, validated HTTPS | Controlled visible snackbar | Controlled visible snackbar | Added after K7; verified in VIAJE-R1, not retroactive K7 approval |
 | `lib/features/peritajes/presentation/peritajes_screen.dart` | Google Maps peritaje search | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/vehicle_status/presentation/soat_rtm_owner_content.dart` | RUNT vehicle link and document/open-source handoffs | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/tramites/presentation/tramites_screen.dart` | Medellín/Bogotá official trámite portals | Controlled visible snackbar | Controlled visible snackbar | PASS |

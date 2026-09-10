@@ -90,6 +90,8 @@ class DatasetVersions extends Table {
   TextColumn get version => text().withLength(min: 1, max: 64)();
   TextColumn get sha256 => text().nullable()();
   TextColumn get status => text().withLength(min: 1, max: 32)();
+  IntColumn get publicationRevision =>
+      integer().withDefault(const Constant(0))();
   DateTimeColumn get appliedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
@@ -131,7 +133,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'picoradar'));
 
-  static const currentSchemaVersion = 5;
+  static const currentSchemaVersion = 6;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -188,6 +190,20 @@ class AppDatabase extends _$AppDatabase {
       from = 5;
     }
 
+    if (from == 5) {
+      final hasPublicationRevision = await _columnExists(
+        'dataset_versions',
+        'publication_revision',
+      );
+      if (!hasPublicationRevision) {
+        await migrator.addColumn(
+          datasetVersions,
+          datasetVersions.publicationRevision,
+        );
+      }
+      from = 6;
+    }
+
     if (from == to) {
       return;
     }
@@ -195,5 +211,10 @@ class AppDatabase extends _$AppDatabase {
     throw UnsupportedError(
       'No Drift migration path is defined from schema $from to $to.',
     );
+  }
+
+  Future<bool> _columnExists(String tableName, String columnName) async {
+    final columns = await customSelect('PRAGMA table_info($tableName)').get();
+    return columns.any((row) => row.read<String>('name') == columnName);
   }
 }

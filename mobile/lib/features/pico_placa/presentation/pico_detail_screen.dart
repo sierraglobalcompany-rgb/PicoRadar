@@ -83,8 +83,10 @@ class PicoDetailScreen extends ConsumerWidget {
                       );
                     }
                     return _CityPicoView(
+                      key: ValueKey(jurisdictionId),
                       jurisdictions: jurisdictionItems,
                       selectedJurisdictionId: selectedId,
+                      initialJurisdictionId: jurisdictionId,
                       vehicles: vehicleItems,
                     );
                   },
@@ -240,11 +242,14 @@ class _CityPicoView extends ConsumerStatefulWidget {
   const _CityPicoView({
     required this.jurisdictions,
     required this.selectedJurisdictionId,
+    required this.initialJurisdictionId,
     required this.vehicles,
+    super.key,
   });
 
   final List<RestrictionJurisdiction> jurisdictions;
   final String? selectedJurisdictionId;
+  final String? initialJurisdictionId;
   final List<VehicleProfile> vehicles;
 
   @override
@@ -256,17 +261,28 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
   PicoVehicleCategory _category = PicoVehicleCategory.cars;
 
   @override
+  void initState() {
+    super.initState();
+    _consultedJurisdictionId = widget.initialJurisdictionId;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final now = ref.watch(bogotaNowProvider);
     final globalJurisdiction = _findJurisdiction(
       widget.jurisdictions,
       widget.selectedJurisdictionId,
     );
-    final jurisdiction =
-        _findJurisdiction(widget.jurisdictions, _consultedJurisdictionId) ??
-        globalJurisdiction ??
-        (widget.jurisdictions.isNotEmpty ? widget.jurisdictions.first : null);
+    final jurisdiction = _consultedJurisdictionId != null
+        ? _findJurisdiction(widget.jurisdictions, _consultedJurisdictionId)
+        : globalJurisdiction ??
+              (widget.jurisdictions.isNotEmpty
+                  ? widget.jurisdictions.first
+                  : null);
     if (jurisdiction == null) {
+      if (_consultedJurisdictionId != null) {
+        return const _Message('No reconocemos la ciudad solicitada.');
+      }
       return const _Message('No hay ciudades disponibles para consultar.');
     }
     final isTransient =

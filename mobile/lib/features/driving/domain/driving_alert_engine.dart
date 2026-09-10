@@ -59,7 +59,7 @@ class DrivingAlertEngine {
   }) {
     final currentInstant = now ?? this.now ?? DateTime.now().toUtc();
     _closeLostEpisodes(currentInstant);
-    if (match == null || !match.approaching || speedKmh < 5) {
+    if (match == null) {
       return null;
     }
     if (match.distanceMeters > cameraAwarenessRadiusMeters) {
@@ -70,6 +70,9 @@ class DrivingAlertEngine {
       camera.id,
       () => _CameraAlertEpisode(),
     )..lastSeenAt = currentInstant;
+
+    // Visual episodes exist even when stopped, behind, or outside voice stages.
+    if (!match.approaching || speedKmh < 5) return null;
 
     final threshold = _nextThreshold(episode, match.distanceMeters);
     if (threshold == null) {
@@ -85,20 +88,17 @@ class DrivingAlertEngine {
 
     final speedLimit = camera.speedLimitKmh;
     final currentSpeed = speedKmh.round();
-    // Technical UI/alert stability margin only. Do not present this as a
-    // legal, camera, or enforcement tolerance to users.
-    final overspeed = speedLimit != null && speedKmh > speedLimit + 3;
     _markCrossedThresholds(episode, match.distanceMeters);
     episode.lastAlertAt = currentInstant;
     return DrivingAlert(
       cameraId: camera.id,
-      title: overspeed ? 'Reduce la velocidad' : 'Cámara cerca',
-      message: _message(match, threshold, speedKmh),
+      title: 'Cámara cerca',
+      message: 'Cámara a $threshold metros. Respeta la señalización de la vía.',
       thresholdMeters: threshold,
-      severity: overspeed || threshold <= 100
+      severity: threshold <= 100
           ? DrivingAlertSeverity.urgent
           : DrivingAlertSeverity.headsUp,
-      overspeed: overspeed,
+      overspeed: false,
       currentSpeedKmh: currentSpeed,
       reportedSpeedKmh: speedLimit,
     );
@@ -163,17 +163,6 @@ class DrivingAlertEngine {
     return selected.isEmpty
         ? DrivingAlertProfile.custom.defaultThresholdsMeters
         : selected;
-  }
-
-  String _message(CameraMatch match, int threshold, double speedKmh) {
-    final camera = match.camera;
-    final speed = speedKmh.round();
-    final limit = camera.speedLimitKmh;
-    final locality = camera.locality;
-    if (limit == null) {
-      return '$locality · $threshold m · $speed km/h';
-    }
-    return '$locality · $threshold m · $speed km/h · ANSV $limit km/h';
   }
 }
 

@@ -1,9 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 
+import '../core/config/app_config.dart';
 import '../core/database/app_database.dart'
     hide MaintenanceRecord, VehicleObligation;
 import '../core/storage/app_preferences.dart';
+import '../core/sync/dataset_sync_service.dart';
 import '../features/defense/application/defense_case_providers.dart';
 import '../features/garage/application/vehicle_associated_data_cleaner.dart';
 import '../features/garage/data/garage_favorites.dart';
@@ -21,11 +26,15 @@ import '../features/visual_assets/data/visual_asset_catalogs.dart';
 import '../features/visual_assets/data/visual_asset_preferences.dart';
 import '../features/pico_placa/data/bundled_restrictions.dart';
 import '../features/pico_placa/data/pico_preferences.dart';
+import '../features/pico_placa/data/restriction_dataset.dart';
 import '../features/pico_placa/data/restriction_store.dart';
 import '../features/pico_placa/domain/bogota_time.dart';
 import '../features/pico_placa/platform/pico_notifications.dart';
 import '../features/pico_placa/platform/pico_widget_bridge.dart';
 import '../features/peritajes/data/peritajes_draft_store.dart';
+import '../features/trip/data/toll_inventory.dart';
+import '../features/trip/data/toll_tariff_catalog.dart';
+import '../features/trip/data/trip_route_preview_data.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   final database = AppDatabase();
@@ -50,6 +59,98 @@ final vehicleVisualCatalogProvider = FutureProvider<VehicleVisualCatalog>((
 final homeBannerConfigProvider = FutureProvider<HomeBannerConfig>((ref) async {
   final source = await rootBundle.loadString(homeBannerConfigAssetPath);
   return HomeBannerConfig.fromJsonString(source);
+});
+
+final datasetSyncConfigProvider = Provider<AppConfig?>((ref) {
+  const cdnBaseUrl = String.fromEnvironment('CDN_BASE_URL');
+  if (cdnBaseUrl.trim().isEmpty) {
+    return null;
+  }
+  return AppConfig(
+    apiBaseUrl: const String.fromEnvironment('API_BASE_URL'),
+    cdnBaseUrl: cdnBaseUrl,
+    manifestUrl: const String.fromEnvironment('MANIFEST_URL'),
+  );
+});
+
+final datasetSnapshotsDirectoryProvider = FutureProvider<Directory>((
+  ref,
+) async {
+  final directory = await getApplicationSupportDirectory();
+  return Directory('${directory.path}${Platform.pathSeparator}datasets');
+});
+
+final tollInventoryStoreProvider = FutureProvider<TollInventoryStore>((
+  ref,
+) async {
+  final datasetsDirectory = await ref.watch(
+    datasetSnapshotsDirectoryProvider.future,
+  );
+  return TollInventoryStore(
+    database: ref.watch(appDatabaseProvider),
+    snapshotFile: File(
+      '${datasetsDirectory.path}${Platform.pathSeparator}tolls_inventory.json',
+    ),
+    bundledLoader: () => rootBundle.loadString(bundledTollInventoryAsset),
+  );
+});
+
+final datasetSyncCommitHandlerProvider =
+    Provider<void Function(String datasetKey)>((ref) {
+      return (datasetKey) {
+        if (datasetKey == restrictionsDatasetKey) {
+          ref.invalidate(bundledRestrictionsProvider);
+          ref.invalidate(restrictionJurisdictionsProvider);
+        } else if (datasetKey == tollInventoryDatasetKey) {
+          ref.invalidate(tripTollInventoryProvider);
+        }
+      };
+    });
+
+final tripTollInventoryProvider = FutureProvider<TollInventoryDataset>((
+  ref,
+) async {
+  return (await ref.watch(tollInventoryStoreProvider.future)).load();
+});
+
+final tripTollTariffCatalogProvider = FutureProvider<TollTariffCatalog>((ref) {
+  return loadTollTariffCatalog(rootBundle);
+});
+
+final datasetSyncServiceProvider = FutureProvider<DatasetSyncService?>((
+  ref,
+) async {
+  final config = ref.watch(datasetSyncConfigProvider);
+  if (config == null) {
+    return null;
+  }
+  _validateProductDatasetConfig(config);
+  final tollStore = await ref.watch(tollInventoryStoreProvider.future);
+  return DatasetSyncService(
+    database: ref.watch(appDatabaseProvider),
+    preferences: ref.watch(appPreferencesProvider),
+    config: config,
+    importers: const {restrictionsDatasetKey: importRestrictionsDataset},
+    transactionalImporters: {
+      tollInventoryDatasetKey: tollStore.transactionalImporter,
+    },
+    onDatasetCommitted: ref.watch(datasetSyncCommitHandlerProvider),
+  );
+});
+
+final datasetSyncRunProvider = FutureProvider<DatasetSyncResult?>((ref) async {
+  final service = await ref.watch(datasetSyncServiceProvider.future);
+  if (service == null) {
+    return null;
+  }
+  await ref.read(bundledRestrictionsProvider.future);
+  return service.sync();
+});
+
+final tripCameraPackSnapshotProvider = FutureProvider<TripCameraPackSnapshot>((
+  ref,
+) {
+  return loadTripCameraPackSnapshot(rootBundle);
 });
 
 final homeBannerCampaignProvider = FutureProvider<HomeBannerCampaign?>((
@@ -326,4 +427,23 @@ Future<void> _tryCancelPicoNotifications(Ref ref) async {
   } on MissingPluginException {
     return;
   }
+}
+
+void _validateProductDatasetConfig(AppConfig config) {
+  final cdn = config.cdnBaseUri;
+  final manifest = config.manifestUri;
+  if (cdn.scheme != 'https' || manifest.scheme != 'https') {
+    throw ArgumentError('CDN_BASE_URL and MANIFEST_URL must use HTTPS.');
+  }
+  if (cdn.host != manifest.host ||
+      _effectiveUriPort(cdn) != _effectiveUriPort(manifest)) {
+    throw ArgumentError('MANIFEST_URL must use the CDN_BASE_URL origin.');
+  }
+}
+
+int _effectiveUriPort(Uri uri) {
+  if (uri.hasPort) {
+    return uri.port;
+  }
+  return uri.scheme == 'https' ? 443 : 80;
 }

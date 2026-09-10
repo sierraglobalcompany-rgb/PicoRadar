@@ -3,6 +3,8 @@ import '../domain/driving_alert_engine.dart';
 
 const _profileKey = 'driving.alert.profile';
 const _voiceKey = 'driving.alert.voice';
+const _tollAlertsKey = 'driving.alert.tolls';
+const _visualAlertsKey = 'driving.alert.visual';
 const _soundKey = 'driving.alert.sound';
 const _vibrationKey = 'driving.alert.vibration';
 const _customThresholdsKey = 'driving.alert.customThresholds';
@@ -33,10 +35,14 @@ class DrivingPreferences {
     required this.hudMirrorEnabled,
     required this.cameraTargetingConeDegrees,
     required this.cameraVisualizationMode,
+    this.tollAlertsEnabled = false,
+    this.visualAlertsEnabled = false,
   });
 
   final DrivingAlertProfile profile;
   final bool voiceEnabled;
+  final bool tollAlertsEnabled;
+  final bool visualAlertsEnabled;
   final bool soundEnabled;
   final bool vibrationEnabled;
   final List<int> customThresholdsMeters;
@@ -53,6 +59,8 @@ class DrivingPreferences {
   DrivingPreferences copyWith({
     DrivingAlertProfile? profile,
     bool? voiceEnabled,
+    bool? tollAlertsEnabled,
+    bool? visualAlertsEnabled,
     bool? soundEnabled,
     bool? vibrationEnabled,
     List<int>? customThresholdsMeters,
@@ -63,6 +71,8 @@ class DrivingPreferences {
     return DrivingPreferences(
       profile: profile ?? this.profile,
       voiceEnabled: voiceEnabled ?? this.voiceEnabled,
+      tollAlertsEnabled: tollAlertsEnabled ?? this.tollAlertsEnabled,
+      visualAlertsEnabled: visualAlertsEnabled ?? this.visualAlertsEnabled,
       soundEnabled: soundEnabled ?? this.soundEnabled,
       vibrationEnabled: vibrationEnabled ?? this.vibrationEnabled,
       customThresholdsMeters:
@@ -100,6 +110,8 @@ Future<DrivingPreferences> loadDrivingPreferences(
       orElse: () => DrivingAlertProfile.normal,
     ),
     voiceEnabled: await preferences.getBool(_voiceKey) ?? true,
+    tollAlertsEnabled: await preferences.getBool(_tollAlertsKey) ?? false,
+    visualAlertsEnabled: await preferences.getBool(_visualAlertsKey) ?? false,
     soundEnabled: await preferences.getBool(_soundKey) ?? true,
     vibrationEnabled: await preferences.getBool(_vibrationKey) ?? true,
     customThresholdsMeters: customThresholds,
@@ -119,6 +131,8 @@ Future<void> saveDrivingPreferences(
 ) async {
   await preferences.setString(_profileKey, value.profile.name);
   await preferences.setBool(_voiceKey, value.voiceEnabled);
+  await preferences.setBool(_tollAlertsKey, value.tollAlertsEnabled);
+  await preferences.setBool(_visualAlertsKey, value.visualAlertsEnabled);
   await preferences.setBool(_soundKey, value.soundEnabled);
   await preferences.setBool(_vibrationKey, value.vibrationEnabled);
   await preferences.setBool(_hudMirrorKey, value.hudMirrorEnabled);

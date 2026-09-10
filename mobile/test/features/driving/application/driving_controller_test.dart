@@ -18,6 +18,33 @@ import '../../../test_app_harness.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('disabled simulation requests never fall back to real GPS', () async {
+    if (canUseDebugDrivingSimulation) return;
+    final gateway = _FakeDrivingLocationGateway();
+    final container = ProviderContainer(
+      overrides: [
+        appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+        cameraPackProvider.overrideWith((ref) async => _pack()),
+        drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingFeedbackGatewayProvider.overrideWithValue(
+          _FakeDrivingFeedbackGateway(),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(drivingControllerProvider.future);
+    final controller = container.read(drivingControllerProvider.notifier);
+    await controller.start(simulated: true);
+    expect(gateway.requestPermissionCalls, 0);
+    expect(gateway.listenCalls, 0);
+    expect(container.read(drivingControllerProvider).value!.isActive, isFalse);
+    await controller.start(
+      simulationScenario: DrivingSimulationScenario.knownSpeed,
+    );
+    expect(gateway.requestPermissionCalls, 0);
+    expect(gateway.listenCalls, 0);
+  });
+
   test(
     'requests location only when the driver starts a foreground session',
     () async {
@@ -70,9 +97,12 @@ void main() {
       final state = container.read(drivingControllerProvider).value!;
       expect(state.nearestCamera, isNotNull);
       expect(state.speedKmh, 42);
-      expect(state.speedState, DrivingSpeedState.within);
+      expect(state.speedState, DrivingSpeedState.unknownReportedSpeed);
       expect(feedback.spokenMessages.single, contains('500 metros'));
-      expect(feedback.spokenMessages.single, contains('Velocidad reportada'));
+      expect(
+        feedback.spokenMessages.single,
+        'Cámara a 500 metros. Respeta la señalización de la vía.',
+      );
       expect(feedback.soundCalls, 1);
       expect(feedback.vibrationCalls, 1);
 
@@ -117,6 +147,68 @@ void main() {
     expect(state.lastAlert, isNull);
     expect(feedback.spokenMessages, isEmpty);
   });
+
+  test(
+    'visual camera pulse fires once per crossed threshold without audio',
+    () async {
+      final gateway = _FakeDrivingLocationGateway();
+      final feedback = _FakeDrivingFeedbackGateway();
+      final container = ProviderContainer(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+        ],
+      );
+      addTearDown(container.dispose);
+      final controller = container.read(drivingControllerProvider.notifier);
+      await container.read(drivingControllerProvider.future);
+      await controller.savePreferences(
+        defaultDrivingPreferences.copyWith(
+          visualAlertsEnabled: true,
+          voiceEnabled: false,
+          soundEnabled: false,
+          vibrationEnabled: false,
+        ),
+      );
+      await controller.start();
+
+      gateway.add(_point(latitude: 6.239, speedKmh: 50, seconds: 0));
+      await _flushController();
+      gateway.add(_point(latitude: 6.241, speedKmh: 50, seconds: 20));
+      await _flushController();
+      final firstPulse = container
+          .read(drivingControllerProvider)
+          .value!
+          .visualAlertPulseKey;
+      expect(firstPulse, isNotNull);
+      expect(feedback.spokenMessages, isEmpty);
+      expect(feedback.soundCalls, 0);
+      expect(feedback.vibrationCalls, 0);
+
+      gateway.add(_point(latitude: 6.2411, speedKmh: 50, seconds: 21));
+      await _flushController();
+      expect(
+        container.read(drivingControllerProvider).value!.visualAlertPulseKey,
+        firstPulse,
+      );
+
+      gateway.add(_point(latitude: 6.242, speedKmh: 50, seconds: 40));
+      await _flushController();
+      expect(
+        container.read(drivingControllerProvider).value!.visualAlertPulseKey,
+        isNot(firstPulse),
+      );
+
+      gateway.add(_point(latitude: 6.252, speedKmh: 50, seconds: 70));
+      await _flushController();
+      expect(
+        container.read(drivingControllerProvider).value!.visualAlertPulseKey,
+        isNull,
+      );
+    },
+  );
 
   test(
     'poor GPS accuracy keeps speed but blocks camera alert stages',
@@ -164,7 +256,7 @@ void main() {
   );
 
   test(
-    'continuous speed state updates while the camera episode persists',
+    'ANSV detail never produces numeric comparison or delta haptics',
     () async {
       final gateway = _FakeDrivingLocationGateway();
       final feedback = _FakeDrivingFeedbackGateway();
@@ -185,22 +277,27 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(
         container.read(drivingControllerProvider).value!.speedState,
-        DrivingSpeedState.within,
+        DrivingSpeedState.unknownReportedSpeed,
       );
 
       gateway.add(_point(latitude: 6.242, speedKmh: 70, seconds: 21));
       await Future<void>.delayed(Duration.zero);
       expect(
         container.read(drivingControllerProvider).value!.speedState,
-        DrivingSpeedState.over,
+        DrivingSpeedState.unknownReportedSpeed,
       );
 
       gateway.add(_point(latitude: 6.243, speedKmh: 54, seconds: 22));
       await Future<void>.delayed(Duration.zero);
       expect(
         container.read(drivingControllerProvider).value!.speedState,
-        DrivingSpeedState.within,
+        DrivingSpeedState.unknownReportedSpeed,
       );
+      final current = container.read(drivingControllerProvider).value!;
+      expect(current.reportedCameraSpeedKmh, 60);
+      expect(current.speedDeltaKmh, 0);
+      expect(current.isOverspeeding, isFalse);
+      expect(feedback.vibrationCalls, 1);
     },
   );
 
@@ -233,6 +330,46 @@ void main() {
       isNot(contains('Velocidad reportada')),
     );
   });
+
+  test(
+    '360 visual episode stays stable without speech and respects dismissal',
+    () async {
+      final gateway = _FakeDrivingLocationGateway();
+      final feedback = _FakeDrivingFeedbackGateway();
+      final container = ProviderContainer(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+        ],
+      );
+      addTearDown(container.dispose);
+      final controller = container.read(drivingControllerProvider.notifier);
+      await container.read(drivingControllerProvider.future);
+      await controller.savePreferences(
+        defaultDrivingPreferences.copyWith(cameraTargetingConeDegrees: 360),
+      );
+      await controller.start();
+      gateway.add(_point(latitude: 6.2442, speedKmh: 50, seconds: 0));
+      await _flushController();
+      gateway.add(_point(latitude: 6.2444, speedKmh: 50, seconds: 1));
+      await _flushController();
+      final first = container.read(drivingControllerProvider).value!;
+      expect(first.nearestCamera!.approaching, isFalse);
+      expect(first.showCameraAlertPanel, isTrue);
+      expect(first.cameraEpisodeKey, isNotNull);
+      await controller.dismissCurrentCameraAlert();
+      gateway.add(_point(latitude: 6.2446, speedKmh: 50, seconds: 2));
+      await _flushController();
+      final next = container.read(drivingControllerProvider).value!;
+      expect(next.cameraEpisodeKey, first.cameraEpisodeKey);
+      expect(next.showCameraAlertPanel, isFalse);
+      expect(feedback.spokenMessages, isEmpty);
+      expect(feedback.vibrationCalls, 0);
+      await controller.stop();
+    },
+  );
 
   test('manual dismissal silences feedback through transient no-match and rearms later', () async {
     final gateway = _FakeDrivingLocationGateway();
@@ -587,7 +724,7 @@ void main() {
       gateway.add(_point(latitude: 6.243, speedKmh: 74, seconds: 22));
       await _flushController();
 
-      expect(container.read(drivingControllerProvider).value!.speedKmh, 50);
+      expect(container.read(drivingControllerProvider).value!.speedKmh, 74);
       feedback.releaseBlockedSpeak();
       await _flushController();
 
@@ -738,6 +875,69 @@ void main() {
     expect(feedback.keepScreenOnStates.where((value) => !value), isNotEmpty);
     expect(feedback.stopOngoingFeedbackCalls, greaterThanOrEqualTo(1));
   });
+
+  for (final restartBeforeCleanup in [false, true]) {
+    test(
+      'cancelled start cleanup cannot disable restart (starting before cleanup: $restartBeforeCleanup)',
+      () async {
+        final gateway = _ControllableStartGateway(
+          checkPermissionResult: DeviceLocationPermission.denied,
+        );
+        final feedback = _ControllableDrivingFeedbackGateway()
+          ..blockNextKeepScreenOnEnable();
+        final container = ProviderContainer(
+          overrides: [
+            appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+            cameraPackProvider.overrideWith((ref) async => _pack()),
+            drivingLocationGatewayProvider.overrideWithValue(gateway),
+            drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+          ],
+        );
+        addTearDown(container.dispose);
+        addTearDown(feedback.releaseBlockedStopOngoingFeedback);
+        await container.read(drivingControllerProvider.future);
+        final controller = container.read(drivingControllerProvider.notifier);
+        final firstStart = controller.start();
+        await gateway.waitForRequestPermission();
+        gateway.completeRequestPermission(DeviceLocationPermission.granted);
+        await feedback.waitForBlockedKeepScreenOnEnable();
+        await controller.stop();
+
+        Future<void>? restart;
+        if (restartBeforeCleanup) {
+          restart = controller.start();
+          await _flushController();
+          expect(
+            container.read(drivingControllerProvider).value!.status,
+            DrivingSessionStatus.starting,
+          );
+        }
+        feedback.blockNextStopOngoingFeedback();
+        feedback.releaseBlockedKeepScreenOnEnable();
+        await _flushController();
+        final cleanupCalls = feedback.stopOngoingFeedbackCalls;
+        restart ??= controller.start();
+        await _flushController();
+        gateway.completeRequestPermission(DeviceLocationPermission.granted);
+        await restart;
+        final screenBeforeRelease = [...feedback.keepScreenOnStates];
+        expect(screenBeforeRelease, [true, false, true]);
+
+        feedback.releaseBlockedStopOngoingFeedback();
+        await firstStart;
+        await _flushController();
+        expect(
+          container.read(drivingControllerProvider).value!.isActive,
+          isTrue,
+        );
+        expect(gateway.listenCalls, 1);
+        expect(feedback.keepScreenOnStates, screenBeforeRelease);
+        expect(cleanupCalls, restartBeforeCleanup ? 1 : 2);
+        await controller.stop();
+        expect(feedback.keepScreenOnStates.last, isFalse);
+      },
+    );
+  }
 
   test('double start while starting creates only one subscription', () async {
     final gateway = _ControllableStartGateway(
@@ -1055,10 +1255,32 @@ class _FakeDrivingFeedbackGateway implements DrivingFeedbackGateway {
 }
 
 class _ControllableDrivingFeedbackGateway extends _FakeDrivingFeedbackGateway {
+  Completer<void>? _blockedStopOngoingFeedback;
   Completer<void>? _blockedSpeak;
   Completer<void>? _speakStarted;
   Completer<void>? _blockedKeepScreenOnEnable;
   Completer<void>? _keepScreenOnEnableStarted;
+
+  void blockNextStopOngoingFeedback() {
+    _blockedStopOngoingFeedback = Completer<void>();
+  }
+
+  void releaseBlockedStopOngoingFeedback() {
+    final blocked = _blockedStopOngoingFeedback;
+    if (blocked != null && !blocked.isCompleted) blocked.complete();
+  }
+
+  @override
+  Future<void> stopOngoingFeedback() async {
+    stopOngoingFeedbackCalls += 1;
+    final blocked = _blockedStopOngoingFeedback;
+    if (blocked != null) {
+      await blocked.future;
+      if (identical(_blockedStopOngoingFeedback, blocked)) {
+        _blockedStopOngoingFeedback = null;
+      }
+    }
+  }
 
   void blockNextSpeak() {
     _blockedSpeak = Completer<void>();

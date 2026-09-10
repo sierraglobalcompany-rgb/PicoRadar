@@ -36,14 +36,14 @@ sufficient to call it the legal road speed limit.
 Product copy must therefore avoid `limite legal` unless a later official source
 explicitly defines the field that way.
 
-Approved runtime wording for D01-FIX3:
+Historical wording for D01-FIX3 (superseded by the owner decision below):
 
 - `Velocidad reportada`
 - `Velocidad ANSV`
 - `Velocidad de control reportada`
 - `Valor reportado`
 
-## Current Pack Coverage
+## Historical D01-FIX3 Pack Coverage
 
 The D01-FIX3 runtime pack remains APPROVED-only.
 
@@ -66,12 +66,18 @@ Known speed value distribution:
 
 ## Runtime Rule
 
-When a camera has `speedLimitKmh`, Conducir may compare current speed against
-that ANSV reported value and must present it as a reported/control speed.
+Owner decision, 2026-09-09: the ANSV value is informational and appears only
+in camera details as `Velocidad reportada por ANSV`, together with its source
+and snapshot date. Missing values read `No informada`. The runtime pack now
+contains 360 cameras; the counts above describe the historical audit only.
 
-When a camera has `speedLimitKmh = null`, Conducir must still show the camera
-distance and source, but must not invent a number or claim overspeed.
+The field must not drive a speed-limit sign, numeric excess, gauge color or
+pulse, overspeed vibration, or a spoken instruction to reduce speed. This
+applies even when the measured vehicle speed exceeds the reported value.
 
-The D01-FIX3 visual hysteresis margin is only a UI/alert stability guard against
-GPS speed jitter. It is not a legal tolerance, camera tolerance, or allowed
-tolerance, and must not be described that way to users.
+Details must explain: `Este dato no confirma el limite vigente de esta via.
+Respeta la senalizacion` (localized with Spanish accents in the application).
+The proximity message is `Camara a [distancia] metros. Respeta la senalizacion
+de la via`. No new verified-limit mechanism is introduced. Existing dataset
+fields remain compatible and unchanged; camera approval is not verification
+of the current speed limit, road, carriageway or direction of travel.

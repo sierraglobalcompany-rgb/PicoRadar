@@ -51,6 +51,8 @@ class DatasetPublisherTest extends TestCase
         $manifest = json_decode(Storage::disk('public')->get('manifest/v1/manifest.json'), true);
         $this->assertSame(['schemaVersion', 'generatedAt', 'minAppVersion', 'datasets', 'features'], array_keys($manifest));
         $this->assertSame($first->version, $manifest['datasets']['restrictions']['version']);
+        $this->assertSame(3, $manifest['datasets']['restrictions']['publicationRevision'] ?? null);
+        $this->assertSame(3, $dataset->refresh()->publication_revision);
         $this->assertSame('/storage/'.$first->asset_path, $manifest['datasets']['restrictions']['url']);
         $this->assertSame($first->sha256, $manifest['datasets']['restrictions']['sha256']);
         $this->assertFalse($manifest['features']['ads']);

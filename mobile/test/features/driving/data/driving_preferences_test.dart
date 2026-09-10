@@ -11,6 +11,8 @@ void main() {
 
     expect(loaded.cameraVisualizationMode, CameraVisualizationMode.auto);
     expect(loaded.cameraTargetingConeDegrees, 90);
+    expect(loaded.tollAlertsEnabled, isFalse);
+    expect(loaded.visualAlertsEnabled, isFalse);
   });
 
   test('persists camera visualization mode and preserves saved cone', () async {
@@ -18,6 +20,8 @@ void main() {
     final value = defaultDrivingPreferences.copyWith(
       cameraVisualizationMode: CameraVisualizationMode.radar,
       cameraTargetingConeDegrees: 180,
+      tollAlertsEnabled: true,
+      visualAlertsEnabled: true,
     );
 
     await saveDrivingPreferences(preferences, value);
@@ -25,5 +29,23 @@ void main() {
 
     expect(loaded.cameraVisualizationMode, CameraVisualizationMode.radar);
     expect(loaded.cameraTargetingConeDegrees, 180);
+    expect(loaded.tollAlertsEnabled, isTrue);
+    expect(loaded.visualAlertsEnabled, isTrue);
+    await saveDrivingPreferences(
+      preferences,
+      loaded.copyWith(tollAlertsEnabled: false),
+    );
+    expect(
+      (await loadDrivingPreferences(preferences)).tollAlertsEnabled,
+      isFalse,
+    );
+    await saveDrivingPreferences(
+      preferences,
+      loaded.copyWith(visualAlertsEnabled: false),
+    );
+    expect(
+      (await loadDrivingPreferences(preferences)).visualAlertsEnabled,
+      isFalse,
+    );
   });
 }

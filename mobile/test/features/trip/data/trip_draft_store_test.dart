@@ -8,6 +8,39 @@ import 'package:picoradar/features/trip/domain/trip_draft.dart';
 import '../../../test_app_harness.dart';
 
 void main() {
+  test('VIAJE-R1 preserves explicit time through existing draft JSON', () {
+    final draft = TripDraft.fromJson({
+      'origin': 'Bogota',
+      'destination': 'Medellin',
+      'date': '2026-09-06',
+      'departureMinute': 1385,
+    });
+    expect(draft.toJson()['departureMinute'], 1385);
+  });
+
+  test('VIAJE-R1 old drafts do not silently acquire midnight', () {
+    final draft = TripDraft.fromJson({
+      'origin': 'Bogota',
+      'destination': 'Medellin',
+      'date': '2026-09-06',
+    });
+    expect(draft.toJson()['departureMinute'], isNull);
+    expect(draft.toJson()['vehicleConfiguration'], 'standard_two_axle');
+    expect(draft.toJson()['vehicleCategorySource'], 'default_standard');
+  });
+
+  test('advanced vehicle configuration persists only in the trip draft', () {
+    final draft = TripDraft.fromJson({
+      'origin': 'Bogota',
+      'destination': 'Medellin',
+      'date': '2026-09-07',
+      'vehicleConfiguration': 'unsupported',
+      'vehicleCategorySource': 'user_selected',
+    });
+
+    expect(draft.toJson()['vehicleConfiguration'], 'unsupported');
+    expect(draft.toJson()['vehicleCategorySource'], 'user_selected');
+  });
   group('TripDraftStore', () {
     late MemoryPreferences preferences;
     late TripDraftStore store;

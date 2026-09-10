@@ -13,12 +13,81 @@ import '../../../test_app_harness.dart';
 void main() {
   late TestAppHarness harness;
 
-  setUp(() {
+  setUp(() async {
     harness = TestAppHarness();
+    await harness.preferences.setString(
+      picoJurisdictionPreferenceKey,
+      'co-ant-medellin',
+    );
   });
 
   tearDown(() async {
     await harness.dispose();
+  });
+
+  testWidgets('explicit city is consulted without changing global preference', (
+    tester,
+  ) async {
+    final store = _WeeklyRestrictionStore(harness.database);
+    await _pumpCityPico(
+      tester,
+      harness,
+      store: store,
+      transientJurisdictionId: 'co-dc-bogota',
+    );
+
+    expect(find.byKey(const ValueKey('pico-city-screen')), findsOneWidget);
+    expect(find.text('Bogotá'), findsWidgets);
+    expect(find.text('Medellín'), findsNothing);
+    expect(find.byKey(const ValueKey('pico-city-adopt')), findsOneWidget);
+    expect(store.requestedJurisdictions, isNotEmpty);
+    expect(store.requestedJurisdictions, everyElement('co-dc-bogota'));
+    expect(
+      await harness.preferences.getString(picoJurisdictionPreferenceKey),
+      'co-ant-medellin',
+    );
+  });
+
+  for (final invalidId in ['unknown-city', '']) {
+    testWidgets('invalid explicit city "$invalidId" does not fall back', (
+      tester,
+    ) async {
+      final store = _WeeklyRestrictionStore(harness.database);
+      await _pumpCityPico(
+        tester,
+        harness,
+        store: store,
+        transientJurisdictionId: invalidId,
+      );
+
+      expect(find.text('No reconocemos la ciudad solicitada.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('pico-city-screen')), findsNothing);
+      expect(store.requestedJurisdictions, isEmpty);
+      expect(
+        await harness.preferences.getString(picoJurisdictionPreferenceKey),
+        'co-ant-medellin',
+      );
+    });
+  }
+
+  testWidgets('ordinary city view uses the saved global preference', (
+    tester,
+  ) async {
+    await harness.preferences.setString(
+      picoJurisdictionPreferenceKey,
+      'co-dc-bogota',
+    );
+    final store = _WeeklyRestrictionStore(harness.database);
+    await _pumpCityPico(tester, harness, store: store);
+
+    expect(find.text('Bogotá'), findsWidgets);
+    expect(find.byKey(const ValueKey('pico-city-adopt')), findsNothing);
+    expect(store.requestedJurisdictions, isNotEmpty);
+    expect(store.requestedJurisdictions, everyElement('co-dc-bogota'));
+    expect(
+      await harness.preferences.getString(picoJurisdictionPreferenceKey),
+      'co-dc-bogota',
+    );
   });
 
   testWidgets(
@@ -333,9 +402,6 @@ Future<void> _pumpCityPico(
             RestrictionJurisdiction(id: 'co-dc-bogota', name: 'Bogotá'),
           ],
         ),
-        selectedPicoJurisdictionIdProvider.overrideWith(
-          (ref) async => 'co-ant-medellin',
-        ),
         vehicleListProvider.overrideWith(
           (ref) async => vehicle == null ? const [] : [vehicle],
         ),
@@ -358,6 +424,8 @@ Future<void> _pumpCityPico(
 class _WeeklyRestrictionStore extends RestrictionStore {
   _WeeklyRestrictionStore(super.database);
 
+  final requestedJurisdictions = <String>[];
+
   @override
   Future<RestrictionRuleSet> loadCoverage(
     String jurisdictionId,
@@ -365,6 +433,7 @@ class _WeeklyRestrictionStore extends RestrictionStore {
     VehicleServiceType serviceType,
     DateTime now,
   ) async {
+    requestedJurisdictions.add(jurisdictionId);
     final motorcycle = vehicleKind == VehicleKind.motorcycle;
     return RestrictionRuleSet(
       coverageKnown: true,

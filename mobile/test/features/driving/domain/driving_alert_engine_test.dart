@@ -158,7 +158,7 @@ void main() {
     },
   );
 
-  test('marks overspeed only when official speed limit is present', () {
+  test('ANSV amounts remain metadata and never produce overspeed', () {
     final engine = DrivingAlertEngine();
 
     final withLimit = engine.evaluate(
@@ -183,14 +183,19 @@ void main() {
       now: DateTime.utc(2026, 8, 31, 12),
     );
 
-    expect(withLimit!.overspeed, isTrue);
+    expect(withLimit!.overspeed, isFalse);
+    expect(withLimit.title, 'Cámara cerca');
+    expect(
+      withLimit.message,
+      'Cámara a 100 metros. Respeta la señalización de la vía.',
+    );
     expect(withLimit.currentSpeedKmh, 50);
     expect(withLimit.reportedSpeedKmh, 40);
     expect(withoutLimit!.overspeed, isFalse);
     expect(withoutLimit.reportedSpeedKmh, isNull);
   });
 
-  test('speed comparison documents the 3 km/h visual hysteresis', () {
+  test('no speed delta can enable an ANSV overspeed alert', () {
     final camera = _camera(speedLimitKmh: 60);
 
     bool overspeedAt(double speed) {
@@ -211,7 +216,8 @@ void main() {
     expect(overspeedAt(50), isFalse);
     expect(overspeedAt(60), isFalse);
     expect(overspeedAt(62), isFalse);
-    expect(overspeedAt(70), isTrue);
+    expect(overspeedAt(70), isFalse);
+    expect(overspeedAt(150), isFalse);
   });
 
   test('null and red light without speed never claim overspeed', () {
