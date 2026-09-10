@@ -1,5 +1,22 @@
 # PicoRadar Current State
 
+## Performance KISS audit and implementation 2026-09-10
+
+`codex/app-performance-kiss` starts from `d2bb976` and targets
+`codex/home-owner-responsive`, without merge. Scope: measured startup,
+progressive Home, bounded and correctly invalidated local work, and proven
+unused-code cleanup. The approved visual layouts, GPS ownership, camera/toll
+semantics, private cleanup and local data contracts remain authoritative.
+
+The instrumented baseline distinguishes Android TTID, Flutter first frame,
+critical data and Home content frames. Physical release testing exposed a
+pre-Flutter Room/WorkManager constructor removal by R8; the scoped native fix
+must pass an optimized APK test, not only compilation or Flutter unit tests.
+Evidence, actual before/after measurements, incomplete targets and final gate
+results belong to `temp/APP_PERFORMANCE_KISS/INFORME_RENDIMIENTO.md`.
+This in-progress note does not certify release readiness or global fluency.
+No backend, schema, permission, new dependency or framework change is allowed.
+
 ## Inicio/Garaje/Pico audit followup 2026-09-10
 
 PR #63 remains scoped to Home and its audited Garage/Pico/location interactions,
