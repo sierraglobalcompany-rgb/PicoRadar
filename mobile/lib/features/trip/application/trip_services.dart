@@ -42,6 +42,13 @@ final tripRestrictionProvider = FutureProvider.autoDispose
         );
       }
       final clock = ref.watch(tripRestrictionClockProvider);
+      await ref.watch(bundledRestrictionsProvider.future);
+      if (!ref.mounted) {
+        return const TripEndpointRestriction(
+          status: RestrictionDayStatus.unknown,
+          sourceUrl: null,
+        );
+      }
       final ruleSet = await ref
           .watch(restrictionStoreProvider)
           .loadCoverage(
@@ -108,6 +115,15 @@ final tripInstantRestrictionProvider = FutureProvider.autoDispose
           jurisdictionId.isNotEmpty) {
         final store = ref.watch(restrictionStoreProvider);
         try {
+          await ref.watch(bundledRestrictionsProvider.future);
+          if (!ref.mounted) {
+            return TripEndpointRestriction(
+              status: RestrictionDayStatus.unknown,
+              instantStatus: RestrictionStatus.unknown,
+              reason: 'load_error',
+              evaluatedAtUtc: instantUtc,
+            );
+          }
           ruleSet = await store.loadCoverage(
             jurisdictionId,
             vehicle.kind,

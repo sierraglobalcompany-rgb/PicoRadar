@@ -206,6 +206,114 @@ void main() {
   );
 
   testWidgets(
+    'performance: unchanged camera reuses tiles without rebuilding TileLayer',
+    (tester) async {
+      final provider = _ControlledTiles();
+      addTearDown(provider.release);
+      await tester.pumpWidget(_host(provider));
+      await _frames(tester);
+      provider.completeAll();
+      await _frames(tester);
+      expect(find.byKey(_radarKey), findsNothing);
+      final original = tester.widget<TileLayer>(find.byType(TileLayer));
+      final requests = provider.requests.length;
+      var builds = 0;
+      final previousCallback = debugOnRebuildDirtyWidget;
+      addTearDown(() => debugOnRebuildDirtyWidget = previousCallback);
+      debugOnRebuildDirtyWidget = (element, builtOnce) {
+        if (element.widget is TileLayer) builds++;
+        previousCallback?.call(element, builtOnce);
+      };
+
+      for (var update = 0; update < 3; update++) {
+        await tester.pumpWidget(_host(provider));
+        await _frames(tester);
+      }
+      expect(
+        builds,
+        0,
+        reason: 'Parent updates with identical camera must not rebuild tiles.',
+      );
+      expect(tester.widget<TileLayer>(find.byType(TileLayer)), same(original));
+      expect(provider.requests.length, requests);
+      expect(find.byKey(_radarKey), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'performance: covered GPS movement reuses TileLayer but updates camera',
+    (tester) async {
+      final provider = _ControlledTiles();
+      addTearDown(provider.release);
+      await tester.pumpWidget(_host(provider));
+      await _frames(tester);
+      provider.completeAll();
+      await _frames(tester);
+      final original = tester.widget<TileLayer>(find.byType(TileLayer));
+      final controller = tester
+          .widget<FlutterMap>(find.byKey(_mapKey))
+          .mapController!;
+      final center = controller.camera.center;
+      final requests = provider.requests.length;
+
+      await tester.pumpWidget(
+        _host(provider, point: _point(latitude: 6.25001)),
+      );
+      await _frames(tester);
+      expect(controller.camera.center, isNot(center));
+      expect(find.byKey(_radarKey), findsNothing);
+      expect(provider.requests.length, requests);
+      final next = tester.widget<TileLayer>(find.byType(TileLayer));
+      expect(next, same(original));
+      expect(next.tileBuilder, same(original.tileBuilder));
+      expect(next.errorTileCallback, same(original.errorTileCallback));
+      await _expectTilePixels(tester);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  for (final change in ['episode', 'retry', 'url', 'userAgent', 'provider']) {
+    testWidgets('performance: $change replaces the captured tile layer', (
+      tester,
+    ) async {
+      final provider = _ControlledTiles();
+      addTearDown(provider.release);
+      await tester.pumpWidget(_host(provider));
+      await _frames(tester);
+      provider.completeAll();
+      await _frames(tester);
+      final original = tester.widget<TileLayer>(find.byType(TileLayer));
+      final nextProvider = change == 'provider' ? _ControlledTiles() : provider;
+      if (change == 'provider') addTearDown(nextProvider.release);
+
+      await tester.pumpWidget(
+        _host(
+          nextProvider,
+          episode: change == 'episode' ? 'toll:2' : 'toll:1',
+          retryToken: change == 'retry' ? 1 : 0,
+          tileUrlTemplate: change == 'url'
+              ? 'https://alternate.invalid/{z}/{x}/{y}'
+              : 'https://tiles.invalid/{z}/{x}/{y}',
+          userAgent: change == 'userAgent'
+              ? 'test.alternate'
+              : 'test.picoradar',
+        ),
+      );
+      await _frames(tester);
+      final next = tester.widget<TileLayer>(find.byType(TileLayer));
+      expect(next, isNot(same(original)));
+      expect(next.key, isNot(original.key));
+      expect(next.tileBuilder, isNot(same(original.tileBuilder)));
+      expect(next.errorTileCallback, isNot(same(original.errorTileCallback)));
+      nextProvider.completeAll();
+      await _frames(tester);
+      expect(find.byKey(_radarKey), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
+  testWidgets(
     'half coverage never exposes map; GPS updates cannot reset deadline',
     (tester) async {
       final provider = _ControlledTiles();
@@ -276,10 +384,19 @@ void main() {
       provider.completeAll();
       await _frames(tester);
       final original = tester.state(find.byKey(_mapKey));
+      final oldLayer = tester.widget<TileLayer>(find.byType(TileLayer));
       await tester.pumpWidget(
         _host(provider, heading: 45, target: _target(heading: 45)),
       );
       await _frames(tester);
+      final nextLayer = tester.widget<TileLayer>(find.byType(TileLayer));
+      expect(nextLayer, isNot(same(oldLayer)));
+      expect(nextLayer.key, oldLayer.key);
+      expect(nextLayer.tileBuilder, isNot(same(oldLayer.tileBuilder)));
+      expect(
+        nextLayer.errorTileCallback,
+        isNot(same(oldLayer.errorTileCallback)),
+      );
       expect(identical(original, tester.state(find.byKey(_mapKey))), isTrue);
       expect(find.byKey(_radarKey), findsOneWidget);
       provider.completeAll();
@@ -513,6 +630,9 @@ Widget _host(
   CameraVisualizationMode mode = CameraVisualizationMode.auto,
   Size size = const Size(390, 270),
   double textScale = 1,
+  int retryToken = 0,
+  String tileUrlTemplate = 'https://tiles.invalid/{z}/{x}/{y}',
+  String userAgent = 'test.picoradar',
 }) => MaterialApp(
   builder: (context, child) => MediaQuery(
     data: MediaQuery.of(context)
@@ -532,13 +652,14 @@ Widget _host(
             reliableHeadingDegrees: heading,
             targetingConeDegrees: 90,
             episodeKey: episode,
+            retryToken: retryToken,
             visualizationMode: mode,
             alertColor: Colors.orange,
             height: size.height,
             config: DrivingMapConfig(
-              tileUrlTemplate: 'https://tiles.invalid/{z}/{x}/{y}',
+              tileUrlTemplate: tileUrlTemplate,
               attributionLabel: 'Controlled test tiles',
-              userAgentPackageName: 'test.picoradar',
+              userAgentPackageName: userAgent,
               forceOfflineFallback: false,
               tileProvider: provider,
             ),

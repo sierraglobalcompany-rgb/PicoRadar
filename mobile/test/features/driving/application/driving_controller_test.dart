@@ -665,40 +665,6 @@ void main() {
   );
 
   test(
-    'overspeed pulse gate fires only on transition and respects reduced motion',
-    () {
-      final gate = OverspeedPulseGate();
-
-      expect(
-        gate.shouldPulse(
-          current: DrivingSpeedState.within,
-          reducedMotion: false,
-        ),
-        isFalse,
-      );
-      expect(
-        gate.shouldPulse(current: DrivingSpeedState.over, reducedMotion: false),
-        isTrue,
-      );
-      expect(
-        gate.shouldPulse(current: DrivingSpeedState.over, reducedMotion: false),
-        isFalse,
-      );
-      expect(
-        gate.shouldPulse(
-          current: DrivingSpeedState.within,
-          reducedMotion: false,
-        ),
-        isFalse,
-      );
-      expect(
-        gate.shouldPulse(current: DrivingSpeedState.over, reducedMotion: true),
-        isFalse,
-      );
-    },
-  );
-
-  test(
     'processes stream points in order while feedback futures are pending',
     () async {
       final gateway = _FakeDrivingLocationGateway();

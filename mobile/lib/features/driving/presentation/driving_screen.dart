@@ -2198,11 +2198,13 @@ class _SpeedGauge extends StatelessWidget {
             key: gaugeKey,
             width: diameter,
             height: diameter,
-            child: CustomPaint(
-              painter: _SpeedRingPainter(
-                color: AppColors.teal,
-                speedKmh: state.speedKmh,
-                fontFamily: DefaultTextStyle.of(context).style.fontFamily,
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: _SpeedRingPainter(
+                  color: AppColors.teal,
+                  speedKmh: state.speedKmh,
+                  fontFamily: DefaultTextStyle.of(context).style.fontFamily,
+                ),
               ),
             ),
           ),

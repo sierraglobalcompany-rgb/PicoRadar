@@ -97,6 +97,8 @@ class TripRoutePreviewMap extends StatefulWidget {
 class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
   late final MapController _mapController;
   late final bool _ownsController;
+  late List<LatLng> _coordinates;
+  late Widget _routeLayer;
   Timer? _tileTimer;
   var _showRoute = true;
   var _showTolls = true;
@@ -111,6 +113,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
     super.initState();
     _ownsController = widget.mapController == null;
     _mapController = widget.mapController ?? MapController();
+    _cacheRouteGeometry();
     _startTileTimer();
   }
 
@@ -120,6 +123,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
     final routeChanged =
         oldWidget.routeId != widget.routeId ||
         !identical(oldWidget.geometry, widget.geometry);
+    if (routeChanged) _cacheRouteGeometry();
     final tollDatasetChanged =
         oldWidget.tollInventory.version != widget.tollInventory.version ||
         oldWidget.tollTariffCatalog?.version !=
@@ -312,10 +316,26 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
         'vía y sentido no confirmados.';
   }
 
-  Widget _buildMap(BuildContext context) {
-    final coordinates = widget.geometry
+  void _cacheRouteGeometry() {
+    _coordinates = widget.geometry
         .map((point) => LatLng(point.latitude, point.longitude))
         .toList(growable: false);
+    _routeLayer = PolylineLayer(
+      key: const ValueKey('trip-route-polyline'),
+      polylines: [
+        Polyline(
+          points: _coordinates,
+          color: AppColors.teal,
+          strokeWidth: 5,
+          borderColor: Colors.white,
+          borderStrokeWidth: 2,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMap(BuildContext context) {
+    final coordinates = _coordinates;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -364,19 +384,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
                   );
                 },
               ),
-            if (_showRoute)
-              PolylineLayer(
-                key: const ValueKey('trip-route-polyline'),
-                polylines: [
-                  Polyline(
-                    points: coordinates,
-                    color: AppColors.teal,
-                    strokeWidth: 5,
-                    borderColor: Colors.white,
-                    borderStrokeWidth: 2,
-                  ),
-                ],
-              ),
+            if (_showRoute) _routeLayer,
             MarkerLayer(markers: _markers(coordinates)),
             if (widget.config.attributionLabel.isNotEmpty)
               RichAttributionWidget(
@@ -577,9 +585,7 @@ class _TripRoutePreviewMapState extends State<TripRoutePreviewMap> {
   void _reframe() {
     _mapController.fitCamera(
       CameraFit.coordinates(
-        coordinates: widget.geometry
-            .map((point) => LatLng(point.latitude, point.longitude))
-            .toList(growable: false),
+        coordinates: _coordinates,
         padding: const EdgeInsets.fromLTRB(34, 38, 58, 44),
         maxZoom: 16,
         minZoom: 5,

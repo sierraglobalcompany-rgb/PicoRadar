@@ -43,8 +43,20 @@ TollMatch? matchNearestToll({
         TollOperationClassification.nonOperationalHistorical) {
       continue;
     }
-    final match = measureToll(current: current, previous: previous, toll: toll);
-    if (match.distanceMeters > cameraAwarenessRadiusMeters) continue;
+    final distance = distanceMeters(
+      fromLatitude: current.latitude,
+      fromLongitude: current.longitude,
+      toLatitude: toll.latitude,
+      toLongitude: toll.longitude,
+    );
+    if (distance > cameraAwarenessRadiusMeters) continue;
+    final match = _measureToll(
+      current: current,
+      previous: previous,
+      toll: toll,
+      distance: distance,
+      course: course,
+    );
     final angle = match.relativeBearingDegrees;
     if (!allAround) {
       if (angle == null ||
@@ -82,18 +94,36 @@ TollMatch measureToll({
   required DrivingPoint? previous,
   required TollInventoryRecord toll,
 }) {
-  double distanceFrom(DrivingPoint point) => distanceMeters(
-    fromLatitude: point.latitude,
-    fromLongitude: point.longitude,
-    toLatitude: toll.latitude,
-    toLongitude: toll.longitude,
-  );
-  final distance = distanceFrom(current);
-  final delta = previous == null ? null : distanceFrom(previous) - distance;
-  final course = reliableDrivingCourseDegrees(
+  return _measureToll(
     current: current,
     previous: previous,
+    toll: toll,
+    distance: distanceMeters(
+      fromLatitude: current.latitude,
+      fromLongitude: current.longitude,
+      toLatitude: toll.latitude,
+      toLongitude: toll.longitude,
+    ),
+    course: reliableDrivingCourseDegrees(current: current, previous: previous),
   );
+}
+
+TollMatch _measureToll({
+  required DrivingPoint current,
+  required DrivingPoint? previous,
+  required TollInventoryRecord toll,
+  required double distance,
+  required double? course,
+}) {
+  final delta = previous == null
+      ? null
+      : distanceMeters(
+              fromLatitude: previous.latitude,
+              fromLongitude: previous.longitude,
+              toLatitude: toll.latitude,
+              toLongitude: toll.longitude,
+            ) -
+            distance;
   final relative = course == null
       ? null
       : signedAngleDeltaDegrees(

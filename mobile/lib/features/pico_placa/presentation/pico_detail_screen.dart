@@ -129,10 +129,20 @@ class _PersonalPicoViewState extends ConsumerState<_PersonalPicoView> {
   String? _transientJurisdictionId;
   Object? _coverageKey;
   Future<RestrictionRuleSet>? _coverageFuture;
+  ProviderSubscription<int>? _expirySubscription;
+  int _expiryRevision = 0;
+  Object? _dailyKey;
+  final _dailyEvaluations = <DateTime, RestrictionDayEvaluation>{};
+
+  @override
+  void dispose() {
+    _expirySubscription?.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final now = ref.watch(bogotaNowProvider);
+    final now = ref.watch(bogotaDateProvider);
     final jurisdiction =
         _findJurisdiction(
           widget.runtimeJurisdictions,
@@ -155,18 +165,30 @@ class _PersonalPicoViewState extends ConsumerState<_PersonalPicoView> {
       vehicle.kind,
       vehicle.serviceType,
       DateUtils.dateOnly(now),
+      _expiryRevision,
     );
     if (_coverageKey != coverageKey) {
       _coverageKey = coverageKey;
+      _expirySubscription?.close();
+      _expirySubscription = null;
       final instant = ref.read(currentInstantProvider);
-      _coverageFuture = seed.then(
-        (_) => store.loadCoverage(
+      _coverageFuture = seed.then((_) async {
+        final rules = await store.loadCoverage(
           jurisdiction.id,
           vehicle.kind,
           vehicle.serviceType,
           instant,
-        ),
-      );
+        );
+        if (mounted && _coverageKey == coverageKey) {
+          _expirySubscription = _watchCoverageExpiry(
+            ref,
+            [rules],
+            instant,
+            () => setState(() => _expiryRevision++),
+          );
+        }
+        return rules;
+      });
     }
     return FutureBuilder<RestrictionRuleSet>(
       future: _coverageFuture,
@@ -180,24 +202,25 @@ class _PersonalPicoViewState extends ConsumerState<_PersonalPicoView> {
                 dataIsStale: false,
                 rules: [],
               );
-        final today = _evaluate(ruleSet, jurisdiction, widget.vehicle, now);
+        final dailyKey = (ruleSet, jurisdiction.id, widget.vehicle, now);
+        if (_dailyKey != dailyKey) {
+          _dailyKey = dailyKey;
+          _dailyEvaluations.clear();
+        }
+        // Only the current view's day and its next 30 days can enter this cache.
+        RestrictionDayEvaluation evaluate(DateTime date) =>
+            _dailyEvaluations.putIfAbsent(
+              date,
+              () => _evaluate(ruleSet, jurisdiction, widget.vehicle, date),
+            );
+        final today = evaluate(now);
         final tomorrowDate = DateTime(now.year, now.month, now.day + 1);
-        final tomorrow = _evaluate(
-          ruleSet,
-          jurisdiction,
-          widget.vehicle,
-          tomorrowDate,
-        );
+        final tomorrow = evaluate(tomorrowDate);
         final futureDays = [
           for (var offset = 1; offset <= 14; offset += 1)
             DateTime(now.year, now.month, now.day + offset),
         ];
-        final nextRestriction = _nextRestriction(
-          ruleSet,
-          jurisdiction,
-          widget.vehicle,
-          now,
-        );
+        final nextRestriction = _nextRestriction(now, evaluate);
 
         return ListView(
           key: const ValueKey('pico-scroll-root'),
@@ -239,10 +262,7 @@ class _PersonalPicoViewState extends ConsumerState<_PersonalPicoView> {
               vehicle: widget.vehicle,
               now: now,
               days: futureDays,
-              evaluations: [
-                for (final day in futureDays)
-                  _evaluate(ruleSet, jurisdiction, widget.vehicle, day),
-              ],
+              evaluations: [for (final day in futureDays) evaluate(day)],
             ),
           ],
         );
@@ -290,8 +310,14 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
   PicoVehicleCategory _category = PicoVehicleCategory.cars;
   Object? _coverageKey;
   Future<List<_CategoryCoverage>>? _coverageFuture;
+  ProviderSubscription<int>? _expirySubscription;
+  int _expiryRevision = 0;
   Object? _shortcutsKey;
   Future<List<_VehicleShortcutData>>? _shortcutsFuture;
+  Object? _summaryKey;
+  late CityRestrictionDaySummary _summary;
+  late CityRestrictionRuleSummary _ruleSummary;
+  late CityRestrictionRotationSummary _rotation;
 
   @override
   void initState() {
@@ -300,8 +326,14 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
   }
 
   @override
+  void dispose() {
+    _expirySubscription?.close();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final now = ref.watch(bogotaNowProvider);
+    final now = ref.watch(bogotaDateProvider);
     final globalJurisdiction = _findJurisdiction(
       widget.jurisdictions,
       widget.selectedJurisdictionId,
@@ -322,21 +354,48 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
         globalJurisdiction != null && jurisdiction.id != globalJurisdiction.id;
     final store = ref.watch(restrictionStoreProvider);
     final seed = ref.watch(bundledRestrictionsProvider.future);
-    final coverageKey = (store, seed, jurisdiction.id, DateUtils.dateOnly(now));
+    final coverageKey = (
+      store,
+      seed,
+      jurisdiction.id,
+      DateUtils.dateOnly(now),
+      _expiryRevision,
+    );
     final instant = ref.read(currentInstantProvider);
     if (_coverageKey != coverageKey) {
       _coverageKey = coverageKey;
-      _coverageFuture = seed.then(
-        (_) => _loadCategoryCoverages(store, jurisdiction, instant),
-      );
+      _expirySubscription?.close();
+      _expirySubscription = null;
+      _coverageFuture = seed.then((_) async {
+        final coverages = await _loadCategoryCoverages(
+          store,
+          jurisdiction,
+          instant,
+        );
+        if (mounted && _coverageKey == coverageKey) {
+          _expirySubscription = _watchCoverageExpiry(
+            ref,
+            coverages.map((item) => item.ruleSet),
+            instant,
+            () => setState(() => _expiryRevision++),
+          );
+        }
+        return coverages;
+      });
     }
     final vehicles = widget.vehicles;
     final shortcutsKey = (coverageKey, vehicles);
     if (_shortcutsKey != shortcutsKey) {
       _shortcutsKey = shortcutsKey;
-      _shortcutsFuture = seed.then(
-        (_) =>
-            _loadVehicleShortcuts(store, jurisdiction, vehicles, now, instant),
+      _shortcutsFuture = _coverageFuture!.then(
+        (coverages) => _loadVehicleShortcuts(
+          store,
+          jurisdiction,
+          vehicles,
+          now,
+          instant,
+          coverages,
+        ),
       );
     }
 
@@ -361,24 +420,33 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
           (item) => item.category == _category,
           orElse: () => coverages.first,
         );
-        final summary = summarizeCityRestrictionDay(
-          ruleSet: currentCoverage.ruleSet,
-          jurisdictionId: jurisdiction.id,
-          category: currentCoverage.category,
-          date: now,
+        final summaryKey = (
+          currentCoverage.ruleSet,
+          jurisdiction.id,
+          currentCoverage.category,
+          now,
         );
-        final ruleSummary = summarizeCityRestrictionRules(
-          ruleSet: currentCoverage.ruleSet,
-          jurisdictionId: jurisdiction.id,
-          category: currentCoverage.category,
-          date: now,
-        );
-        final rotation = summarizeCityRestrictionRotation(
-          ruleSet: currentCoverage.ruleSet,
-          jurisdictionId: jurisdiction.id,
-          category: currentCoverage.category,
-          date: now,
-        );
+        if (_summaryKey != summaryKey) {
+          _summaryKey = summaryKey;
+          _summary = summarizeCityRestrictionDay(
+            ruleSet: currentCoverage.ruleSet,
+            jurisdictionId: jurisdiction.id,
+            category: currentCoverage.category,
+            date: now,
+          );
+          _ruleSummary = summarizeCityRestrictionRules(
+            ruleSet: currentCoverage.ruleSet,
+            jurisdictionId: jurisdiction.id,
+            category: currentCoverage.category,
+            date: now,
+          );
+          _rotation = summarizeCityRestrictionRotation(
+            ruleSet: currentCoverage.ruleSet,
+            jurisdictionId: jurisdiction.id,
+            category: currentCoverage.category,
+            date: now,
+          );
+        }
 
         return ListView(
           key: const ValueKey('pico-city-screen'),
@@ -412,14 +480,14 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
             ),
             const SizedBox(height: AppSpacing.m),
             _CityHero(
-              summary: summary,
-              ruleSummary: ruleSummary,
+              summary: _summary,
+              ruleSummary: _ruleSummary,
               jurisdiction: jurisdiction,
             ),
             const SizedBox(height: AppSpacing.m),
-            _RotationMatrixCard(rotation: rotation),
+            _RotationMatrixCard(rotation: _rotation),
             const SizedBox(height: AppSpacing.m),
-            _RuleSummaryCard(summary: ruleSummary),
+            _RuleSummaryCard(summary: _ruleSummary),
             const SizedBox(height: AppSpacing.m),
             _WeekSchedule(
               jurisdiction: jurisdiction,
@@ -1490,11 +1558,7 @@ class _PersonalLowerModule extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _ImmediateState(
-            evaluation: today,
-            nextRestriction: nextRestriction,
-            now: now,
-          ),
+          _ImmediateState(evaluation: today, nextRestriction: nextRestriction),
           const SizedBox(height: AppSpacing.m),
           Container(height: 1, color: AppColors.border),
           const SizedBox(height: AppSpacing.m),
@@ -1520,19 +1584,18 @@ class _PersonalLowerModule extends StatelessWidget {
   }
 }
 
-class _ImmediateState extends StatelessWidget {
+class _ImmediateState extends ConsumerWidget {
   const _ImmediateState({
     required this.evaluation,
     required this.nextRestriction,
-    required this.now,
   });
 
   final RestrictionDayEvaluation evaluation;
   final _NextRestriction? nextRestriction;
-  final DateTime now;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final now = ref.watch(bogotaNowProvider);
     final phase = restrictionPhaseAt(evaluation, now);
     final nextStart = nextRestrictionStartMinute(evaluation, now);
     final color = switch (phase) {
@@ -1655,6 +1718,29 @@ class _PersonalCalendarState extends State<_PersonalCalendar> {
   _PersonalCalendarMode _mode = _PersonalCalendarMode.nextDays;
   late DateTime _visibleMonth;
   bool _monthWasNavigated = false;
+  Object? _monthKey;
+  List<VehicleMonthDayEvaluation> _monthDays = const [];
+
+  List<VehicleMonthDayEvaluation> _evaluateVisibleMonth() {
+    final key = (
+      widget.ruleSet,
+      widget.jurisdiction.id,
+      widget.vehicle,
+      _visibleMonth,
+      widget.now,
+    );
+    if (_monthKey != key) {
+      _monthKey = key;
+      _monthDays = evaluateVehicleMonth(
+        ruleSet: widget.ruleSet,
+        jurisdictionId: widget.jurisdiction.id,
+        vehicle: widget.vehicle,
+        year: _visibleMonth.year,
+        month: _visibleMonth.month,
+      );
+    }
+    return _monthDays;
+  }
 
   @override
   void initState() {
@@ -1665,6 +1751,13 @@ class _PersonalCalendarState extends State<_PersonalCalendar> {
   @override
   void didUpdateWidget(covariant _PersonalCalendar oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.ruleSet != widget.ruleSet ||
+        oldWidget.vehicle != widget.vehicle ||
+        oldWidget.jurisdiction.id != widget.jurisdiction.id ||
+        oldWidget.now != widget.now) {
+      _monthKey = null;
+      _monthDays = const [];
+    }
     if (!_monthWasNavigated &&
         (oldWidget.now.year != widget.now.year ||
             oldWidget.now.month != widget.now.month)) {
@@ -1734,13 +1827,7 @@ class _PersonalCalendarState extends State<_PersonalCalendar> {
           _MonthCalendar(
             visibleMonth: _visibleMonth,
             now: widget.now,
-            days: evaluateVehicleMonth(
-              ruleSet: widget.ruleSet,
-              jurisdictionId: widget.jurisdiction.id,
-              vehicle: widget.vehicle,
-              year: _visibleMonth.year,
-              month: _visibleMonth.month,
-            ),
+            days: _evaluateVisibleMonth(),
             sourceLabel: _sourceLabel(widget.ruleSet),
             onPrevious: () {
               setState(() {
@@ -3003,6 +3090,28 @@ class _Message extends StatelessWidget {
   }
 }
 
+ProviderSubscription<int>? _watchCoverageExpiry(
+  WidgetRef ref,
+  Iterable<RestrictionRuleSet> coverages,
+  DateTime loadedAt,
+  VoidCallback onChanged,
+) {
+  final deadlines = coverages
+      .map((rules) => rules.staleAfter)
+      .whereType<DateTime>()
+      .toSet();
+  if (deadlines.isEmpty) return null;
+  // One boundary selector handles multiple categories and backward clock changes.
+  int expiredAt(DateTime instant) =>
+      deadlines.where((deadline) => !instant.isBefore(deadline)).length;
+  final subscription = ref.listenManual(
+    currentInstantProvider.select(expiredAt),
+    (_, _) => onChanged(),
+  );
+  if (subscription.read() != expiredAt(loadedAt)) onChanged();
+  return subscription;
+}
+
 class _CategoryCoverage {
   const _CategoryCoverage({required this.category, required this.ruleSet});
 
@@ -3049,10 +3158,16 @@ Future<List<_VehicleShortcutData>> _loadVehicleShortcuts(
   List<VehicleProfile> vehicles,
   DateTime now,
   DateTime instant,
+  List<_CategoryCoverage> categoryCoverages,
 ) async {
   final items = <_VehicleShortcutData>[];
+  final coverages = {
+    for (final item in categoryCoverages)
+      (item.category.kind, item.category.serviceType): item.ruleSet,
+  };
   for (final vehicle in vehicles.take(4)) {
-    final ruleSet = await store.loadCoverage(
+    final category = (vehicle.kind, vehicle.serviceType);
+    final ruleSet = coverages[category] ??= await store.loadCoverage(
       jurisdiction.id,
       vehicle.kind,
       vehicle.serviceType,
@@ -3085,14 +3200,12 @@ RestrictionDayEvaluation _evaluate(
 }
 
 _NextRestriction? _nextRestriction(
-  RestrictionRuleSet ruleSet,
-  RestrictionJurisdiction jurisdiction,
-  VehicleProfile vehicle,
   DateTime now,
+  RestrictionDayEvaluation Function(DateTime) evaluate,
 ) {
   for (var offset = 1; offset <= 30; offset += 1) {
     final date = DateTime(now.year, now.month, now.day + offset);
-    final evaluation = _evaluate(ruleSet, jurisdiction, vehicle, date);
+    final evaluation = evaluate(date);
     if (evaluation.status == RestrictionDayStatus.restricted) {
       return _NextRestriction(date: date, evaluation: evaluation);
     }

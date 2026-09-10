@@ -227,6 +227,9 @@ class _DrivingProximityMapState extends State<DrivingProximityMap> {
   MapCamera? _desired;
   Timer? _timeout;
   TileProvider? _defaultTileProvider;
+  TileLayer? _tileLayer;
+  int? _tileLayerGeneration;
+  int? _tileLayerViewport;
   var _attemptStarted = false;
   var _generation = 0;
   var _viewport = 0;
@@ -263,6 +266,7 @@ class _DrivingProximityMapState extends State<DrivingProximityMap> {
     _moveScheduled = false;
     _scale = DrivingMapScale();
     _defaultTileProvider = null;
+    _tileLayer = null;
     if (retry) CameraMapEpisodeCache.remove(widget.episodeKey);
     _attemptStarted =
         CameraMapEpisodeCache.pendingSince(widget.episodeKey) != null;
@@ -293,6 +297,7 @@ class _DrivingProximityMapState extends State<DrivingProximityMap> {
     }
     if (!_canMap) {
       _defaultTileProvider = null;
+      _tileLayer = null;
       _mapReady = false;
       _positioned = false;
       _tiles.clear();
@@ -329,6 +334,7 @@ class _DrivingProximityMapState extends State<DrivingProximityMap> {
     _persist();
     _tiles.clear();
     _defaultTileProvider = null;
+    _tileLayer = null;
     setState(() {});
   }
 
@@ -441,6 +447,49 @@ class _DrivingProximityMapState extends State<DrivingProximityMap> {
     super.dispose();
   }
 
+  TileLayer _tilesForViewport(int generation, int viewport) {
+    final cached = _tileLayer;
+    if (cached != null &&
+        _tileLayerGeneration == generation &&
+        _tileLayerViewport == viewport) {
+      return cached;
+    }
+    _tileLayerGeneration = generation;
+    _tileLayerViewport = viewport;
+    // Keep captured callback guards while camera-only updates reuse the widget.
+    return _tileLayer = TileLayer(
+      key: ValueKey('driving-proximity-tiles-$generation'),
+      urlTemplate: widget.config.tileUrlTemplate,
+      userAgentPackageName: widget.config.userAgentPackageName,
+      tileProvider:
+          widget.config.tileProvider ??
+          (_defaultTileProvider ??= NetworkTileProvider(
+            cachingProvider: const DisabledMapCachingProvider(),
+          )),
+      keepBuffer: 0,
+      panBuffer: 0,
+      retinaMode: false,
+      tileDisplay: const TileDisplay.instantaneous(),
+      tileBuilder: (context, tileWidget, tile) {
+        if (generation == _generation &&
+            viewport == _viewport &&
+            _required.contains(tile.coordinates)) {
+          _tiles[tile.coordinates] = tile;
+          _scheduleCheck();
+        }
+        return tileWidget;
+      },
+      errorTileCallback: (tile, error, stackTrace) {
+        if (generation == _generation &&
+            viewport == _viewport &&
+            _required.contains(tile.coordinates)) {
+          _tiles[tile.coordinates] = tile;
+          _scheduleCheck();
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) => SizedBox(
     height: widget.height,
@@ -509,40 +558,7 @@ class _DrivingProximityMapState extends State<DrivingProximityMap> {
                     },
                   ),
                   children: [
-                    if (!_failed)
-                      TileLayer(
-                        key: ValueKey('driving-proximity-tiles-$generation'),
-                        urlTemplate: widget.config.tileUrlTemplate,
-                        userAgentPackageName:
-                            widget.config.userAgentPackageName,
-                        tileProvider:
-                            widget.config.tileProvider ??
-                            (_defaultTileProvider ??= NetworkTileProvider(
-                              cachingProvider:
-                                  const DisabledMapCachingProvider(),
-                            )),
-                        keepBuffer: 0,
-                        panBuffer: 0,
-                        retinaMode: false,
-                        tileDisplay: const TileDisplay.instantaneous(),
-                        tileBuilder: (context, tileWidget, tile) {
-                          if (generation == _generation &&
-                              viewport == _viewport &&
-                              _required.contains(tile.coordinates)) {
-                            _tiles[tile.coordinates] = tile;
-                            _scheduleCheck();
-                          }
-                          return tileWidget;
-                        },
-                        errorTileCallback: (tile, error, stackTrace) {
-                          if (generation == _generation &&
-                              viewport == _viewport &&
-                              _required.contains(tile.coordinates)) {
-                            _tiles[tile.coordinates] = tile;
-                            _scheduleCheck();
-                          }
-                        },
-                      ),
+                    if (!_failed) _tilesForViewport(generation, viewport),
                     MarkerLayer(
                       rotate: true,
                       markers: [

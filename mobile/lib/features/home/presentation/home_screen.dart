@@ -51,11 +51,11 @@ final homeGpsClockProvider = Provider<DateTime Function()>((ref) {
   return DateTime.now;
 });
 
-final homeVehicleSnapshotsProvider =
-    FutureProvider.family<
-      List<HomeVehicleSnapshot>,
-      HomeVehicleSnapshotsRequest
-    >((ref, request) async {
+final homeVehicleSnapshotsProvider = FutureProvider.autoDispose
+    .family<List<HomeVehicleSnapshot>, HomeVehicleSnapshotsRequest>((
+      ref,
+      request,
+    ) async {
       if (request.selectedJurisdiction == null) {
         return [
           for (final vehicle in request.vehicles)
@@ -71,8 +71,11 @@ final homeVehicleSnapshotsProvider =
       final now = DateTime(year, month, day);
       await ref.watch(bundledRestrictionsProvider.future);
       final snapshots = <HomeVehicleSnapshot>[];
+      final coverages =
+          <(VehicleKind, VehicleServiceType), RestrictionRuleSet>{};
       for (final vehicle in request.vehicles) {
-        final rules = await store.loadCoverage(
+        final category = (vehicle.kind, vehicle.serviceType);
+        final rules = coverages[category] ??= await store.loadCoverage(
           request.selectedJurisdiction!.id,
           vehicle.kind,
           vehicle.serviceType,
@@ -91,6 +94,19 @@ final homeVehicleSnapshotsProvider =
             ),
           ),
         );
+      }
+      if (ref.mounted) {
+        final deadlines = coverages.values
+            .map((rules) => rules.staleAfter)
+            .whereType<DateTime>()
+            .toSet();
+        if (deadlines.isNotEmpty) {
+          int expiredAt(DateTime instant) =>
+              deadlines.where((deadline) => !instant.isBefore(deadline)).length;
+          final expired = ref.watch(currentInstantProvider.select(expiredAt));
+          // Also refresh if the clock crossed a boundary while storage was loading.
+          if (expired != expiredAt(currentInstant)) ref.invalidateSelf();
+        }
       }
       return snapshots;
     });
@@ -1062,14 +1078,16 @@ class _StatusGridSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = constraints.maxWidth >= 340
+        final scale = MediaQuery.textScalerOf(context).scale(1);
+        final twoColumns = constraints.maxWidth >= 300 && scale <= 1.25;
+        final width = twoColumns
             ? (constraints.maxWidth - AppSpacing.s) / 2
             : constraints.maxWidth;
         return Column(
           children: [
             AppSkeleton(
               width: constraints.maxWidth,
-              height: 56,
+              height: 100,
               borderRadius: AppRadius.input,
             ),
             const SizedBox(height: AppSpacing.s),
@@ -1080,7 +1098,7 @@ class _StatusGridSkeleton extends StatelessWidget {
                 for (var i = 0; i < 2; i += 1)
                   AppSkeleton(
                     width: width,
-                    height: 78,
+                    height: twoColumns ? 72 : 72 * scale,
                     borderRadius: AppRadius.card,
                   ),
               ],

@@ -1581,6 +1581,100 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final changesSpeed in [false, true]) {
+    testWidgets(
+      'performance: ring paint ${changesSpeed ? 'updates with speed' : 'ignores distance-only updates'}',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(390, 844));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final gateway = _StreamingGateway();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+              cameraPackProvider.overrideWith((ref) async => _pack()),
+              drivingLocationGatewayProvider.overrideWithValue(gateway),
+              drivingFeedbackGatewayProvider.overrideWithValue(
+                _NoopDrivingFeedbackGateway(),
+              ),
+              drivingMapConfigProvider.overrideWithValue(
+                _testMapConfig(tileProvider: _OnePixelTileProvider()),
+              ),
+            ],
+            child: const MaterialApp(home: DrivingScreen()),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(DrivingScreen)),
+        );
+        final controller = container.read(drivingControllerProvider.notifier);
+        await controller.savePreferences(
+          defaultDrivingPreferences.copyWith(visualAlertsEnabled: false),
+        );
+        await controller.start();
+        gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 54));
+        await tester.pump();
+        gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 54));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        final ringFinder = find.descendant(
+          of: find.byKey(const ValueKey('driving-speed-gauge')),
+          matching: find.byType(CustomPaint),
+        );
+        final ring = tester.renderObject<RenderCustomPaint>(ringFinder);
+        final originalSize = ring.size;
+        final originalPainter = ring.painter!;
+        final oldDistance = container
+            .read(drivingControllerProvider)
+            .requireValue
+            .nearestCamera!
+            .distanceMeters;
+        var paints = 0;
+        final previousCallback = debugOnProfilePaint;
+        addTearDown(() => debugOnProfilePaint = previousCallback);
+        // Observe the actual ring RenderCustomPaint without replacing its painter.
+        debugOnProfilePaint = (renderObject) {
+          if (identical(renderObject, ring)) paints++;
+          previousCallback?.call(renderObject);
+        };
+
+        for (var update = 1; update <= 3; update++) {
+          gateway.add(
+            _point(
+              latitude: 6.241 + update * 0.0001,
+              seconds: 20 + update,
+              speedKmh: changesSpeed ? 54 + update * 2 : 54,
+            ),
+          );
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 400));
+        }
+        debugOnProfilePaint = previousCallback;
+        final current = container.read(drivingControllerProvider).requireValue;
+        expect(current.nearestCamera!.distanceMeters, lessThan(oldDistance));
+        expect(
+          find.byKey(const ValueKey('camera-distance-pill')),
+          findsOneWidget,
+        );
+        expect(ring.size, originalSize);
+        expect(tester.renderObject<RenderCustomPaint>(ringFinder), same(ring));
+        expect(ring.painter!.shouldRepaint(originalPainter), changesSpeed);
+        expect(
+          paints,
+          changesSpeed ? greaterThan(0) : 0,
+          reason: 'Only changed ring inputs should require painting the ring.',
+        );
+        expect(
+          tester.widget<Text>(find.byKey(const ValueKey('driving-speed'))).data,
+          changesSpeed ? '60' : '54',
+        );
+        await tester.pumpWidget(const SizedBox());
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   for (final viewport in const [
     Size(360, 780),
     Size(360, 800),
