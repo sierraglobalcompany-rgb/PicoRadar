@@ -43,9 +43,12 @@ class GarageScreen extends ConsumerWidget {
     return PicoSurface(
       child: vehicles.when(
         data: (items) {
+          if (items.isNotEmpty && active.isLoading && !active.hasValue) {
+            return _GarageSkeleton(alertPreferences: alertPreferences);
+          }
           String? activeId;
-          if (active case AsyncData(:final value)) {
-            activeId = value?.id;
+          if (active.hasValue) {
+            activeId = active.requireValue?.id;
             _ensureActiveVehicle(ref, items, activeId);
           }
 
@@ -319,15 +322,18 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
   }
 
   Future<void> _toggleFavorite(VehicleProfile vehicle) async {
+    if (_deletingVehicleId != null) return;
     await toggleGarageFavoriteVehicleId(
       ref.read(appPreferencesProvider),
       vehicle.id,
     );
+    if (!mounted) return;
     ref.invalidate(garageFavoriteVehicleIdsProvider);
   }
 
   Future<void> _makeActive(VehicleProfile vehicle) async {
     await ref.read(vehicleRepositoryProvider).setActiveVehicle(vehicle.id);
+    if (!mounted) return;
     ref.invalidate(activeVehicleProvider);
     ref.invalidate(vehicleListProvider);
   }
@@ -402,11 +408,14 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
 
     late final _GarageDeleteResult result;
     try {
-      result = await _deleteVehicleAndAssociatedData(
-        repository: repository,
-        preferences: preferences,
-        cleaner: cleaner,
-        vehicle: vehicle,
+      result = await serializeGarageFavoriteMutation(
+        preferences,
+        () => _deleteVehicleAndAssociatedData(
+          repository: repository,
+          preferences: preferences,
+          cleaner: cleaner,
+          vehicle: vehicle,
+        ),
       );
     } on _GarageDeleteFailure catch (failure) {
       if (!mounted) {
@@ -798,32 +807,54 @@ class _GarageCarousel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textScale = MediaQuery.textScalerOf(context).scale(1);
-    return SizedBox(
-      key: const ValueKey('garage-vehicle-carousel'),
-      height: textScale <= 1.25 ? _garageCarouselHeight : 232,
-      child: PageView.builder(
-        controller: controller,
-        itemCount: vehicles.length,
-        onPageChanged: onChanged,
-        padEnds: true,
-        itemBuilder: (context, index) {
-          final vehicle = vehicles[index];
-          final focused = index == focusedIndex;
-          return AnimatedScale(
-            duration: AppMotion.carouselSnap,
-            curve: AppMotion.standardCurve,
-            scale: focused ? 1 : _garageSideCardScale,
-            child: _GarageVehicleCard(
-              vehicle: vehicle,
-              active: vehicle.id == activeId,
-              favorite: favoriteIds.contains(vehicle.id),
-              focused: focused,
-              onFavorite: () => onFavorite(vehicle),
-              onOpen: () => onOpen(vehicle),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final titleWidth =
+            constraints.maxWidth * _garageViewportFraction - 2 * AppSpacing.m;
+        final painter = TextPainter(
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+        );
+        var extraHeight = 0.0;
+        for (final vehicle in vehicles) {
+          painter.text = TextSpan(
+            text: vehicleDisplayName(vehicle),
+            style: AppTextStyles.h2.copyWith(fontSize: 18),
           );
-        },
-      ),
+          painter.layout(maxWidth: titleWidth);
+          final extra = painter.height - painter.preferredLineHeight;
+          if (extra > extraHeight) extraHeight = extra;
+        }
+        painter.dispose();
+        return SizedBox(
+          key: const ValueKey('garage-vehicle-carousel'),
+          height:
+              (textScale <= 1.25 ? _garageCarouselHeight : 232) + extraHeight,
+          child: PageView.builder(
+            controller: controller,
+            itemCount: vehicles.length,
+            onPageChanged: onChanged,
+            padEnds: true,
+            itemBuilder: (context, index) {
+              final vehicle = vehicles[index];
+              final focused = index == focusedIndex;
+              return AnimatedScale(
+                duration: AppMotion.carouselSnap,
+                curve: AppMotion.standardCurve,
+                scale: focused ? 1 : _garageSideCardScale,
+                child: _GarageVehicleCard(
+                  vehicle: vehicle,
+                  active: vehicle.id == activeId,
+                  favorite: favoriteIds.contains(vehicle.id),
+                  focused: focused,
+                  onFavorite: () => onFavorite(vehicle),
+                  onOpen: () => onOpen(vehicle),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }
@@ -893,8 +924,6 @@ class _GarageVehicleCard extends StatelessWidget {
                       title,
                       key: ValueKey('garage-vehicle-title-${vehicle.id}'),
                       textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.h2.copyWith(fontSize: 18),
                     ),
                     if (vehicle.year != null)
@@ -923,20 +952,20 @@ class _GarageVehicleCard extends StatelessWidget {
                     message: favorite
                         ? 'Quitar de favoritos'
                         : 'Agregar a favoritos',
-                    child: SizedBox.square(
-                      dimension: 48,
-                      child: Center(
-                        child: Material(
-                          color: favorite
-                              ? AppColors.teal
-                              : AppColors.surface.withValues(alpha: 0.94),
-                          shape: const CircleBorder(),
-                          elevation: 2,
-                          clipBehavior: Clip.antiAlias,
-                          child: InkWell(
-                            key: ValueKey('garage-favorite-${vehicle.id}'),
-                            customBorder: const CircleBorder(),
-                            onTap: onFavorite,
+                    child: InkWell(
+                      key: ValueKey('garage-favorite-${vehicle.id}'),
+                      onTap: onFavorite,
+                      borderRadius: BorderRadius.circular(24),
+                      child: SizedBox.square(
+                        dimension: 48,
+                        child: Center(
+                          child: Material(
+                            color: favorite
+                                ? AppColors.teal
+                                : AppColors.surface.withValues(alpha: 0.94),
+                            shape: const CircleBorder(),
+                            elevation: 2,
+                            clipBehavior: Clip.antiAlias,
                             child: SizedBox.square(
                               dimension: 36,
                               child: Icon(

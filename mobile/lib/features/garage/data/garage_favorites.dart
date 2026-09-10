@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../../core/storage/app_preferences.dart';
 
 const garageFavoriteVehicleIdsPreferenceKey = 'garage_favorite_vehicle_ids_v1';
+final _favoriteUpdates = Expando<Future<Object?>>();
 
 Future<Set<String>> loadGarageFavoriteVehicleIds(
   AppPreferences preferences,
@@ -32,6 +33,28 @@ Future<void> saveGarageFavoriteVehicleIds(
 }
 
 Future<Set<String>> toggleGarageFavoriteVehicleId(
+  AppPreferences preferences,
+  String vehicleId,
+) => serializeGarageFavoriteMutation(
+  preferences,
+  () => _toggleGarageFavoriteVehicleId(preferences, vehicleId),
+);
+
+Future<T> serializeGarageFavoriteMutation<T>(
+  AppPreferences preferences,
+  Future<T> Function() mutation,
+) {
+  final previous = _favoriteUpdates[preferences] ?? Future<Object?>.value();
+  // Include deletion/rollback in the same queue. Errors still reach each caller.
+  final update = previous.then<T>(
+    (_) => mutation(),
+    onError: (Object error, StackTrace stack) => mutation(),
+  );
+  _favoriteUpdates[preferences] = update;
+  return update;
+}
+
+Future<Set<String>> _toggleGarageFavoriteVehicleId(
   AppPreferences preferences,
   String vehicleId,
 ) async {

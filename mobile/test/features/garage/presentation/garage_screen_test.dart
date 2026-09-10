@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:picoradar/app/app.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/features/apps_launcher/presentation/module_placeholder_screen.dart';
@@ -14,6 +15,7 @@ import 'package:picoradar/features/garage/application/vehicle_associated_data_cl
 import 'package:picoradar/features/garage/data/garage_favorites.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
+import 'package:picoradar/features/garage/presentation/garage_screen.dart';
 import 'package:picoradar/features/maintenance/presentation/maintenance_screen.dart';
 import 'package:picoradar/features/peritajes/data/peritajes_draft_store.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
@@ -36,6 +38,242 @@ void main() {
 
   tearDown(() async {
     await harness.dispose();
+  });
+
+  testWidgets('A4 Garage waits for delayed initial active identity', (
+    tester,
+  ) async {
+    final seeded = await _seedThreeVehicles(harness);
+    final active = Completer<VehicleProfile?>();
+    addTearDown(() {
+      if (!active.isCompleted) active.complete(seeded.active);
+    });
+    await harness.pump(
+      tester,
+      vehicleListOverride: [seeded.newest, seeded.active, seeded.oldest],
+      childOverride: ProviderScope(
+        overrides: [activeVehicleProvider.overrideWith((ref) => active.future)],
+        child: const MaterialApp(home: Scaffold(body: GarageScreen())),
+      ),
+    );
+    active.complete(seeded.active);
+    await tester.pumpAndSettle();
+    _expectGarageInfoPanel(tester, seeded.active);
+    expect(find.text('2 de 3'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'A4 Garage favorite edge is a 48dp action not vehicle navigation',
+    (tester) async {
+      final vehicle = await _createVehicle(harness, plate: 'ABC123');
+      await harness.repository.setActiveVehicle(vehicle.id);
+      await _openGarage(tester, harness);
+      final favorite = find.byKey(ValueKey('garage-favorite-${vehicle.id}'));
+      expect(tester.getSize(favorite).width, greaterThanOrEqualTo(48));
+      expect(tester.getSize(favorite).height, greaterThanOrEqualTo(48));
+      await tester.tapAt(tester.getTopLeft(favorite) + const Offset(2, 2));
+      await tester.pumpAndSettle();
+      expect(
+        await loadGarageFavoriteVehicleIds(harness.preferences),
+        contains(vehicle.id),
+      );
+      expect(find.text('Detalle del vehículo'), findsNothing);
+      expect(find.byKey(const ValueKey('garage-info-panel')), findsOneWidget);
+    },
+  );
+
+  for (final sameVehicle in [false, true]) {
+    test(
+      'A4 concurrent favorites preserve both toggles same=$sameVehicle',
+      () async {
+        final preferences = _DelayedFavoritePreferences();
+        final first = toggleGarageFavoriteVehicleId(preferences, 'first');
+        await preferences.started.future;
+        final second = toggleGarageFavoriteVehicleId(
+          preferences,
+          sameVehicle ? 'first' : 'second',
+        );
+        await Future<void>.delayed(Duration.zero);
+        preferences.gate.complete();
+        await Future.wait([first, second]);
+        expect(
+          await loadGarageFavoriteVehicleIds(preferences),
+          sameVehicle ? isEmpty : unorderedEquals(['first', 'second']),
+        );
+      },
+    );
+  }
+
+  testWidgets('A4 favorite completion after Garage disposal is safe', (
+    tester,
+  ) async {
+    final vehicle = await _createVehicle(harness, plate: 'ABC123');
+    final preferences = _HeldFavoriteWritePreferences();
+    await _openGarage(tester, harness, preferences: preferences);
+    preferences.gate = Completer<void>();
+    addTearDown(() {
+      if (!preferences.gate!.isCompleted) preferences.gate!.complete();
+    });
+    await tester.tap(find.byKey(ValueKey('garage-favorite-${vehicle.id}')));
+    await tester.pump();
+    expect(preferences.started.isCompleted, isTrue);
+    await tester.pumpWidget(const SizedBox.shrink());
+    preferences.gate!.complete();
+    await tester.pumpAndSettle();
+    expect(
+      await loadGarageFavoriteVehicleIds(preferences),
+      contains(vehicle.id),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('A4 deletion waits for an earlier favorite write', (
+    tester,
+  ) async {
+    final seeded = await _seedThreeVehicles(harness);
+    final preferences = _HeldFavoriteWritePreferences();
+    final cleaner = _RecordingVehicleDataCleaner();
+    await _openGarage(
+      tester,
+      harness,
+      preferences: preferences,
+      vehicleAssociatedDataCleaner: cleaner,
+    );
+    preferences.gate = Completer<void>();
+    addTearDown(() {
+      if (!preferences.gate!.isCompleted) preferences.gate!.complete();
+    });
+    await tester.tap(
+      find.byKey(ValueKey('garage-favorite-${seeded.active.id}')),
+    );
+    await tester.pump();
+    expect(preferences.started.isCompleted, isTrue);
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('garage-action-delete')),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('garage-confirm-delete-vehicle')),
+    );
+    await tester.pumpAndSettle();
+    expect(cleaner.deletedVehicleIds, isEmpty);
+    preferences.gate!.complete();
+    await tester.pumpAndSettle();
+    expect(cleaner.deletedVehicleIds, [seeded.active.id]);
+    expect(await loadGarageFavoriteVehicleIds(preferences), isEmpty);
+    expect(await harness.repository.getVehicle(seeded.active.id), isNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final failDelete in [false, true]) {
+    testWidgets('A4 delete and favorite serialize rollback=$failDelete', (
+      tester,
+    ) async {
+      final seeded = await _seedThreeVehicles(harness);
+      await saveGarageFavoriteVehicleIds(harness.preferences, {
+        seeded.active.id,
+      });
+      final repository = _RecordingVehicleRepository(harness)
+        ..failDelete = failDelete
+        ..deleteGate = Completer<void>();
+      addTearDown(() {
+        if (!repository.deleteGate!.isCompleted) {
+          repository.deleteGate!.complete();
+        }
+      });
+      await _openGarage(
+        tester,
+        harness,
+        vehicleRepository: repository,
+        vehicleAssociatedDataCleaner: _RecordingVehicleDataCleaner(),
+      );
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('garage-action-delete')),
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('garage-confirm-delete-vehicle')),
+      );
+      await tester.pumpAndSettle();
+      expect(repository.deleteStarted.isCompleted, isTrue);
+      tester
+          .widget<InkWell>(
+            find.byKey(ValueKey('garage-favorite-${seeded.active.id}')),
+          )
+          .onTap!();
+
+      var toggleCompleted = false;
+      final toggle = toggleGarageFavoriteVehicleId(
+        harness.preferences,
+        seeded.newest.id,
+      ).then((_) => toggleCompleted = true);
+      await tester.pump();
+      expect(toggleCompleted, isFalse);
+      repository.deleteGate!.complete();
+      await tester.pumpAndSettle();
+      await toggle;
+      expect(
+        await loadGarageFavoriteVehicleIds(harness.preferences),
+        unorderedEquals([if (failDelete) seeded.active.id, seeded.newest.id]),
+      );
+      expect(
+        await harness.repository.getVehicle(seeded.active.id),
+        failDelete ? isNotNull : isNull,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final width in [360.0, 390.0, 412.0, 430.0]) {
+    testWidgets('A4 Garage title fully reflows at scale 2 width $width', (
+      tester,
+    ) async {
+      final vehicle = await _createVehicle(harness, plate: 'ABC123');
+      await _openGarage(
+        tester,
+        harness,
+        size: Size(width, 915),
+        textScaleFactor: 2,
+      );
+      final title = find.byKey(ValueKey('garage-vehicle-title-${vehicle.id}'));
+      final paragraph = tester.renderObject<RenderParagraph>(
+        find.descendant(of: title, matching: find.byType(RichText)),
+      );
+      expect(paragraph.didExceedMaxLines, isFalse);
+      expect(tester.widget<Text>(title).style!.fontSize, 18);
+      final card = tester
+          .getRect(find.byKey(ValueKey('garage-vehicle-card-${vehicle.id}')))
+          .inflate(0.5);
+      for (final box in paragraph.getBoxesForSelection(
+        TextSelection(
+          baseOffset: 0,
+          extentOffset: paragraph.text.toPlainText().length,
+        ),
+      )) {
+        expect(
+          card.contains(paragraph.localToGlobal(Offset(box.right, box.bottom))),
+          isTrue,
+        );
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('A7 Garage detail identifies registration city explicitly', (
+    tester,
+  ) async {
+    final vehicle = await _createVehicle(
+      harness,
+      plate: 'ABC123',
+      city: 'Medellín',
+    );
+    await _openGarage(tester, harness);
+    await tester.tap(find.byKey(ValueKey('garage-vehicle-card-${vehicle.id}')));
+    await tester.pumpAndSettle();
+    expect(find.text('Ciudad de matrícula'), findsOneWidget);
+    expect(find.text('Ciudad'), findsNothing);
+    expect(find.text('Medellín'), findsOneWidget);
   });
 
   for (final size in const [Size(360, 800), Size(390, 844), Size(412, 915)]) {
@@ -1271,6 +1509,7 @@ Future<void> _openGarage(
   bool boundedSettle = false,
   VehicleAssociatedDataCleaner? vehicleAssociatedDataCleaner,
   VehicleRepository? vehicleRepository,
+  AppPreferences? preferences,
   List<VehicleProfile>? vehicleListOverride,
 }) async {
   tester.view.devicePixelRatio = 1;
@@ -1283,6 +1522,17 @@ Future<void> _openGarage(
     tester,
     vehicleAssociatedDataCleaner: vehicleAssociatedDataCleaner,
     vehicleListOverride: vehicleListOverride,
+    childOverride: preferences == null
+        ? null
+        : ProviderScope(
+            overrides: [
+              appPreferencesProvider.overrideWithValue(preferences),
+              vehicleRepositoryProvider.overrideWithValue(
+                vehicleRepository ?? harness.repository,
+              ),
+            ],
+            child: const PicoRadarApp(),
+          ),
     wrap: vehicleRepository == null
         ? null
         : (app) => ProviderScope(
@@ -1336,10 +1586,15 @@ class _RecordingVehicleRepository extends VehicleRepository {
   var failDelete = false;
   var failSetActive = false;
   var throwAfterDelete = false;
+  Completer<void>? deleteGate;
+  final deleteStarted = Completer<void>();
 
   @override
   Future<void> deleteVehicle(String id) async {
     deletedVehicleIds.add(id);
+    if (!deleteStarted.isCompleted) deleteStarted.complete();
+    final gate = deleteGate;
+    if (gate != null) await gate.future;
     if (failDelete) {
       throw StateError('delete failed');
     }
@@ -1355,6 +1610,36 @@ class _RecordingVehicleRepository extends VehicleRepository {
       throw StateError('active fallback failed');
     }
     await super.setActiveVehicle(id);
+  }
+}
+
+class _HeldFavoriteWritePreferences extends _MemoryPreferences {
+  Completer<void>? gate;
+  final started = Completer<void>();
+
+  @override
+  Future<void> setString(String key, String value) async {
+    final pending = gate;
+    if (key == garageFavoriteVehicleIdsPreferenceKey && pending != null) {
+      if (!started.isCompleted) started.complete();
+      await pending.future;
+    }
+    await super.setString(key, value);
+  }
+}
+
+class _DelayedFavoritePreferences extends _MemoryPreferences {
+  final started = Completer<void>();
+  final gate = Completer<void>();
+
+  @override
+  Future<String?> getString(String key) async {
+    final value = await super.getString(key);
+    if (!gate.isCompleted) {
+      if (!started.isCompleted) started.complete();
+      await gate.future;
+    }
+    return value;
   }
 }
 

@@ -4,6 +4,22 @@ Este contrato traduce el baseline visual a reglas operables para Flutter. Autori
 
 ## Inicio: vehiculos protagonistas y layout adaptable (2026-09-09)
 
+### Auditoria Inicio/Garaje/Pico 2026-09-10
+
+- Pico por ciudad describe la regulacion colectiva: "Restriccion hoy" con sus
+  digitos y ventanas completas. No afirma "No puedes circular" sin evaluar un
+  vehiculo. Mi Pico conserva los estados personales del dia y del instante.
+- Nombre de ciudad, fuente, vigencia, selector y ventanas de 12 horas se
+  reorganizan sin ellipsis. Texto ampliado admite mas altura y scroll util,
+  nunca una fuente encogida para ocultar un recorte.
+- Inicio conserva el ID enfocado al cambiar ciudad o recargar evaluaciones;
+  los resultados pendientes son neutros, no una autorizacion anterior.
+- Garaje espera el activo inicial antes de elegir foco, conserva titulos
+  completos y ofrece 48 dp tactiles en Favoritos aunque el circulo sea menor.
+  "Ciudad de matricula" identifica el dato registral, no la ciudad de Pico.
+- El banner existente conserva contenido/destino y permite reflujo; no activa
+  publicidad. No cambia la barra compartida ni el diseno de Conducir.
+
 ### Revision owner 2026-09-10: resumen unico y reloj vivo
 
 Esta revision reemplaza la franja hoy/manana, la banda textual y el pie de horarios

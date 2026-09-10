@@ -48,6 +48,150 @@ void main() {
     harness = TestAppHarness();
   });
 
+  for (final change in ['city', 'plate']) {
+    testWidgets(
+      'A3 Home retains selected identity through $change replacement',
+      (tester) async {
+        harness.now = DateTime(2026, 8, 27, 12);
+        final selected = await _createVehicle(harness, plate: 'BBB125');
+        final active = await _readyHome(harness, plate: 'AAA126');
+        await _setVehicleCreatedAt(
+          harness,
+          selected.id,
+          DateTime.utc(2026, 1, 1),
+        );
+        await _setVehicleCreatedAt(
+          harness,
+          active.id,
+          DateTime.utc(2026, 1, 2),
+        );
+        final store = _FakeRestrictionStore(harness.database, harness.now);
+        await _pumpFullHomeApp(tester, harness, restrictionStore: store);
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(HomeScreen)),
+        );
+        expect(container.read(homeFocusedVehicleIdProvider), active.id);
+        await tester.fling(
+          find.byKey(const ValueKey('home-vehicle-page-view')),
+          const Offset(-600, 0),
+          1200,
+        );
+        await tester.pumpAndSettle();
+        expect(container.read(homeFocusedVehicleIdProvider), selected.id);
+        final gate = Completer<void>();
+        store.pendingLoad = gate;
+        addTearDown(() {
+          if (!gate.isCompleted) gate.complete();
+        });
+        if (change == 'city') {
+          await harness.preferences.setString(
+            picoJurisdictionPreferenceKey,
+            'co-dc-bogota',
+          );
+          container.invalidate(selectedPicoJurisdictionIdProvider);
+        } else {
+          await harness.repository.updateVehicle(
+            id: selected.id,
+            plate: 'BBB124',
+            kind: selected.kind,
+          );
+          container.invalidate(vehicleListProvider);
+        }
+        await _pumpAsyncHome(tester);
+        expect(
+          find.byKey(const ValueKey('home-vehicle-page-view')),
+          findsOneWidget,
+        );
+        expect(container.read(homeFocusedVehicleIdProvider), selected.id);
+        expect(
+          tester
+              .widget<Text>(find.byKey(const ValueKey('home-summary-main')))
+              .data,
+          'Por verificar',
+        );
+        gate.complete();
+        await _pumpAsyncHome(tester);
+        expect(container.read(homeFocusedVehicleIdProvider), selected.id);
+        expect((await harness.repository.getActiveVehicle())?.id, active.id);
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('home-status-today')),
+        );
+        await tester.tap(find.byKey(const ValueKey('home-status-today')));
+        await _pumpAsyncHome(tester);
+        expect(
+          tester
+              .widget<PicoDetailScreen>(find.byType(PicoDetailScreen))
+              .vehicleId,
+          selected.id,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  for (final width in [360.0, 390.0, 412.0, 430.0]) {
+    for (final scale in [1.0, 1.5, 2.0]) {
+      testWidgets('A6 Home banner full text $width scale $scale', (
+        tester,
+      ) async {
+        await _readyHome(harness, plate: 'ABC126');
+        const campaign = HomeBannerCampaign(
+          kind: HomeBannerKind.house,
+          enabled: true,
+          priority: 1,
+          id: 'audit-banner',
+          label: 'ALIADO PREMIUM · DEMO',
+          title: 'Protección que te acompaña',
+          subtitle: 'Espacio preparado para campañas de aliados verificados.',
+          ctaText: 'Conocer más',
+          targetUrl: 'https://picoradar.co/demo/home-ally',
+        );
+        await _pumpHome(
+          tester,
+          harness,
+          viewportSize: Size(width, 915),
+          textScaleFactor: scale,
+          homeBanner: campaign,
+        );
+        final banner = find.byKey(const ValueKey('home-bottom-banner-slot'));
+        await tester.ensureVisible(banner);
+        await tester.pump();
+        final bounds = tester.getRect(banner).inflate(0.5);
+        for (final label in [
+          campaign.label,
+          campaign.title,
+          campaign.subtitle,
+          campaign.ctaText,
+        ]) {
+          final text = find.descendant(of: banner, matching: find.text(label));
+          expect(text, findsOneWidget);
+          final paragraph = tester.renderObject<RenderParagraph>(
+            find.descendant(of: text, matching: find.byType(RichText)),
+          );
+          expect(paragraph.didExceedMaxLines, isFalse, reason: label);
+          for (final box in paragraph.getBoxesForSelection(
+            TextSelection(baseOffset: 0, extentOffset: label.length),
+          )) {
+            expect(
+              bounds.contains(
+                paragraph.localToGlobal(Offset(box.right, box.bottom)),
+              ),
+              isTrue,
+              reason: label,
+            );
+          }
+        }
+        expect(
+          tester
+              .widget<InkWell>(find.byKey(const ValueKey('home-bottom-banner')))
+              .onTap,
+          isNotNull,
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   group('Home V2 shell states', () {
     for (final size in const [
       Size(360, 800),
@@ -3087,7 +3231,7 @@ void main() {
       expect(find.text('Cómo aplica'), findsOneWidget);
       expect(find.text('ÚLTIMO DÍGITO'), findsOneWidget);
       expect(find.text('Horario no publicado'), findsNothing);
-      expect(find.text('05:00-20:00'), findsWidgets);
+      expect(find.text('5:00 a. m. – 8:00 p. m.'), findsWidgets);
 
       await tester.scrollUntilVisible(
         find
@@ -3152,7 +3296,17 @@ void main() {
       await _pumpDetail(tester, harness);
 
       expect(find.text('Pico y placa de la ciudad'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('PARIDAD DE FECHA'),
+        180,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('PARIDAD DE FECHA'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Próximos 7 días'),
+        180,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('Próximos 7 días'), findsOneWidget);
       final expectedRows = [
         (label: 'Vie 28', value: '6'),

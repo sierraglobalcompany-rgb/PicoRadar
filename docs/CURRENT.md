@@ -1,5 +1,24 @@
 # PicoRadar Current State
 
+## Inicio/Garaje/Pico audit followup 2026-09-10
+
+PR #63 remains scoped to Home and its audited Garage/Pico/location interactions,
+targeting `integration/VIAJE-R1-real-planner`, without merge. The audit reproduced
+ambiguous city-wide personal verdicts, clipped city/source text, Home focus loss
+on a location refresh, and superseded GPS operations overwriting manual choice.
+Corrections retain focused vehicle IDs, separate collective and personal copy,
+reflow accessible text, and serialize current location preference snapshots.
+Garage favorite updates and initial active-vehicle loading are also audited.
+
+The unchanged `2026.09.10-r4-a` dataset contains 7 jurisdictions/12 coverages.
+Four-city checks exercise Medellin, Bogota, Bucaramanga and Manizales against
+that catalog; they do not certify national completeness or legal freshness.
+GPS resolves supported city radii, not municipal polygons or continuous driving
+jurisdiction tracking. Real Mi A3 GPS evidence covers the current Medellin
+location only. Gates and limitations belong to the indexed
+`temp/HOME_GARAGE_PICO_AUDIT_20260910` handoff, not inferred from this note.
+No Driving, backend, dataset, schema, dependency or permission change.
+
 ## Inicio/Pico owner correction 2026-09-10
 
 `codex/home-owner-responsive` targets `integration/VIAJE-R1-real-planner` without

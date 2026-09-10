@@ -402,7 +402,7 @@ void main() {
     );
     final hero = find.byKey(const ValueKey('pico-city-hero'));
     expect(
-      find.descendant(of: hero, matching: find.text('No puedes circular')),
+      find.descendant(of: hero, matching: find.text('Restricción hoy')),
       findsOneWidget,
     );
     await tester.tap(find.byKey(const ValueKey('pico-city-change')));
@@ -418,11 +418,11 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.descendant(of: hero, matching: find.text('Puedes circular')),
+      find.descendant(of: hero, matching: find.text('Sin restricción hoy')),
       findsNothing,
     );
     expect(
-      find.descendant(of: hero, matching: find.text('No puedes circular')),
+      find.descendant(of: hero, matching: find.text('Restricción hoy')),
       findsNothing,
     );
     expect(
@@ -432,7 +432,7 @@ void main() {
     store.pending!.complete();
     await tester.pumpAndSettle();
     expect(
-      find.descendant(of: hero, matching: find.text('Puedes circular')),
+      find.descendant(of: hero, matching: find.text('Sin restricción hoy')),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
@@ -454,7 +454,7 @@ void main() {
         );
         final hero = find.byKey(const ValueKey('pico-city-hero'));
         expect(
-          find.descendant(of: hero, matching: find.text('No puedes circular')),
+          find.descendant(of: hero, matching: find.text('Restricción hoy')),
           findsOneWidget,
         );
         final requestCount = store.requestedJurisdictions.length;
@@ -480,23 +480,24 @@ void main() {
           findsOneWidget,
         );
         expect(
-          find.descendant(of: hero, matching: find.text('Puedes circular')),
+          find.descendant(of: hero, matching: find.text('Sin restricción hoy')),
           findsNothing,
         );
         expect(
-          find.descendant(of: hero, matching: find.text('No puedes circular')),
+          find.descendant(of: hero, matching: find.text('Restricción hoy')),
           findsNothing,
         );
         store.pending!.complete();
         await tester.pumpAndSettle();
         expect(store.requestedJurisdictions.length, requestCount + 3);
         expect(
+          find.descendant(of: hero, matching: find.text('Restringidos:')),
+          findsOneWidget,
+        );
+        expect(
           find.descendant(
             of: hero,
-            matching: find.text(
-              'Restringidos: ${change == 'date' ? '2 · 4' : '7 · 9'}',
-              findRichText: true,
-            ),
+            matching: find.text(change == 'date' ? '2 · 4' : '7 · 9'),
           ),
           findsOneWidget,
         );

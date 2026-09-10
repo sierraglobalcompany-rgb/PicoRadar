@@ -63,23 +63,24 @@ class _HomeBottomBanner extends StatelessWidget {
                     ),
                   ),
                 ),
-                Positioned(
-                  right: -8,
-                  bottom: -4,
-                  child: SizedBox(
-                    width: 132,
-                    height: 96,
-                    child: CustomPaint(
-                      key: const ValueKey('home-banner-visual'),
-                      painter: const _HomeBannerPainter(),
+                if (scale < 1.4)
+                  Positioned(
+                    right: -8,
+                    bottom: -4,
+                    child: SizedBox(
+                      width: 80,
+                      height: 64,
+                      child: CustomPaint(
+                        key: const ValueKey('home-banner-visual'),
+                        painter: const _HomeBannerPainter(),
+                      ),
                     ),
                   ),
-                ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(
+                  padding: EdgeInsets.fromLTRB(
                     AppSpacing.m,
                     AppSpacing.s,
-                    104,
+                    scale < 1.4 ? 80 : AppSpacing.m,
                     AppSpacing.s,
                   ),
                   child: Column(
@@ -88,8 +89,6 @@ class _HomeBottomBanner extends StatelessWidget {
                     children: [
                       Text(
                         campaign.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.caption.copyWith(
                           color: AppColors.plateYellow,
                           fontSize: 11,
@@ -99,8 +98,6 @@ class _HomeBottomBanner extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         campaign.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.h2.copyWith(
                           color: Colors.white,
                           fontSize: 16,
@@ -110,8 +107,6 @@ class _HomeBottomBanner extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         campaign.subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.caption.copyWith(
                           color: Colors.white.withValues(alpha: 0.82),
                           height: 1.12,
@@ -144,8 +139,6 @@ class _HomeBottomBanner extends StatelessWidget {
                                   Flexible(
                                     child: Text(
                                       campaign.ctaText,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
                                       style: AppTextStyles.caption.copyWith(
                                         color: AppColors.navy,
                                         fontWeight: FontWeight.w900,

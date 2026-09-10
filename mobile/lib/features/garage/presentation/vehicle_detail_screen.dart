@@ -119,7 +119,7 @@ class _VehicleDetail extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   _DetailField(
-                    label: 'Ciudad',
+                    label: 'Ciudad de matrícula',
                     value: vehicle.registrationCity,
                   ),
                   _DetailField(label: 'Apodo', value: vehicle.nickname),

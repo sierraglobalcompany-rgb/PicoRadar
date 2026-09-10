@@ -323,7 +323,21 @@ class _HomeDataGate extends ConsumerWidget {
           alertPreferences: alertPreferences,
         );
       },
-      loading: () => const _HomeSkeleton(),
+      loading: () => ref.read(homeFocusedVehicleIdProvider) == null
+          ? const _HomeSkeleton()
+          : _HomeReady(
+              snapshots: [
+                for (final vehicle in vehicles)
+                  HomeVehicleSnapshot(
+                    vehicle: vehicle,
+                    today: _unknownEvaluation,
+                  ),
+              ],
+              activeVehicleId: activeVehicleId,
+              jurisdictions: jurisdictions,
+              selectedJurisdiction: jurisdiction,
+              alertPreferences: alertPreferences,
+            ),
       error: (error, stackTrace) => _LoadError(message: error.toString()),
     );
   }
@@ -390,10 +404,16 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
       _refreshAutoGpsForCurrentCity();
     };
     WidgetsBinding.instance.addObserver(_lifecycleObserver);
-    _focusedIndex = pickInitialHomeVehicleIndex(
-      snapshots: widget.snapshots,
-      activeVehicleId: widget.activeVehicleId,
+    final rememberedId = ref.read(homeFocusedVehicleIdProvider);
+    final rememberedIndex = widget.snapshots.indexWhere(
+      (snapshot) => snapshot.vehicle.id == rememberedId,
     );
+    _focusedIndex = rememberedIndex >= 0
+        ? rememberedIndex
+        : pickInitialHomeVehicleIndex(
+            snapshots: widget.snapshots,
+            activeVehicleId: widget.activeVehicleId,
+          );
     _syncFocusedVehicle();
     _controller = PageController(
       initialPage: _focusedIndex,
@@ -409,19 +429,25 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
   @override
   void didUpdateWidget(covariant _HomeReady oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_focusedIndex >= widget.snapshots.length) {
-      _focusedIndex = pickInitialHomeVehicleIndex(
-        snapshots: widget.snapshots,
-        activeVehicleId: widget.activeVehicleId,
-      );
-      _syncFocusedVehicle();
+    final previousId = oldWidget.snapshots[_focusedIndex].vehicle.id;
+    final retainedIndex = widget.snapshots.indexWhere(
+      (snapshot) => snapshot.vehicle.id == previousId,
+    );
+    final nextIndex = retainedIndex >= 0
+        ? retainedIndex
+        : pickInitialHomeVehicleIndex(
+            snapshots: widget.snapshots,
+            activeVehicleId: widget.activeVehicleId,
+          );
+    if (_focusedIndex != nextIndex) {
+      _focusedIndex = nextIndex;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _controller.hasClients) {
           _controller.jumpToPage(_focusedIndex);
         }
       });
-    } else if (oldWidget.snapshots[_focusedIndex].vehicle.id !=
-        widget.snapshots[_focusedIndex].vehicle.id) {
+    }
+    if (previousId != widget.snapshots[_focusedIndex].vehicle.id) {
       _syncFocusedVehicle();
     }
   }
