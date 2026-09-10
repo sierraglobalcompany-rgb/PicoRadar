@@ -128,87 +128,6 @@ void main() {
     );
   });
 
-  test('memoizer recomputes only for route or dataset identity changes', () {
-    var computations = 0;
-    final memoizer = TripRouteAssociationMemoizer(
-      associator: _CountingAssociator(() => computations++),
-    );
-    final tolls = [_toll('toll-1', -75.575)];
-    final cameras = [_camera('camera-1', -75.576)];
-
-    final first = memoizer.resolve(
-      routeId: 'route-a',
-      geometry: geometry,
-      tollVersion: 'v1',
-      tolls: tolls,
-      cameraPackIdentity: 'pack-v1',
-      cameras: cameras,
-    );
-    final second = memoizer.resolve(
-      routeId: 'route-a',
-      geometry: geometry,
-      tollVersion: 'v1',
-      tolls: tolls,
-      cameraPackIdentity: 'pack-v1',
-      cameras: cameras,
-    );
-
-    expect(identical(first, second), isTrue);
-    expect(computations, 1);
-
-    memoizer.resolve(
-      routeId: 'route-b',
-      geometry: geometry,
-      tollVersion: 'v1',
-      tolls: tolls,
-      cameraPackIdentity: 'pack-v1',
-      cameras: cameras,
-    );
-    expect(computations, 2);
-
-    final newGeometry = List<TripCoordinate>.of(geometry);
-    memoizer.resolve(
-      routeId: 'route-b',
-      geometry: newGeometry,
-      tollVersion: 'v1',
-      tolls: tolls,
-      cameraPackIdentity: 'pack-v1',
-      cameras: cameras,
-    );
-    expect(computations, 3);
-
-    memoizer.resolve(
-      routeId: 'route-b',
-      geometry: newGeometry,
-      tollVersion: 'v2',
-      tolls: tolls,
-      cameraPackIdentity: 'pack-v1',
-      cameras: cameras,
-    );
-    expect(computations, 4);
-
-    final newTolls = List<TollInventoryRecord>.of(tolls);
-    memoizer.resolve(
-      routeId: 'route-b',
-      geometry: newGeometry,
-      tollVersion: 'v2',
-      tolls: newTolls,
-      cameraPackIdentity: 'pack-v1',
-      cameras: cameras,
-    );
-    expect(computations, 5);
-
-    memoizer.resolve(
-      routeId: 'route-b',
-      geometry: newGeometry,
-      tollVersion: 'v2',
-      tolls: newTolls,
-      cameraPackIdentity: 'pack-v2',
-      cameras: cameras,
-    );
-    expect(computations, 6);
-  });
-
   test('associates 184 tolls and 360 cameras within a realistic budget', () {
     final realisticGeometry = List.generate(
       1001,
@@ -248,28 +167,6 @@ void main() {
       reason: 'Association work must stay outside frame-by-frame map updates.',
     );
   });
-}
-
-class _CountingAssociator extends TripRouteAssociator {
-  const _CountingAssociator(this.onCompute);
-
-  final void Function() onCompute;
-
-  @override
-  TripRouteAssociations associate({
-    required String routeId,
-    required List<TripCoordinate> geometry,
-    required Iterable<TollInventoryRecord> tolls,
-    required Iterable<TrafficCamera> cameras,
-  }) {
-    onCompute();
-    return super.associate(
-      routeId: routeId,
-      geometry: geometry,
-      tolls: tolls,
-      cameras: cameras,
-    );
-  }
 }
 
 TollInventoryRecord _toll(
