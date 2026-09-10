@@ -324,14 +324,19 @@ void main() {
     late ProviderContainer container;
     late DateTime nowUtc;
     late int remoteClientReads;
+    Completer<void>? seedGate;
 
     setUp(() {
       database = AppDatabase(NativeDatabase.memory());
       store = _TripStore(database);
       nowUtc = DateTime.utc(2026, 9, 5, 15);
       remoteClientReads = 0;
+      seedGate = null;
       container = ProviderContainer(
         overrides: [
+          bundledRestrictionsProvider.overrideWith((ref) async {
+            await seedGate?.future;
+          }),
           restrictionStoreProvider.overrideWithValue(store),
           tripRestrictionClockProvider.overrideWithValue(() => nowUtc),
           tripPlanClientProvider.overrideWith((ref) {
@@ -346,6 +351,75 @@ void main() {
       container.dispose();
       await database.close();
     });
+
+    for (final instant in [false, true]) {
+      test(
+        'performance: dataset commit renews retained Trip restriction (instant=$instant)',
+        () async {
+          final vehicle = _vehicle();
+          final provider = instant
+              ? tripInstantRestrictionProvider((
+                  municipality: _bogota,
+                  vehicle: vehicle,
+                  instantUtc: DateTime.utc(2026, 9, 7, 12),
+                ))
+              : tripRestrictionProvider((
+                  municipality: _bogota,
+                  vehicle: vehicle,
+                  date: DateTime(2026, 9, 7),
+                ));
+          final subscription = container.listen(provider, (_, _) {});
+          addTearDown(subscription.close);
+          expect(
+            (await container.read(provider.future)).status,
+            RestrictionDayStatus.restricted,
+          );
+
+          store.overrideRuleSet = _ruleSet(
+            rules: [
+              _rule(digits: {7}),
+            ],
+          );
+          container.read(datasetSyncCommitHandlerProvider)('restrictions');
+          await container.pump();
+          final renewed = await container.read(provider.future);
+          expect(renewed.status, RestrictionDayStatus.allowed);
+          expect(store.loads, hasLength(2));
+          expect(remoteClientReads, 0);
+        },
+      );
+
+      test(
+        'performance: Trip waits for local seed before coverage (instant=$instant)',
+        () async {
+          seedGate = Completer<void>();
+          final vehicle = _vehicle();
+          final provider = instant
+              ? tripInstantRestrictionProvider((
+                  municipality: _bogota,
+                  vehicle: vehicle,
+                  instantUtc: DateTime.utc(2026, 9, 7, 12),
+                ))
+              : tripRestrictionProvider((
+                  municipality: _bogota,
+                  vehicle: vehicle,
+                  date: DateTime(2026, 9, 7),
+                ));
+          final subscription = container.listen(provider, (_, _) {});
+          addTearDown(subscription.close);
+          final pending = container.read(provider.future);
+          try {
+            await Future<void>.delayed(Duration.zero);
+            expect(store.loads, isEmpty);
+          } finally {
+            seedGate!.complete();
+          }
+          expect((await pending).status, RestrictionDayStatus.restricted);
+          expect(store.loads, hasLength(1));
+          expect(remoteClientReads, 0);
+        },
+      );
+    }
 
     test(
       'freshness clock advances for a new query in the same container',
@@ -484,6 +558,7 @@ void main() {
       final subscription = container.listen(provider, (_, _) {});
       addTearDown(subscription.close);
       final result = container.read(provider.future);
+      await Future<void>.delayed(Duration.zero);
       expect(store.loads, hasLength(1));
       nowUtc = DateTime.utc(2026, 10, 1, 5);
       store.loadGate!.complete();
@@ -703,6 +778,7 @@ RestrictionRule _rule({
 class _TripStore extends RestrictionStore {
   _TripStore(super.database);
 
+  RestrictionRuleSet? overrideRuleSet;
   String? failedJurisdiction;
   Object failure = const FormatException('synthetic local dataset failure');
   Completer<void>? loadGate;
@@ -723,8 +799,9 @@ class _TripStore extends RestrictionStore {
     if (jurisdictionId == failedJurisdiction) {
       throw failure;
     }
-    return _ruleSet(
-      rules: [_rule(kind: vehicleKind, service: serviceType)],
-    );
+    return overrideRuleSet ??
+        _ruleSet(
+          rules: [_rule(kind: vehicleKind, service: serviceType)],
+        );
   }
 }

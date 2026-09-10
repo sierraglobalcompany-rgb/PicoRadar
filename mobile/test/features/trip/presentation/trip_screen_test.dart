@@ -3387,6 +3387,7 @@ Future<void> _pumpScreen(
         restrictionStoreProvider.overrideWithValue(
           restrictionStore ?? ownedRestrictionStore!,
         ),
+        bundledRestrictionsProvider.overrideWith((ref) async {}),
         tripMunicipalityCatalogProvider.overrideWith(
           (ref) async => _tripCatalog,
         ),

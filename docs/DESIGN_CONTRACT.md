@@ -2,6 +2,24 @@
 
 Este contrato traduce el baseline visual a reglas operables para Flutter. Autoridad: `docs/baseline/02_Wireframes_Design_System_v1.docx` y flujos 01-08, subordinados a seguridad, privacidad, store, Cierre Global y Arquitectura Tecnica.
 
+## Rendimiento sin redisenar (2026-09-10)
+
+- La ventana nativa de arranque muestra la marca existente y mantiene continuidad
+  hacia Flutter; no agrega una espera artificial ni un porcentaje ficticio.
+- Inicio puede presentar su contenido esencial antes de avatar, imagenes,
+  obligaciones o banner. Los espacios permanecen estables y un dato pendiente
+  no se interpreta como permiso para circular ni obligacion sin configurar.
+- Optimizaciones de pintura, consultas o caches conservan dimensiones, sombras,
+  efectos, texto accesible, controles y foco. Las capturas comparativas y la
+  medicion fisica, no solo tests verdes, acreditan esta conservacion.
+- No se apaga GPS al cambiar de pestana ni se elimina una alerta aprobada para
+  aparentar mayor fluidez. Las limitaciones de rendimiento se declaran aparte.
+- Con texto ampliado, la marca de Conducir respeta el ancho del encabezado
+  mediante reflujo; no se reduce la fuente ni se recorta el nombre.
+- La comparacion fisica conserva el contenido de Inicio. El indicador GPS
+  puede cambiar por su estado real. El crossfade nativo/Flutter aun muestra
+  un breve desplazamiento de la marca; no se declara continuidad perfecta.
+
 ## Inicio: vehiculos protagonistas y layout adaptable (2026-09-09)
 
 ### Auditoria Inicio/Garaje/Pico 2026-09-10

@@ -8,6 +8,12 @@ import '../data/vehicle_visual_resolver.dart';
 import '../data/visual_asset_catalogs.dart';
 import '../data/visual_asset_preferences.dart';
 
+ImageProvider<Object> visualAssetImageProvider(
+  String asset, {
+  required int cacheWidth,
+  int? cacheHeight,
+}) => ResizeImage.resizeIfNeeded(cacheWidth, cacheHeight, AssetImage(asset));
+
 class HomeAvatarButton extends ConsumerWidget {
   const HomeAvatarButton({
     this.embedded = false,
@@ -29,7 +35,10 @@ class HomeAvatarButton extends ConsumerWidget {
     return catalog.when(
       data: (items) {
         final selectedId = selected.asData?.value;
-        final asset = items.assetById(selectedId) ?? items.defaultAsset;
+        final asset =
+            selected.isLoading || selected.hasError || !selected.hasValue
+            ? null
+            : (items.assetById(selectedId) ?? items.defaultAsset);
         return Semantics(
           button: true,
           label: semanticsLabel,
@@ -65,12 +74,14 @@ class HomeAvatarButton extends ConsumerWidget {
                             Icons.person_rounded,
                             color: AppColors.teal,
                           )
-                        : Image.asset(
-                            asset.asset,
+                        : Image(
+                            image: visualAssetImageProvider(
+                              asset.asset,
+                              cacheWidth: 112,
+                              cacheHeight: 112,
+                            ),
                             key: ValueKey('home-avatar-image-${asset.id}'),
                             fit: BoxFit.cover,
-                            cacheWidth: 112,
-                            cacheHeight: 112,
                           ),
                   ),
                 ),
@@ -79,8 +90,8 @@ class HomeAvatarButton extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const _AvatarFallback(),
-      error: (error, stackTrace) => const _AvatarFallback(),
+      loading: () => _AvatarFallback(visualSize: visualSize),
+      error: (error, stackTrace) => _AvatarFallback(visualSize: visualSize),
     );
   }
 }
@@ -103,6 +114,10 @@ class VehicleVisualImage extends ConsumerWidget {
     final overrideId = ref.watch(vehicleVisualOverrideProvider(vehicle.id));
     return catalog.when(
       data: (items) {
+        if (overrideId.hasError) return fallbackBuilder(context);
+        if (overrideId.isLoading || !overrideId.hasValue) {
+          return const _VehicleVisualLoadingPlaceholder();
+        }
         final resolver = VehicleVisualResolver(items);
         final asset = resolver.resolve(
           vehicle,
@@ -114,11 +129,13 @@ class VehicleVisualImage extends ConsumerWidget {
         return Semantics(
           image: true,
           label: 'Imagen de ${vehicle.plate}',
-          child: Image.asset(
-            asset.asset,
+          child: Image(
+            image: visualAssetImageProvider(
+              asset.asset,
+              cacheWidth: cacheWidth,
+            ),
             key: ValueKey('vehicle-visual-image-${vehicle.id}'),
             fit: BoxFit.contain,
-            cacheWidth: cacheWidth,
             gaplessPlayback: true,
           ),
         );
@@ -163,15 +180,22 @@ Future<void> showVehicleVisualPicker(
 }
 
 class _AvatarFallback extends StatelessWidget {
-  const _AvatarFallback();
+  const _AvatarFallback({required this.visualSize});
+
+  final double visualSize;
 
   @override
   Widget build(BuildContext context) {
-    return const CircleAvatar(
-      key: ValueKey('home-avatar-fallback'),
-      radius: 20,
-      backgroundColor: Color(0xFFEAF4F3),
-      child: Icon(Icons.person_rounded, color: AppColors.teal),
+    return SizedBox.square(
+      dimension: 48,
+      child: Center(
+        child: CircleAvatar(
+          key: const ValueKey('home-avatar-fallback'),
+          radius: visualSize / 2,
+          backgroundColor: const Color(0xFFEAF4F3),
+          child: const Icon(Icons.person_rounded, color: AppColors.teal),
+        ),
+      ),
     );
   }
 }
@@ -353,11 +377,13 @@ class _AvatarOption extends StatelessWidget {
       selected: selected,
       onTap: onTap,
       child: ClipOval(
-        child: Image.asset(
-          item.asset,
+        child: Image(
+          image: visualAssetImageProvider(
+            item.asset,
+            cacheWidth: 128,
+            cacheHeight: 128,
+          ),
           fit: BoxFit.cover,
-          cacheWidth: 128,
-          cacheHeight: 128,
         ),
       ),
     );
@@ -404,7 +430,10 @@ class _VehicleVisualOption extends StatelessWidget {
       label: item.displayName,
       selected: selected,
       onTap: onTap,
-      child: Image.asset(item.asset, fit: BoxFit.contain, cacheWidth: 220),
+      child: Image(
+        image: visualAssetImageProvider(item.asset, cacheWidth: 220),
+        fit: BoxFit.contain,
+      ),
     );
   }
 }

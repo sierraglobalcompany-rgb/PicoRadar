@@ -55,22 +55,6 @@ enum DrivingSimulationScenario {
 
 enum DrivingSpeedState { noCamera, unknownReportedSpeed, within, near, over }
 
-class OverspeedPulseGate {
-  DrivingSpeedState? _previous;
-
-  bool shouldPulse({
-    required DrivingSpeedState current,
-    required bool reducedMotion,
-  }) {
-    final pulse =
-        !reducedMotion &&
-        current == DrivingSpeedState.over &&
-        _previous != current;
-    _previous = current;
-    return pulse;
-  }
-}
-
 final drivingLocationGatewayProvider = Provider<DrivingLocationGateway>((ref) {
   return const GeolocatorDrivingLocationGateway();
 });
@@ -304,6 +288,8 @@ class DrivingState {
 }
 
 class DrivingController extends AsyncNotifier<DrivingState> {
+  static var _nextMapSessionId = 0;
+  var _mapSessionId = 0;
   StreamSubscription<DrivingPoint>? _subscription;
   DrivingPoint? _previousPoint;
   DrivingAlertEngine? _alertEngine;
@@ -316,6 +302,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   List<TollInventoryRecord> _tolls = const [];
   Map<String, LocalTollPricingCharge> _tollCharges = const {};
   Future<void>? _tollLoading;
+  var _tollLoadGeneration = 0;
   String? _tollLoadError;
   String? _feedbackTarget;
   var _feedbackSerial = 0;
@@ -385,6 +372,12 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         : null;
     _sessionSerial += 1;
     final sessionSerial = _sessionSerial;
+    _mapSessionId = ++_nextMapSessionId;
+    _tollLoadGeneration++;
+    _tollLoading = null;
+    _tolls = const [];
+    _tollCharges = const {};
+    _tollLoadError = null;
     // Loading is independent of GPS startup and never happens per location.
     if (current.preferences.tollAlertsEnabled ||
         scenario == DrivingSimulationScenario.cocorna) {
@@ -624,7 +617,9 @@ class DrivingController extends AsyncNotifier<DrivingState> {
             preferences.cameraTargetingConeDegrees) {
       await _invalidateFeedback();
     }
-    if (preferences.tollAlertsEnabled && ref.mounted) {
+    if (preferences.tollAlertsEnabled &&
+        (current.isActive || current.status == DrivingSessionStatus.starting) &&
+        ref.mounted) {
       unawaited(_ensureTollData());
     }
     await saveDrivingPreferences(storage, preferences);
@@ -787,7 +782,9 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     var updated = nextState.copyWith(
       nearestToll: toll,
       referenceCharge: _tollCharges[toll?.toll.id],
-      tollEpisodeKey: _tollSession.episodeKey,
+      tollEpisodeKey: _tollSession.episodeKey == null
+          ? null
+          : '$_mapSessionId:toll:${_tollSession.episodeKey}',
       clearNearestToll: toll == null,
       clearVisualAlertPulse: !nextState.showCameraAlertPanel && toll == null,
     );
@@ -848,7 +845,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       _activeCameraId = cameraId;
       _cameraEpisodeSerial += 1;
     }
-    return '$cameraId:$_cameraEpisodeSerial';
+    return '$_mapSessionId:camera:$cameraId:$_cameraEpisodeSerial';
   }
 
   Future<void> _notifyMessage(
@@ -905,9 +902,22 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     }
   }
 
-  Future<void> _ensureTollData() => _tollLoading ??= _loadTollData();
+  Future<void> _ensureTollData() {
+    final pending = _tollLoading;
+    if (pending != null) return pending;
+    // Retry failed providers only at a session/setting boundary, never per GPS fix.
+    final inventory = ref.read(tripTollInventoryProvider);
+    if (inventory.hasError && !inventory.isLoading) {
+      ref.invalidate(tripTollInventoryProvider);
+    }
+    final tariffs = ref.read(tripTollTariffCatalogProvider);
+    if (tariffs.hasError && !tariffs.isLoading) {
+      ref.invalidate(tripTollTariffCatalogProvider);
+    }
+    return _tollLoading = _loadTollData(_tollLoadGeneration);
+  }
 
-  Future<void> _loadTollData() async {
+  Future<void> _loadTollData(int generation) async {
     TollInventoryDataset? inventory;
     TollTariffCatalog? catalog;
     final errors = <String>[];
@@ -929,7 +939,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
             errors.add('Tarifas de referencia no disponibles.');
           }),
     ]);
-    if (!ref.mounted) return;
+    if (!ref.mounted || generation != _tollLoadGeneration) return;
     _tolls = inventory?.records ?? const [];
     _tollCharges = catalog == null
         ? {

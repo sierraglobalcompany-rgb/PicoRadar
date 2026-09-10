@@ -15,12 +15,21 @@ class HomeBannerSlot extends ConsumerWidget {
         }
         return _HomeBottomBanner(campaign: item);
       },
-      loading: () =>
-          const SizedBox.shrink(key: ValueKey('home-bottom-banner-slot')),
+      loading: () => SizedBox(
+        key: const ValueKey('home-bottom-banner-slot'),
+        width: double.infinity,
+        height: _homeBannerSlotHeight(context),
+      ),
       error: (error, stackTrace) =>
           const SizedBox.shrink(key: ValueKey('home-bottom-banner-slot')),
     );
   }
+}
+
+// Unknown campaign copy can exceed this shared minimum once it is available.
+double _homeBannerSlotHeight(BuildContext context) {
+  final scale = MediaQuery.textScalerOf(context).scale(1);
+  return scale >= 1.8 ? 140.0 : (scale >= 1.4 ? 124.0 : 96.0);
 }
 
 class _HomeBottomBanner extends StatelessWidget {
@@ -32,7 +41,7 @@ class _HomeBottomBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final target = safeHomeBannerUri(campaign);
     final scale = MediaQuery.textScalerOf(context).scale(1);
-    final minHeight = scale >= 1.8 ? 140.0 : (scale >= 1.4 ? 124.0 : 96.0);
+    final minHeight = _homeBannerSlotHeight(context);
     return Semantics(
       button: target != null,
       label: '${campaign.label}, ${campaign.title}',

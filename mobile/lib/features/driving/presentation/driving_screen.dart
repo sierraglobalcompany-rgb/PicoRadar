@@ -1191,13 +1191,15 @@ class _DrivingTopBar extends StatelessWidget {
       children: [
         const PicoRadarBrandMark(size: 28),
         const SizedBox(width: 8),
-        Text(
-          'PicoRadar',
-          key: const ValueKey('driving-brand'),
-          style: AppTextStyles.h2.copyWith(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
+        Flexible(
+          child: Text(
+            'PicoRadar',
+            key: const ValueKey('driving-brand'),
+            style: AppTextStyles.h2.copyWith(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
       ],
@@ -2198,11 +2200,13 @@ class _SpeedGauge extends StatelessWidget {
             key: gaugeKey,
             width: diameter,
             height: diameter,
-            child: CustomPaint(
-              painter: _SpeedRingPainter(
-                color: AppColors.teal,
-                speedKmh: state.speedKmh,
-                fontFamily: DefaultTextStyle.of(context).style.fontFamily,
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: _SpeedRingPainter(
+                  color: AppColors.teal,
+                  speedKmh: state.speedKmh,
+                  fontFamily: DefaultTextStyle.of(context).style.fontFamily,
+                ),
               ),
             ),
           ),

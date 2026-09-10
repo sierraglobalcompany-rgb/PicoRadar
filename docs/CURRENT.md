@@ -1,5 +1,31 @@
 # PicoRadar Current State
 
+## Performance KISS audit and implementation 2026-09-10
+
+`codex/app-performance-kiss` starts from `d2bb976` and targets
+`codex/home-owner-responsive`, without merge. Scope: measured startup,
+progressive Home, bounded and correctly invalidated local work, and proven
+unused-code cleanup. The approved visual layouts, GPS ownership, camera/toll
+semantics, private cleanup and local data contracts remain authoritative.
+
+The instrumented baseline distinguishes Android TTID, Flutter first frame,
+critical data and Home content frames. Physical release testing exposed a
+pre-Flutter Room/WorkManager constructor removal by R8. The scoped constructor
+keep rule has passed optimized APK launches on Mi A3 without deleting data.
+The ten-launch release sample records Home raster completion at median896ms
+and p95 2316ms from the pre-launch device clock sample, including ADB transport;
+it is not a touch-to-display scanout measurement. First update is retained.
+Evidence, actual before/after measurements, incomplete targets and final gate
+results belong to `temp/APP_PERFORMANCE_KISS/INFORME_RENDIMIENTO.md`.
+Acceptance remains PARTIAL: Apps raster performance is below the95% target;
+first Home/Garage traversals also miss it. Cold startup improvement does not
+certify global fluency, absence of leaks or the live Viaje routing service.
+Normal profile and Driving harness evidence are explicitly distinguished.
+The enlarged-text simulation checks exposed a pre-existing unbounded brand
+row; a local Flexible constraint preserves the normal layout and full text.
+The optional simulation gate is tested separately with its compile-time flag.
+No backend, schema, permission, new dependency or framework change is allowed.
+
 ## Inicio/Garaje/Pico audit followup 2026-09-10
 
 PR #63 remains scoped to Home and its audited Garage/Pico/location interactions,

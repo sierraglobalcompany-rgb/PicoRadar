@@ -142,6 +142,14 @@ void main() {
       await tester.pump();
       final label = find.byKey(const ValueKey('driving-simulation-label'));
       final rect = tester.getRect(label);
+      final brand = find.byKey(const ValueKey('driving-brand'));
+      final brandRect = tester.getRect(brand);
+      expect(brandRect.left, greaterThanOrEqualTo(0));
+      expect(brandRect.right, lessThanOrEqualTo(360));
+      expect(
+        tester.renderObject<RenderParagraph>(brand).didExceedMaxLines,
+        isFalse,
+      );
       expect(rect.left, greaterThanOrEqualTo(0));
       expect(rect.right, lessThanOrEqualTo(360));
       expect(rect.bottom, lessThanOrEqualTo(844));

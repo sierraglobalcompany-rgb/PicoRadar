@@ -306,6 +306,184 @@ void main() {
     expect(h.feedback.vibrations, 1);
   });
 
+  for (final failedInventory in [false, true]) {
+    test(
+      'performance: retries failed toll snapshot on next session (inventory=$failedInventory)',
+      () async {
+        var fail = true;
+        final h = _Harness(
+          inventory: () async {
+            if (fail && failedInventory) throw StateError('inventory failed');
+            return _inventory;
+          },
+          catalog: () async {
+            if (fail && !failedInventory) throw StateError('tariffs failed');
+            return realTollCatalog;
+          },
+        );
+        await h.start();
+        await h.point(650, 0);
+        await h.point(490, 20);
+        expect(h.state.tollDataError, isNotNull);
+        expect(h.inventoryLoads, 1);
+        expect(h.tariffLoads, 1);
+
+        await h.controller.stop();
+        fail = false;
+        await h.start();
+        await h.point(650, 0);
+        await h.point(490, 20);
+        expect(h.state.tollDataError, isNull);
+        expect(h.state.nearestToll?.toll.id, cocorna.id);
+        expect(h.state.referenceCharge?.amountMinor, isNotNull);
+        final loads = (h.inventoryLoads, h.tariffLoads);
+        await h.point(290, 40);
+        await h.point(90, 60);
+        expect((h.inventoryLoads, h.tariffLoads), loads);
+      },
+    );
+  }
+
+  test(
+    'performance: inventory refresh applies between sessions only',
+    () async {
+      var inventory = _inventory;
+      final h = _Harness(inventory: () async => inventory);
+      await h.start();
+      await h.point(650, 0);
+      await h.point(490, 20);
+      expect(h.state.nearestToll?.toll.id, cocorna.id);
+
+      inventory = TollInventoryDataset(
+        version: 'synthetic-next-version',
+        sourceTimestamp: _inventory.sourceTimestamp,
+        records: const [],
+      );
+      h.container.invalidate(tripTollInventoryProvider);
+      await h.container.read(tripTollInventoryProvider.future);
+      await h.point(290, 40);
+      expect(h.state.nearestToll?.toll.id, cocorna.id);
+      expect(h.state.isActive, isTrue);
+      final loads = h.inventoryLoads;
+
+      await h.controller.stop();
+      await h.start();
+      await h.point(650, 0);
+      await h.point(490, 20);
+      expect(h.state.nearestToll, isNull);
+      expect(h.state.tollDataError, isNull);
+      expect(h.inventoryLoads, loads);
+    },
+  );
+
+  test('performance: tariff refresh applies between sessions only', () async {
+    var catalog = realTollCatalog;
+    final h = _Harness(catalog: () async => catalog);
+    await h.start();
+    await h.point(650, 0);
+    await h.point(490, 20);
+    final amount = h.state.referenceCharge!.amountMinor;
+    expect(amount, isNotNull);
+
+    catalog = _catalogWithControl('BLOQUEADO_REVISION');
+    h.container.invalidate(tripTollTariffCatalogProvider);
+    await h.container.read(tripTollTariffCatalogProvider.future);
+    await h.point(290, 40);
+    expect(h.state.referenceCharge!.amountMinor, amount);
+
+    await h.controller.stop();
+    await h.start();
+    await h.point(650, 0);
+    await h.point(490, 20);
+    expect(h.state.referenceCharge!.amountMinor, isNull);
+    expect(h.state.referenceCharge!.pendingReason, isNotNull);
+  });
+
+  test(
+    'performance: toll map identity is stable only within its session',
+    () async {
+      final h = _Harness();
+      await h.start();
+      await h.point(650, 0);
+      await h.point(490, 20);
+      final firstKey = h.state.tollEpisodeKey;
+      expect(firstKey, isNotNull);
+      await h.point(290, 40);
+      expect(h.state.tollEpisodeKey, firstKey);
+
+      await h.controller.stop();
+      await h.start();
+      await h.point(650, 0);
+      await h.point(490, 20);
+      expect(h.state.nearestToll?.toll.id, cocorna.id);
+      expect(h.state.tollEpisodeKey, isNotNull);
+      expect(h.state.tollEpisodeKey, isNot(firstKey));
+    },
+  );
+
+  for (final lateError in [false, true]) {
+    test(
+      'performance: old toll load cannot replace a new session (error=$lateError)',
+      () async {
+        final oldLoad = Completer<TollInventoryDataset>();
+        var inventory = oldLoad.future;
+        final h = _Harness(inventory: () => inventory);
+        await h.start();
+        await h.controller.stop();
+
+        inventory = Future.value(
+          TollInventoryDataset(
+            version: 'synthetic-next-session',
+            sourceTimestamp: _inventory.sourceTimestamp,
+            records: const [],
+          ),
+        );
+        h.container.invalidate(tripTollInventoryProvider);
+        await h.start();
+        if (lateError) {
+          oldLoad.completeError(StateError('superseded load'));
+        } else {
+          oldLoad.complete(_inventory);
+        }
+        await _flush();
+        await h.point(650, 0);
+        await h.point(490, 20);
+        expect(h.state.isActive, isTrue);
+        expect(h.state.nearestToll, isNull);
+        expect(h.state.tollDataError, isNull);
+        expect(h.feedback.messages, isEmpty);
+      },
+    );
+  }
+
+  for (final camera in [false, true]) {
+    test(
+      'performance: recreated controller has distinct map identity (camera=$camera)',
+      () async {
+        final first = _Harness(camera: camera);
+        await first.start();
+        await first.point(650, 0);
+        await first.point(490, 20);
+        final firstKey = camera
+            ? first.state.cameraEpisodeKey
+            : first.state.tollEpisodeKey;
+        expect(firstKey, isNotNull);
+        await first.controller.stop();
+        first.dispose();
+
+        final next = _Harness(camera: camera);
+        await next.start();
+        await next.point(650, 0);
+        await next.point(490, 20);
+        final nextKey = camera
+            ? next.state.cameraEpisodeKey
+            : next.state.tollEpisodeKey;
+        expect(nextKey, isNotNull);
+        expect(nextKey, isNot(firstKey));
+      },
+    );
+  }
+
   test('visual toll pulse fires without voice sound or vibration', () async {
     final h = _Harness();
     await h.start();
@@ -454,7 +632,7 @@ Future<void> _flush() async {
 }
 
 class _Location implements DrivingLocationGateway {
-  final points = StreamController<DrivingPoint>();
+  final points = StreamController<DrivingPoint>.broadcast();
   Completer<bool>? serviceGate;
   @override
   Future<bool> isLocationServiceEnabled() async =>

@@ -358,35 +358,37 @@ class _CenterAppsItem extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 2),
-              Container(
-                key: const ValueKey('app-bottom-nav-apps-halo'),
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.surface,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.teal.withValues(
-                        alpha: selected ? 0.22 : 0.14,
+              RepaintBoundary(
+                child: Container(
+                  key: const ValueKey('app-bottom-nav-apps-halo'),
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.surface,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.teal.withValues(
+                          alpha: selected ? 0.22 : 0.14,
+                        ),
+                        offset: const Offset(0, 5),
+                        blurRadius: selected ? 12 : 9,
                       ),
-                      offset: const Offset(0, 5),
-                      blurRadius: selected ? 12 : 9,
+                    ],
+                  ),
+                  child: Center(
+                    child: AnimatedContainer(
+                      key: const ValueKey('app-bottom-nav-apps-center'),
+                      duration: AppMotion.fade,
+                      curve: AppMotion.standardCurve,
+                      width: 46,
+                      height: 46,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.teal,
+                      ),
+                      child: Icon(icon, color: AppColors.surface, size: 22),
                     ),
-                  ],
-                ),
-                child: Center(
-                  child: AnimatedContainer(
-                    key: const ValueKey('app-bottom-nav-apps-center'),
-                    duration: AppMotion.fade,
-                    curve: AppMotion.standardCurve,
-                    width: 46,
-                    height: 46,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.teal,
-                    ),
-                    child: Icon(icon, color: AppColors.surface, size: 22),
                   ),
                 ),
               ),

@@ -51,6 +51,21 @@ class _VehicleCarousel extends StatelessWidget {
           itemBuilder: (context, index) {
             return AnimatedBuilder(
               animation: controller,
+              child: RepaintBoundary(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.s,
+                    vertical: AppSpacing.xs,
+                  ),
+                  child: _HomeVehicleCard(
+                    snapshot: snapshots[index],
+                    focused: index == focusedIndex,
+                    onTap: () => context.push(
+                      '/garage/vehicle/${snapshots[index].vehicle.id}',
+                    ),
+                  ),
+                ),
+              ),
               builder: (context, child) {
                 var page = focusedIndex.toDouble();
                 if (controller.hasClients &&
@@ -63,22 +78,7 @@ class _VehicleCarousel extends StatelessWidget {
                 final opacity = 1.0 - (distance * 0.12);
                 return Opacity(
                   opacity: opacity,
-                  child: Transform.scale(
-                    scale: scale,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.s,
-                        vertical: AppSpacing.xs,
-                      ),
-                      child: _HomeVehicleCard(
-                        snapshot: snapshots[index],
-                        focused: index == focusedIndex,
-                        onTap: () => context.push(
-                          '/garage/vehicle/${snapshots[index].vehicle.id}',
-                        ),
-                      ),
-                    ),
-                  ),
+                  child: Transform.scale(scale: scale, child: child),
                 );
               },
             );
@@ -433,6 +433,7 @@ class _VehiclePainter extends CustomPainter {
 class _CarouselIndicator extends StatelessWidget {
   const _CarouselIndicator({required this.count, required this.index});
 
+  static const _maximumVisibleDots = 7;
   final int count;
   final int index;
 
@@ -441,6 +442,12 @@ class _CarouselIndicator extends StatelessWidget {
     if (count <= 1) {
       return const SizedBox.shrink();
     }
+    final visibleCount = count < _maximumVisibleDots
+        ? count
+        : _maximumVisibleDots;
+    final firstVisible = (index - visibleCount ~/ 2)
+        .clamp(0, count - visibleCount)
+        .toInt();
     return Center(
       child: Semantics(
         label: 'Vehículo ${index + 1} de $count',
@@ -448,7 +455,7 @@ class _CarouselIndicator extends StatelessWidget {
           key: const ValueKey('home-carousel-indicator'),
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (var i = 0; i < count; i += 1)
+            for (var i = firstVisible; i < firstVisible + visibleCount; i += 1)
               AnimatedContainer(
                 key: ValueKey('home-carousel-dot-$i'),
                 duration: AppMotion.fade,

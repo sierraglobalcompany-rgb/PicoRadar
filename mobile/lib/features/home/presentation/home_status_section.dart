@@ -20,8 +20,18 @@ class _FocusedStatusGrid extends ConsumerWidget {
         obligations: items,
         selectedJurisdiction: selectedJurisdiction,
       ),
-      loading: () => const _StatusGridSkeleton(),
-      error: (error, stackTrace) => _LoadError(message: error.toString()),
+      loading: () => _StatusGrid(
+        snapshot: snapshot,
+        obligations: null,
+        obligationsFailed: obligations.hasError,
+        selectedJurisdiction: selectedJurisdiction,
+      ),
+      error: (error, stackTrace) => _StatusGrid(
+        snapshot: snapshot,
+        obligations: null,
+        obligationsFailed: true,
+        selectedJurisdiction: selectedJurisdiction,
+      ),
     );
   }
 }
@@ -31,10 +41,12 @@ class _StatusGrid extends ConsumerWidget {
     required this.snapshot,
     required this.obligations,
     required this.selectedJurisdiction,
+    this.obligationsFailed = false,
   });
 
   final HomeVehicleSnapshot snapshot;
-  final List<VehicleObligation> obligations;
+  final List<VehicleObligation>? obligations;
+  final bool obligationsFailed;
   final RestrictionJurisdiction? selectedJurisdiction;
 
   @override
@@ -43,6 +55,10 @@ class _StatusGrid extends ConsumerWidget {
       bogotaNowProvider.select((now) => (now.year, now.month, now.day)),
     );
     final now = DateTime(year, month, day);
+    final pendingValue = obligationsFailed ? 'Por verificar' : 'Consultando';
+    final pendingMessage = obligationsFailed
+        ? 'No disponible'
+        : 'Por verificar';
     return LayoutBuilder(
       builder: (context, constraints) {
         final textScale = MediaQuery.textScalerOf(context).scale(1);
@@ -54,16 +70,20 @@ class _StatusGrid extends ConsumerWidget {
           _ObligationStatusCard(
             key: const ValueKey('home-status-soat'),
             title: 'SOAT',
-            value: _obligationValue(
-              obligations,
-              VehicleObligationType.soat,
-              now,
-            ),
-            message: _obligationMessage(
-              obligations,
-              VehicleObligationType.soat,
-              now,
-            ),
+            value: obligations == null
+                ? pendingValue
+                : _obligationValue(
+                    obligations!,
+                    VehicleObligationType.soat,
+                    now,
+                  ),
+            message: obligations == null
+                ? pendingMessage
+                : _obligationMessage(
+                    obligations!,
+                    VehicleObligationType.soat,
+                    now,
+                  ),
             icon: Icons.shield_outlined,
             color: AppColors.green,
             onTap: () => context.push(
@@ -73,16 +93,20 @@ class _StatusGrid extends ConsumerWidget {
           _ObligationStatusCard(
             key: const ValueKey('home-status-rtm'),
             title: 'Tecnomecánica',
-            value: _obligationValue(
-              obligations,
-              VehicleObligationType.rtm,
-              now,
-            ),
-            message: _obligationMessage(
-              obligations,
-              VehicleObligationType.rtm,
-              now,
-            ),
+            value: obligations == null
+                ? pendingValue
+                : _obligationValue(
+                    obligations!,
+                    VehicleObligationType.rtm,
+                    now,
+                  ),
+            message: obligations == null
+                ? pendingMessage
+                : _obligationMessage(
+                    obligations!,
+                    VehicleObligationType.rtm,
+                    now,
+                  ),
             icon: Icons.assignment_turned_in_outlined,
             color: AppColors.blue,
             onTap: () => context.push(

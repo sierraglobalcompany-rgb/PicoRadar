@@ -17,7 +17,6 @@ enum AppTab {
     icon: Icons.home_outlined,
     selectedIcon: Icons.home,
     color: AppColors.teal,
-    placeholderText: 'Raiz diaria de PicoRadar.',
   ),
   garage(
     label: 'Garaje',
@@ -25,7 +24,6 @@ enum AppTab {
     icon: Icons.directions_car_outlined,
     selectedIcon: Icons.directions_car,
     color: AppColors.blue,
-    placeholderText: 'Vehiculos, documentos y obligaciones.',
   ),
   apps(
     label: 'Apps',
@@ -33,7 +31,6 @@ enum AppTab {
     icon: Icons.apps_outlined,
     selectedIcon: Icons.apps,
     color: AppColors.navy,
-    placeholderText: 'Launcher central de modulos secundarios.',
   ),
   trip(
     label: 'Viaje',
@@ -41,7 +38,6 @@ enum AppTab {
     icon: Icons.location_on_outlined,
     selectedIcon: Icons.location_on,
     color: AppColors.orange,
-    placeholderText: 'Planeacion de ruta sin mapa propio.',
   ),
   drive(
     label: 'Conducir',
@@ -49,7 +45,6 @@ enum AppTab {
     icon: Icons.speed_outlined,
     selectedIcon: Icons.speed,
     color: AppColors.red,
-    placeholderText: 'Modo de conduccion de alta concentracion.',
   );
 
   const AppTab({
@@ -58,7 +53,6 @@ enum AppTab {
     required this.icon,
     required this.selectedIcon,
     required this.color,
-    required this.placeholderText,
   });
 
   final String label;
@@ -66,7 +60,6 @@ enum AppTab {
   final IconData icon;
   final IconData selectedIcon;
   final Color color;
-  final String placeholderText;
 }
 
 class AppShell extends ConsumerStatefulWidget {

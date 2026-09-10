@@ -39,7 +39,9 @@ class RouteGeometryIndex {
   final List<TripCoordinate> geometry;
   final List<_RouteSegment> _segments;
 
-  RouteGeometryQuality get quality {
+  late final RouteGeometryQuality quality = _evaluateQuality();
+
+  RouteGeometryQuality _evaluateQuality() {
     if (geometry.isEmpty || geometry.any((point) => !point.isFinite)) {
       return RouteGeometryQuality.unavailable;
     }

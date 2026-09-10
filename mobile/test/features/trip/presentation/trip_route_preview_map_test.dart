@@ -12,6 +12,52 @@ import 'package:picoradar/features/trip/domain/trip_plan.dart';
 import 'package:picoradar/features/trip/presentation/trip_route_preview_map.dart';
 
 void main() {
+  testWidgets(
+    'performance: marker selection retains the route polyline widget',
+    (tester) async {
+      await tester.pumpWidget(_app(config: _neutralConfig()));
+      await tester.pumpAndSettle();
+      final finder = find.byKey(const ValueKey('trip-route-polyline'));
+      final original = tester.widget<PolylineLayer>(finder);
+
+      _openTollDetails(tester);
+      await tester.pump();
+      expect(find.text('Peaje de prueba'), findsWidgets);
+      expect(tester.widget<PolylineLayer>(finder), same(original));
+
+      _openCameraDetails(tester);
+      await tester.pump();
+      expect(tester.widget<PolylineLayer>(finder), same(original));
+      expect(find.byKey(const ValueKey('trip-route-start')), findsOneWidget);
+      expect(find.byKey(const ValueKey('trip-route-end')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'performance: changed route geometry replaces the cached polyline',
+    (tester) async {
+      await tester.pumpWidget(_app(config: _neutralConfig()));
+      await tester.pumpAndSettle();
+      final finder = find.byKey(const ValueKey('trip-route-polyline'));
+      final original = tester.widget<PolylineLayer>(finder);
+      const nextGeometry = [
+        TripCoordinate(latitude: 6.239, longitude: -75.580),
+        TripCoordinate(latitude: 6.240, longitude: -75.570),
+        TripCoordinate(latitude: 6.250, longitude: -75.570),
+      ];
+      await tester.pumpWidget(
+        _app(config: _neutralConfig(), geometry: nextGeometry),
+      );
+      await tester.pumpAndSettle();
+      final next = tester.widget<PolylineLayer>(finder);
+      expect(next, isNot(same(original)));
+      expect(next.polylines.single.points.first.latitude, 6.239);
+      expect(next.polylines.single.points, hasLength(nextGeometry.length));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('renders route endpoints and honest nearby layers', (
     tester,
   ) async {

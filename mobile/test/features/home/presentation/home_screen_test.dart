@@ -13,7 +13,8 @@ import 'package:picoradar/app/app.dart';
 import 'package:picoradar/app/app_clock.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/startup/startup_gate.dart';
-import 'package:picoradar/core/database/app_database.dart';
+import 'package:picoradar/core/database/app_database.dart'
+    hide VehicleObligation;
 import 'package:picoradar/app/theme/app_tokens.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/presentation/vehicle_detail_screen.dart';
@@ -47,6 +48,180 @@ void main() {
   setUp(() {
     harness = TestAppHarness();
   });
+
+  for (final scale in [1.0, 2.0]) {
+    testWidgets(
+      'obligation error preserves reliable Pico and slot bounds scale=$scale',
+      (tester) async {
+        final vehicle = await _readyHome(harness, plate: 'ABC126');
+        final pending = Completer<List<VehicleObligation>>();
+        var attempts = 0;
+        await _pump(
+          tester,
+          harness,
+          Scaffold(
+            body: ProviderScope(
+              retry: (count, error) =>
+                  count < 1 ? const Duration(milliseconds: 20) : null,
+              overrides: [
+                vehicleObligationsProvider(vehicle.id).overrideWith((ref) {
+                  attempts++;
+                  return pending.future;
+                }),
+              ],
+              child: const HomeScreen(),
+            ),
+          ),
+          textScaleFactor: scale,
+          homeEvaluation: const RestrictionDayEvaluation(
+            status: RestrictionDayStatus.allowed,
+            effectiveWindows: [],
+          ),
+        );
+        final grid = find.byKey(const ValueKey('home-status-grid'));
+        final pico = find.byKey(const ValueKey('home-status-today'));
+        final soat = find.byKey(const ValueKey('home-status-soat'));
+        final rtm = find.byKey(const ValueKey('home-status-rtm'));
+        final before = [
+          tester.getRect(grid),
+          tester.getRect(pico),
+          tester.getRect(soat),
+          tester.getRect(rtm),
+        ];
+        final picoText = tester
+            .widget<Text>(find.byKey(const ValueKey('home-summary-main')))
+            .data;
+        expect(picoText, 'Puede circular');
+        pending.completeError(Exception('test-obligation-storage-unavailable'));
+        await _pumpAsyncHome(tester);
+        expect(pico, findsOneWidget);
+        expect(
+          tester
+              .widget<Text>(find.byKey(const ValueKey('home-summary-main')))
+              .data,
+          picoText,
+        );
+        expect([
+          tester.getRect(grid),
+          tester.getRect(pico),
+          tester.getRect(soat),
+          tester.getRect(rtm),
+        ], before);
+        expect(find.text('No disponible'), findsNWidgets(2));
+        expect(find.text('Consultando'), findsNothing);
+        expect(find.text('Sin configurar'), findsNothing);
+        expect(find.textContaining('test-obligation-storage'), findsNothing);
+        for (final card in [soat, rtm]) {
+          expect(
+            tester
+                .widgetList<InkWell>(
+                  find.descendant(of: card, matching: find.byType(InkWell)),
+                )
+                .any((widget) => widget.onTap != null),
+            isTrue,
+          );
+        }
+        await tester.pump(const Duration(seconds: 1));
+        expect(attempts, 2);
+        expect(find.text('Consultando'), findsNothing);
+        expect(pico, findsOneWidget);
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('deferred obligation outer slot size is stable scale=$scale', (
+      tester,
+    ) async {
+      final vehicle = await _readyHome(harness, plate: 'ABC126');
+      final pending = Completer<List<VehicleObligation>>();
+      await _pump(
+        tester,
+        harness,
+        Scaffold(
+          body: ProviderScope(
+            overrides: [
+              vehicleObligationsProvider(vehicle.id)
+                  .overrideWith((ref) => pending.future),
+            ],
+            child: const HomeScreen(),
+          ),
+        ),
+        textScaleFactor: scale,
+      );
+      final slot = find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == '_FocusedStatusGrid',
+      );
+      final before = tester.getRect(slot);
+      pending.complete([]);
+      await _pumpAsyncHome(tester);
+      expect(tester.getRect(slot), before);
+      expect(tester.takeException(), isNull);
+    });
+
+    for (final configured in [false, true]) {
+      testWidgets(
+        'deferred obligations keep Home geometry scale=$scale configured=$configured',
+        (tester) async {
+          final vehicle = await _readyHome(harness, plate: 'ABC126');
+          final pending = Completer<List<VehicleObligation>>();
+          await _pump(
+            tester,
+            harness,
+            Scaffold(
+              body: ProviderScope(
+                overrides: [
+                  vehicleObligationsProvider(vehicle.id)
+                      .overrideWith((ref) => pending.future),
+                ],
+                child: const HomeScreen(),
+              ),
+            ),
+            textScaleFactor: scale,
+          );
+          final grid = find.byKey(const ValueKey('home-status-grid'));
+          final soat = find.byKey(const ValueKey('home-status-soat'));
+          final rtm = find.byKey(const ValueKey('home-status-rtm'));
+          final before = [
+            tester.getRect(grid),
+            tester.getRect(soat),
+            tester.getRect(rtm),
+          ];
+          expect(find.text('Consultando'), findsNWidgets(2));
+          expect(find.text('Sin configurar'), findsNothing);
+          pending.complete([
+            if (configured)
+              for (final type in [
+                VehicleObligationType.soat,
+                VehicleObligationType.rtm,
+              ])
+                VehicleObligation(
+                  id: type.name,
+                  vehicleId: vehicle.id,
+                  type: type,
+                  reminderEnabled: false,
+                  dueDate: DateTime(2027, 1, 20),
+                  createdAt: DateTime(2026),
+                  updatedAt: DateTime(2026),
+                ),
+          ]);
+          await _pumpAsyncHome(tester);
+          expect([
+            tester.getRect(grid),
+            tester.getRect(soat),
+            tester.getRect(rtm),
+          ], before);
+          expect(find.text('Consultando'), findsNothing);
+          expect(
+            find.text('Sin configurar'),
+            configured ? findsNothing : findsNWidgets(2),
+          );
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
 
   for (final change in ['city', 'plate']) {
     testWidgets(

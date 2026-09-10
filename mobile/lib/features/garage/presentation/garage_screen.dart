@@ -783,7 +783,7 @@ class _GarageFilterDivider extends StatelessWidget {
   }
 }
 
-class _GarageCarousel extends StatelessWidget {
+class _GarageCarousel extends StatefulWidget {
   const _GarageCarousel({
     required this.vehicles,
     required this.focusedIndex,
@@ -805,50 +805,69 @@ class _GarageCarousel extends StatelessWidget {
   final ValueChanged<VehicleProfile> onOpen;
 
   @override
+  State<_GarageCarousel> createState() => _GarageCarouselState();
+}
+
+class _GarageCarouselState extends State<_GarageCarousel> {
+  Object? _titleMeasurementKey;
+  double _extraTitleHeight = 0;
+
+  @override
   Widget build(BuildContext context) {
+    final vehicles = widget.vehicles;
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     return LayoutBuilder(
       builder: (context, constraints) {
         final titleWidth =
             constraints.maxWidth * _garageViewportFraction - 2 * AppSpacing.m;
-        final painter = TextPainter(
-          textDirection: Directionality.of(context),
-          textScaler: MediaQuery.textScalerOf(context),
+        final measurementKey = (
+          vehicles,
+          titleWidth,
+          Directionality.of(context),
+          MediaQuery.textScalerOf(context),
         );
-        var extraHeight = 0.0;
-        for (final vehicle in vehicles) {
-          painter.text = TextSpan(
-            text: vehicleDisplayName(vehicle),
-            style: AppTextStyles.h2.copyWith(fontSize: 18),
+        if (_titleMeasurementKey != measurementKey) {
+          _titleMeasurementKey = measurementKey;
+          final painter = TextPainter(
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context),
           );
-          painter.layout(maxWidth: titleWidth);
-          final extra = painter.height - painter.preferredLineHeight;
-          if (extra > extraHeight) extraHeight = extra;
+          _extraTitleHeight = 0;
+          for (final vehicle in vehicles) {
+            painter.text = TextSpan(
+              text: vehicleDisplayName(vehicle),
+              style: AppTextStyles.h2.copyWith(fontSize: 18),
+            );
+            painter.layout(maxWidth: titleWidth);
+            final extra = painter.height - painter.preferredLineHeight;
+            if (extra > _extraTitleHeight) _extraTitleHeight = extra;
+          }
+          painter.dispose();
         }
-        painter.dispose();
         return SizedBox(
           key: const ValueKey('garage-vehicle-carousel'),
           height:
-              (textScale <= 1.25 ? _garageCarouselHeight : 232) + extraHeight,
+              (textScale <= 1.25 ? _garageCarouselHeight : 232) +
+              _extraTitleHeight,
           child: PageView.builder(
-            controller: controller,
+            controller: widget.controller,
             itemCount: vehicles.length,
-            onPageChanged: onChanged,
+            onPageChanged: widget.onChanged,
             padEnds: true,
             itemBuilder: (context, index) {
               final vehicle = vehicles[index];
-              final focused = index == focusedIndex;
+              final focused = index == widget.focusedIndex;
               return AnimatedScale(
                 duration: AppMotion.carouselSnap,
                 curve: AppMotion.standardCurve,
                 scale: focused ? 1 : _garageSideCardScale,
                 child: _GarageVehicleCard(
                   vehicle: vehicle,
-                  active: vehicle.id == activeId,
-                  favorite: favoriteIds.contains(vehicle.id),
+                  active: vehicle.id == widget.activeId,
+                  favorite: widget.favoriteIds.contains(vehicle.id),
                   focused: focused,
-                  onFavorite: () => onFavorite(vehicle),
-                  onOpen: () => onOpen(vehicle),
+                  onFavorite: () => widget.onFavorite(vehicle),
+                  onOpen: () => widget.onOpen(vehicle),
                 ),
               );
             },
