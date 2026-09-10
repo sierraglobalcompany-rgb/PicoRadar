@@ -425,8 +425,9 @@ List<String> _wordLineProblems(WidgetTester tester, Finder text) {
         )
         .map((box) => box.top)
         .toSet();
-    if (lines.length != 1)
+    if (lines.length != 1) {
       problems.add('Split or hidden word: ${word.group(0)}');
+    }
   }
   return problems;
 }
