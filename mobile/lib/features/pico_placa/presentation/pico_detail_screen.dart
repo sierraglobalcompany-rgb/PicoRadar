@@ -1606,9 +1606,17 @@ class _ImmediateState extends StatelessWidget {
                 Text('Próxima restricción', style: AppTextStyles.bodyStrong),
                 Text(
                   '${_weekday(nextRestriction!.date)} '
-                  '${_shortDate(nextRestriction!.date)} · '
-                  '${formatRestrictionWindows12(nextRestriction!.evaluation.effectiveWindows)}',
+                  '${_shortDate(nextRestriction!.date)}',
                   key: const ValueKey('pico-next-restriction'),
+                  style: AppTextStyles.caption,
+                ),
+                Text(
+                  formatRestrictionWindows12(
+                        nextRestriction!.evaluation.effectiveWindows,
+                      )
+                      .replaceAll(' a. m.', '\u00a0a.\u00a0m.')
+                      .replaceAll(' p. m.', '\u00a0p.\u00a0m.'),
+                  key: const ValueKey('pico-next-restriction-windows'),
                   style: AppTextStyles.caption,
                 ),
               ],
@@ -2085,15 +2093,39 @@ class _CityTopControls extends StatelessWidget {
       key: const ValueKey('pico-city-top-controls'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Builder(
-          builder: (context) {
+        LayoutBuilder(
+          builder: (context, constraints) {
             final selector = _CitySelectorPill(
               jurisdiction: jurisdiction,
               isTransient: isTransient,
               onSelect: onSelect,
             );
             final freshness = _FreshnessPill(ruleSet: ruleSet);
-            if (MediaQuery.textScalerOf(context).scale(1) > 1.25) {
+            final textScaler = MediaQuery.textScalerOf(context);
+            final cityStyle = DefaultTextStyle.of(context).style
+                .merge(AppTextStyles.bodyStrong);
+            final painter = TextPainter(
+              textDirection: Directionality.of(context),
+              textScaler: textScaler,
+              locale: Localizations.maybeLocaleOf(context),
+            );
+            var longestWordWidth = 0.0;
+            for (final word in jurisdiction.name.split(RegExp(r'\s+'))) {
+              painter.text = TextSpan(text: word, style: cityStyle);
+              painter.layout();
+              if (painter.width > longestWordWidth) {
+                longestWordWidth = painter.width;
+              }
+            }
+            painter.dispose();
+            final selectorMinWidth =
+                longestWordWidth +
+                2 * AppSpacing.m +
+                2 * _CitySelectorPill.borderWidth +
+                2 * AppIconSize.m +
+                AppSpacing.s;
+            final inlineWidth = (constraints.maxWidth - AppSpacing.m) / 2;
+            if (textScaler.scale(1) > 1.25 || inlineWidth < selectorMinWidth) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -2136,6 +2168,7 @@ class _CitySelectorPill extends StatelessWidget {
   final RestrictionJurisdiction jurisdiction;
   final bool isTransient;
   final VoidCallback onSelect;
+  static const borderWidth = 1.0;
 
   @override
   Widget build(BuildContext context) {
@@ -2155,11 +2188,15 @@ class _CitySelectorPill extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: AppColors.border, width: borderWidth),
           ),
           child: Row(
             children: [
-              const Icon(Icons.location_on_rounded, color: AppColors.teal),
+              const Icon(
+                Icons.location_on_rounded,
+                color: AppColors.teal,
+                size: AppIconSize.m,
+              ),
               const SizedBox(width: AppSpacing.s),
               Expanded(
                 child: Column(
@@ -2173,7 +2210,7 @@ class _CitySelectorPill extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.expand_more_rounded),
+              const Icon(Icons.expand_more_rounded, size: AppIconSize.m),
             ],
           ),
         ),

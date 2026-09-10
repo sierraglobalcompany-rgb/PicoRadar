@@ -139,7 +139,93 @@ void main() {
   }
 
   for (final width in [360.0, 390.0, 412.0, 430.0]) {
+    testWidgets('A2 Bucaramanga selector keeps whole word at $width scale 1', (
+      tester,
+    ) async {
+      await _pumpAudit(
+        tester,
+        harness,
+        cityId: 'co-san-bucaramanga',
+        width: width,
+        jurisdictions: const [
+          RestrictionJurisdiction(
+            id: 'co-san-bucaramanga',
+            name: 'Bucaramanga',
+          ),
+        ],
+      );
+      final selector = find.byKey(const ValueKey('pico-city-change'));
+      final city = find.descendant(
+        of: selector,
+        matching: find.text('Bucaramanga'),
+      );
+      expect(city, findsOneWidget);
+      final problems = [
+        ..._readabilityProblems(tester, selector),
+        ..._wordLineProblems(tester, city),
+      ];
+      expect(problems, isEmpty, reason: problems.join('\n'));
+      expect(tester.takeException(), isNull);
+    });
+
     for (final scale in [1.0, 1.5, 2.0]) {
+      testWidgets(
+        'A2 next restriction separates date and complete windows $width scale $scale',
+        (tester) async {
+          final vehicle = await harness.repository.createVehicle(
+            plate: 'BOG126',
+            kind: VehicleKind.car,
+            serviceType: VehicleServiceType.private,
+            registrationCity: 'Bogotá',
+          );
+          await _pumpAudit(
+            tester,
+            harness,
+            vehicle: vehicle,
+            cityId: 'co-ant-medellin',
+            width: width,
+            scale: scale,
+            child: PicoDetailScreen(
+              vehicleId: vehicle.id,
+              jurisdictionId: 'co-ant-medellin',
+            ),
+          );
+          final date = find.byKey(const ValueKey('pico-next-restriction'));
+          final schedule = find.byKey(
+            const ValueKey('pico-next-restriction-windows'),
+          );
+          await _reveal(tester, date);
+          expect(tester.widget<Text>(date).data, 'Lun 14/09/2026');
+          expect(schedule, findsOneWidget);
+          expect(
+            _normalized(tester.widget<Text>(schedule).data!),
+            _windowLabels.join('\n'),
+          );
+          expect(
+            tester.getRect(date).bottom,
+            lessThanOrEqualTo(tester.getRect(schedule).top),
+          );
+          final problems = [
+            ..._readabilityProblems(tester, date),
+            ..._readabilityProblems(tester, schedule),
+          ];
+          final paragraph = tester.renderObject<RenderParagraph>(schedule);
+          for (final time in RegExp(
+            r'\d+:\d+ [ap]\. m\.',
+          ).allMatches(_normalized(paragraph.text.toPlainText()))) {
+            final lines = paragraph
+                .getBoxesForSelection(
+                  TextSelection(baseOffset: time.start, extentOffset: time.end),
+                )
+                .map((box) => box.top)
+                .toSet();
+            expect(lines, hasLength(1), reason: 'Split time: ${time.group(0)}');
+          }
+          expect(problems, isEmpty, reason: problems.join('\n'));
+          expect(tester.takeException(), isNull);
+        },
+      );
+
       testWidgets('A2 city picker readable geometry $width scale $scale', (
         tester,
       ) async {
@@ -197,6 +283,12 @@ void main() {
         final selector = find.byKey(const ValueKey('pico-city-change'));
         expect(_surfaceText(selector), contains(_longCity));
         problems.addAll(_readabilityProblems(tester, selector));
+        problems.addAll(
+          _wordLineProblems(
+            tester,
+            find.descendant(of: selector, matching: find.text(_longCity)),
+          ),
+        );
 
         final hero = find.byKey(const ValueKey('pico-city-hero'));
         await _reveal(tester, hero);
@@ -323,6 +415,22 @@ Future<void> _reveal(WidgetTester tester, Finder target) async {
 
 String _normalized(String text) => text.replaceAll('\u00a0', ' ');
 
+List<String> _wordLineProblems(WidgetTester tester, Finder text) {
+  final paragraph = tester.renderObject<RenderParagraph>(text);
+  final problems = <String>[];
+  for (final word in RegExp(r'\S+').allMatches(paragraph.text.toPlainText())) {
+    final lines = paragraph
+        .getBoxesForSelection(
+          TextSelection(baseOffset: word.start, extentOffset: word.end),
+        )
+        .map((box) => box.top)
+        .toSet();
+    if (lines.length != 1)
+      problems.add('Split or hidden word: ${word.group(0)}');
+  }
+  return problems;
+}
+
 String _surfaceText(Finder surface) => find
     .descendant(of: surface, matching: find.byType(RichText))
     .evaluate()
@@ -413,6 +521,7 @@ Future<void> _pumpAudit(
   RestrictionDayStatus status = RestrictionDayStatus.restricted,
   double width = 360,
   double scale = 1,
+  List<RestrictionJurisdiction> jurisdictions = _jurisdictions,
 }) async {
   tester.view.physicalSize = Size(width, 780);
   tester.view.devicePixelRatio = 1;
@@ -431,7 +540,7 @@ Future<void> _pumpAudit(
         bundledRestrictionsProvider.overrideWith((ref) async {}),
         picoJurisdictionCatalogProvider.overrideWith((ref) async => _catalog),
         restrictionJurisdictionsProvider.overrideWith(
-          (ref) async => _jurisdictions,
+          (ref) async => jurisdictions,
         ),
         vehicleListProvider.overrideWith(
           (ref) async => vehicle == null ? [] : [vehicle],
