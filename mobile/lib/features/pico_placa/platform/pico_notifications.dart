@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as timezone;
 
@@ -130,6 +132,8 @@ class PicoNotificationScheduler {
   void Function(String route)? _onRoute;
   String? _lastPlanSignature;
   String? _lastObligationPlanSignature;
+  Future<void> _picoQueue = Future<void>.value();
+  Future<void> _obligationQueue = Future<void>.value();
 
   Future<void> initialize({void Function(String route)? onRoute}) async {
     if (onRoute != null) {
@@ -192,12 +196,33 @@ class PicoNotificationScheduler {
     return null;
   }
 
-  Future<void> reschedule(List<PicoNotificationPlan> plans) async {
+  // Serialize native writes, including cancellation, so the latest request wins.
+  // Failures still reach their caller; they do not block subsequent requests.
+  Future<void> _enqueuePico(Future<void> Function() action) {
+    return _picoQueue = _picoQueue.then(
+      (_) => action(),
+      onError: (Object error, StackTrace stack) => action(),
+    );
+  }
+
+  Future<void> _enqueueObligations(Future<void> Function() action) {
+    return _obligationQueue = _obligationQueue.then(
+      (_) => action(),
+      onError: (Object error, StackTrace stack) => action(),
+    );
+  }
+
+  Future<void> reschedule(List<PicoNotificationPlan> plans) {
+    final snapshot = List<PicoNotificationPlan>.of(plans);
+    return _enqueuePico(() => _reschedulePico(snapshot));
+  }
+
+  Future<void> _reschedulePico(List<PicoNotificationPlan> plans) async {
     final signature = _planSignature(plans);
     if (_lastPlanSignature == signature) {
       return;
     }
-    await cancelPicoNotifications();
+    await _cancelPicoNotifications();
     for (final plan in plans) {
       await _plugin.zonedSchedule(
         id: plan.id,
@@ -221,7 +246,11 @@ class PicoNotificationScheduler {
     _lastPlanSignature = signature;
   }
 
-  Future<void> cancelPicoNotifications() async {
+  Future<void> cancelPicoNotifications() =>
+      _enqueuePico(_cancelPicoNotifications);
+
+  Future<void> _cancelPicoNotifications() async {
+    _lastPlanSignature = null;
     final pending = await _plugin.pendingNotificationRequests();
     final ids = picoPendingNotificationIdsToCancel(pending);
     for (final id in ids) {
@@ -232,12 +261,19 @@ class PicoNotificationScheduler {
 
   Future<void> rescheduleObligationNotifications(
     List<ObligationNotificationPlan> plans,
+  ) {
+    final snapshot = List<ObligationNotificationPlan>.of(plans);
+    return _enqueueObligations(() => _rescheduleObligations(snapshot));
+  }
+
+  Future<void> _rescheduleObligations(
+    List<ObligationNotificationPlan> plans,
   ) async {
     final signature = _obligationPlanSignature(plans);
     if (_lastObligationPlanSignature == signature) {
       return;
     }
-    await cancelObligationNotifications();
+    await _cancelObligationNotifications();
     for (final plan in plans) {
       await _plugin.zonedSchedule(
         id: plan.id,
@@ -262,7 +298,11 @@ class PicoNotificationScheduler {
     _lastObligationPlanSignature = signature;
   }
 
-  Future<void> cancelObligationNotifications() async {
+  Future<void> cancelObligationNotifications() =>
+      _enqueueObligations(_cancelObligationNotifications);
+
+  Future<void> _cancelObligationNotifications() async {
+    _lastObligationPlanSignature = null;
     final pending = await _plugin.pendingNotificationRequests();
     final ids = obligationPendingNotificationIdsToCancel(pending);
     for (final id in ids) {
@@ -347,15 +387,29 @@ Future<List<PicoNotificationPlan>> buildPicoNotificationPlans({
 }
 
 String _planSignature(List<PicoNotificationPlan> plans) {
-  return plans
-      .map((plan) => '${plan.id}:${plan.scheduledAt.toIso8601String()}')
-      .join('|');
+  return jsonEncode([
+    for (final plan in plans)
+      [
+        plan.id,
+        plan.scheduledAt.toIso8601String(),
+        plan.title,
+        plan.body,
+        plan.payload,
+      ],
+  ]);
 }
 
 String _obligationPlanSignature(List<ObligationNotificationPlan> plans) {
-  return plans
-      .map((plan) => '${plan.id}:${plan.scheduledAt.toIso8601String()}')
-      .join('|');
+  return jsonEncode([
+    for (final plan in plans)
+      [
+        plan.id,
+        plan.scheduledAt.toIso8601String(),
+        plan.title,
+        plan.body,
+        plan.payload,
+      ],
+  ]);
 }
 
 void _addPlan(

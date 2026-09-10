@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -60,18 +59,17 @@ final homeVehicleSnapshotsProvider =
       if (request.selectedJurisdiction == null) {
         return [
           for (final vehicle in request.vehicles)
-            HomeVehicleSnapshot(
-              vehicle: vehicle,
-              today: _unknownEvaluation,
-              tomorrow: _unknownEvaluation,
-            ),
+            HomeVehicleSnapshot(vehicle: vehicle, today: _unknownEvaluation),
         ];
       }
 
       final store = ref.watch(restrictionStoreProvider);
-      final currentInstant = ref.watch(currentInstantProvider);
-      final now = ref.watch(bogotaNowProvider);
-      final tomorrow = DateTime(now.year, now.month, now.day + 1);
+      final (year, month, day) = ref.watch(
+        bogotaNowProvider.select((now) => (now.year, now.month, now.day)),
+      );
+      final currentInstant = ref.read(currentInstantProvider);
+      final now = DateTime(year, month, day);
+      await ref.watch(bundledRestrictionsProvider.future);
       final snapshots = <HomeVehicleSnapshot>[];
       for (final vehicle in request.vehicles) {
         final rules = await store.loadCoverage(
@@ -90,14 +88,6 @@ final homeVehicleSnapshotsProvider =
               vehicleKind: vehicle.kind,
               serviceType: vehicle.serviceType,
               date: now,
-            ),
-            tomorrow: evaluateRestrictionDay(
-              ruleSet: rules,
-              jurisdictionId: request.selectedJurisdiction!.id,
-              plate: vehicle.plate,
-              vehicleKind: vehicle.kind,
-              serviceType: vehicle.serviceType,
-              date: tomorrow,
             ),
           ),
         );
@@ -180,15 +170,10 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class HomeVehicleSnapshot {
-  const HomeVehicleSnapshot({
-    required this.vehicle,
-    required this.today,
-    required this.tomorrow,
-  });
+  const HomeVehicleSnapshot({required this.vehicle, required this.today});
 
   final VehicleProfile vehicle;
   final RestrictionDayEvaluation today;
-  final RestrictionDayEvaluation tomorrow;
 }
 
 class HomeVehicleSnapshotsRequest {
@@ -320,9 +305,18 @@ class _HomeDataGate extends ConsumerWidget {
     );
     return snapshots.when(
       skipLoadingOnRefresh: true,
+      skipLoadingOnReload: true,
       data: (items) {
         return _HomeReady(
-          snapshots: items,
+          snapshots: snapshots.isLoading
+              ? [
+                  for (final item in items)
+                    HomeVehicleSnapshot(
+                      vehicle: item.vehicle,
+                      today: _unknownEvaluation,
+                    ),
+                ]
+              : items,
           activeVehicleId: activeVehicleId,
           jurisdictions: jurisdictions,
           selectedJurisdiction: jurisdiction,
@@ -367,6 +361,27 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
   late int _focusedIndex;
   late PageController _controller;
   final _lifecycleObserver = _HomeLocationLifecycleObserver();
+  final _headerLayoutKey = GlobalKey();
+  final _footerLayoutKey = GlobalKey();
+  double? _measuredChromeHeight;
+  bool _chromeMeasurementScheduled = false;
+
+  void _scheduleChromeMeasurement() {
+    if (_chromeMeasurementScheduled) return;
+    _chromeMeasurementScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _chromeMeasurementScheduled = false;
+      if (!mounted) return;
+      final header = _headerLayoutKey.currentContext?.size;
+      final footer = _footerLayoutKey.currentContext?.size;
+      if (header == null || footer == null) return;
+      final height = header.height + footer.height;
+      if (_measuredChromeHeight == null ||
+          (height - _measuredChromeHeight!).abs() > 0.5) {
+        setState(() => _measuredChromeHeight = height);
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -463,76 +478,106 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
         final horizontalPadding = constraints.maxWidth < 380
             ? AppSpacing.l
             : AppSpacing.xl;
+        _scheduleChromeMeasurement();
+        final availableHeight = _measuredChromeHeight == null
+            ? _homeCarouselMinimumHeight
+            : constraints.maxHeight - _measuredChromeHeight!;
         final carouselHeight = _homeCarouselHeightForLayout(
           context,
-          constraints.maxHeight,
+          availableHeight,
         );
-        return SingleChildScrollView(
-          key: const ValueKey('home-v2-scroll'),
-          padding: const EdgeInsets.only(
-            top: AppSpacing.xs,
-            bottom: AppSpacing.m,
-          ),
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 720),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
-                    ),
-                    child: _HomeHeader(
-                      alertPreferences: widget.alertPreferences,
-                      jurisdictions: widget.jurisdictions,
-                      selectedJurisdiction: widget.selectedJurisdiction,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.s),
-                  _VehicleCarousel(
-                    controller: _controller,
-                    snapshots: widget.snapshots,
-                    focusedIndex: _focusedIndex,
-                    onChanged: _setFocusedIndex,
-                    height: carouselHeight,
-                  ),
-                  const SizedBox(height: AppSpacing.s),
-                  _CarouselIndicator(
-                    count: widget.snapshots.length,
-                    index: _focusedIndex,
-                  ),
-                  if (widget.selectedJurisdiction == null) ...[
-                    const SizedBox(height: AppSpacing.m),
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: horizontalPadding,
+        final fits =
+            _measuredChromeHeight != null &&
+            carouselHeight + _measuredChromeHeight! <= constraints.maxHeight;
+        return NotificationListener<SizeChangedLayoutNotification>(
+          onNotification: (_) {
+            _scheduleChromeMeasurement();
+            return false;
+          },
+          child: SingleChildScrollView(
+            key: const ValueKey('home-v2-scroll'),
+            physics: fits
+                ? const NeverScrollableScrollPhysics()
+                : const ClampingScrollPhysics(),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizeChangedLayoutNotifier(
+                      child: Padding(
+                        key: _headerLayoutKey,
+                        padding: EdgeInsets.fromLTRB(
+                          horizontalPadding,
+                          AppSpacing.xs,
+                          horizontalPadding,
+                          AppSpacing.s,
+                        ),
+                        child: _HomeHeader(
+                          alertPreferences: widget.alertPreferences,
+                          jurisdictions: widget.jurisdictions,
+                          selectedJurisdiction: widget.selectedJurisdiction,
+                        ),
                       ),
-                      child: _NoCityCard(
-                        vehicle: focused.vehicle,
-                        jurisdictions: widget.jurisdictions,
+                    ),
+                    _VehicleCarousel(
+                      controller: _controller,
+                      snapshots: widget.snapshots,
+                      focusedIndex: _focusedIndex,
+                      onChanged: _setFocusedIndex,
+                      height: carouselHeight,
+                    ),
+                    SizeChangedLayoutNotifier(
+                      child: Padding(
+                        key: _footerLayoutKey,
+                        padding: const EdgeInsets.only(
+                          top: AppSpacing.s,
+                          bottom: AppSpacing.m,
+                        ),
+                        child: Column(
+                          children: [
+                            _CarouselIndicator(
+                              count: widget.snapshots.length,
+                              index: _focusedIndex,
+                            ),
+                            if (widget.selectedJurisdiction == null) ...[
+                              const SizedBox(height: AppSpacing.m),
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: horizontalPadding,
+                                ),
+                                child: _NoCityCard(
+                                  vehicle: focused.vehicle,
+                                  jurisdictions: widget.jurisdictions,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: AppSpacing.s),
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: horizontalPadding,
+                              ),
+                              child: _FocusedStatusGrid(
+                                snapshot: focused,
+                                selectedJurisdiction:
+                                    widget.selectedJurisdiction,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.s),
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: horizontalPadding,
+                              ),
+                              child: const HomeBannerSlot(),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
-                  const SizedBox(height: AppSpacing.s),
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
-                    ),
-                    child: _FocusedStatusGrid(
-                      snapshot: focused,
-                      selectedJurisdiction: widget.selectedJurisdiction,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.s),
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
-                    ),
-                    child: const HomeBannerSlot(),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -1044,14 +1089,14 @@ Color statusColor(RestrictionDayStatus status) {
   return switch (status) {
     RestrictionDayStatus.restricted => AppColors.red,
     RestrictionDayStatus.allowed => AppColors.green,
-    RestrictionDayStatus.unknown => AppColors.blue,
+    RestrictionDayStatus.unknown => AppColors.orange,
     RestrictionDayStatus.stale => AppColors.orange,
   };
 }
 
 IconData statusIcon(RestrictionDayStatus status) {
   return switch (status) {
-    RestrictionDayStatus.restricted => Icons.warning_amber_rounded,
+    RestrictionDayStatus.restricted => Icons.block_rounded,
     RestrictionDayStatus.allowed => Icons.check_circle_outline,
     RestrictionDayStatus.unknown => Icons.help_outline,
     RestrictionDayStatus.stale => Icons.update,
@@ -1061,28 +1106,9 @@ IconData statusIcon(RestrictionDayStatus status) {
 String todayStatusText(RestrictionDayStatus status) {
   return switch (status) {
     RestrictionDayStatus.restricted => 'Pico y placa hoy',
-    RestrictionDayStatus.allowed => 'Puede circular',
+    RestrictionDayStatus.allowed => 'Sin pico y placa hoy',
     RestrictionDayStatus.unknown => 'Sin confirmar',
     RestrictionDayStatus.stale => 'Datos pendientes',
-  };
-}
-
-String _tomorrowValue(RestrictionDayEvaluation evaluation) {
-  return switch (evaluation.status) {
-    RestrictionDayStatus.restricted =>
-      _formatWindows(evaluation.effectiveWindows) ?? 'Pico y placa',
-    RestrictionDayStatus.allowed => 'Puede circular',
-    RestrictionDayStatus.unknown => 'Sin confirmar',
-    RestrictionDayStatus.stale => 'Datos pendientes',
-  };
-}
-
-String _tomorrowMessage(RestrictionDayEvaluation evaluation) {
-  return switch (evaluation.status) {
-    RestrictionDayStatus.restricted => 'Pico y placa',
-    RestrictionDayStatus.allowed => 'Sin restricción local',
-    RestrictionDayStatus.unknown => 'Verifica ciudad y datos',
-    RestrictionDayStatus.stale => 'Actualiza datos locales',
   };
 }
 
@@ -1521,32 +1547,4 @@ RestrictionJurisdiction? _suggestedJurisdiction(
     }
   }
   return null;
-}
-
-String? _formatWindows(List<RestrictionDayWindow> windows) {
-  if (windows.isEmpty) {
-    return null;
-  }
-  return windows
-      .map(
-        (window) =>
-            '${_formatMinute(window.startMinute)} - ${_formatMinute(window.endMinute)}',
-      )
-      .join(', ');
-}
-
-String _formatMinute(int minute) {
-  if (minute == 1440) {
-    return '24:00';
-  }
-  final hour = minute ~/ 60;
-  final minutes = minute % 60;
-  return '${hour.toString().padLeft(2, '0')}:'
-      '${minutes.toString().padLeft(2, '0')}';
-}
-
-bool _reduceMotion(BuildContext context) {
-  final mediaQuery = MediaQuery.maybeOf(context);
-  return (mediaQuery?.disableAnimations ?? false) ||
-      (mediaQuery?.accessibleNavigation ?? false);
 }

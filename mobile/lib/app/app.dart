@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/pico_placa/data/pico_preferences.dart';
+import 'app_clock.dart';
 import 'app_providers.dart';
 import 'router/app_router.dart';
 import 'startup/startup_gate.dart';
@@ -18,17 +19,37 @@ class PicoRadarApp extends ConsumerStatefulWidget {
 
 class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
   bool _notificationsStarted = false;
+  late final AppClockLifecycleObserver _clockObserver;
   late final _DocumentViewerCacheLifecycleObserver _documentCacheObserver;
 
   @override
   void initState() {
     super.initState();
+    ref.read(currentInstantProvider);
+    final clock = ref.exists(appClockProvider)
+        ? ref.read(appClockProvider.notifier)
+        : null;
+    _clockObserver = AppClockLifecycleObserver(
+      clock: clock,
+      onResume: () {
+        ref.invalidate(picoNotificationSyncProvider);
+        ref.invalidate(obligationNotificationSyncProvider);
+      },
+    );
+    final binding = WidgetsBinding.instance;
+    binding.addObserver(_clockObserver);
+    final lifecycle = binding.lifecycleState;
+    if (lifecycle != null && lifecycle != AppLifecycleState.resumed) {
+      clock?.setForeground(false);
+    }
     _documentCacheObserver = _DocumentViewerCacheLifecycleObserver(ref);
     WidgetsBinding.instance.addObserver(_documentCacheObserver);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(_clockObserver);
+    _clockObserver.clock?.setForeground(false);
     WidgetsBinding.instance.removeObserver(_documentCacheObserver);
     super.dispose();
   }

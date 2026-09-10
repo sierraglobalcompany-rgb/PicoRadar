@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/services.dart';
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -7,10 +10,127 @@ import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_store.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.dart';
+import 'package:picoradar/features/pico_placa/domain/bogota_time.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_rule.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
+import 'package:picoradar/features/vehicle_status/domain/vehicle_obligation.dart';
+import 'package:picoradar/features/vehicle_status/platform/obligation_notifications.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  for (final pico in [true, false]) {
+    group('real scheduler pico=$pico', () {
+      late _NotificationChannel channel;
+      late PicoNotificationScheduler scheduler;
+
+      setUp(() {
+        AndroidFlutterLocalNotificationsPlugin.registerWith();
+        channel = _NotificationChannel();
+        scheduler = PicoNotificationScheduler();
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              _NotificationChannel.channel,
+              channel.handle,
+            );
+      });
+      tearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(_NotificationChannel.channel, null);
+      });
+
+      Future<void> publish(String body, {String title = 'Reminder'}) {
+        final time = bogotaScheduledTime(
+          date: DateTime(2026, 9, 11),
+          minuteOfDay: 300,
+        );
+        return pico
+            ? scheduler.reschedule([
+                PicoNotificationPlan(
+                  id: 42,
+                  type: PicoAlertType.sameDay,
+                  vehicleId: 'car',
+                  targetDate: DateTime(2026, 9, 11),
+                  scheduledAt: time,
+                  title: title,
+                  body: body,
+                  payload: '/pico',
+                ),
+              ])
+            : scheduler.rescheduleObligationNotifications([
+                ObligationNotificationPlan(
+                  id: 42,
+                  vehicleId: 'car',
+                  type: VehicleObligationType.soat,
+                  dueDate: DateTime(2026, 9, 12),
+                  offsetDays: 1,
+                  scheduledAt: time,
+                  title: title,
+                  body: body,
+                  payload: obligationReminderPayload(
+                    type: VehicleObligationType.soat,
+                    vehicleId: 'car',
+                  ),
+                ),
+              ]);
+      }
+
+      Future<void> cancel() => pico
+          ? scheduler.cancelPicoNotifications()
+          : scheduler.cancelObligationNotifications();
+
+      test(
+        'same ids and dates refresh edited content and still deduplicate',
+        () async {
+          await publish('ABC123 | Bogota');
+          await publish('XYZ999 | Medellin');
+          expect(channel.pending[42]!['body'], 'XYZ999 | Medellin');
+          await publish('XYZ999 | Medellin', title: 'Updated reminder');
+          expect(channel.pending[42]!['title'], 'Updated reminder');
+          final calls = channel.schedules;
+          await publish('XYZ999 | Medellin', title: 'Updated reminder');
+          expect(channel.schedules, calls);
+        },
+      );
+
+      for (final cancelLatest in [false, true]) {
+        test(
+          'overlapping writes keep latest request: cancel=$cancelLatest',
+          () async {
+            final gate = Completer<void>();
+            final started = Completer<void>();
+            channel.gate = gate;
+            channel.started = started;
+            final old = publish('old');
+            await started.future.timeout(const Duration(seconds: 2));
+            channel.gate = null;
+            final latest = cancelLatest ? cancel() : publish('latest');
+            await Future<void>.delayed(Duration.zero);
+            gate.complete();
+            await Future.wait([old, latest]);
+            if (cancelLatest) {
+              expect(channel.pending, isEmpty);
+            } else {
+              expect(channel.pending[42]!['body'], 'latest');
+            }
+          },
+        );
+      }
+
+      test(
+        'failed write reaches caller and does not poison next request',
+        () async {
+          channel.failNext = true;
+          await expectLater(
+            publish('fails'),
+            throwsA(isA<PlatformException>()),
+          );
+          await publish('retry');
+          expect(channel.pending[42]!['body'], 'retry');
+        },
+      );
+    });
+  }
+
   setUpAll(() {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   });
@@ -211,6 +331,48 @@ void main() {
       isTrue,
     );
   });
+}
+
+class _NotificationChannel {
+  static const channel = MethodChannel(
+    'dexterous.com/flutter/local_notifications',
+  );
+  final pending = <int, Map<String, dynamic>>{};
+  int schedules = 0;
+  bool failNext = false;
+  Completer<void>? gate;
+  Completer<void>? started;
+
+  Future<Object?> handle(MethodCall call) async {
+    switch (call.method) {
+      case 'pendingNotificationRequests':
+        return pending.values.toList();
+      case 'cancel':
+        pending.remove((call.arguments as Map)['id']);
+        return null;
+      case 'zonedSchedule':
+        final args = Map<String, dynamic>.from(call.arguments as Map);
+        final delay = gate;
+        if (delay != null) {
+          started!.complete();
+          await delay.future;
+        }
+        if (failNext) {
+          failNext = false;
+          throw PlatformException(code: 'test-schedule-failure');
+        }
+        schedules++;
+        pending[args['id'] as int] = {
+          'id': args['id'],
+          'title': args['title'],
+          'body': args['body'],
+          'payload': args['payload'],
+        };
+        return null;
+      default:
+        throw StateError('Unexpected notification call: ${call.method}');
+    }
+  }
 }
 
 List<PicoNotificationPlan> _plans(RestrictionDayStatus status) {

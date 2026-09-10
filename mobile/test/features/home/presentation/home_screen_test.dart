@@ -10,12 +10,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:go_router/go_router.dart';
 import 'package:picoradar/app/app.dart';
+import 'package:picoradar/app/app_clock.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/startup/startup_gate.dart';
 import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/app/theme/app_tokens.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/presentation/vehicle_detail_screen.dart';
+import 'package:picoradar/features/home/data/home_banner_config.dart';
 import 'package:picoradar/features/home/presentation/home_screen.dart';
 import 'package:picoradar/features/location/application/location_controller.dart';
 import 'package:picoradar/features/location/data/location_preferences.dart';
@@ -47,12 +49,18 @@ void main() {
   });
 
   group('Home V2 shell states', () {
-    for (final size in const [Size(360, 800), Size(390, 844), Size(412, 915)]) {
+    for (final size in const [
+      Size(360, 800),
+      Size(390, 844),
+      Size(412, 915),
+      Size(430, 932),
+    ]) {
       for (final scale in const [1.0, 1.5, 2.0]) {
         testWidgets('V01B Home status readable ${size.width} scale $scale', (
           tester,
         ) async {
-          final vehicle = await _readyHome(harness, plate: 'ABC124');
+          harness.now = DateTime(2026, 8, 27, 12);
+          final vehicle = await _readyHome(harness, plate: 'ABC126');
           await _pumpHome(
             tester,
             harness,
@@ -61,10 +69,60 @@ void main() {
             bottomNavigationBar: const SizedBox(height: 82),
           );
           final card = find.byKey(ValueKey('home-vehicle-card-${vehicle.id}'));
+          final summary = find.byKey(const ValueKey('home-status-today'));
+          expect(
+            find.textContaining(RegExp('mañana', caseSensitive: false)),
+            findsNothing,
+          );
+          expect(find.text('Particular'), findsNothing);
+          expect(
+            find.descendant(of: card, matching: find.text('Pico y placa hoy')),
+            findsNothing,
+          );
+          expect(
+            find.descendant(of: summary, matching: find.byType(FittedBox)),
+            findsNothing,
+          );
+          expect(
+            tester
+                .widget<Text>(find.byKey(const ValueKey('home-summary-main')))
+                .style!
+                .fontSize,
+            18,
+          );
+          for (final text in tester.widgetList<Text>(
+            find.descendant(of: summary, matching: find.byType(Text)),
+          )) {
+            expect(text.style!.fontSize, greaterThanOrEqualTo(14));
+          }
+          expect(tester.getSize(summary).height, greaterThanOrEqualTo(100));
+          if (scale == 1) {
+            expect(tester.getSize(summary).height, lessThanOrEqualTo(132));
+          }
+          final plate = find.descendant(
+            of: card,
+            matching: find.text('ABC 126'),
+          );
+          expect(
+            tester.getCenter(plate).dx,
+            closeTo(tester.getCenter(card).dx, 1),
+          );
+          final asset = tester.widget<Image>(
+            find.byKey(ValueKey('vehicle-visual-image-${vehicle.id}')),
+          );
+          expect(asset.fit, BoxFit.contain);
+          final imageBounds = tester.getRect(
+            find.byKey(ValueKey('vehicle-visual-image-${vehicle.id}')),
+          );
+          expect(imageBounds.height, greaterThan(120));
+          expect(
+            imageBounds.bottom,
+            lessThanOrEqualTo(tester.getTopLeft(plate).dy),
+          );
           final clipped = <String>[];
           for (final surface in [
             card,
-            find.byKey(const ValueKey('home-status-tomorrow')),
+            find.byKey(const ValueKey('home-status-today')),
           ]) {
             await tester.ensureVisible(surface);
             await tester.pump();
@@ -108,6 +166,264 @@ void main() {
       }
     }
 
+    testWidgets(
+      'Home measured layout fits Mi A3 and grows without losing focus',
+      (tester) async {
+        harness.now = DateTime(2026, 8, 27, 12);
+        await _createVehicle(harness, plate: 'XYZ125');
+        final vehicle = await _readyHome(harness, plate: 'ABC126');
+        tester.view.padding = const FakeViewPadding(top: 24);
+        addTearDown(tester.view.resetPadding);
+        await _pumpHome(
+          tester,
+          harness,
+          viewportSize: const Size(360, 780),
+          bottomNavigationBar: const SizedBox(height: 96),
+          homeBanner: const HomeBannerCampaign(
+            id: 'layout-full-banner',
+            kind: HomeBannerKind.house,
+            enabled: true,
+            label: 'PicoRadar',
+            title: 'Protección que te acompaña',
+            subtitle: 'Espacio preparado para campañas y aliados.',
+            ctaText: 'Conocer más',
+            targetUrl: 'https://picoradar.co/demo/home-ally',
+            priority: 1,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final scroll = find.byKey(const ValueKey('home-v2-scroll'));
+        final carousel = find.byKey(const ValueKey('home-vehicle-carousel'));
+        final pageView = find.byKey(const ValueKey('home-vehicle-page-view'));
+        final controller = tester.widget<PageView>(pageView).controller!;
+        final initialPage = controller.page;
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(HomeScreen)),
+        );
+        expect(container.read(homeFocusedVehicleIdProvider), vehicle.id);
+        final position = tester
+            .state<ScrollableState>(
+              find
+                  .descendant(of: scroll, matching: find.byType(Scrollable))
+                  .first,
+            )
+            .position;
+        final smallHeight = tester.getSize(carousel).height;
+        expect(smallHeight, inInclusiveRange(188, 359));
+        expect(position.maxScrollExtent, 0);
+        expect(
+          tester.widget<SingleChildScrollView>(scroll).physics,
+          isA<NeverScrollableScrollPhysics>(),
+        );
+        final banner = find.byKey(const ValueKey('home-bottom-banner'));
+        expect(banner, findsOneWidget);
+        expect(tester.getSize(banner).height, greaterThanOrEqualTo(96));
+        final viewport = tester.getRect(scroll);
+        expect(tester.getRect(banner).top, greaterThanOrEqualTo(viewport.top));
+        expect(
+          tester.getRect(banner).bottom,
+          lessThanOrEqualTo(viewport.bottom),
+        );
+        expect(
+          find.byKey(const ValueKey('home-bottom-banner-cta')),
+          findsOneWidget,
+        );
+        await tester.drag(banner, const Offset(0, -100));
+        await tester.pumpAndSettle();
+        expect(position.pixels, 0);
+
+        tester.view.physicalSize = const Size(360, 1000);
+        await tester.pumpAndSettle();
+        expect(tester.getSize(carousel).height, greaterThan(smallHeight));
+        expect(tester.getSize(carousel).height, lessThanOrEqualTo(360));
+        expect(tester.widget<PageView>(pageView).controller, same(controller));
+        expect(controller.page, initialPage);
+        expect(container.read(homeFocusedVehicleIdProvider), vehicle.id);
+        expect(position.maxScrollExtent, 0);
+        expect(tester.binding.hasScheduledFrame, isFalse);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    for (final naming in [
+      (nickname: '  Familiar  ', brand: 'Toyota', expected: 'Familiar'),
+      (nickname: '   ', brand: '  Renault  ', expected: 'Renault'),
+      (nickname: null, brand: null, expected: 'Mi vehículo'),
+    ]) {
+      testWidgets(
+        'Home name band uses ${naming.expected} without status text',
+        (tester) async {
+          harness.now = DateTime(2026, 8, 27, 12);
+          final vehicle = await _readyHome(
+            harness,
+            plate: 'ABC126',
+            nickname: naming.nickname,
+            brand: naming.brand,
+          );
+          await _pumpHome(tester, harness);
+          final band = find.byKey(
+            ValueKey('home-vehicle-name-band-${vehicle.id}'),
+          );
+          expect(
+            find.descendant(of: band, matching: find.byType(Text)),
+            findsOneWidget,
+          );
+          expect(
+            tester
+                .widget<Text>(
+                  find.byKey(ValueKey('home-vehicle-name-${vehicle.id}')),
+                )
+                .data,
+            naming.expected,
+          );
+          final icon = tester.widget<Icon>(
+            find.byKey(ValueKey('home-vehicle-status-${vehicle.id}')),
+          );
+          expect(
+            icon.semanticLabel,
+            todayStatusText(RestrictionDayStatus.restricted),
+          );
+          expect(icon.color, statusColor(RestrictionDayStatus.restricted));
+          final card = find.byKey(ValueKey('home-vehicle-card-${vehicle.id}'));
+          expect(
+            find.descendant(of: card, matching: find.text('Pico y placa hoy')),
+            findsNothing,
+          );
+          expect(
+            find.descendant(of: card, matching: find.text('No puede circular')),
+            findsNothing,
+          );
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+
+    for (final plateCase in [
+      (
+        kind: VehicleKind.car,
+        service: VehicleServiceType.private,
+        plate: 'ABC126',
+        city: '  Bogota  ',
+        label: 'Bogota',
+      ),
+      (
+        kind: VehicleKind.car,
+        service: VehicleServiceType.taxi,
+        plate: 'TAX078',
+        city: 'Bogota',
+        label: 'Bogota',
+      ),
+      (
+        kind: VehicleKind.motorcycle,
+        service: VehicleServiceType.private,
+        plate: 'ABC12D',
+        city: 'Bogota',
+        label: 'COLOMBIA',
+      ),
+      (
+        kind: VehicleKind.car,
+        service: VehicleServiceType.private,
+        plate: 'ABC126',
+        city: null,
+        label: 'COLOMBIA',
+      ),
+      (
+        kind: VehicleKind.car,
+        service: VehicleServiceType.taxi,
+        plate: 'TAX078',
+        city: '   ',
+        label: 'COLOMBIA',
+      ),
+    ]) {
+      testWidgets(
+        'Home plate registration ${plateCase.kind.name} ${plateCase.service.name} ${plateCase.label}',
+        (tester) async {
+          final vehicle = await _readyHome(
+            harness,
+            plate: plateCase.plate,
+            kind: plateCase.kind,
+            serviceType: plateCase.service,
+            registrationCity: plateCase.city,
+            nickname: 'Mi carro familiar',
+          );
+          await _pumpHome(
+            tester,
+            harness,
+            viewportSize: const Size(360, 780),
+            textScaleFactor: 2,
+            bottomNavigationBar: const SizedBox(height: 96),
+          );
+          await tester.pumpAndSettle();
+          final card = find.byKey(ValueKey('home-vehicle-card-${vehicle.id}'));
+          final registration = find.descendant(
+            of: card,
+            matching: find.byKey(
+              const ValueKey('colombian-plate-registration-label'),
+            ),
+          );
+          expect(tester.widget<Text>(registration).data, plateCase.label);
+          final badge = tester.widget<Container>(
+            find.descendant(
+              of: card,
+              matching: find.byKey(const ValueKey('colombian-plate-badge')),
+            ),
+          );
+          expect(
+            (badge.decoration! as BoxDecoration).color,
+            plateCase.service == VehicleServiceType.taxi
+                ? Colors.white
+                : AppColors.plateYellow,
+          );
+          final plate = find.descendant(
+            of: card,
+            matching: find.text(
+              '${vehicle.plate.substring(0, 3)} ${vehicle.plate.substring(3)}',
+            ),
+          );
+          expect(
+            tester.getRect(registration).top,
+            greaterThanOrEqualTo(tester.getRect(plate).bottom),
+          );
+          expect(
+            tester.getCenter(registration).dx,
+            closeTo(tester.getCenter(card).dx, 1),
+          );
+          final bounds = tester.getRect(card);
+          for (final element
+              in find
+                  .descendant(of: card, matching: find.byType(RichText))
+                  .evaluate()) {
+            final paragraph = element.renderObject! as RenderParagraph;
+            expect(paragraph.didExceedMaxLines, isFalse);
+            for (final box in paragraph.getBoxesForSelection(
+              TextSelection(
+                baseOffset: 0,
+                extentOffset: paragraph.text.toPlainText().length,
+              ),
+            )) {
+              expect(
+                bounds.contains(
+                  paragraph.localToGlobal(Offset(box.left, box.top)),
+                ),
+                isTrue,
+                reason: paragraph.text.toPlainText(),
+              );
+              expect(
+                bounds.contains(
+                  paragraph.localToGlobal(Offset(box.right, box.bottom)),
+                ),
+                isTrue,
+                reason: paragraph.text.toPlainText(),
+              );
+            }
+          }
+          expect(tester.binding.hasScheduledFrame, isFalse);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+
     testWidgets('no vehicle keeps the branded header and R01 empty state', (
       tester,
     ) async {
@@ -131,7 +447,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Selecciona dónde vas a conducir'), findsOneWidget);
-      expect(find.text('Sin confirmar'), findsWidgets);
+      expect(find.text('Por verificar'), findsWidgets);
       expect(find.text('Puede circular'), findsNothing);
     });
 
@@ -219,7 +535,7 @@ void main() {
             textScaleFactor: viewport.textScale,
           );
 
-          final card = find.byKey(const ValueKey('home-status-tomorrow'));
+          final card = find.byKey(const ValueKey('home-status-today'));
           final city = find.descendant(
             of: card,
             matching: find.text('Medellín'),
@@ -258,7 +574,7 @@ void main() {
           textScaleFactor: 2,
         );
 
-        final card = find.byKey(const ValueKey('home-status-tomorrow'));
+        final card = find.byKey(const ValueKey('home-status-today'));
         final city = find.descendant(
           of: card,
           matching: find.text('Área metropolitana de Bucaramanga'),
@@ -267,7 +583,7 @@ void main() {
         final cardRect = tester.getRect(card);
         final cityRect = tester.getRect(city);
 
-        expect(cityWidget.maxLines, greaterThanOrEqualTo(2));
+        expect(cityWidget.maxLines, isNull);
         expect(cityWidget.overflow, isNot(TextOverflow.ellipsis));
         expect(cityRect.right, lessThanOrEqualTo(cardRect.right));
         expect(cityRect.bottom, lessThanOrEqualTo(cardRect.bottom));
@@ -791,20 +1107,21 @@ void main() {
           'co-ant-medellin',
         );
         expect(find.text('Medellín'), findsWidgets);
-        final vehicleCard = find.byKey(
-          ValueKey('home-vehicle-card-${vehicle.id}'),
+        expect(
+          find.byKey(ValueKey('home-vehicle-status-${vehicle.id}')),
+          findsOneWidget,
         );
         expect(
           find.descendant(
-            of: vehicleCard,
+            of: find.byKey(const ValueKey('home-status-today')),
             matching: find.text('Pico y placa hoy'),
           ),
           findsOneWidget,
         );
         expect(
           find.descendant(
-            of: vehicleCard,
-            matching: find.text('No puede circular de 05:00 - 20:00'),
+            of: find.byKey(const ValueKey('home-status-today')),
+            matching: find.byKey(const ValueKey('home-summary-windows')),
           ),
           findsOneWidget,
         );
@@ -846,8 +1163,8 @@ void main() {
 
       await _pumpHome(tester, harness, viewportSize: const Size(390, 844));
 
-      final tomorrow = tester.getTopLeft(
-        find.byKey(const ValueKey('home-status-tomorrow')),
+      final summary = tester.getTopLeft(
+        find.byKey(const ValueKey('home-status-today')),
       );
       final soat = tester.getTopLeft(
         find.byKey(const ValueKey('home-status-soat')),
@@ -855,12 +1172,12 @@ void main() {
       final rtm = tester.getTopLeft(
         find.byKey(const ValueKey('home-status-rtm')),
       );
-      final tomorrowBottom = tester.getBottomLeft(
-        find.byKey(const ValueKey('home-status-tomorrow')),
+      final summaryBottom = tester.getBottomLeft(
+        find.byKey(const ValueKey('home-status-today')),
       );
 
-      expect(tomorrow.dx, lessThanOrEqualTo(soat.dx));
-      expect(soat.dy, greaterThan(tomorrowBottom.dy));
+      expect(summary.dx, lessThanOrEqualTo(soat.dx));
+      expect(soat.dy, greaterThan(summaryBottom.dy));
       expect((soat.dy - rtm.dy).abs(), lessThan(1));
       expect(rtm.dx, greaterThan(soat.dx));
       expect(
@@ -869,9 +1186,13 @@ void main() {
       );
       expect(
         find.descendant(
-          of: find.byKey(const ValueKey('home-status-tomorrow')),
+          of: find.byKey(const ValueKey('home-status-today')),
           matching: find.byIcon(Icons.chevron_right_rounded),
         ),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const ValueKey('home-status-pico-action')),
         findsOneWidget,
       );
     });
@@ -943,9 +1264,9 @@ void main() {
 
       await _pumpHome(tester, harness, viewportSize: const Size(360, 800));
 
-      _expectNoEllipsisInCard(tester, const ValueKey('home-status-tomorrow'), [
-        'Pico y placa',
-        'Puede circular',
+      _expectNoEllipsisInCard(tester, const ValueKey('home-status-today'), [
+        'Pico y placa hoy',
+        'Restricción finalizada',
       ]);
       _expectNoEllipsisInCard(tester, const ValueKey('home-status-soat'), [
         'SOAT',
@@ -1172,7 +1493,7 @@ void main() {
       final carouselHeight = tester
           .getSize(find.byKey(const ValueKey('home-vehicle-carousel')))
           .height;
-      expect(carouselHeight, greaterThanOrEqualTo(236));
+      expect(carouselHeight, greaterThanOrEqualTo(188));
       expect(carouselHeight, lessThanOrEqualTo(360));
       expect(
         find.byKey(const ValueKey('home-carousel-counter')),
@@ -1182,9 +1503,23 @@ void main() {
       expect(find.byKey(const ValueKey('home-carousel-dot-0')), findsOneWidget);
       expect(find.byKey(const ValueKey('home-carousel-dot-1')), findsOneWidget);
       expect(find.byKey(const ValueKey('home-carousel-dot-2')), findsOneWidget);
-      expect(find.text('TST453'), findsOneWidget);
+      expect(find.text('TST 453'), findsOneWidget);
+      expect(
+        tester.getCenter(find.text('TST 453')).dx,
+        closeTo(
+          tester
+              .getCenter(
+                find.byKey(ValueKey('home-vehicle-card-${restricted.id}')),
+              )
+              .dx,
+          1,
+        ),
+      );
       expect(find.text('Pico y placa hoy'), findsOneWidget);
-      expect(find.text('No puede circular de 05:00 - 20:00'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('home-summary-windows')),
+        findsOneWidget,
+      );
       final restrictedSummary = tester.widget<Text>(
         find.text('Pico y placa hoy'),
       );
@@ -1341,8 +1676,10 @@ void main() {
       );
 
       await _pumpHomeApp(tester, harness);
-      expect(find.text('ABC123'), findsOneWidget);
-      await tester.tap(find.text('ABC123'));
+      expect(find.text('ABC 123'), findsOneWidget);
+      await tester.tap(
+        find.byKey(ValueKey('home-vehicle-card-${restricted.id}')),
+      );
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
 
       expect(find.text('Detalle del vehículo'), findsOneWidget);
@@ -1394,6 +1731,450 @@ void main() {
     });
   });
 
+  group('Home current restriction summary', () {
+    const splitWindows = [
+      RestrictionDayWindow(startMinute: 300, endMinute: 540),
+      RestrictionDayWindow(startMinute: 960, endMinute: 1200),
+    ];
+    for (final scenario in [
+      (
+        status: RestrictionDayStatus.restricted,
+        hour: 4,
+        main: 'Empieza a las 5:00 a. m.',
+      ),
+      (
+        status: RestrictionDayStatus.restricted,
+        hour: 5,
+        main: 'No puede circular',
+      ),
+      (
+        status: RestrictionDayStatus.restricted,
+        hour: 12,
+        main: 'Sin restricción ahora',
+      ),
+      (
+        status: RestrictionDayStatus.restricted,
+        hour: 20,
+        main: 'Restricción finalizada',
+      ),
+      (status: RestrictionDayStatus.allowed, hour: 12, main: 'Puede circular'),
+      (status: RestrictionDayStatus.unknown, hour: 12, main: 'Por verificar'),
+      (status: RestrictionDayStatus.stale, hour: 12, main: 'Datos vencidos'),
+    ]) {
+      testWidgets('summary phase ${scenario.main}', (tester) async {
+        harness.now = DateTime(2026, 8, 27, scenario.hour);
+        final vehicle = await _readyHome(harness, plate: 'ABC126');
+        final restricted = scenario.status == RestrictionDayStatus.restricted;
+        await _pumpHome(
+          tester,
+          harness,
+          homeEvaluation: RestrictionDayEvaluation(
+            status: scenario.status,
+            effectiveWindows: restricted ? splitWindows : const [],
+          ),
+        );
+        final main = tester.widget<Text>(
+          find.byKey(const ValueKey('home-summary-main')),
+        );
+        expect(main.data!.replaceAll('\u00a0', ' '), scenario.main);
+        final label = tester.widget<Text>(
+          find.byKey(const ValueKey('home-summary-label')),
+        );
+        expect(label.data, restricted ? 'Pico y placa hoy' : 'Pico y placa');
+        expect(
+          label.style!.color,
+          restricted ? AppColors.red : const Color(0xFFCDDBE6),
+        );
+        final semantics = tester.widget<Semantics>(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is Semantics &&
+                widget.properties.label == 'Ver pico y placa',
+          ),
+        );
+        expect(semantics.properties.value, contains(scenario.main));
+        expect(semantics.properties.value, isNot(contains('\u00a0')));
+        expect(semantics.properties.value, contains('Medellín'));
+        expect(
+          find.text('Pico y placa hoy'),
+          restricted ? findsOneWidget : findsNothing,
+        );
+        final icon = tester.widget<Icon>(
+          find.byKey(ValueKey('home-vehicle-status-${vehicle.id}')),
+        );
+        expect(
+          icon.color,
+          restricted
+              ? AppColors.red
+              : scenario.status == RestrictionDayStatus.allowed
+              ? AppColors.green
+              : AppColors.orange,
+        );
+        final material = tester.widget<Material>(
+          find
+              .ancestor(
+                of: find.byKey(ValueKey('home-vehicle-card-${vehicle.id}')),
+                matching: find.byType(Material),
+              )
+              .first,
+        );
+        expect(material.shadowColor, icon.color!.withValues(alpha: 0.4));
+        expect(material.elevation, greaterThan(0));
+        expect(material.animationDuration, Duration.zero);
+        if (restricted) {
+          final windows = tester.widget<Text>(
+            find.byKey(const ValueKey('home-summary-windows')),
+          );
+          expect(
+            windows.data!.replaceAll('\u00a0', ' '),
+            '5:00 a. m. – 9:00 a. m.\n4:00 p. m. – 8:00 p. m.',
+          );
+          expect(windows.data, contains('5:00\u00a0a.\u00a0m.'));
+          expect(
+            semantics.properties.value,
+            contains('5:00 a. m. – 9:00 a. m.\n4:00 p. m. – 8:00 p. m.'),
+          );
+        } else {
+          expect(find.text('No puede circular'), findsNothing);
+        }
+        expect(
+          find.textContaining(RegExp('mañana', caseSensitive: false)),
+          findsNothing,
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    for (final width in [360.0, 390.0, 412.0, 430.0]) {
+      for (final scale in [1.0, 1.5, 2.0]) {
+        testWidgets('summary split windows bounds $width scale $scale', (
+          tester,
+        ) async {
+          harness.now = DateTime(2026, 8, 27, 12);
+          await _readyHome(harness, plate: 'ABC126');
+          await _pumpHome(
+            tester,
+            harness,
+            viewportSize: Size(width, 932),
+            textScaleFactor: scale,
+            homeEvaluation: const RestrictionDayEvaluation(
+              status: RestrictionDayStatus.restricted,
+              effectiveWindows: splitWindows,
+            ),
+          );
+          final summary = find.byKey(const ValueKey('home-status-today'));
+          await tester.ensureVisible(summary);
+          await tester.pump();
+          final bounds = tester.getRect(summary);
+          for (final element
+              in find
+                  .descendant(of: summary, matching: find.byType(RichText))
+                  .evaluate()) {
+            final paragraph = element.renderObject! as RenderParagraph;
+            expect(paragraph.didExceedMaxLines, isFalse);
+            final text = paragraph.text.toPlainText();
+            for (final box in paragraph.getBoxesForSelection(
+              TextSelection(baseOffset: 0, extentOffset: text.length),
+            )) {
+              expect(
+                bounds.contains(
+                  paragraph.localToGlobal(Offset(box.left, box.top)),
+                ),
+                isTrue,
+                reason: text,
+              );
+              expect(
+                bounds.contains(
+                  paragraph.localToGlobal(Offset(box.right, box.bottom)),
+                ),
+                isTrue,
+                reason: text,
+              );
+            }
+          }
+          final windows = tester.getRect(
+            find.byKey(const ValueKey('home-summary-windows')),
+          );
+          final city = tester.getRect(
+            find.byKey(const ValueKey('home-summary-city')),
+          );
+          expect(city.top, greaterThan(windows.bottom));
+          expect(
+            tester
+                .getSize(find.byKey(const ValueKey('home-summary-status-icon')))
+                .width,
+            greaterThanOrEqualTo(56),
+          );
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
+
+    testWidgets('minute changes phase without reloading daily snapshots', (
+      tester,
+    ) async {
+      harness.now = DateTime(2026, 8, 27, 4, 59);
+      final vehicle = await _readyHome(harness, plate: 'ABC126');
+      final gateway = _FakeDeviceLocationGateway();
+      await _pumpHome(tester, harness, deviceLocationGateway: gateway);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(HomeScreen)),
+      );
+      final provider = homeVehicleSnapshotsProvider(
+        HomeVehicleSnapshotsRequest(
+          vehicles: [vehicle],
+          selectedJurisdiction: _jurisdictions[1],
+        ),
+      );
+      final first = container.read(provider).requireValue;
+      final gpsCalls = gateway.positionCalls;
+      harness.now = DateTime(2026, 8, 27, 5);
+      container.invalidate(currentInstantProvider);
+      container.invalidate(bogotaNowProvider);
+      await _pumpAsyncHome(tester);
+      expect(find.text('No puede circular'), findsOneWidget);
+      expect(identical(container.read(provider).requireValue, first), isTrue);
+      harness.now = DateTime(2026, 8, 27, 20);
+      container.invalidate(currentInstantProvider);
+      container.invalidate(bogotaNowProvider);
+      await _pumpAsyncHome(tester);
+      expect(find.text('Restricción finalizada'), findsOneWidget);
+      expect(identical(container.read(provider).requireValue, first), isTrue);
+      expect(gateway.positionCalls, gpsCalls);
+      container.invalidate(bundledRestrictionsProvider);
+      await _pumpAsyncHome(tester);
+      final refreshed = container.read(provider).requireValue;
+      expect(identical(refreshed, first), isFalse);
+      harness.now = DateTime(2026, 8, 28);
+      container.invalidate(currentInstantProvider);
+      container.invalidate(bogotaNowProvider);
+      await _pumpAsyncHome(tester);
+      expect(
+        identical(container.read(provider).requireValue, refreshed),
+        isFalse,
+      );
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('home-summary-main')))
+            .data,
+        'Puede circular',
+      );
+      expect(container.read(homeFocusedVehicleIdProvider), vehicle.id);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  testWidgets('real AppClock rolls Home and Pico from September 9 to 10', (
+    tester,
+  ) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    harness.now = DateTime(2026, 9, 9, 23, 59);
+    var nowUtc = DateTime.utc(2026, 9, 10, 4, 59);
+    final store = _FakeRestrictionStore(harness.database, harness.now);
+    final active = await _createVehicle(harness, plate: 'AAA111');
+    final focused = await _createVehicle(harness, plate: 'BOG126');
+    await _setVehicleCreatedAt(harness, active.id, DateTime.utc(2026, 1, 2));
+    await _setVehicleCreatedAt(harness, focused.id, DateTime.utc(2026, 1, 1));
+    await harness.repository.setActiveVehicle(active.id);
+    await harness.preferences.setString(
+      picoJurisdictionPreferenceKey,
+      'co-ant-medellin',
+    );
+    await _pumpFullHomeApp(
+      tester,
+      harness,
+      appClockNow: () => nowUtc,
+      restrictionStore: store,
+    );
+    final appState = tester.state(find.byType(PicoRadarApp));
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(PicoRadarApp)),
+    );
+    expect(container.exists(appClockProvider), isTrue);
+    expect(container.read(appClockProvider), nowUtc);
+    expect(container.read(bogotaNowProvider), DateTime(2026, 9, 9, 23, 59));
+    expect(container.read(homeFocusedVehicleIdProvider), active.id);
+    expect(
+      container
+          .read(vehicleListProvider)
+          .requireValue
+          .map((vehicle) => vehicle.id),
+      [active.id, focused.id],
+    );
+    expect(
+      tester
+          .widget<PageView>(
+            find.byKey(const ValueKey('home-vehicle-page-view')),
+          )
+          .controller!
+          .page,
+      0,
+    );
+    await tester.fling(
+      find.byKey(const ValueKey('home-vehicle-page-view')),
+      const Offset(-600, 0),
+      1200,
+    );
+    await tester.pumpAndSettle();
+    expect(container.read(homeFocusedVehicleIdProvider), focused.id);
+    expect(
+      tester.widget<Text>(find.byKey(const ValueKey('home-summary-main'))).data,
+      'Puede circular',
+    );
+    final homePages = tester
+        .widget<PageView>(find.byKey(const ValueKey('home-vehicle-page-view')))
+        .controller;
+
+    await tester.ensureVisible(find.byKey(const ValueKey('home-status-today')));
+    await tester.tap(find.byKey(const ValueKey('home-status-today')));
+    await _pumpPicoShell(tester);
+    await _pumpAsyncHome(tester);
+    expect(find.text('MI PICO Y PLACA'), findsOneWidget);
+    expect(find.text(focused.plate), findsOneWidget);
+    expect(find.text('Hoy · Mié 09/09/2026'), findsOneWidget);
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('pico-immediate-verdict')))
+          .data,
+      'Sin pico y placa hoy',
+    );
+    await tester.ensureVisible(find.text('Mes'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mes'));
+    await tester.pumpAndSettle();
+    Finder todayMarker(String date, String status) => find.ancestor(
+      of: find.byKey(ValueKey('pico-month-day-$date')),
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Semantics &&
+            widget.properties.label == 'Hoy · $date $status' &&
+            widget.properties.selected == true,
+      ),
+    );
+    expect(todayMarker('2026-09-09', 'Sin pico y placa'), findsOneWidget);
+    expect(todayMarker('2026-09-10', 'Con pico y placa'), findsNothing);
+
+    // The injected source advances; only AppClock's minute timer publishes it.
+    store.pendingLoad = Completer<void>();
+    addTearDown(() {
+      final pending = store.pendingLoad;
+      if (pending != null && !pending.isCompleted) pending.complete();
+    });
+    nowUtc = DateTime.utc(2026, 9, 10, 5);
+    expect(container.read(bogotaNowProvider).day, 9);
+    await tester.pump(const Duration(minutes: 1));
+    await _pumpAsyncHome(tester);
+    expect(container.read(appClockProvider), nowUtc);
+    expect(container.read(currentInstantProvider), nowUtc);
+    expect(container.read(bogotaNowProvider), DateTime(2026, 9, 10));
+    expect(todayMarker('2026-09-09', 'Sin pico y placa'), findsNothing);
+    expect(todayMarker('2026-09-10', 'Por verificar'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('pico-immediate-verdict')),
+      -200,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const ValueKey('pico-scroll-root')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Hoy · Jue 10/09/2026'), findsOneWidget);
+    expect(find.text('Hoy · Mié 09/09/2026'), findsNothing);
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('pico-immediate-verdict')))
+          .data,
+      'Por verificar',
+    );
+    expect(find.text('No puede circular'), findsNothing);
+
+    await tester.binding.handlePopRoute();
+    await _pumpAsyncHome(tester);
+    expect(
+      identical(tester.state(find.byType(PicoRadarApp)), appState),
+      isTrue,
+    );
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(container.read(homeFocusedVehicleIdProvider), focused.id);
+    expect(
+      identical(
+        tester
+            .widget<PageView>(
+              find.byKey(const ValueKey('home-vehicle-page-view')),
+            )
+            .controller,
+        homePages,
+      ),
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<PageView>(
+            find.byKey(const ValueKey('home-vehicle-page-view')),
+          )
+          .controller!
+          .page,
+      closeTo(1, 0.001),
+    );
+    expect(
+      tester.widget<Text>(find.byKey(const ValueKey('home-summary-main'))).data,
+      'Por verificar',
+    );
+    expect(find.text('Puede circular'), findsNothing);
+    expect(
+      tester
+          .widget<Icon>(
+            find.byKey(ValueKey('home-vehicle-status-${focused.id}')),
+          )
+          .color,
+      AppColors.orange,
+    );
+    store.pendingLoad!.complete();
+    store.pendingLoad = null;
+    await _pumpAsyncHome(tester);
+    final homeMain = tester.widget<Text>(
+      find.byKey(const ValueKey('home-summary-main')),
+    );
+    expect(
+      homeMain.data!.replaceAll('\u00a0', ' '),
+      'Empieza a las 5:00 a. m.',
+    );
+    expect(find.text('Pico y placa hoy'), findsOneWidget);
+    expect(find.text('No puede circular'), findsNothing);
+    expect(container.read(homeFocusedVehicleIdProvider), focused.id);
+    expect(homePages!.page, closeTo(1, 0.001));
+
+    await tester.ensureVisible(find.byKey(const ValueKey('home-status-today')));
+    await tester.tap(find.byKey(const ValueKey('home-status-today')));
+    await _pumpPicoShell(tester);
+    await _pumpAsyncHome(tester);
+    expect(find.text('Hoy · Jue 10/09/2026'), findsOneWidget);
+    expect(
+      tester
+          .widget<Text>(find.byKey(const ValueKey('pico-immediate-verdict')))
+          .data,
+      'Empieza a las 5:00 a. m.',
+    );
+    await tester.ensureVisible(find.text('Mes'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mes'));
+    await tester.pumpAndSettle();
+    expect(todayMarker('2026-09-10', 'Con pico y placa'), findsOneWidget);
+    expect(todayMarker('2026-09-09', 'Sin pico y placa'), findsNothing);
+    expect(
+      identical(tester.state(find.byType(PicoRadarApp)), appState),
+      isTrue,
+    );
+    expect((await harness.repository.getActiveVehicle())?.id, active.id);
+    expect(
+      await harness.preferences.getString(picoJurisdictionPreferenceKey),
+      'co-ant-medellin',
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   group('Home V2 data truth', () {
     testWidgets('SOAT and RTM missing show Sin configurar', (tester) async {
       await _readyHome(harness, plate: 'ABC124');
@@ -1435,7 +2216,7 @@ void main() {
 
       await _pumpHome(tester, harness);
 
-      expect(find.text('Datos pendientes'), findsWidgets);
+      expect(find.text('Datos vencidos'), findsWidgets);
       expect(find.text('Puede circular'), findsNothing);
 
       harness = TestAppHarness();
@@ -1446,7 +2227,7 @@ void main() {
       );
       await _pumpHome(tester, harness);
 
-      expect(find.text('Sin confirmar'), findsWidgets);
+      expect(find.text('Por verificar'), findsWidgets);
       expect(find.text('Puede circular'), findsNothing);
     });
 
@@ -1470,7 +2251,7 @@ void main() {
   });
 
   group('Home V2 module tap reliability', () {
-    testWidgets('Tomorrow sends active taxi to Pico without mutating active', (
+    testWidgets('Summary sends active taxi to Pico without mutating active', (
       tester,
     ) async {
       final activeTaxi = await _createVehicle(
@@ -1507,11 +2288,11 @@ void main() {
 
       await _pumpHomeApp(tester, harness);
 
-      await _openTomorrowAndExpectPico(tester, activeTaxi);
+      await _openSummaryAndExpectPico(tester, activeTaxi);
       expect((await harness.repository.getActiveVehicle())?.id, activeTaxi.id);
     });
 
-    testWidgets('Tomorrow, SOAT and RTM use focused non-active vehicle', (
+    testWidgets('Summary, SOAT and RTM use focused non-active vehicle', (
       tester,
     ) async {
       final activeTaxi = await _createVehicle(
@@ -1559,11 +2340,11 @@ void main() {
       expect((await harness.repository.getActiveVehicle())?.id, activeTaxi.id);
 
       await _goHome(tester);
-      await _openTomorrowAndExpectPico(tester, toyota);
+      await _openSummaryAndExpectPico(tester, toyota);
       expect((await harness.repository.getActiveVehicle())?.id, activeTaxi.id);
     });
 
-    testWidgets('Tomorrow can target a third focused vehicle', (tester) async {
+    testWidgets('Summary can target a third focused vehicle', (tester) async {
       final activeTaxi = await _createVehicle(
         harness,
         plate: 'TAX129',
@@ -1585,7 +2366,7 @@ void main() {
 
       await _pumpHomeApp(tester, harness);
 
-      await _openTomorrowAndExpectPico(tester, renault);
+      await _openSummaryAndExpectPico(tester, renault);
       expect((await harness.repository.getActiveVehicle())?.id, activeTaxi.id);
     });
 
@@ -1652,14 +2433,19 @@ void main() {
       },
     );
 
-    testWidgets('Tomorrow card routes consistently to Pico detail', (
+    testWidgets('Summary card routes consistently to Pico detail', (
       tester,
     ) async {
       final vehicle = await _readyHome(harness, plate: 'ABC124');
       await _pumpHomeApp(tester, harness);
 
-      for (var i = 0; i < 5; i += 1) {
-        await tester.tap(find.byKey(const ValueKey('home-status-tomorrow')));
+      for (final target in [
+        'home-status-today',
+        'home-summary-status-icon',
+        'home-summary-main',
+        'home-summary-city',
+      ]) {
+        await tester.tap(find.byKey(ValueKey(target)));
         await tester.pumpAndSettle();
         expect(find.text('MI PICO Y PLACA'), findsOneWidget);
         expect(find.text(vehicle.plate), findsOneWidget);
@@ -1859,7 +2645,7 @@ void main() {
       );
 
       expect(find.text('Pico y placa hoy'), findsOneWidget);
-      expect(find.byIcon(Icons.warning_amber_rounded), findsWidgets);
+      expect(find.byIcon(Icons.block_rounded), findsWidgets);
     });
   });
 
@@ -1975,7 +2761,54 @@ void main() {
       final dayOneSize = tester.getSize(
         find.byKey(const ValueKey('pico-calendar-day-1')),
       );
-      expect(dayOneSize.width, inInclusiveRange(64, 82));
+      expect(dayOneSize.width, inInclusiveRange(140, 180));
+      final dayOne = find.byKey(const ValueKey('pico-calendar-day-1'));
+      expect(
+        find.descendant(of: dayOne, matching: find.text('Vie')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: dayOne, matching: find.text('28')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: dayOne, matching: find.text('Con pico y placa')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: dayOne,
+          matching: find.text('5:30 a. m. – 9:00 p. m.'),
+        ),
+        findsOneWidget,
+      );
+      final dayBounds = tester.getRect(dayOne);
+      for (final element
+          in find
+              .descendant(of: dayOne, matching: find.byType(RichText))
+              .evaluate()) {
+        final paragraph = element.renderObject! as RenderParagraph;
+        expect(paragraph.didExceedMaxLines, isFalse);
+        final text = paragraph.text.toPlainText();
+        for (final box in paragraph.getBoxesForSelection(
+          TextSelection(baseOffset: 0, extentOffset: text.length),
+        )) {
+          expect(
+            dayBounds.contains(
+              paragraph.localToGlobal(Offset(box.left, box.top)),
+            ),
+            isTrue,
+            reason: text,
+          );
+          expect(
+            dayBounds.contains(
+              paragraph.localToGlobal(Offset(box.right, box.bottom)),
+            ),
+            isTrue,
+            reason: text,
+          );
+        }
+      }
       await tester.scrollUntilVisible(
         find.byKey(const ValueKey('pico-calendar-day-10')),
         220,
@@ -2079,8 +2912,20 @@ void main() {
         find.byKey(const ValueKey('pico-month-day-detail-sheet')),
         findsOneWidget,
       );
-      expect(find.text('No puedes circular'), findsWidgets);
-      expect(find.text('06:00-21:00'), findsWidgets);
+      final daySheet = find.byKey(
+        const ValueKey('pico-month-day-detail-sheet'),
+      );
+      expect(
+        find.descendant(of: daySheet, matching: find.text('Con pico y placa')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: daySheet,
+          matching: find.text('6:00 a. m. – 9:00 p. m.'),
+        ),
+        findsOneWidget,
+      );
       expect(
         find.text('Restricción calculada para este vehículo.'),
         findsOneWidget,
@@ -2296,7 +3141,8 @@ void main() {
     testWidgets('P04 Bogota date-parity rules show seven-day matrix', (
       tester,
     ) async {
-      harness.now = DateTime(2026, 8, 31, 12);
+      // Cover both parities before the fixture expires at Sep 1, 05:00 UTC.
+      harness.now = DateTime(2026, 8, 28, 12);
       await _readyHome(
         harness,
         plate: 'ABC125',
@@ -2308,9 +3154,47 @@ void main() {
       expect(find.text('Pico y placa de la ciudad'), findsOneWidget);
       expect(find.text('PARIDAD DE FECHA'), findsOneWidget);
       expect(find.text('Próximos 7 días'), findsOneWidget);
-      expect(find.text('Lun 31'), findsOneWidget);
-      expect(find.text('3'), findsWidgets);
-      expect(find.text('6'), findsWidgets);
+      final expectedRows = [
+        (label: 'Vie 28', value: '6'),
+        (label: 'Sáb 29', value: '3'),
+        (label: 'Dom 30', value: '6'),
+        (label: 'Lun 31', value: '3'),
+        (label: 'Mar 1', value: 'Datos por actualizar'),
+        (label: 'Mié 2', value: 'Datos por actualizar'),
+        (label: 'Jue 3', value: 'Datos por actualizar'),
+      ];
+      for (var index = 0; index < expectedRows.length; index += 1) {
+        final row = find.byKey(ValueKey('pico-city-rotation-row-$index'));
+        expect(row, findsOneWidget);
+        expect(
+          find.descendant(
+            of: row,
+            matching: find.text(expectedRows[index].label),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: row,
+            matching: find.text(expectedRows[index].value),
+          ),
+          findsOneWidget,
+        );
+        if (index >= 4) {
+          expect(
+            find.descendant(of: row, matching: find.text('3')),
+            findsNothing,
+          );
+          expect(
+            find.descendant(of: row, matching: find.text('6')),
+            findsNothing,
+          );
+        }
+      }
+      expect(
+        find.byKey(const ValueKey('pico-city-rotation-row-7')),
+        findsNothing,
+      );
     });
 
     testWidgets('city info icon and official source CTA are functional', (
@@ -2630,10 +3514,10 @@ void main() {
 
       await _pumpFullHomeApp(tester, harness);
       await tester.ensureVisible(
-        find.byKey(const ValueKey('home-status-tomorrow')),
+        find.byKey(const ValueKey('home-status-today')),
       );
       await _pumpAsyncHome(tester);
-      await tester.tap(find.byKey(const ValueKey('home-status-tomorrow')));
+      await tester.tap(find.byKey(const ValueKey('home-status-today')));
       await _pumpPicoShell(tester);
 
       expect(find.text('MI PICO Y PLACA'), findsOneWidget);
@@ -2753,8 +3637,11 @@ void main() {
         vehicleId: (await harness.repository.getActiveVehicle())?.id,
       );
 
-      expect(find.text('Datos desactualizados'), findsWidgets);
-      expect(find.text('Puedes circular'), findsNothing);
+      final verdict = tester.widget<Text>(
+        find.byKey(const ValueKey('pico-immediate-verdict')),
+      );
+      expect(verdict.data, 'Datos vencidos');
+      expect(find.text('Sin pico y placa hoy'), findsNothing);
     });
 
     testWidgets(
@@ -2775,15 +3662,15 @@ void main() {
         expect(find.text('Medellín'), findsWidgets);
         expect(
           find.descendant(
-            of: vehicleCard,
+            of: find.byKey(const ValueKey('home-status-today')),
             matching: find.text('Pico y placa hoy'),
           ),
           findsOneWidget,
         );
         expect(
           find.descendant(
-            of: vehicleCard,
-            matching: find.text('No puede circular de 05:00 - 20:00'),
+            of: find.byKey(const ValueKey('home-status-today')),
+            matching: find.byKey(const ValueKey('home-summary-windows')),
           ),
           findsOneWidget,
         );
@@ -2795,14 +3682,41 @@ void main() {
           findsNothing,
         );
 
+        final homeVerdict = tester.widget<Text>(
+          find.byKey(const ValueKey('home-summary-main')),
+        );
+        expect(
+          homeVerdict.data!.replaceAll('\u00a0', ' '),
+          'Empieza a las 5:00 a. m.',
+        );
+        expect(find.text('No puede circular'), findsNothing);
+        final homeWindows = tester.widget<Text>(
+          find.byKey(const ValueKey('home-summary-windows')),
+        );
+        expect(
+          homeWindows.data!.replaceAll('\u00a0', ' '),
+          '5:00 a. m. – 8:00 p. m.',
+        );
+        expect(
+          tester
+              .widget<Icon>(
+                find.byKey(ValueKey('home-vehicle-status-${vehicle.id}')),
+              )
+              .color,
+          AppColors.red,
+        );
         await _pumpDetail(tester, harness, vehicleId: vehicle.id);
 
         expect(
           find.textContaining('Medellín · Fuente oficial:'),
           findsAtLeastNWidgets(1),
         );
-        expect(find.text('No puedes circular'), findsWidgets);
-        expect(find.text('05:00-20:00'), findsWidgets);
+        final verdict = tester.widget<Text>(
+          find.byKey(const ValueKey('pico-immediate-verdict')),
+        );
+        expect(verdict.data, 'Empieza a las 5:00 a. m.');
+        expect(find.text('No puede circular'), findsNothing);
+        expect(find.text('5:00 a. m. – 8:00 p. m.'), findsWidgets);
       },
     );
 
@@ -2834,6 +3748,8 @@ Future<void> _pumpHome(
   DeviceLocationGateway? deviceLocationGateway,
   DateTime Function()? homeGpsClock,
   DateTime Function()? currentInstantClock,
+  RestrictionDayEvaluation? homeEvaluation,
+  HomeBannerCampaign? homeBanner,
 }) async {
   await _pump(
     tester,
@@ -2848,6 +3764,8 @@ Future<void> _pumpHome(
     deviceLocationGateway: deviceLocationGateway,
     homeGpsClock: homeGpsClock,
     currentInstantClock: currentInstantClock,
+    homeEvaluation: homeEvaluation,
+    homeBanner: homeBanner,
   );
 }
 
@@ -3018,11 +3936,11 @@ List<String> _selectedBottomNavLabels(WidgetTester tester) {
       .toList();
 }
 
-Future<void> _openTomorrowAndExpectPico(
+Future<void> _openSummaryAndExpectPico(
   WidgetTester tester,
   VehicleProfile vehicle,
 ) async {
-  await tester.tap(find.byKey(const ValueKey('home-status-tomorrow')));
+  await tester.tap(find.byKey(const ValueKey('home-status-today')));
   await _pumpPersonalPico(tester);
   expect(find.text('MI PICO Y PLACA'), findsOneWidget);
   expect(find.text(vehicle.plate), findsAtLeastNWidgets(1));
@@ -3043,10 +3961,19 @@ Future<void> _goHome(WidgetTester tester) async {
 
 Future<void> _pumpFullHomeApp(
   WidgetTester tester,
-  TestAppHarness harness,
-) async {
+  TestAppHarness harness, {
+  DateTime Function()? appClockNow,
+  RestrictionStore? restrictionStore,
+}) async {
   await _installWidgetChannelMock(tester, harness);
-  await tester.pumpWidget(_providerScope(harness, child: const PicoRadarApp()));
+  await tester.pumpWidget(
+    _providerScope(
+      harness,
+      appClockNow: appClockNow,
+      restrictionStore: restrictionStore,
+      child: const PicoRadarApp(),
+    ),
+  );
   await _pumpAsyncHome(tester);
 }
 
@@ -3060,6 +3987,8 @@ Future<void> _pump(
   DeviceLocationGateway? deviceLocationGateway,
   DateTime Function()? homeGpsClock,
   DateTime Function()? currentInstantClock,
+  RestrictionDayEvaluation? homeEvaluation,
+  HomeBannerCampaign? homeBanner,
 }) async {
   await _installWidgetChannelMock(tester, harness, viewportSize: viewportSize);
   if (textScaleFactor != null) {
@@ -3072,6 +4001,8 @@ Future<void> _pump(
     deviceLocationGateway: deviceLocationGateway,
     homeGpsClock: homeGpsClock,
     currentInstantClock: currentInstantClock,
+    homeEvaluation: homeEvaluation,
+    homeBanner: homeBanner,
   );
   await tester.pumpWidget(wrap == null ? app : wrap(app));
   await _pumpAsyncHome(tester);
@@ -3080,12 +4011,25 @@ Future<void> _pump(
 Widget _providerScope(
   TestAppHarness harness, {
   required Widget child,
+  DateTime Function()? appClockNow,
+  RestrictionStore? restrictionStore,
   DeviceLocationGateway? deviceLocationGateway,
   DateTime Function()? homeGpsClock,
   DateTime Function()? currentInstantClock,
+  RestrictionDayEvaluation? homeEvaluation,
+  HomeBannerCampaign? homeBanner,
 }) {
   return ProviderScope(
     overrides: [
+      if (homeBanner != null)
+        homeBannerCampaignProvider.overrideWith((ref) async => homeBanner),
+      if (homeEvaluation != null)
+        homeVehicleSnapshotsProvider.overrideWith(
+          (ref, request) async => [
+            for (final vehicle in request.vehicles)
+              HomeVehicleSnapshot(vehicle: vehicle, today: homeEvaluation),
+          ],
+        ),
       appDatabaseProvider.overrideWithValue(harness.database),
       appPreferencesProvider.overrideWithValue(harness.preferences),
       tripMunicipalityCatalogProvider.overrideWithValue(
@@ -3096,7 +4040,8 @@ Widget _providerScope(
         (ref) async => _jurisdictions,
       ),
       restrictionStoreProvider.overrideWithValue(
-        _FakeRestrictionStore(harness.database, harness.now),
+        restrictionStore ??
+            _FakeRestrictionStore(harness.database, harness.now),
       ),
       picoJurisdictionCatalogProvider.overrideWith(
         (ref) async => PicoJurisdictionCatalog.fromJson(
@@ -3107,10 +4052,14 @@ Widget _providerScope(
       picoNotificationSchedulerProvider.overrideWithValue(
         _FakePicoNotificationScheduler(),
       ),
-      bogotaNowProvider.overrideWithValue(harness.now),
-      currentInstantProvider.overrideWith(
-        (ref) => (currentInstantClock ?? () => harness.now.toUtc())().toUtc(),
-      ),
+      if (appClockNow != null)
+        appClockNowProvider.overrideWithValue(appClockNow)
+      else ...[
+        bogotaNowProvider.overrideWith((ref) => harness.now),
+        currentInstantProvider.overrideWith(
+          (ref) => (currentInstantClock ?? () => harness.now.toUtc())().toUtc(),
+        ),
+      ],
       homeGpsClockProvider.overrideWithValue(
         homeGpsClock ?? () => harness.now.toUtc(),
       ),
@@ -3216,6 +4165,8 @@ Future<VehicleProfile> _readyHome(
   String jurisdictionId = 'co-ant-medellin',
   VehicleKind kind = VehicleKind.car,
   VehicleServiceType serviceType = VehicleServiceType.private,
+  String? nickname,
+  String? registrationCity = 'Bogota',
   String? brand,
   String? model,
 }) async {
@@ -3224,6 +4175,8 @@ Future<VehicleProfile> _readyHome(
     plate: plate,
     kind: kind,
     serviceType: serviceType,
+    nickname: nickname,
+    registrationCity: registrationCity,
     brand: brand,
     model: model,
   );
@@ -3241,6 +4194,7 @@ Future<VehicleProfile> _createVehicle(
   VehicleKind kind = VehicleKind.car,
   VehicleServiceType serviceType = VehicleServiceType.private,
   String? nickname,
+  String? registrationCity = 'Bogota',
   String? brand,
   String? model,
   int? year,
@@ -3250,7 +4204,7 @@ Future<VehicleProfile> _createVehicle(
     kind: kind,
     serviceType: serviceType,
     nickname: nickname,
-    registrationCity: 'Bogota',
+    registrationCity: registrationCity,
     brand: brand,
     model: model,
     year: year,
@@ -3280,10 +4234,6 @@ HomeVehicleSnapshot _snapshot(String id, RestrictionDayStatus status) {
       updatedAt: DateTime(2026),
     ),
     today: RestrictionDayEvaluation(status: status, effectiveWindows: const []),
-    tomorrow: const RestrictionDayEvaluation(
-      status: RestrictionDayStatus.allowed,
-      effectiveWindows: [],
-    ),
   );
 }
 
@@ -3304,6 +4254,7 @@ class _FakeRestrictionStore extends RestrictionStore {
   _FakeRestrictionStore(super.database, this.now);
 
   final DateTime now;
+  Completer<void>? pendingLoad;
 
   @override
   Future<RestrictionRuleSet> loadCoverage(
@@ -3312,6 +4263,10 @@ class _FakeRestrictionStore extends RestrictionStore {
     VehicleServiceType serviceType,
     DateTime now,
   ) async {
+    final pending = pendingLoad;
+    if (pending != null) {
+      await pending.future;
+    }
     if (jurisdictionId == 'co-ant-medellin' &&
         serviceType == VehicleServiceType.taxi) {
       return const RestrictionRuleSet(

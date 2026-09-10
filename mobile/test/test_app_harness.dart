@@ -23,6 +23,7 @@ import 'package:picoradar/features/home/data/home_banner_config.dart';
 import 'package:picoradar/features/location/application/location_controller.dart';
 import 'package:picoradar/features/location/platform/device_location_gateway.dart';
 import 'package:picoradar/features/peritajes/data/peritajes_draft_store.dart';
+import 'package:picoradar/features/pico_placa/domain/bogota_time.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
 import 'package:picoradar/features/trip/data/trip_municipality_catalog.dart';
 import 'package:picoradar/features/vehicle_status/data/private_vehicle_document_store.dart';
@@ -153,6 +154,18 @@ class TestAppHarness {
             documentTypeOverride,
           )).overrideWithValue(AsyncValue.data(documentMetadataOverride)),
         bogotaNowProvider.overrideWithValue(now),
+        currentInstantProvider.overrideWithValue(
+          bogotaScheduledTime(
+            date: now,
+            minuteOfDay: now.hour * 60 + now.minute,
+          ).toUtc().add(
+            Duration(
+              seconds: now.second,
+              milliseconds: now.millisecond,
+              microseconds: now.microsecond,
+            ),
+          ),
+        ),
         startupReadinessProvider.overrideWith(
           (ref) async => const StartupReadiness(
             imageAssets: [],

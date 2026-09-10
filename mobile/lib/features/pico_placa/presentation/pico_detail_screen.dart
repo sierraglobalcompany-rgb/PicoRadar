@@ -127,6 +127,8 @@ class _PersonalPicoView extends ConsumerStatefulWidget {
 
 class _PersonalPicoViewState extends ConsumerState<_PersonalPicoView> {
   String? _transientJurisdictionId;
+  Object? _coverageKey;
+  Future<RestrictionRuleSet>? _coverageFuture;
 
   @override
   Widget build(BuildContext context) {
@@ -143,20 +145,41 @@ class _PersonalPicoViewState extends ConsumerState<_PersonalPicoView> {
           data: (value) => value,
           orElse: () => _defaultAlertPreferences,
         );
+    final store = ref.watch(restrictionStoreProvider);
+    final seed = ref.watch(bundledRestrictionsProvider.future);
+    final vehicle = widget.vehicle;
+    final coverageKey = (
+      store,
+      seed,
+      jurisdiction.id,
+      vehicle.kind,
+      vehicle.serviceType,
+      DateUtils.dateOnly(now),
+    );
+    if (_coverageKey != coverageKey) {
+      _coverageKey = coverageKey;
+      final instant = ref.read(currentInstantProvider);
+      _coverageFuture = seed.then(
+        (_) => store.loadCoverage(
+          jurisdiction.id,
+          vehicle.kind,
+          vehicle.serviceType,
+          instant,
+        ),
+      );
+    }
     return FutureBuilder<RestrictionRuleSet>(
-      future: ref
-          .read(restrictionStoreProvider)
-          .loadCoverage(
-            jurisdiction.id,
-            widget.vehicle.kind,
-            widget.vehicle.serviceType,
-            ref.read(currentInstantProvider),
-          ),
+      future: _coverageFuture,
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const _Loading();
-        }
-        final ruleSet = snapshot.data!;
+        // FutureBuilder retains the previous result while a new day loads.
+        final ruleSet =
+            snapshot.connectionState == ConnectionState.done && snapshot.hasData
+            ? snapshot.data!
+            : const RestrictionRuleSet(
+                coverageKnown: false,
+                dataIsStale: false,
+                rules: [],
+              );
         final today = _evaluate(ruleSet, jurisdiction, widget.vehicle, now);
         final tomorrowDate = DateTime(now.year, now.month, now.day + 1);
         final tomorrow = _evaluate(
@@ -193,6 +216,12 @@ class _PersonalPicoViewState extends ConsumerState<_PersonalPicoView> {
               isTransient: jurisdiction.id != widget.jurisdiction.id,
               onSelect: () => _showPersonalCitySelector(context, jurisdiction),
             ),
+            if (snapshot.hasError)
+              const _InfoFootnote(
+                text: 'No pudimos cargar la cobertura. Estado sin confirmar.',
+              )
+            else
+              const SizedBox.shrink(),
             const SizedBox(height: AppSpacing.m),
             _PersonalHero(
               vehicle: widget.vehicle,
@@ -259,6 +288,10 @@ class _CityPicoView extends ConsumerStatefulWidget {
 class _CityPicoViewState extends ConsumerState<_CityPicoView> {
   String? _consultedJurisdictionId;
   PicoVehicleCategory _category = PicoVehicleCategory.cars;
+  Object? _coverageKey;
+  Future<List<_CategoryCoverage>>? _coverageFuture;
+  Object? _shortcutsKey;
+  Future<List<_VehicleShortcutData>>? _shortcutsFuture;
 
   @override
   void initState() {
@@ -287,14 +320,43 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
     }
     final isTransient =
         globalJurisdiction != null && jurisdiction.id != globalJurisdiction.id;
+    final store = ref.watch(restrictionStoreProvider);
+    final seed = ref.watch(bundledRestrictionsProvider.future);
+    final coverageKey = (store, seed, jurisdiction.id, DateUtils.dateOnly(now));
+    final instant = ref.read(currentInstantProvider);
+    if (_coverageKey != coverageKey) {
+      _coverageKey = coverageKey;
+      _coverageFuture = seed.then(
+        (_) => _loadCategoryCoverages(store, jurisdiction, instant),
+      );
+    }
+    final vehicles = widget.vehicles;
+    final shortcutsKey = (coverageKey, vehicles);
+    if (_shortcutsKey != shortcutsKey) {
+      _shortcutsKey = shortcutsKey;
+      _shortcutsFuture = seed.then(
+        (_) =>
+            _loadVehicleShortcuts(store, jurisdiction, vehicles, now, instant),
+      );
+    }
 
     return FutureBuilder<List<_CategoryCoverage>>(
-      future: _loadCategoryCoverages(ref, jurisdiction, now),
+      future: _coverageFuture,
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const _Loading();
-        }
-        final coverages = snapshot.data!;
+        final coverages =
+            snapshot.connectionState == ConnectionState.done && snapshot.hasData
+            ? snapshot.data!
+            : [
+                for (final category in PicoVehicleCategory.values)
+                  _CategoryCoverage(
+                    category: category,
+                    ruleSet: const RestrictionRuleSet(
+                      coverageKnown: false,
+                      dataIsStale: false,
+                      rules: [],
+                    ),
+                  ),
+              ];
         final currentCoverage = coverages.firstWhere(
           (item) => item.category == _category,
           orElse: () => coverages.first,
@@ -336,6 +398,12 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
               onSelect: () => _showCitySelector(context),
               onAdopt: isTransient ? () => _adoptCity(jurisdiction) : null,
             ),
+            if (snapshot.hasError)
+              const _InfoFootnote(
+                text: 'No pudimos cargar la cobertura. Estado sin confirmar.',
+              )
+            else
+              const SizedBox.shrink(),
             const SizedBox(height: AppSpacing.m),
             _CategorySegment(
               coverages: coverages,
@@ -361,15 +429,12 @@ class _CityPicoViewState extends ConsumerState<_CityPicoView> {
             ),
             const SizedBox(height: AppSpacing.m),
             FutureBuilder<List<_VehicleShortcutData>>(
-              future: _loadVehicleShortcuts(
-                ref,
-                jurisdiction,
-                widget.vehicles,
-                now,
-              ),
+              future: _shortcutsFuture,
               builder: (context, shortcuts) {
                 return _VehicleShortcuts(
-                  items: shortcuts.data ?? const [],
+                  items: shortcuts.connectionState == ConnectionState.done
+                      ? shortcuts.data ?? const []
+                      : const [],
                   consultedJurisdictionId: isTransient ? jurisdiction.id : null,
                 );
               },
@@ -1055,11 +1120,17 @@ class _SourceStrip extends StatelessWidget {
 }
 
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.label, required this.color, this.icon});
+  const _StatusPill({
+    required this.label,
+    required this.color,
+    this.icon,
+    this.wrap = false,
+  });
 
   final String label;
   final Color color;
   final IconData? icon;
+  final bool wrap;
 
   @override
   Widget build(BuildContext context) {
@@ -1082,8 +1153,8 @@ class _StatusPill extends StatelessWidget {
           Flexible(
             child: Text(
               label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              maxLines: wrap ? null : 1,
+              overflow: wrap ? TextOverflow.visible : TextOverflow.ellipsis,
               style: AppTextStyles.caption.copyWith(
                 color: color,
                 fontWeight: FontWeight.w800,
@@ -1210,8 +1281,9 @@ class _PersonalHero extends StatelessWidget {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: _StatusPill(
-                        label: _statusText(today.status),
+                        label: _todayStatusText(today.status),
                         color: statusColor,
+                        wrap: true,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.m),
@@ -1266,9 +1338,7 @@ class _PersonalHero extends StatelessWidget {
                     const SizedBox(width: AppSpacing.s),
                     Expanded(
                       child: Text(
-                        'Pico y placa',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        'Pico y placa hoy',
                         style: AppTextStyles.bodyStrong,
                       ),
                     ),
@@ -1295,16 +1365,16 @@ class _PersonalHero extends StatelessWidget {
                     Expanded(
                       child: Text(
                         '${jurisdiction.name} · ${_sourceLabel(ruleSet)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.caption,
                       ),
                     ),
-                    _StatusPill(
-                      label: 'Mañana: ${_compactStatusText(tomorrow.status)}',
-                      color: _statusColor(tomorrow.status),
-                    ),
                   ],
+                ),
+                const SizedBox(height: AppSpacing.s),
+                _StatusPill(
+                  label: 'Mañana: ${_dailyStatusText(tomorrow.status)}',
+                  color: _statusColor(tomorrow.status),
+                  wrap: true,
                 ),
               ],
             ),
@@ -1330,13 +1400,19 @@ class _PersonalStatusGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _statusColor(status);
     final items = [
-      _StatusMetric(label: 'Estado', value: _statusText(status), color: color),
+      _StatusMetric(
+        label: 'Hoy',
+        value: _dailyStatusText(status),
+        color: color,
+      ),
       _StatusMetric(label: 'Horario', value: windows, color: AppColors.navy),
       _StatusMetric(label: 'Regla', value: rule, color: AppColors.navy),
     ];
     return LayoutBuilder(
+      key: const ValueKey('pico-personal-status-grid'),
       builder: (context, constraints) {
-        if (constraints.maxWidth < 230) {
+        if (constraints.maxWidth < 360 ||
+            MediaQuery.textScalerOf(context).scale(14) > 18) {
           return Column(
             children: [
               for (final item in items) ...[
@@ -1347,7 +1423,6 @@ class _PersonalStatusGrid extends StatelessWidget {
           );
         }
         return Row(
-          key: const ValueKey('pico-personal-status-grid'),
           children: [
             for (var i = 0; i < items.length; i += 1) ...[
               Expanded(child: items[i]),
@@ -1387,8 +1462,6 @@ class _StatusMetric extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text(
             value,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyStrong.copyWith(color: color),
           ),
@@ -1426,7 +1499,11 @@ class _PersonalLowerModule extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _ImmediateState(evaluation: today, nextRestriction: nextRestriction),
+          _ImmediateState(
+            evaluation: today,
+            nextRestriction: nextRestriction,
+            now: now,
+          ),
           const SizedBox(height: AppSpacing.m),
           Container(height: 1, color: AppColors.border),
           const SizedBox(height: AppSpacing.m),
@@ -1456,15 +1533,45 @@ class _ImmediateState extends StatelessWidget {
   const _ImmediateState({
     required this.evaluation,
     required this.nextRestriction,
+    required this.now,
   });
 
   final RestrictionDayEvaluation evaluation;
   final _NextRestriction? nextRestriction;
+  final DateTime now;
 
   @override
   Widget build(BuildContext context) {
-    final color = _statusColor(evaluation.status);
+    final phase = restrictionPhaseAt(evaluation, now);
+    final nextStart = nextRestrictionStartMinute(evaluation, now);
+    final color = switch (phase) {
+      RestrictionDayPhase.active => AppColors.red,
+      RestrictionDayPhase.unknown ||
+      RestrictionDayPhase.stale => AppColors.orange,
+      _ => AppColors.green,
+    };
+    final icon = switch (phase) {
+      RestrictionDayPhase.active => Icons.block_rounded,
+      RestrictionDayPhase.unknown => Icons.help_outline_rounded,
+      RestrictionDayPhase.stale => Icons.update_rounded,
+      RestrictionDayPhase.before => Icons.schedule_rounded,
+      _ => Icons.check_circle_rounded,
+    };
+    final label = switch (phase) {
+      RestrictionDayPhase.active => 'No puede circular',
+      RestrictionDayPhase.before =>
+        nextStart == null
+            ? 'Horario por confirmar'
+            : 'Empieza a las ${formatRestrictionTime12(nextStart)}',
+      RestrictionDayPhase.between => 'Sin restricción ahora',
+      RestrictionDayPhase.finished => 'Restricción finalizada',
+      RestrictionDayPhase.unrestricted => 'Sin pico y placa hoy',
+      RestrictionDayPhase.unknown => 'Por verificar',
+      RestrictionDayPhase.stale => 'Datos vencidos',
+    };
     return Row(
+      key: const ValueKey('pico-immediate-state'),
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           width: 56,
@@ -1473,7 +1580,7 @@ class _ImmediateState extends StatelessWidget {
             color: color.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(_statusIcon(evaluation.status), color: color, size: 30),
+          child: Icon(icon, color: color, size: 30),
         ),
         const SizedBox(width: AppSpacing.m),
         Expanded(
@@ -1482,30 +1589,41 @@ class _ImmediateState extends StatelessWidget {
             children: [
               Text('Estado inmediato', style: AppTextStyles.bodyStrong),
               const SizedBox(height: AppSpacing.xs),
+              _StatusPill(
+                label: 'Hoy · ${_weekday(now)} ${_shortDate(now)}',
+                color: AppColors.blue,
+                icon: Icons.today_rounded,
+                wrap: true,
+              ),
+              const SizedBox(height: AppSpacing.xs),
               Text(
-                _statusText(evaluation.status),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                label,
+                key: const ValueKey('pico-immediate-verdict'),
                 style: AppTextStyles.bodyStrong.copyWith(color: color),
               ),
               Text(
                 _windowsOrControlled(evaluation),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.caption,
               ),
+              if (phase == RestrictionDayPhase.between && nextStart != null)
+                Text(
+                  'Vuelve a empezar a las ${formatRestrictionTime12(nextStart)}',
+                  style: AppTextStyles.caption,
+                ),
+              if (nextRestriction != null) ...[
+                const SizedBox(height: AppSpacing.s),
+                Text('Próxima restricción', style: AppTextStyles.bodyStrong),
+                Text(
+                  '${_weekday(nextRestriction!.date)} '
+                  '${_shortDate(nextRestriction!.date)} · '
+                  '${formatRestrictionWindows12(nextRestriction!.evaluation.effectiveWindows)}',
+                  key: const ValueKey('pico-next-restriction'),
+                  style: AppTextStyles.caption,
+                ),
+              ],
             ],
           ),
         ),
-        if (nextRestriction != null) ...[
-          const SizedBox(width: AppSpacing.s),
-          _StatusPill(
-            label:
-                '${_weekday(nextRestriction!.date)} ${nextRestriction!.date.day}',
-            color: AppColors.blue,
-            icon: Icons.event_note_rounded,
-          ),
-        ],
       ],
     );
   }
@@ -1537,6 +1655,7 @@ class _PersonalCalendar extends StatefulWidget {
 class _PersonalCalendarState extends State<_PersonalCalendar> {
   _PersonalCalendarMode _mode = _PersonalCalendarMode.nextDays;
   late DateTime _visibleMonth;
+  bool _monthWasNavigated = false;
 
   @override
   void initState() {
@@ -1545,7 +1664,23 @@ class _PersonalCalendarState extends State<_PersonalCalendar> {
   }
 
   @override
+  void didUpdateWidget(covariant _PersonalCalendar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_monthWasNavigated &&
+        (oldWidget.now.year != widget.now.year ||
+            oldWidget.now.month != widget.now.month)) {
+      _visibleMonth = DateTime(widget.now.year, widget.now.month);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final maxWindows = widget.evaluations.fold<int>(
+      1,
+      (count, evaluation) => evaluation.effectiveWindows.length > count
+          ? evaluation.effectiveWindows.length
+          : count,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1582,7 +1717,9 @@ class _PersonalCalendarState extends State<_PersonalCalendar> {
         if (_mode == _PersonalCalendarMode.nextDays)
           SizedBox(
             key: const ValueKey('pico-personal-calendar'),
-            height: 116,
+            height:
+                28 +
+                MediaQuery.textScalerOf(context).scale(104 + 44.0 * maxWindows),
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: widget.days.length,
@@ -1608,6 +1745,7 @@ class _PersonalCalendarState extends State<_PersonalCalendar> {
             sourceLabel: _sourceLabel(widget.ruleSet),
             onPrevious: () {
               setState(() {
+                _monthWasNavigated = true;
                 _visibleMonth = DateTime(
                   _visibleMonth.year,
                   _visibleMonth.month - 1,
@@ -1616,6 +1754,7 @@ class _PersonalCalendarState extends State<_PersonalCalendar> {
             },
             onNext: () {
               setState(() {
+                _monthWasNavigated = true;
                 _visibleMonth = DateTime(
                   _visibleMonth.year,
                   _visibleMonth.month + 1,
@@ -1654,7 +1793,7 @@ class _DayCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _statusColor(evaluation.status);
     return Container(
-      width: 74,
+      width: 156,
       padding: const EdgeInsets.all(AppSpacing.s),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
@@ -1673,9 +1812,7 @@ class _DayCard extends StatelessWidget {
           Icon(_statusIcon(evaluation.status), size: 16, color: color),
           const Spacer(),
           Text(
-            _compactStatusText(evaluation.status),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            _dailyStatusText(evaluation.status),
             style: AppTextStyles.caption.copyWith(
               fontWeight: FontWeight.w800,
               fontSize: 11,
@@ -1684,9 +1821,7 @@ class _DayCard extends StatelessWidget {
           if (evaluation.status == RestrictionDayStatus.restricted &&
               evaluation.effectiveWindows.isNotEmpty)
             Text(
-              _compactWindows(evaluation.effectiveWindows),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              formatRestrictionWindows12(evaluation.effectiveWindows),
               style: AppTextStyles.caption.copyWith(fontSize: 11),
             ),
         ],
@@ -1822,7 +1957,9 @@ class _MonthDayCell extends StatelessWidget {
     final restricted = status == RestrictionDayStatus.restricted;
     return Semantics(
       button: true,
-      label: '${_date(item.date)} ${_statusText(status)}',
+      selected: isToday,
+      label:
+          '${isToday ? 'Hoy · ' : ''}${_date(item.date)} ${_dailyStatusText(status)}',
       child: Material(
         color: restricted
             ? AppColors.red.withValues(alpha: 0.14)
@@ -1910,7 +2047,7 @@ void _showMonthDayDetail(
                   const SizedBox(width: AppSpacing.s),
                   Expanded(
                     child: Text(
-                      _statusText(evaluation.status),
+                      _dailyStatusText(evaluation.status),
                       style: AppTextStyles.h2.copyWith(color: color),
                     ),
                   ),
@@ -2868,11 +3005,10 @@ class _NextRestriction {
 }
 
 Future<List<_CategoryCoverage>> _loadCategoryCoverages(
-  WidgetRef ref,
+  RestrictionStore store,
   RestrictionJurisdiction jurisdiction,
-  DateTime now,
+  DateTime instant,
 ) async {
-  final store = ref.read(restrictionStoreProvider);
   return [
     for (final category in PicoVehicleCategory.values)
       _CategoryCoverage(
@@ -2881,26 +3017,26 @@ Future<List<_CategoryCoverage>> _loadCategoryCoverages(
           jurisdiction.id,
           category.kind,
           category.serviceType,
-          ref.read(currentInstantProvider),
+          instant,
         ),
       ),
   ];
 }
 
 Future<List<_VehicleShortcutData>> _loadVehicleShortcuts(
-  WidgetRef ref,
+  RestrictionStore store,
   RestrictionJurisdiction jurisdiction,
   List<VehicleProfile> vehicles,
   DateTime now,
+  DateTime instant,
 ) async {
-  final store = ref.read(restrictionStoreProvider);
   final items = <_VehicleShortcutData>[];
   for (final vehicle in vehicles.take(4)) {
     final ruleSet = await store.loadCoverage(
       jurisdiction.id,
       vehicle.kind,
       vehicle.serviceType,
-      ref.read(currentInstantProvider),
+      instant,
     );
     items.add(
       _VehicleShortcutData(
@@ -2994,6 +3130,24 @@ String _statusText(RestrictionDayStatus status) {
   };
 }
 
+String _dailyStatusText(RestrictionDayStatus status) {
+  return switch (status) {
+    RestrictionDayStatus.restricted => 'Con pico y placa',
+    RestrictionDayStatus.allowed => 'Sin pico y placa',
+    RestrictionDayStatus.unknown => 'Por verificar',
+    RestrictionDayStatus.stale => 'Datos vencidos',
+  };
+}
+
+String _todayStatusText(RestrictionDayStatus status) {
+  return switch (status) {
+    RestrictionDayStatus.restricted => 'Hoy tienes pico y placa',
+    RestrictionDayStatus.allowed => 'Sin pico y placa hoy',
+    RestrictionDayStatus.unknown => 'Hoy: por verificar',
+    RestrictionDayStatus.stale => 'Hoy: datos vencidos',
+  };
+}
+
 String _compactStatusText(RestrictionDayStatus status) {
   return switch (status) {
     RestrictionDayStatus.restricted => 'No circula',
@@ -3053,7 +3207,9 @@ IconData _statusIcon(RestrictionDayStatus status) {
 
 String _windowsOrControlled(RestrictionDayEvaluation evaluation) {
   if (evaluation.status == RestrictionDayStatus.restricted) {
-    return _windowsOrText(evaluation.effectiveWindows);
+    return evaluation.effectiveWindows.isEmpty
+        ? 'Horario no publicado'
+        : formatRestrictionWindows12(evaluation.effectiveWindows);
   }
   return switch (evaluation.status) {
     RestrictionDayStatus.allowed => 'Libre',
