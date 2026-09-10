@@ -442,7 +442,9 @@ class _CarouselIndicator extends StatelessWidget {
     if (count <= 1) {
       return const SizedBox.shrink();
     }
-    final visibleCount = count < _maximumVisibleDots ? count : _maximumVisibleDots;
+    final visibleCount = count < _maximumVisibleDots
+        ? count
+        : _maximumVisibleDots;
     final firstVisible = (index - visibleCount ~/ 2)
         .clamp(0, count - visibleCount)
         .toInt();

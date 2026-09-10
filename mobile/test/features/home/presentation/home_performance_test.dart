@@ -137,7 +137,10 @@ void main() {
       expect(harness.container.read(homeFocusedVehicleIdProvider), 'fleet-0');
       expect(dots, findsNWidgets(7));
       expect(tester.widget<Text>(counter).data, '1 de 20');
-      expect(tester.widget<PageView>(pager).childrenDelegate.estimatedChildCount, 20);
+      expect(
+        tester.widget<PageView>(pager).childrenDelegate.estimatedChildCount,
+        20,
+      );
       for (var index = 1; index <= 19; index++) {
         await tester.drag(pager, Offset(-pageWidth, 0));
         await tester.pumpAndSettle();
@@ -147,7 +150,10 @@ void main() {
         );
         expect(tester.getRect(pager), bounds);
         expect(dots, findsNWidgets(7));
-        expect(find.byKey(ValueKey('home-carousel-dot-$index')), findsOneWidget);
+        expect(
+          find.byKey(ValueKey('home-carousel-dot-$index')),
+          findsOneWidget,
+        );
         expect(tester.widget<Text>(counter).data, '${index + 1} de 20');
         expect(
           find.byType(VehicleVisualImage).evaluate().length,
@@ -155,7 +161,10 @@ void main() {
         );
       }
       expect(tester.widget<Text>(counter).data, '20 de 20');
-      expect(find.byKey(const ValueKey('home-carousel-dot-13')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('home-carousel-dot-13')),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey('home-carousel-dot-12')), findsNothing);
       await tester.drag(pager, Offset(pageWidth, 0));
       await tester.pumpAndSettle();
