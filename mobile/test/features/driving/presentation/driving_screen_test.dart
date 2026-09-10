@@ -425,7 +425,7 @@ void main() {
     await _pumpMapFrames(tester);
 
     expect(find.text('Cámara de fotomulta'), findsOneWidget);
-    expect(find.textContaining('Operando'), findsOneWidget);
+    expect(find.textContaining('Operando'), findsNothing);
     expect(
       find.byKey(const ValueKey('driving-camera-alert-panel')),
       findsOneWidget,
@@ -838,7 +838,7 @@ void main() {
       find.byKey(const ValueKey('driving-speed-gauge')),
     );
     final content = tester.getRect(
-      find.byKey(const ValueKey('driving-active-scroll')),
+      find.byKey(const ValueKey('driving-active-layout')),
     );
     expect(centeredGauge.width, closeTo(324, 0.1));
     expect(centeredGauge.center.dy, closeTo(content.center.dy, 1));
@@ -1604,6 +1604,9 @@ void main() {
                         'AVENIDA REGIONAL CON CALLE 67 SUR Sentido SUR - NORTE',
                   ),
                 ),
+                drivingControllerProvider.overrideWith(
+                  _LabelledDrivingController.new,
+                ),
                 drivingLocationGatewayProvider.overrideWithValue(gateway),
                 drivingFeedbackGatewayProvider.overrideWithValue(
                   _NoopDrivingFeedbackGateway(),
@@ -1641,6 +1644,14 @@ void main() {
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 400));
 
+          final labelled =
+              ProviderScope.containerOf(
+                    tester.element(find.byType(DrivingScreen)),
+                  ).read(drivingControllerProvider.notifier)
+                  as _LabelledDrivingController;
+          labelled.labelSimulation();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 400));
           final controls = tester.getRect(
             find.byKey(const ValueKey('driving-active-controls')),
           );
@@ -1650,7 +1661,7 @@ void main() {
                 .backgroundColor,
             const Color(0xFF03090D),
           );
-          expect(find.textContaining('(reportado)'), findsOneWidget);
+          expect(find.textContaining('(reportado)'), findsNothing);
           if (textScale <= 1.5) {
             final map = tester.getRect(
               find.byKey(const ValueKey('driving-mini-map')),
@@ -1669,7 +1680,7 @@ void main() {
             '${viewport.width.toInt()}x${viewport.height.toInt()}-$textScale-camera',
           );
           expect(
-            find.byKey(const ValueKey('driving-active-scroll')),
+            find.byKey(const ValueKey('driving-active-layout')),
             findsOneWidget,
           );
 
@@ -1687,7 +1698,7 @@ void main() {
             expect(gauge.center.dx, closeTo(viewport.width / 2, 0.1));
             expect(speed.center.dx, closeTo(gauge.center.dx, 0.1));
             expect(speed.overlaps(indicator), isFalse);
-            expect(indicator.center.dy, closeTo(speed.center.dy, 0.1));
+            expect(indicator.center.dy, closeTo(speed.center.dy - 24, 0.1));
             final brand = tester.getRect(
               find.byKey(const ValueKey('driving-brand')),
             );
@@ -1725,54 +1736,37 @@ void main() {
             expect(panel.top, greaterThanOrEqualTo(0));
             expect(panel.top, greaterThanOrEqualTo(gauge.bottom));
             expect(panel.bottom, lessThanOrEqualTo(controls.top));
-          } else {
-            final before = controls;
-            final scroll = tester.state<ScrollableState>(
-              find
-                  .descendant(
-                    of: find.byKey(const ValueKey('driving-active-scroll')),
-                    matching: find.byType(Scrollable),
-                  )
-                  .first,
-            );
-            final initialOffset = scroll.position.pixels;
-            await tester.drag(
-              find.byKey(const ValueKey('driving-camera-alert-header')),
-              const Offset(0, -220),
-            );
-            await tester.pumpAndSettle();
-            expect(scroll.position.pixels, greaterThan(initialOffset));
-            expect(
-              find.byKey(const ValueKey('driving-camera-alert-panel')),
-              findsOneWidget,
-            );
-            await tester.ensureVisible(
-              find.byKey(const ValueKey('camera-authority-row')),
-            );
-            await tester.pump();
-            final visible = tester.getRect(
-              find.byKey(const ValueKey('driving-active-scroll')),
-            );
-            for (final key in [
-              'driving-camera-address',
-              'camera-authority-row',
-            ]) {
-              final facts = tester.getRect(find.byKey(ValueKey(key)));
-              expect(facts.top, greaterThanOrEqualTo(visible.top));
-              expect(facts.bottom, lessThanOrEqualTo(visible.bottom));
-              expect(facts.bottom + 8, lessThanOrEqualTo(controls.top));
-            }
-            await _captureCompactEvidence(
-              tester,
-              '${viewport.width.toInt()}x${viewport.height.toInt()}-$textScale-address-complete',
-            );
-            expect(
-              tester.getRect(
-                find.byKey(const ValueKey('driving-active-controls')),
-              ),
-              before,
-            );
           }
+          for (final key in [
+            'driving-camera-address',
+            'camera-authority-row',
+          ]) {
+            final facts = tester.getRect(find.byKey(ValueKey(key)));
+            expect(facts.bottom + 8, lessThanOrEqualTo(controls.top));
+          }
+          expect(find.byType(Scrollable), findsNothing);
+          final addressParagraph = tester.renderObject<RenderParagraph>(
+            find.descendant(
+              of: find.text(
+                'AVENIDA REGIONAL CON CALLE 67 SUR Sentido SUR - NORTE',
+              ),
+              matching: find.byType(RichText),
+            ),
+          );
+          final renderedFontSize =
+              addressParagraph.textScaler.scale(14) *
+              addressParagraph.getTransformTo(null).getMaxScaleOnAxis();
+          expect(renderedFontSize, greaterThanOrEqualTo(12));
+          final info = tester.getRect(
+            find.byKey(const ValueKey('driving-camera-detail-action')),
+          );
+          final close = tester.getRect(
+            find.byKey(const ValueKey('driving-camera-dismiss-action')),
+          );
+          expect(info.size.shortestSide, greaterThanOrEqualTo(48));
+          expect(close.size.shortestSide, greaterThanOrEqualTo(48));
+          expect(info.right + 4, lessThanOrEqualTo(close.left));
+          expect(info.center.dy, closeTo(close.center.dy, 0.1));
           expect(tester.takeException(), isNull);
           gateway.add(_point(latitude: 6.2411, seconds: 21, speedKmh: 123));
           await tester.pump();
@@ -1835,7 +1829,7 @@ void main() {
     }
   }
 
-  testWidgets('visual alert pulses twice then returns to transparent', (
+  testWidgets('visual alert repeats while approaching and stops on dismissal', (
     tester,
   ) async {
     final gateway = _StreamingGateway();
@@ -1890,8 +1884,108 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 800));
     expect(overlayColor().a, closeTo(0, 0.001));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(overlayColor().a, greaterThan(0));
+    expect(overlayColor().b, greaterThan(overlayColor().r));
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(DrivingScreen)),
+    );
+    container
+        .read(drivingControllerProvider.notifier)
+        .dismissCurrentCameraAlert();
+    await tester.pump();
+    expect(overlayColor().a, closeTo(0, 0.001));
+    await tester.pump(const Duration(seconds: 3));
+    expect(overlayColor().a, closeTo(0, 0.001));
     expect(tester.takeException(), isNull);
   });
+
+  for (final cancellation in ['passed', 'disabled', 'stopped', 'background']) {
+    testWidgets('continuous camera pulse cancels when $cancellation', (
+      tester,
+    ) async {
+      final gateway = _StreamingGateway();
+      final preferences = MemoryPreferences();
+      await saveDrivingPreferences(
+        preferences,
+        defaultDrivingPreferences.copyWith(
+          visualAlertsEnabled: true,
+          cameraTargetingConeDegrees: 360,
+          voiceEnabled: false,
+          soundEnabled: false,
+          vibrationEnabled: false,
+        ),
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appPreferencesProvider.overrideWithValue(preferences),
+            cameraPackProvider.overrideWith((ref) async => _pack()),
+            drivingLocationGatewayProvider.overrideWithValue(gateway),
+            drivingFeedbackGatewayProvider.overrideWithValue(
+              _NoopDrivingFeedbackGateway(),
+            ),
+            drivingMapConfigProvider.overrideWithValue(
+              _testMapConfig(tileProvider: _OnePixelTileProvider()),
+            ),
+          ],
+          child: const MaterialApp(home: DrivingScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('start-driving')));
+      await tester.pump();
+      gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 48));
+      await tester.pump();
+      gateway.add(_point(latitude: 6.241, seconds: 20, speedKmh: 54));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(DrivingScreen)),
+      );
+      final controller = container.read(drivingControllerProvider.notifier);
+      double opacity() => tester
+          .widget<ColoredBox>(
+            find.byKey(const ValueKey('driving-visual-alert-overlay')),
+          )
+          .color
+          .a;
+      expect(opacity(), greaterThan(0));
+      switch (cancellation) {
+        case 'passed':
+          gateway.add(_point(latitude: 6.245, seconds: 40, speedKmh: 54));
+          await tester.pump();
+          gateway.add(_point(latitude: 6.246, seconds: 50, speedKmh: 54));
+        case 'disabled':
+          await controller.savePreferences(
+            container
+                .read(drivingControllerProvider)
+                .requireValue
+                .preferences
+                .copyWith(visualAlertsEnabled: false),
+          );
+        case 'stopped':
+          unawaited(controller.stop());
+        case 'background':
+          tester.binding.handleAppLifecycleStateChanged(
+            AppLifecycleState.paused,
+          );
+      }
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 3));
+      expect(opacity(), closeTo(0, 0.001));
+      if (cancellation == 'background') {
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(opacity(), closeTo(0, 0.001));
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('visual alert stays static when reduced motion is enabled', (
     tester,
@@ -1940,7 +2034,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('camera map action opens Google Maps with camera coordinates', (
+  testWidgets('all camera actions open source before explicit Google Maps', (
     tester,
   ) async {
     final gateway = _StreamingGateway();
@@ -1967,11 +2061,42 @@ void main() {
     await tester.pump();
     gateway.add(_point(latitude: 6.241, seconds: 20));
     await tester.pump();
-    await tester.ensureVisible(
-      find.byKey(const ValueKey('driving-camera-map-action')),
+    await tester.pump(const Duration(milliseconds: 400));
+    for (final key in [
+      'gauge-camera-indicator',
+      'driving-camera-detail-action',
+      'real-map-tap-callback',
+      'driving-camera-map-action',
+    ]) {
+      if (key == 'real-map-tap-callback') {
+        final map = tester.widget<FlutterMap>(
+          find.byKey(const ValueKey('driving-real-mini-map')),
+        );
+        expect(map.options.onTap, isNotNull);
+        map.options.onTap!(
+          const TapPosition(Offset.zero, Offset.zero),
+          map.options.initialCenter,
+        );
+      } else {
+        await tester.tap(find.byKey(ValueKey(key)));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Fuente de cámara'), findsOneWidget);
+      expect(launcher.opened, isEmpty);
+      if (key != 'driving-camera-map-action') {
+        Navigator.of(
+          tester.element(
+            find.byKey(const ValueKey('driving-camera-detail-sheet')),
+          ),
+        ).pop();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+      }
+    }
+    await tester.tap(
+      find.byKey(const ValueKey('driving-camera-map-action-sheet')),
     );
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('driving-camera-map-action')));
     await tester.pump();
 
     expect(launcher.opened, hasLength(1));
@@ -2012,6 +2137,13 @@ void main() {
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('driving-camera-map-action')));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Fuente de cámara'), findsOneWidget);
+    expect(launcher.opened, isEmpty);
+    await tester.tap(
+      find.byKey(const ValueKey('driving-camera-map-action-sheet')),
+    );
+    await tester.pump();
 
     expect(find.text('No pudimos abrir Google Maps.'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -2047,6 +2179,13 @@ void main() {
     );
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('driving-camera-map-action')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Fuente de cámara'), findsOneWidget);
+    expect(launcher.opened, isEmpty);
+    await tester.tap(
+      find.byKey(const ValueKey('driving-camera-map-action-sheet')),
+    );
     await tester.pump();
 
     expect(find.text('No pudimos abrir Google Maps.'), findsOneWidget);
@@ -2510,4 +2649,12 @@ class _LocationErrorDrivingController extends DrivingController {
     cameraSpeedKnownCount: 0,
     errorMessage: 'No se pudo leer la ubicación en tiempo real.',
   );
+}
+
+class _LabelledDrivingController extends DrivingController {
+  void labelSimulation() {
+    state = AsyncData(
+      state.requireValue.copyWith(simulationName: 'Con velocidad'),
+    );
+  }
 }

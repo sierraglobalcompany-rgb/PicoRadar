@@ -330,6 +330,9 @@ class _ProfileRunner {
                 : CameraVisualizationMode.map,
             cameraTargetingConeDegrees: radar ? 360 : 90,
             tollAlertsEnabled: withToll,
+            visualAlertsEnabled: const bool.fromEnvironment(
+              'DRIVING_PROFILE_VISUAL_ALERTS',
+            ),
             voiceEnabled: false,
             soundEnabled: false,
             vibrationEnabled: false,
@@ -438,6 +441,9 @@ class _ProfileRunner {
         cameraVisualizationMode: mode,
         cameraTargetingConeDegrees: cone,
         tollAlertsEnabled: tolls,
+        visualAlertsEnabled: const bool.fromEnvironment(
+          'DRIVING_PROFILE_VISUAL_ALERTS',
+        ),
         voiceEnabled: false,
         soundEnabled: false,
         vibrationEnabled: false,

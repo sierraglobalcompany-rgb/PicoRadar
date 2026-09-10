@@ -195,6 +195,7 @@ class DrivingProximityMap extends StatefulWidget {
     required this.alertColor,
     required this.height,
     required this.config,
+    this.onTap,
     this.retryToken = 0,
     super.key,
   });
@@ -210,6 +211,7 @@ class DrivingProximityMap extends StatefulWidget {
   final Color alertColor;
   final double height;
   final DrivingMapConfig config;
+  final VoidCallback? onTap;
   final int retryToken;
 
   @override
@@ -493,6 +495,7 @@ class _DrivingProximityMapState extends State<DrivingProximityMap> {
                   key: const ValueKey('driving-real-mini-map'),
                   mapController: _controller,
                   options: MapOptions(
+                    onTap: (_, _) => widget.onTap?.call(),
                     initialCenter: desired.center,
                     initialZoom: desired.zoom,
                     initialRotation: desired.rotation,
