@@ -2,7 +2,10 @@ package co.picoradar.app
 
 import android.content.Context
 import android.net.Uri
+import android.os.Bundle
+import android.os.SystemClock
 import android.speech.tts.TextToSpeech
+import android.util.Log
 import android.view.WindowManager
 import androidx.glance.appwidget.updateAll
 import io.flutter.embedding.android.FlutterActivity
@@ -14,17 +17,46 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 class MainActivity : FlutterActivity() {
+    private val startupAtNs = SystemClock.elapsedRealtimeNanos()
     private var tts: TextToSpeech? = null
     private var ttsReady = false
 
+    private fun logStartup(marker: String, extra: String = "") {
+        val nowNs = SystemClock.elapsedRealtimeNanos()
+        Log.i(
+            "P01_STARTUP",
+            "$marker elapsed_us=${(nowNs - startupAtNs) / 1000}" +
+                " uptime_us=${nowNs / 1000} epoch_ms=${System.currentTimeMillis()}$extra",
+        )
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        logStartup("NATIVE_ACTIVITY_ENTRY")
+        super.onCreate(savedInstanceState)
+        logStartup("NATIVE_ACTIVITY_CREATED")
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        val pluginsAtNs = SystemClock.elapsedRealtimeNanos()
+        logStartup("PLUGIN_REGISTRATION_BEGIN")
         super.configureFlutterEngine(flutterEngine)
+        logStartup(
+            "PLUGIN_REGISTRATION_END",
+            " duration_us=${(SystemClock.elapsedRealtimeNanos() - pluginsAtNs) / 1000}",
+        )
+        val ttsAtNs = SystemClock.elapsedRealtimeNanos()
+        logStartup("TTS_INIT_BEGIN")
         tts = TextToSpeech(this) { status ->
             ttsReady = status == TextToSpeech.SUCCESS
             if (ttsReady) {
                 tts?.language = Locale("es", "CO")
             }
+            logStartup(
+                "TTS_INIT_CALLBACK",
+                " ready=$ttsReady duration_us=${(SystemClock.elapsedRealtimeNanos() - ttsAtNs) / 1000}",
+            )
         }
+        logStartup("TTS_INIT_RETURNED")
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             "co.picoradar.app/widget",
@@ -76,6 +108,11 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    override fun onResume() {
+        logStartup("NATIVE_ACTIVITY_RESUME")
+        super.onResume()
     }
 
     override fun onDestroy() {

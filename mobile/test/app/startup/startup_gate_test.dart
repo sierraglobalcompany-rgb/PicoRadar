@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' show FrameTiming;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +13,177 @@ import 'package:picoradar/features/vehicle_status/platform/vehicle_document_gate
 import '../../test_app_harness.dart';
 
 void main() {
+  testWidgets('content marker follows child paint once, never during loading', (
+    tester,
+  ) async {
+    final messages = <String>[];
+    var painted = false;
+    final previous = debugPrint;
+    debugPrint = (message, {wrapWidth}) {
+      if (message?.contains('STARTUP_CONTENT_FRAME') ?? false) {
+        expect(painted, isTrue);
+      }
+      if (message != null) messages.add(message);
+    };
+    addTearDown(() => debugPrint = previous);
+    final readiness = Completer<StartupReadiness>();
+    await tester.pumpWidget(
+      _app(
+        overrides: [
+          startupReadinessProvider.overrideWith((ref) => readiness.future),
+        ],
+        child: CustomPaint(painter: _PaintProbe(() => painted = true)),
+      ),
+    );
+    expect(painted, isFalse);
+    expect(
+      messages.where((line) => line.contains('STARTUP_CONTENT_FRAME')),
+      isEmpty,
+    );
+    readiness.complete(
+      const StartupReadiness(
+        imageAssets: [],
+        vehicleCount: 0,
+        selectedJurisdictionId: null,
+      ),
+    );
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(painted, isTrue);
+    expect(
+      messages.where((line) => line.contains('STARTUP_CONTENT_FRAME')),
+      hasLength(1),
+    );
+    await tester.pump();
+    expect(
+      messages.where((line) => line.contains('STARTUP_CONTENT_FRAME')),
+      hasLength(1),
+    );
+    expect(
+      messages.where((line) => line.contains('HOME_FIRST_USABLE_FRAME')),
+      isEmpty,
+    );
+    debugPrint = previous;
+  });
+
+  testWidgets('Home raster marker matches the rendered frame and detaches', (
+    tester,
+  ) async {
+    final messages = <String>[];
+    final previous = debugPrint;
+    debugPrint = (message, {wrapWidth}) {
+      if (message != null) messages.add(message);
+    };
+    addTearDown(() => debugPrint = previous);
+    await tester.pumpWidget(
+      _app(
+        overrides: [
+          startupReadinessProvider.overrideWith(
+            (ref) async => const StartupReadiness(
+              imageAssets: [],
+              vehicleCount: 0,
+              selectedJurisdictionId: null,
+            ),
+          ),
+        ],
+        isHomeRoute: () => true,
+      ),
+    );
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    final rendered = messages.singleWhere(
+      (line) => line.contains('HOME_FIRST_USABLE_FRAME'),
+    );
+    final start = int.parse(
+      RegExp(r'vsync_start_us=(\d+)').firstMatch(rendered)!.group(1)!,
+    );
+    final report = tester.binding.platformDispatcher.onReportTimings!;
+    report([_frameAt(start - 1)]);
+    expect(
+      messages.where((line) => line.contains('HOME_FIRST_USABLE_RASTER')),
+      isEmpty,
+    );
+    report([_frameAt(start)]);
+    expect(
+      messages.where((line) => line.contains('HOME_FIRST_USABLE_RASTER')),
+      hasLength(1),
+    );
+    report([_frameAt(start + 1)]);
+    expect(
+      messages.where((line) => line.contains('HOME_FIRST_USABLE_RASTER')),
+      hasLength(1),
+    );
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    expect(
+      messages.where((line) => line.contains('HOME_RESUME_FRAME')),
+      isEmpty,
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+    final resumed = messages.singleWhere(
+      (line) => line.contains('HOME_RESUME_FRAME'),
+    );
+    final resumeStart = int.parse(
+      RegExp(r'vsync_start_us=(\d+)').firstMatch(resumed)!.group(1)!,
+    );
+    tester.binding.platformDispatcher.onReportTimings!([
+      _frameAt(resumeStart + 1),
+    ]);
+    expect(
+      messages.where((line) => line.contains('HOME_RESUME_RASTER')),
+      isEmpty,
+    );
+    expect(
+      messages.where(
+        (line) => line.contains('STARTUP_CONTENT_TIMING_UNAVAILABLE'),
+      ),
+      hasLength(1),
+    );
+    expect(
+      messages.where((line) => line.contains('HOME_FIRST_USABLE_FRAME')),
+      hasLength(1),
+    );
+    expect(tester.takeException(), isNull);
+    debugPrint = previous;
+  });
+
+  testWidgets('dispose before readiness never emits a usable frame', (
+    tester,
+  ) async {
+    final messages = <String>[];
+    final previous = debugPrint;
+    debugPrint = (message, {wrapWidth}) {
+      if (message != null) messages.add(message);
+    };
+    addTearDown(() => debugPrint = previous);
+    final readiness = Completer<StartupReadiness>();
+    await tester.pumpWidget(
+      _app(
+        overrides: [
+          startupReadinessProvider.overrideWith((ref) => readiness.future),
+        ],
+        isHomeRoute: () => true,
+      ),
+    );
+    await tester.pumpWidget(const SizedBox.shrink());
+    readiness.complete(
+      const StartupReadiness(
+        imageAssets: [],
+        vehicleCount: 0,
+        selectedJurisdictionId: null,
+      ),
+    );
+    await tester.pump();
+    expect(
+      messages.where((line) => line.contains('HOME_FIRST_USABLE')),
+      isEmpty,
+    );
+    expect(tester.takeException(), isNull);
+    debugPrint = previous;
+  });
+
   testWidgets('shows branded loader until readiness completes', (tester) async {
     final readiness = Completer<StartupReadiness>();
 
@@ -149,6 +321,17 @@ void main() {
   });
 }
 
+class _PaintProbe extends CustomPainter {
+  _PaintProbe(this.onPaint);
+  final VoidCallback onPaint;
+
+  @override
+  void paint(Canvas canvas, Size size) => onPaint();
+
+  @override
+  bool shouldRepaint(_PaintProbe oldDelegate) => false;
+}
+
 class _StartupTestDocumentGateway implements VehicleDocumentGateway {
   @override
   Future<void> clearTemporaryFiles() async {}
@@ -163,12 +346,24 @@ class _StartupTestDocumentGateway implements VehicleDocumentGateway {
 Widget _app({
   required dynamic overrides,
   Widget child = const Text('Home ready'),
+  bool Function()? isHomeRoute,
 }) {
   return ProviderScope(
     overrides: overrides,
-    child: MaterialApp(home: StartupGate(child: child)),
+    child: MaterialApp(
+      home: StartupGate(isHomeRoute: isHomeRoute, child: child),
+    ),
   );
 }
+
+FrameTiming _frameAt(int start) => FrameTiming(
+  vsyncStart: start,
+  buildStart: start + 25,
+  buildFinish: start + 100,
+  rasterStart: start + 200,
+  rasterFinish: start + 300,
+  rasterFinishWallTime: 1000000 + start,
+);
 
 class _RebuildableHome extends StatefulWidget {
   const _RebuildableHome();

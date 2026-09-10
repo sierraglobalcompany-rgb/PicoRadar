@@ -7,6 +7,7 @@ import '../features/pico_placa/data/pico_preferences.dart';
 import 'app_clock.dart';
 import 'app_providers.dart';
 import 'router/app_router.dart';
+import 'router/app_routes.dart';
 import 'startup/startup_gate.dart';
 import 'theme/app_theme.dart';
 
@@ -69,7 +70,12 @@ class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
       theme: buildPicoRadarTheme(),
       routerConfig: router,
       builder: (context, child) {
-        return StartupGate(child: child ?? const SizedBox.shrink());
+        return StartupGate(
+          isHomeRoute: () =>
+              router.routeInformationProvider.value.uri.path ==
+              AppRoute.home.path,
+          child: child ?? const SizedBox.shrink(),
+        );
       },
     );
   }

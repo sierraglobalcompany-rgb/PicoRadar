@@ -1,3 +1,5 @@
+import 'dart:ui' show FramePhase, FrameTiming;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,86 +13,98 @@ import '../theme/app_tokens.dart';
 import 'startup_timing.dart';
 
 final startupReadinessProvider = FutureProvider<StartupReadiness>((ref) async {
-  await ref.watch(privateVehicleDocumentStoreProvider).purgeViewerCache();
-  await ref.watch(vehicleDocumentGatewayProvider).clearTemporaryFiles();
-  await ref.watch(bundledRestrictionsProvider.future);
-  final vehicles = await ref.watch(vehicleListProvider.future);
-  final activeVehicle = await ref.watch(activeVehicleProvider.future);
-  final jurisdictions = await ref.watch(
-    restrictionJurisdictionsProvider.future,
+  await measureStartupPhase(
+    'PRIVACY_VIEWER',
+    () => ref.watch(privateVehicleDocumentStoreProvider).purgeViewerCache(),
   );
-  final selectedJurisdictionId = await ref.watch(
-    selectedPicoJurisdictionIdProvider.future,
+  await measureStartupPhase(
+    'PRIVACY_PICKER',
+    () => ref.watch(vehicleDocumentGatewayProvider).clearTemporaryFiles(),
   );
-  await ref.watch(picoAlertPreferencesProvider.future);
-  await ref.watch(locationStateProvider.future);
-  final avatarCatalog = await ref.watch(avatarCatalogProvider.future);
-  final selectedAvatarId = await ref.watch(selectedAvatarIdProvider.future);
-  final vehicleCatalog = await ref.watch(vehicleVisualCatalogProvider.future);
-  await ref.watch(homeBannerConfigProvider.future);
-  await ref.watch(homeBannerCampaignProvider.future);
-
-  final visualOverrides = <String, String?>{};
-  for (final vehicle in vehicles) {
-    visualOverrides[vehicle.id] = await ref.watch(
-      vehicleVisualOverrideProvider(vehicle.id).future,
+  // This measures waiting for the shared DB/bootstrap work, not exclusive I/O.
+  await measureStartupPhase(
+    'DB_BUNDLED_WAIT',
+    () => ref.watch(bundledRestrictionsProvider.future),
+  );
+  return measureStartupPhase('CORE_READINESS', () async {
+    final vehicles = await ref.watch(vehicleListProvider.future);
+    final activeVehicle = await ref.watch(activeVehicleProvider.future);
+    final jurisdictions = await ref.watch(
+      restrictionJurisdictionsProvider.future,
     );
-  }
-  await Future.wait([
-    for (final vehicle in vehicles)
-      ref.watch(vehicleObligationsProvider(vehicle.id).future),
-  ]);
-
-  final selectedJurisdiction = _jurisdictionById(
-    jurisdictions,
-    selectedJurisdictionId,
-  );
-  final snapshots = await ref.watch(
-    homeVehicleSnapshotsProvider(
-      HomeVehicleSnapshotsRequest(
-        vehicles: vehicles,
-        selectedJurisdiction: selectedJurisdiction,
-      ),
-    ).future,
-  );
-
-  final imageAssets = <String>{
-    if ((avatarCatalog.assetById(selectedAvatarId) ??
-            avatarCatalog.defaultAsset)
-        case final avatar?)
-      avatar.asset,
-  };
-
-  if (snapshots.isNotEmpty) {
-    final focusedIndex = pickInitialHomeVehicleIndex(
-      snapshots: snapshots,
-      activeVehicleId: activeVehicle?.id,
+    final selectedJurisdictionId = await ref.watch(
+      selectedPicoJurisdictionIdProvider.future,
     );
-    final resolver = VehicleVisualResolver(vehicleCatalog);
-    for (final index in _initialVehicleIndexes(
-      focusedIndex,
-      snapshots.length,
-    )) {
-      final vehicle = snapshots[index].vehicle;
-      final visual = resolver.resolve(
-        vehicle,
-        overrideId: visualOverrides[vehicle.id],
+    await ref.watch(picoAlertPreferencesProvider.future);
+    await ref.watch(locationStateProvider.future);
+    final avatarCatalog = await ref.watch(avatarCatalogProvider.future);
+    final selectedAvatarId = await ref.watch(selectedAvatarIdProvider.future);
+    final vehicleCatalog = await ref.watch(vehicleVisualCatalogProvider.future);
+    await ref.watch(homeBannerConfigProvider.future);
+    await ref.watch(homeBannerCampaignProvider.future);
+
+    final visualOverrides = <String, String?>{};
+    for (final vehicle in vehicles) {
+      visualOverrides[vehicle.id] = await ref.watch(
+        vehicleVisualOverrideProvider(vehicle.id).future,
       );
-      if (visual != null) {
-        imageAssets.add(visual.asset);
+    }
+    await Future.wait([
+      for (final vehicle in vehicles)
+        ref.watch(vehicleObligationsProvider(vehicle.id).future),
+    ]);
+
+    final selectedJurisdiction = _jurisdictionById(
+      jurisdictions,
+      selectedJurisdictionId,
+    );
+    final snapshots = await ref.watch(
+      homeVehicleSnapshotsProvider(
+        HomeVehicleSnapshotsRequest(
+          vehicles: vehicles,
+          selectedJurisdiction: selectedJurisdiction,
+        ),
+      ).future,
+    );
+
+    final imageAssets = <String>{
+      if ((avatarCatalog.assetById(selectedAvatarId) ??
+              avatarCatalog.defaultAsset)
+          case final avatar?)
+        avatar.asset,
+    };
+
+    if (snapshots.isNotEmpty) {
+      final focusedIndex = pickInitialHomeVehicleIndex(
+        snapshots: snapshots,
+        activeVehicleId: activeVehicle?.id,
+      );
+      final resolver = VehicleVisualResolver(vehicleCatalog);
+      for (final index in _initialVehicleIndexes(
+        focusedIndex,
+        snapshots.length,
+      )) {
+        final vehicle = snapshots[index].vehicle;
+        final visual = resolver.resolve(
+          vehicle,
+          overrideId: visualOverrides[vehicle.id],
+        );
+        if (visual != null) {
+          imageAssets.add(visual.asset);
+        }
       }
     }
-  }
 
-  logStartupMarker(
-    'HOME_CRITICAL_DATA_READY',
-    extra: ' vehicles=${vehicles.length}',
-  );
-  return StartupReadiness(
-    imageAssets: imageAssets.toList(growable: false),
-    vehicleCount: vehicles.length,
-    selectedJurisdictionId: selectedJurisdiction?.id,
-  );
+    logStartupMarker(
+      'HOME_CRITICAL_DATA_READY',
+      extra: ' vehicles=${vehicles.length}',
+    );
+    return StartupReadiness(
+      imageAssets: imageAssets.toList(growable: false),
+      vehicleCount: vehicles.length,
+      selectedJurisdictionId: selectedJurisdiction?.id,
+    );
+  });
 });
 
 class StartupReadiness {
@@ -106,27 +120,88 @@ class StartupReadiness {
 }
 
 class StartupGate extends ConsumerStatefulWidget {
-  const StartupGate({required this.child, super.key});
+  const StartupGate({required this.child, this.isHomeRoute, super.key});
 
   final Widget child;
+  final bool Function()? isHomeRoute;
 
   @override
   ConsumerState<StartupGate> createState() => _StartupGateState();
 }
 
-class _StartupGateState extends ConsumerState<StartupGate> {
+class _StartupGateState extends ConsumerState<StartupGate>
+    with WidgetsBindingObserver {
   bool _ready = false;
   Future<void>? _precacheFuture;
+  bool _contentFrameScheduled = false;
+  int _frameMarkerGeneration = 0;
+  void Function(List<FrameTiming>)? _contentTimingsCallback;
+
+  void _scheduleContentFrameMarker({bool resumed = false}) {
+    if (!resumed && _contentFrameScheduled) return;
+    _contentFrameScheduled = true;
+    final generation = ++_frameMarkerGeneration;
+    final binding = WidgetsBinding.instance;
+    binding.addPostFrameCallback((_) {
+      if (!mounted || generation != _frameMarkerGeneration) return;
+      final isHome = widget.isHomeRoute?.call() ?? false;
+      final vsyncStart = binding.currentSystemFrameTimeStamp.inMicroseconds;
+      final marker = resumed
+          ? (isHome ? 'HOME_RESUME' : 'APP_RESUME')
+          : (isHome ? 'HOME_FIRST_USABLE' : 'STARTUP_CONTENT');
+      logStartupMarker(
+        '${marker}_FRAME',
+        extra: ' boundary=framework_post_frame vsync_start_us=$vsyncStart',
+      );
+      final previous = _contentTimingsCallback;
+      if (previous != null) binding.removeTimingsCallback(previous);
+      _contentTimingsCallback = (timings) {
+        for (final timing in timings) {
+          final start = timing.timestampInMicroseconds(FramePhase.vsyncStart);
+          if (start < vsyncStart) continue;
+          binding.removeTimingsCallback(_contentTimingsCallback!);
+          _contentTimingsCallback = null;
+          if (start == vsyncStart) {
+            logStartupFrame('${marker}_RASTER', timing);
+          } else {
+            logStartupMarker('STARTUP_CONTENT_TIMING_UNAVAILABLE');
+          }
+          return;
+        }
+      };
+      binding.addTimingsCallback(_contentTimingsCallback!);
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    final callback = _contentTimingsCallback;
+    if (callback != null) {
+      WidgetsBinding.instance.removeTimingsCallback(callback);
+    }
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _ready) {
+      // Observe the next natural frame; never request one for diagnostics.
+      _scheduleContentFrameMarker(resumed: true);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     logStartupMarker('STARTUP_GATE_VISIBLE');
   }
 
   @override
   Widget build(BuildContext context) {
     if (_ready) {
+      _scheduleContentFrameMarker();
       return AnimatedSwitcher(
         duration: _reducedMotion(context)
             ? Duration.zero
@@ -157,6 +232,7 @@ class _StartupGateState extends ConsumerState<StartupGate> {
               return const _StartupSurface();
             }
             _ready = true;
+            _scheduleContentFrameMarker();
             return AnimatedSwitcher(
               duration: _reducedMotion(context)
                   ? Duration.zero
@@ -183,12 +259,15 @@ class _StartupGateState extends ConsumerState<StartupGate> {
     BuildContext context,
     StartupReadiness readiness,
   ) async {
-    for (final asset in readiness.imageAssets) {
-      await precacheImage(AssetImage(asset), context);
-    }
+    await measureStartupPhase('IMAGE_PRECACHE', () async {
+      for (final asset in readiness.imageAssets) {
+        await precacheImage(AssetImage(asset), context);
+      }
+    });
     logStartupMarker(
       'HOME_VISUAL_READY',
-      extra: ' image_count=${readiness.imageAssets.length}',
+      extra:
+          ' image_count=${readiness.imageAssets.length} meaning=precache_completed',
     );
   }
 }
