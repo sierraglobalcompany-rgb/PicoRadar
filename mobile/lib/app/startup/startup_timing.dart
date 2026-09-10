@@ -37,8 +37,10 @@ void logStartupFrame(String marker, FrameTiming timing) {
   logStartupMarker(
     marker,
     extra:
+        ' frame_number=${timing.frameNumber}'
         ' vsync_start_us=${timing.timestampInMicroseconds(FramePhase.vsyncStart)}'
         ' build_start_us=${timing.timestampInMicroseconds(FramePhase.buildStart)}'
+        ' build_finish_us=${timing.timestampInMicroseconds(FramePhase.buildFinish)}'
         ' raster_finish_us=${timing.timestampInMicroseconds(FramePhase.rasterFinish)}'
         ' raster_epoch_us=${timing.timestampInMicroseconds(FramePhase.rasterFinishWallTime)}'
         ' build_us=${timing.buildDuration.inMicroseconds}'

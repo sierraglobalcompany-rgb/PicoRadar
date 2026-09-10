@@ -129,6 +129,7 @@ class PicoNotificationScheduler {
 
   final FlutterLocalNotificationsPlugin _plugin;
   bool _initialized = false;
+  Future<void>? _initialization;
   void Function(String route)? _onRoute;
   String? _lastPlanSignature;
   String? _lastObligationPlanSignature;
@@ -142,6 +143,15 @@ class PicoNotificationScheduler {
     if (_initialized) {
       return;
     }
+    final pending = _initialization ??= _initialize();
+    try {
+      await pending;
+    } finally {
+      if (identical(_initialization, pending)) _initialization = null;
+    }
+  }
+
+  Future<void> _initialize() async {
     await _plugin.initialize(
       settings: const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
@@ -158,13 +168,12 @@ class PicoNotificationScheduler {
         }
       },
     );
-    _initialized = true;
-
     final launchDetails = await _plugin.getNotificationAppLaunchDetails();
     final launchPayload = launchDetails?.didNotificationLaunchApp == true
         ? launchDetails?.notificationResponse?.payload
         : null;
     final route = notificationRouteFromPayload(launchPayload);
+    _initialized = true;
     if (route != null) {
       _onRoute?.call(route);
     }

@@ -13,6 +13,109 @@ import 'package:picoradar/features/vehicle_status/platform/vehicle_document_gate
 import '../../test_app_harness.dart';
 
 void main() {
+  testWidgets('explicit retry clears a cached transient privacy failure', (
+    tester,
+  ) async {
+    var attempts = 0;
+    await tester.pumpWidget(
+      _app(
+        overrides: [
+          startupPrivacyCleanupProvider.overrideWith((ref) async {
+            attempts++;
+            if (attempts == 1) throw StateError('test-private-cleanup-failure');
+          }),
+          startupReadinessProvider.overrideWith((ref) async {
+            await ref.watch(startupPrivacyCleanupProvider.future);
+            return const StartupReadiness(
+              imageAssets: [],
+              vehicleCount: 0,
+              selectedJurisdictionId: null,
+            );
+          }),
+        ],
+      ),
+    );
+    await tester.pump();
+    expect(find.byKey(const ValueKey('startup-error')), findsOneWidget);
+    expect(find.text('Home ready'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('startup-retry')));
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(attempts, 2);
+    expect(find.text('Home ready'), findsOneWidget);
+    expect(find.byKey(const ValueKey('startup-error')), findsNothing);
+  });
+
+  test('private cleanup completes before core loading', () async {
+    final harness = TestAppHarness();
+    addTearDown(harness.dispose);
+    final gateway = _StartupTestDocumentGateway();
+    gateway.release = Completer<void>();
+    var coreReads = 0;
+    final stop = StateError('test-core-stop');
+    final container = ProviderContainer(
+      overrides: [
+        privateVehicleDocumentStoreProvider.overrideWithValue(
+          harness.documentStore,
+        ),
+        vehicleDocumentGatewayProvider.overrideWithValue(gateway),
+        bundledRestrictionsProvider.overrideWith((ref) {
+          coreReads++;
+          throw stop;
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+    final subscription = container.listen(startupReadinessProvider, (_, _) {});
+    addTearDown(subscription.close);
+    final completion = expectLater(
+      container.read(startupReadinessProvider.future),
+      throwsA(same(stop)),
+    );
+    await gateway.entered.future;
+    expect(coreReads, 0);
+    gateway.release!.complete();
+    await completion;
+    expect(coreReads, 1);
+  });
+
+  testWidgets('secondary work starts only after child paint, once', (
+    tester,
+  ) async {
+    var painted = false;
+    var starts = 0;
+    final readiness = Completer<StartupReadiness>();
+    await tester.pumpWidget(
+      _app(
+        overrides: [
+          startupReadinessProvider.overrideWith((ref) => readiness.future),
+        ],
+        child: CustomPaint(painter: _PaintProbe(() => painted = true)),
+        onFirstContentFrame: () {
+          expect(painted, isTrue);
+          starts++;
+        },
+      ),
+    );
+    expect(starts, 0);
+    readiness.complete(
+      const StartupReadiness(
+        imageAssets: [],
+        vehicleCount: 0,
+        selectedJurisdictionId: null,
+      ),
+    );
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(starts, 1);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(starts, 1);
+  });
+
   testWidgets('content marker follows child paint once, never during loading', (
     tester,
   ) async {
@@ -71,6 +174,7 @@ void main() {
     tester,
   ) async {
     final messages = <String>[];
+    var frameNumber = 41;
     final previous = debugPrint;
     debugPrint = (message, {wrapWidth}) {
       if (message != null) messages.add(message);
@@ -88,6 +192,7 @@ void main() {
           ),
         ],
         isHomeRoute: () => true,
+        frameNumberForTesting: () => frameNumber,
       ),
     );
     for (var i = 0; i < 5; i++) {
@@ -97,24 +202,26 @@ void main() {
       (line) => line.contains('HOME_FIRST_USABLE_FRAME'),
     );
     final start = int.parse(
-      RegExp(r'vsync_start_us=(\d+)').firstMatch(rendered)!.group(1)!,
+      RegExp(r'frame_target_us=(\d+)').firstMatch(rendered)!.group(1)!,
     );
     final report = tester.binding.platformDispatcher.onReportTimings!;
-    report([_frameAt(start - 1)]);
+    report([_frameAt(start, frameNumber: 40)]);
     expect(
       messages.where((line) => line.contains('HOME_FIRST_USABLE_RASTER')),
       isEmpty,
     );
-    report([_frameAt(start)]);
+    // The frame ID, not equality with the framework's raw timestamp, identifies it.
+    report([_frameAt(start + 1000, frameNumber: 41)]);
     expect(
       messages.where((line) => line.contains('HOME_FIRST_USABLE_RASTER')),
       hasLength(1),
     );
-    report([_frameAt(start + 1)]);
+    report([_frameAt(start + 1, frameNumber: 42)]);
     expect(
       messages.where((line) => line.contains('HOME_FIRST_USABLE_RASTER')),
       hasLength(1),
     );
+    frameNumber = 42;
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     expect(
@@ -126,10 +233,10 @@ void main() {
       (line) => line.contains('HOME_RESUME_FRAME'),
     );
     final resumeStart = int.parse(
-      RegExp(r'vsync_start_us=(\d+)').firstMatch(resumed)!.group(1)!,
+      RegExp(r'frame_target_us=(\d+)').firstMatch(resumed)!.group(1)!,
     );
     tester.binding.platformDispatcher.onReportTimings!([
-      _frameAt(resumeStart + 1),
+      _frameAt(resumeStart, frameNumber: 43),
     ]);
     expect(
       messages.where((line) => line.contains('HOME_RESUME_RASTER')),
@@ -315,10 +422,60 @@ void main() {
     );
     addTearDown(container.dispose);
 
+    final subscription = container.listen(startupReadinessProvider, (_, _) {});
+    addTearDown(subscription.close);
     await container.read(startupReadinessProvider.future);
 
     expect(await viewFile.exists(), isFalse);
   });
+
+  test(
+    'secondary data cannot block core and core refresh does not repurge',
+    () async {
+      final harness = TestAppHarness();
+      addTearDown(harness.dispose);
+      final gateway = _StartupTestDocumentGateway();
+      var secondaryReads = 0;
+      final container = ProviderContainer(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(harness.database),
+          appPreferencesProvider.overrideWithValue(harness.preferences),
+          privateVehicleDocumentStoreProvider.overrideWithValue(
+            harness.documentStore,
+          ),
+          vehicleDocumentGatewayProvider.overrideWithValue(gateway),
+          avatarCatalogProvider.overrideWith(
+            (ref) => Completer<Never>().future,
+          ),
+          vehicleVisualCatalogProvider.overrideWith(
+            (ref) => Completer<Never>().future,
+          ),
+          homeBannerConfigProvider.overrideWith((ref) {
+            secondaryReads++;
+            throw StateError('secondary config unavailable');
+          }),
+          homeBannerCampaignProvider.overrideWith((ref) {
+            secondaryReads++;
+            throw StateError('secondary campaign unavailable');
+          }),
+        ],
+      );
+      addTearDown(container.dispose);
+      final subscription = container.listen(
+        startupReadinessProvider,
+        (_, _) {},
+      );
+      addTearDown(subscription.close);
+      final first = await container.read(startupReadinessProvider.future);
+      expect(first.vehicleCount, 0);
+      expect(first.imageAssets, isEmpty);
+      expect(gateway.cleanups, 1);
+      container.invalidate(startupReadinessProvider);
+      await container.read(startupReadinessProvider.future);
+      expect(gateway.cleanups, 1);
+      expect(secondaryReads, 0);
+    },
+  );
 }
 
 class _PaintProbe extends CustomPainter {
@@ -333,8 +490,16 @@ class _PaintProbe extends CustomPainter {
 }
 
 class _StartupTestDocumentGateway implements VehicleDocumentGateway {
+  int cleanups = 0;
+  final entered = Completer<void>();
+  Completer<void>? release;
+
   @override
-  Future<void> clearTemporaryFiles() async {}
+  Future<void> clearTemporaryFiles() async {
+    cleanups++;
+    if (!entered.isCompleted) entered.complete();
+    await release?.future;
+  }
 
   @override
   Future<bool> openDocument(File file) async => true;
@@ -347,16 +512,24 @@ Widget _app({
   required dynamic overrides,
   Widget child = const Text('Home ready'),
   bool Function()? isHomeRoute,
+  VoidCallback? onFirstContentFrame,
+  int Function()? frameNumberForTesting,
 }) {
   return ProviderScope(
     overrides: overrides,
     child: MaterialApp(
-      home: StartupGate(isHomeRoute: isHomeRoute, child: child),
+      home: StartupGate(
+        isHomeRoute: isHomeRoute,
+        onFirstContentFrame: onFirstContentFrame,
+        frameNumberForTesting: frameNumberForTesting,
+        child: child,
+      ),
     ),
   );
 }
 
-FrameTiming _frameAt(int start) => FrameTiming(
+FrameTiming _frameAt(int start, {int frameNumber = -1}) => FrameTiming(
+  frameNumber: frameNumber,
   vsyncStart: start,
   buildStart: start + 25,
   buildFinish: start + 100,

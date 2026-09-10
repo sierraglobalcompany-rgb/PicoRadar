@@ -9,6 +9,7 @@ import 'app_providers.dart';
 import 'router/app_router.dart';
 import 'router/app_routes.dart';
 import 'startup/startup_gate.dart';
+import 'startup/startup_timing.dart';
 import 'theme/app_theme.dart';
 
 class PicoRadarApp extends ConsumerStatefulWidget {
@@ -20,6 +21,9 @@ class PicoRadarApp extends ConsumerStatefulWidget {
 
 class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
   bool _notificationsStarted = false;
+  bool _secondaryReady = false;
+  Future<bool>? _notificationInitialization;
+  Future<bool>? _permissionRefreshInitialization;
   late final AppClockLifecycleObserver _clockObserver;
   late final _DocumentViewerCacheLifecycleObserver _documentCacheObserver;
 
@@ -33,6 +37,7 @@ class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
     _clockObserver = AppClockLifecycleObserver(
       clock: clock,
       onResume: () {
+        _startNotifications(ref.read(appRouterProvider));
         ref.invalidate(picoNotificationSyncProvider);
         ref.invalidate(obligationNotificationSyncProvider);
       },
@@ -58,10 +63,27 @@ class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
-    ref.watch(picoWidgetSyncProvider);
-    ref.watch(picoNotificationSyncProvider);
-    ref.watch(obligationNotificationSyncProvider);
-    ref.watch(datasetSyncRunProvider);
+    if (_secondaryReady) {
+      // These providers perform work; their results do not render the app root.
+      ref.listen(
+        picoWidgetSyncProvider,
+        (previous, next) => _reportSecondaryFailure('widget', previous, next),
+      );
+      ref.listen(
+        picoNotificationSyncProvider,
+        (previous, next) =>
+            _reportSecondaryFailure('pico_notifications', previous, next),
+      );
+      ref.listen(
+        obligationNotificationSyncProvider,
+        (previous, next) =>
+            _reportSecondaryFailure('obligation_notifications', previous, next),
+      );
+      ref.listen(
+        datasetSyncRunProvider,
+        (previous, next) => _reportSecondaryFailure('dataset', previous, next),
+      );
+    }
     _startNotifications(router);
 
     return MaterialApp.router(
@@ -71,6 +93,7 @@ class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
       routerConfig: router,
       builder: (context, child) {
         return StartupGate(
+          onFirstContentFrame: _startSecondaryWork,
           isHomeRoute: () =>
               router.routeInformationProvider.value.uri.path ==
               AppRoute.home.path,
@@ -85,28 +108,104 @@ class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
       return;
     }
     _notificationsStarted = true;
+    final scheduler = ref.read(picoNotificationSchedulerProvider);
+    // Launch routing must remain available before Home's first content frame.
+    _notificationInitialization = Future<bool>.microtask(() async {
+      if (!mounted) return false;
+      try {
+        await scheduler.initialize(
+          onRoute: (route) {
+            if (mounted) router.go(route);
+          },
+        );
+        return true;
+      } on MissingPluginException {
+        _notificationsStarted = false;
+        logStartupMarker('NOTIFICATION_INIT_UNAVAILABLE');
+        return false;
+      } catch (error, stack) {
+        _notificationsStarted = false;
+        logStartupMarker('NOTIFICATION_INIT_FAILED');
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: FlutterError(
+              'Notification initialization failed (${error.runtimeType}).',
+            ),
+            stack: stack,
+            library: 'PicoRadar startup',
+          ),
+        );
+        return false;
+      }
+    });
+    _refreshNotificationPermission();
+  }
+
+  void _startSecondaryWork() {
+    if (!mounted || _secondaryReady) return;
+    setState(() => _secondaryReady = true);
+    _startNotifications(ref.read(appRouterProvider));
+    _refreshNotificationPermission();
+  }
+
+  void _refreshNotificationPermission() {
+    final initialization = _notificationInitialization;
+    if (!mounted ||
+        !_secondaryReady ||
+        initialization == null ||
+        identical(initialization, _permissionRefreshInitialization)) {
+      return;
+    }
+    // Each initialization attempt reconciles permission once, after content.
+    _permissionRefreshInitialization = initialization;
+    final scheduler = ref.read(picoNotificationSchedulerProvider);
+    final preferences = ref.read(appPreferencesProvider);
     Future<void>.microtask(() async {
       try {
-        final scheduler = ref.read(picoNotificationSchedulerProvider);
-        await scheduler.initialize(onRoute: router.go);
-        final preferences = ref.read(appPreferencesProvider);
+        final initialized = await initialization;
+        if (!mounted || initialized != true) return;
         final alerts = await loadPicoAlertPreferences(preferences);
-        if (!alerts.permissionRequested) {
+        if (!mounted || !alerts.permissionRequested) {
           return;
         }
         final enabled = await scheduler.areNotificationsEnabled();
-        if (enabled == null || enabled == alerts.permissionGranted) {
+        if (!mounted ||
+            enabled == null ||
+            enabled == alerts.permissionGranted) {
           return;
         }
         await savePicoAlertPreferences(
           preferences,
           alerts.copyWith(permissionGranted: enabled),
         );
-        ref.invalidate(picoAlertPreferencesProvider);
+        if (mounted) ref.invalidate(picoAlertPreferencesProvider);
       } on MissingPluginException {
         return;
+      } catch (error, stack) {
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: FlutterError(
+              'Notification permission refresh failed (${error.runtimeType}).',
+            ),
+            stack: stack,
+            library: 'PicoRadar startup',
+          ),
+        );
       }
     });
+  }
+}
+
+void _reportSecondaryFailure<T>(
+  String source,
+  AsyncValue<T>? previous,
+  AsyncValue<T> next,
+) {
+  if (next.hasError && !identical(previous?.error, next.error)) {
+    logStartupMarker(
+      'SECONDARY_SYNC_FAILED',
+      extra: ' source=$source error_type=${next.error.runtimeType}',
+    );
   }
 }
 
@@ -120,9 +219,10 @@ class _DocumentViewerCacheLifecycleObserver extends WidgetsBindingObserver {
     if (state != AppLifecycleState.resumed) {
       return;
     }
+    final store = ref.read(privateVehicleDocumentStoreProvider);
     Future<void>.microtask(() async {
       try {
-        await ref.read(privateVehicleDocumentStoreProvider).purgeViewerCache();
+        await store.purgeViewerCache();
       } on MissingPluginException {
         return;
       }
