@@ -1,7 +1,7 @@
 param(
     [ValidateSet('preflight', 'prepare', 'start', 'status', 'stop')]
     [string] $Mode = 'status',
-    [string] $DataRoot = (Join-Path $PSScriptRoot '..\temp\VIAJE_MOTOR_LOCAL_REAL\osrm'),
+    [string] $DataRoot = (Join-Path $PSScriptRoot '..\data\local\osrm'),
     [string] $Image = 'ghcr.io/project-osrm/osrm-backend:v5.27.1',
     [string] $PbfUrl = 'https://download.geofabrik.de/south-america/colombia-latest.osm.pbf',
     [int] $Port = 5001,

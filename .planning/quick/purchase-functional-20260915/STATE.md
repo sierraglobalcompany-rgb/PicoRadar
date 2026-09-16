@@ -1,5 +1,10 @@
 # Purchase functional extension resume
 
+Workspace update: current source is preserved in 5958f42 and the canonical root
+on codex/workspace-consolidation. Do not reopen the retired temp worktree.
+Fresh consolidation gates and pending global-suite comparison are recorded in
+docs/WORKSPACE_CONSOLIDATION.md. This does not close physical acceptance below.
+
 Approved plan: six useful purchase reviews with optional candidate and real
 preparation-owned documents. Execution remains in the existing owner WIP;
 no merge, no global cleanup and no changes to the approved purchase cover.

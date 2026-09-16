@@ -6,7 +6,7 @@ from urllib.parse import quote_plus
 from openpyxl import load_workbook
 
 ROOT = Path(__file__).resolve().parents[1]
-INPUT = Path(r"C:/Users/felip/Downloads/CDA_Colombia_FINAL_866_UBICADOS_2026-09-15.xlsx")
+INPUT = ROOT / "data/sources/cda/CDA_Colombia_FINAL_866_UBICADOS_2026-09-15.xlsx"
 CATALOG = ROOT / "mobile/assets/catalogs/cda_catalog_v1.json"
 OUTPUT = ROOT / "codex/cda_owner_locations_20260915_import.csv"
 AUDIT = ROOT / "codex/cda_owner_locations_20260915_audit.json"

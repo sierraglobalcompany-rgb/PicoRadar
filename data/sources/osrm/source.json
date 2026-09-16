@@ -1,0 +1,14 @@
+﻿{
+    "osrmImage":  "ghcr.io/project-osrm/osrm-backend:v5.27.1",
+    "pbfFile":  "colombia-latest.osm.pbf",
+    "sourceLastModified":  "Mon, 07 Sep 2026 22:59:56 GMT",
+    "effectivePbfUrl":  "https://download.geofabrik.de/south-america/colombia-260907.osm.pbf",
+    "sourceContentLength":  "329060219",
+    "attribution":  "OSRM; Â© OpenStreetMap contributors",
+    "dockerMemoryLimit":  "4g",
+    "osrmImageDigest":  "ghcr.io/project-osrm/osrm-backend@sha256:855614a38f464b0558a2ad6eaa7cb8c139f39887da9b38b485ce453c6e6e6124",
+    "sourceEtag":  "\"139d0f7b-65aec93a7f9f3\"",
+    "pbfUrl":  "https://download.geofabrik.de/south-america/colombia-latest.osm.pbf",
+    "pbfSha256":  "a71df1f2064d0536c053aa4bcd872e6aa0a4fa3e7b35964dd03de59793370a70",
+    "preparedAt":  "2026-09-08T14:40:52.9268190-05:00"
+}

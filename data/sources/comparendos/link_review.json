@@ -1,0 +1,163 @@
+{
+  "reviewedAt": "2026-09-13",
+  "authorities": [
+    {
+      "id": "co-medellin",
+      "verifiedAt": "2026-09-13",
+      "name": "Secretaría de Movilidad de Medellín",
+      "platformName": "Movilidad en Línea",
+      "municipalityCodes": [
+        "05001"
+      ],
+      "consultationUrl": "https://www.medellin.gov.co/portal-movilidad/#/public",
+      "institutionalUrl": "https://www.medellin.gov.co/es/pag-movilidad/",
+      "evidenceUrl": "https://www.medellin.gov.co/es/pag-movilidad/",
+      "sourceRecordIds": [
+        "fcm_organismos-p2-r113",
+        "fcm_autoridades-p1-r42",
+        "runt-157"
+      ],
+      "finding": "El botón Ingresa a movilidad en línea de la página institucional tiene href exacto https://www.medellin.gov.co/portal-movilidad/#/public, confirmado en HTML original porque el lector web omite el fragmento. Destino HTTPS respondió 200 con título Movilidad en Línea. Consulta usa el portal directo; institutionalUrl y evidenceUrl conservan la página de referencia. No se asignan otros municipios del Valle de Aburrá.",
+      "accessStatus": "official_referral_read; exact_target_js_shell_read; downstream_forms_not_tested"
+    },
+    {
+      "id": "co-bogota",
+      "verifiedAt": "2026-09-13",
+      "name": "Secretaría Distrital de Movilidad de Bogotá",
+      "platformName": "Portal institucional de Bogotá",
+      "municipalityCodes": [
+        "11001"
+      ],
+      "consultationUrl": null,
+      "institutionalUrl": "https://www.movilidadbogota.gov.co/consulta-de-comparendos",
+      "evidenceUrl": "https://www.movilidadbogota.gov.co/consulta-de-comparendos",
+      "sourceRecordIds": [
+        "fcm_organismos-p2-r103",
+        "fcm_autoridades-p2-r46",
+        "fcm_autoridades-p4-r22"
+      ],
+      "finding": "Página distrital describe consulta de comparendos, acuerdos de pago y embargos de Bogotá y enlaza WebFenix. No se vincula la Secretaría de Cundinamarca ubicada en Bogotá.",
+      "accessStatus": "official_entry_read; downstream_forms_not_tested"
+    },
+    {
+      "id": "co-barranquilla",
+      "verifiedAt": "2026-09-13",
+      "name": "Secretaría Distrital de Tránsito y Seguridad Vial de Barranquilla",
+      "platformName": "Portal institucional de Barranquilla",
+      "municipalityCodes": [
+        "08001"
+      ],
+      "consultationUrl": null,
+      "institutionalUrl": "https://barranquilla.gov.co/transito/tus-multas",
+      "evidenceUrl": "https://barranquilla.gov.co/transito/tus-multas",
+      "sourceRecordIds": [
+        "fcm_organismos-p3-r109",
+        "fcm_organismos-p3-r110",
+        "fcm_autoridades-p2-r41"
+      ],
+      "finding": "La Alcaldía publica consulta de infracciones en la ciudad y enlace a estado de cuenta. Las dos filas idénticas FCM se conservan como referencias. Metrotránsito e Instituto del Atlántico permanecen separados.",
+      "accessStatus": "official_entry_read; downstream_forms_not_tested"
+    },
+    {
+      "id": "co-bucaramanga",
+      "verifiedAt": "2026-09-13",
+      "name": "Dirección de Tránsito de Bucaramanga",
+      "platformName": "Portal institucional DTB",
+      "municipalityCodes": [
+        "68001"
+      ],
+      "consultationUrl": null,
+      "institutionalUrl": "https://transitobucaramanga.gov.co/dtb/",
+      "evidenceUrl": "https://transitobucaramanga.gov.co/dtb/",
+      "sourceRecordIds": [
+        "fcm_organismos-p1-r21",
+        "fcm_autoridades-p6-r14",
+        "runt-036"
+      ],
+      "finding": "Página institucional DTB ofrece Estado de Cuenta y enlaza Moviliza. La entrada publicada es DTB; no se confunde el observatorio estadístico con una consulta personal.",
+      "accessStatus": "official_entry_read; downstream_forms_not_tested"
+    },
+    {
+      "id": "co-itagui",
+      "verifiedAt": "2026-09-13",
+      "name": "Secretaría de Movilidad de Itagüí",
+      "platformName": "Portal institucional de Itagüí",
+      "municipalityCodes": [
+        "05360"
+      ],
+      "consultationUrl": null,
+      "institutionalUrl": "https://www.transitoitagui.gov.co/",
+      "evidenceUrl": "https://www.transitoitagui.gov.co/",
+      "sourceRecordIds": [
+        "fcm_organismos-p2-r111",
+        "fcm_autoridades-p1-r34",
+        "runt-127"
+      ],
+      "finding": "Sitio identifica Secretaría de Movilidad municipal y distingue Consorcio SETI. Ofrece consulta de fotodetecciones y servicios en línea. Alcaldía confirma dominio en noticia institucional de 2018; sitio actual leído con noticias de 2026.",
+      "additionalEvidenceUrls": [
+        "https://www.itagui.gov.co/sitio/ver_noticia/itagui-cuenta-con-nuevo-servicio-para-pagos-en-linea"
+      ],
+      "accessStatus": "official_entry_read; downstream_forms_not_tested"
+    },
+    {
+      "id": "co-pereira",
+      "verifiedAt": "2026-09-13",
+      "name": "Instituto de Movilidad de Pereira",
+      "platformName": "Portal institucional de Pereira",
+      "municipalityCodes": [
+        "66001"
+      ],
+      "consultationUrl": null,
+      "institutionalUrl": "https://movilidadpereira.gov.co/tramites",
+      "evidenceUrl": "https://movilidadpereira.gov.co/tramites",
+      "sourceRecordIds": [
+        "fcm_organismos-p2-r75",
+        "fcm_autoridades-p6-r5",
+        "runt-181"
+      ],
+      "finding": "Ventanilla institucional identifica Instituto y trámite Pago de Comparendos y Fotomultas con consulta de estado de cuenta. Información verificada mediante contenido público indexado; apertura de raíz devolvió cuerpo vacío. No prueba de formulario.",
+      "accessStatus": "official_indexed_content_read; live_root_empty; downstream_forms_not_tested"
+    },
+    {
+      "id": "co-manizales",
+      "verifiedAt": "2026-09-13",
+      "name": "Secretaría de Movilidad de Manizales",
+      "platformName": "Movilidad en Línea de Manizales",
+      "municipalityCodes": [
+        "17001"
+      ],
+      "consultationUrl": "https://www.movilidadmanizales.com.co/portal-servicios/#/public",
+      "institutionalUrl": "https://centrodeinformacion.manizales.gov.co/fotodetecciones-en-manizales-asi-puede-consultar-gestionar-y-pagar-de-forma-segura/",
+      "evidenceUrl": "https://centrodeinformacion.manizales.gov.co/fotodetecciones-en-manizales-asi-puede-consultar-gestionar-y-pagar-de-forma-segura/",
+      "sourceRecordIds": [
+        "fcm_organismos-p3-r7",
+        "fcm_autoridades-p3-r22",
+        "runt-153"
+      ],
+      "finding": "Comunicado oficial de 24/04/2026 enlaza expresamente la URL completa .com.co como portal para fotodetecciones de Manizales. Sitio de destino entrega aplicación JavaScript; formulario no ejecutado.",
+      "accessStatus": "official_referral_read; target_js_shell_read; downstream_forms_not_tested"
+    }
+  ],
+  "pendingChecks": [
+    {
+      "municipality": "Cali",
+      "observedUrl": "https://www.cali.gov.co/movilidad/publicaciones/49930/consulta-de-multas-de-trnsito/",
+      "status": "indexed_official_page_found; live_fetch_403; not_promoted"
+    },
+    {
+      "municipality": "Cartagena",
+      "observedUrl": "https://www.transitocartagena.gov.co/",
+      "status": "official_city_referral_found; target_fetch_failed; not_promoted"
+    },
+    {
+      "municipality": "Envigado",
+      "observedUrl": "https://movilidad.envigado.gov.co/portal-servicios/modulos/home-public/home-public.html",
+      "status": "indexed_template_found; incomplete_content; not_promoted"
+    }
+  ],
+  "simit": {
+    "url": "https://www.fcm.org.co/simit/",
+    "evidenceUrl": "https://www.fcm.org.co/preguntas-frecuentes-simit/",
+    "finding": "FAQ FCM enlaza consulta nacional y establece que las autoridades generan y corrigen sus reportes. No se consultaron datos personales."
+  }
+}

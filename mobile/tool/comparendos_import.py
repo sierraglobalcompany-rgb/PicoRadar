@@ -4,7 +4,7 @@ python mobile/tool/comparendos_import.py --extract
 Without --extract, rebuild from the existing extracted source_rows.json.
 
 Requires the existing audit environment's pdfplumber, never a mobile dependency.
-The downloaded inputs and generated audit files live in temp/COMPARENDOS_OWNER.
+The reproducible source inputs and audit files live in data/sources/comparendos.
 No contact/person fields enter the application asset.
 """
 
@@ -18,7 +18,7 @@ from pathlib import Path
 import pdfplumber
 
 ROOT = Path(__file__).resolve().parents[2]
-AUDIT = ROOT / 'temp/COMPARENDOS_OWNER'
+AUDIT = ROOT / 'data/sources/comparendos'
 SOURCES = {
     'fcm_organismos': 'https://www.fcm.org.co/wp-content/uploads/2021/07/Directorio-Organismos-de-Transito.pdf',
     'fcm_autoridades': 'https://www.fcm.org.co/wp-content/uploads/2021/08/Base-de-Datos-Autoridades-de-Transito.pdf',

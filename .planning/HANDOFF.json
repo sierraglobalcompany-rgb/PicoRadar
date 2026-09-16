@@ -1,110 +1,42 @@
 {
   "version": "1.0",
-  "timestamp": "2026-09-11T13:45:47-05:00",
-  "status": "paused_by_user",
-  "phase_name": "Mi Pico y Placa: vehiculo protagonista y calendario mensual",
-  "branch": "codex/garage-single-favorite",
-  "head": "ddf60407174e3ee8d447b7eff3ca45e0fd983789",
-  "checkpoint": ".planning/PICO_PERSONAL_MONTHLY_CHECKPOINT.md",
-  "implementation": "NOT STARTED. Audit and approved plan only; no production or test edits for this redesign.",
+  "timestamp": "2026-09-15",
+  "status": "partial_external_cleanup",
+  "phase_name": "Consolidacion y limpieza PicoRadar",
+  "branch": "codex/workspace-consolidation",
+  "checkpoint": "docs/WORKSPACE_CONSOLIDATION.md",
+  "implementation": "Latest installed runtime preserved from 5958f42 in canonical root. No phone changes or publication.",
+  "completed_tasks": [
+    {
+      "id": 1,
+      "name": "Root WIP checkpoint",
+      "commit": "b86c787"
+    },
+    {
+      "id": 2,
+      "name": "Current source checkpoint",
+      "commit": "5958f42"
+    },
+    {
+      "id": 3,
+      "name": "Pending B04 checkpoint",
+      "commit": "fe0d8d4"
+    },
+    {
+      "id": 4,
+      "name": "Root analyze, 625 focused tests and dev release build",
+      "status": "passed"
+    }
+  ],
+  "remaining_tasks": [
+    {
+      "name": "External cleanup blocked by tool policy; unique design originals and empty locked directory retained"
+    },
+    {
+      "name": "Owner requested separate stabilization of all 87 known failures before final acceptance"
+    }
+  ],
   "async_jobs": [],
   "active_agents": [],
-  "next_action": "Wait for explicit user resume. Then preserve mixed WIP, add monthly-first failing tests, implement the approved personal-only redesign and validate preview before approval.",
-  "uncommitted_files": [
-    "M docs/CURRENT.md",
-    " M docs/DESIGN_CONTRACT.md",
-    " M mobile/lib/app/app_providers.dart",
-    " M mobile/lib/app/shell/app_shell.dart",
-    " M mobile/lib/app/startup/startup_gate.dart",
-    " M mobile/lib/core/design_system/branding.dart",
-    " M mobile/lib/features/buy_sell/presentation/buy_sell_screen.dart",
-    " M mobile/lib/features/comparendos/presentation/comparendos_screen.dart",
-    " M mobile/lib/features/defense/presentation/defense_screen.dart",
-    " M mobile/lib/features/garage/data/garage_favorites.dart",
-    " M mobile/lib/features/garage/data/vehicle_profile.dart",
-    " M mobile/lib/features/garage/data/vehicle_repository.dart",
-    " M mobile/lib/features/garage/presentation/garage_screen.dart",
-    " M mobile/lib/features/garage/presentation/vehicle_detail_screen.dart",
-    " M mobile/lib/features/home/presentation/home_screen.dart",
-    " M mobile/lib/features/home/presentation/home_status_section.dart",
-    " M mobile/lib/features/home/presentation/home_vehicle_carousel.dart",
-    " M mobile/lib/features/onboarding/data/registration_city_catalog.dart",
-    " M mobile/lib/features/onboarding/presentation/onboarding_vehicle_screen.dart",
-    " M mobile/lib/features/pico_placa/presentation/pico_detail_screen.dart",
-    " M mobile/lib/features/settings/presentation/settings_screen.dart",
-    " M mobile/lib/features/trip/presentation/trip_screen.dart",
-    " M mobile/test/core/design_system/design_system_test.dart",
-    " M mobile/test/features/buy_sell/presentation/buy_sell_screen_test.dart",
-    " M mobile/test/features/comparendos/presentation/comparendos_screen_test.dart",
-    " M mobile/test/features/defense/presentation/defense_screen_test.dart",
-    " M mobile/test/features/garage/data/vehicle_repository_test.dart",
-    " M mobile/test/features/garage/presentation/garage_performance_test.dart",
-    " M mobile/test/features/garage/presentation/garage_screen_test.dart",
-    " M mobile/test/features/home/presentation/home_performance_test.dart",
-    " M mobile/test/features/home/presentation/home_screen_test.dart",
-    " M mobile/test/features/onboarding/data/registration_city_catalog_test.dart",
-    " M mobile/test/features/onboarding/presentation/onboarding_vehicle_screen_test.dart",
-    " M mobile/test/features/pico_placa/platform/pico_notifications_test.dart",
-    " M mobile/test/features/pico_placa/presentation/pico_detail_screen_test.dart",
-    " M mobile/test/features/settings/presentation/settings_screen_test.dart",
-    " M mobile/test/features/trip/presentation/trip_screen_test.dart",
-    " M mobile/test/test_app_harness.dart",
-    "?? .planning/",
-    "?? docs/design/reference/home_allowed_owner_20260911.png",
-    "?? docs/design/reference/plate_owner_20260910.png",
-    "?? docs/superpowers/",
-    "?? mobile/lib/features/garage/presentation/vehicle_deletion_window.dart",
-    "?? mobile/lib/features/garage/presentation/vehicle_plate_badge.dart",
-    "?? mobile/lib/features/pico_placa/presentation/today_restriction_summary.dart",
-    "?? mobile/test/app/home_entry_test.dart",
-    "?? mobile/test/core/design_system/plate_fidelity_test.dart",
-    "?? mobile/test/features/garage/data/garage_favorites_test.dart",
-    "?? mobile/test/features/garage/presentation/vehicle_detail_layout_test.dart",
-    "?? mobile/test/features/garage/presentation/vehicle_detail_screen_test.dart",
-    "?? mobile/test/features/home/presentation/home_priority_test.dart",
-    "?? mobile/test/plate_test_fonts.dart"
-  ],
-  "previous_handoff_historical_only": {
-    "version": "1.0",
-    "timestamp": "2026-09-09T20:24:00-05:00",
-    "status": "published_partial",
-    "repo": "https://github.com/sierraglobalcompany-rgb/PicoRadar.git",
-    "branch": "integration/VIAJE-R1-real-planner",
-    "pr": "https://github.com/sierraglobalcompany-rgb/PicoRadar/pull/55",
-    "head": "01a2d7532a726512a7f750ac1d3051ac6a0bf55d",
-    "previous_head": "84ed13c06494fc51ddebb6f91591a39369998906",
-    "commit": "01a2d75 fix(driving): restore gauge hierarchy and compact controls",
-    "push_done": true,
-    "merge_done": false,
-    "flutter": {
-      "format": "PASS",
-      "analyze": "PASS",
-      "tests": "PASS, 1477 passed, 10 skipped",
-      "normal_apk": "PASS",
-      "simulation_apk": "PASS",
-      "profile_apk": "PASS"
-    },
-    "physical_qa": {
-      "device": "Mi A3 116f2191b19a",
-      "camera": "PASS",
-      "toll": "PASS",
-      "hud": "PASS",
-      "mirror": "PASS",
-      "regional_both_directions": "PASS initial simulated runs and short videos; not full routes",
-      "normal_apk_restored": true
-    },
-    "performance": {
-      "camera_map_both_within_16_7ms": 0.4253393665158371,
-      "camera_radar_360_both_within_16_7ms": 0.9383858837142031,
-      "cocorna_map_both_within_16_7ms": 0.5582191780821918,
-      "camera_map_ready_fraction": 0.95,
-      "cocorna_map_ready_fraction": 0.9333333333333333,
-      "memory_cycles": 10,
-      "memory_delta_rss_bytes": -516096,
-      "gate": "PARTIAL: all scenes below 95 percent combined frame target"
-    },
-    "server_local": "NOT RUN: no backend changes in this correction",
-    "ci": "Mobile CI 34423888977 success; Server CI 34423888995 success",
-    "evidence": "C:/Users/felip/Documents/ChatGPT/PicoRadar_ Pico y Placa/temp/CONDUCIR_COMPACT_OWNER"
-  }
+  "next_action": "Freeze cleanup checkpoint, then stabilize the 87 reproduced failures. Do not delete unrelated files or treat pending physical QA as completed."
 }

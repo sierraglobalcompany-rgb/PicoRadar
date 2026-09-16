@@ -1,5 +1,14 @@
 # Preparar compra: functional execution ledger
 
+## Workspace consolidation note (2026-09-15)
+
+Current source is committed in 5958f42 and now lives in the repository root on
+codex/workspace-consolidation. The old temp worktree is retired. The final
+checkpoint limitation documented below is historical, not the current recovery
+state. Evidence was relocated to artifacts/current/purchase; original installed
+APK retained at artifacts/current/PicoRadar-installed-dev-release.apk.
+Physical acceptance gates remain open. See docs/WORKSPACE_CONSOLIDATION.md.
+
 Status: PARTIAL acceptance. Implementation and dev installation complete;
 physical document import/scanner/positive authentication and owner acceptance
 remain open. Approved six-review plan, 2026-09-15. No release/merge approval.
@@ -160,7 +169,7 @@ Observed on the installed build:
   this test; it is a 1086-byte fictional fixture, not an imported private copy.
   Remove that exact QA file after acceptance; do not remove user Downloads.
 
-Permitted physical screenshots in `C:/Users/felip/AppData/Local/Temp/`:
+Permitted physical screenshots consolidated in `artifacts/current/purchase/`:
 - `purchase-functional-after-20260915.png` (overview)
 - `purchase-comparendos-after-20260915.png`
 - `purchase-taxes-after-20260915.png`, `purchase-tax-picker-20260915.png`
@@ -168,7 +177,7 @@ Permitted physical screenshots in `C:/Users/felip/AppData/Local/Temp/`:
 - `purchase-appraisal-after-20260915.png`, `purchase-city-picker-20260915.png`
 - `purchase-payment-after-20260915.png`, `purchase-documents-guide-20260915.png`
 
-Automated fixture captures in `mobile/build/purchase-review/` are explicitly
+Automated fixture captures in `artifacts/current/purchase/` are explicitly
 test evidence, not photographs of protected physical document screens.
 
 ## Stop conditions / handoff limits
