@@ -310,7 +310,9 @@ void main() {
         for (final window in _windowLabels) {
           expect(find.textContaining(window), findsWidgets);
         }
-        Navigator.of(tester.element(find.textContaining(_windowLabels.first).first)).pop();
+        Navigator.of(
+          tester.element(find.textContaining(_windowLabels.first).first),
+        ).pop();
         await tester.pumpAndSettle();
         final schedule = find.byKey(const ValueKey('pico-city-schedule'));
         await _reveal(tester, schedule);
@@ -346,16 +348,25 @@ void main() {
                 jurisdictionId: 'co-san-bucaramanga',
               ),
             );
-            final city = find.byKey(const ValueKey('pico-personal-change-city'));
+            final city = find.byKey(
+              const ValueKey('pico-personal-change-city'),
+            );
             expect(_surfaceText(city), contains('Bucaramanga'));
-            final source = find.byKey(const ValueKey('pico-personal-source-row'));
+            final source = find.byKey(
+              const ValueKey('pico-personal-source-row'),
+            );
             await _reveal(tester, source);
             final problems = _readabilityProblems(tester, source);
             await tester.tap(source);
             await tester.pumpAndSettle();
-            final sheet = find.byKey(const ValueKey('pico-personal-source-sheet'));
+            final sheet = find.byKey(
+              const ValueKey('pico-personal-source-sheet'),
+            );
             expect(_surfaceText(sheet), contains(_sourceHost));
-            expect(_surfaceText(sheet), contains(stale ? 'Por actualizar' : 'Vigentes'));
+            expect(
+              _surfaceText(sheet),
+              contains(stale ? 'Por actualizar' : 'Vigentes'),
+            );
             problems.addAll(_readabilityProblems(tester, sheet));
             Navigator.of(tester.element(sheet)).pop();
             await tester.pumpAndSettle();

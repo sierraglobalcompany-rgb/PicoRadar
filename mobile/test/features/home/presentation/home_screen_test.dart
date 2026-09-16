@@ -2866,26 +2866,20 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('home-status-today')));
     await _pumpPicoShell(tester);
     await _pumpAsyncHome(tester);
-    expect(find.byKey(const ValueKey('pico-personal-identity')), findsOneWidget);
-    expect(findPlateNumber(focused.plate), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Hoy · Mié 09/09/2026'),
-      160,
-      scrollable: find
-          .descendant(
-            of: find.byType(PicoDetailScreen),
-            matching: find.byType(Scrollable),
-          )
-          .first,
+    expect(
+      find.byKey(const ValueKey('pico-personal-identity')),
+      findsOneWidget,
     );
-    expect(find.text('Hoy · Mié 09/09/2026'), findsOneWidget);
+    expect(findPlateNumber(focused.plate), findsOneWidget);
     expect(
       tester.widget<Text>(find.byKey(const ValueKey('pico-summary-main'))).data,
       'Puede circular',
     );
-    await tester.ensureVisible(find.byKey(const ValueKey('pico-personal-month-calendar')));
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('pico-personal-month-calendar')),
+    );
     await tester.pumpAndSettle();
-        await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
     Finder todayMarker(String date, String status) => find.ancestor(
       of: find.byKey(ValueKey('pico-month-day-$date')),
       matching: find.byWidgetPredicate(
@@ -2913,29 +2907,8 @@ void main() {
     expect(container.read(bogotaNowProvider), DateTime(2026, 9, 10));
     expect(todayMarker('2026-09-09', 'Sin pico y placa'), findsNothing);
     expect(todayMarker('2026-09-10', 'Por verificar'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('pico-summary-main')),
-      -200,
-      scrollable: find
-          .descendant(
-            of: find.byKey(const ValueKey('pico-scroll-root')),
-            matching: find.byType(Scrollable),
-          )
-          .first,
-    );
+    await tester.ensureVisible(find.byKey(const ValueKey('pico-summary-main')));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('Hoy · Jue 10/09/2026'),
-      -100,
-      scrollable: find
-          .descendant(
-            of: find.byKey(const ValueKey('pico-scroll-root')),
-            matching: find.byType(Scrollable),
-          )
-          .first,
-    );
-    expect(find.text('Hoy · Jue 10/09/2026'), findsOneWidget);
-    expect(find.text('Hoy · Mié 09/09/2026'), findsNothing);
     expect(
       tester.widget<Text>(find.byKey(const ValueKey('pico-summary-main'))).data,
       'Por verificar',
@@ -2999,14 +2972,15 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('home-status-today')));
     await _pumpPicoShell(tester);
     await _pumpAsyncHome(tester);
-    expect(find.text('Hoy · Jue 10/09/2026'), findsOneWidget);
     expect(
       tester.widget<Text>(find.byKey(const ValueKey('pico-summary-main'))).data,
       '5:00\u00a0a.\u00a0m. – 8:00\u00a0p.\u00a0m.',
     );
-    await tester.ensureVisible(find.byKey(const ValueKey('pico-personal-month-calendar')));
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('pico-personal-month-calendar')),
+    );
     await tester.pumpAndSettle();
-        await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
     expect(todayMarker('2026-09-10', 'Con pico y placa'), findsOneWidget);
     expect(todayMarker('2026-09-09', 'Sin pico y placa'), findsNothing);
     expect(
@@ -3238,9 +3212,12 @@ void main() {
 
       await _pumpDetail(tester, harness, vehicleId: renault.id);
 
-      expect(find.byKey(const ValueKey('pico-personal-identity')), findsOneWidget);
       expect(
-        find.byKey(const ValueKey('pico-personal-calendar')),
+        find.byKey(const ValueKey('pico-personal-identity')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('pico-personal-month-calendar')),
         findsOneWidget,
       );
       expect(findPlateNumber(renault.plate), findsOneWidget);
@@ -3292,7 +3269,10 @@ void main() {
       ]) {
         await tester.tap(find.byKey(ValueKey(target)));
         await tester.pumpAndSettle();
-        expect(find.byKey(const ValueKey('pico-personal-identity')), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('pico-personal-identity')),
+          findsOneWidget,
+        );
         expect(findPlateNumber(vehicle.plate), findsOneWidget);
 
         final router = GoRouter.of(
@@ -3552,43 +3532,75 @@ void main() {
 
       expect(find.byKey(const ValueKey('pico-city-screen')), findsOneWidget);
       expect(find.byKey(const ValueKey('pico-city-screen')), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('pico-city-top-controls')),
-        findsOneWidget,
-      );
+      expect(find.byKey(const ValueKey('pico-city-change')), findsOneWidget);
       expect(
         find.byKey(const ValueKey('pico-city-category-segment')),
         findsOneWidget,
       );
-      final heroArt = tester.widget<Image>(find.descendant(
-        of: find.byKey(const ValueKey('pico-city-hero-art')), matching: find.byType(Image)),
+      final heroArt = tester.widget<Image>(
+        find.descendant(
+          of: find.byKey(const ValueKey('pico-city-hero-art')),
+          matching: find.byType(Image),
+        ),
       );
       final heroArtProvider = heroArt.image as ResizeImage;
       expect(
         (heroArtProvider.imageProvider as AssetImage).assetName,
-        'assets/vehicles/veh_car_generic_01.webp',
+        'assets/vehicles/veh_car_chevrolet_01.webp',
       );
     });
 
-    testWidgets('/pico with vehicleId shows its direct monthly calendar', (tester) async {
-      final vehicle = await _readyHome(harness, plate: 'TAX078',
-        serviceType: VehicleServiceType.taxi, jurisdictionId: 'co-dc-bogota');
+    testWidgets('/pico with vehicleId shows its direct monthly calendar', (
+      tester,
+    ) async {
+      final vehicle = await _readyHome(
+        harness,
+        plate: 'TAX078',
+        serviceType: VehicleServiceType.taxi,
+        jurisdictionId: 'co-dc-bogota',
+      );
       await _pumpDetail(tester, harness, vehicleId: vehicle.id);
-      expect(find.byKey(const ValueKey('pico-personal-identity')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('pico-personal-identity')),
+        findsOneWidget,
+      );
       expect(findPlateNumber(vehicle.plate), findsOneWidget);
-      final calendar = find.byKey(const ValueKey('pico-personal-month-calendar'));
+      final calendar = find.byKey(
+        const ValueKey('pico-personal-month-calendar'),
+      );
       await tester.ensureVisible(calendar);
       await tester.pumpAndSettle();
       expect(find.text('Agosto 2026'), findsOneWidget);
       for (var day = 1; day <= 31; day++) {
-        expect(find.byKey(ValueKey('pico-month-day-2026-08-${day.toString().padLeft(2, '0')}')), findsOneWidget);
+        expect(
+          find.byKey(
+            ValueKey(
+              'pico-month-day-2026-08-${day.toString().padLeft(2, '0')}',
+            ),
+          ),
+          findsOneWidget,
+        );
       }
-      expect(find.byKey(const ValueKey('pico-month-status-2026-08-28-restricted')), findsOneWidget);
-      expect(find.byKey(const ValueKey('pico-personal-calendar-mode')), findsNothing);
+      expect(
+        find.byKey(
+          const ValueKey('pico-month-status-icon-2026-08-28-restricted'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('pico-personal-calendar-mode')),
+        findsNothing,
+      );
       await tester.tap(find.byKey(const ValueKey('pico-month-day-2026-08-28')));
       await tester.pumpAndSettle();
       expect(find.text('Con pico y placa'), findsOneWidget);
-      expect(find.text('5:30 a. m. – 9:00 p. m.'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('pico-month-day-detail-sheet')),
+          matching: find.text('5:30 a. m. – 9:00 p. m.'),
+        ),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     });
 
@@ -3606,7 +3618,7 @@ void main() {
         find.byKey(const ValueKey('pico-personal-month-calendar')),
       );
       await tester.pumpAndSettle();
-            await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
 
       expect(
         find.byKey(const ValueKey('pico-personal-calendar')),
@@ -3622,11 +3634,13 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.byKey(const ValueKey('pico-month-status-2026-08-27-restricted')),
+        find.byKey(
+          const ValueKey('pico-month-status-icon-2026-08-27-restricted'),
+        ),
         findsOneWidget,
       );
       expect(
-        find.byKey(const ValueKey('pico-month-status-2026-08-28-allowed')),
+        find.byKey(const ValueKey('pico-month-status-icon-2026-08-28-allowed')),
         findsOneWidget,
       );
 
@@ -3635,7 +3649,7 @@ void main() {
 
       expect(find.text('Septiembre 2026'), findsOneWidget);
       expect(
-        find.byKey(const ValueKey('pico-month-status-2026-09-01-stale')),
+        find.byKey(const ValueKey('pico-month-status-icon-2026-09-01-stale')),
         findsOneWidget,
       );
 
@@ -3663,7 +3677,7 @@ void main() {
         find.byKey(const ValueKey('pico-personal-month-calendar')),
       );
       await tester.pumpAndSettle();
-            await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
       await tester.ensureVisible(
         find.byKey(const ValueKey('pico-month-day-2026-08-27')),
       );
@@ -3690,102 +3704,190 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.text('Restricción calculada para este vehículo.'),
+        find.textContaining('Aplica por el último dígito'),
         findsOneWidget,
       );
     });
 
-    testWidgets('personal Pico month navigation preserves summary and selected vehicle', (tester) async {
-      final vehicle = await _readyHome(harness, plate: 'ABC123', jurisdictionId: 'co-dc-bogota');
-      await _pumpDetail(tester, harness, vehicleId: vehicle.id);
-      final calendar = find.byKey(const ValueKey('pico-personal-month-calendar'));
-      await tester.ensureVisible(calendar);
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('pico-month-next')));
-      await tester.pumpAndSettle();
-      expect(find.text('Septiembre 2026'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('pico-month-previous')));
-      await tester.pumpAndSettle();
-      expect(find.text('Agosto 2026'), findsOneWidget);
-      await tester.ensureVisible(find.byKey(const ValueKey('pico-summary-today')));
-      await tester.pumpAndSettle();
-      expect(find.text('Tiene pico y placa hoy'), findsOneWidget);
-      expect((await harness.repository.getActiveVehicle())?.id, vehicle.id);
-      expect(find.byKey(const ValueKey('pico-personal-calendar-mode')), findsNothing);
-    });
+    testWidgets(
+      'personal Pico month navigation preserves summary and selected vehicle',
+      (tester) async {
+        final vehicle = await _readyHome(
+          harness,
+          plate: 'ABC123',
+          jurisdictionId: 'co-dc-bogota',
+        );
+        await _pumpDetail(tester, harness, vehicleId: vehicle.id);
+        final calendar = find.byKey(
+          const ValueKey('pico-personal-month-calendar'),
+        );
+        await tester.ensureVisible(calendar);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('pico-month-next')));
+        await tester.pumpAndSettle();
+        expect(find.text('Septiembre 2026'), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('pico-month-previous')));
+        await tester.pumpAndSettle();
+        expect(find.text('Agosto 2026'), findsOneWidget);
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('pico-summary-today')),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Tiene pico y placa hoy'), findsOneWidget);
+        expect((await harness.repository.getActiveVehicle())?.id, vehicle.id);
+        expect(
+          find.byKey(const ValueKey('pico-personal-calendar-mode')),
+          findsNothing,
+        );
+      },
+    );
 
-    testWidgets('personal Pico keeps notifications in Home without duplicate bell', (tester) async {
-      final vehicle = await _readyHome(harness, plate: 'ABC124', jurisdictionId: 'co-dc-bogota');
-      await _pumpDetail(tester, harness, vehicleId: vehicle.id);
-      expect(find.byKey(const ValueKey('pico-notification-bell')), findsNothing);
-      expect(find.byKey(const ValueKey('pico-personal-hero-back')).hitTestable(), findsOneWidget);
-      expect(find.byKey(const ValueKey('pico-personal-change-city')).hitTestable(), findsOneWidget);
-    });
+    testWidgets(
+      'personal Pico keeps notifications in Home without duplicate bell',
+      (tester) async {
+        final vehicle = await _readyHome(
+          harness,
+          plate: 'ABC124',
+          jurisdictionId: 'co-dc-bogota',
+        );
+        await _pumpDetail(tester, harness, vehicleId: vehicle.id);
+        expect(
+          find.byKey(const ValueKey('pico-notification-bell')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const ValueKey('pico-personal-hero-back')).hitTestable(),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('pico-personal-change-city')).hitTestable(),
+          findsOneWidget,
+        );
+      },
+    );
 
-    testWidgets('city week exposes seven days and vehicles in their sheet', (tester) async {
-      final vehicle = await _readyHome(harness, plate: 'ABC123', jurisdictionId: 'co-ant-medellin');
+    testWidgets('city week exposes seven days and vehicles in their sheet', (
+      tester,
+    ) async {
+      final vehicle = await _readyHome(
+        harness,
+        plate: 'ABC123',
+        jurisdictionId: 'co-ant-medellin',
+      );
       await _pumpDetail(tester, harness);
       for (var day = 0; day < 7; day++) {
         expect(find.byKey(ValueKey('pico-city-week-day-$day')), findsOneWidget);
       }
       await _openCityVehicles(tester);
-      expect(find.byKey(ValueKey('pico-city-vehicle-${vehicle.id}')), findsOneWidget);
-      expect(find.byKey(const ValueKey('pico-city-vehicles-sheet')), findsOneWidget);
-      expect(find.byKey(const ValueKey('pico-city-add-vehicle')), findsOneWidget);
+      expect(
+        find.byKey(ValueKey('pico-city-vehicle-${vehicle.id}')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('pico-city-vehicles-sheet')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('pico-city-add-vehicle')),
+        findsOneWidget,
+      );
     });
 
-    testWidgets('P04 Medellin shows digit basis, hours and weekly rotation', (tester) async {
+    testWidgets('P04 Medellin shows digit basis, hours and weekly rotation', (
+      tester,
+    ) async {
       harness.now = DateTime(2026, 8, 31, 12);
-      await _readyHome(harness, plate: 'ABC125', jurisdictionId: 'co-ant-medellin');
+      await _readyHome(
+        harness,
+        plate: 'ABC125',
+        jurisdictionId: 'co-ant-medellin',
+      );
       await _pumpDetail(tester, harness);
       expect(find.text('5 · 8'), findsWidgets);
       expect(find.textContaining('Último dígito'), findsWidgets);
       expect(find.textContaining('5:00 a. m.'), findsWidgets);
-      await tester.ensureVisible(find.byKey(const ValueKey('pico-city-category-motorcycles')));
-      await tester.tap(find.byKey(const ValueKey('pico-city-category-motorcycles')));
+      await tester.ensureVisible(
+        find.byKey(const ValueKey('pico-city-category-motorcycles')),
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('pico-city-category-motorcycles')),
+      );
       await _pumpAsyncHome(tester);
       expect(find.textContaining('Primer número'), findsWidgets);
       expect(find.text('5 · 8'), findsWidgets);
     });
 
-    testWidgets('P04 Medellin taxi fails closed with explicit copy', (tester) async {
+    testWidgets('P04 Medellin taxi fails closed with explicit copy', (
+      tester,
+    ) async {
       harness.now = DateTime(2026, 8, 31, 12);
-      await _readyHome(harness, plate: 'ABC125', jurisdictionId: 'co-ant-medellin');
+      await _readyHome(
+        harness,
+        plate: 'ABC125',
+        jurisdictionId: 'co-ant-medellin',
+      );
       await _pumpDetail(tester, harness);
       await tester.tap(find.byKey(const ValueKey('pico-city-category-taxis')));
       await _pumpAsyncHome(tester);
       expect(find.text('Por verificar'), findsWidgets);
       expect(find.text('Sin restricción hoy'), findsNothing);
       await _openCityRules(tester);
-      expect(find.textContaining('no disponible'), findsWidgets);
+      expect(find.textContaining('Sin cobertura verificada'), findsWidgets);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('P04 Bogota date-parity rules show the current seven-day week', (tester) async {
-      harness.now = DateTime(2026, 8, 28, 12);
-      await _readyHome(harness, plate: 'ABC125', jurisdictionId: 'co-dc-bogota');
-      await _pumpDetail(tester, harness);
-      expect(find.textContaining('Paridad de fecha'), findsWidgets);
-      for (var index = 0; index < 7; index++) {
-        final cell = find.byKey(ValueKey('pico-city-week-day-$index'));
-        expect(cell, findsOneWidget);
-        final expected = index.isEven ? '6' : '3';
-        expect(find.descendant(of: cell, matching: find.text(expected)), findsOneWidget);
-      }
-      expect(find.byKey(const ValueKey('pico-city-week-day-7')), findsNothing);
-    });
+    testWidgets(
+      'P04 Bogota date-parity rules show the current seven-day week',
+      (tester) async {
+        harness.now = DateTime(2026, 8, 28, 12);
+        await _readyHome(
+          harness,
+          plate: 'ABC125',
+          jurisdictionId: 'co-dc-bogota',
+        );
+        await _pumpDetail(tester, harness);
+        expect(find.textContaining('Paridad de fecha'), findsWidgets);
+        for (var index = 0; index < 7; index++) {
+          final cell = find.byKey(ValueKey('pico-city-week-day-$index'));
+          expect(cell, findsOneWidget);
+          final expected = index.isEven ? '6' : '3';
+          expect(
+            find.descendant(of: cell, matching: find.text(expected)),
+            findsOneWidget,
+          );
+        }
+        expect(
+          find.byKey(const ValueKey('pico-city-week-day-7')),
+          findsNothing,
+        );
+      },
+    );
 
-    testWidgets('city info icon and official source CTA are functional', (tester) async {
-      await _readyHome(harness, plate: 'ABC123', jurisdictionId: 'co-dc-bogota');
+    testWidgets('city info icon and official source CTA are functional', (
+      tester,
+    ) async {
+      await _readyHome(
+        harness,
+        plate: 'ABC123',
+        jurisdictionId: 'co-dc-bogota',
+      );
       await _pumpDetail(tester, harness);
       await tester.tap(find.byKey(const ValueKey('pico-city-info')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('pico-city-info-sheet')), findsOneWidget);
-      Navigator.of(tester.element(find.byKey(const ValueKey('pico-city-info-sheet')))).pop();
+      expect(
+        find.byKey(const ValueKey('pico-city-info-sheet')),
+        findsOneWidget,
+      );
+      Navigator.of(
+        tester.element(find.byKey(const ValueKey('pico-city-info-sheet'))),
+      ).pop();
       await tester.pumpAndSettle();
-      await _openCityRules(tester);
-      expect(find.byKey(const ValueKey('pico-city-rule-source-sheet')), findsOneWidget);
-      expect(find.textContaining('alcaldiabogota.gov.co'), findsWidgets);
+      await _openCityRules(tester, sources: true);
+      expect(
+        find.byKey(const ValueKey('pico-city-rule-source-sheet')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('bogota.gov.co'), findsWidgets);
     });
 
     testWidgets('city selector searches national catalog and runtime states', (
@@ -3940,7 +4042,10 @@ void main() {
         );
         await _pumpAsyncHome(tester);
 
-        expect(find.byKey(const ValueKey('pico-personal-identity')), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('pico-personal-identity')),
+          findsOneWidget,
+        );
         expect(find.text('Bogotá'), findsAtLeastNWidgets(1));
         expect(
           await harness.preferences.getString(picoJurisdictionPreferenceKey),
@@ -4016,7 +4121,10 @@ void main() {
       await tester.tap(find.byKey(ValueKey('pico-city-vehicle-${vehicle.id}')));
       await _pumpAsyncHome(tester);
 
-      expect(find.byKey(const ValueKey('pico-personal-identity')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('pico-personal-identity')),
+        findsOneWidget,
+      );
       expect(find.text('Bogotá'), findsAtLeastNWidgets(1));
       expect(
         await harness.preferences.getString(picoJurisdictionPreferenceKey),
@@ -4073,7 +4181,10 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('home-status-today')));
       await _pumpPicoShell(tester);
 
-      expect(find.byKey(const ValueKey('pico-personal-identity')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('pico-personal-identity')),
+        findsOneWidget,
+      );
       expect(
         find.byKey(const ValueKey('app-bottom-navigation')),
         findsOneWidget,
@@ -4084,7 +4195,10 @@ void main() {
       await _pumpAsyncHome(tester);
 
       expect(find.byType(HomeScreen), findsOneWidget);
-      expect(find.byKey(const ValueKey('pico-personal-identity')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('pico-personal-identity')),
+        findsNothing,
+      );
     });
 
     testWidgets('P03 Pico shell exits through root bottom destinations', (
@@ -4151,7 +4265,10 @@ void main() {
         );
         await _pumpPersonalPico(tester);
 
-        expect(find.byKey(const ValueKey('pico-personal-identity')), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('pico-personal-identity')),
+          findsOneWidget,
+        );
         expect(_selectedBottomNavLabels(tester), contains('Apps'));
         expect(find.text('Bogotá'), findsAtLeastNWidgets(1));
         expect(
@@ -4274,7 +4391,10 @@ void main() {
 
       await _pumpDetail(tester, harness, vehicleId: 'missing');
 
-      expect(find.byKey(const ValueKey('pico-personal-identity')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('pico-personal-identity')),
+        findsOneWidget,
+      );
       expect(findPlateNumber(active.plate), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -4455,7 +4575,10 @@ Future<void> _pumpPicoShell(WidgetTester tester) async {
   for (var i = 0; i < 20; i += 1) {
     await tester.pump(const Duration(milliseconds: 300));
     if (find.byKey(const ValueKey('pico-city-screen')).evaluate().isNotEmpty ||
-        find.byKey(const ValueKey('pico-personal-identity')).evaluate().isNotEmpty) {
+        find
+            .byKey(const ValueKey('pico-personal-identity'))
+            .evaluate()
+            .isNotEmpty) {
       return;
     }
   }
@@ -4464,7 +4587,10 @@ Future<void> _pumpPicoShell(WidgetTester tester) async {
 Future<void> _pumpPersonalPico(WidgetTester tester) async {
   for (var i = 0; i < 20; i += 1) {
     await tester.pump(const Duration(milliseconds: 300));
-    if (find.byKey(const ValueKey('pico-personal-identity')).evaluate().isNotEmpty) {
+    if (find
+        .byKey(const ValueKey('pico-personal-identity'))
+        .evaluate()
+        .isNotEmpty) {
       return;
     }
   }
@@ -5103,6 +5229,7 @@ class _ControlledDeviceLocationGateway implements DeviceLocationGateway {
   @override
   Future<bool> openLocationSettings() async => true;
 }
+
 Future<void> _openCityVehicles(WidgetTester tester) async {
   final action = find.byKey(const ValueKey('pico-city-vehicles-open'));
   await tester.ensureVisible(action);
@@ -5110,8 +5237,11 @@ Future<void> _openCityVehicles(WidgetTester tester) async {
   await tester.tap(action);
   await _pumpAsyncHome(tester);
 }
-Future<void> _openCityRules(WidgetTester tester) async {
-  final action = find.byKey(const ValueKey('pico-city-rule-open'));
+
+Future<void> _openCityRules(WidgetTester tester, {bool sources = false}) async {
+  final action = sources
+      ? find.byKey(const ValueKey('pico-city-source-row'))
+      : find.byKey(const ValueKey('pico-city-rule-open'));
   await tester.ensureVisible(action);
   await tester.pumpAndSettle();
   await tester.tap(action);

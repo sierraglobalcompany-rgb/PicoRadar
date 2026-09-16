@@ -1,11 +1,11 @@
 {
   "version": "1.0",
-  "timestamp": "2026-09-15",
-  "status": "paused",
+  "timestamp": "2026-09-16",
+  "status": "closed",
   "phase_name": "Estabilizacion de suite actual",
   "branch": "codex/stabilize-current-suite",
   "checkpoint": ".planning/STABILIZATION.md",
-  "implementation": "WIP paused by owner. Root consolidation preserved; focused regression 402 pass / 15 fail. Full suite, analysis and build not rerun after fixes.",
+  "implementation": "Closed current-suite stabilization. The known 87 global failures are resolved in the final automated suite. Dev release APK was built and installed on the Mi A3.",
   "completed_tasks": [
     {
       "id": 1,
@@ -24,42 +24,46 @@
     },
     {
       "id": 4,
-      "name": "Root analyze, 625 focused tests and dev release build",
+      "name": "Resolve 15 focused failures",
+      "status": "passed"
+    },
+    {
+      "id": 5,
+      "name": "Full suite, analyze, format, build and physical install",
       "status": "passed"
     }
   ],
+  "results": {
+    "focused_regression": "417 passed / 0 failed",
+    "full_suite": "2959 passed / 11 skipped / 0 failed",
+    "format": "clean",
+    "analyze": "clean",
+    "build": "flutter build apk --flavor dev --release passed",
+    "install": "adb install -r passed on 116f2191b19a"
+  },
+  "apk": {
+    "path": "C:/Users/felip/Documents/ChatGPT/PicoRadar_ Pico y Placa/artifacts/current/apk/PicoRadar-dev-release-stabilized-20260915-235843.apk",
+    "sha256": "53C7195D361F9DF984E63462EE2EB0533F14E5EF4316A7B3EBF788D4A56634C5"
+  },
   "remaining_tasks": [
     {
-      "name": "Resolve 15 focused failures: Home 8, Garage 1, Apps 1, Pico geometry 4, K7 matrix 1"
+      "name": "11 existing skipped tests remain skipped; no new skip was added for this stabilization."
     },
     {
-      "name": "Format, analyze, focused and full suite, dev build, checkpoint and accurate handoff"
+      "name": "Physical visual QA with screenshots was not executed in this stabilization checkpoint."
     },
     {
-      "name": "External cleanup and physical QA remain pending; do not resume deletion automatically"
+      "name": "External cleanup remains paused; do not delete folders outside the repo without a separate audit."
     }
   ],
   "async_jobs": [],
   "active_agents": [],
-  "next_action": "Wait for owner instruction. Then read .planning/STABILIZATION.md and stabilization-regression-tests.log.",
+  "next_action": "Use this branch as the current stable checkpoint. For new visual work, start a scoped lot and rerun its gates.",
   "consolidation_checkpoint": "ccd00bd",
-  "background_processes": "Test session 56839 completed with exit 1; no test processes left by this run.",
-  "uncommitted_files_at_pause": [
-    " M .planning/.continue-here.md",
-    " M mobile/lib/features/pico_placa/presentation/city_pico_widgets.dart",
-    " M mobile/lib/features/services/presentation/services_screen.dart",
-    " M mobile/test/app/dataset_sync_composition_test.dart",
-    " M mobile/test/app/startup/startup_gate_test.dart",
-    " M mobile/test/features/apps_launcher/presentation/apps_screen_test.dart",
-    " M mobile/test/features/garage/presentation/garage_screen_test.dart",
-    " M mobile/test/features/home/presentation/home_screen_test.dart",
-    " M mobile/test/features/pico_placa/presentation/pico_audit_presentation_test.dart",
-    " M mobile/test/features/pico_placa/presentation/pico_performance_test.dart",
-    " M mobile/test/functional_completion/k7_functional_audit_test.dart",
-    " M mobile/test/test_app_harness.dart",
-    "?? .planning/STABILIZATION.md",
-    "?? capturas/",
-    "?? mockups/",
-    "?? output/"
+  "background_processes": "No test/build session left running by this handoff.",
+  "preserved_untracked": [
+    "capturas/",
+    "mockups/",
+    "output/"
   ]
 }

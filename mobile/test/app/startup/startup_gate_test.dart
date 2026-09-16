@@ -18,11 +18,15 @@ void main() {
   late Directory walletCache;
   const pathChannel = MethodChannel('plugins.flutter.io/path_provider');
   setUp(() {
-    walletCache = Directory.systemTemp.createTempSync('picoradar-startup-test-');
+    walletCache = Directory.systemTemp.createTempSync(
+      'picoradar-startup-test-',
+    );
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(pathChannel, (call) async {
           if (call.method == 'getTemporaryDirectory') return walletCache.path;
-          throw MissingPluginException('Unexpected path lookup: ${call.method}');
+          throw MissingPluginException(
+            'Unexpected path lookup: ${call.method}',
+          );
         });
   });
   tearDown(() async {

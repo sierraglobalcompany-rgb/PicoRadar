@@ -740,13 +740,18 @@ class _BuySellScreenState extends ConsumerState<BuySellScreen> {
             'Elegir ciudad',
             'Busca y selecciona dónde quieres realizar el peritaje.',
           );
-          if (uri != null &&
-              mounted &&
-              context.mounted &&
-              !await ref
+          if (uri != null && mounted && context.mounted) {
+            var opened = false;
+            try {
+              opened = await ref
                   .read(externalLauncherProvider)
-                  .openExternal(uri.toString())) {
-            throw StateError('Maps unavailable');
+                  .openExternal(uri.toString());
+            } catch (_) {
+              opened = false;
+            }
+            if (!opened) {
+              _showSnackBar('No se pudo abrir Google Maps.');
+            }
           }
         },
         onContract: _openContractSheet,
@@ -844,9 +849,14 @@ class _BuySellScreenState extends ConsumerState<BuySellScreen> {
     if (uri == null || !mounted || !(isCurrent?.call() ?? true)) {
       return;
     }
-    final opened = await ref
-        .read(externalLauncherProvider)
-        .openExternal(uri.toString());
+    var opened = false;
+    try {
+      opened = await ref
+          .read(externalLauncherProvider)
+          .openExternal(uri.toString());
+    } catch (_) {
+      opened = false;
+    }
     if (!mounted) {
       return;
     }

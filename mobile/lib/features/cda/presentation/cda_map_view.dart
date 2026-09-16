@@ -95,6 +95,25 @@ class _CdaMapViewState extends ConsumerState<CdaMapView> {
     _groupInput = null;
   }
 
+  Future<void> _openAttribution() async {
+    var opened = false;
+    try {
+      opened = await ref
+          .read(externalLauncherProvider)
+          .openExternal('https://www.openstreetmap.org/copyright');
+    } catch (_) {
+      opened = false;
+    }
+    if (!mounted || opened) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo abrir la atribución del mapa.'),
+        ),
+      );
+  }
+
   Future<void> _requestLocation() async {
     final operation = ++_operation;
     final gateway = ref.read(deviceLocationGatewayProvider);
@@ -215,9 +234,7 @@ class _CdaMapViewState extends ConsumerState<CdaMapView> {
               backgroundColor: Colors.white.withValues(alpha: 0.86),
               minimumSize: const Size(48, 48),
             ),
-            onPressed: () => ref
-                .read(externalLauncherProvider)
-                .openExternal('https://www.openstreetmap.org/copyright'),
+            onPressed: _openAttribution,
             child: const Text('© OpenStreetMap contributors'),
           ),
         ),

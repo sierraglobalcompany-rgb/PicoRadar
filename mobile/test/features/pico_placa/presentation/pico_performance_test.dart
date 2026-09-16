@@ -91,21 +91,27 @@ void main() {
           const PicoDetailScreen(vehicleId: 'personal'),
         );
         if (showMonth) {
-          await _reveal(tester, find.byKey(const ValueKey('pico-personal-month-calendar')));
+          await _reveal(
+            tester,
+            find.byKey(const ValueKey('pico-personal-month-calendar')),
+          );
           expect(find.text('Septiembre 2026'), findsOneWidget);
         }
-        await _reveal(
-          tester,
-          find.byKey(const ValueKey('pico-summary-today')),
+        await _reveal(tester, find.byKey(const ValueKey('pico-summary-today')));
+        expect(
+          _verdict(tester),
+          '5:00 a. m. – 9:00 a. m.\n4:00 p. m. – 8:00 p. m.',
         );
-        expect(_verdict(tester), '5:00 a. m. – 9:00 a. m.\n4:00 p. m. – 8:00 p. m.');
         expect(find.text('Empieza en 1 min'), findsOneWidget);
         final reads = harness.store.ruleReads;
         final calls = harness.store.calls.length;
         expect(reads, greaterThan(0));
         expect(harness.container.exists(appClockProvider), isTrue);
         await harness.tick(tester, const Duration(minutes: 1));
-        expect(_verdict(tester), '5:00 a. m. – 9:00 a. m.\n4:00 p. m. – 8:00 p. m.');
+        expect(
+          _verdict(tester),
+          '5:00 a. m. – 9:00 a. m.\n4:00 p. m. – 8:00 p. m.',
+        );
         expect(find.text('Este tramo termina en 4 h'), findsOneWidget);
         expect(harness.store.calls.length, calls);
         expect(harness.store.ruleReads, reads);
@@ -206,7 +212,10 @@ void main() {
       ),
     );
     await _reveal(tester, find.byKey(const ValueKey('pico-summary-today')));
-    expect(_verdict(tester), '5:00 a. m. – 9:00 a. m.\n4:00 p. m. – 8:00 p. m.');
+    expect(
+      _verdict(tester),
+      '5:00 a. m. – 9:00 a. m.\n4:00 p. m. – 8:00 p. m.',
+    );
     screen.value = const PicoDetailScreen(vehicleId: 'allowed');
     await tester.pumpAndSettle();
     expect(_verdict(tester), 'Puede circular');
@@ -215,7 +224,10 @@ void main() {
       jurisdictionId: 'co-dc-bogota',
     );
     await tester.pumpAndSettle();
-    expect(_verdict(tester), '5:00 a. m. – 9:00 a. m.\n4:00 p. m. – 8:00 p. m.');
+    expect(
+      _verdict(tester),
+      '5:00 a. m. – 9:00 a. m.\n4:00 p. m. – 8:00 p. m.',
+    );
     expect(
       await harness.container.read(selectedPicoJurisdictionIdProvider.future),
       'co-ant-medellin',
@@ -228,7 +240,10 @@ void main() {
   ) async {
     final harness = PerformanceTestHarness([performanceVehicle('personal')]);
     await harness.pump(tester, const PicoDetailScreen(vehicleId: 'personal'));
-    await _reveal(tester, find.byKey(const ValueKey('pico-personal-month-calendar')));
+    await _reveal(
+      tester,
+      find.byKey(const ValueKey('pico-personal-month-calendar')),
+    );
     final septemberReads = harness.store.ruleReads;
     final next = find.byKey(const ValueKey('pico-month-next'));
     await _reveal(tester, next);
@@ -247,7 +262,8 @@ void main() {
 
 String? _verdict(WidgetTester tester) => tester
     .widget<Text>(find.byKey(const ValueKey('pico-summary-main')))
-    .data?.replaceAll('\u00a0', ' ');
+    .data
+    ?.replaceAll('\u00a0', ' ');
 
 Future<void> _reveal(WidgetTester tester, Finder target) async {
   await tester.scrollUntilVisible(

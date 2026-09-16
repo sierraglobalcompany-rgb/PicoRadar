@@ -592,22 +592,29 @@ void main() {
     },
   );
 
-  testWidgets('unknown incoming vehicle uses favorite fallback', (
-    tester,
-  ) async {
-    final vehicles = [
-      _vehicle('first', 'AAA123'),
-      _vehicle('second', 'BBB234'),
-    ];
-    await _pumpOwner(
-      tester,
-      vehicles: vehicles,
-      incoming: 'missing',
-      favorite: vehicles.last,
-    );
-    await _showVehicleTab(tester);
-    expect(find.text('2 de 2'), findsOneWidget);
-  });
+  testWidgets(
+    'unknown incoming vehicle fails closed without favorite fallback',
+    (tester) async {
+      final vehicles = [
+        _vehicle('first', 'AAA123'),
+        _vehicle('second', 'BBB234'),
+      ];
+      await _pumpOwner(
+        tester,
+        vehicles: vehicles,
+        incoming: 'missing',
+        favorite: vehicles.last,
+      );
+      expect(find.text('No encontramos ese vehículo.'), findsOneWidget);
+      expect(
+        find.text('Elige un vehículo vigente para abrir sus documentos.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('documents-go-garage')), findsOneWidget);
+      expect(find.text('2 de 2'), findsNothing);
+      expect(find.byKey(const ValueKey('wallet-unlock')), findsNothing);
+    },
+  );
 
   testWidgets(
     'vehicle sheet masks owner on lock while preserving its action ref',

@@ -1024,6 +1024,7 @@ void main() {
 
     await _openGarage(tester, harness);
     await _goTo(tester, '/apps/module/documentos?vehicleId=missing');
+    await _pumpUntil(tester, find.byKey(const ValueKey('documents-go-garage')));
 
     expect(find.byType(DocumentsScreen), findsOneWidget);
     expect(find.byKey(const ValueKey('documents-go-garage')), findsOneWidget);
@@ -1759,7 +1760,10 @@ void main() {
         findsNothing,
       );
       expect(find.byKey(const ValueKey('detail-status-pico')), findsOneWidget);
-      expect(find.byKey(const ValueKey('detail-status-pico')).hitTestable(), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('detail-status-pico')).hitTestable(),
+        findsOneWidget,
+      );
 
       final picoEntry = find.byKey(const ValueKey('detail-status-pico'));
       await tester.ensureVisible(picoEntry);
@@ -2279,7 +2283,15 @@ Future<void> _goTo(WidgetTester tester, String location) async {
     find.byKey(const ValueKey('app-bottom-navigation')),
   );
   GoRouter.of(context).go(location);
-  await tester.pumpAndSettle();
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 350));
+}
+
+Future<void> _pumpUntil(WidgetTester tester, Finder finder) async {
+  for (var i = 0; i < 20; i += 1) {
+    if (finder.evaluate().isNotEmpty) return;
+    await tester.pump(const Duration(milliseconds: 250));
+  }
 }
 
 Future<void> _focusNewestVehicle(WidgetTester tester) async {

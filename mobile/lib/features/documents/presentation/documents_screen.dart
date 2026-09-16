@@ -34,8 +34,19 @@ class DocumentsScreen extends StatelessWidget {
   const DocumentsScreen(this.vehicleId, {super.key});
   final String? vehicleId;
   @override
-  Widget build(BuildContext context) =>
-      WalletAccessGate(child: _DocumentsBody(vehicleId: vehicleId));
+  Widget build(BuildContext context) => Consumer(
+    builder: (context, ref, _) {
+      final requested = vehicleId?.trim();
+      if (requested != null && requested.isNotEmpty) {
+        final vehicles = ref.watch(vehicleListProvider);
+        final data = vehicles.asData?.value;
+        if (data != null && !data.any((vehicle) => vehicle.id == requested)) {
+          return const _MissingVehicleDocumentsPage();
+        }
+      }
+      return WalletAccessGate(child: _DocumentsBody(vehicleId: vehicleId));
+    },
+  );
 }
 
 class _DocumentsBody extends ConsumerWidget {
@@ -112,10 +123,24 @@ class _DocumentsContent extends ConsumerStatefulWidget {
 }
 
 class _DocumentsContentState extends ConsumerState<_DocumentsContent> {
-  int _tab = 0;
+  late int _tab;
   final _vehicleCarouselKey = GlobalKey();
   Object? _layoutSignature;
   bool _split = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = widget.vehicleId == null ? 0 : 1;
+  }
+
+  @override
+  void didUpdateWidget(covariant _DocumentsContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.vehicleId != widget.vehicleId && widget.vehicleId != null) {
+      _tab = 1;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -173,7 +198,13 @@ class _DocumentsContentState extends ConsumerState<_DocumentsContent> {
           _layoutSignature = signature;
           _split = personalHeight + 8 + vehicleMinimum > constraints.maxHeight;
         }
-        final initialId = items.any((v) => v.id == widget.vehicleId)
+        final explicitVehicleMissing =
+            widget.vehicleId != null &&
+            vehicles.asData != null &&
+            !items.any((v) => v.id == widget.vehicleId);
+        final initialId = explicitVehicleMissing
+            ? null
+            : items.any((v) => v.id == widget.vehicleId)
             ? widget.vehicleId
             : favorite.asData?.value?.id;
         final vehicleContent = vehicles.when(
@@ -197,6 +228,9 @@ class _DocumentsContentState extends ConsumerState<_DocumentsContent> {
                   ),
                 ],
               );
+            }
+            if (explicitVehicleMissing) {
+              return const _MissingVehicleDocumentsState();
             }
             if (initialId == null && favorite.isLoading) {
               return const DocumentsLoadState(label: 'Cargando vehículos');
@@ -245,6 +279,69 @@ class _DocumentsContentState extends ConsumerState<_DocumentsContent> {
       },
     );
   }
+}
+
+class _MissingVehicleDocumentsState extends StatelessWidget {
+  const _MissingVehicleDocumentsState();
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      const Icon(
+        Icons.directions_car_filled_outlined,
+        color: AppColors.navy,
+        size: 36,
+      ),
+      const SizedBox(height: 8),
+      const Text(
+        'No encontramos ese vehículo.',
+        style: documentsStrongStyle,
+        textAlign: TextAlign.center,
+      ),
+      const SizedBox(height: 4),
+      const Text(
+        'Elige un vehículo vigente para abrir sus documentos.',
+        style: documentsTextStyle,
+        textAlign: TextAlign.center,
+      ),
+      const SizedBox(height: 8),
+      TextButton.icon(
+        key: const ValueKey('documents-go-garage'),
+        onPressed: () => context.go(AppRoute.garage.path),
+        icon: const Icon(Icons.garage_outlined),
+        label: const Text('Ir a Garaje'),
+        style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+      ),
+    ],
+  );
+}
+
+class _MissingVehicleDocumentsPage extends StatelessWidget {
+  const _MissingVehicleDocumentsPage();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppColors.background,
+    body: SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _DocumentsHeader(
+              onProtection: () {},
+              onManage: () {},
+              onBack: () => context.canPop()
+                  ? context.pop()
+                  : context.go(AppRoute.apps.path),
+            ),
+            const Expanded(child: _MissingVehicleDocumentsState()),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _DocumentTabs extends StatelessWidget {

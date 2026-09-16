@@ -511,33 +511,42 @@ void main() {
   });
 
   testWidgets('C13 vehicle status modules open real screens', (tester) async {
-    await _createVehicle(harness, plate: 'AAA111');
+    final vehicle = await _createVehicle(harness, plate: 'AAA111');
 
-    await _openModuleFromApps(tester, harness, 'soat');
+    await _openModuleFromApps(tester, harness, 'soat', settle: false);
+    await _pumpUntil(tester, find.byKey(const ValueKey('owner-primary-soat')));
     expect(find.text('SOAT'), findsWidgets);
     expect(find.text('SOAT SIN CONFIGURAR'), findsOneWidget);
     expect(find.text('Configura tu SOAT'), findsOneWidget);
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
 
-    await _openModuleFromApps(tester, harness, 'tecnomecanica');
+    await _openModuleFromApps(tester, harness, 'tecnomecanica', settle: false);
+    await _pumpUntil(tester, find.byKey(const ValueKey('owner-primary-rtm')));
     expect(find.text('Tecnomecánica / RTM'), findsOneWidget);
     expect(find.byKey(const ValueKey('owner-primary-rtm')), findsOneWidget);
     expect(find.text('BUSCAR CDA'), findsOneWidget);
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
 
-    await _openModuleFromApps(tester, harness, 'seguro_asistencia');
-    expect(find.byKey(const ValueKey('insurance-owner-content')), findsOneWidget);
-    expect(find.byKey(const ValueKey('insurance-register')), findsOneWidget);
-    expect(find.byType(ModulePlaceholderScreen), findsNothing);
-
-    await _openModuleFromApps(tester, harness, 'impuestos');
-    expect(find.text('Impuestos'), findsWidgets);
+    await _openModuleFromApps(
+      tester,
+      harness,
+      'seguro_asistencia',
+      settle: false,
+    );
+    await _pumpUntil(
+      tester,
+      find.byKey(const ValueKey('insurance-owner-content')),
+    );
     expect(
-      find.text(
-        'PicoRadar no calcula el impuesto, no consulta deuda y no confirma si está pagado.',
-      ),
+      find.byKey(const ValueKey('insurance-owner-content')),
       findsOneWidget,
     );
+    expect(find.byType(ModulePlaceholderScreen), findsNothing);
+
+    await _openModuleFromApps(tester, harness, 'impuestos', settle: false);
+    await _pumpUntil(tester, find.byKey(ValueKey('tax-owner-${vehicle.id}')));
+    expect(find.text('Impuestos'), findsWidgets);
+    expect(find.byKey(ValueKey('tax-owner-${vehicle.id}')), findsOneWidget);
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
   });
 

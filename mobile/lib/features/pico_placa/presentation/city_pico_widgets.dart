@@ -290,8 +290,9 @@ class _CityIdentity extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.55;
     final style = AppTextStyles.display.copyWith(
-      fontSize: 28,
+      fontSize: largeText ? 24 : 28,
       color: Colors.white,
     );
     final label = _shortCityLabel(jurisdiction);
@@ -307,38 +308,82 @@ class _CityIdentity extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 48),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-            children: [
-              const Icon(
-                Icons.location_on_rounded,
-                color: Color(0xFFD9E7EF),
-                size: 24,
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      label,
-                      key: const ValueKey('pico-city-short-label'),
-                      style: style,
-                    ),
-                    Text(
-                      configured ? 'Configurada' : 'Consulta temporal',
-                      style: AppTextStyles.caption.copyWith(
-                        fontSize: 14,
-                        color: const Color(0xFFCCDEE8),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+            child: largeText
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.location_on_rounded,
+                            color: Color(0xFFD9E7EF),
+                            size: 24,
+                          ),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Ciudad de consulta',
+                              style: TextStyle(color: Color(0xFFCCDEE8)),
+                            ),
+                          ),
+                          Icon(
+                            Icons.expand_more,
+                            color: Color(0xFFCCDEE8),
+                            size: 22,
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.expand_more, color: Color(0xFFCCDEE8), size: 22),
-            ],
-            ),
+                      Text(
+                        label,
+                        key: const ValueKey('pico-city-short-label'),
+                        style: style,
+                      ),
+                      Text(
+                        configured ? 'Configurada' : 'Consulta temporal',
+                        style: AppTextStyles.caption.copyWith(
+                          fontSize: 14,
+                          color: const Color(0xFFCCDEE8),
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on_rounded,
+                        color: Color(0xFFD9E7EF),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              label,
+                              key: const ValueKey('pico-city-short-label'),
+                              style: style,
+                            ),
+                            Text(
+                              configured ? 'Configurada' : 'Consulta temporal',
+                              style: AppTextStyles.caption.copyWith(
+                                fontSize: 14,
+                                color: const Color(0xFFCCDEE8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.expand_more,
+                        color: Color(0xFFCCDEE8),
+                        size: 22,
+                      ),
+                    ],
+                  ),
           ),
         ),
       ),
@@ -390,7 +435,8 @@ class _CityIdentity extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, bounds) {
         final textWidth = _cityTextSize(context, label, style).width;
-        final inline = textWidth + 54 + 144 + 8 <= bounds.maxWidth;
+        final inline =
+            !largeText && textWidth + 54 + 144 + 8 <= bounds.maxWidth;
         if (!inline) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -760,20 +806,26 @@ class _CityWeek extends StatelessWidget {
     children: [
       LayoutBuilder(
         builder: (context, bounds) {
+          final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.55;
           final heading = Text('Esta semana', style: AppTextStyles.h2);
-          final action = TextButton(
-            onPressed: onRules,
-            style: TextButton.styleFrom(
-              minimumSize: const Size(48, 48),
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              foregroundColor: AppColors.teal,
-            ),
-            child: Text(
-              '$basis ›',
-              textAlign: TextAlign.right,
-              style: AppTextStyles.bodyStrong.copyWith(
-                fontSize: 14,
-                color: AppColors.teal,
+          final action = Semantics(
+            label: 'Ver regla y vigencia. $basis',
+            button: true,
+            excludeSemantics: true,
+            child: TextButton(
+              onPressed: onRules,
+              style: TextButton.styleFrom(
+                minimumSize: const Size(48, 48),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                foregroundColor: AppColors.teal,
+              ),
+              child: Text(
+                largeText ? 'Ver regla ›' : '$basis ›',
+                textAlign: largeText ? TextAlign.left : TextAlign.right,
+                style: AppTextStyles.bodyStrong.copyWith(
+                  fontSize: 14,
+                  color: AppColors.teal,
+                ),
               ),
             ),
           );
@@ -795,7 +847,7 @@ class _CityWeek extends StatelessWidget {
         builder: (context, bounds) {
           var minWidth = 48.0;
           final style = AppTextStyles.bodyStrong.copyWith(fontSize: 18);
-          for (final day in week.days.take(5)) {
+          for (final day in week.days) {
             final label = _cityDayText(day);
             for (final word in label.split(' ')) {
               final width = _cityTextSize(context, word, style).width + 12;
@@ -815,7 +867,7 @@ class _CityWeek extends StatelessWidget {
             spacing: 6,
             runSpacing: 6,
             children: [
-              for (var index = 0; index < 5; index++)
+              for (var index = 0; index < 7; index++)
                 SizedBox(
                   width: width,
                   child: _CityDayCell(
@@ -823,29 +875,12 @@ class _CityWeek extends StatelessWidget {
                     index: index,
                     today: _isSameDay(week.days[index].date, now),
                     showDate: showDates,
+                    weekend: index > 4,
                   ),
                 ),
             ],
           );
         },
-      ),
-      const SizedBox(height: 8),
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var index = 5; index < 7; index++) ...[
-            if (index == 6) const SizedBox(width: 6),
-            Expanded(
-              child: _CityDayCell(
-                day: week.days[index],
-                index: index,
-                today: _isSameDay(week.days[index].date, now),
-                showDate: showDates,
-                weekend: true,
-              ),
-            ),
-          ],
-        ],
       ),
     ],
   );
@@ -867,6 +902,8 @@ class _CityDayCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _statusColor(day.status);
     final value = _cityDayText(day, weekend: weekend);
+    final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.55;
+    final restricted = day.status == RestrictionDayStatus.restricted;
     return Semantics(
       label:
           '${today ? 'Hoy. ' : ''}${_shortDate(day.date)}, ${_dailyStatusText(day.status)}, $value'
@@ -908,8 +945,12 @@ class _CityDayCell extends StatelessWidget {
                   value,
                   textAlign: weekend ? TextAlign.left : TextAlign.center,
                   style: AppTextStyles.bodyStrong.copyWith(
-                    fontSize: day.status == RestrictionDayStatus.restricted
-                        ? 18
+                    fontSize: restricted
+                        ? largeText
+                              ? 14
+                              : 18
+                        : largeText
+                        ? 13
                         : 14,
                     color: color,
                   ),
