@@ -8,6 +8,7 @@ use App\Models\CameraImportRun;
 use App\Models\CameraSource;
 use App\Models\Jurisdiction;
 use App\Services\CameraImportResolutionService;
+use App\Services\CameraImportRunComparator;
 use App\Services\CameraImportService;
 use Carbon\Carbon;
 use DomainException;
@@ -77,6 +78,18 @@ class CameraImportController extends Controller
         }
 
         return view('admin.camera-imports.show', ['operator' => $request->user(), 'run' => $run->load('source'), 'items' => $items->paginate(100)->withQueryString()]);
+    }
+
+    public function compare(Request $request, CameraImportRun $run, CameraImportRun $otherRun, CameraImportRunComparator $comparator)
+    {
+        Gate::authorize('camera_imports.view');
+        try {
+            $comparison = $comparator->compare($run, $otherRun);
+        } catch (DomainException $exception) {
+            abort(422, $exception->getMessage());
+        }
+
+        return view('admin.camera-imports.compare', ['operator' => $request->user(), 'run' => $run, 'otherRun' => $otherRun, 'comparison' => $comparison]);
     }
 
     public function analyze(Request $request, CameraImportRun $run, CameraImportService $imports): RedirectResponse

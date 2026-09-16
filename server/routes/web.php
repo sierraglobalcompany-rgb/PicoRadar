@@ -37,6 +37,7 @@ Route::middleware(['auth', EnsureActiveOperator::class, SecurityHeaders::class])
     Route::get('/admin/camera-imports/create', [CameraImportController::class, 'create'])->name('admin.camera-imports.create');
     Route::post('/admin/camera-imports', [CameraImportController::class, 'store'])->name('admin.camera-imports.store');
     Route::get('/admin/camera-imports/{run}', [CameraImportController::class, 'show'])->name('admin.camera-imports.show');
+    Route::get('/admin/camera-imports/{run}/compare/{otherRun}', [CameraImportController::class, 'compare'])->name('admin.camera-imports.compare');
     Route::post('/admin/camera-imports/{run}/analyze', [CameraImportController::class, 'analyze'])->name('admin.camera-imports.analyze');
     Route::post('/admin/camera-imports/{run}/apply', [CameraImportController::class, 'apply'])->name('admin.camera-imports.apply');
     Route::post('/admin/camera-imports/{run}/items/{item}/skip', [CameraImportController::class, 'skip'])->name('admin.camera-imports.items.skip');
