@@ -8,8 +8,10 @@ import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.
 import 'package:picoradar/features/visual_assets/presentation/visual_asset_widgets.dart';
 
 import '../../../performance_test_harness.dart';
+import '../../../plate_test_fonts.dart';
 
 void main() {
+  setUpAll(loadPlateTestFonts);
   for (final count in [0, 3, 20]) {
     testWidgets(
       'PERF Home $count profiles deduplicate and invalidate without retaining old requests',

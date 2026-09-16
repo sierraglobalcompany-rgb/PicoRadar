@@ -14,31 +14,18 @@ Future<Set<String>> loadGarageFavoriteVehicleIds(
   if (raw == null || raw.trim().isEmpty) {
     return {};
   }
-  final decoded = jsonDecode(raw);
+  final Object? decoded;
+  try {
+    decoded = jsonDecode(raw);
+  } on FormatException {
+    // Corrupt legacy data cannot nominate a favorite; storage errors propagate.
+    return {};
+  }
   if (decoded is! List) {
     return {};
   }
   return decoded.whereType<String>().toSet();
 }
-
-Future<void> saveGarageFavoriteVehicleIds(
-  AppPreferences preferences,
-  Set<String> vehicleIds,
-) {
-  final sorted = vehicleIds.toList()..sort();
-  return preferences.setString(
-    garageFavoriteVehicleIdsPreferenceKey,
-    jsonEncode(sorted),
-  );
-}
-
-Future<Set<String>> toggleGarageFavoriteVehicleId(
-  AppPreferences preferences,
-  String vehicleId,
-) => serializeGarageFavoriteMutation(
-  preferences,
-  () => _toggleGarageFavoriteVehicleId(preferences, vehicleId),
-);
 
 Future<T> serializeGarageFavoriteMutation<T>(
   AppPreferences preferences,
@@ -52,17 +39,4 @@ Future<T> serializeGarageFavoriteMutation<T>(
   );
   _favoriteUpdates[preferences] = update;
   return update;
-}
-
-Future<Set<String>> _toggleGarageFavoriteVehicleId(
-  AppPreferences preferences,
-  String vehicleId,
-) async {
-  final current = await loadGarageFavoriteVehicleIds(preferences);
-  final next = {...current};
-  if (!next.add(vehicleId)) {
-    next.remove(vehicleId);
-  }
-  await saveGarageFavoriteVehicleIds(preferences, next);
-  return next;
 }

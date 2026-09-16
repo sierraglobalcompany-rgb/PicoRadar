@@ -99,6 +99,20 @@ void main() {
     }
   }
 
+  testWidgets('explicit vehicle remains usable when favorite lookup fails', (
+    tester,
+  ) async {
+    final vehicle = _vehicle();
+    await _pumpScreen(
+      tester,
+      vehicles: [vehicle],
+      vehicleId: vehicle.id,
+      activeLoader: () async => throw StateError('Favorite unavailable'),
+    );
+    expect(find.byKey(const ValueKey('defense-create-case')), findsOneWidget);
+    expect(find.text(vehicle.plate), findsOneWidget);
+  });
+
   testWidgets('requires a vehicle before exposing case actions', (
     tester,
   ) async {
@@ -106,6 +120,40 @@ void main() {
 
     expect(find.byKey(const ValueKey('defense-no-vehicle')), findsOneWidget);
     expect(find.byKey(const ValueKey('defense-create-case')), findsNothing);
+  });
+
+  testWidgets('favorite change does not reassign an open defense form', (
+    tester,
+  ) async {
+    final first = _vehicle();
+    final second = _vehicle(id: 'vehicle-b', plate: 'BBB222');
+    var favorite = first;
+    await _pumpScreen(
+      tester,
+      vehicles: [first, second],
+      activeLoader: () async => favorite,
+    );
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(DefenseScreen)),
+    );
+    await tester.tap(find.byKey(const ValueKey('defense-create-case')));
+    await _pumpDialog(tester);
+    await _fillForm(
+      tester,
+      authority: 'Secretaria de Movilidad',
+      incidentDate: '2026-09-01',
+      facts: 'Hechos del primer vehiculo.',
+    );
+    favorite = second;
+    container.invalidate(activeVehicleProvider);
+    await _pumpDialog(tester);
+    await tester.tap(find.byKey(const ValueKey('defense-form-save')));
+    await _pumpAsyncUi(tester);
+    expect(
+      (await _store.listForVehicle(first.id)).single.facts,
+      'Hechos del primer vehiculo.',
+    );
+    expect(await _store.listForVehicle(second.id), isEmpty);
   });
 
   testWidgets('creates and lists a local defense case', (tester) async {
@@ -458,6 +506,8 @@ Future<void> _pumpScreen(
   WidgetTester tester, {
   List<VehicleProfile> vehicles = const [],
   VehicleProfile? active,
+  String? vehicleId,
+  Future<VehicleProfile?> Function()? activeLoader,
   DefenseCaseStore? store,
   ExternalLauncher? launcher,
   Size size = const Size(390, 844),
@@ -472,7 +522,9 @@ Future<void> _pumpScreen(
     ProviderScope(
       overrides: [
         vehicleListProvider.overrideWith((ref) async => vehicles),
-        activeVehicleProvider.overrideWith((ref) async => active),
+        activeVehicleProvider.overrideWith(
+          (ref) async => activeLoader == null ? active : await activeLoader(),
+        ),
         defenseCaseStoreProvider.overrideWithValue(store ?? _store),
         externalLauncherProvider.overrideWithValue(
           launcher ?? _FakeExternalLauncher(),
@@ -485,7 +537,7 @@ Future<void> _pumpScreen(
               .copyWith(textScaler: TextScaler.linear(textScale)),
           child: child!,
         ),
-        home: const DefenseScreen(),
+        home: DefenseScreen(vehicleId: vehicleId),
       ),
     ),
   );

@@ -66,6 +66,6 @@ class _CountedTitleVehicle extends VehicleProfile {
   @override
   String? get nickname {
     titleReads++;
-    return 'A complete vehicle title that needs several lines';
+    return 'Z: complete vehicle title that needs several lines';
   }
 }

@@ -12,6 +12,8 @@ import '../../../core/database/app_database.dart';
 import '../../comparendos/presentation/comparendos_screen.dart';
 import '../../driving/data/camera_pack_loader.dart';
 import '../../defense/application/defense_case_providers.dart';
+import '../../documents/application/wallet_providers.dart';
+import '../../documents/data/wallet_models.dart';
 import '../../documents/presentation/documents_screen.dart';
 import '../../pico_placa/data/pico_preferences.dart';
 import '../../trip/application/trip_services.dart';
@@ -160,9 +162,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         onPressed: () => _runAction(
                           key: 'documents',
                           successMessage: 'Temporales del visor purgados.',
-                          action: () => ref
-                              .read(privateVehicleDocumentStoreProvider)
-                              .purgeViewerCache(),
+                          action: () =>
+                              ref.read(walletStoreProvider).purgeViewerCache(),
                         ),
                       ),
                       const SizedBox(height: AppSpacing.s),
@@ -189,8 +190,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         destructive: true,
                         busy: _busyActionKey == 'vehicle-private-data',
                         icon: Icons.no_encryption_gmailerrorred_outlined,
-                        label:
-                            'Borrar archivos y expedientes del vehículo activo',
+                        label: 'Borrar archivos y expedientes del vehículo favorito',
                         onPressed: _deleteActiveVehiclePrivateData,
                       ),
                     ],
@@ -259,8 +259,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _deleteComparendosNote() async {
     final confirmed = await _confirmDestructiveAction(
       title: 'Borrar nota de Comparendos',
-      message:
-          'La nota local del vehículo activo se eliminará de este dispositivo.',
+      message: 'La nota local del vehículo favorito se eliminará de este dispositivo.',
     );
     if (!confirmed || !mounted) {
       return;
@@ -270,13 +269,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     await _runAction(
       key: 'comparendos',
-      successMessage: 'Nota de Comparendos eliminada del vehículo activo.',
+      successMessage: 'Nota de Comparendos eliminada del vehículo favorito.',
       action: () async {
         final activeVehicle = await activeVehicleFuture;
         final vehicleId = activeVehicle?.id.trim();
         if (vehicleId == null || vehicleId.isEmpty) {
           throw const _SettingsActionMessage(
-            'No hay vehículo activo para limpiar.',
+            'No hay vehículo favorito para limpiar.',
           );
         }
         await preferences.remove('comparendos.last_checked.$vehicleId');
@@ -303,25 +302,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _deleteActiveVehiclePrivateData() async {
     final confirmed = await _confirmDestructiveAction(
-      title: 'Borrar archivos y expedientes del vehículo activo',
-      message: 'Se eliminarán documentos cifrados, temporales del visor, expedientes de Defensa, borrador de Peritajes y nota de Comparendos del vehículo activo. No se borrará el vehículo, mantenimiento ni obligaciones.',
+      title: 'Borrar archivos y expedientes del vehículo favorito',
+      message: 'Se eliminarán documentos cifrados, temporales del visor, expedientes de Defensa, borrador de Peritajes y nota de Comparendos del vehículo favorito. No se borrará el vehículo, mantenimiento ni obligaciones.',
     );
     if (!confirmed || !mounted) {
       return;
     }
     final activeVehicleFuture = ref.read(activeVehicleProvider.future);
     final cleaner = ref.read(vehicleAssociatedDataCleanerProvider);
+    final session = ref.read(walletSessionProvider);
     final providerContainer = ProviderScope.containerOf(context, listen: false);
 
     await _runAction(
       key: 'vehicle-private-data',
-      successMessage: 'Archivos y expedientes del vehículo activo eliminados.',
+      successMessage:
+          'Archivos y expedientes del vehículo favorito eliminados.',
       action: () async {
         final activeVehicle = await activeVehicleFuture;
         final vehicleId = activeVehicle?.id.trim();
         if (vehicleId == null || vehicleId.isEmpty) {
           throw const _SettingsActionMessage(
-            'No hay vehículo activo para limpiar.',
+            'No hay vehículo favorito para limpiar.',
           );
         }
         final vehicleDocumentList = vehicleDocumentsProvider(vehicleId);
@@ -330,13 +331,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             privateVehicleDocumentProvider((vehicleId, type)),
         ];
         final defenseCases = defenseCasesProvider(vehicleId);
-        await cleaner.deleteForVehicle(vehicleId);
-        providerContainer.invalidate(comparendosLastCheckedProvider(vehicleId));
-        providerContainer.invalidate(vehicleDocumentList);
-        for (final provider in privateVehicleDocuments) {
-          providerContainer.invalidate(provider);
+        if (!mounted) return;
+        session.lock();
+        try {
+          if (!await session.initialize() ||
+              !mounted ||
+              !await session.unlock() ||
+              !mounted) {
+            throw _SettingsActionMessage(
+              session.failureMessage ?? 'No se pudo autorizar la eliminacion.',
+            );
+          }
+          final epoch = session.epoch;
+          await cleaner.deletePrivateDataForVehicle(
+            vehicleId,
+            isAuthorized: () => session.isAuthorizedEpoch(epoch),
+          );
+          providerContainer.invalidate(
+            walletDocumentsProvider(WalletOwner.vehicle(vehicleId)),
+          );
+          providerContainer.invalidate(
+            comparendosLastCheckedProvider(vehicleId),
+          );
+          providerContainer.invalidate(vehicleDocumentList);
+          for (final provider in privateVehicleDocuments) {
+            providerContainer.invalidate(provider);
+          }
+          providerContainer.invalidate(defenseCases);
+        } finally {
+          session.lock();
         }
-        providerContainer.invalidate(defenseCases);
       },
     );
   }

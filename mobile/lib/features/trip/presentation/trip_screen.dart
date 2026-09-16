@@ -139,7 +139,10 @@ class _TripScreenState extends ConsumerState<TripScreen>
 
   @override
   Widget build(BuildContext context) {
-    final activeVehicle = ref.watch(activeVehicleProvider);
+    final activeVehicle =
+        _selectedVehicleId != null || _restoredVehicleId != null
+        ? const AsyncValue<VehicleProfile?>.data(null)
+        : ref.watch(activeVehicleProvider);
     final vehicles = ref.watch(vehicleListProvider);
     final municipalities = ref.watch(tripMunicipalityCatalogProvider);
 
@@ -169,7 +172,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
                 ),
                 loading: () => const _LoadingPane(),
                 error: (error, stackTrace) => const _ErrorPane(
-                  message: 'No pudimos cargar el vehículo activo.',
+                  message: 'No pudimos cargar el vehículo favorito.',
                 ),
               ),
       ),
@@ -499,6 +502,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
     }
     for (final vehicle in vehicles) {
       if (vehicle.id == activeVehicle.id) {
+        _selectedVehicleId = vehicle.id;
         return vehicle;
       }
     }

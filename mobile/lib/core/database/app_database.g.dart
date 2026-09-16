@@ -3602,6 +3602,1282 @@ class RestrictionCoveragesCompanion
   }
 }
 
+class $DriverProfilesTable extends DriverProfiles
+    with TableInfo<$DriverProfilesTable, DriverProfile> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DriverProfilesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _slotMeta = const VerificationMeta('slot');
+  @override
+  late final GeneratedColumn<int> slot = GeneratedColumn<int>(
+    'slot',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways('UNIQUE'),
+  );
+  static const VerificationMeta _encryptedMetadataMeta = const VerificationMeta(
+    'encryptedMetadata',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> encryptedMetadata =
+      GeneratedColumn<Uint8List>(
+        'encrypted_metadata',
+        aliasedName,
+        false,
+        type: DriftSqlType.blob,
+        requiredDuringInsert: true,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [id, slot, encryptedMetadata];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'driver_profiles';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DriverProfile> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('slot')) {
+      context.handle(
+        _slotMeta,
+        slot.isAcceptableOrUnknown(data['slot']!, _slotMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_slotMeta);
+    }
+    if (data.containsKey('encrypted_metadata')) {
+      context.handle(
+        _encryptedMetadataMeta,
+        encryptedMetadata.isAcceptableOrUnknown(
+          data['encrypted_metadata']!,
+          _encryptedMetadataMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_encryptedMetadataMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DriverProfile map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DriverProfile(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      slot: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}slot'],
+      )!,
+      encryptedMetadata: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}encrypted_metadata'],
+      )!,
+    );
+  }
+
+  @override
+  $DriverProfilesTable createAlias(String alias) {
+    return $DriverProfilesTable(attachedDatabase, alias);
+  }
+}
+
+class DriverProfile extends DataClass implements Insertable<DriverProfile> {
+  final String id;
+  final int slot;
+  final Uint8List encryptedMetadata;
+  const DriverProfile({
+    required this.id,
+    required this.slot,
+    required this.encryptedMetadata,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['slot'] = Variable<int>(slot);
+    map['encrypted_metadata'] = Variable<Uint8List>(encryptedMetadata);
+    return map;
+  }
+
+  DriverProfilesCompanion toCompanion(bool nullToAbsent) {
+    return DriverProfilesCompanion(
+      id: Value(id),
+      slot: Value(slot),
+      encryptedMetadata: Value(encryptedMetadata),
+    );
+  }
+
+  factory DriverProfile.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DriverProfile(
+      id: serializer.fromJson<String>(json['id']),
+      slot: serializer.fromJson<int>(json['slot']),
+      encryptedMetadata: serializer.fromJson<Uint8List>(
+        json['encryptedMetadata'],
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'slot': serializer.toJson<int>(slot),
+      'encryptedMetadata': serializer.toJson<Uint8List>(encryptedMetadata),
+    };
+  }
+
+  DriverProfile copyWith({
+    String? id,
+    int? slot,
+    Uint8List? encryptedMetadata,
+  }) => DriverProfile(
+    id: id ?? this.id,
+    slot: slot ?? this.slot,
+    encryptedMetadata: encryptedMetadata ?? this.encryptedMetadata,
+  );
+  DriverProfile copyWithCompanion(DriverProfilesCompanion data) {
+    return DriverProfile(
+      id: data.id.present ? data.id.value : this.id,
+      slot: data.slot.present ? data.slot.value : this.slot,
+      encryptedMetadata: data.encryptedMetadata.present
+          ? data.encryptedMetadata.value
+          : this.encryptedMetadata,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DriverProfile(')
+          ..write('id: $id, ')
+          ..write('slot: $slot, ')
+          ..write('encryptedMetadata: $encryptedMetadata')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, slot, $driftBlobEquality.hash(encryptedMetadata));
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DriverProfile &&
+          other.id == this.id &&
+          other.slot == this.slot &&
+          $driftBlobEquality.equals(
+            other.encryptedMetadata,
+            this.encryptedMetadata,
+          ));
+}
+
+class DriverProfilesCompanion extends UpdateCompanion<DriverProfile> {
+  final Value<String> id;
+  final Value<int> slot;
+  final Value<Uint8List> encryptedMetadata;
+  final Value<int> rowid;
+  const DriverProfilesCompanion({
+    this.id = const Value.absent(),
+    this.slot = const Value.absent(),
+    this.encryptedMetadata = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DriverProfilesCompanion.insert({
+    required String id,
+    required int slot,
+    required Uint8List encryptedMetadata,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       slot = Value(slot),
+       encryptedMetadata = Value(encryptedMetadata);
+  static Insertable<DriverProfile> custom({
+    Expression<String>? id,
+    Expression<int>? slot,
+    Expression<Uint8List>? encryptedMetadata,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (slot != null) 'slot': slot,
+      if (encryptedMetadata != null) 'encrypted_metadata': encryptedMetadata,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DriverProfilesCompanion copyWith({
+    Value<String>? id,
+    Value<int>? slot,
+    Value<Uint8List>? encryptedMetadata,
+    Value<int>? rowid,
+  }) {
+    return DriverProfilesCompanion(
+      id: id ?? this.id,
+      slot: slot ?? this.slot,
+      encryptedMetadata: encryptedMetadata ?? this.encryptedMetadata,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (slot.present) {
+      map['slot'] = Variable<int>(slot.value);
+    }
+    if (encryptedMetadata.present) {
+      map['encrypted_metadata'] = Variable<Uint8List>(encryptedMetadata.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DriverProfilesCompanion(')
+          ..write('id: $id, ')
+          ..write('slot: $slot, ')
+          ..write('encryptedMetadata: $encryptedMetadata, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $WalletPreparationsTable extends WalletPreparations
+    with TableInfo<$WalletPreparationsTable, WalletPreparation> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WalletPreparationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _encryptedMetadataMeta = const VerificationMeta(
+    'encryptedMetadata',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> encryptedMetadata =
+      GeneratedColumn<Uint8List>(
+        'encrypted_metadata',
+        aliasedName,
+        false,
+        type: DriftSqlType.blob,
+        requiredDuringInsert: true,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [id, encryptedMetadata];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'wallet_preparations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WalletPreparation> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('encrypted_metadata')) {
+      context.handle(
+        _encryptedMetadataMeta,
+        encryptedMetadata.isAcceptableOrUnknown(
+          data['encrypted_metadata']!,
+          _encryptedMetadataMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_encryptedMetadataMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  WalletPreparation map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WalletPreparation(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      encryptedMetadata: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}encrypted_metadata'],
+      )!,
+    );
+  }
+
+  @override
+  $WalletPreparationsTable createAlias(String alias) {
+    return $WalletPreparationsTable(attachedDatabase, alias);
+  }
+}
+
+class WalletPreparation extends DataClass
+    implements Insertable<WalletPreparation> {
+  final String id;
+  final Uint8List encryptedMetadata;
+  const WalletPreparation({required this.id, required this.encryptedMetadata});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['encrypted_metadata'] = Variable<Uint8List>(encryptedMetadata);
+    return map;
+  }
+
+  WalletPreparationsCompanion toCompanion(bool nullToAbsent) {
+    return WalletPreparationsCompanion(
+      id: Value(id),
+      encryptedMetadata: Value(encryptedMetadata),
+    );
+  }
+
+  factory WalletPreparation.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WalletPreparation(
+      id: serializer.fromJson<String>(json['id']),
+      encryptedMetadata: serializer.fromJson<Uint8List>(
+        json['encryptedMetadata'],
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'encryptedMetadata': serializer.toJson<Uint8List>(encryptedMetadata),
+    };
+  }
+
+  WalletPreparation copyWith({String? id, Uint8List? encryptedMetadata}) =>
+      WalletPreparation(
+        id: id ?? this.id,
+        encryptedMetadata: encryptedMetadata ?? this.encryptedMetadata,
+      );
+  WalletPreparation copyWithCompanion(WalletPreparationsCompanion data) {
+    return WalletPreparation(
+      id: data.id.present ? data.id.value : this.id,
+      encryptedMetadata: data.encryptedMetadata.present
+          ? data.encryptedMetadata.value
+          : this.encryptedMetadata,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WalletPreparation(')
+          ..write('id: $id, ')
+          ..write('encryptedMetadata: $encryptedMetadata')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, $driftBlobEquality.hash(encryptedMetadata));
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WalletPreparation &&
+          other.id == this.id &&
+          $driftBlobEquality.equals(
+            other.encryptedMetadata,
+            this.encryptedMetadata,
+          ));
+}
+
+class WalletPreparationsCompanion extends UpdateCompanion<WalletPreparation> {
+  final Value<String> id;
+  final Value<Uint8List> encryptedMetadata;
+  final Value<int> rowid;
+  const WalletPreparationsCompanion({
+    this.id = const Value.absent(),
+    this.encryptedMetadata = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  WalletPreparationsCompanion.insert({
+    required String id,
+    required Uint8List encryptedMetadata,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       encryptedMetadata = Value(encryptedMetadata);
+  static Insertable<WalletPreparation> custom({
+    Expression<String>? id,
+    Expression<Uint8List>? encryptedMetadata,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (encryptedMetadata != null) 'encrypted_metadata': encryptedMetadata,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  WalletPreparationsCompanion copyWith({
+    Value<String>? id,
+    Value<Uint8List>? encryptedMetadata,
+    Value<int>? rowid,
+  }) {
+    return WalletPreparationsCompanion(
+      id: id ?? this.id,
+      encryptedMetadata: encryptedMetadata ?? this.encryptedMetadata,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (encryptedMetadata.present) {
+      map['encrypted_metadata'] = Variable<Uint8List>(encryptedMetadata.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WalletPreparationsCompanion(')
+          ..write('id: $id, ')
+          ..write('encryptedMetadata: $encryptedMetadata, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PrivateDocumentsTable extends PrivateDocuments
+    with TableInfo<$PrivateDocumentsTable, PrivateDocument> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PrivateDocumentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _driverIdMeta = const VerificationMeta(
+    'driverId',
+  );
+  @override
+  late final GeneratedColumn<String> driverId = GeneratedColumn<String>(
+    'driver_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES driver_profiles (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _vehicleIdMeta = const VerificationMeta(
+    'vehicleId',
+  );
+  @override
+  late final GeneratedColumn<String> vehicleId = GeneratedColumn<String>(
+    'vehicle_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES vehicles (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _preparationIdMeta = const VerificationMeta(
+    'preparationId',
+  );
+  @override
+  late final GeneratedColumn<String> preparationId = GeneratedColumn<String>(
+    'preparation_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES wallet_preparations (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 32,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _encryptedMetadataMeta = const VerificationMeta(
+    'encryptedMetadata',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> encryptedMetadata =
+      GeneratedColumn<Uint8List>(
+        'encrypted_metadata',
+        aliasedName,
+        false,
+        type: DriftSqlType.blob,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _importedAtMeta = const VerificationMeta(
+    'importedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> importedAt = GeneratedColumn<DateTime>(
+    'imported_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    driverId,
+    vehicleId,
+    preparationId,
+    type,
+    encryptedMetadata,
+    importedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'private_documents';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PrivateDocument> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('driver_id')) {
+      context.handle(
+        _driverIdMeta,
+        driverId.isAcceptableOrUnknown(data['driver_id']!, _driverIdMeta),
+      );
+    }
+    if (data.containsKey('vehicle_id')) {
+      context.handle(
+        _vehicleIdMeta,
+        vehicleId.isAcceptableOrUnknown(data['vehicle_id']!, _vehicleIdMeta),
+      );
+    }
+    if (data.containsKey('preparation_id')) {
+      context.handle(
+        _preparationIdMeta,
+        preparationId.isAcceptableOrUnknown(
+          data['preparation_id']!,
+          _preparationIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('encrypted_metadata')) {
+      context.handle(
+        _encryptedMetadataMeta,
+        encryptedMetadata.isAcceptableOrUnknown(
+          data['encrypted_metadata']!,
+          _encryptedMetadataMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_encryptedMetadataMeta);
+    }
+    if (data.containsKey('imported_at')) {
+      context.handle(
+        _importedAtMeta,
+        importedAt.isAcceptableOrUnknown(data['imported_at']!, _importedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PrivateDocument map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PrivateDocument(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      driverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}driver_id'],
+      ),
+      vehicleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}vehicle_id'],
+      ),
+      preparationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}preparation_id'],
+      ),
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      encryptedMetadata: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}encrypted_metadata'],
+      )!,
+      importedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}imported_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PrivateDocumentsTable createAlias(String alias) {
+    return $PrivateDocumentsTable(attachedDatabase, alias);
+  }
+}
+
+class PrivateDocument extends DataClass implements Insertable<PrivateDocument> {
+  final String id;
+  final String? driverId;
+  final String? vehicleId;
+  final String? preparationId;
+  final String type;
+  final Uint8List encryptedMetadata;
+  final DateTime importedAt;
+  const PrivateDocument({
+    required this.id,
+    this.driverId,
+    this.vehicleId,
+    this.preparationId,
+    required this.type,
+    required this.encryptedMetadata,
+    required this.importedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || driverId != null) {
+      map['driver_id'] = Variable<String>(driverId);
+    }
+    if (!nullToAbsent || vehicleId != null) {
+      map['vehicle_id'] = Variable<String>(vehicleId);
+    }
+    if (!nullToAbsent || preparationId != null) {
+      map['preparation_id'] = Variable<String>(preparationId);
+    }
+    map['type'] = Variable<String>(type);
+    map['encrypted_metadata'] = Variable<Uint8List>(encryptedMetadata);
+    map['imported_at'] = Variable<DateTime>(importedAt);
+    return map;
+  }
+
+  PrivateDocumentsCompanion toCompanion(bool nullToAbsent) {
+    return PrivateDocumentsCompanion(
+      id: Value(id),
+      driverId: driverId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(driverId),
+      vehicleId: vehicleId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(vehicleId),
+      preparationId: preparationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(preparationId),
+      type: Value(type),
+      encryptedMetadata: Value(encryptedMetadata),
+      importedAt: Value(importedAt),
+    );
+  }
+
+  factory PrivateDocument.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PrivateDocument(
+      id: serializer.fromJson<String>(json['id']),
+      driverId: serializer.fromJson<String?>(json['driverId']),
+      vehicleId: serializer.fromJson<String?>(json['vehicleId']),
+      preparationId: serializer.fromJson<String?>(json['preparationId']),
+      type: serializer.fromJson<String>(json['type']),
+      encryptedMetadata: serializer.fromJson<Uint8List>(
+        json['encryptedMetadata'],
+      ),
+      importedAt: serializer.fromJson<DateTime>(json['importedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'driverId': serializer.toJson<String?>(driverId),
+      'vehicleId': serializer.toJson<String?>(vehicleId),
+      'preparationId': serializer.toJson<String?>(preparationId),
+      'type': serializer.toJson<String>(type),
+      'encryptedMetadata': serializer.toJson<Uint8List>(encryptedMetadata),
+      'importedAt': serializer.toJson<DateTime>(importedAt),
+    };
+  }
+
+  PrivateDocument copyWith({
+    String? id,
+    Value<String?> driverId = const Value.absent(),
+    Value<String?> vehicleId = const Value.absent(),
+    Value<String?> preparationId = const Value.absent(),
+    String? type,
+    Uint8List? encryptedMetadata,
+    DateTime? importedAt,
+  }) => PrivateDocument(
+    id: id ?? this.id,
+    driverId: driverId.present ? driverId.value : this.driverId,
+    vehicleId: vehicleId.present ? vehicleId.value : this.vehicleId,
+    preparationId: preparationId.present
+        ? preparationId.value
+        : this.preparationId,
+    type: type ?? this.type,
+    encryptedMetadata: encryptedMetadata ?? this.encryptedMetadata,
+    importedAt: importedAt ?? this.importedAt,
+  );
+  PrivateDocument copyWithCompanion(PrivateDocumentsCompanion data) {
+    return PrivateDocument(
+      id: data.id.present ? data.id.value : this.id,
+      driverId: data.driverId.present ? data.driverId.value : this.driverId,
+      vehicleId: data.vehicleId.present ? data.vehicleId.value : this.vehicleId,
+      preparationId: data.preparationId.present
+          ? data.preparationId.value
+          : this.preparationId,
+      type: data.type.present ? data.type.value : this.type,
+      encryptedMetadata: data.encryptedMetadata.present
+          ? data.encryptedMetadata.value
+          : this.encryptedMetadata,
+      importedAt: data.importedAt.present
+          ? data.importedAt.value
+          : this.importedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrivateDocument(')
+          ..write('id: $id, ')
+          ..write('driverId: $driverId, ')
+          ..write('vehicleId: $vehicleId, ')
+          ..write('preparationId: $preparationId, ')
+          ..write('type: $type, ')
+          ..write('encryptedMetadata: $encryptedMetadata, ')
+          ..write('importedAt: $importedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    driverId,
+    vehicleId,
+    preparationId,
+    type,
+    $driftBlobEquality.hash(encryptedMetadata),
+    importedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PrivateDocument &&
+          other.id == this.id &&
+          other.driverId == this.driverId &&
+          other.vehicleId == this.vehicleId &&
+          other.preparationId == this.preparationId &&
+          other.type == this.type &&
+          $driftBlobEquality.equals(
+            other.encryptedMetadata,
+            this.encryptedMetadata,
+          ) &&
+          other.importedAt == this.importedAt);
+}
+
+class PrivateDocumentsCompanion extends UpdateCompanion<PrivateDocument> {
+  final Value<String> id;
+  final Value<String?> driverId;
+  final Value<String?> vehicleId;
+  final Value<String?> preparationId;
+  final Value<String> type;
+  final Value<Uint8List> encryptedMetadata;
+  final Value<DateTime> importedAt;
+  final Value<int> rowid;
+  const PrivateDocumentsCompanion({
+    this.id = const Value.absent(),
+    this.driverId = const Value.absent(),
+    this.vehicleId = const Value.absent(),
+    this.preparationId = const Value.absent(),
+    this.type = const Value.absent(),
+    this.encryptedMetadata = const Value.absent(),
+    this.importedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PrivateDocumentsCompanion.insert({
+    required String id,
+    this.driverId = const Value.absent(),
+    this.vehicleId = const Value.absent(),
+    this.preparationId = const Value.absent(),
+    required String type,
+    required Uint8List encryptedMetadata,
+    this.importedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       type = Value(type),
+       encryptedMetadata = Value(encryptedMetadata);
+  static Insertable<PrivateDocument> custom({
+    Expression<String>? id,
+    Expression<String>? driverId,
+    Expression<String>? vehicleId,
+    Expression<String>? preparationId,
+    Expression<String>? type,
+    Expression<Uint8List>? encryptedMetadata,
+    Expression<DateTime>? importedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (driverId != null) 'driver_id': driverId,
+      if (vehicleId != null) 'vehicle_id': vehicleId,
+      if (preparationId != null) 'preparation_id': preparationId,
+      if (type != null) 'type': type,
+      if (encryptedMetadata != null) 'encrypted_metadata': encryptedMetadata,
+      if (importedAt != null) 'imported_at': importedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PrivateDocumentsCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? driverId,
+    Value<String?>? vehicleId,
+    Value<String?>? preparationId,
+    Value<String>? type,
+    Value<Uint8List>? encryptedMetadata,
+    Value<DateTime>? importedAt,
+    Value<int>? rowid,
+  }) {
+    return PrivateDocumentsCompanion(
+      id: id ?? this.id,
+      driverId: driverId ?? this.driverId,
+      vehicleId: vehicleId ?? this.vehicleId,
+      preparationId: preparationId ?? this.preparationId,
+      type: type ?? this.type,
+      encryptedMetadata: encryptedMetadata ?? this.encryptedMetadata,
+      importedAt: importedAt ?? this.importedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (driverId.present) {
+      map['driver_id'] = Variable<String>(driverId.value);
+    }
+    if (vehicleId.present) {
+      map['vehicle_id'] = Variable<String>(vehicleId.value);
+    }
+    if (preparationId.present) {
+      map['preparation_id'] = Variable<String>(preparationId.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (encryptedMetadata.present) {
+      map['encrypted_metadata'] = Variable<Uint8List>(encryptedMetadata.value);
+    }
+    if (importedAt.present) {
+      map['imported_at'] = Variable<DateTime>(importedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrivateDocumentsCompanion(')
+          ..write('id: $id, ')
+          ..write('driverId: $driverId, ')
+          ..write('vehicleId: $vehicleId, ')
+          ..write('preparationId: $preparationId, ')
+          ..write('type: $type, ')
+          ..write('encryptedMetadata: $encryptedMetadata, ')
+          ..write('importedAt: $importedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $WalletMigrationsTable extends WalletMigrations
+    with TableInfo<$WalletMigrationsTable, WalletMigration> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WalletMigrationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _encryptedMetadataMeta = const VerificationMeta(
+    'encryptedMetadata',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> encryptedMetadata =
+      GeneratedColumn<Uint8List>(
+        'encrypted_metadata',
+        aliasedName,
+        false,
+        type: DriftSqlType.blob,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _completedAtMeta = const VerificationMeta(
+    'completedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> completedAt = GeneratedColumn<DateTime>(
+    'completed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, encryptedMetadata, completedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'wallet_migrations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WalletMigration> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('encrypted_metadata')) {
+      context.handle(
+        _encryptedMetadataMeta,
+        encryptedMetadata.isAcceptableOrUnknown(
+          data['encrypted_metadata']!,
+          _encryptedMetadataMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_encryptedMetadataMeta);
+    }
+    if (data.containsKey('completed_at')) {
+      context.handle(
+        _completedAtMeta,
+        completedAt.isAcceptableOrUnknown(
+          data['completed_at']!,
+          _completedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  WalletMigration map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WalletMigration(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      encryptedMetadata: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}encrypted_metadata'],
+      )!,
+      completedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}completed_at'],
+      )!,
+    );
+  }
+
+  @override
+  $WalletMigrationsTable createAlias(String alias) {
+    return $WalletMigrationsTable(attachedDatabase, alias);
+  }
+}
+
+class WalletMigration extends DataClass implements Insertable<WalletMigration> {
+  final String id;
+  final Uint8List encryptedMetadata;
+  final DateTime completedAt;
+  const WalletMigration({
+    required this.id,
+    required this.encryptedMetadata,
+    required this.completedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['encrypted_metadata'] = Variable<Uint8List>(encryptedMetadata);
+    map['completed_at'] = Variable<DateTime>(completedAt);
+    return map;
+  }
+
+  WalletMigrationsCompanion toCompanion(bool nullToAbsent) {
+    return WalletMigrationsCompanion(
+      id: Value(id),
+      encryptedMetadata: Value(encryptedMetadata),
+      completedAt: Value(completedAt),
+    );
+  }
+
+  factory WalletMigration.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WalletMigration(
+      id: serializer.fromJson<String>(json['id']),
+      encryptedMetadata: serializer.fromJson<Uint8List>(
+        json['encryptedMetadata'],
+      ),
+      completedAt: serializer.fromJson<DateTime>(json['completedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'encryptedMetadata': serializer.toJson<Uint8List>(encryptedMetadata),
+      'completedAt': serializer.toJson<DateTime>(completedAt),
+    };
+  }
+
+  WalletMigration copyWith({
+    String? id,
+    Uint8List? encryptedMetadata,
+    DateTime? completedAt,
+  }) => WalletMigration(
+    id: id ?? this.id,
+    encryptedMetadata: encryptedMetadata ?? this.encryptedMetadata,
+    completedAt: completedAt ?? this.completedAt,
+  );
+  WalletMigration copyWithCompanion(WalletMigrationsCompanion data) {
+    return WalletMigration(
+      id: data.id.present ? data.id.value : this.id,
+      encryptedMetadata: data.encryptedMetadata.present
+          ? data.encryptedMetadata.value
+          : this.encryptedMetadata,
+      completedAt: data.completedAt.present
+          ? data.completedAt.value
+          : this.completedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WalletMigration(')
+          ..write('id: $id, ')
+          ..write('encryptedMetadata: $encryptedMetadata, ')
+          ..write('completedAt: $completedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, $driftBlobEquality.hash(encryptedMetadata), completedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WalletMigration &&
+          other.id == this.id &&
+          $driftBlobEquality.equals(
+            other.encryptedMetadata,
+            this.encryptedMetadata,
+          ) &&
+          other.completedAt == this.completedAt);
+}
+
+class WalletMigrationsCompanion extends UpdateCompanion<WalletMigration> {
+  final Value<String> id;
+  final Value<Uint8List> encryptedMetadata;
+  final Value<DateTime> completedAt;
+  final Value<int> rowid;
+  const WalletMigrationsCompanion({
+    this.id = const Value.absent(),
+    this.encryptedMetadata = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  WalletMigrationsCompanion.insert({
+    required String id,
+    required Uint8List encryptedMetadata,
+    this.completedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       encryptedMetadata = Value(encryptedMetadata);
+  static Insertable<WalletMigration> custom({
+    Expression<String>? id,
+    Expression<Uint8List>? encryptedMetadata,
+    Expression<DateTime>? completedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (encryptedMetadata != null) 'encrypted_metadata': encryptedMetadata,
+      if (completedAt != null) 'completed_at': completedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  WalletMigrationsCompanion copyWith({
+    Value<String>? id,
+    Value<Uint8List>? encryptedMetadata,
+    Value<DateTime>? completedAt,
+    Value<int>? rowid,
+  }) {
+    return WalletMigrationsCompanion(
+      id: id ?? this.id,
+      encryptedMetadata: encryptedMetadata ?? this.encryptedMetadata,
+      completedAt: completedAt ?? this.completedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (encryptedMetadata.present) {
+      map['encrypted_metadata'] = Variable<Uint8List>(encryptedMetadata.value);
+    }
+    if (completedAt.present) {
+      map['completed_at'] = Variable<DateTime>(completedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WalletMigrationsCompanion(')
+          ..write('id: $id, ')
+          ..write('encryptedMetadata: $encryptedMetadata, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3617,6 +4893,15 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $RestrictionCoveragesTable restrictionCoverages =
       $RestrictionCoveragesTable(this);
+  late final $DriverProfilesTable driverProfiles = $DriverProfilesTable(this);
+  late final $WalletPreparationsTable walletPreparations =
+      $WalletPreparationsTable(this);
+  late final $PrivateDocumentsTable privateDocuments = $PrivateDocumentsTable(
+    this,
+  );
+  late final $WalletMigrationsTable walletMigrations = $WalletMigrationsTable(
+    this,
+  );
   late final Index vehiclesPlateIdx = Index(
     'vehicles_plate_idx',
     'CREATE UNIQUE INDEX vehicles_plate_idx ON vehicles (plate)',
@@ -3645,6 +4930,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'restriction_coverages_lookup_idx',
     'CREATE UNIQUE INDEX restriction_coverages_lookup_idx ON restriction_coverages (jurisdiction_id, vehicle_kind, service_type)',
   );
+  late final Index privateDocumentsDriverTypeIdx = Index(
+    'private_documents_driver_type_idx',
+    'CREATE UNIQUE INDEX private_documents_driver_type_idx ON private_documents (driver_id, type)',
+  );
+  late final Index privateDocumentsVehicleTypeIdx = Index(
+    'private_documents_vehicle_type_idx',
+    'CREATE UNIQUE INDEX private_documents_vehicle_type_idx ON private_documents (vehicle_id, type)',
+  );
+  late final Index privateDocumentsPreparationTypeIdx = Index(
+    'private_documents_preparation_type_idx',
+    'CREATE UNIQUE INDEX private_documents_preparation_type_idx ON private_documents (preparation_id, type)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3656,6 +4953,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     notificationPreferences,
     datasetVersions,
     restrictionCoverages,
+    driverProfiles,
+    walletPreparations,
+    privateDocuments,
+    walletMigrations,
     vehiclesPlateIdx,
     vehicleObligationsVehicleIdIdx,
     vehicleObligationsDueDateIdx,
@@ -3663,6 +4964,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     maintenanceRecordsServiceDateIdx,
     datasetVersionsDatasetKeyIdx,
     restrictionCoveragesLookupIdx,
+    privateDocumentsDriverTypeIdx,
+    privateDocumentsVehicleTypeIdx,
+    privateDocumentsPreparationTypeIdx,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -3679,6 +4983,27 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('maintenance_records', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'driver_profiles',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('private_documents', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'vehicles',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('private_documents', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'wallet_preparations',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('private_documents', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -3758,6 +5083,26 @@ final class $$VehiclesTableReferences
 
     final cache = $_typedResult.readTableOrNull(
       _maintenanceRecordsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$PrivateDocumentsTable, List<PrivateDocument>>
+  _privateDocumentsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.privateDocuments,
+    aliasName: 'vehicles__id__private_documents__vehicle_id',
+  );
+
+  $$PrivateDocumentsTableProcessedTableManager get privateDocumentsRefs {
+    final manager = $$PrivateDocumentsTableTableManager(
+      $_db,
+      $_db.privateDocuments,
+    ).filter((f) => f.vehicleId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _privateDocumentsRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -3885,6 +5230,31 @@ class $$VehiclesTableFilterComposer
           }) => $$MaintenanceRecordsTableFilterComposer(
             $db: $db,
             $table: $db.maintenanceRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> privateDocumentsRefs(
+    Expression<bool> Function($$PrivateDocumentsTableFilterComposer f) f,
+  ) {
+    final $$PrivateDocumentsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.privateDocuments,
+      getReferencedColumn: (t) => t.vehicleId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PrivateDocumentsTableFilterComposer(
+            $db: $db,
+            $table: $db.privateDocuments,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4081,6 +5451,31 @@ class $$VehiclesTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> privateDocumentsRefs<T extends Object>(
+    Expression<T> Function($$PrivateDocumentsTableAnnotationComposer a) f,
+  ) {
+    final $$PrivateDocumentsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.privateDocuments,
+      getReferencedColumn: (t) => t.vehicleId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PrivateDocumentsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.privateDocuments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$VehiclesTableTableManager
@@ -4099,6 +5494,7 @@ class $$VehiclesTableTableManager
           PrefetchHooks Function({
             bool vehicleObligationsRefs,
             bool maintenanceRecordsRefs,
+            bool privateDocumentsRefs,
           })
         > {
   $$VehiclesTableTableManager(_$AppDatabase db, $VehiclesTable table)
@@ -4192,12 +5588,14 @@ class $$VehiclesTableTableManager
               ({
                 vehicleObligationsRefs = false,
                 maintenanceRecordsRefs = false,
+                privateDocumentsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (vehicleObligationsRefs) db.vehicleObligations,
                     if (maintenanceRecordsRefs) db.maintenanceRecords,
+                    if (privateDocumentsRefs) db.privateDocuments,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -4244,6 +5642,27 @@ class $$VehiclesTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (privateDocumentsRefs)
+                        await $_getPrefetchedData<
+                          Vehicle,
+                          $VehiclesTable,
+                          PrivateDocument
+                        >(
+                          currentTable: table,
+                          referencedTable: $$VehiclesTableReferences
+                              ._privateDocumentsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$VehiclesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).privateDocumentsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.vehicleId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -4267,6 +5686,7 @@ typedef $$VehiclesTableProcessedTableManager =
       PrefetchHooks Function({
         bool vehicleObligationsRefs,
         bool maintenanceRecordsRefs,
+        bool privateDocumentsRefs,
       })
     >;
 typedef $$VehicleObligationsTableCreateCompanionBuilder =
@@ -5925,6 +7345,1264 @@ typedef $$RestrictionCoveragesTableProcessedTableManager =
       RestrictionCoverage,
       PrefetchHooks Function()
     >;
+typedef $$DriverProfilesTableCreateCompanionBuilder =
+    DriverProfilesCompanion Function({
+      required String id,
+      required int slot,
+      required Uint8List encryptedMetadata,
+      Value<int> rowid,
+    });
+typedef $$DriverProfilesTableUpdateCompanionBuilder =
+    DriverProfilesCompanion Function({
+      Value<String> id,
+      Value<int> slot,
+      Value<Uint8List> encryptedMetadata,
+      Value<int> rowid,
+    });
+
+final class $$DriverProfilesTableReferences
+    extends BaseReferences<_$AppDatabase, $DriverProfilesTable, DriverProfile> {
+  $$DriverProfilesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$PrivateDocumentsTable, List<PrivateDocument>>
+  _privateDocumentsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.privateDocuments,
+    aliasName: 'driver_profiles__id__private_documents__driver_id',
+  );
+
+  $$PrivateDocumentsTableProcessedTableManager get privateDocumentsRefs {
+    final manager = $$PrivateDocumentsTableTableManager(
+      $_db,
+      $_db.privateDocuments,
+    ).filter((f) => f.driverId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _privateDocumentsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$DriverProfilesTableFilterComposer
+    extends Composer<_$AppDatabase, $DriverProfilesTable> {
+  $$DriverProfilesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get slot => $composableBuilder(
+    column: $table.slot,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get encryptedMetadata => $composableBuilder(
+    column: $table.encryptedMetadata,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> privateDocumentsRefs(
+    Expression<bool> Function($$PrivateDocumentsTableFilterComposer f) f,
+  ) {
+    final $$PrivateDocumentsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.privateDocuments,
+      getReferencedColumn: (t) => t.driverId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PrivateDocumentsTableFilterComposer(
+            $db: $db,
+            $table: $db.privateDocuments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$DriverProfilesTableOrderingComposer
+    extends Composer<_$AppDatabase, $DriverProfilesTable> {
+  $$DriverProfilesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get slot => $composableBuilder(
+    column: $table.slot,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get encryptedMetadata => $composableBuilder(
+    column: $table.encryptedMetadata,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DriverProfilesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DriverProfilesTable> {
+  $$DriverProfilesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get slot =>
+      $composableBuilder(column: $table.slot, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get encryptedMetadata => $composableBuilder(
+    column: $table.encryptedMetadata,
+    builder: (column) => column,
+  );
+
+  Expression<T> privateDocumentsRefs<T extends Object>(
+    Expression<T> Function($$PrivateDocumentsTableAnnotationComposer a) f,
+  ) {
+    final $$PrivateDocumentsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.privateDocuments,
+      getReferencedColumn: (t) => t.driverId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PrivateDocumentsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.privateDocuments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$DriverProfilesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DriverProfilesTable,
+          DriverProfile,
+          $$DriverProfilesTableFilterComposer,
+          $$DriverProfilesTableOrderingComposer,
+          $$DriverProfilesTableAnnotationComposer,
+          $$DriverProfilesTableCreateCompanionBuilder,
+          $$DriverProfilesTableUpdateCompanionBuilder,
+          (DriverProfile, $$DriverProfilesTableReferences),
+          DriverProfile,
+          PrefetchHooks Function({bool privateDocumentsRefs})
+        > {
+  $$DriverProfilesTableTableManager(
+    _$AppDatabase db,
+    $DriverProfilesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DriverProfilesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DriverProfilesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DriverProfilesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<int> slot = const Value.absent(),
+                Value<Uint8List> encryptedMetadata = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DriverProfilesCompanion(
+                id: id,
+                slot: slot,
+                encryptedMetadata: encryptedMetadata,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required int slot,
+                required Uint8List encryptedMetadata,
+                Value<int> rowid = const Value.absent(),
+              }) => DriverProfilesCompanion.insert(
+                id: id,
+                slot: slot,
+                encryptedMetadata: encryptedMetadata,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DriverProfilesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({privateDocumentsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (privateDocumentsRefs) db.privateDocuments,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (privateDocumentsRefs)
+                    await $_getPrefetchedData<
+                      DriverProfile,
+                      $DriverProfilesTable,
+                      PrivateDocument
+                    >(
+                      currentTable: table,
+                      referencedTable: $$DriverProfilesTableReferences
+                          ._privateDocumentsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$DriverProfilesTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).privateDocumentsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.driverId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DriverProfilesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DriverProfilesTable,
+      DriverProfile,
+      $$DriverProfilesTableFilterComposer,
+      $$DriverProfilesTableOrderingComposer,
+      $$DriverProfilesTableAnnotationComposer,
+      $$DriverProfilesTableCreateCompanionBuilder,
+      $$DriverProfilesTableUpdateCompanionBuilder,
+      (DriverProfile, $$DriverProfilesTableReferences),
+      DriverProfile,
+      PrefetchHooks Function({bool privateDocumentsRefs})
+    >;
+typedef $$WalletPreparationsTableCreateCompanionBuilder =
+    WalletPreparationsCompanion Function({
+      required String id,
+      required Uint8List encryptedMetadata,
+      Value<int> rowid,
+    });
+typedef $$WalletPreparationsTableUpdateCompanionBuilder =
+    WalletPreparationsCompanion Function({
+      Value<String> id,
+      Value<Uint8List> encryptedMetadata,
+      Value<int> rowid,
+    });
+
+final class $$WalletPreparationsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $WalletPreparationsTable,
+          WalletPreparation
+        > {
+  $$WalletPreparationsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$PrivateDocumentsTable, List<PrivateDocument>>
+  _privateDocumentsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.privateDocuments,
+    aliasName: 'wallet_preparations__id__private_documents__preparation_id',
+  );
+
+  $$PrivateDocumentsTableProcessedTableManager get privateDocumentsRefs {
+    final manager = $$PrivateDocumentsTableTableManager(
+      $_db,
+      $_db.privateDocuments,
+    ).filter((f) => f.preparationId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _privateDocumentsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$WalletPreparationsTableFilterComposer
+    extends Composer<_$AppDatabase, $WalletPreparationsTable> {
+  $$WalletPreparationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get encryptedMetadata => $composableBuilder(
+    column: $table.encryptedMetadata,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> privateDocumentsRefs(
+    Expression<bool> Function($$PrivateDocumentsTableFilterComposer f) f,
+  ) {
+    final $$PrivateDocumentsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.privateDocuments,
+      getReferencedColumn: (t) => t.preparationId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PrivateDocumentsTableFilterComposer(
+            $db: $db,
+            $table: $db.privateDocuments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$WalletPreparationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $WalletPreparationsTable> {
+  $$WalletPreparationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get encryptedMetadata => $composableBuilder(
+    column: $table.encryptedMetadata,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WalletPreparationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WalletPreparationsTable> {
+  $$WalletPreparationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get encryptedMetadata => $composableBuilder(
+    column: $table.encryptedMetadata,
+    builder: (column) => column,
+  );
+
+  Expression<T> privateDocumentsRefs<T extends Object>(
+    Expression<T> Function($$PrivateDocumentsTableAnnotationComposer a) f,
+  ) {
+    final $$PrivateDocumentsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.privateDocuments,
+      getReferencedColumn: (t) => t.preparationId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PrivateDocumentsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.privateDocuments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$WalletPreparationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WalletPreparationsTable,
+          WalletPreparation,
+          $$WalletPreparationsTableFilterComposer,
+          $$WalletPreparationsTableOrderingComposer,
+          $$WalletPreparationsTableAnnotationComposer,
+          $$WalletPreparationsTableCreateCompanionBuilder,
+          $$WalletPreparationsTableUpdateCompanionBuilder,
+          (WalletPreparation, $$WalletPreparationsTableReferences),
+          WalletPreparation,
+          PrefetchHooks Function({bool privateDocumentsRefs})
+        > {
+  $$WalletPreparationsTableTableManager(
+    _$AppDatabase db,
+    $WalletPreparationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WalletPreparationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WalletPreparationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WalletPreparationsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<Uint8List> encryptedMetadata = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WalletPreparationsCompanion(
+                id: id,
+                encryptedMetadata: encryptedMetadata,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required Uint8List encryptedMetadata,
+                Value<int> rowid = const Value.absent(),
+              }) => WalletPreparationsCompanion.insert(
+                id: id,
+                encryptedMetadata: encryptedMetadata,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$WalletPreparationsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({privateDocumentsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (privateDocumentsRefs) db.privateDocuments,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (privateDocumentsRefs)
+                    await $_getPrefetchedData<
+                      WalletPreparation,
+                      $WalletPreparationsTable,
+                      PrivateDocument
+                    >(
+                      currentTable: table,
+                      referencedTable: $$WalletPreparationsTableReferences
+                          ._privateDocumentsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$WalletPreparationsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).privateDocumentsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where(
+                            (e) => e.preparationId == item.id,
+                          ),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$WalletPreparationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WalletPreparationsTable,
+      WalletPreparation,
+      $$WalletPreparationsTableFilterComposer,
+      $$WalletPreparationsTableOrderingComposer,
+      $$WalletPreparationsTableAnnotationComposer,
+      $$WalletPreparationsTableCreateCompanionBuilder,
+      $$WalletPreparationsTableUpdateCompanionBuilder,
+      (WalletPreparation, $$WalletPreparationsTableReferences),
+      WalletPreparation,
+      PrefetchHooks Function({bool privateDocumentsRefs})
+    >;
+typedef $$PrivateDocumentsTableCreateCompanionBuilder =
+    PrivateDocumentsCompanion Function({
+      required String id,
+      Value<String?> driverId,
+      Value<String?> vehicleId,
+      Value<String?> preparationId,
+      required String type,
+      required Uint8List encryptedMetadata,
+      Value<DateTime> importedAt,
+      Value<int> rowid,
+    });
+typedef $$PrivateDocumentsTableUpdateCompanionBuilder =
+    PrivateDocumentsCompanion Function({
+      Value<String> id,
+      Value<String?> driverId,
+      Value<String?> vehicleId,
+      Value<String?> preparationId,
+      Value<String> type,
+      Value<Uint8List> encryptedMetadata,
+      Value<DateTime> importedAt,
+      Value<int> rowid,
+    });
+
+final class $$PrivateDocumentsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $PrivateDocumentsTable, PrivateDocument> {
+  $$PrivateDocumentsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $DriverProfilesTable _driverIdTable(_$AppDatabase db) => db
+      .driverProfiles
+      .createAlias('private_documents__driver_id__driver_profiles__id');
+
+  $$DriverProfilesTableProcessedTableManager? get driverId {
+    final $_column = $_itemColumn<String>('driver_id');
+    if ($_column == null) return null;
+    final manager = $$DriverProfilesTableTableManager(
+      $_db,
+      $_db.driverProfiles,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_driverIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $VehiclesTable _vehicleIdTable(_$AppDatabase db) =>
+      db.vehicles.createAlias('private_documents__vehicle_id__vehicles__id');
+
+  $$VehiclesTableProcessedTableManager? get vehicleId {
+    final $_column = $_itemColumn<String>('vehicle_id');
+    if ($_column == null) return null;
+    final manager = $$VehiclesTableTableManager(
+      $_db,
+      $_db.vehicles,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_vehicleIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $WalletPreparationsTable _preparationIdTable(_$AppDatabase db) =>
+      db.walletPreparations.createAlias(
+        'private_documents__preparation_id__wallet_preparations__id',
+      );
+
+  $$WalletPreparationsTableProcessedTableManager? get preparationId {
+    final $_column = $_itemColumn<String>('preparation_id');
+    if ($_column == null) return null;
+    final manager = $$WalletPreparationsTableTableManager(
+      $_db,
+      $_db.walletPreparations,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_preparationIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PrivateDocumentsTableFilterComposer
+    extends Composer<_$AppDatabase, $PrivateDocumentsTable> {
+  $$PrivateDocumentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get encryptedMetadata => $composableBuilder(
+    column: $table.encryptedMetadata,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get importedAt => $composableBuilder(
+    column: $table.importedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$DriverProfilesTableFilterComposer get driverId {
+    final $$DriverProfilesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.driverId,
+      referencedTable: $db.driverProfiles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DriverProfilesTableFilterComposer(
+            $db: $db,
+            $table: $db.driverProfiles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$VehiclesTableFilterComposer get vehicleId {
+    final $$VehiclesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.vehicleId,
+      referencedTable: $db.vehicles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$VehiclesTableFilterComposer(
+            $db: $db,
+            $table: $db.vehicles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$WalletPreparationsTableFilterComposer get preparationId {
+    final $$WalletPreparationsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.preparationId,
+      referencedTable: $db.walletPreparations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WalletPreparationsTableFilterComposer(
+            $db: $db,
+            $table: $db.walletPreparations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PrivateDocumentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PrivateDocumentsTable> {
+  $$PrivateDocumentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get encryptedMetadata => $composableBuilder(
+    column: $table.encryptedMetadata,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get importedAt => $composableBuilder(
+    column: $table.importedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$DriverProfilesTableOrderingComposer get driverId {
+    final $$DriverProfilesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.driverId,
+      referencedTable: $db.driverProfiles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DriverProfilesTableOrderingComposer(
+            $db: $db,
+            $table: $db.driverProfiles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$VehiclesTableOrderingComposer get vehicleId {
+    final $$VehiclesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.vehicleId,
+      referencedTable: $db.vehicles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$VehiclesTableOrderingComposer(
+            $db: $db,
+            $table: $db.vehicles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$WalletPreparationsTableOrderingComposer get preparationId {
+    final $$WalletPreparationsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.preparationId,
+      referencedTable: $db.walletPreparations,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WalletPreparationsTableOrderingComposer(
+            $db: $db,
+            $table: $db.walletPreparations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PrivateDocumentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PrivateDocumentsTable> {
+  $$PrivateDocumentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get encryptedMetadata => $composableBuilder(
+    column: $table.encryptedMetadata,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get importedAt => $composableBuilder(
+    column: $table.importedAt,
+    builder: (column) => column,
+  );
+
+  $$DriverProfilesTableAnnotationComposer get driverId {
+    final $$DriverProfilesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.driverId,
+      referencedTable: $db.driverProfiles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DriverProfilesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.driverProfiles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$VehiclesTableAnnotationComposer get vehicleId {
+    final $$VehiclesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.vehicleId,
+      referencedTable: $db.vehicles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$VehiclesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.vehicles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$WalletPreparationsTableAnnotationComposer get preparationId {
+    final $$WalletPreparationsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.preparationId,
+          referencedTable: $db.walletPreparations,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$WalletPreparationsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.walletPreparations,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$PrivateDocumentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PrivateDocumentsTable,
+          PrivateDocument,
+          $$PrivateDocumentsTableFilterComposer,
+          $$PrivateDocumentsTableOrderingComposer,
+          $$PrivateDocumentsTableAnnotationComposer,
+          $$PrivateDocumentsTableCreateCompanionBuilder,
+          $$PrivateDocumentsTableUpdateCompanionBuilder,
+          (PrivateDocument, $$PrivateDocumentsTableReferences),
+          PrivateDocument,
+          PrefetchHooks Function({
+            bool driverId,
+            bool vehicleId,
+            bool preparationId,
+          })
+        > {
+  $$PrivateDocumentsTableTableManager(
+    _$AppDatabase db,
+    $PrivateDocumentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PrivateDocumentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PrivateDocumentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PrivateDocumentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> driverId = const Value.absent(),
+                Value<String?> vehicleId = const Value.absent(),
+                Value<String?> preparationId = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<Uint8List> encryptedMetadata = const Value.absent(),
+                Value<DateTime> importedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PrivateDocumentsCompanion(
+                id: id,
+                driverId: driverId,
+                vehicleId: vehicleId,
+                preparationId: preparationId,
+                type: type,
+                encryptedMetadata: encryptedMetadata,
+                importedAt: importedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> driverId = const Value.absent(),
+                Value<String?> vehicleId = const Value.absent(),
+                Value<String?> preparationId = const Value.absent(),
+                required String type,
+                required Uint8List encryptedMetadata,
+                Value<DateTime> importedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PrivateDocumentsCompanion.insert(
+                id: id,
+                driverId: driverId,
+                vehicleId: vehicleId,
+                preparationId: preparationId,
+                type: type,
+                encryptedMetadata: encryptedMetadata,
+                importedAt: importedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PrivateDocumentsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({driverId = false, vehicleId = false, preparationId = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (driverId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.driverId,
+                            referencedTable: $$PrivateDocumentsTableReferences
+                                ._driverIdTable(db),
+                            referencedColumn: $$PrivateDocumentsTableReferences
+                                ._driverIdTable(db)
+                                .id,
+                          ) as T;
+                        }
+                        if (vehicleId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.vehicleId,
+                            referencedTable: $$PrivateDocumentsTableReferences
+                                ._vehicleIdTable(db),
+                            referencedColumn: $$PrivateDocumentsTableReferences
+                                ._vehicleIdTable(db)
+                                .id,
+                          ) as T;
+                        }
+                        if (preparationId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.preparationId,
+                            referencedTable: $$PrivateDocumentsTableReferences
+                                ._preparationIdTable(db),
+                            referencedColumn: $$PrivateDocumentsTableReferences
+                                ._preparationIdTable(db)
+                                .id,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$PrivateDocumentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PrivateDocumentsTable,
+      PrivateDocument,
+      $$PrivateDocumentsTableFilterComposer,
+      $$PrivateDocumentsTableOrderingComposer,
+      $$PrivateDocumentsTableAnnotationComposer,
+      $$PrivateDocumentsTableCreateCompanionBuilder,
+      $$PrivateDocumentsTableUpdateCompanionBuilder,
+      (PrivateDocument, $$PrivateDocumentsTableReferences),
+      PrivateDocument,
+      PrefetchHooks Function({
+        bool driverId,
+        bool vehicleId,
+        bool preparationId,
+      })
+    >;
+typedef $$WalletMigrationsTableCreateCompanionBuilder =
+    WalletMigrationsCompanion Function({
+      required String id,
+      required Uint8List encryptedMetadata,
+      Value<DateTime> completedAt,
+      Value<int> rowid,
+    });
+typedef $$WalletMigrationsTableUpdateCompanionBuilder =
+    WalletMigrationsCompanion Function({
+      Value<String> id,
+      Value<Uint8List> encryptedMetadata,
+      Value<DateTime> completedAt,
+      Value<int> rowid,
+    });
+
+class $$WalletMigrationsTableFilterComposer
+    extends Composer<_$AppDatabase, $WalletMigrationsTable> {
+  $$WalletMigrationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get encryptedMetadata => $composableBuilder(
+    column: $table.encryptedMetadata,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$WalletMigrationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $WalletMigrationsTable> {
+  $$WalletMigrationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get encryptedMetadata => $composableBuilder(
+    column: $table.encryptedMetadata,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WalletMigrationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WalletMigrationsTable> {
+  $$WalletMigrationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get encryptedMetadata => $composableBuilder(
+    column: $table.encryptedMetadata,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$WalletMigrationsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WalletMigrationsTable,
+          WalletMigration,
+          $$WalletMigrationsTableFilterComposer,
+          $$WalletMigrationsTableOrderingComposer,
+          $$WalletMigrationsTableAnnotationComposer,
+          $$WalletMigrationsTableCreateCompanionBuilder,
+          $$WalletMigrationsTableUpdateCompanionBuilder,
+          (
+            WalletMigration,
+            BaseReferences<
+              _$AppDatabase,
+              $WalletMigrationsTable,
+              WalletMigration
+            >,
+          ),
+          WalletMigration,
+          PrefetchHooks Function()
+        > {
+  $$WalletMigrationsTableTableManager(
+    _$AppDatabase db,
+    $WalletMigrationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WalletMigrationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WalletMigrationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WalletMigrationsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<Uint8List> encryptedMetadata = const Value.absent(),
+                Value<DateTime> completedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WalletMigrationsCompanion(
+                id: id,
+                encryptedMetadata: encryptedMetadata,
+                completedAt: completedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required Uint8List encryptedMetadata,
+                Value<DateTime> completedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WalletMigrationsCompanion.insert(
+                id: id,
+                encryptedMetadata: encryptedMetadata,
+                completedAt: completedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$WalletMigrationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WalletMigrationsTable,
+      WalletMigration,
+      $$WalletMigrationsTableFilterComposer,
+      $$WalletMigrationsTableOrderingComposer,
+      $$WalletMigrationsTableAnnotationComposer,
+      $$WalletMigrationsTableCreateCompanionBuilder,
+      $$WalletMigrationsTableUpdateCompanionBuilder,
+      (
+        WalletMigration,
+        BaseReferences<_$AppDatabase, $WalletMigrationsTable, WalletMigration>,
+      ),
+      WalletMigration,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5944,4 +8622,12 @@ class $AppDatabaseManager {
       $$DatasetVersionsTableTableManager(_db, _db.datasetVersions);
   $$RestrictionCoveragesTableTableManager get restrictionCoverages =>
       $$RestrictionCoveragesTableTableManager(_db, _db.restrictionCoverages);
+  $$DriverProfilesTableTableManager get driverProfiles =>
+      $$DriverProfilesTableTableManager(_db, _db.driverProfiles);
+  $$WalletPreparationsTableTableManager get walletPreparations =>
+      $$WalletPreparationsTableTableManager(_db, _db.walletPreparations);
+  $$PrivateDocumentsTableTableManager get privateDocuments =>
+      $$PrivateDocumentsTableTableManager(_db, _db.privateDocuments);
+  $$WalletMigrationsTableTableManager get walletMigrations =>
+      $$WalletMigrationsTableTableManager(_db, _db.walletMigrations);
 }

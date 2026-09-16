@@ -14,6 +14,7 @@ import '../../../core/design_system/branding.dart';
 import '../../../core/design_system/surfaces.dart';
 import '../../garage/data/vehicle_profile.dart';
 import '../../garage/presentation/vehicle_display.dart';
+import '../../garage/presentation/vehicle_plate_badge.dart';
 import '../../location/application/location_controller.dart';
 import '../../location/data/location_preferences.dart';
 import '../../location/domain/jurisdiction_location_resolver.dart';
@@ -23,6 +24,7 @@ import 'pico_notification_sheet.dart';
 import '../../pico_placa/data/pico_preferences.dart';
 import '../../pico_placa/data/restriction_store.dart';
 import '../../pico_placa/domain/restriction_day_evaluation.dart';
+import '../../pico_placa/presentation/today_restriction_summary.dart';
 import '../../vehicle_status/domain/vehicle_obligation.dart';
 import '../../visual_assets/presentation/visual_asset_widgets.dart';
 
@@ -45,6 +47,19 @@ final homeFocusedVehicleIdProvider =
     NotifierProvider<HomeFocusedVehicleNotifier, String?>(
       HomeFocusedVehicleNotifier.new,
     );
+
+final homePriorityEntryProvider =
+    NotifierProvider<HomePriorityEntryNotifier, int>(
+      HomePriorityEntryNotifier.new,
+    );
+
+class HomePriorityEntryNotifier extends Notifier<int> {
+  int appliedEntry = -1;
+  @override
+  int build() => 0;
+
+  void enterFromAnotherTab() => state++;
+}
 
 @visibleForTesting
 final homeGpsClockProvider = Provider<DateTime Function()>((ref) {
@@ -81,17 +96,39 @@ final homeVehicleSnapshotsProvider = FutureProvider.autoDispose
           vehicle.serviceType,
           currentInstant,
         );
-        snapshots.add(
-          HomeVehicleSnapshot(
-            vehicle: vehicle,
-            today: evaluateRestrictionDay(
+        RestrictionDayEvaluation evaluate(DateTime date) =>
+            evaluateRestrictionDay(
               ruleSet: rules,
               jurisdictionId: request.selectedJurisdiction!.id,
               plate: vehicle.plate,
               vehicleKind: vehicle.kind,
               serviceType: vehicle.serviceType,
-              date: now,
-            ),
+              date: date,
+            );
+        final today = evaluate(now);
+        DateTime? nextDate;
+        var unverified = false;
+        // Reuse this coverage for the whole lookahead; no additional storage reads.
+        if (today.status != RestrictionDayStatus.restricted) {
+          for (var offset = 1; offset <= 7; offset++) {
+            final date = DateTime(year, month, day + offset);
+            final future = evaluate(date);
+            if (future.status == RestrictionDayStatus.restricted &&
+                future.effectiveWindows.isNotEmpty) {
+              nextDate = date;
+              break;
+            }
+            unverified |=
+                future.status == RestrictionDayStatus.unknown ||
+                future.status == RestrictionDayStatus.stale;
+          }
+        }
+        snapshots.add(
+          HomeVehicleSnapshot(
+            vehicle: vehicle,
+            today: today,
+            nextRestrictionDate: nextDate,
+            hasUnverifiedUpcomingDays: unverified,
           ),
         );
       }
@@ -127,7 +164,6 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final seed = ref.watch(bundledRestrictionsProvider);
     final vehicles = ref.watch(vehicleListProvider);
-    final active = ref.watch(activeVehicleProvider);
     final jurisdictions = ref.watch(restrictionJurisdictionsProvider);
     final selectedJurisdiction = ref.watch(selectedPicoJurisdictionIdProvider);
     final alertPreferences = ref.watch(picoAlertPreferencesProvider);
@@ -147,20 +183,14 @@ class HomeScreen extends ConsumerWidget {
             );
           }
           return seed.when(
-            data: (_) => active.when(
-              data: (activeVehicle) => jurisdictions.when(
-                data: (cities) => selectedJurisdiction.when(
-                  data: (jurisdictionId) => alertPreferences.when(
-                    data: (alerts) => _HomeDataGate(
-                      vehicles: items,
-                      activeVehicleId: activeVehicle?.id,
-                      jurisdictions: cities,
-                      selectedJurisdictionId: jurisdictionId,
-                      alertPreferences: alerts,
-                    ),
-                    loading: () => const _HomeSkeleton(),
-                    error: (error, stackTrace) =>
-                        _LoadError(message: error.toString()),
+            data: (_) => jurisdictions.when(
+              data: (cities) => selectedJurisdiction.when(
+                data: (jurisdictionId) => alertPreferences.when(
+                  data: (alerts) => _HomeDataGate(
+                    vehicles: items,
+                    jurisdictions: cities,
+                    selectedJurisdictionId: jurisdictionId,
+                    alertPreferences: alerts,
                   ),
                   loading: () => const _HomeSkeleton(),
                   error: (error, stackTrace) =>
@@ -186,10 +216,17 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class HomeVehicleSnapshot {
-  const HomeVehicleSnapshot({required this.vehicle, required this.today});
+  const HomeVehicleSnapshot({
+    required this.vehicle,
+    required this.today,
+    this.nextRestrictionDate,
+    this.hasUnverifiedUpcomingDays = false,
+  });
 
   final VehicleProfile vehicle;
   final RestrictionDayEvaluation today;
+  final DateTime? nextRestrictionDate;
+  final bool hasUnverifiedUpcomingDays;
 }
 
 class HomeVehicleSnapshotsRequest {
@@ -261,45 +298,65 @@ bool _sameVehicleInputs(List<VehicleProfile> a, List<VehicleProfile> b) {
 
 int pickInitialHomeVehicleIndex({
   required List<HomeVehicleSnapshot> snapshots,
-  required String? activeVehicleId,
+  required DateTime now,
 }) {
   if (snapshots.isEmpty) {
     return 0;
   }
 
-  final activeIndex = snapshots.indexWhere(
-    (snapshot) => snapshot.vehicle.id == activeVehicleId,
-  );
-  if (activeIndex >= 0 &&
-      snapshots[activeIndex].today.status == RestrictionDayStatus.restricted) {
-    return activeIndex;
+  (int, int) rank(HomeVehicleSnapshot snapshot) {
+    final phase = restrictionPhaseAt(snapshot.today, now);
+    if (phase == RestrictionDayPhase.active) return (0, 0);
+    if (phase == RestrictionDayPhase.before ||
+        phase == RestrictionDayPhase.between) {
+      return (1, nextRestrictionStartMinute(snapshot.today, now) ?? 1440);
+    }
+    if (phase == RestrictionDayPhase.finished) return (2, 0);
+    final next = snapshot.nextRestrictionDate;
+    final today = DateTime(now.year, now.month, now.day);
+    if (next != null &&
+        next.isAfter(today) &&
+        !next.isAfter(DateTime(now.year, now.month, now.day + 7))) {
+      return (3, next.difference(today).inDays);
+    }
+    if (phase == RestrictionDayPhase.unknown ||
+        phase == RestrictionDayPhase.stale ||
+        snapshot.hasUnverifiedUpcomingDays) {
+      return (4, 0);
+    }
+    return (5, 0);
   }
 
-  final restrictedIndex = snapshots.indexWhere(
-    (snapshot) => snapshot.today.status == RestrictionDayStatus.restricted,
-  );
-  if (restrictedIndex >= 0) {
-    return restrictedIndex;
+  var best = 0;
+  for (var index = 1; index < snapshots.length; index++) {
+    final candidate = rank(snapshots[index]);
+    final incumbent = rank(snapshots[best]);
+    final category = candidate.$1.compareTo(incumbent.$1);
+    final time = candidate.$2.compareTo(incumbent.$2);
+    if (category < 0 ||
+        (category == 0 &&
+            (time < 0 ||
+                (time == 0 &&
+                    compareVehiclesAlphabetically(
+                          snapshots[index].vehicle,
+                          snapshots[best].vehicle,
+                        ) <
+                        0)))) {
+      best = index;
+    }
   }
-
-  if (activeIndex >= 0) {
-    return activeIndex;
-  }
-
-  return 0;
+  return best;
 }
 
 class _HomeDataGate extends ConsumerWidget {
   const _HomeDataGate({
     required this.vehicles,
-    required this.activeVehicleId,
     required this.jurisdictions,
     required this.selectedJurisdictionId,
     required this.alertPreferences,
   });
 
   final List<VehicleProfile> vehicles;
-  final String? activeVehicleId;
   final List<RestrictionJurisdiction> jurisdictions;
   final String? selectedJurisdictionId;
   final PicoAlertPreferences alertPreferences;
@@ -324,6 +381,8 @@ class _HomeDataGate extends ConsumerWidget {
       skipLoadingOnReload: true,
       data: (items) {
         return _HomeReady(
+          priorityEntry: ref.watch(homePriorityEntryProvider),
+          readyForPriority: !snapshots.isLoading,
           snapshots: snapshots.isLoading
               ? [
                   for (final item in items)
@@ -333,7 +392,6 @@ class _HomeDataGate extends ConsumerWidget {
                     ),
                 ]
               : items,
-          activeVehicleId: activeVehicleId,
           jurisdictions: jurisdictions,
           selectedJurisdiction: jurisdiction,
           alertPreferences: alertPreferences,
@@ -342,6 +400,8 @@ class _HomeDataGate extends ConsumerWidget {
       loading: () => ref.read(homeFocusedVehicleIdProvider) == null
           ? const _HomeSkeleton()
           : _HomeReady(
+              priorityEntry: ref.watch(homePriorityEntryProvider),
+              readyForPriority: false,
               snapshots: [
                 for (final vehicle in vehicles)
                   HomeVehicleSnapshot(
@@ -349,7 +409,6 @@ class _HomeDataGate extends ConsumerWidget {
                     today: _unknownEvaluation,
                   ),
               ],
-              activeVehicleId: activeVehicleId,
               jurisdictions: jurisdictions,
               selectedJurisdiction: jurisdiction,
               alertPreferences: alertPreferences,
@@ -370,15 +429,17 @@ class _HomeDataGate extends ConsumerWidget {
 
 class _HomeReady extends ConsumerStatefulWidget {
   const _HomeReady({
+    required this.priorityEntry,
+    required this.readyForPriority,
     required this.snapshots,
-    required this.activeVehicleId,
     required this.jurisdictions,
     required this.selectedJurisdiction,
     required this.alertPreferences,
   });
 
   final List<HomeVehicleSnapshot> snapshots;
-  final String? activeVehicleId;
+  final int priorityEntry;
+  final bool readyForPriority;
   final List<RestrictionJurisdiction> jurisdictions;
   final RestrictionJurisdiction? selectedJurisdiction;
   final PicoAlertPreferences alertPreferences;
@@ -395,6 +456,22 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
   final _footerLayoutKey = GlobalKey();
   double? _measuredChromeHeight;
   bool _chromeMeasurementScheduled = false;
+
+  bool get _needsPriority =>
+      widget.readyForPriority &&
+      ref.read(homePriorityEntryProvider.notifier).appliedEntry !=
+          widget.priorityEntry;
+
+  int _choosePriority() {
+    if (widget.readyForPriority) {
+      ref.read(homePriorityEntryProvider.notifier).appliedEntry =
+          widget.priorityEntry;
+    }
+    return pickInitialHomeVehicleIndex(
+      snapshots: widget.snapshots,
+      now: ref.read(bogotaNowProvider),
+    );
+  }
 
   void _scheduleChromeMeasurement() {
     if (_chromeMeasurementScheduled) return;
@@ -424,12 +501,9 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
     final rememberedIndex = widget.snapshots.indexWhere(
       (snapshot) => snapshot.vehicle.id == rememberedId,
     );
-    _focusedIndex = rememberedIndex >= 0
+    _focusedIndex = rememberedIndex >= 0 && !_needsPriority
         ? rememberedIndex
-        : pickInitialHomeVehicleIndex(
-            snapshots: widget.snapshots,
-            activeVehicleId: widget.activeVehicleId,
-          );
+        : _choosePriority();
     _syncFocusedVehicle();
     _controller = PageController(
       initialPage: _focusedIndex,
@@ -449,12 +523,9 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
     final retainedIndex = widget.snapshots.indexWhere(
       (snapshot) => snapshot.vehicle.id == previousId,
     );
-    final nextIndex = retainedIndex >= 0
+    final nextIndex = retainedIndex >= 0 && !_needsPriority
         ? retainedIndex
-        : pickInitialHomeVehicleIndex(
-            snapshots: widget.snapshots,
-            activeVehicleId: widget.activeVehicleId,
-          );
+        : _choosePriority();
     if (_focusedIndex != nextIndex) {
       _focusedIndex = nextIndex;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -527,6 +598,8 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
         final carouselHeight = _homeCarouselHeightForLayout(
           context,
           availableHeight,
+          constraints.maxWidth,
+          widget.snapshots,
         );
         final fits =
             _measuredChromeHeight != null &&

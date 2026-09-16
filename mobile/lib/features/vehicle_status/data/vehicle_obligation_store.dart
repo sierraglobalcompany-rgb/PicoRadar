@@ -75,6 +75,28 @@ class VehicleObligationStore {
         .go();
   }
 
+  Future<VehicleObligation> saveTaxAuthority(
+    String vehicleId,
+    String authorityId,
+  ) => database.transaction(() async {
+    final chosen = authorityId.trim();
+    if (chosen.isEmpty) throw ArgumentError.value(authorityId, 'authorityId');
+    final vehicle = await (database.select(
+      database.vehicles,
+    )..where((row) => row.id.equals(vehicleId))).getSingleOrNull();
+    if (vehicle == null) throw StateError('El vehículo ya no está disponible.');
+    final current = await get(vehicleId, VehicleObligationType.tax);
+    if (current?.details['authorityId'] == chosen) return current!;
+    return upsert(
+      vehicleId: vehicleId,
+      type: VehicleObligationType.tax,
+      startDate: current?.startDate,
+      dueDate: current?.dueDate,
+      details: {...?current?.details, 'authorityId': chosen},
+      reminderEnabled: current?.reminderEnabled ?? false,
+    );
+  });
+
   VehicleObligation _fromRow(db.VehicleObligation row) {
     return VehicleObligation(
       id: row.id,

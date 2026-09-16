@@ -1,6 +1,7 @@
 package co.picoradar.app
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
@@ -8,7 +9,8 @@ import android.speech.tts.TextToSpeech
 import android.util.Log
 import android.view.WindowManager
 import androidx.glance.appwidget.updateAll
-import io.flutter.embedding.android.FlutterActivity
+import co.picoradar.app.wallet.WalletBridge
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
@@ -16,10 +18,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     private val startupAtNs = SystemClock.elapsedRealtimeNanos()
     private var tts: TextToSpeech? = null
     private var ttsReady = false
+    private var walletBridge: WalletBridge? = null
 
     private fun logStartup(marker: String, extra: String = "") {
         val nowNs = SystemClock.elapsedRealtimeNanos()
@@ -40,6 +43,7 @@ class MainActivity : FlutterActivity() {
         val pluginsAtNs = SystemClock.elapsedRealtimeNanos()
         logStartup("PLUGIN_REGISTRATION_BEGIN")
         super.configureFlutterEngine(flutterEngine)
+        walletBridge = WalletBridge(this, flutterEngine.dartExecutor.binaryMessenger)
         logStartup(
             "PLUGIN_REGISTRATION_END",
             " duration_us=${(SystemClock.elapsedRealtimeNanos() - pluginsAtNs) / 1000}",
@@ -116,10 +120,23 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        walletBridge?.dispose()
+        walletBridge = null
         tts?.stop()
         tts?.shutdown()
         tts = null
         super.onDestroy()
+    }
+
+    override fun onStop() {
+        walletBridge?.onBackground()
+        super.onStop()
+    }
+
+    @Deprecated("Forwarding scanner result to its native bridge")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        walletBridge?.onActivityResult(requestCode, resultCode, data)
     }
 
     companion object {

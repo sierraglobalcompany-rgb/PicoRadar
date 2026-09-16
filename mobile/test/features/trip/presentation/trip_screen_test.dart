@@ -1089,6 +1089,55 @@ void main() {
     );
   });
 
+  for (final restoreDraft in [false, true]) {
+    testWidgets(
+      'favorite change preserves open trip vehicle (draft=$restoreDraft)',
+      (tester) async {
+        final first = _vehicle(id: 'vehicle-a', plate: 'AAA123');
+        final second = _vehicle(id: 'vehicle-b', plate: 'BBB223');
+        var favorite = restoreDraft ? second : first;
+        if (restoreDraft) {
+          await TripDraftStore(preferences).saveDraft(
+            TripDraft(
+              origin: 'Bogotá',
+              destination: 'Medellín',
+              date: DateTime.now(),
+              activeVehicleId: first.id,
+            ),
+          );
+        }
+        await _pumpScreen(
+          tester,
+          preferences: preferences,
+          activeVehicleBuilder: () => favorite,
+          vehicles: [first, second],
+        );
+        expect(find.text('Particular · AAA123'), findsOneWidget);
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(TripScreen)),
+        );
+        favorite = second;
+        container.invalidate(activeVehicleProvider);
+        await tester.pumpAndSettle();
+        expect(find.text('Particular · AAA123'), findsOneWidget);
+        expect(find.text('Particular · BBB223'), findsNothing);
+        await tester.enterText(
+          find.byKey(const ValueKey('trip-origin-field')),
+          'Bogotá',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('trip-destination-field')),
+          'Medellín',
+        );
+        await _tapByKey(tester, 'trip-save-draft');
+        expect(
+          (await TripDraftStore(preferences).loadDraft())?.activeVehicleId,
+          first.id,
+        );
+      },
+    );
+  }
+
   testWidgets('shows active vehicle without requiring it', (tester) async {
     await _pumpScreen(
       tester,
@@ -3332,6 +3381,7 @@ Future<void> _pumpScreen(
   required MemoryPreferences preferences,
   _FakeExternalLauncher? launcher,
   VehicleProfile? activeVehicle,
+  VehicleProfile? Function()? activeVehicleBuilder,
   List<VehicleProfile>? vehicles,
   List<VehicleProfile> Function()? vehicleListBuilder,
   RestrictionStore? restrictionStore,
@@ -3375,7 +3425,9 @@ Future<void> _pumpScreen(
         if (planClient != null)
           tripPlanClientProvider.overrideWithValue(planClient),
         appPreferencesProvider.overrideWithValue(preferences),
-        activeVehicleProvider.overrideWith((ref) async => activeVehicle),
+        activeVehicleProvider.overrideWith(
+          (ref) async => activeVehicleBuilder?.call() ?? activeVehicle,
+        ),
         vehicleListProvider.overrideWith(
           (ref) async =>
               vehicleListBuilder?.call() ??

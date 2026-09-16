@@ -5,6 +5,39 @@
 
 ## GOAL
 
+### Owner-authorized insurance extension (2026-09-13)
+
+2026-09-14 policy refinement: protected policy sheet/editor, scoped Spanish
+Material calendars, optional COP source value with annual/monthly reference
+equivalents, insurer search with explicit custom exception, collapsed private
+contacts and evidence-backed service tags in the existing directory. Approved
+home/banner/vehicle/plate stay unchanged. No persistence table or migration.
+flutter_localizations (Flutter SDK) and intl 0.20.3 are authorized and justified
+in .planning/INSURANCE_POLICY_CHECKPOINT.md; no third-party calendar engine.
+
+Insurance-only adaptive mockup, automotive insurer/contact catalog, per-vehicle
+policy editing and existing protected wallet integration are authorized.
+Quote UI is a dev-only, non-transmitting demonstration with fictional applicant
+data. C25, production sponsorship and real lead collection remain OFF. No
+runtime dependency or schema change is planned. Catalog evidence and unresolved
+channels must be disclosed; no claim of completeness before every reference
+entity is audited. See .planning/INSURANCE_OWNER_CHECKPOINT.md. No merge.
+
+### Owner-authorized taxes extension (2026-09-13)
+
+The owner approved `temp/TAXES_OWNER_PLAN/PROPUESTA.md`: taxes-only UI,
+temporary authority lookup plus explicit per-vehicle save, and a local versioned
+33-territory directory with editorially partial calendars. This does not claim
+national completeness. Unknown dates/portals remain explicitly pending.
+The same approved change includes the tax payload validator in the existing B01
+publisher and mobile snapshot importer. No new database tables, dependencies,
+automatic tax reminders, estimates, personal debt queries or GPS behavior.
+Real remote delivery requires an approved HTTPS CDN endpoint and publication;
+local fixtures are not evidence of an operating deployment. Physical preview
+screenshots and owner approval precede this extension's final closure.
+Branch: `codex/taxes-owner-calendar`; base and previous WIP are recorded in
+`.planning/TAXES_OWNER_CHECKPOINT.md`. No merge is authorized.
+
 Complete the main vehicle-status modules inside Garaje/Apps using local data and official-link contracts.
 
 ## SOURCE OF TRUTH

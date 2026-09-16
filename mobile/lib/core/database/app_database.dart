@@ -119,6 +119,86 @@ class RestrictionCoverages extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+class DriverProfiles extends Table {
+  TextColumn get id => text()();
+  IntColumn get slot => integer().unique()();
+  BlobColumn get encryptedMetadata => blob()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => [
+    'CHECK (slot IN (0, 1))',
+    "CHECK ((slot = 0 AND id = 'principal') OR "
+        "(slot = 1 AND id <> 'principal'))",
+  ];
+}
+
+class WalletPreparations extends Table {
+  TextColumn get id => text()();
+  BlobColumn get encryptedMetadata => blob()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@TableIndex(
+  name: 'private_documents_driver_type_idx',
+  columns: {#driverId, #type},
+  unique: true,
+)
+@TableIndex(
+  name: 'private_documents_vehicle_type_idx',
+  columns: {#vehicleId, #type},
+  unique: true,
+)
+@TableIndex(
+  name: 'private_documents_preparation_type_idx',
+  columns: {#preparationId, #type},
+  unique: true,
+)
+class PrivateDocuments extends Table {
+  TextColumn get id => text()();
+  TextColumn get driverId => text().nullable().references(
+    DriverProfiles,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
+  TextColumn get vehicleId => text().nullable().references(
+    Vehicles,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
+  TextColumn get preparationId => text().nullable().references(
+    WalletPreparations,
+    #id,
+    onDelete: KeyAction.cascade,
+  )();
+  TextColumn get type => text().withLength(min: 1, max: 32)();
+  BlobColumn get encryptedMetadata => blob()();
+  DateTimeColumn get importedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<String> get customConstraints => [
+    'CHECK ((driver_id IS NOT NULL) + (vehicle_id IS NOT NULL) + '
+        '(preparation_id IS NOT NULL) = 1)',
+  ];
+}
+
+class WalletMigrations extends Table {
+  TextColumn get id => text()();
+  BlobColumn get encryptedMetadata => blob()();
+  DateTimeColumn get completedAt =>
+      dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Vehicles,
@@ -127,13 +207,17 @@ class RestrictionCoverages extends Table {
     NotificationPreferences,
     DatasetVersions,
     RestrictionCoverages,
+    DriverProfiles,
+    WalletPreparations,
+    PrivateDocuments,
+    WalletMigrations,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'picoradar'));
 
-  static const currentSchemaVersion = 6;
+  static const currentSchemaVersion = 8;
 
   @override
   int get schemaVersion => currentSchemaVersion;
@@ -202,6 +286,33 @@ class AppDatabase extends _$AppDatabase {
         );
       }
       from = 6;
+    }
+
+    if (from == 6) {
+      await migrator.createTable(driverProfiles);
+      await migrator.createTable(privateDocuments);
+      await migrator.createTable(walletMigrations);
+      await migrator.createIndex(privateDocumentsDriverTypeIdx);
+      await migrator.createIndex(privateDocumentsVehicleTypeIdx);
+      from = 7;
+    }
+
+    if (from == 7) {
+      await transaction(() async {
+        await migrator.createTable(walletPreparations);
+        // Older upgrade paths create the current table directly. Existing v7
+        // tables need a rebuild to replace the two-owner CHECK constraint.
+        if (!await _columnExists('private_documents', 'preparation_id')) {
+          await migrator.alterTable(
+            TableMigration(
+              privateDocuments,
+              newColumns: [privateDocuments.preparationId],
+            ),
+          );
+        }
+        await migrator.createIndex(privateDocumentsPreparationTypeIdx);
+      });
+      from = 8;
     }
 
     if (from == to) {

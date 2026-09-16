@@ -1,16 +1,24 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/theme/app_theme.dart';
+import 'package:picoradar/features/documents/application/wallet_providers.dart';
+import 'package:picoradar/features/documents/application/wallet_session.dart';
+import 'package:picoradar/features/documents/data/wallet_store.dart';
+import 'package:picoradar/features/documents/platform/wallet_platform.dart';
+import 'package:picoradar/features/documents/presentation/wallet_viewer.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/home/data/home_banner_config.dart';
 import 'package:picoradar/features/vehicle_status/data/private_vehicle_document_store.dart';
+import 'package:picoradar/features/vehicle_status/data/tax_catalog.dart';
 import 'package:picoradar/features/vehicle_status/data/vehicle_obligation_store.dart';
 import 'package:picoradar/features/vehicle_status/domain/vehicle_obligation.dart';
 import 'package:picoradar/features/vehicle_status/platform/vehicle_document_gateway.dart';
@@ -52,11 +60,17 @@ void main() {
         final authority = find.byKey(const ValueKey('tax-authority-field'));
         await tester.ensureVisible(authority);
         await tester.pump();
-        final text = find.descendant(
-          of: authority,
-          matching: find.byType(RichText),
-        );
-        for (final element in text.evaluate()) {
+        final text =
+            [
+              authority,
+              find.byKey(const ValueKey('tax-authority-name')),
+              find.text('Secretaría Distrital de Hacienda'),
+            ].expand(
+              (target) => find
+                  .descendant(of: target, matching: find.byType(RichText))
+                  .evaluate(),
+            );
+        for (final element in text) {
           final paragraph = element.renderObject! as RenderParagraph;
           final boxes = paragraph.getBoxesForSelection(
             TextSelection(
@@ -65,37 +79,23 @@ void main() {
             ),
           );
           for (final box in boxes) {
-            if (paragraph.text.toPlainText() == 'Entidad tributaria') {
-              // The floating label is transformed, not clipped to its line box.
-              final field = tester.getRect(authority).inflate(0.1);
-              expect(
-                field.contains(paragraph.localToGlobal(box.toRect().topLeft)),
-                isTrue,
-              );
-              expect(
-                field.contains(
-                  paragraph.localToGlobal(box.toRect().bottomRight),
-                ),
-                isTrue,
-              );
-            } else {
-              expect(
-                box.bottom,
-                lessThanOrEqualTo(paragraph.size.height + 0.1),
-                reason: paragraph.text.toPlainText(),
-              );
-            }
+            expect(
+              box.bottom,
+              lessThanOrEqualTo(paragraph.size.height + 0.1),
+              reason: paragraph.text.toPlainText(),
+            );
+            expect(paragraph.didExceedMaxLines, isFalse);
           }
         }
         expect(authority.hitTestable(), findsOneWidget);
-        await tester.tap(authority);
-        await tester.pumpAndSettle();
-        final option = find.text('Antioquia - Gobernación de Antioquia').last;
-        await tester.ensureVisible(option);
-        await tester.pumpAndSettle();
-        expect(option.hitTestable(), findsOneWidget);
-        await tester.tap(option);
-        await _pumpNavigation(tester);
+        await _chooseTaxAuthority(tester, 'antioquia');
+        expect(
+          await VehicleObligationStore(harness.database)
+              .get(vehicle.id, VehicleObligationType.tax),
+          isNull,
+        );
+        expect(find.text('Consulta temporal'), findsOneWidget);
+        await _saveTaxAuthority(tester);
         final saved = await VehicleObligationStore(harness.database)
             .get(vehicle.id, VehicleObligationType.tax);
         expect(saved?.details['authorityId'], 'antioquia');
@@ -484,11 +484,129 @@ void main() {
     expect(find.textContaining('Verificado oficialmente'), findsNothing);
   });
 
+  testWidgets(
+    'locked SOAT keeps dates visible and closes sheet authorization',
+    (tester) async {
+      final vehicle = await _createVehicle(harness, plate: 'SEC123');
+      await VehicleObligationStore(harness.database).upsert(
+        vehicleId: vehicle.id,
+        type: VehicleObligationType.soat,
+        dueDate: DateTime(2026, 12, 31),
+      );
+      final session = WalletSession(
+        authenticator: _OwnerAuthenticator(),
+        preferences: _OwnerPreferences(),
+      );
+      addTearDown(session.dispose);
+      await _openModule(
+        tester,
+        harness,
+        'soat',
+        walletSessionOverride: session,
+        unlockWallet: false,
+        documentMetadataOverride: _documentMetadata(
+          vehicleId: vehicle.id,
+          documentType: PrivateVehicleDocumentType.soat,
+          name: 'sensitive-policy.pdf',
+        ),
+      );
+      expect(find.text('31 DIC 2026'), findsOneWidget);
+      expect(find.text('Póliza guardada'), findsNothing);
+      expect(find.text('sensitive-policy.pdf'), findsNothing);
+      expect(find.text('Adjuntar SOAT'), findsNothing);
+      expect(find.text('Ver documentos'), findsWidgets);
+      final action = find.byKey(const ValueKey('owner-document-action-soat'));
+      await tester.ensureVisible(action);
+      await tester.tap(action);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('documents-vehicle-sheet-scroll')),
+        findsOneWidget,
+      );
+      expect(session.accessAllowed, isTrue);
+      await tester.tap(find.byTooltip('Cerrar documentos del vehículo'));
+      await tester.pumpAndSettle();
+      expect(session.accessAllowed, isFalse);
+      expect(find.text('Póliza guardada'), findsNothing);
+      expect(find.text('31 DIC 2026'), findsOneWidget);
+    },
+  );
+
+  testWidgets('SOAT denied authentication never opens private sheet', (
+    tester,
+  ) async {
+    await _createVehicle(harness, plate: 'DEN123');
+    final session = WalletSession(
+      authenticator: _OwnerAuthenticator(allow: false),
+      preferences: _OwnerPreferences(protected: true),
+    );
+    addTearDown(session.dispose);
+    await _openModule(
+      tester,
+      harness,
+      'soat',
+      walletSessionOverride: session,
+      unlockWallet: false,
+    );
+    final action = find.byKey(const ValueKey('owner-document-action-soat'));
+    await tester.ensureVisible(action);
+    await tester.tap(action);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('documents-vehicle-sheet-scroll')),
+      findsNothing,
+    );
+    expect(session.accessAllowed, isFalse);
+    expect(find.textContaining('Autenticación cancelada'), findsOneWidget);
+  });
+
+  testWidgets('SOAT lock masks previously loaded copy immediately', (
+    tester,
+  ) async {
+    final vehicle = await _createVehicle(harness, plate: 'LCK123');
+    final session = WalletSession(
+      authenticator: _OwnerAuthenticator(),
+      preferences: _OwnerPreferences(),
+    );
+    addTearDown(session.dispose);
+    await _openModule(
+      tester,
+      harness,
+      'soat',
+      walletSessionOverride: session,
+      documentMetadataOverride: _documentMetadata(
+        vehicleId: vehicle.id,
+        documentType: PrivateVehicleDocumentType.soat,
+        name: 'private.pdf',
+      ),
+    );
+    expect(find.text('Póliza guardada'), findsOneWidget);
+    session.lock();
+    await tester.pump();
+    expect(find.text('Póliza guardada'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('owner-document-menu-soat')),
+      findsNothing,
+    );
+    expect(find.text('Ver documentos'), findsWidgets);
+  });
+
   testWidgets('SOAT attach clears picker plaintext cache after local import', (
     tester,
   ) async {
     final vehicle = await _createVehicle(harness, plate: 'TMP123');
-    final source = File('picked-soat.pdf');
+    final source = File('${harness.documentRoot.path}/picked-soat.pdf');
+    source.writeAsStringSync('%PDF-1.7 fixture');
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/path_provider'),
+      (_) async => harness.documentRoot.path,
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        null,
+      ),
+    );
     final gateway = _CapturingDocumentGateway(
       openResult: true,
       pickedDocument: PickedVehicleDocument(
@@ -496,23 +614,42 @@ void main() {
         originalName: 'picked-soat.pdf',
         mimeType: 'application/pdf',
       ),
+      deletePickedFileOnClear: true,
     );
-    final store = _CapturingDocumentStore();
+    final store = _CapturingWalletStore(harness.documentRoot);
 
     await _openModule(
       tester,
       harness,
       'soat',
       documentGateway: gateway,
-      documentStoreOverride: store,
+      walletStoreOverride: store,
     );
     await tester.tap(find.byKey(const ValueKey('owner-document-action-soat')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 250));
-
-    expect(store.importedMetadata?.vehicleId, vehicle.id);
-    expect(store.importedMetadata?.originalName, 'picked-soat.pdf');
-    expect(gateway.clearTemporaryFileCalls, 1);
+    await tester.pumpAndSettle();
+    await tester.runAsync(() => tester.tap(find.text('Importar archivo')));
+    await _finishWalletIo(
+      tester,
+      until: () => tester
+          .widgetList<FilledButton>(
+            find.byKey(const ValueKey('wallet-viewer-save')),
+          )
+          .any((button) => button.onPressed != null),
+    );
+    expect(find.byType(WalletViewer), findsOneWidget);
+    expect(store.saved, isNull);
+    expect(source.existsSync(), isFalse);
+    await tester.tap(find.byKey(const ValueKey('wallet-viewer-save')));
+    await _finishWalletIo(tester);
+    expect(store.saved?.owner, WalletOwner.vehicle(vehicle.id));
+    expect(store.saved?.type, WalletDocumentType.soat);
+    expect(store.saved?.pdf?.originalName, 'picked-soat.pdf');
+    expect(gateway.clearTemporaryFileCalls, greaterThanOrEqualTo(1));
+    expect(gateway.openedFiles, isEmpty);
+    expect(
+      Directory('${harness.documentRoot.path}/wallet_pending').listSync(),
+      isEmpty,
+    );
   });
 
   testWidgets('SOAT and RTM owner screens tolerate R03B viewports', (
@@ -571,7 +708,7 @@ void main() {
   );
 
   testWidgets(
-    'document view keeps plaintext only for viewer handoff and purges on failed open',
+    'document view stays in wallet viewer and purges temporary copies on close',
     (tester) async {
       final vehicle = await _createVehicle(harness, plate: 'DOC123');
       await VehicleObligationStore(harness.database).upsert(
@@ -584,7 +721,7 @@ void main() {
         documentType: PrivateVehicleDocumentType.soat,
         name: 'soat.pdf',
       );
-      final store = _CapturingDocumentStore(metadata: metadata);
+      final store = _CapturingWalletStore(harness.documentRoot);
       final gateway = _CapturingDocumentGateway(openResult: false);
 
       await _openModule(
@@ -592,17 +729,18 @@ void main() {
         harness,
         'soat',
         documentGateway: gateway,
-        documentStoreOverride: store,
+        walletStoreOverride: store,
         documentMetadataOverride: metadata,
       );
       await tester.tap(find.byKey(const ValueKey('owner-primary-soat')));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250));
-
-      expect(gateway.openedFiles, hasLength(1));
+      await _finishWalletIo(tester);
+      expect(find.byType(WalletViewer), findsOneWidget);
+      expect(gateway.openedFiles, isEmpty);
       expect(store.decryptCalls, 1);
-      expect(store.purgedMetadata, metadata);
-      expect(find.text('No se pudo abrir el documento.'), findsOneWidget);
+      expect(store.viewerFile!.existsSync(), isFalse);
+      await tester.tap(find.byTooltip('Volver').last);
+      await _finishWalletIo(tester);
+      expect(store.purgeAllCalls, greaterThanOrEqualTo(1));
     },
   );
 
@@ -741,12 +879,12 @@ void main() {
       externalLauncher: launcher,
     );
     final callButton = find.byKey(const ValueKey('call-assistancePhone'));
-    await tester.drag(find.byType(ListView), const Offset(0, -260));
+    await tester.tap(find.byKey(const ValueKey('insurance-assistance')));
     await _pumpNavigation(tester);
     await tester.tap(callButton);
     await tester.pump();
 
-    expect(launcher.calledPhones, ['601 111 1111']);
+    expect(launcher.calledPhones, ['6011111111']);
     expect(normalizePhoneForTel(launcher.calledPhones.single), '6011111111');
   });
 
@@ -771,7 +909,7 @@ void main() {
       externalLauncher: launcher,
     );
     final callButton = find.byKey(const ValueKey('call-assistancePhone'));
-    await tester.drag(find.byType(ListView), const Offset(0, -260));
+    await tester.tap(find.byKey(const ValueKey('insurance-assistance')));
     await _pumpNavigation(tester);
     await tester.tap(callButton);
     await tester.pump();
@@ -802,7 +940,7 @@ void main() {
       externalLauncher: launcher,
     );
     final callButton = find.byKey(const ValueKey('call-assistancePhone'));
-    await tester.drag(find.byType(ListView), const Offset(0, -260));
+    await tester.tap(find.byKey(const ValueKey('insurance-assistance')));
     await _pumpNavigation(tester);
     await tester.tap(callButton);
     await tester.pump();
@@ -820,22 +958,15 @@ void main() {
 
     expect(
       find.text(
-        'PicoRadar no calcula el impuesto, no consulta deuda y no confirma si está pagado.',
+        'Calendario informativo. No calculamos deuda ni confirmamos pagos.',
       ),
       findsOneWidget,
     );
-    expect(find.text('Antioquia - Gobernación de Antioquia'), findsWidgets);
-    expect(find.text('Fuente: Gobernación de Antioquia'), findsOneWidget);
-    expect(find.text('Calendario: 2026'), findsOneWidget);
-    expect(find.text('Revisado: 3 sep 2026'), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('official-link-antioquia-tax-vehicles')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('official-link-bogota-tax-vehicles')),
-      findsNothing,
-    );
+    expect(find.text('Antioquia'), findsOneWidget);
+    expect(find.text('Gobernación de Antioquia'), findsOneWidget);
+    expect(find.text('Calendario 2026'), findsOneWidget);
+    expect(find.byKey(const ValueKey('tax-open-portal')), findsOneWidget);
+    expect(find.text('Bogotá D. C.'), findsNothing);
     expect(find.textContaining('avaluo'), findsNothing);
     expect(find.textContaining('tarifa'), findsNothing);
     expect(find.textContaining('debes \$'), findsNothing);
@@ -843,65 +974,83 @@ void main() {
     expect(find.textContaining('deuda consultada'), findsNothing);
     expect(find.textContaining('paz y salvo'), findsNothing);
     expect(find.textContaining('liquidación calculada'), findsNothing);
+    await tester.ensureVisible(find.byKey(const ValueKey('tax-source')));
+    await tester.tap(find.byKey(const ValueKey('tax-source')));
+    await tester.pumpAndSettle();
+    expect(find.text('Calendario revisado: 3 sept 2026'), findsOneWidget);
+    expect(
+      find.text(
+        'PicoRadar no calcula el impuesto, no consulta deuda y no confirma si está pagado.',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
     'tax screen keeps unsupported city manual until authority selected',
     (tester) async {
-      await _createVehicle(harness, plate: 'BEL123', city: 'Bello');
+      final vehicle = await _createVehicle(
+        harness,
+        plate: 'BEL123',
+        city: 'Municipio desconocido',
+      );
 
       await _openModule(tester, harness, 'impuestos');
 
       expect(
         find.text(
-          'Selecciona la entidad tributaria correspondiente a la matrícula.',
+          'Selecciona la entidad correspondiente a la matrícula del vehículo.',
         ),
         findsOneWidget,
       );
+      expect(find.byKey(const ValueKey('tax-open-portal')), findsNothing);
+      await _chooseTaxAuthority(tester, 'antioquia');
+      expect(find.text('Antioquia'), findsOneWidget);
+      expect(find.byKey(const ValueKey('tax-open-portal')), findsOneWidget);
       expect(
-        find.byKey(const ValueKey('official-link-bogota-tax-vehicles')),
-        findsNothing,
-      );
-      expect(
-        find.byKey(const ValueKey('official-link-antioquia-tax-vehicles')),
-        findsNothing,
+        await VehicleObligationStore(harness.database)
+            .get(vehicle.id, VehicleObligationType.tax),
+        isNull,
       );
     },
   );
 
-  testWidgets('tax authority selection persists without replacing saved data', (
-    tester,
-  ) async {
-    final vehicle = await _createVehicle(
-      harness,
-      plate: 'TAX123',
-      city: 'Cali',
-    );
-    await VehicleObligationStore(harness.database).upsert(
-      vehicleId: vehicle.id,
-      type: VehicleObligationType.tax,
-      startDate: DateTime(2026, 1, 2),
-      dueDate: DateTime(2026, 7, 24),
-      details: const {'source': 'manual-note'},
-      reminderEnabled: true,
-    );
+  testWidgets(
+    'tax authority explicit save persists without replacing saved data',
+    (tester) async {
+      final vehicle = await _createVehicle(
+        harness,
+        plate: 'TAX123',
+        city: 'Cali',
+      );
+      await VehicleObligationStore(harness.database).upsert(
+        vehicleId: vehicle.id,
+        type: VehicleObligationType.tax,
+        startDate: DateTime(2026, 1, 2),
+        dueDate: DateTime(2026, 7, 24),
+        details: const {'source': 'manual-note', 'authorityId': 'antioquia'},
+        reminderEnabled: true,
+      );
 
-    await _openModule(tester, harness, 'impuestos');
-    await tester.tap(find.byKey(const ValueKey('tax-authority-field')));
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.text('Bogotá - Secretaría Distrital de Hacienda').last,
-    );
-    await _pumpNavigation(tester);
+      await _openModule(tester, harness, 'impuestos');
+      await _chooseTaxAuthority(tester, 'bogota');
+      final beforeSave = await VehicleObligationStore(harness.database)
+          .get(vehicle.id, VehicleObligationType.tax);
+      expect(beforeSave?.details['authorityId'], 'antioquia');
+      expect(find.text('Consulta temporal'), findsOneWidget);
+      await _saveTaxAuthority(tester);
 
-    final saved = await VehicleObligationStore(harness.database)
-        .get(vehicle.id, VehicleObligationType.tax);
-    expect(saved?.startDate, DateTime(2026, 1, 2));
-    expect(saved?.dueDate, DateTime(2026, 7, 24));
-    expect(saved?.reminderEnabled, isTrue);
-    expect(saved?.details['source'], 'manual-note');
-    expect(saved?.details['authorityId'], 'bogota');
-  });
+      final saved = await VehicleObligationStore(harness.database)
+          .get(vehicle.id, VehicleObligationType.tax);
+      expect(saved?.startDate, DateTime(2026, 1, 2));
+      expect(saved?.dueDate, DateTime(2026, 7, 24));
+      expect(saved?.reminderEnabled, isTrue);
+      expect(saved?.details['source'], 'manual-note');
+      expect(saved?.details['authorityId'], 'bogota');
+      expect(saved?.createdAt, beforeSave?.createdAt);
+      expect(find.text('Consulta temporal'), findsNothing);
+    },
+  );
 
   testWidgets('tax authority selection tolerates dispose during async write', (
     tester,
@@ -923,20 +1072,118 @@ void main() {
         child: child,
       ),
     );
-    await tester.tap(find.byKey(const ValueKey('tax-authority-field')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Antioquia - Gobernación de Antioquia').last);
+    await _chooseTaxAuthority(tester, 'antioquia');
+    expect(store.upsertStarted, isFalse);
+    final save = find.byKey(const ValueKey('tax-save-authority'));
+    await tester.ensureVisible(save);
+    await tester.tap(save);
     await tester.pump();
     expect(store.upsertStarted, isTrue);
+    expect(tester.widget<TextButton>(save).onPressed, isNull);
 
     await tester.pumpWidget(const SizedBox.shrink());
     release.complete();
-    await tester.pump();
+    await _pumpNavigation(tester);
 
     expect(tester.takeException(), isNull);
     final saved = await VehicleObligationStore(harness.database)
         .get(vehicle.id, VehicleObligationType.tax);
     expect(saved?.details['authorityId'], 'antioquia');
+  });
+
+  testWidgets('tax save failure keeps prior authority and permits retry', (
+    tester,
+  ) async {
+    final vehicle = await _createVehicle(harness, plate: 'ERR123');
+    final original = await VehicleObligationStore(harness.database).upsert(
+      vehicleId: vehicle.id,
+      type: VehicleObligationType.tax,
+      details: const {'authorityId': 'bogota', 'source': 'manual-note'},
+      dueDate: DateTime(2026, 7, 24),
+      reminderEnabled: false,
+    );
+    final store = _RetryTaxObligationStore(harness.database);
+    await _openModule(
+      tester,
+      harness,
+      'impuestos',
+      wrap: (child) => ProviderScope(
+        overrides: [vehicleObligationStoreProvider.overrideWithValue(store)],
+        child: child,
+      ),
+    );
+    await _chooseTaxAuthority(tester, 'antioquia');
+    await _saveTaxAuthority(tester);
+    expect(
+      find.text(
+        'No pudimos guardar la entidad. Conservamos la anterior; vuelve a intentarlo.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Consulta temporal'), findsOneWidget);
+    final failed = await store.get(vehicle.id, VehicleObligationType.tax);
+    expect(failed?.details, original.details);
+    expect(failed?.updatedAt, original.updatedAt);
+    await _saveTaxAuthority(tester);
+    final saved = await store.get(vehicle.id, VehicleObligationType.tax);
+    expect(saved?.details, {
+      'authorityId': 'antioquia',
+      'source': 'manual-note',
+    });
+    expect(saved?.dueDate, original.dueDate);
+    expect(saved?.reminderEnabled, isFalse);
+    expect(store.attempts, 2);
+  });
+
+  testWidgets(
+    'tax catalog loading resolves without changing stored selection',
+    (tester) async {
+      final vehicle = await _createVehicle(harness, plate: 'LOD123');
+      final pending = Completer<TaxCatalog>();
+      await _openModule(
+        tester,
+        harness,
+        'impuestos',
+        taxCatalogLoader: () => pending.future,
+      );
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byKey(const ValueKey('tax-authority-field')), findsNothing);
+      pending.complete(_taxFixtureCatalog());
+      await _pumpNavigation(tester);
+      expect(find.text('Bogotá D. C.'), findsOneWidget);
+      expect(
+        await VehicleObligationStore(harness.database)
+            .get(vehicle.id, VehicleObligationType.tax),
+        isNull,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('tax catalog load failure retries successfully', (tester) async {
+    await _createVehicle(harness, plate: 'RET123');
+    var attempts = 0;
+    await _openModule(
+      tester,
+      harness,
+      'impuestos',
+      taxCatalogLoader: () async {
+        if (++attempts == 1) throw StateError('fixture load failure');
+        return _taxFixtureCatalog();
+      },
+    );
+    expect(
+      find.text('No pudimos cargar las entidades tributarias.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Reintentar'));
+    await _pumpNavigation(tester);
+    expect(attempts, 2);
+    expect(find.text('Bogotá D. C.'), findsOneWidget);
+    expect(
+      find.text('No pudimos cargar las entidades tributarias.'),
+      findsNothing,
+    );
   });
 
   testWidgets('tax portal failure is visible to the user', (tester) async {
@@ -945,19 +1192,22 @@ void main() {
 
     await _openModule(tester, harness, 'impuestos', externalLauncher: launcher);
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('official-link-bogota-tax-vehicles')),
+      find.byKey(const ValueKey('tax-open-portal')),
       280,
     );
     await tester.pump();
-    await tester.tap(
-      find.byKey(const ValueKey('official-link-bogota-tax-vehicles')),
-    );
+    await tester.tap(find.byKey(const ValueKey('tax-open-portal')));
     await tester.pump();
 
     expect(launcher.openedUris, [
       'https://www.haciendabogota.gov.co/es/impuestos/impuesto-sobre-vehiculos-automotores',
     ]);
     expect(find.text('No pudimos abrir el portal oficial.'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('Reintentar').hitTestable(), findsOneWidget);
+    await tester.tap(find.text('Reintentar'));
+    await tester.pump();
+    expect(launcher.openedUris, [_taxBogotaPortal, _taxBogotaPortal]);
   });
 
   testWidgets('tax portal exception is visible to the user', (tester) async {
@@ -966,13 +1216,11 @@ void main() {
 
     await _openModule(tester, harness, 'impuestos', externalLauncher: launcher);
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('official-link-bogota-tax-vehicles')),
+      find.byKey(const ValueKey('tax-open-portal')),
       280,
     );
     await tester.pump();
-    await tester.tap(
-      find.byKey(const ValueKey('official-link-bogota-tax-vehicles')),
-    );
+    await tester.tap(find.byKey(const ValueKey('tax-open-portal')));
     await tester.pump();
 
     expect(find.text('No pudimos abrir el portal oficial.'), findsOneWidget);
@@ -987,12 +1235,24 @@ void main() {
 
       await _openModule(tester, harness, 'impuestos');
 
-      expect(find.text('Ya pasó · Pronto pago 10%'), findsOneWidget);
-      expect(find.text('Hoy · Fecha límite ordinaria'), findsOneWidget);
+      expect(find.text('Próximas fechas'), findsOneWidget);
+      expect(find.text('Hoy'), findsOneWidget);
       expect(
-        find.text('Próxima · SPAC: cuota 2, si se acogió'),
+        find.byKey(const ValueKey('tax-event-bogota-ordinary')),
         findsOneWidget,
       );
+      expect(
+        find.byKey(const ValueKey('tax-event-bogota-installment')),
+        findsOneWidget,
+      );
+      expect(find.text('Si se acogió al pago por cuotas'), findsOneWidget);
+      expect(find.text('Pronto pago 10%'), findsNothing);
+      final history = find.byKey(const ValueKey('tax-past-dates'));
+      await tester.ensureVisible(history);
+      await tester.tap(history);
+      await tester.pumpAndSettle();
+      expect(find.text('Pronto pago 10%'), findsOneWidget);
+      expect(find.textContaining('Ya pasó'), findsNothing);
       expect(find.textContaining('semaforización'), findsNothing);
     },
   );
@@ -1024,7 +1284,7 @@ void main() {
         reason: viewport.name,
       );
       expect(
-        find.byKey(const ValueKey('official-link-bogota-tax-vehicles')),
+        find.byKey(const ValueKey('tax-open-portal')),
         findsOneWidget,
         reason: viewport.name,
       );
@@ -1057,11 +1317,15 @@ Future<void> _openModule(
   VehicleDocumentGateway? documentGateway,
   PrivateVehicleDocumentStore? documentStoreOverride,
   PrivateVehicleDocumentMetadata? documentMetadataOverride,
+  WalletStore? walletStoreOverride,
+  WalletSession? walletSessionOverride,
+  bool unlockWallet = true,
   bool overrideHomeBannerCampaign = false,
   HomeBannerCampaign? homeBannerCampaignOverride,
   Size size = const Size(390, 844),
   double textScaleFactor = 1,
   bool productionTheme = false,
+  Future<TaxCatalog> Function()? taxCatalogLoader,
   Widget Function(Widget child)? wrap,
 }) async {
   tester.view.devicePixelRatio = 1;
@@ -1084,14 +1348,273 @@ Future<void> _openModule(
     documentMetadataOverride: documentMetadataOverride,
     overrideHomeBannerCampaign: overrideHomeBannerCampaign,
     homeBannerCampaignOverride: homeBannerCampaignOverride,
-    childOverride: MaterialApp(
-      theme: productionTheme ? buildPicoRadarTheme() : null,
-      home: VehicleStatusScreen(moduleId: moduleId, vehicleId: null),
+    childOverride: ProviderScope(
+      overrides: [
+        walletPlatformProvider.overrideWithValue(_OwnerWalletPlatform()),
+        if (walletStoreOverride != null)
+          walletStoreProvider.overrideWithValue(walletStoreOverride),
+        if (walletSessionOverride != null)
+          walletSessionProvider.overrideWithValue(walletSessionOverride),
+        for (final vehicle in vehicles)
+          walletDocumentsProvider(WalletOwner.vehicle(vehicle.id))
+              .overrideWith((ref) async {
+                if (documentMetadataOverride?.vehicleId == vehicle.id) {
+                  return [_walletDocument(documentMetadataOverride!)];
+                }
+                return walletStoreOverride == null
+                    ? []
+                    : walletStoreOverride.listDocuments(
+                        owner: WalletOwner.vehicle(vehicle.id),
+                      );
+              }),
+      ],
+      child: MaterialApp(
+        theme: productionTheme ? buildPicoRadarTheme() : null,
+        home: moduleId == 'impuestos'
+            ? ProviderScope(
+                overrides: [
+                  taxCatalogProvider.overrideWith(
+                    (ref) async => taxCatalogLoader == null
+                        ? _taxFixtureCatalog()
+                        : await taxCatalogLoader(),
+                  ),
+                  taxCatalogRefreshProvider.overrideWithValue(
+                    (force) async => false,
+                  ),
+                ],
+                child: VehicleStatusScreen(moduleId: moduleId, vehicleId: null),
+              )
+            : VehicleStatusScreen(moduleId: moduleId, vehicleId: null),
+      ),
     ),
     wrap: wrap,
   );
+  if (unlockWallet) {
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(VehicleStatusScreen)),
+    );
+    await container.read(walletSessionProvider).unlock();
+  }
   await _pumpNavigation(tester);
 }
+
+WalletDocument _walletDocument(PrivateVehicleDocumentMetadata metadata) =>
+    WalletDocument(
+      id: metadata.documentId,
+      owner: WalletOwner.vehicle(metadata.vehicleId),
+      type: WalletDocumentType.fromValue(metadata.documentType.value),
+      importedAt: metadata.importedAt,
+      pdf: WalletFileRef(
+        encryptedRelativePath: metadata.encryptedRelativePath,
+        originalName: metadata.originalName,
+        mimeType: metadata.mimeType,
+      ),
+    );
+
+Future<void> _finishWalletIo(
+  WidgetTester tester, {
+  bool Function()? until,
+}) async {
+  for (var i = 0; i < (until == null ? 30 : 100); i++) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 30)),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    if (until?.call() ?? false) return;
+  }
+}
+
+class _OwnerWalletPlatform extends WalletPlatform {
+  final security = <bool>[];
+  @override
+  Future<void> setSecure(bool enabled) async => security.add(enabled);
+  @override
+  Future<WalletPdfDocument> openPdf(String path) async =>
+      const WalletPdfDocument(id: 'owner-test', pageCount: 1);
+  @override
+  Future<Uint8List> renderPdfPage(String id, int page, int width) async =>
+      base64Decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      );
+  @override
+  Future<void> closePdf(String id) async {}
+}
+
+class _OwnerPreferences implements WalletSecurityPreferencesStore {
+  _OwnerPreferences({this.protected = false});
+  final bool protected;
+  @override
+  Future<WalletSecurityPreferences> read() async =>
+      WalletSecurityPreferences(protectionEnabled: protected, offerSeen: true);
+  @override
+  Future<void> write(WalletSecurityPreferences preferences) async {}
+}
+
+class _OwnerAuthenticator implements WalletDeviceAuthenticator {
+  _OwnerAuthenticator({this.allow = true});
+  final bool allow;
+  @override
+  Future<bool> canAuthenticate() async => true;
+  @override
+  Future<WalletAuthenticationResult> authenticate() async => allow
+      ? WalletAuthenticationResult.success
+      : WalletAuthenticationResult.cancelled;
+}
+
+class _CapturingWalletStore implements WalletStore {
+  _CapturingWalletStore(this.root);
+  final Directory root;
+  WalletDocument? saved;
+  File? viewerFile;
+  int decryptCalls = 0;
+  int purgeAllCalls = 0;
+
+  @override
+  Future<List<WalletDocument>> listDocuments({WalletOwner? owner}) async => [
+    if (saved != null && (owner == null || saved!.owner == owner)) saved!,
+  ];
+
+  @override
+  Future<WalletDocument> saveDocument({
+    required WalletOwner owner,
+    required WalletDocumentType type,
+    WalletDocumentInput? front,
+    WalletDocumentInput? back,
+    WalletDocumentInput? pdf,
+    Map<String, String> metadata = const {},
+    bool Function()? isAuthorized,
+  }) async {
+    if (!(isAuthorized?.call() ?? false)) {
+      throw StateError('unauthorized test save');
+    }
+    saved = WalletDocument(
+      id: 'saved',
+      owner: owner,
+      type: type,
+      importedAt: DateTime.utc(2026, 9, 13),
+      pdf: WalletFileRef(
+        encryptedRelativePath: 'saved.prcf',
+        originalName: pdf!.originalName,
+        mimeType: pdf.mimeType,
+      ),
+    );
+    return saved!;
+  }
+
+  @override
+  Future<File> decryptForView(
+    WalletDocument document,
+    WalletDocumentSide side,
+  ) async {
+    decryptCalls++;
+    final file = File('${root.path}/viewer-owned.pdf');
+    await file.writeAsString('%PDF-1.7 fixture');
+    viewerFile = file;
+    return file;
+  }
+
+  @override
+  Future<void> purgeViewerCache() async {
+    purgeAllCalls++;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+Future<void> _chooseTaxAuthority(WidgetTester tester, String id) async {
+  final chooser = find.byKey(const ValueKey('tax-authority-field'));
+  await tester.ensureVisible(chooser);
+  await tester.tap(chooser);
+  await tester.pumpAndSettle();
+  await tester.enterText(
+    find.byKey(const ValueKey('tax-authority-search')),
+    id,
+  );
+  await tester.pumpAndSettle();
+  final tile = find.byKey(ValueKey('tax-authority-$id'));
+  await tester.ensureVisible(tile);
+  expect(tile.hitTestable(), findsOneWidget);
+  await tester.tap(tile);
+  await _pumpNavigation(tester);
+}
+
+Future<void> _saveTaxAuthority(WidgetTester tester) async {
+  final save = find.byKey(const ValueKey('tax-save-authority'));
+  await tester.ensureVisible(save);
+  await tester.pump();
+  await tester.tap(save);
+  await tester.pumpAndSettle();
+}
+
+const _taxBogotaPortal =
+    'https://www.haciendabogota.gov.co/es/impuestos/impuesto-sobre-vehiculos-automotores';
+
+TaxCatalog _taxFixtureCatalog() => TaxCatalog.fromJson({
+  'schemaVersion': 1,
+  'datasetKey': 'tax_calendars',
+  'version': 'fixture-1',
+  'generatedAt': '2026-09-03T00:00:00Z',
+  'authorities': [
+    for (final authority in [
+      (
+        'bogota',
+        '11',
+        'Bogotá D. C.',
+        'Secretaría Distrital de Hacienda',
+        _taxBogotaPortal,
+      ),
+      (
+        'antioquia',
+        '05',
+        'Antioquia',
+        'Gobernación de Antioquia',
+        'https://www.antioquia.gov.co/',
+      ),
+    ])
+      {
+        'id': authority.$1,
+        'territoryCode': authority.$2,
+        'territoryName': authority.$3,
+        'name': authority.$4,
+        'institutionalUrl': authority.$5,
+        'portalUrl': authority.$5,
+        'sourceUrls': [authority.$5],
+        'reviewedAt': '2026-09-03T00:00:00Z',
+      },
+  ],
+  'calendars': [
+    for (final id in ['bogota', 'antioquia'])
+      {
+        'id': '$id-2026',
+        'authorityId': id,
+        'year': 2026,
+        'obligationKind': 'vehicle_tax',
+        'status': 'verified',
+        'reviewedAt': '2026-09-03T00:00:00Z',
+        'reviewAfter': '2027-01-01T00:00:00Z',
+        'sourceUrls': [_taxBogotaPortal],
+        'events': [
+          for (final event in [
+            ('discount', '2026-05-15', 'Pronto pago 10%', 'discount'),
+            ('ordinary', '2026-07-24', 'Fecha límite ordinaria', 'ordinary'),
+            ('installment', '2026-09-04', 'SPAC: cuota 2', 'installment'),
+          ])
+            {
+              'id': '$id-${event.$1}',
+              'date': event.$2,
+              'label': event.$3,
+              'kind': event.$4,
+              'condition': event.$1 == 'installment'
+                  ? 'Si se acogió al pago por cuotas'
+                  : null,
+              'status': 'active',
+              'sourceUrls': [_taxBogotaPortal],
+            },
+        ],
+      },
+  ],
+});
 
 Future<void> _pumpNavigation(WidgetTester tester) async {
   await tester.pump();
@@ -1183,17 +1706,52 @@ class _DelayingObligationStore extends VehicleObligationStore {
   }
 }
 
+class _RetryTaxObligationStore extends VehicleObligationStore {
+  _RetryTaxObligationStore(super.database);
+
+  int attempts = 0;
+
+  @override
+  Future<VehicleObligation> upsert({
+    required String vehicleId,
+    required VehicleObligationType type,
+    DateTime? startDate,
+    DateTime? dueDate,
+    Map<String, String> details = const {},
+    bool reminderEnabled = true,
+  }) async {
+    if (++attempts == 1) throw StateError('fixture save failure');
+    return super.upsert(
+      vehicleId: vehicleId,
+      type: type,
+      startDate: startDate,
+      dueDate: dueDate,
+      details: details,
+      reminderEnabled: reminderEnabled,
+    );
+  }
+}
+
 class _CapturingDocumentGateway implements VehicleDocumentGateway {
-  _CapturingDocumentGateway({required this.openResult, this.pickedDocument});
+  _CapturingDocumentGateway({
+    required this.openResult,
+    this.pickedDocument,
+    this.deletePickedFileOnClear = false,
+  });
 
   final bool openResult;
   final PickedVehicleDocument? pickedDocument;
+  final bool deletePickedFileOnClear;
   final openedFiles = <File>[];
   int clearTemporaryFileCalls = 0;
 
   @override
   Future<void> clearTemporaryFiles() async {
     clearTemporaryFileCalls += 1;
+    final file = pickedDocument?.file;
+    if (deletePickedFileOnClear && file != null && await file.exists()) {
+      await file.delete();
+    }
   }
 
   @override
@@ -1207,7 +1765,7 @@ class _CapturingDocumentGateway implements VehicleDocumentGateway {
 }
 
 class _CapturingDocumentStore extends PrivateVehicleDocumentStore {
-  _CapturingDocumentStore({this.metadata});
+  _CapturingDocumentStore();
 
   PrivateVehicleDocumentMetadata? metadata;
   PrivateVehicleDocumentMetadata? importedMetadata;

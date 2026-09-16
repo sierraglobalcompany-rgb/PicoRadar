@@ -39,7 +39,7 @@ class DatasetReleaseValidator
             if ($locked->dataset_id !== $dataset->id || $locked->status !== DatasetReleaseStatus::Draft || ! $locked->draft_path) {
                 throw new DomainException('Only an existing draft can be validated.');
             }
-            $this->validateEnvelope($payload, $dataset, $locked);
+            $this->validateEnvelope($payload, $dataset, $locked, $bytes);
             $sources = DatasetSource::query()->where('dataset_id', $dataset->id)->lockForUpdate()->get()->filter(fn (DatasetSource $source): bool => $source->is_active && trim($source->authority) !== '' && filter_var($source->url, FILTER_VALIDATE_URL) !== false && in_array(strtolower((string) parse_url($source->url, PHP_URL_SCHEME)), ['http', 'https'], true) && $source->verified_at !== null);
             if ($sources->isEmpty()) {
                 throw new DomainException('At least one verified active source is required.');
@@ -52,7 +52,7 @@ class DatasetReleaseValidator
     }
 
     /** @param array<string,mixed> $payload */
-    private function validateEnvelope(array $payload, Dataset $dataset, DatasetRelease $release): void
+    private function validateEnvelope(array $payload, Dataset $dataset, DatasetRelease $release, string $bytes): void
     {
         $this->string($payload, 'version');
         $this->date($payload, 'generatedAt');
@@ -64,6 +64,7 @@ class DatasetReleaseValidator
         }
         match ($dataset->key) {
             'restrictions' => $this->validateRestrictions($payload),
+            'tax_calendars' => (new TaxCalendarPayloadValidator)->validate((array) json_decode($bytes, false, 512, JSON_THROW_ON_ERROR)),
             default => throw new DomainException("No approved validator exists for {$dataset->key}."),
         };
     }

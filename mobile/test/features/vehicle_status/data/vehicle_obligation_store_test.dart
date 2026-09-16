@@ -45,6 +45,37 @@ void main() {
       expect(obligation.details['policyNumber'], 'POL-123');
     });
 
+    test(
+      'tax authority patch preserves unrelated data and is idempotent',
+      () async {
+        final previous = await store.upsert(
+          vehicleId: 'vehicle-1',
+          type: VehicleObligationType.tax,
+          dueDate: DateTime(2026, 12, 1),
+          details: const {'authorityId': 'bogota', 'note': 'keep'},
+          reminderEnabled: false,
+        );
+        final saved = await store.saveTaxAuthority('vehicle-1', 'antioquia');
+        expect(saved.details, {'authorityId': 'antioquia', 'note': 'keep'});
+        expect(saved.dueDate, previous.dueDate);
+        expect(saved.createdAt, previous.createdAt);
+        expect(saved.reminderEnabled, isFalse);
+        final again = await store.saveTaxAuthority('vehicle-1', 'antioquia');
+        expect(again.updatedAt, saved.updatedAt);
+      },
+    );
+
+    test('tax authority patch does not recreate a deleted vehicle', () async {
+      await (database.delete(
+        database.vehicles,
+      )..where((row) => row.id.equals('vehicle-1'))).go();
+      await expectLater(
+        store.saveTaxAuthority('vehicle-1', 'bogota'),
+        throwsStateError,
+      );
+      expect(await store.listAll(), isEmpty);
+    });
+
     test('lists obligations by vehicle and supports RTM data', () async {
       await store.upsert(
         vehicleId: 'vehicle-1',

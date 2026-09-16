@@ -129,7 +129,7 @@ class _StatusGrid extends ConsumerWidget {
                 for (final card in cards)
                   SizedBox(
                     width: width,
-                    height: twoColumns ? 72 : null,
+                    height: twoColumns ? 64 * textScale.clamp(1.0, 1.25) : null,
                     child: card,
                   ),
               ],
@@ -141,7 +141,7 @@ class _StatusGrid extends ConsumerWidget {
   }
 }
 
-class _TodayRestrictionSummary extends ConsumerWidget {
+class _TodayRestrictionSummary extends StatelessWidget {
   const _TodayRestrictionSummary({
     required this.snapshot,
     required this.selectedJurisdiction,
@@ -151,227 +151,20 @@ class _TodayRestrictionSummary extends ConsumerWidget {
   final RestrictionJurisdiction? selectedJurisdiction;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final now = ref.watch(bogotaNowProvider);
-    final evaluation = snapshot.today;
-    final phase = restrictionPhaseAt(evaluation, now);
-    final restrictedDay = evaluation.status == RestrictionDayStatus.restricted;
-    final unrestrictedDay = phase == RestrictionDayPhase.unrestricted;
-    final cityLabel = selectedJurisdiction == null
+  Widget build(BuildContext context) => TodayRestrictionSummary(
+    evaluation: snapshot.today,
+    vehicleKind: snapshot.vehicle.kind,
+    cityLabel: selectedJurisdiction == null
         ? 'Seleccionar ciudad'
-        : _displayJurisdictionName(selectedJurisdiction!);
-    final nextStart = nextRestrictionStartMinute(evaluation, now);
-    final main = switch (phase) {
-      RestrictionDayPhase.unrestricted => 'Puede circular',
-      RestrictionDayPhase.before =>
-        nextStart == null
-            ? 'Horario por confirmar'
-            : 'Empieza a las ${formatRestrictionTime12(nextStart)}',
-      RestrictionDayPhase.active => 'No puede circular',
-      RestrictionDayPhase.between => 'Sin restricción ahora',
-      RestrictionDayPhase.finished => 'Restricción finalizada',
-      RestrictionDayPhase.unknown => 'Por verificar',
-      RestrictionDayPhase.stale => 'Datos vencidos',
-    };
-    final supporting = switch (phase) {
-      RestrictionDayPhase.unknown => 'Verifica ciudad y datos',
-      RestrictionDayPhase.stale => 'Actualiza datos locales',
-      _ =>
-        restrictedDay
-            ? formatRestrictionWindows12(evaluation.effectiveWindows)
-            : null,
-    };
-    final color = statusColor(evaluation.status);
-    const iconSize = 56.0;
-    void openPico() => context.push(
+        : _displayJurisdictionName(selectedJurisdiction!),
+    onTap: () => context.push(
       picoShellLocation(
         origin: PicoRouteOrigin.home,
         vehicleId: snapshot.vehicle.id,
       ),
-    );
-    return Semantics(
-      button: true,
-      onTap: openPico,
-      label: 'Ver pico y placa',
-      value: '$main, ${supporting ?? ''}, $cityLabel',
-      excludeSemantics: true,
-      child: Material(
-        color: AppColors.navy,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          key: const ValueKey('home-status-pico-action'),
-          onTap: openPico,
-          child: Container(
-            key: const ValueKey('home-status-today'),
-            color: Colors.transparent,
-            constraints: const BoxConstraints(minHeight: 100),
-            padding: const EdgeInsets.all(10),
-            child: Row(
-              children: [
-                Container(
-                  key: const ValueKey('home-summary-status-icon'),
-                  width: iconSize,
-                  height: iconSize,
-                  decoration: BoxDecoration(
-                    color: Color.lerp(Colors.white, color, 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: SizedBox.square(
-                      dimension: iconSize * 0.76,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Icon(
-                            snapshot.vehicle.kind == VehicleKind.motorcycle
-                                ? Icons.two_wheeler_rounded
-                                : Icons.directions_car_rounded,
-                            color: AppColors.navy,
-                            size: iconSize * 0.43,
-                          ),
-                          if (restrictedDay)
-                            Icon(
-                              Icons.block_rounded,
-                              color: color,
-                              size: iconSize * 0.76,
-                            )
-                          else
-                            Positioned(
-                              right: 0,
-                              bottom: 0,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Icon(
-                                  unrestrictedDay
-                                      ? Icons.check_rounded
-                                      : Icons.priority_high_rounded,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: restrictedDay
-                              ? Color.lerp(Colors.white, AppColors.red, 0.12)
-                              : Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(AppRadius.chip),
-                        ),
-                        child: Text(
-                          restrictedDay ? 'Pico y placa hoy' : 'Pico y placa',
-                          key: const ValueKey('home-summary-label'),
-                          style: AppTextStyles.bodyStrong.copyWith(
-                            fontSize: 14,
-                            height: 1,
-                            color: restrictedDay
-                                ? AppColors.red
-                                : const Color(0xFFCDDBE6),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          border: unrestrictedDay
-                              ? Border(
-                                  bottom: BorderSide(color: color, width: 2),
-                                )
-                              : null,
-                        ),
-                        child: Text(
-                          _keepRestrictionTimesTogether(main),
-                          key: const ValueKey('home-summary-main'),
-                          style: AppTextStyles.bodyStrong.copyWith(
-                            fontSize: 18,
-                            height: 1.1,
-                            fontWeight: FontWeight.w800,
-                            color: unrestrictedDay
-                                ? Color.lerp(
-                                    Colors.white,
-                                    AppColors.green,
-                                    0.28,
-                                  )
-                                : Colors.white,
-                          ),
-                        ),
-                      ),
-                      if (supporting != null && supporting.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          _keepRestrictionTimesTogether(supporting),
-                          key: const ValueKey('home-summary-windows'),
-                          style: AppTextStyles.bodyStrong.copyWith(
-                            fontSize: 14,
-                            height: 1.15,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 2),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 2),
-                            child: Icon(
-                              Icons.location_on_rounded,
-                              color: Color(0xFFCDDBE6),
-                              size: 16,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              cityLabel,
-                              key: const ValueKey('home-summary-city'),
-                              style: AppTextStyles.body.copyWith(
-                                fontSize: 14,
-                                height: 1.15,
-                                color: const Color(0xFFCDDBE6),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+    ),
+  );
 }
-
-String _keepRestrictionTimesTogether(String text) => text
-    .replaceAll(' a. m.', '\u00a0a.\u00a0m.')
-    .replaceAll(' p. m.', '\u00a0p.\u00a0m.');
 
 class _ObligationStatusCard extends StatelessWidget {
   const _ObligationStatusCard({
@@ -398,7 +191,7 @@ class _ObligationStatusCard extends StatelessWidget {
       label: '$title, $value, $message',
       child: AppCard(
         onTap: onTap,
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         backgroundColor: color.withValues(alpha: 0.06),
         borderColor: color.withValues(alpha: 0.2),
         child: Row(

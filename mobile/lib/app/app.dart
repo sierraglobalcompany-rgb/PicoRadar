@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/pico_placa/data/pico_preferences.dart';
+import '../features/documents/application/wallet_providers.dart';
+import '../features/documents/data/wallet_store.dart';
 import 'app_clock.dart';
 import 'app_providers.dart';
 import 'router/app_router.dart';
@@ -216,6 +218,27 @@ class _DocumentViewerCacheLifecycleObserver extends WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed &&
+        ref.exists(walletSessionProvider)) {
+      final session = ref.read(walletSessionProvider);
+      if (state != AppLifecycleState.inactive || !session.authenticating) {
+        session.lock();
+        Future<void>.microtask(() async {
+          try {
+            await WalletStore.purgeTemporaryViewerFiles();
+          } on MissingPluginException {
+            return;
+          } catch (_) {
+            FlutterError.reportError(
+              FlutterErrorDetails(
+                exception: FlutterError('Private viewer cleanup failed.'),
+                library: 'PicoRadar privacy',
+              ),
+            );
+          }
+        });
+      }
+    }
     if (state != AppLifecycleState.resumed) {
       return;
     }

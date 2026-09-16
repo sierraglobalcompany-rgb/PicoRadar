@@ -6,6 +6,7 @@ import '../../core/design_system/app_components.dart';
 import '../../features/apps_launcher/presentation/apps_launcher_panel.dart';
 import '../../features/driving/application/driving_controller.dart';
 import '../../features/home/presentation/home_screen.dart';
+import '../../features/documents/application/wallet_providers.dart';
 import '../app_providers.dart';
 import '../router/app_routes.dart';
 import '../theme/app_tokens.dart';
@@ -71,8 +72,49 @@ class AppShell extends ConsumerStatefulWidget {
   ConsumerState<AppShell> createState() => _AppShellState();
 }
 
+// Keep the last branch when a root route temporarily replaces the shell.
+final _shellBranchStateProvider = Provider((ref) => _ShellBranchState());
+
+class _ShellBranchState {
+  int? index;
+}
+
 class _AppShellState extends ConsumerState<AppShell> {
   bool _launcherOpen = false;
+  bool _branchEntryScheduled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleBranchEntry();
+  }
+
+  @override
+  void didUpdateWidget(covariant AppShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.navigationShell.currentIndex !=
+        widget.navigationShell.currentIndex) {
+      _scheduleBranchEntry();
+    }
+  }
+
+  void _scheduleBranchEntry() {
+    if (_branchEntryScheduled) return;
+    _branchEntryScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _branchEntryScheduled = false;
+      if (!mounted) return;
+      final branch = ref.read(_shellBranchStateProvider);
+      final previous = branch.index;
+      final current = widget.navigationShell.currentIndex;
+      branch.index = current;
+      if (previous != null &&
+          previous != AppTab.home.index &&
+          current == AppTab.home.index) {
+        ref.read(homePriorityEntryProvider.notifier).enterFromAnotherTab();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -137,6 +179,9 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 
   Future<void> _selectTab(int index) async {
+    if (ref.exists(walletSessionProvider)) {
+      ref.read(walletSessionProvider).lock();
+    }
     if (index == AppTab.apps.index) {
       setState(() => _launcherOpen = !_launcherOpen);
       return;
@@ -147,10 +192,6 @@ class _AppShellState extends ConsumerState<AppShell> {
       setState(() => _launcherOpen = false);
     }
     final fromPico = _isPicoShellLocation(GoRouterState.of(context).uri.path);
-    if (widget.navigationShell.currentIndex == AppTab.home.index &&
-        index == AppTab.drive.index) {
-      await _promoteHomeFocusedVehicle();
-    }
     if (!wasLauncherOpen || index != widget.navigationShell.currentIndex) {
       widget.navigationShell.goBranch(
         index,
@@ -187,18 +228,6 @@ class _AppShellState extends ConsumerState<AppShell> {
       }
       context.go(location);
     });
-  }
-
-  Future<void> _promoteHomeFocusedVehicle() async {
-    final focusedVehicleId = ref.read(homeFocusedVehicleIdProvider);
-    final activeVehicleId = ref.read(activeVehicleProvider).asData?.value?.id;
-    if (focusedVehicleId == null || focusedVehicleId == activeVehicleId) {
-      return;
-    }
-    await ref
-        .read(vehicleRepositoryProvider)
-        .setActiveVehicle(focusedVehicleId);
-    ref.invalidate(activeVehicleProvider);
   }
 }
 

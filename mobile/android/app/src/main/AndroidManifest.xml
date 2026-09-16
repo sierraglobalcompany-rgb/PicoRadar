@@ -4,10 +4,14 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
 
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
+        android:allowBackup="false"
+        android:fullBackupContent="@xml/wallet_backup_rules"
+        android:dataExtractionRules="@xml/wallet_data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round">
         <activity
@@ -39,6 +43,12 @@
                 <data android:scheme="picoradar"/>
             </intent-filter>
         </activity>
+        <service
+            android:name=".wallet.DocumentPdfService"
+            android:exported="false"
+            android:isolatedProcess="true"
+            android:process=":document_pdf"
+            android:stopWithTask="true"/>
         <receiver
             android:name=".PicoRadarWidgetReceiver"
             android:exported="true">

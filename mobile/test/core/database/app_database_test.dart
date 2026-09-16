@@ -23,9 +23,8 @@ void main() {
       await db.close();
     });
 
-    test('creates schema v6 with publication revisions', () async {
+    test('creates schema v7 with publication revisions and wallet', () async {
       expect(db.schemaVersion, AppDatabase.currentSchemaVersion);
-      expect(db.schemaVersion, 6);
 
       await db
           .into(db.vehicles)
@@ -114,7 +113,10 @@ void main() {
             .get();
         await migrated.close();
 
-        expect(version.single.data['user_version'], 6);
+        expect(
+          version.single.data['user_version'],
+          AppDatabase.currentSchemaVersion,
+        );
         expect(vehicles, hasLength(1));
         expect(vehicles.single.id, 'vehicle-1');
         expect(vehicles.single.plate, 'ABC123');
@@ -152,7 +154,10 @@ void main() {
               .get();
           await migrated.close();
 
-          expect(version.single.data['user_version'], 6);
+          expect(
+            version.single.data['user_version'],
+            AppDatabase.currentSchemaVersion,
+          );
           expect(vehicles, hasLength(1));
           expect(vehicles.single.id, 'vehicle-1');
           expect(vehicles.single.plate, 'ABC123');
@@ -187,7 +192,10 @@ void main() {
               .get();
           await migrated.close();
 
-          expect(version.single.data['user_version'], 6);
+          expect(
+            version.single.data['user_version'],
+            AppDatabase.currentSchemaVersion,
+          );
           expect(vehicles, hasLength(1));
           expect(vehicles.single.plate, 'ABC123');
           expect(coverages, hasLength(1));
@@ -228,7 +236,10 @@ void main() {
               .get();
           await migrated.close();
 
-          expect(version.single.data['user_version'], 6);
+          expect(
+            version.single.data['user_version'],
+            AppDatabase.currentSchemaVersion,
+          );
           expect(vehicles, hasLength(1));
           expect(vehicles.single.plate, 'ABC123');
           expect(obligations, hasLength(1));
@@ -306,7 +317,7 @@ void main() {
       expect(await db.select(db.maintenanceRecords).get(), isEmpty);
     });
 
-    test('reopens schema 6 without destroying existing local data', () async {
+    test('reopens schema 7 without destroying existing local data', () async {
       final tempDir = await Directory.systemTemp.createTemp('picoradar_db_');
       final dbPath = '${tempDir.path}${Platform.pathSeparator}app.sqlite';
 
@@ -350,7 +361,10 @@ void main() {
             .get();
         await migrated.close();
 
-        expect(version.single.data['user_version'], 6);
+        expect(
+          version.single.data['user_version'],
+          AppDatabase.currentSchemaVersion,
+        );
         expect(selected.read<String>('version'), 'opaque-v1');
         expect(selected.read<String>('sha256'), 'a' * 64);
         expect(selected.read<int>('publication_revision'), 0);
@@ -393,7 +407,10 @@ void main() {
               .get();
           await migrated.close();
 
-          expect(version.single.data['user_version'], 6);
+          expect(
+            version.single.data['user_version'],
+            AppDatabase.currentSchemaVersion,
+          );
           expect(selected.read<String>('version'), 'opaque-v1');
           expect(selected.read<String>('sha256'), 'a' * 64);
           expect(selected.read<int>('publication_revision'), 0);

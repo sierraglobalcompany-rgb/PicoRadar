@@ -2,6 +2,319 @@
 
 Este contrato traduce el baseline visual a reglas operables para Flutter. Autoridad: `docs/baseline/02_Wireframes_Design_System_v1.docx` y flujos 01-08, subordinados a seguridad, privacidad, store, Cierre Global y Arquitectura Tecnica.
 
+## Preparar compra: encaje auditado (2026-09-15)
+
+- Extension funcional: cada revision abre una hoja con titulo 20 sp, contenido
+  minimo 14 sp y acciones de 48 dp. Un solo scroll en la hoja; se conserva la
+  portada aprobada. SIMIT y los buscadores no requieren placa ni Garaje.
+- Ciudad de matricula, entidad tributaria, organismo de traspaso y autoridad
+  de comparendos son selecciones distintas. Las consultas no marcan Revisado.
+- Las declaraciones antiguas de adjuntos no muestran Copia guardada. Los
+  archivos reales solo se gestionan dentro de la carpeta privada de la
+  preparacion, con proteccion y sin publicidad.
+
+- Pantalla independiente dentro del shell. Texto normal: LayoutBuilder reserva
+  encabezado y pie; seis revisiones 3x2 sin desplazamiento ni controles ocultos.
+- Encabezado navy #143963 muestreado del mockup: titulo 18 sp semibold,
+  Opcional con fondo #DDF8F2; regreso con target 48 dp, circulo visual 32 dp
+  blanco .55 y flecha 24 dp. Acciones normales 64 dp, accesibles minimo 48 dp.
+- Mis preparaciones 48 dp; Tus revisiones 18 sp, contador 16 sp, progreso 6 dp.
+- Tarjetas: radio 8 dp, numero 16 sp sin circulo compartiendo zona superior con
+  icono 32 dp, titulo 14 sp, estado 13 sp. Azul #1D62C6 solo tras revision
+  explicita. Tinta #0A2252; accion principal #078B90.
+- Notas/Copiar/informacion y Guardar conservan targets de 48 dp. Los textos de
+  orientacion estan en Sobre esta guia. Sin cambios en persistencia o adjuntos.
+- Letra ampliada: un scroll accesible; dos columnas, o una si la palabra mas
+  larga no cabe completa. Sin elipsis ni reduccion de fuentes.
+- QA normal fisica Mi A3: encabezado 164 dp, tarjetas aproximadamente 119 dp, Guardar termina
+  en y=646 dp y navegacion comienza en y=650 dp. Gesto vertical no mueve portada.
+- El encabezado de 108 dp fue rechazado por el owner; esta correccion recupera
+  su presencia sin ocultar acciones. Aprobacion visual final pendiente.
+
+## Seguro: ficha y editor de poliza (2026-09-14)
+
+- Cambio limitado a hojas: la portada, banner, vehiculo y placa aprobados siguen
+  intactos. No nuevas pestanas ni pantalla principal.
+- Ficha protegida con identidad, numero completo y Copiar, fechas con iconos,
+  valor opcional, copia documental, Editar y recordatorio secundario. Un scroll
+  interior cuando haga falta; sin tabla ni tarjetas anidadas.
+- Aseguradora se elige desde un unico buscador; nombre manual solo tras la
+  excepcion explicita. Telefonos particulares contraidos, sin borrar los legados.
+- Calendario Material en espanol, meses/anos/dias legibles, sin escritura manual
+  obligatoria. Localizacion limitada al flujo; no limitar el TextScaler.
+- Un valor COP original y periodo. Equivalente anual/mensual solo de referencia,
+  nunca financiacion ni pago comprobado. Cambiar vista no redondea el origen.
+- Servicios oficiales dependen de evidencia por canal; canales particulares
+  separados. Ausencia de evidencia no demuestra exclusion de una poliza.
+- Sesion/FLAG_SECURE se mantienen en rutas anidadas. Evidencias automatizadas
+  ficticias se identifican como tales; no desbloquear capturas privadas para QA.
+- Candidato instalado, aprobacion visual pendiente. Ver
+  codex/C13_INSURANCE_POLICY_HANDOFF.md y C13_INSURANCE_DIRECTORY_AUDIT.md.
+
+## Seguro y asistencia: vista previa del owner (2026-09-13)
+
+- Extension C13 solo de seguro voluntario. C25, leads, envio, monetizacion y
+  banner comercial publico permanecen desactivados.
+- Banda bitmap local de carretera/ciudad/escudo, texto nativo y CTA amarillo.
+  Requiere simultaneamente flavor dev y APP_ENV=dev. Identificacion Vista previa;
+  no empresa ficticia, ni formulario que acepte cedula/contacto reales.
+- Correccion aprobada: portada unica sin AppBar, titulo superior, pestanas ni
+  scroll vertical. Regreso dentro del banner (superficie 36 dp, objetivo 48 dp);
+  sin promocion o durante carga/error/vacio, regreso en franja compacta.
+- Imagen completa en carrusel estable; tocar abre registro o poliza protegida
+  segun el estado del vehiculo tocado. Deslizar no abre hojas. Placa horizontal
+  centrada de 80 dp en Seguro, numero adicional escalable y acceso documental independiente
+  de los metadatos de poliza. Cambiar vehiculo queda fuera de la promocion.
+- Ajuste posterior del owner: banner normal aproximadamente 50% mayor (Mi A3:
+  186 a 279 dp), con titular, paisaje, escudo y CTA. Compactar primero acciones
+  y textos secundarios; en el telefono corto se permite menor area de vehiculo
+  sin recortar la imagen. En accesibilidad extrema, detalle promocional en hoja.
+  Espacio restante favorece al vehiculo; nunca encoger fuentes ni agregar vistas.
+  Con texto normal conservar titular y explicacion exactos del mockup en ambos
+  estados, no sustituirlos por una frase corta ni ocultar el parrafo de cotizacion.
+  Acciones inferiores con iconos, etiquetas, flechas y separacion visual del
+  mockup; variante accesible conserva etiquetas breves completas y semantica.
+- Revision 14/09: conservar banner y aumentar el vehiculo mediante espacio real
+  contenido, no Transform.scale. Placa micro nativa 80 dp / proporcion 2.15:1;
+  numero objetivo 20 dp y minimo medido 17 dp para formatos normales. Nunca
+  encoger toda la placa para simular el nuevo tamano: solo la fila de numeros
+  excepcionales y municipio pueden ajustarse internamente. La variante es opt-in
+  de Seguro; los otros modulos conservan sus placas. Controles siguen en 48 dp.
+- Segundo aumento solicitado: en Mi A3 normal el slot pasa de 112 a 144 dp.
+  Franja de poliza y acciones compactas de 48 dp; icono y etiqueta en una fila.
+  El espacio recuperado se asigna a imagen completa, no a mas promocion.
+  Texto ampliado mantiene la distribucion medida previa, sin encoger fuentes.
+- Poliza ausente no implica vehiculo sin asegurar. Estado documental accesible
+  aunque no haya metadatos de poliza. Contactos solo por accion, mostrando alcance.
+- Asistencia en ruta opaca sin banner visible. Billetera con autorizacion,
+  FLAG_SECURE y visor interno compartidos; sin exportar/adjuntar documentos.
+- Directorio offline con fuente por canal; las observaciones inactivas no generan
+  acciones. La cotizacion demostrativa no transmite ni persiste solicitudes.
+- Aprobacion visual pendiente; la importacion/autenticacion positiva fisicas
+  anteriores siguen abiertas. Detalles: codex/C13_INSURANCE_SINGLE_HOME_HANDOFF.md.
+
+## Impuestos: vista previa instalada, aprobacion visual pendiente (2026-09-13)
+
+- Extension autorizada de C13: directorio tributario nacional parcial y calendarios
+  versionados mediante el publisher B01 existente. No estimacion, deuda, estado de
+  pago ni recordatorios tributarios nuevos. No nuevas tablas ni dependencias.
+- Hero navy continuo con entidad, autoridad y placa compartida de 96 dp. Buscar
+  entidad abre consulta temporal; Guardar para este vehiculo es accion separada.
+  La matricula sugiere entidad; GPS, ciudad de Pico y favorito no se modifican.
+- Portal oficial antes del historial; fuente en hoja. Fechas pasadas agrupadas,
+  condiciones visibles, prorroga vigente sin duplicar el plazo sustituido.
+  Conceptos adicionales publicados se consultan por separado en informacion.
+- Escala de letra real, filas adaptables y un scroll vertical. Sin compresion de
+  fuentes ni reserva inferior adicional a la navegacion del shell.
+- Respaldo local validado; recuperacion degradada se advierte. La actualizacion
+  remota necesita endpoint real y evidencia en la misma APK: permanece pendiente.
+- La implementacion no tiene aun aprobacion visual ni cierre tecnico global.
+
+## Fotomultas departamental: mapa protagonista (2026-09-12)
+
+- Cabecera navy 72 dp normal; titulo 20 sp, departamento 14 sp completo. Lista/Mapa
+  pasa a icono tactil de 48 dp cuando la etiqueta compite con el titulo ampliado.
+- Mapa ocupa el espacio entre cabecera y navegacion, sin scroll exterior. Busqueda
+  y conteo/filtros superpuestos arriba; fuente/Conducir y atribucion abajo.
+- Zoom y encuadrar ARRIBA a la derecha: 12 dp bajo la banda superior, 12 dp del
+  borde derecho. Superficie 36 dp, blanco .78, icono 22 dp, objetivo 48 dp.
+- La variante compacta usa iconos realmente de 48 dp, con tooltip, nombre completo
+  y accion accesible. Conteos filtrados no provocan cambios de variante.
+- Aviso unico de teselas/resultados, a la izquierda de zoom; atribucion separada.
+- Busqueda y filtros se confirman desde borradores; cancelar no cambia la consulta.
+  Lista/Mapa conserva controlador y encuadre. No cambios en inventario ni GPS.
+- Preview instalada; ultima correccion de posicion pendiente de aceptacion visual.
+
+## Fotomultas: seleccion compacta y mapa flexible (2026-09-12)
+
+- Cabecera nacional: Fotomultas 20 sp, inicio tras flecha de 48 dp con separacion
+  4 dp. A la derecha, camara/conteo 14 sp y ANSV + fecha real dd/MM/yy 12 sp.
+  Sin otra franja de inventario bajo el buscador. Si las metricas de texto no
+  permiten una fila, cabecera accesible en dos niveles, sin FittedBox ni recortes.
+
+- Excepcion autorizada: exploracion manual en Apps del inventario parcial local;
+  no seguimiento GPS ni cambios de Conducir. No recuadro insular dedicado.
+- Sin seleccion no existe tarjeta ni reserva. Con seleccion, tarjeta debajo del
+  mapa: nombre 16 sp, conteo 14 sp y Ver camaras lateral, sin avatar de abreviatura.
+- Altura normal aproximada 74 dp; nombres largos pueden crecer. Cuando quitarian
+  al mapa su minimo de 220 dp, fila hacia hoja con toda la informacion. Nombre
+  extremo con accesibilidad: Ver departamento con nombre completo en tooltip/hoja.
+- Mas altura de pantalla corresponde al mapa, no al resto de los controles.
+  Seleccionar no cambia centro/zoom; buscar y Ver Colombia reencuadran expresamente.
+- Ver Colombia y zoom nacionales: superficie 36 dp, blanco alpha .78, area tactil
+  48 dp; letra normal 13 sp, icono accesible al ampliar. Sin sombra opaca grande.
+- Preview tecnico no equivale a aceptacion visual; se compara fisicamente.
+
+## Detalle del vehiculo: mockup sin scroll (2026-09-11)
+
+- Vista previa pendiente de aprobacion visual. El nuevo mockup del owner define
+  fondo navy, vehiculo completo y cambio visual desde imagen o camara teal.
+- Placa aprobada de 96 dp con texto normal. Solo en este detalle, el ancho puede
+  crecer con accesibilidad hasta 192 dp para evitar una columna ilegible; no se
+  reducen fuentes ni se altera Inicio/Garaje/Pico. Emblema y pie se conservan.
+- Identidad: apodo, marca/modelo o Mi vehiculo; matricula y Editar. Letra ampliada
+  puede convertir Editar en icono con ayuda accesible para dar ancho a la ciudad.
+- Orden normal: Pico, SOAT, RTM, Seguro/Impuestos, Eliminar. Sin scroll. Medicion
+  de textos/controles y espacio real antes de asignar altura a la imagen.
+- Si no cabe: primera vista con identidad, Pico, SOAT y Mas gestiones; segunda
+  con RTM, Seguro, Impuestos y Eliminar. Regreso interno antes de salir de ruta.
+- No activo/favorito adicional; ninguna accion del detalle cambia favorito.
+  Volver respeta el origen; guardar una edicion conserva la pila existente.
+- Eliminar mantiene confirmacion y cinco segundos de Deshacer antes de limpiar
+  datos privados. Volver de Mas gestiones cancela una eliminacion pendiente.
+- Estados de obligaciones proceden de datos guardados. Carga/error no se
+  representan como Sin configurar; impuestos conserva calendarios/portales.
+- Matriz portrait 360x780/800, 390x844, 412x915 y 430x932 con texto 1/1.5/2.
+  Pantallas landscape extremadamente bajas no forman parte de la aceptacion.
+
+## Garaje: favorito unico y prioridad de Inicio (2026-09-11)
+
+- Decision explicita del owner: el antiguo activo se presenta como Favorito.
+  La seleccion interna existente permanece; no son dos preferencias sincronizadas.
+- Garaje: Todos / Favorito. Un unico control de favorito por vehiculo, objetivo
+  tactil de 48 dp; quitar estado Activo/No activo y Hacer activo tambien del detalle.
+- La tarjeta informativa reduce altura naturalmente; no compensar con espacios,
+  tipografia mayor ni crecimiento artificial del carrusel. Placas aprobadas intactas.
+- Inicio destaca restriccion activa, pendiente o finalizada hoy; luego proxima
+  restriccion verificada hasta siete dias, datos inciertos y orden alfabetico.
+  Esta eleccion no cambia favorito. El resumen continua describiendo hoy.
+- Aplicar prioridad al abrir o volver desde otra pestana, no por ticks, swipes,
+  recarga de datos ni regreso del detalle. Consultas abiertas conservan su vehiculo.
+- Estado de este lote: vista previa pendiente de aprobacion. No certifica el cierre
+  tecnico previo, rendimiento, ni autoriza merge.
+
+## Mi pico y placa: vehiculo protagonista y mes directo (2026-09-11)
+
+- Plan del owner: esta pantalla personal usa cabecera navy con regreso y un solo
+  titulo "Mi pico y placa". No muestra marca, avatar ni notificaciones duplicadas.
+  Inicio permanece aprobado visualmente y conserva su accion.
+- Hero personal: fondo local ilustrativo de ciudad/carretera, no GPS ni mapa.
+  Nombre centrado arriba (apodo, marca/modelo o "Mi vehiculo"), vehiculo completo
+  dominante y placa aprobada centrada sobre el borde inferior del hero, mitad
+  dentro y mitad fuera del fondo. La placa es secundaria frente al vehiculo:
+  78 dp con texto normal y 88 dp con texto ampliado. El hero normal debe ser
+  bajo, no una tarjeta alta que empuje el calendario.
+- La ciudad consultada vive en una fila compacta con pin bajo el hero y muestra
+  el nombre real ("Medellin", "Bogota", etc.), no el texto generico "Cambiar
+  ciudad". Al tocarla abre el selector temporal. No cambia GPS, ciudad global,
+  favorito ni foco de Inicio.
+- Resumen navy compartido con Inicio, sin accion recursiva en Pico. Mismos estados,
+  horario unico, contador de minuto y aguja decorativa con pausas ya aprobadas.
+- Sin bloques independientes "Hoy...", "Estado inmediato", motivo exterior ni
+  tarjetas anidadas. El motivo comprobable se muestra al tocar un dia del mes.
+- Mes directo: sin selector "Proximos dias / Mes" ni tarjetas horizontales en la
+  vista personal. Encabezado de mes con flechas, dias Lun/Mar/Mie/Jue/Vie/Sab/Dom,
+  cuadricula compacta de siete columnas con margen horizontal interno y casillas
+  fuera del mes neutras/no interactivas. Las celdas son casi cuadradas y bajas,
+  no tarjetas verticales grandes ni un bloque de borde a borde; el mes debe
+  liberar espacio para el resto de la pantalla.
+- Estados del mes: check verde, prohibicion roja con menos e interrogante ambar.
+  El numero del dia y el simbolo se separan; hoy conserva borde navy. Leyenda
+  centrada: Libre, Restriccion y Por verificar.
+- Tocar un dia abre hoja con fecha, estado, horarios, motivo si existe y fuente.
+  Cerrar no sustituye el resumen de hoy ni cambia el mes consultado.
+- Proxima restriccion se calcula localmente desde manana hasta 30 dias. No convierte
+  datos vencidos/desconocidos en dias libres ni inventa vigencias.
+- Fuente y vigencia abre una hoja adicional, no un desplegable dentro del contenido.
+  Muestra fuente, ultima verificacion, vigencia publicada y revision de datos por
+  separado; abrir sitio oficial requiere accion expresa.
+- Un solo scroll vertical en pantalla principal; el calendario no tiene scroll
+  interno. Hojas auxiliares pueden desplazarse con texto ampliado. Sin FittedBox,
+  recortes ni scroll horizontal. Celdas del mes conservan tamano tactil util.
+- Pruebas tecnicas no constituyen aprobacion visual; la vista previa fisica y la
+  aprobacion del owner siguen pendientes antes del cierre/publicacion.
+
+## Inicio: horario y cuenta regresiva (2026-09-11)
+
+- Peticion posterior del owner: el icono de reloj tendra una aguja que avanza
+  6 grados cada segundo, una vuelta por minuto. Excepcion al icono estatico del
+  plan anterior: solo repinta el reloj de 16 dp, no el texto ni toda la tarjeta.
+  Pulso visual local de 1 Hz, sin animacion a 60 fps; detener al ocultar la ruta,
+  TickerMode desactivado, background, movimiento reducido o retirar el contador.
+  No usa segundos para calcular ni mostrar la restriccion.
+- Solo en la tarjeta de restriccion de Inicio: etiqueta "Tiene pico y placa hoy",
+  horario(s) una sola vez en 18 sp, contador con reloj y ciudad en al menos 14 sp.
+- Antes: "Empieza en 4 h". Durante: "Termina en 2 h 15 min". Varios tramos:
+  "Este tramo termina en..." hasta el final del tramo activo; en pausa, mostrar
+  "Sin restriccion ahora" y "Proximo tramo en..." conservando todos los horarios.
+- Tras el ultimo tramo: "Restriccion finalizada", sin horario ni contador;
+  conservar la etiqueta del dia restringido. Dias libres mantienen la tarjeta
+  verde aprobada. Datos desconocidos/vencidos o sin ventanas fiables no generan
+  cuenta regresiva ni una afirmacion de restriccion horaria confirmada.
+- Calculo desde hora real de Bogota, redondeado hacia arriba a minutos completos.
+  Calculo compartido existente: sin nuevo timer de cuenta, segundos ni liveRegion.
+  Mantener descripcion accesible de fase, horario, contador y ciudad.
+- Un tramo y texto normal: 100-108 dp de altura. Varios tramos o letra ampliada
+  pueden aumentar altura; nunca recortar horarios, encoger fuentes o ocultar datos.
+- Toda la tarjeta conserva la apertura de Pico del vehiculo enfocado. Sin cambios
+  a la tarjeta personal de Pico, GPS, reglas, vehiculos ni notificaciones.
+
+## Ajuste vigente aprobado: placa secundaria (2026-09-11)
+
+- Correccion adicional de centrado: apodo, marca o "Mi vehiculo" centrados
+  respecto a toda la tarjeta del carrusel, no al espacio restante tras el icono.
+  Reservar 32 dp a cada lado del titulo (icono 24 + separacion 8 a la izquierda).
+  La medicion de titulos largos considera ambas reservas; no encoger fuentes.
+- Reemplaza las medidas de 128 dp documentadas en el historial inferior.
+  El owner aprobo visualmente la placa de 96 dp, aproximadamente 46 dp de alto,
+  numero 20 sp, emblema 7 dp y municipio 10 sp. Sin deformar ni escalar la placa.
+- Tres filas: ranuras superiores, numero/emblema y municipio entre ranuras
+  inferiores. Municipio y ranuras inferiores alineados a 1 dp; centro del numero
+  aproximadamente al 40% de altura. Mantener borde negro exclusivamente interior.
+- Con texto normal la placa no superara 2/3 del ancho visible del vehiculo en
+  Inicio. Medir pixeles del asset dibujado, no el contenedor transparente.
+  Texto ampliado o municipio largo puede aumentar altura sin ocultar caracteres.
+- Separacion de la placa en Inicio: arriba 2 dp y abajo 4 dp. Espacio recuperado
+  para el vehiculo, manteniendo imagen completa y proporcion original.
+- Nueva peticion posterior a aprobar la placa: SOAT/Tecnomecanica de 72 a 64 dp
+  con texto normal. Solo reducir padding vertical de 8 a 4 dp; conservar fuentes,
+  iconos, contenido y acciones. Con texto ampliado adaptar altura. La medicion
+  existente asigna el espacio liberado al carrusel. Sin cambiar tarjeta verde.
+
+## Historial de vista previa rechazada: placas e Inicio (2026-09-11)
+
+- La vista anterior de placas fue rechazada por tamano y emblema ausente. No es
+  referencia aprobada. El cierre queda condicionado a aprobacion visual del owner.
+- Ajuste posterior del owner: conservar diseno, reducir superficie y aumentar
+  letras. Placa detallada compacta: ancho 128 dp, altura normal 57-60 dp con
+  municipio corto, numero 26 sp, pie 10 sp, emblema 9 dp. Margenes internos
+  reducidos; no escalar caracteres. Escala del sistema respetada. El ensayo de
+  124 dp no admitio todos los grupos anchos con numero de 26 sp en una fila.
+- Agrupacion visual de seis caracteres alfanumericos en 3 + 3, sin alterar ni
+  validar la matricula. Otros formatos se conservan completos. Accesos de Pico
+  ciudad de 154 dp permiten mostrar la placa sin comprimirla.
+- Inicio sin restriccion del dia: check circular verde grande sobre disco claro,
+  etiqueta verde clara "Sin pico y placa hoy", "Puede circular" blanco sin
+  subrayado y pin/ciudad debajo. Referencia:
+  [tarjeta permitida owner](design/reference/home_allowed_owner_20260911.png).
+- Tarjeta de 100-108 dp con texto normal; sin altura maxima rigida para letra
+  ampliada o ciudad larga. Los demas estados del motor no cambian.
+- Primero instalar y comparar la vista previa en Mi A3; esperar aprobacion
+  antes de suite completa de cierre, commit, push y PR. Sin merge.
+
+## Placas compartidas: correccion owner (2026-09-10)
+
+Referencia: [placa owner](design/reference/plate_owner_20260910.png).
+
+- Esta revision amplifica el opt-in anterior de Inicio a Garaje, Mi Pico y los
+  accesos de vehiculos en Pico por ciudad; otras superficies conservan su placa.
+- Fondo amarillo para particular/moto, blanco para taxi; sin trazo negro exterior.
+  Un unico borde negro interior deja margen de color visible. Cuatro ranuras
+  horizontales interiores, sin invadir el numero ni el pie.
+- Dos grupos de caracteres con espacio real para un emblema circular dibujado
+  en Flutter. Monograma propio inspirado en la referencia, no sello oficial de
+  autenticidad ni marca de agua. Formatos excepcionales conservan todos sus caracteres.
+- El pie muestra solo el municipio registrado en mayusculas, resuelto con el
+  catalogo local existente; moto o registro vacio muestran COLOMBIA. Texto antiguo
+  sin correspondencia se conserva, nunca se corta por guiones arbitrariamente.
+- La placa no modifica datos guardados ni selecciona la jurisdiccion de Pico.
+  No consulta red. Carga compartida local fuera de la barrera critica de Inicio.
+- Proporcion orientativa 2.15:1 con texto normal. Sin reducir toda la placa con
+  FittedBox; texto ampliado puede reorganizar grupos y aumentar la altura. Los
+  carruseles reservan espacio al vehiculo y al pie en lugar de recortar contenido.
+- Evidencia antes/despues y variantes automatizadas deben distinguirse. El
+  emblema es una adaptacion, no una reproduccion certificada de placa fisica.
+
 ## Rendimiento sin redisenar (2026-09-10)
 
 - La ventana nativa de arranque muestra la marca existente y mantiene continuidad

@@ -161,12 +161,6 @@ List<RouteBase> _tabRoutes(AppTab tab) {
                 ).toString(),
               ),
               onOpenTramites: (_) => context.push('/apps/module/tramites'),
-              onOpenPeritajes: (vehicle) => context.push(
-                Uri(
-                  path: '/apps/module/peritajes',
-                  queryParameters: {'vehicleId': vehicle.id},
-                ).toString(),
-              ),
               onOpenDocuments: (vehicle) => context.push(
                 Uri(
                   path: '/apps/module/documentos',

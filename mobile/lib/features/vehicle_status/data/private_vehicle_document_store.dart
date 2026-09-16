@@ -148,6 +148,42 @@ class PrivateVehicleDocumentStore {
     return filtered;
   }
 
+  Future<List<PrivateVehicleDocumentMetadata>> listAllForMigration() =>
+      _runMutation(_readIndex);
+
+  Future<void> removeMigratedReference(
+    PrivateVehicleDocumentMetadata metadata,
+  ) => _runMutation(() async {
+    if (_safePathSegment(metadata.documentId) != metadata.documentId ||
+        metadata.documentId == '.' ||
+        metadata.documentId == '..') {
+      throw const FormatException('Invalid migrated document identity.');
+    }
+    final path = _checkedRelativePath(metadata.encryptedRelativePath);
+    final documents = await _readIndex();
+    bool matches(PrivateVehicleDocumentMetadata item) =>
+        item.documentId == metadata.documentId &&
+        item.vehicleId == metadata.vehicleId &&
+        item.documentType == metadata.documentType &&
+        _checkedRelativePath(item.encryptedRelativePath) == path;
+    if (documents.any(
+      (item) =>
+          _checkedRelativePath(item.encryptedRelativePath) == path &&
+          !matches(item),
+    )) {
+      throw StateError('Migrated file still has another indexed owner.');
+    }
+    await purgeViewerCache(metadata: metadata);
+    if (documents.any(matches)) {
+      await _writeIndex([
+        for (final item in documents)
+          if (!matches(item)) item,
+      ]);
+    }
+    // The wallet's durable cleanup record permits retry even after index removal.
+    await _deleteEncryptedFile(metadata);
+  });
+
   Future<PrivateVehicleDocumentMetadata> importDocument({
     required String vehicleId,
     required PrivateVehicleDocumentType documentType,

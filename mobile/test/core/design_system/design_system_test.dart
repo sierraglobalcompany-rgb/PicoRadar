@@ -536,7 +536,7 @@ void main() {
             tester.getTopLeft(registration).dy,
             greaterThanOrEqualTo(tester.getBottomLeft(find.text('ABC1234')).dy),
           );
-          expect(tester.getSize(badge).width, inInclusiveRange(116, 160));
+          expect(tester.getSize(badge).width, inInclusiveRange(96, 180));
           expect(
             (tester.widget<Container>(badge).decoration! as BoxDecoration)
                 .color,
@@ -568,7 +568,8 @@ void main() {
           ),
           textScale: scale,
         );
-        expect(find.text('ABC 12D'), findsOneWidget);
+        expect(find.text('ABC'), findsOneWidget);
+        expect(find.text('12D'), findsOneWidget);
         expect(find.text('COLOMBIA'), findsOneWidget);
         expect(tester.takeException(), isNull);
       }
@@ -608,7 +609,7 @@ void main() {
           );
           expect(
             tester.getSize(registration).height,
-            greaterThan((compact ? 10 : 11) * scale * 1.2),
+            greaterThan((compact ? 10 : 11) * scale),
           );
           final badgeRect = tester.getRect(
             find.byKey(const ValueKey('colombian-plate-badge')),
@@ -617,7 +618,8 @@ void main() {
           expect(textRect.left, greaterThanOrEqualTo(badgeRect.left));
           expect(textRect.right, lessThanOrEqualTo(badgeRect.right));
           expect(textRect.bottom, lessThanOrEqualTo(badgeRect.bottom));
-          expect(find.text('ABC 123'), findsOneWidget);
+          expect(find.text('ABC'), findsOneWidget);
+          expect(find.text('123'), findsOneWidget);
           expect(tester.takeException(), isNull);
         }
       }
@@ -674,7 +676,8 @@ void main() {
             innerDecoration.border,
             Border.all(color: Colors.black, width: 1.2),
           );
-          expect(innerDecoration.borderRadius, BorderRadius.circular(4));
+          expect(innerDecoration.borderRadius, BorderRadius.circular(5));
+          expect(outerDecoration.border, isNull);
           expect(
             tester.getRect(inset).left,
             greaterThan(tester.getRect(badge).left),
@@ -684,7 +687,10 @@ void main() {
             lessThan(tester.getRect(badge).right),
           );
           expect(
-            tester.widget<Text>(find.text(sample.number)).style!.color,
+            tester
+                .widget<Text>(find.text(sample.plate.substring(0, 3)))
+                .style!
+                .color,
             Colors.black,
           );
           expect(find.text(sample.label), findsOneWidget);
@@ -745,51 +751,53 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('ColombianPlateBadge opt-in has four fixings and a plain ring', (
-    tester,
-  ) async {
-    await _pumpComponent(
-      tester,
-      const ColombianPlateBadge(
-        plate: 'ABC123',
-        registrationLabel: 'Bogotá D.C.',
-      ),
-    );
-    final inset = tester.getRect(
-      find.byKey(const ValueKey('colombian-plate-inner-border')),
-    );
-    final number = tester.getRect(find.text('ABC 123'));
-    final label = tester.getRect(find.text('Bogotá D.C.'));
-    for (final corner in [
-      'top-left',
-      'top-right',
-      'bottom-left',
-      'bottom-right',
-    ]) {
-      final fixing = find.byKey(ValueKey('colombian-plate-fixing-$corner'));
-      expect(fixing, findsOneWidget);
-      final rect = tester.getRect(fixing);
-      final decoration =
-          tester.widget<DecoratedBox>(fixing).decoration as BoxDecoration;
-      expect(decoration.shape, BoxShape.circle);
-      expect(decoration.color, Colors.black);
-      expect(rect.size, const Size(3, 3));
-      expect(inset.contains(rect.topLeft), isTrue);
-      expect(inset.contains(rect.bottomRight), isTrue);
-      expect(rect.overlaps(number), isFalse);
-      expect(rect.overlaps(label), isFalse);
-      expect(rect.center.dx < inset.center.dx, corner.endsWith('left'));
-      expect(rect.center.dy < inset.center.dy, corner.startsWith('top'));
-    }
-    final separator = find.byKey(const ValueKey('colombian-plate-separator'));
-    final decoration =
-        tester.widget<DecoratedBox>(separator).decoration as BoxDecoration;
-    expect(decoration.shape, BoxShape.circle);
-    expect(decoration.border, Border.all(color: Colors.black, width: 1.2));
-    expect(decoration.image, isNull);
-    expect(find.byType(Image), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
+  testWidgets(
+    'ColombianPlateBadge opt-in has four inset slots and an illustrated emblem',
+    (tester) async {
+      await _pumpComponent(
+        tester,
+        const ColombianPlateBadge(
+          plate: 'ABC123',
+          registrationLabel: 'Bogotá D.C.',
+        ),
+      );
+      final inset = tester.getRect(
+        find.byKey(const ValueKey('colombian-plate-inner-border')),
+      );
+      final number = tester
+          .getRect(find.text('ABC'))
+          .expandToInclude(tester.getRect(find.text('123')));
+      final label = tester.getRect(find.text('Bogotá D.C.'));
+      for (final corner in [
+        'top-left',
+        'top-right',
+        'bottom-left',
+        'bottom-right',
+      ]) {
+        final fixing = find.byKey(ValueKey('colombian-plate-fixing-$corner'));
+        expect(fixing, findsOneWidget);
+        final rect = tester.getRect(fixing);
+        final decoration =
+            tester.widget<Container>(fixing).decoration! as BoxDecoration;
+        expect(decoration.shape, BoxShape.rectangle);
+        expect(decoration.color, Colors.black);
+        expect(rect.size, const Size(6, 3));
+        expect(inset.contains(rect.topLeft), isTrue);
+        expect(inset.contains(rect.bottomRight), isTrue);
+        expect(rect.overlaps(number), isFalse);
+        expect(rect.overlaps(label), isFalse);
+        expect(rect.center.dx < inset.center.dx, corner.endsWith('left'));
+        expect(rect.center.dy < inset.center.dy, corner.startsWith('top'));
+      }
+      final separator = find.byKey(const ValueKey('colombian-plate-separator'));
+      expect(
+        find.descendant(of: separator, matching: find.byType(CustomPaint)),
+        findsOneWidget,
+      );
+      expect(find.byType(Image), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'ColombianPlateBadge car motorcycle taxi stay legible in compact widths',
@@ -821,19 +829,19 @@ void main() {
                   ),
                   textScale: scale,
                 );
-                final number = find.text(
-                  '${sample.plate.substring(0, 3)} ${sample.plate.substring(3)}',
-                );
+                final number = find.text(sample.plate.substring(0, 3));
+                final lastGroup = find.text(sample.plate.substring(3));
+                expect(lastGroup, findsOneWidget);
                 final numberText = tester.widget<Text>(number);
-                expect(numberText.style!.fontSize, compact ? 22 : 24);
-                expect(numberText.style!.fontFamily, 'monospace');
+                expect(numberText.style!.fontSize, compact ? 20 : 32);
+                expect(numberText.style!.fontFamily, 'sans-serif-condensed');
                 final numberBox = tester.renderObject<RenderBox>(number);
                 final numberRect = Rect.fromPoints(
                   numberBox.localToGlobal(Offset.zero),
                   numberBox.localToGlobal(
                     numberBox.size.bottomRight(Offset.zero),
                   ),
-                );
+                ).expandToInclude(tester.getRect(lastGroup));
                 final separatorBox = tester.renderObject<RenderBox>(
                   find.byKey(const ValueKey('colombian-plate-separator')),
                 );
@@ -845,7 +853,14 @@ void main() {
                 );
                 expect(
                   separatorRect.center.dx,
-                  closeTo(numberRect.center.dx, 0.01),
+                  closeTo(
+                    tester
+                        .getCenter(
+                          find.byKey(const ValueKey('colombian-plate-badge')),
+                        )
+                        .dx,
+                    0.01,
+                  ),
                 );
                 expect(separatorRect.width, lessThan(numberRect.width / 7));
                 expect(numberRect.height, greaterThanOrEqualTo(12));

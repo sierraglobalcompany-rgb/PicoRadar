@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/storage/app_preferences.dart';
 import '../../visual_assets/data/visual_asset_preferences.dart';
+import 'garage_favorites.dart';
 import 'vehicle_profile.dart';
 
 typedef VehicleIdGenerator = String Function();
@@ -51,36 +52,48 @@ class VehicleRepository {
     int? year,
     String? color,
     String? fuel,
-  }) async {
+  }) => serializeGarageFavoriteMutation(preferences, () async {
     final now = DateTime.now().toUtc();
     _validateYear(year, now);
     _validateServiceType(kind, serviceType);
     final id = _idGenerator();
     final normalizedPlate = normalizePlate(plate);
 
-    await database
-        .into(database.vehicles)
-        .insert(
-          VehiclesCompanion.insert(
-            id: id,
-            plate: normalizedPlate,
-            kind: Value(kind.value),
-            serviceType: Value(serviceType.value),
-            subtype: Value(_optionalText(subtype)),
-            nickname: Value(_optionalText(nickname)),
-            registrationCity: Value(_optionalText(registrationCity)),
-            brand: Value(_optionalText(brand)),
-            model: Value(_optionalText(model)),
-            year: Value(year),
-            color: Value(_optionalText(color)),
-            fuel: Value(_optionalText(fuel)),
-            createdAt: Value(now),
-            updatedAt: Value(now),
-          ),
-        );
+    return database.transaction(() async {
+      final existing = await listVehicles();
+      if (existing.isNotEmpty) {
+        // Repair against existing vehicles so adding one cannot take selection.
+        await _repairActiveVehicle(existing);
+      }
 
-    return (await getVehicle(id))!;
-  }
+      await database
+          .into(database.vehicles)
+          .insert(
+            VehiclesCompanion.insert(
+              id: id,
+              plate: normalizedPlate,
+              kind: Value(kind.value),
+              serviceType: Value(serviceType.value),
+              subtype: Value(_optionalText(subtype)),
+              nickname: Value(_optionalText(nickname)),
+              registrationCity: Value(_optionalText(registrationCity)),
+              brand: Value(_optionalText(brand)),
+              model: Value(_optionalText(model)),
+              year: Value(year),
+              color: Value(_optionalText(color)),
+              fuel: Value(_optionalText(fuel)),
+              createdAt: Value(now),
+              updatedAt: Value(now),
+            ),
+          );
+
+      final created = (await getVehicle(id))!;
+      if (existing.isEmpty) {
+        await _writeActiveVehicle(id);
+      }
+      return created;
+    });
+  });
 
   Future<VehicleProfile> updateVehicle({
     required String id,
@@ -130,40 +143,107 @@ class VehicleRepository {
     return (await getVehicle(id))!;
   }
 
-  Future<void> deleteVehicle(String id) async {
-    await (database.delete(
-      database.vehicles,
-    )..where((row) => row.id.equals(id))).go();
+  Future<void> deleteVehicle(
+    String id,
+  ) => serializeGarageFavoriteMutation(preferences, () async {
+    final vehicles = await listVehicles();
+    final previousId = await preferences.getString(activeVehiclePreferenceKey);
+    final previousIsValid = vehicles.any((vehicle) => vehicle.id == previousId);
+    final remaining = vehicles.where((vehicle) => vehicle.id != id).toList();
+    try {
+      // Finish fallible preferences before deleting the row and its children.
+      await _repairActiveVehicle(remaining, useLegacyFavorites: false);
+      await clearVehicleVisualOverride(preferences, id);
+      await (database.delete(
+        database.vehicles,
+      )..where((row) => row.id.equals(id))).go();
+    } catch (error, stackTrace) {
+      try {
+        if (previousId != null &&
+            previousIsValid &&
+            await _vehicleRow(id) != null &&
+            (previousId == id || await _vehicleRow(previousId) != null) &&
+            await preferences.getString(activeVehiclePreferenceKey) !=
+                previousId) {
+          // Stay in this queue and avoid retrying failed legacy cleanup.
+          await preferences.setString(activeVehiclePreferenceKey, previousId);
+        }
+      } catch (rollbackError, rollbackStackTrace) {
+        Error.throwWithStackTrace(
+          VehicleDeletionRollbackException(
+            originalError: error,
+            originalStackTrace: stackTrace,
+            rollbackError: rollbackError,
+            rollbackStackTrace: rollbackStackTrace,
+          ),
+          stackTrace,
+        );
+      }
+      rethrow;
+    }
+  });
 
+  Future<VehicleProfile?> getActiveVehicle() => serializeGarageFavoriteMutation(
+    preferences,
+    () async => _repairActiveVehicle(await listVehicles()),
+  );
+
+  Future<void> setActiveVehicle(String id) =>
+      serializeGarageFavoriteMutation(preferences, () async {
+        if (await _vehicleRow(id) == null) {
+          throw VehicleRepositoryException('Vehicle does not exist: $id.');
+        }
+        await _writeActiveVehicle(id);
+      });
+
+  // Deletion/rollback callers may clear temporarily; the next get repairs it.
+  Future<void> clearActiveVehicle() => serializeGarageFavoriteMutation(
+    preferences,
+    () => preferences.remove(activeVehiclePreferenceKey),
+  );
+
+  Future<VehicleProfile?> _repairActiveVehicle(
+    List<VehicleProfile> vehicles, {
+    bool useLegacyFavorites = true,
+  }) async {
     final activeId = await preferences.getString(activeVehiclePreferenceKey);
-    if (activeId == id) {
+    final hasLegacy =
+        await preferences.getString(garageFavoriteVehicleIdsPreferenceKey) !=
+        null;
+    VehicleProfile? selected;
+    for (final vehicle in vehicles) {
+      if (vehicle.id == activeId) {
+        selected = vehicle;
+        break;
+      }
+    }
+    if (selected == null && vehicles.isNotEmpty) {
+      final legacyIds = useLegacyFavorites
+          ? await loadGarageFavoriteVehicleIds(preferences)
+          : const <String>{};
+      final ordered = [...vehicles]..sort(compareVehiclesAlphabetically);
+      selected = ordered.firstWhere(
+        (vehicle) => legacyIds.contains(vehicle.id),
+        orElse: () => ordered.first,
+      );
+    }
+    if (selected?.id != activeId || hasLegacy) {
+      await _writeActiveVehicle(selected?.id);
+    }
+    return selected;
+  }
+
+  Future<void> _writeActiveVehicle(String? id) async {
+    if (id == null) {
       await preferences.remove(activeVehiclePreferenceKey);
+    } else {
+      await preferences.setString(activeVehiclePreferenceKey, id);
     }
-    await clearVehicleVisualOverride(preferences, id);
-  }
-
-  Future<VehicleProfile?> getActiveVehicle() async {
-    final activeId = await preferences.getString(activeVehiclePreferenceKey);
-    if (activeId == null || activeId.isEmpty) {
-      return null;
+    // Never discard migration input before the canonical selection is stored.
+    if (await preferences.getString(garageFavoriteVehicleIdsPreferenceKey) !=
+        null) {
+      await preferences.remove(garageFavoriteVehicleIdsPreferenceKey);
     }
-
-    final vehicle = await getVehicle(activeId);
-    if (vehicle == null) {
-      await preferences.remove(activeVehiclePreferenceKey);
-    }
-    return vehicle;
-  }
-
-  Future<void> setActiveVehicle(String id) async {
-    if (await _vehicleRow(id) == null) {
-      throw VehicleRepositoryException('Vehicle does not exist: $id.');
-    }
-    await preferences.setString(activeVehiclePreferenceKey, id);
-  }
-
-  Future<void> clearActiveVehicle() async {
-    await preferences.remove(activeVehiclePreferenceKey);
   }
 
   static String normalizePlate(String plate) {
@@ -249,4 +329,20 @@ class VehicleRepositoryException implements Exception {
 
   @override
   String toString() => 'VehicleRepositoryException: $message';
+}
+
+class VehicleDeletionRollbackException extends VehicleRepositoryException {
+  const VehicleDeletionRollbackException({
+    required this.originalError,
+    required this.originalStackTrace,
+    required this.rollbackError,
+    required this.rollbackStackTrace,
+  }) : super(
+         'Vehicle deletion failed and the previous favorite could not be restored.',
+       );
+
+  final Object originalError;
+  final StackTrace originalStackTrace;
+  final Object rollbackError;
+  final StackTrace rollbackStackTrace;
 }

@@ -504,8 +504,7 @@ class _OnboardingVehicleScreenState
           : int.parse(_yearController.text.trim());
       final targetId = widget.vehicleId;
       if (targetId == null) {
-        final existingVehicles = await repository.listVehicles();
-        final vehicle = await repository.createVehicle(
+        await repository.createVehicle(
           plate: _plateController.text,
           kind: choice.kind,
           serviceType: choice.serviceType,
@@ -517,9 +516,6 @@ class _OnboardingVehicleScreenState
           year: year,
           color: _colorController.text,
         );
-        if (existingVehicles.isEmpty) {
-          await repository.setActiveVehicle(vehicle.id);
-        }
       } else {
         await repository.updateVehicle(
           id: targetId,
@@ -549,7 +545,11 @@ class _OnboardingVehicleScreenState
       if (mounted) {
         setState(() => _saving = false);
         navigatedAway = true;
-        context.go(widget.returnPath ?? AppRoute.home.path);
+        if (_isEditing && context.canPop()) {
+          context.pop();
+        } else {
+          context.go(widget.returnPath ?? AppRoute.home.path);
+        }
       }
     } on VehicleRepositoryException catch (error) {
       if (mounted) {

@@ -281,12 +281,13 @@ void main() {
         );
         final problems = <String>[];
         final selector = find.byKey(const ValueKey('pico-city-change'));
-        expect(_surfaceText(selector), contains(_longCity));
+        expect(_surfaceText(selector), contains('Bucaramanga'));
+        expect(_surfaceText(selector), isNot(contains(_longCity)));
         problems.addAll(_readabilityProblems(tester, selector));
         problems.addAll(
           _wordLineProblems(
             tester,
-            find.descendant(of: selector, matching: find.text(_longCity)),
+            find.descendant(of: selector, matching: find.text('Bucaramanga')),
           ),
         );
 

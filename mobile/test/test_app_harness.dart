@@ -16,6 +16,10 @@ import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/features/apps_launcher/data/module_registry.dart';
 import 'package:picoradar/features/defense/data/defense_case_store.dart';
+import 'package:picoradar/features/documents/application/wallet_providers.dart';
+import 'package:picoradar/features/documents/application/wallet_session.dart';
+import 'package:picoradar/features/documents/data/wallet_store.dart';
+import 'package:picoradar/features/documents/platform/wallet_platform.dart';
 import 'package:picoradar/features/garage/application/vehicle_associated_data_cleaner.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
@@ -23,6 +27,7 @@ import 'package:picoradar/features/home/data/home_banner_config.dart';
 import 'package:picoradar/features/location/application/location_controller.dart';
 import 'package:picoradar/features/location/platform/device_location_gateway.dart';
 import 'package:picoradar/features/peritajes/data/peritajes_draft_store.dart';
+import 'package:picoradar/features/onboarding/data/registration_city_catalog.dart';
 import 'package:picoradar/features/pico_placa/domain/bogota_time.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
 import 'package:picoradar/features/trip/data/trip_municipality_catalog.dart';
@@ -31,7 +36,40 @@ import 'package:picoradar/features/vehicle_status/platform/obligation_notificati
 import 'package:picoradar/features/vehicle_status/platform/vehicle_document_gateway.dart';
 import 'package:picoradar/features/vehicle_status/presentation/vehicle_status_screen.dart';
 
+class _HarnessWalletPlatform extends WalletPlatform {
+  _HarnessWalletPlatform(this.root);
+  final Directory root;
+  @override
+  Future<void> setSecure(bool enabled) async {}
+  @override
+  Future<String> noBackupDirectory() async => root.path;
+}
+
+class _HarnessWalletAuthenticator implements WalletDeviceAuthenticator {
+  @override
+  Future<bool> canAuthenticate() async => true;
+  @override
+  Future<WalletAuthenticationResult> authenticate() async =>
+      WalletAuthenticationResult.success;
+}
+
+class _HarnessWalletPreferences implements WalletSecurityPreferencesStore {
+  WalletSecurityPreferences value = const WalletSecurityPreferences(
+    offerSeen: true,
+  );
+  @override
+  Future<WalletSecurityPreferences> read() async => value;
+  @override
+  Future<void> write(WalletSecurityPreferences preferences) async {
+    value = preferences;
+  }
+}
+
 class TestAppHarness {
+  static final registrationCatalog = RegistrationCityCatalog.fromJson(
+    jsonDecode(File(registrationCityCatalogAssetPath).readAsStringSync())
+        as Map<String, Object?>,
+  );
   // Load the real asset outside rootBundle's isolate work in fake-async tests.
   static final tripCatalog = TripMunicipalityCatalog.fromJson(
     jsonDecode(File(tripMunicipalityCatalogAssetPath).readAsStringSync())
@@ -50,12 +88,20 @@ class TestAppHarness {
       masterKey: () async => SecretKey(List<int>.filled(32, 7)),
       idGenerator: _nextDocumentId,
     );
+    walletStore = WalletStore(
+      db: database,
+      legacyStore: documentStore,
+      rootDirectory: () async => documentRoot,
+      cacheDirectory: () async => documentRoot,
+      masterKey: () async => SecretKey(List<int>.filled(32, 7)),
+    );
   }
 
   final AppDatabase database;
   final MemoryPreferences preferences;
   final Directory documentRoot;
   late final PrivateVehicleDocumentStore documentStore;
+  late final WalletStore walletStore;
   DateTime now = DateTime(2026, 8, 27, 22);
   int _vehicleIdSequence = 0;
   int _documentIdSequence = 0;
@@ -114,10 +160,31 @@ class TestAppHarness {
     await tester.pump();
     final app = ProviderScope(
       overrides: [
+        walletStoreProvider.overrideWithValue(walletStore),
+        walletPlatformProvider.overrideWithValue(
+          _HarnessWalletPlatform(documentRoot),
+        ),
+        walletFileKeyProvider.overrideWithValue(
+          () async => SecretKey(List<int>.filled(32, 7)),
+        ),
+        walletSessionProvider.overrideWith((ref) {
+          final session = WalletSession(
+            authenticator: _HarnessWalletAuthenticator(),
+            preferences: _HarnessWalletPreferences(),
+          );
+          ref.onDispose(session.dispose);
+          return session;
+        }),
         appDatabaseProvider.overrideWithValue(database),
+        datasetSnapshotsDirectoryProvider.overrideWith(
+          (ref) async => documentRoot,
+        ),
         appPreferencesProvider.overrideWithValue(preferences),
         tripMunicipalityCatalogProvider.overrideWithValue(
           AsyncValue.data(tripCatalog),
+        ),
+        registrationCityCatalogProvider.overrideWithValue(
+          AsyncValue.data(registrationCatalog),
         ),
         picoNotificationSchedulerProvider.overrideWithValue(
           _FakePicoNotificationScheduler(),

@@ -1,0 +1,1652 @@
+{
+  "schemaVersion": 1,
+  "datasetKey": "tax_calendars",
+  "version": "2026.09.15-purchase-directory-v3",
+  "generatedAt": "2026-09-16T01:01:48Z",
+  "directoryAuditScope": "Auditoria de las 33 fichas y 53 URLs distintas del inventario anterior el 2026-09-15 America/Bogota. 18 fuentes institucionales legibles, 15 pendientes de lectura; 8 enlaces de portal con remision editorial, sin certificar operacion. Calendarios intactos: 14 parciales y 19 pendientes. directoryAudit.attemptedAt incluye intentos fallidos y no equivale a reviewedAt.",
+  "evidenceScope": "Inventario departamental mas Bogota: 33 territorios, 14 calendarios parciales, 19 pendientes y 8 portales con remision primaria editorial. Auditoria de enlaces no exhaustiva de modificatorias; no acredita disponibilidad, deuda ni operacion de pago.",
+  "reviewTimestampMeaning": "reviewedAt corresponde a la revisi\u00f3n editorial de las fuentes seleccionadas, no a publicaci\u00f3n oficial, consulta de deuda ni descarga. Los registros sin instante de revisi\u00f3n acreditado conservan null.",
+  "authorities": [
+    {
+      "id": "amazonas",
+      "territoryCode": "91",
+      "territoryName": "Amazonas",
+      "name": "Gobernaci\u00f3n de Amazonas; unidad tributaria pendiente",
+      "institutionalUrl": "https://www.amazonas.gov.co/",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.amazonas.gov.co/"
+      ],
+      "reviewedAt": null,
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Portal responde con plantilla Territoriales sin contenido legible. Identidad previa FND conservada; dependencia, tramite y pago pendientes.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "unresolved",
+        "checkedUrls": [
+          "https://www.amazonas.gov.co/",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Portal responde con plantilla Territoriales sin contenido legible. Identidad previa FND conservada; dependencia, tramite y pago pendientes."
+      }
+    },
+    {
+      "id": "antioquia",
+      "territoryCode": "05",
+      "territoryName": "Antioquia",
+      "name": "Secretar\u00eda de Hacienda",
+      "institutionalUrl": "https://www.antioquia.gov.co/",
+      "portalUrl": "https://www.vehiculosantioquia.com.co/impuestosweb/",
+      "sourceUrls": [
+        "https://www.antioquia.gov.co/",
+        "https://www.antioquia.gov.co/index.php/antioquiacuenta/ultimos-dias-para-pagar-el-impuesto-vehicular-con-descuento-en-antioquia"
+      ],
+      "reviewedAt": "2026-09-13T16:17:18Z",
+      "evidenceNote": "Fuentes primarias revisadas directamente por PicoRadar. La revisi\u00f3n del enlace no certifica una operaci\u00f3n de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Inicio oficial remite exactamente al portal conservado; noticia tributaria legible. Destino dinamico, sin consulta personal ni pago.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://www.antioquia.gov.co/",
+          "https://www.vehiculosantioquia.com.co/impuestosweb/",
+          "https://www.antioquia.gov.co/index.php/antioquiacuenta/ultimos-dias-para-pagar-el-impuesto-vehicular-con-descuento-en-antioquia"
+        ],
+        "note": "Inicio oficial remite exactamente al portal conservado; noticia tributaria legible. Destino dinamico, sin consulta personal ni pago."
+      }
+    },
+    {
+      "id": "arauca",
+      "territoryCode": "81",
+      "territoryName": "Arauca",
+      "name": "Secretar\u00eda de Hacienda",
+      "institutionalUrl": "https://arauca.gov.co/secretaria-de-hacienda/",
+      "portalUrl": "https://edeskprisma.syc.com.co/ARAUCA",
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://arauca.gov.co/secretaria-de-hacienda/",
+        "https://arauca.gov.co/gobernacion-de-arauca-advierte-a-contribuyentes-que-usen-solo-enlaces-de-pago-oficiales/"
+      ],
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "evidenceNote": "Remisi\u00f3n HTTPS expresa y destino abierto; la p\u00e1gina din\u00e1mica no acredita operaci\u00f3n de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Secretaria legible; noticia de remision agota tiempo en dos intentos. Edesk responde con controles vacios. Evidencia y fecha previas conservadas; remision pendiente de revalidacion.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://arauca.gov.co/secretaria-de-hacienda/",
+          "https://edeskprisma.syc.com.co/ARAUCA",
+          "https://fnd.org.co/departamentos",
+          "https://arauca.gov.co/gobernacion-de-arauca-advierte-a-contribuyentes-que-usen-solo-enlaces-de-pago-oficiales/"
+        ],
+        "note": "Secretaria legible; noticia de remision agota tiempo en dos intentos. Edesk responde con controles vacios. Evidencia y fecha previas conservadas; remision pendiente de revalidacion."
+      }
+    },
+    {
+      "id": "atlantico",
+      "territoryCode": "08",
+      "territoryName": "Atl\u00e1ntico",
+      "name": "Secretar\u00eda de Hacienda",
+      "institutionalUrl": "https://www.atlantico.gov.co/index.php/impuestos-departamentales",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.atlantico.gov.co/",
+        "https://www.atlantico.gov.co/index.php/impuestos-departamentales"
+      ],
+      "reviewedAt": "2026-09-16T01:01:48Z",
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Inicio remite a Impuestos Departamentales; se mejora el enlace institucional a esa pagina. La remision al portal existe pero el destino devuelve errores; portalUrl sigue null.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://www.atlantico.gov.co/",
+          "https://fnd.org.co/departamentos",
+          "https://www.atlantico.gov.co/index.php/impuestos-departamentales",
+          "https://portalimpuestos.atlantico.gov.co/"
+        ],
+        "note": "Inicio remite a Impuestos Departamentales; se mejora el enlace institucional a esa pagina. La remision al portal existe pero el destino devuelve errores; portalUrl sigue null."
+      }
+    },
+    {
+      "id": "bogota",
+      "territoryCode": "11",
+      "territoryName": "Bogot\u00e1 D.C.",
+      "name": "Secretar\u00eda Distrital de Hacienda",
+      "institutionalUrl": "https://www.haciendabogota.gov.co/es/impuestos/impuesto-sobre-vehiculos-automotores",
+      "portalUrl": "https://www.haciendabogota.gov.co/es/sdh/pagos-bogota",
+      "sourceUrls": [
+        "https://www.haciendabogota.gov.co/es/impuestos/impuesto-sobre-vehiculos-automotores",
+        "https://www.haciendabogota.gov.co/es/noticias/calendario-tributario-2026-vuelve-el-pago-por-cuotas-del-impuesto-vehiculos-en-bogota",
+        "https://www.haciendabogota.gov.co/es/sdh/pagos-bogota"
+      ],
+      "reviewedAt": "2026-09-13T16:17:18Z",
+      "evidenceNote": "Fuentes primarias revisadas directamente por PicoRadar. La revisi\u00f3n del enlace no certifica una operaci\u00f3n de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Ficha vehicular y Pagos Bogota legibles, remision directa confirmada. Noticia de calendario accesible. No se ejecuta pago ni se actualiza calendario.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://www.haciendabogota.gov.co/es/impuestos/impuesto-sobre-vehiculos-automotores",
+          "https://www.haciendabogota.gov.co/es/sdh/pagos-bogota",
+          "https://www.haciendabogota.gov.co/es/noticias/calendario-tributario-2026-vuelve-el-pago-por-cuotas-del-impuesto-vehiculos-en-bogota"
+        ],
+        "note": "Ficha vehicular y Pagos Bogota legibles, remision directa confirmada. Noticia de calendario accesible. No se ejecuta pago ni se actualiza calendario."
+      }
+    },
+    {
+      "id": "bolivar",
+      "territoryCode": "13",
+      "territoryName": "Bol\u00edvar",
+      "name": "Gobernaci\u00f3n de Bol\u00edvar; unidad tributaria pendiente",
+      "institutionalUrl": "https://impuestos.bolivar.gov.co/gobol_web/",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://impuestos.bolivar.gov.co/gobol_web/"
+      ],
+      "reviewedAt": null,
+      "evidenceNote": "Portal institucional vehicular legible, pero la remisi\u00f3n independiente en ingresos.bolivar.gov.co sigue sin lectura v\u00e1lida: certificado NotTimeValid. No habilitado a partir de un \u00edndice ni de autoafirmaci\u00f3n del destino. Auditoria de enlaces 2026-09-15 (America/Bogota): Ficha vehicular en subdominio institucional legible; no se acredita remision independiente. Conserva solo acceso institucional, sin portal directo.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://impuestos.bolivar.gov.co/gobol_web/",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Ficha vehicular en subdominio institucional legible; no se acredita remision independiente. Conserva solo acceso institucional, sin portal directo."
+      }
+    },
+    {
+      "id": "boyaca",
+      "territoryCode": "15",
+      "territoryName": "Boyac\u00e1",
+      "name": "Direcci\u00f3n de Recaudo y Fiscalizaci\u00f3n, Secretar\u00eda de Hacienda",
+      "institutionalUrl": "https://www.boyaca.gov.co/secretariahacienda/",
+      "portalUrl": "https://vehiculos.boyaca.gov.co/siver-v-boyaca/liquidacionweb/primeraa.php",
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.boyaca.gov.co/secretariahacienda/",
+        "https://www.boyaca.gov.co/boyaca-fija-los-plazos-para-la-declaracion-y-pago-del-impuesto-sobre-vehiculos-automotores-vigencia-2026/",
+        "https://www.boyaca.gov.co/secretariahacienda/wp-content/uploads/sites/77/2026/03/Resolucion-No.-00000034-de-2026.pdf",
+        "https://www.boyaca.gov.co/secretariahacienda/la-secretaria-de-hacienda-de-boyaca-informa-que-el-plazo-para-la-declaracion-y-pago-del-impuesto-sobre-vehiculos-automotores-vence-martes-31-de-marzo-de-2026/"
+      ],
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "evidenceNote": "Remisi\u00f3n HTTPS expresa en cuerpo de noticia oficial del 30 de marzo. Se conserva URL destino publicada, sin wrapper de seguimiento Safe Links. Apertura del destino con timeout; operaci\u00f3n no comprobada. Auditoria de enlaces 2026-09-15 (America/Bogota): Secretaria, noticias y resolucion accesibles. Remision textual al portal exacto confirmada; boton usa SafeLinks y destino agota tiempo. No se afirma disponibilidad.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://www.boyaca.gov.co/secretariahacienda/",
+          "https://vehiculos.boyaca.gov.co/siver-v-boyaca/liquidacionweb/primeraa.php",
+          "https://fnd.org.co/departamentos",
+          "https://www.boyaca.gov.co/boyaca-fija-los-plazos-para-la-declaracion-y-pago-del-impuesto-sobre-vehiculos-automotores-vigencia-2026/",
+          "https://www.boyaca.gov.co/secretariahacienda/wp-content/uploads/sites/77/2026/03/Resolucion-No.-00000034-de-2026.pdf",
+          "https://www.boyaca.gov.co/secretariahacienda/la-secretaria-de-hacienda-de-boyaca-informa-que-el-plazo-para-la-declaracion-y-pago-del-impuesto-sobre-vehiculos-automotores-vence-martes-31-de-marzo-de-2026/"
+        ],
+        "note": "Secretaria, noticias y resolucion accesibles. Remision textual al portal exacto confirmada; boton usa SafeLinks y destino agota tiempo. No se afirma disponibilidad."
+      }
+    },
+    {
+      "id": "caldas",
+      "territoryCode": "17",
+      "territoryName": "Caldas",
+      "name": "Secretar\u00eda de Hacienda",
+      "institutionalUrl": "https://www.caldas.gov.co/",
+      "portalUrl": "https://rentas.caldas.gov.co/",
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.caldas.gov.co/",
+        "https://www.caldas.gov.co/noticias-gobernacion/183-hacienda/16599-ultimos-dias-para-pagar-el-impuesto-vehicular-sin-sanciones-hacienda-departamental-amplia-horarios-de-atencion-para-facilitar-el-proceso"
+      ],
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "evidenceNote": "Remisi\u00f3n HTTPS/PSE expresa en noticia le\u00edda. Destino devolvi\u00f3 502 en esta revisi\u00f3n; disponibilidad y operaci\u00f3n no comprobadas. Auditoria de enlaces 2026-09-15 (America/Bogota): Inicio y noticia oficiales legibles y con remision al portal existente. Destino rentas agota tiempo; enlace conserva evidencia previa, no acredita operacion.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://www.caldas.gov.co/",
+          "https://rentas.caldas.gov.co/",
+          "https://fnd.org.co/departamentos",
+          "https://www.caldas.gov.co/noticias-gobernacion/183-hacienda/16599-ultimos-dias-para-pagar-el-impuesto-vehicular-sin-sanciones-hacienda-departamental-amplia-horarios-de-atencion-para-facilitar-el-proceso"
+        ],
+        "note": "Inicio y noticia oficiales legibles y con remision al portal existente. Destino rentas agota tiempo; enlace conserva evidencia previa, no acredita operacion."
+      }
+    },
+    {
+      "id": "caqueta",
+      "territoryCode": "18",
+      "territoryName": "Caquet\u00e1",
+      "name": "Gobernaci\u00f3n de Caquet\u00e1; unidad tributaria pendiente",
+      "institutionalUrl": "https://www.caqueta.gov.co/",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.caqueta.gov.co/"
+      ],
+      "reviewedAt": null,
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Portal responde con plantilla Territoriales sin contenido legible. Dependencia, tramite y pago pendientes.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "unresolved",
+        "checkedUrls": [
+          "https://www.caqueta.gov.co/",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Portal responde con plantilla Territoriales sin contenido legible. Dependencia, tramite y pago pendientes."
+      }
+    },
+    {
+      "id": "casanare",
+      "territoryCode": "85",
+      "territoryName": "Casanare",
+      "name": "Secretar\u00eda de Hacienda",
+      "institutionalUrl": "https://impuestos.casanare.gov.co/impuesto-vehiculos",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://impuestos.casanare.gov.co/impuesto-vehiculos",
+        "https://impuestos.casanare.gov.co/impuesto-vehiculos/calendario-tributario"
+      ],
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "evidenceNote": "Tabla expresa para 2026 le\u00edda. Acto completo y remisi\u00f3n independiente al formulario pendientes; portalUrl permanece null. Auditoria de enlaces 2026-09-15 (America/Bogota): Ficha y pagina de calendario legibles; formulario externo solicita datos personales. Tarifas 2024 visibles: no inferir vigencia ni fechas nuevas. Remision independiente de pago pendiente.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://impuestos.casanare.gov.co/impuesto-vehiculos",
+          "https://fnd.org.co/departamentos",
+          "https://impuestos.casanare.gov.co/impuesto-vehiculos/calendario-tributario"
+        ],
+        "note": "Ficha y pagina de calendario legibles; formulario externo solicita datos personales. Tarifas 2024 visibles: no inferir vigencia ni fechas nuevas. Remision independiente de pago pendiente."
+      }
+    },
+    {
+      "id": "cauca",
+      "territoryCode": "19",
+      "territoryName": "Cauca",
+      "name": "Secretar\u00eda de Hacienda, Oficina Grupo de Rentas",
+      "institutionalUrl": "https://www.cauca.gov.co/rentas/SaladePrensa/Paginas/Liquidaci%C3%B3n-y-pago-del-impuesto-vehicular-en-linea.aspx",
+      "portalUrl": "https://www.softwareenlanube.net/sivervcauca/redirect2/",
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.cauca.gov.co/rentas/SaladePrensa/Paginas/Liquidaci%C3%B3n-y-pago-del-impuesto-vehicular-en-linea.aspx"
+      ],
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "evidenceNote": "Enlace Aqu\u00ed de la Gobernaci\u00f3n seguido al tercero; formulario visible sin introducir datos ni realizar consultas. Auditoria de enlaces 2026-09-15 (America/Bogota): Noticia oficial remite exactamente al destino conservado; destino vehicular legible. No se consultan datos personales ni se realizan pagos.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://www.cauca.gov.co/rentas/SaladePrensa/Paginas/Liquidaci%C3%B3n-y-pago-del-impuesto-vehicular-en-linea.aspx",
+          "https://www.softwareenlanube.net/sivervcauca/redirect2/",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Noticia oficial remite exactamente al destino conservado; destino vehicular legible. No se consultan datos personales ni se realizan pagos."
+      }
+    },
+    {
+      "id": "cesar",
+      "territoryCode": "20",
+      "territoryName": "Cesar",
+      "name": "Secretar\u00eda de Hacienda, Gesti\u00f3n de Rentas",
+      "institutionalUrl": "https://cesar.gov.co/d/es/noticias/boletines/8164-boletin-2026-3",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://cesar.gov.co/d/es/noticias/boletines/8164-boletin-2026-3"
+      ],
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "evidenceNote": "Fechas corroboradas en cuerpo de noticia oficial del 8 de enero; se refiere Resoluci\u00f3n 022936. Auditor\u00eda integral del acto y remisi\u00f3n exacta pendientes. Auditoria de enlaces 2026-09-15 (America/Bogota): Noticia oficial tributaria legible; indica acceso desde icono del inicio, sin remision directa comprobada en esta ficha. portalUrl sigue null.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://cesar.gov.co/d/es/noticias/boletines/8164-boletin-2026-3",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Noticia oficial tributaria legible; indica acceso desde icono del inicio, sin remision directa comprobada en esta ficha. portalUrl sigue null."
+      }
+    },
+    {
+      "id": "choco",
+      "territoryCode": "27",
+      "territoryName": "Choc\u00f3",
+      "name": "Gobernaci\u00f3n de Choc\u00f3; unidad tributaria pendiente",
+      "institutionalUrl": "https://www.choco.gov.co/",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.choco.gov.co/"
+      ],
+      "reviewedAt": null,
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Portal responde con plantilla Territoriales sin contenido legible. Dependencia, tramite y pago pendientes.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "unresolved",
+        "checkedUrls": [
+          "https://www.choco.gov.co/",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Portal responde con plantilla Territoriales sin contenido legible. Dependencia, tramite y pago pendientes."
+      }
+    },
+    {
+      "id": "cordoba",
+      "territoryCode": "23",
+      "territoryName": "C\u00f3rdoba",
+      "name": "Secretar\u00eda de Hacienda, Gesti\u00f3n de Ingresos",
+      "institutionalUrl": "https://impuestos.cordoba.gov.co/RentasCord/vehiculos_calendario.jsp",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://impuestos.cordoba.gov.co/RentasCord/vehiculos_calendario.jsp",
+        "https://www.cordoba.gov.co/publicaciones/7329/hasta-el-31-de-marzo-vence-el-plazo-para-obtener-descuentos-en-pronto-pago-en-el-impuesto-vehicular-y-en-intereses-y-sanciones-de-vigencias-del-2024-hacia-atras/"
+      ],
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "evidenceNote": "Cuerpo de noticia oficial del 27 de marzo le\u00eddo por HTTPS directo. Solo descuentos corrientes; excluidos alivios de 2024 y anteriores. Plazo ordinario y modificatorias pendientes. Auditoria de enlaces 2026-09-15 (America/Bogota): Calendario institucional y noticia complementaria no recuperables con herramienta web. Conserva enlace y revision previa; revalidacion pendiente.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "unresolved",
+        "checkedUrls": [
+          "https://impuestos.cordoba.gov.co/RentasCord/vehiculos_calendario.jsp",
+          "https://fnd.org.co/departamentos",
+          "https://www.cordoba.gov.co/publicaciones/7329/hasta-el-31-de-marzo-vence-el-plazo-para-obtener-descuentos-en-pronto-pago-en-el-impuesto-vehicular-y-en-intereses-y-sanciones-de-vigencias-del-2024-hacia-atras/"
+        ],
+        "note": "Calendario institucional y noticia complementaria no recuperables con herramienta web. Conserva enlace y revision previa; revalidacion pendiente."
+      }
+    },
+    {
+      "id": "cundinamarca",
+      "territoryCode": "25",
+      "territoryName": "Cundinamarca",
+      "name": "Direcci\u00f3n de Rentas y Gesti\u00f3n Tributaria, Secretar\u00eda de Hacienda",
+      "institutionalUrl": "https://www.cundinamarca.gov.co/dependencias/sechacienda/impuestos/vehiculos",
+      "portalUrl": "https://impuvehiculo.cundinamarca.gov.co/sivervcundinamarca/redirect/gov_co/",
+      "sourceUrls": [
+        "https://www.cundinamarca.gov.co/dependencias/sechacienda/impuestos/vehiculos",
+        "https://www.cundinamarca.gov.co/wcm/connect/14907204-ae8b-49fb-9de5-c7b75abeb71c/RESOLUCION%2BAMPLIACION%2BCALENDARIO%2B2026.pdf?CACHEID=ROOTWORKSPACE-14907204-ae8b-49fb-9de5-c7b75abeb71c-pW3mJHr&CONVERT_TO=url&MOD=AJPERES"
+      ],
+      "reviewedAt": "2026-09-13T16:17:18Z",
+      "evidenceNote": "Fuentes primarias revisadas directamente por PicoRadar. La revisi\u00f3n del enlace no certifica una operaci\u00f3n de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Ficha, remision exacta y destino vehicular legibles; PDF de ampliacion accesible. No cambia el calendario ni se ejecuta pago.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://www.cundinamarca.gov.co/dependencias/sechacienda/impuestos/vehiculos",
+          "https://impuvehiculo.cundinamarca.gov.co/sivervcundinamarca/redirect/gov_co/",
+          "https://www.cundinamarca.gov.co/wcm/connect/14907204-ae8b-49fb-9de5-c7b75abeb71c/RESOLUCION%2BAMPLIACION%2BCALENDARIO%2B2026.pdf?CACHEID=ROOTWORKSPACE-14907204-ae8b-49fb-9de5-c7b75abeb71c-pW3mJHr&CONVERT_TO=url&MOD=AJPERES"
+        ],
+        "note": "Ficha, remision exacta y destino vehicular legibles; PDF de ampliacion accesible. No cambia el calendario ni se ejecuta pago."
+      }
+    },
+    {
+      "id": "guainia",
+      "territoryCode": "94",
+      "territoryName": "Guain\u00eda",
+      "name": "Gobernaci\u00f3n de Guain\u00eda; unidad tributaria pendiente",
+      "institutionalUrl": "https://www.guainia.gov.co/",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.guainia.gov.co/"
+      ],
+      "reviewedAt": null,
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Portal responde con plantilla Territoriales sin contenido legible. Dependencia, tramite y pago pendientes.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "unresolved",
+        "checkedUrls": [
+          "https://www.guainia.gov.co/",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Portal responde con plantilla Territoriales sin contenido legible. Dependencia, tramite y pago pendientes."
+      }
+    },
+    {
+      "id": "guaviare",
+      "territoryCode": "95",
+      "territoryName": "Guaviare",
+      "name": "Gobernaci\u00f3n de Guaviare; unidad tributaria pendiente",
+      "institutionalUrl": "https://www.guaviare.gov.co/",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.guaviare.gov.co/"
+      ],
+      "reviewedAt": null,
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Portal responde con plantilla Territoriales sin contenido legible. Dependencia, tramite y pago pendientes.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "unresolved",
+        "checkedUrls": [
+          "https://www.guaviare.gov.co/",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Portal responde con plantilla Territoriales sin contenido legible. Dependencia, tramite y pago pendientes."
+      }
+    },
+    {
+      "id": "huila",
+      "territoryCode": "41",
+      "territoryName": "Huila",
+      "name": "Secretar\u00eda de Hacienda",
+      "institutionalUrl": "https://www.huila.gov.co/hacienda/",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.huila.gov.co/hacienda/",
+        "https://www.huila.gov.co/publicaciones/16542/conozca-los-descuentos-del-impuesto-vehicular-para-este-2026/"
+      ],
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "evidenceNote": "Cuerpo de noticia oficial del 15 de enero le\u00eddo por HTTPS directo. Beneficio adicional condicionado a cumplimiento anterior; actos y modificatorias pendientes. Auditoria de enlaces 2026-09-15 (America/Bogota): Secretaria devuelve 403; noticia complementaria tampoco recuperable. Conserva referencia y fecha previas, sin nueva certificacion.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "unresolved",
+        "checkedUrls": [
+          "https://www.huila.gov.co/hacienda/",
+          "https://fnd.org.co/departamentos",
+          "https://www.huila.gov.co/publicaciones/16542/conozca-los-descuentos-del-impuesto-vehicular-para-este-2026/"
+        ],
+        "note": "Secretaria devuelve 403; noticia complementaria tampoco recuperable. Conserva referencia y fecha previas, sin nueva certificacion."
+      }
+    },
+    {
+      "id": "la-guajira",
+      "territoryCode": "44",
+      "territoryName": "La Guajira",
+      "name": "Gobernaci\u00f3n de La Guajira; unidad tributaria pendiente",
+      "institutionalUrl": null,
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.laguajira.gov.co/NuestraGestion/Normatividad/Resolucion%20No.%2005%20de%202025.pdf"
+      ],
+      "reviewedAt": null,
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): El enlace institucional previo termina en .pdf pero devuelve HTML sin el acto. Alternativa de impuestos tambien incompleta. Se deshabilita institutionalUrl, se conserva la fuente para trazabilidad; portal y calendario pendientes.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "unresolved",
+        "checkedUrls": [
+          "https://www.laguajira.gov.co/NuestraGestion/Normatividad/Resolucion%20No.%2005%20de%202025.pdf",
+          "https://fnd.org.co/departamentos",
+          "https://www.laguajira.gov.co/LaGuajira/Paginas/Impuestos-Departamentales.aspx"
+        ],
+        "note": "El enlace institucional previo termina en .pdf pero devuelve HTML sin el acto. Alternativa de impuestos tambien incompleta. Se deshabilita institutionalUrl, se conserva la fuente para trazabilidad; portal y calendario pendientes."
+      }
+    },
+    {
+      "id": "magdalena",
+      "territoryCode": "47",
+      "territoryName": "Magdalena",
+      "name": "Secretar\u00eda de Hacienda Departamental, Oficina Gesti\u00f3n Tributaria",
+      "institutionalUrl": "https://www.gobernaciondelmagdalena.gov.co/ultimos-dias-para-acceder-al-100-de-descuento-en-intereses-por-impuestos-vehiculares-tasas-y-multas-de-transito/",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.gobernaciondelmagdalena.gov.co/ultimos-dias-para-acceder-al-100-de-descuento-en-intereses-por-impuestos-vehiculares-tasas-y-multas-de-transito/"
+      ],
+      "reviewedAt": null,
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Noticia oficial devuelve 403. Sin evidencia nueva de portal o procedimiento; enlace previo conservado.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "unresolved",
+        "checkedUrls": [
+          "https://www.gobernaciondelmagdalena.gov.co/ultimos-dias-para-acceder-al-100-de-descuento-en-intereses-por-impuestos-vehiculares-tasas-y-multas-de-transito/",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Noticia oficial devuelve 403. Sin evidencia nueva de portal o procedimiento; enlace previo conservado."
+      }
+    },
+    {
+      "id": "meta",
+      "territoryCode": "50",
+      "territoryName": "Meta",
+      "name": "Gobernaci\u00f3n, Gerencia de Rentas",
+      "institutionalUrl": "https://meta.gov.co/buscar/pagar-impuesto-vehiulo",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://meta.gov.co/buscar/pagar-impuesto-vehiulo"
+      ],
+      "reviewedAt": null,
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Ruta previa de busqueda solo devuelve aviso de JavaScript; no acredita una ficha ni portal de pago. Enlace previo conservado sin nueva verificacion.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "unresolved",
+        "checkedUrls": [
+          "https://meta.gov.co/buscar/pagar-impuesto-vehiulo",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Ruta previa de busqueda solo devuelve aviso de JavaScript; no acredita una ficha ni portal de pago. Enlace previo conservado sin nueva verificacion."
+      }
+    },
+    {
+      "id": "narino",
+      "territoryCode": "52",
+      "territoryName": "Nari\u00f1o",
+      "name": "Subsecretar\u00eda de Rentas, Secretar\u00eda de Hacienda",
+      "institutionalUrl": "https://narino.gov.co/noticias/narino-impulsa-el-ahorro-ciudadano-con-incentivo-del-20-en-el-impuesto-vehicular/",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://narino.gov.co/noticias/narino-impulsa-el-ahorro-ciudadano-con-incentivo-del-20-en-el-impuesto-vehicular/"
+      ],
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "evidenceNote": "Cuerpo de noticia oficial le\u00eddo por HTTPS directo tras timeout del lector web. Fechas 30 de abril y 30 de diciembre; remite a portal HTTP, no se habilita pago HTTPS no comprobado. Auditoria de enlaces 2026-09-15 (America/Bogota): Noticia oficial legible con remision a www.impuestovehicular.narino.gov.co; destino no recuperable. Conserva portalUrl null; no se amplian fechas.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://narino.gov.co/noticias/narino-impulsa-el-ahorro-ciudadano-con-incentivo-del-20-en-el-impuesto-vehicular/",
+          "https://fnd.org.co/departamentos",
+          "https://www.impuestovehicular.narino.gov.co/"
+        ],
+        "note": "Noticia oficial legible con remision a www.impuestovehicular.narino.gov.co; destino no recuperable. Conserva portalUrl null; no se amplian fechas."
+      }
+    },
+    {
+      "id": "norte-de-santander",
+      "territoryCode": "54",
+      "territoryName": "Norte de Santander",
+      "name": "Secretar\u00eda de Hacienda",
+      "institutionalUrl": "https://administrador.nortedesantander.gov.co/gobernacion-llama-a-ponerse-al-dia-con-el-impuesto-vehicular/",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://administrador.nortedesantander.gov.co/gobernacion-llama-a-ponerse-al-dia-con-el-impuesto-vehicular/"
+      ],
+      "reviewedAt": null,
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Noticia oficial legible del 26 de agosto de 2026; describe canales presenciales, no acredita portal vehicular en linea. Sin promocion a pago digital.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://administrador.nortedesantander.gov.co/gobernacion-llama-a-ponerse-al-dia-con-el-impuesto-vehicular/",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Noticia oficial legible del 26 de agosto de 2026; describe canales presenciales, no acredita portal vehicular en linea. Sin promocion a pago digital."
+      }
+    },
+    {
+      "id": "putumayo",
+      "territoryCode": "86",
+      "territoryName": "Putumayo",
+      "name": "Direcci\u00f3n de Rentas Departamentales, Secretar\u00eda de Hacienda",
+      "institutionalUrl": "https://www.putumayo.gov.co/publications/116?type=2",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.putumayo.gov.co/publications/116?type=2"
+      ],
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "evidenceNote": "Noticia del 28 de mayo le\u00edda. Solo umbral exclusivo de descuento antes del 30 de junio; no se infiere vencimiento ordinario, inclusi\u00f3n del d\u00eda 30 ni plazo alternativo 29 de junio. Auditoria de enlaces 2026-09-15 (America/Bogota): Noticia Liquidaton accesible. Evidencia informativa conservada; no se acredita remision independiente a pago en linea.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://www.putumayo.gov.co/publications/116?type=2",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Noticia Liquidaton accesible. Evidencia informativa conservada; no se acredita remision independiente a pago en linea."
+      }
+    },
+    {
+      "id": "quindio",
+      "territoryCode": "63",
+      "territoryName": "Quind\u00edo",
+      "name": "Gobernaci\u00f3n de Quind\u00edo; unidad tributaria pendiente",
+      "institutionalUrl": "https://www.quindio.gov.co/",
+      "portalUrl": "https://isva.quindio.gov.co/portal-quindio/",
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.quindio.gov.co/",
+        "https://isva.quindio.gov.co/portal-quindio/"
+      ],
+      "reviewedAt": "2026-09-16T01:01:48Z",
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Inicio oficial enlaza exactamente a https://isva.quindio.gov.co/portal-quindio/. Se habilita el enlace por remision primaria; destino dinamico sin contenido extraible, operacion no comprobada.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://www.quindio.gov.co/",
+          "https://fnd.org.co/departamentos",
+          "https://isva.quindio.gov.co/portal-quindio/"
+        ],
+        "note": "Inicio oficial enlaza exactamente a https://isva.quindio.gov.co/portal-quindio/. Se habilita el enlace por remision primaria; destino dinamico sin contenido extraible, operacion no comprobada."
+      }
+    },
+    {
+      "id": "risaralda",
+      "territoryCode": "66",
+      "territoryName": "Risaralda",
+      "name": "Secretar\u00eda de Hacienda",
+      "institutionalUrl": "https://tramites.risaralda.gov.co/tramites/171/impuesto-sobre-vehiculos-automotores/",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://tramites.risaralda.gov.co/tramites/171/impuesto-sobre-vehiculos-automotores/"
+      ],
+      "reviewedAt": null,
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Ficha de tramite devuelve 403. Conserva referencia previa; procedimiento y portal directo pendientes.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "unresolved",
+        "checkedUrls": [
+          "https://tramites.risaralda.gov.co/tramites/171/impuesto-sobre-vehiculos-automotores/",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Ficha de tramite devuelve 403. Conserva referencia previa; procedimiento y portal directo pendientes."
+      }
+    },
+    {
+      "id": "san-andres",
+      "territoryCode": "88",
+      "territoryName": "San Andr\u00e9s, Providencia y Santa Catalina",
+      "name": "Secretar\u00eda de Hacienda",
+      "institutionalUrl": "https://ventanilla.sanandres.gov.co/tramites/154/impuesto-sobre-vehiculo-automotor/",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://ventanilla.sanandres.gov.co/tramites/154/impuesto-sobre-vehiculo-automotor/"
+      ],
+      "reviewedAt": null,
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Ficha oficial legible de tramite presencial. Tarifas y telefonos publicados muestran datos antiguos; no se copian como valores actuales ni se habilita pago digital.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://ventanilla.sanandres.gov.co/tramites/154/impuesto-sobre-vehiculo-automotor/",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Ficha oficial legible de tramite presencial. Tarifas y telefonos publicados muestran datos antiguos; no se copian como valores actuales ni se habilita pago digital."
+      }
+    },
+    {
+      "id": "santander",
+      "territoryCode": "68",
+      "territoryName": "Santander",
+      "name": "Secretar\u00eda de Hacienda",
+      "institutionalUrl": "https://santander.gov.co/publicaciones/11394/es-tiempo-de-ponerse-al-dia-con-el-pago-del-impuesto-vehicular-2026/",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://santander.gov.co/publicaciones/11394/es-tiempo-de-ponerse-al-dia-con-el-pago-del-impuesto-vehicular-2026/"
+      ],
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "evidenceNote": "Cuerpo de noticia oficial le\u00eddo por HTTPS directo; plazo sin sanciones hasta 30 de junio. Acto completo, modificatorias y remisi\u00f3n exacta pendientes. Auditoria de enlaces 2026-09-15 (America/Bogota): Noticia oficial devuelve 403. Conserva enlace y revision previa; revalidacion pendiente, sin portal directo.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "unresolved",
+        "checkedUrls": [
+          "https://santander.gov.co/publicaciones/11394/es-tiempo-de-ponerse-al-dia-con-el-pago-del-impuesto-vehicular-2026/",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Noticia oficial devuelve 403. Conserva enlace y revision previa; revalidacion pendiente, sin portal directo."
+      }
+    },
+    {
+      "id": "sucre",
+      "territoryCode": "70",
+      "territoryName": "Sucre",
+      "name": "Gobernaci\u00f3n de Sucre; unidad tributaria pendiente",
+      "institutionalUrl": "https://www.sucre.gov.co/",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.sucre.gov.co/"
+      ],
+      "reviewedAt": null,
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Portal responde con plantilla Territoriales sin contenido legible. Dependencia, tramite y pago pendientes.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "unresolved",
+        "checkedUrls": [
+          "https://www.sucre.gov.co/",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Portal responde con plantilla Territoriales sin contenido legible. Dependencia, tramite y pago pendientes."
+      }
+    },
+    {
+      "id": "tolima",
+      "territoryCode": "73",
+      "territoryName": "Tolima",
+      "name": "Direcci\u00f3n Financiera de Rentas e Ingresos, Secretar\u00eda de Hacienda",
+      "institutionalUrl": "https://tolima.gov.co/hacienda/rentas-e-ingresos/impuestos/impuesto-de-vehiculos/formas-de-pago",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://tolima.gov.co/hacienda/rentas-e-ingresos/impuestos/impuesto-de-vehiculos/formas-de-pago",
+        "https://tolima.gov.co/noticias/9827-ultimos-dias-para-pagar-el-impuesto-vehicular-vigencia-2026-sin-sanciones-ni-intereses"
+      ],
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "evidenceNote": "Noticia individual del 22 de junio le\u00edda; plazo 30 de junio. Acto, modificatorias y destino exacto del bot\u00f3n de pago pendientes; no se incorporan proyectos de alivio. Auditoria de enlaces 2026-09-15 (America/Bogota): Instrucciones oficiales de pago y noticia legibles. Destino exacto del boton no acreditado; conserva acceso institucional y portalUrl null.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://tolima.gov.co/hacienda/rentas-e-ingresos/impuestos/impuesto-de-vehiculos/formas-de-pago",
+          "https://fnd.org.co/departamentos",
+          "https://tolima.gov.co/noticias/9827-ultimos-dias-para-pagar-el-impuesto-vehicular-vigencia-2026-sin-sanciones-ni-intereses"
+        ],
+        "note": "Instrucciones oficiales de pago y noticia legibles. Destino exacto del boton no acreditado; conserva acceso institucional y portalUrl null."
+      }
+    },
+    {
+      "id": "valle-del-cauca",
+      "territoryCode": "76",
+      "territoryName": "Valle del Cauca",
+      "name": "Unidad Administrativa Especial de Impuestos, Rentas y Gesti\u00f3n Tributaria",
+      "institutionalUrl": "https://datosabiertos.valledelcauca.gov.co/es/organization/about/unidad-administrativa-especial-de-impuestos-rentas-y-gestion-tributaria",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://datosabiertos.valledelcauca.gov.co/es/organization/about/unidad-administrativa-especial-de-impuestos-rentas-y-gestion-tributaria"
+      ],
+      "reviewedAt": null,
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Ficha institucional de datos abiertos acredita la unidad de rentas; no ofrece tramite vehicular. Conserva referencia institucional y portalUrl null.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "source_read",
+        "checkedUrls": [
+          "https://datosabiertos.valledelcauca.gov.co/es/organization/about/unidad-administrativa-especial-de-impuestos-rentas-y-gestion-tributaria",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Ficha institucional de datos abiertos acredita la unidad de rentas; no ofrece tramite vehicular. Conserva referencia institucional y portalUrl null."
+      }
+    },
+    {
+      "id": "vaupes",
+      "territoryCode": "97",
+      "territoryName": "Vaup\u00e9s",
+      "name": "Gobernaci\u00f3n de Vaup\u00e9s; unidad tributaria pendiente",
+      "institutionalUrl": "https://www.vaupes.gov.co/",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.vaupes.gov.co/"
+      ],
+      "reviewedAt": null,
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Portal responde con plantilla Territoriales sin contenido legible. Dependencia, tramite y pago pendientes.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "unresolved",
+        "checkedUrls": [
+          "https://www.vaupes.gov.co/",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Portal responde con plantilla Territoriales sin contenido legible. Dependencia, tramite y pago pendientes."
+      }
+    },
+    {
+      "id": "vichada",
+      "territoryCode": "99",
+      "territoryName": "Vichada",
+      "name": "Gobernaci\u00f3n de Vichada; unidad tributaria pendiente",
+      "institutionalUrl": "https://www.vichada.gov.co/",
+      "portalUrl": null,
+      "sourceUrls": [
+        "https://fnd.org.co/departamentos",
+        "https://www.vichada.gov.co/"
+      ],
+      "reviewedAt": null,
+      "evidenceNote": "Identificaci\u00f3n institucional seg\u00fan NATIONAL_VEHICLE_TAX_2026.md; revisi\u00f3n del procedimiento, remisi\u00f3n y calendario pendiente. Sin certificaci\u00f3n de portal de pago. Auditoria de enlaces 2026-09-15 (America/Bogota): Portal responde con plantilla Territoriales sin contenido legible. Dependencia, tramite y pago pendientes.",
+      "directoryAudit": {
+        "attemptedAt": "2026-09-16T01:01:48Z",
+        "institutionalStatus": "unresolved",
+        "checkedUrls": [
+          "https://www.vichada.gov.co/",
+          "https://fnd.org.co/departamentos"
+        ],
+        "note": "Portal responde con plantilla Territoriales sin contenido legible. Dependencia, tramite y pago pendientes."
+      }
+    }
+  ],
+  "calendars": [
+    {
+      "id": "amazonas-2026-vehicle-tax",
+      "authorityId": "amazonas",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "antioquia-2026-vehicle-tax",
+      "authorityId": "antioquia",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "partial",
+      "reviewedAt": "2026-09-13T16:17:18Z",
+      "reviewAfter": null,
+      "sourceUrls": [
+        "https://www.antioquia.gov.co/index.php/antioquiacuenta/ultimos-dias-para-pagar-el-impuesto-vehicular-con-descuento-en-antioquia"
+      ],
+      "events": [
+        {
+          "id": "discount",
+          "date": "2026-04-30",
+          "label": "Pronto pago seg\u00fan tipo de veh\u00edculo",
+          "kind": "discount",
+          "condition": "Descuento seg\u00fan motorizaci\u00f3n y condiciones publicadas por la Gobernaci\u00f3n.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.antioquia.gov.co/index.php/antioquiacuenta/ultimos-dias-para-pagar-el-impuesto-vehicular-con-descuento-en-antioquia"
+          ]
+        },
+        {
+          "id": "ordinary",
+          "date": "2026-07-31",
+          "label": "Fecha l\u00edmite ordinaria",
+          "kind": "ordinary",
+          "condition": null,
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.antioquia.gov.co/index.php/antioquiacuenta/ultimos-dias-para-pagar-el-impuesto-vehicular-con-descuento-en-antioquia"
+          ]
+        }
+      ],
+      "evidenceNote": "Fechas contrastadas en fuente primaria. Cobertura parcial: no representa auditor\u00eda exhaustiva de modificaciones posteriores ni otros tributos."
+    },
+    {
+      "id": "arauca-2026-vehicle-tax",
+      "authorityId": "arauca",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "atlantico-2026-vehicle-tax",
+      "authorityId": "atlantico",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "bogota-2026-vehicle-tax",
+      "authorityId": "bogota",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "partial",
+      "reviewedAt": "2026-09-13T16:17:18Z",
+      "reviewAfter": null,
+      "sourceUrls": [
+        "https://www.haciendabogota.gov.co/es/noticias/calendario-tributario-2026-vuelve-el-pago-por-cuotas-del-impuesto-vehiculos-en-bogota"
+      ],
+      "events": [
+        {
+          "id": "discount-10",
+          "date": "2026-05-15",
+          "label": "Pronto pago 10%",
+          "kind": "discount",
+          "condition": null,
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.haciendabogota.gov.co/es/noticias/calendario-tributario-2026-vuelve-el-pago-por-cuotas-del-impuesto-vehiculos-en-bogota"
+          ]
+        },
+        {
+          "id": "spac-enrollment",
+          "date": "2026-06-12",
+          "label": "SPAC: declaraci\u00f3n inicial",
+          "kind": "installmentEnrollment",
+          "condition": "Solo si elige acogerse al pago por cuotas SPAC.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.haciendabogota.gov.co/es/noticias/calendario-tributario-2026-vuelve-el-pago-por-cuotas-del-impuesto-vehiculos-en-bogota"
+          ]
+        },
+        {
+          "id": "spac-installment-1",
+          "date": "2026-07-03",
+          "label": "SPAC: cuota 1",
+          "kind": "installment",
+          "condition": "Si se acogi\u00f3 al SPAC mediante la declaraci\u00f3n inicial.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.haciendabogota.gov.co/es/noticias/calendario-tributario-2026-vuelve-el-pago-por-cuotas-del-impuesto-vehiculos-en-bogota"
+          ]
+        },
+        {
+          "id": "ordinary",
+          "date": "2026-07-24",
+          "label": "Fecha l\u00edmite ordinaria",
+          "kind": "ordinary",
+          "condition": null,
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.haciendabogota.gov.co/es/noticias/calendario-tributario-2026-vuelve-el-pago-por-cuotas-del-impuesto-vehiculos-en-bogota"
+          ]
+        },
+        {
+          "id": "spac-installment-2",
+          "date": "2026-09-04",
+          "label": "SPAC: cuota 2",
+          "kind": "installment",
+          "condition": "Si se acogi\u00f3 al SPAC mediante la declaraci\u00f3n inicial.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.haciendabogota.gov.co/es/noticias/calendario-tributario-2026-vuelve-el-pago-por-cuotas-del-impuesto-vehiculos-en-bogota"
+          ]
+        }
+      ],
+      "evidenceNote": "Fechas contrastadas en fuente primaria. Cobertura parcial: no representa auditor\u00eda exhaustiva de modificaciones posteriores ni otros tributos."
+    },
+    {
+      "id": "bolivar-2026-vehicle-tax",
+      "authorityId": "bolivar",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "boyaca-2026-vehicle-tax",
+      "authorityId": "boyaca",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "partial",
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "reviewAfter": null,
+      "sourceUrls": [
+        "https://www.boyaca.gov.co/boyaca-fija-los-plazos-para-la-declaracion-y-pago-del-impuesto-sobre-vehiculos-automotores-vigencia-2026/",
+        "https://www.boyaca.gov.co/secretariahacienda/wp-content/uploads/sites/77/2026/03/Resolucion-No.-00000034-de-2026.pdf"
+      ],
+      "events": [
+        {
+          "id": "ordinary-123-original",
+          "date": "2026-01-31",
+          "label": "Plazo original sustituido: d\u00edgitos 1, 2 y 3",
+          "kind": "ordinary",
+          "condition": "\u00daltimo d\u00edgito num\u00e9rico de la placa: 1, 2 o 3; en motos se toma el \u00faltimo n\u00famero aunque termine en letra.",
+          "status": "superseded",
+          "supersededBy": "ordinary-123-extended",
+          "sourceUrls": [
+            "https://www.boyaca.gov.co/boyaca-fija-los-plazos-para-la-declaracion-y-pago-del-impuesto-sobre-vehiculos-automotores-vigencia-2026/"
+          ]
+        },
+        {
+          "id": "ordinary-123-extended",
+          "date": "2026-02-28",
+          "label": "Plazo ampliado: d\u00edgitos 1, 2 y 3",
+          "kind": "ordinary",
+          "condition": "\u00daltimo d\u00edgito num\u00e9rico de la placa: 1, 2 o 3. Resoluci\u00f3n 00000034 de 2026, numeral primero.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.boyaca.gov.co/secretariahacienda/wp-content/uploads/sites/77/2026/03/Resolucion-No.-00000034-de-2026.pdf"
+          ]
+        },
+        {
+          "id": "ordinary-456",
+          "date": "2026-02-28",
+          "label": "Plazo ordinario: d\u00edgitos 4, 5 y 6",
+          "kind": "ordinary",
+          "condition": "\u00daltimo d\u00edgito num\u00e9rico de la placa: 4, 5 o 6. Plazo conservado por el par\u00e1grafo del numeral primero.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.boyaca.gov.co/secretariahacienda/wp-content/uploads/sites/77/2026/03/Resolucion-No.-00000034-de-2026.pdf"
+          ]
+        },
+        {
+          "id": "ordinary-7890",
+          "date": "2026-03-31",
+          "label": "Plazo ordinario: d\u00edgitos 7, 8, 9 y 0",
+          "kind": "ordinary",
+          "condition": "\u00daltimo d\u00edgito num\u00e9rico de la placa: 7, 8, 9 o 0. Plazo conservado por el par\u00e1grafo del numeral primero.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.boyaca.gov.co/secretariahacienda/wp-content/uploads/sites/77/2026/03/Resolucion-No.-00000034-de-2026.pdf"
+          ]
+        }
+      ],
+      "evidenceNote": "Plazos por \u00faltimo d\u00edgito num\u00e9rico; Resoluci\u00f3n 34 de 2026 y nota original le\u00eddas. Modificaciones posteriores no auditadas exhaustivamente."
+    },
+    {
+      "id": "caldas-2026-vehicle-tax",
+      "authorityId": "caldas",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "partial",
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "reviewAfter": null,
+      "sourceUrls": [
+        "https://www.caldas.gov.co/noticias-gobernacion/183-hacienda/16599-ultimos-dias-para-pagar-el-impuesto-vehicular-sin-sanciones-hacienda-departamental-amplia-horarios-de-atencion-para-facilitar-el-proceso"
+      ],
+      "events": [
+        {
+          "id": "ordinary",
+          "date": "2026-07-06",
+          "label": "Fecha l\u00edmite sin sanciones",
+          "kind": "ordinary",
+          "condition": null,
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.caldas.gov.co/noticias-gobernacion/183-hacienda/16599-ultimos-dias-para-pagar-el-impuesto-vehicular-sin-sanciones-hacienda-departamental-amplia-horarios-de-atencion-para-facilitar-el-proceso"
+          ]
+        }
+      ],
+      "evidenceNote": "Fecha y remisi\u00f3n PSE confirmadas en noticia del 2 de julio. Acto completo y modificaciones posteriores pendientes; no se reutiliza la afirmaci\u00f3n err\u00f3nea de 125 cc de otra noticia."
+    },
+    {
+      "id": "caqueta-2026-vehicle-tax",
+      "authorityId": "caqueta",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "casanare-2026-vehicle-tax",
+      "authorityId": "casanare",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "partial",
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "reviewAfter": null,
+      "sourceUrls": [
+        "https://impuestos.casanare.gov.co/impuesto-vehiculos/calendario-tributario"
+      ],
+      "events": [
+        {
+          "id": "discount-15",
+          "date": "2026-03-15",
+          "label": "Pronto pago 15%",
+          "kind": "discount",
+          "condition": "Ventana publicada: del 1 de enero al 15 de marzo de 2026.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://impuestos.casanare.gov.co/impuesto-vehiculos/calendario-tributario"
+          ]
+        },
+        {
+          "id": "discount-10",
+          "date": "2026-05-31",
+          "label": "Pronto pago 10%",
+          "kind": "discount",
+          "condition": "Ventana publicada: del 16 de marzo al 31 de mayo de 2026.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://impuestos.casanare.gov.co/impuesto-vehiculos/calendario-tributario"
+          ]
+        },
+        {
+          "id": "discount-5",
+          "date": "2026-07-31",
+          "label": "Pronto pago 5%",
+          "kind": "discount",
+          "condition": "Ventana publicada: del 1 de junio al 31 de julio de 2026.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://impuestos.casanare.gov.co/impuesto-vehiculos/calendario-tributario"
+          ]
+        },
+        {
+          "id": "ordinary",
+          "date": "2026-11-30",
+          "label": "Fin del periodo sin descuento",
+          "kind": "ordinary",
+          "condition": "Periodo del 1 de agosto al 30 de noviembre de 2026. La p\u00e1gina anuncia intereses desde el 1 de diciembre; no determina el estado de pago personal.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://impuestos.casanare.gov.co/impuesto-vehiculos/calendario-tributario"
+          ]
+        }
+      ],
+      "evidenceNote": "Tabla expresa para 2026 le\u00edda. Acto completo y remisi\u00f3n independiente al formulario pendientes; portalUrl permanece null."
+    },
+    {
+      "id": "cauca-2026-vehicle-tax",
+      "authorityId": "cauca",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "partial",
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "reviewAfter": null,
+      "sourceUrls": [
+        "https://www.cauca.gov.co/rentas/SaladePrensa/Paginas/Liquidaci%C3%B3n-y-pago-del-impuesto-vehicular-en-linea.aspx"
+      ],
+      "events": [
+        {
+          "id": "ordinary",
+          "date": "2026-06-30",
+          "label": "Fecha l\u00edmite sin sanciones ni intereses",
+          "kind": "ordinary",
+          "condition": null,
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.cauca.gov.co/rentas/SaladePrensa/Paginas/Liquidaci%C3%B3n-y-pago-del-impuesto-vehicular-en-linea.aspx"
+          ]
+        }
+      ],
+      "evidenceNote": "Plazo y remisi\u00f3n al tercero le\u00eddos en noticia del 10 de junio. Acto completo y modificatorias pendientes."
+    },
+    {
+      "id": "cesar-2026-vehicle-tax",
+      "authorityId": "cesar",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "partial",
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "reviewAfter": null,
+      "sourceUrls": [
+        "https://cesar.gov.co/d/es/noticias/boletines/8164-boletin-2026-3"
+      ],
+      "events": [
+        {
+          "id": "discount-15",
+          "date": "2026-04-30",
+          "label": "Pronto pago 15%",
+          "kind": "discount",
+          "condition": "Los descuentos por pronto pago, matr\u00edcula inicial y traslado no son acumulables seg\u00fan la nota oficial.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://cesar.gov.co/d/es/noticias/boletines/8164-boletin-2026-3"
+          ]
+        },
+        {
+          "id": "ordinary",
+          "date": "2026-06-30",
+          "label": "Fecha l\u00edmite ordinaria",
+          "kind": "ordinary",
+          "condition": null,
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://cesar.gov.co/d/es/noticias/boletines/8164-boletin-2026-3"
+          ]
+        }
+      ],
+      "evidenceNote": "Fechas corroboradas en cuerpo de noticia oficial del 8 de enero; se refiere Resoluci\u00f3n 022936. Auditor\u00eda integral del acto y remisi\u00f3n exacta pendientes."
+    },
+    {
+      "id": "choco-2026-vehicle-tax",
+      "authorityId": "choco",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "cordoba-2026-vehicle-tax",
+      "authorityId": "cordoba",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "partial",
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "reviewAfter": null,
+      "sourceUrls": [
+        "https://www.cordoba.gov.co/publicaciones/7329/hasta-el-31-de-marzo-vence-el-plazo-para-obtener-descuentos-en-pronto-pago-en-el-impuesto-vehicular-y-en-intereses-y-sanciones-de-vigencias-del-2024-hacia-atras/"
+      ],
+      "events": [
+        {
+          "id": "discount-15",
+          "date": "2026-03-31",
+          "label": "Pronto pago 15%",
+          "kind": "discount",
+          "condition": null,
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.cordoba.gov.co/publicaciones/7329/hasta-el-31-de-marzo-vence-el-plazo-para-obtener-descuentos-en-pronto-pago-en-el-impuesto-vehicular-y-en-intereses-y-sanciones-de-vigencias-del-2024-hacia-atras/"
+          ]
+        },
+        {
+          "id": "discount-10",
+          "date": "2026-05-29",
+          "label": "Pronto pago 10%",
+          "kind": "discount",
+          "condition": null,
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.cordoba.gov.co/publicaciones/7329/hasta-el-31-de-marzo-vence-el-plazo-para-obtener-descuentos-en-pronto-pago-en-el-impuesto-vehicular-y-en-intereses-y-sanciones-de-vigencias-del-2024-hacia-atras/"
+          ]
+        },
+        {
+          "id": "discount-5",
+          "date": "2026-06-30",
+          "label": "Pronto pago 5%",
+          "kind": "discount",
+          "condition": null,
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.cordoba.gov.co/publicaciones/7329/hasta-el-31-de-marzo-vence-el-plazo-para-obtener-descuentos-en-pronto-pago-en-el-impuesto-vehicular-y-en-intereses-y-sanciones-de-vigencias-del-2024-hacia-atras/"
+          ]
+        }
+      ],
+      "evidenceNote": "Cuerpo de noticia oficial del 27 de marzo le\u00eddo por HTTPS directo. Solo descuentos corrientes; excluidos alivios de 2024 y anteriores. Plazo ordinario y modificatorias pendientes."
+    },
+    {
+      "id": "cundinamarca-2026-vehicle-tax",
+      "authorityId": "cundinamarca",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "partial",
+      "reviewedAt": "2026-09-13T16:17:18Z",
+      "reviewAfter": null,
+      "sourceUrls": [
+        "https://www.cundinamarca.gov.co/wcm/connect/14907204-ae8b-49fb-9de5-c7b75abeb71c/RESOLUCION%2BAMPLIACION%2BCALENDARIO%2B2026.pdf?CACHEID=ROOTWORKSPACE-14907204-ae8b-49fb-9de5-c7b75abeb71c-pW3mJHr&CONVERT_TO=url&MOD=AJPERES"
+      ],
+      "events": [
+        {
+          "id": "discount-10-original",
+          "date": "2026-05-31",
+          "label": "Pronto pago 10%: plazo sustituido",
+          "kind": "discount",
+          "condition": "Plazo original reproducido en los considerandos de la Resoluci\u00f3n 717 de 2026, p\u00e1gina 2.",
+          "status": "superseded",
+          "supersededBy": "discount-10-extended",
+          "sourceUrls": [
+            "https://www.cundinamarca.gov.co/wcm/connect/14907204-ae8b-49fb-9de5-c7b75abeb71c/RESOLUCION%2BAMPLIACION%2BCALENDARIO%2B2026.pdf?CACHEID=ROOTWORKSPACE-14907204-ae8b-49fb-9de5-c7b75abeb71c-pW3mJHr&CONVERT_TO=url&MOD=AJPERES"
+          ]
+        },
+        {
+          "id": "discount-10-extended",
+          "date": "2026-06-19",
+          "label": "Pronto pago 10%: plazo ampliado",
+          "kind": "discount",
+          "condition": "Pago de la totalidad del impuesto de 2026. Resoluci\u00f3n 717 de 2026, art\u00edculo primero, p\u00e1gina 3.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.cundinamarca.gov.co/wcm/connect/14907204-ae8b-49fb-9de5-c7b75abeb71c/RESOLUCION%2BAMPLIACION%2BCALENDARIO%2B2026.pdf?CACHEID=ROOTWORKSPACE-14907204-ae8b-49fb-9de5-c7b75abeb71c-pW3mJHr&CONVERT_TO=url&MOD=AJPERES"
+          ]
+        },
+        {
+          "id": "discount-5",
+          "date": "2026-07-31",
+          "label": "Pronto pago 5%",
+          "kind": "discount",
+          "condition": "Pago de la totalidad del impuesto de 2026. Resoluci\u00f3n 2424 de 2025, art\u00edculo tercero b; preservado por art\u00edculo segundo de la Resoluci\u00f3n 717 de 2026.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.cundinamarca.gov.co/wcm/connect/14907204-ae8b-49fb-9de5-c7b75abeb71c/RESOLUCION%2BAMPLIACION%2BCALENDARIO%2B2026.pdf?CACHEID=ROOTWORKSPACE-14907204-ae8b-49fb-9de5-c7b75abeb71c-pW3mJHr&CONVERT_TO=url&MOD=AJPERES"
+          ]
+        },
+        {
+          "id": "ordinary",
+          "date": "2026-07-31",
+          "label": "Fecha l\u00edmite de pago oportuno",
+          "kind": "ordinary",
+          "condition": null,
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.cundinamarca.gov.co/wcm/connect/14907204-ae8b-49fb-9de5-c7b75abeb71c/RESOLUCION%2BAMPLIACION%2BCALENDARIO%2B2026.pdf?CACHEID=ROOTWORKSPACE-14907204-ae8b-49fb-9de5-c7b75abeb71c-pW3mJHr&CONVERT_TO=url&MOD=AJPERES"
+          ]
+        }
+      ],
+      "evidenceNote": "Fechas contrastadas en fuente primaria. Cobertura parcial: no representa auditor\u00eda exhaustiva de modificaciones posteriores ni otros tributos."
+    },
+    {
+      "id": "guainia-2026-vehicle-tax",
+      "authorityId": "guainia",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "guaviare-2026-vehicle-tax",
+      "authorityId": "guaviare",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "huila-2026-vehicle-tax",
+      "authorityId": "huila",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "partial",
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "reviewAfter": null,
+      "sourceUrls": [
+        "https://www.huila.gov.co/publicaciones/16542/conozca-los-descuentos-del-impuesto-vehicular-para-este-2026/"
+      ],
+      "events": [
+        {
+          "id": "discount-10",
+          "date": "2026-05-31",
+          "label": "Pronto pago 10%",
+          "kind": "discount",
+          "condition": null,
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.huila.gov.co/publicaciones/16542/conozca-los-descuentos-del-impuesto-vehicular-para-este-2026/"
+          ]
+        },
+        {
+          "id": "discount-loyalty",
+          "date": "2026-05-31",
+          "label": "Beneficio adicional 5% por cumplimiento previo",
+          "kind": "discount",
+          "condition": "Solo si cancel\u00f3 dentro del primer plazo de la vigencia anterior y paga la vigencia 2026 dentro del primer plazo. No se presume cumplimiento ni se calcula ahorro.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.huila.gov.co/publicaciones/16542/conozca-los-descuentos-del-impuesto-vehicular-para-este-2026/"
+          ]
+        },
+        {
+          "id": "ordinary",
+          "date": "2026-07-31",
+          "label": "Fecha l\u00edmite sin sanciones ni intereses",
+          "kind": "ordinary",
+          "condition": null,
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.huila.gov.co/publicaciones/16542/conozca-los-descuentos-del-impuesto-vehicular-para-este-2026/"
+          ]
+        }
+      ],
+      "evidenceNote": "Cuerpo de noticia oficial del 15 de enero le\u00eddo por HTTPS directo. Beneficio adicional condicionado a cumplimiento anterior; actos y modificatorias pendientes."
+    },
+    {
+      "id": "la-guajira-2026-vehicle-tax",
+      "authorityId": "la-guajira",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Resoluci\u00f3n 05/2025 identificada en matriz; en esta auditor\u00eda la URL .pdf devuelve HTML. No se complet\u00f3 verificaci\u00f3n visual del apartado vehicular ni efecto de d\u00eda no h\u00e1bil; sin eventos publicables."
+    },
+    {
+      "id": "magdalena-2026-vehicle-tax",
+      "authorityId": "magdalena",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "meta-2026-vehicle-tax",
+      "authorityId": "meta",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "narino-2026-vehicle-tax",
+      "authorityId": "narino",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "partial",
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "reviewAfter": null,
+      "sourceUrls": [
+        "https://narino.gov.co/noticias/narino-impulsa-el-ahorro-ciudadano-con-incentivo-del-20-en-el-impuesto-vehicular/"
+      ],
+      "events": [
+        {
+          "id": "discount-20",
+          "date": "2026-04-30",
+          "label": "Pronto pago 20%",
+          "kind": "discount",
+          "condition": null,
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://narino.gov.co/noticias/narino-impulsa-el-ahorro-ciudadano-con-incentivo-del-20-en-el-impuesto-vehicular/"
+          ]
+        },
+        {
+          "id": "ordinary",
+          "date": "2026-12-30",
+          "label": "Fecha l\u00edmite sin sanciones ni intereses",
+          "kind": "ordinary",
+          "condition": "Periodo publicado: del 1 de mayo al 30 de diciembre de 2026. No se extiende al 31 de diciembre.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://narino.gov.co/noticias/narino-impulsa-el-ahorro-ciudadano-con-incentivo-del-20-en-el-impuesto-vehicular/"
+          ]
+        }
+      ],
+      "evidenceNote": "Cuerpo de noticia oficial le\u00eddo por HTTPS directo tras timeout del lector web. Fechas 30 de abril y 30 de diciembre; remite a portal HTTP, no se habilita pago HTTPS no comprobado."
+    },
+    {
+      "id": "norte-de-santander-2026-vehicle-tax",
+      "authorityId": "norte-de-santander",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "putumayo-2026-vehicle-tax",
+      "authorityId": "putumayo",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "partial",
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "reviewAfter": null,
+      "sourceUrls": [
+        "https://www.putumayo.gov.co/publications/116?type=2"
+      ],
+      "events": [
+        {
+          "id": "discount-5-before",
+          "date": "2026-06-30",
+          "label": "Descuento 5%: pago antes de esta fecha",
+          "kind": "discount",
+          "condition": "La fuente exige pagar antes del 30 de junio de 2026; no confirma que el d\u00eda 30 est\u00e9 incluido. No es el vencimiento ordinario.",
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://www.putumayo.gov.co/publications/116?type=2"
+          ]
+        }
+      ],
+      "evidenceNote": "Noticia del 28 de mayo le\u00edda. Solo umbral exclusivo de descuento antes del 30 de junio; no se infiere vencimiento ordinario, inclusi\u00f3n del d\u00eda 30 ni plazo alternativo 29 de junio."
+    },
+    {
+      "id": "quindio-2026-vehicle-tax",
+      "authorityId": "quindio",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "risaralda-2026-vehicle-tax",
+      "authorityId": "risaralda",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "san-andres-2026-vehicle-tax",
+      "authorityId": "san-andres",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "santander-2026-vehicle-tax",
+      "authorityId": "santander",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "partial",
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "reviewAfter": null,
+      "sourceUrls": [
+        "https://santander.gov.co/publicaciones/11394/es-tiempo-de-ponerse-al-dia-con-el-pago-del-impuesto-vehicular-2026/"
+      ],
+      "events": [
+        {
+          "id": "ordinary",
+          "date": "2026-06-30",
+          "label": "Fecha l\u00edmite sin sanciones ni intereses",
+          "kind": "ordinary",
+          "condition": null,
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://santander.gov.co/publicaciones/11394/es-tiempo-de-ponerse-al-dia-con-el-pago-del-impuesto-vehicular-2026/"
+          ]
+        }
+      ],
+      "evidenceNote": "Cuerpo de noticia oficial le\u00eddo por HTTPS directo; plazo sin sanciones hasta 30 de junio. Acto completo, modificatorias y remisi\u00f3n exacta pendientes."
+    },
+    {
+      "id": "sucre-2026-vehicle-tax",
+      "authorityId": "sucre",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "tolima-2026-vehicle-tax",
+      "authorityId": "tolima",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "partial",
+      "reviewedAt": "2026-09-13T16:30:34Z",
+      "reviewAfter": null,
+      "sourceUrls": [
+        "https://tolima.gov.co/noticias/9827-ultimos-dias-para-pagar-el-impuesto-vehicular-vigencia-2026-sin-sanciones-ni-intereses"
+      ],
+      "events": [
+        {
+          "id": "ordinary",
+          "date": "2026-06-30",
+          "label": "Fecha l\u00edmite sin sanciones ni intereses",
+          "kind": "ordinary",
+          "condition": null,
+          "status": "active",
+          "supersededBy": null,
+          "sourceUrls": [
+            "https://tolima.gov.co/noticias/9827-ultimos-dias-para-pagar-el-impuesto-vehicular-vigencia-2026-sin-sanciones-ni-intereses"
+          ]
+        }
+      ],
+      "evidenceNote": "Noticia individual del 22 de junio le\u00edda; plazo 30 de junio. Acto, modificatorias y destino exacto del bot\u00f3n de pago pendientes; no se incorporan proyectos de alivio."
+    },
+    {
+      "id": "valle-del-cauca-2026-vehicle-tax",
+      "authorityId": "valle-del-cauca",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "vaupes-2026-vehicle-tax",
+      "authorityId": "vaupes",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    },
+    {
+      "id": "vichada-2026-vehicle-tax",
+      "authorityId": "vichada",
+      "year": 2026,
+      "obligationKind": "vehicle_tax",
+      "status": "pending",
+      "reviewedAt": null,
+      "reviewAfter": null,
+      "sourceUrls": [],
+      "events": [],
+      "evidenceNote": "Calendario pendiente de revisi\u00f3n editorial para publicaci\u00f3n. La matriz de investigaci\u00f3n puede contener pistas o fechas a\u00fan no incorporadas; no implica ausencia del impuesto ni de calendario oficial."
+    }
+  ]
+}

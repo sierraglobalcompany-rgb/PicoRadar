@@ -7,17 +7,51 @@ const _homeCarouselMinimumHeight = 188.0;
 double _homeCarouselHeightForLayout(
   BuildContext context,
   double availableHeight,
+  double availableWidth,
+  List<HomeVehicleSnapshot> snapshots,
 ) {
   final scale = MediaQuery.textScalerOf(context).scale(1);
   if (!availableHeight.isFinite) {
     return _homeCarouselBaseHeight;
   }
-  final minimum = scale >= 1.8
+  var minimum = scale >= 1.8
       ? 320.0
       : scale >= 1.4
       ? 260.0
       : _homeCarouselMinimumHeight;
-  return availableHeight.floorToDouble().clamp(minimum, 360.0);
+  if (scale > 1.25) {
+    final cardWidth = availableWidth * _homeCarouselViewportFraction - 16;
+    final painter = TextPainter(
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    );
+    for (final snapshot in snapshots) {
+      final vehicle = snapshot.vehicle;
+      final nickname = vehicle.nickname?.trim() ?? '';
+      final brand = vehicle.brand?.trim() ?? '';
+      painter.text = TextSpan(
+        text: nickname.isNotEmpty
+            ? nickname
+            : brand.isNotEmpty
+            ? brand
+            : 'Mi vehículo',
+        style: AppTextStyles.bodyStrong.copyWith(fontSize: 16, height: 1.2),
+      );
+      painter.layout(maxWidth: cardWidth - 88);
+      final plateHeight = VehiclePlateBadge.contentHeight(
+        context,
+        vehicle,
+        cardWidth - 24,
+      );
+      final needed = plateHeight + painter.height + 168;
+      if (needed > minimum) minimum = needed.ceilToDouble();
+    }
+    painter.dispose();
+  }
+  return availableHeight.floorToDouble().clamp(
+    minimum,
+    minimum > 360 ? minimum : 360.0,
+  );
 }
 
 class _VehicleCarousel extends StatelessWidget {
@@ -107,13 +141,6 @@ class _HomeVehicleCard extends StatelessWidget {
     final vehicle = snapshot.vehicle;
     final nickname = vehicle.nickname?.trim();
     final brand = vehicle.brand?.trim();
-    final registrationCity = vehicle.registrationCity?.trim();
-    final registrationLabel =
-        vehicle.kind == VehicleKind.motorcycle ||
-            registrationCity == null ||
-            registrationCity.isEmpty
-        ? 'COLOMBIA'
-        : registrationCity;
     final name = nickname != null && nickname.isNotEmpty
         ? nickname
         : brand != null && brand.isNotEmpty
@@ -169,6 +196,8 @@ class _HomeVehicleCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                    // Balance the status icon and its gap around the title.
+                    const SizedBox(width: 32),
                   ],
                 ),
               ),
@@ -182,15 +211,9 @@ class _HomeVehicleCard extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                padding: const EdgeInsets.fromLTRB(12, 2, 12, 4),
                 child: Center(
-                  child: ColombianPlateBadge(
-                    plate: snapshot.vehicle.plate,
-                    compact: true,
-                    registrationLabel: registrationLabel,
-                    publicService:
-                        vehicle.serviceType == VehicleServiceType.taxi,
-                  ),
+                  child: VehiclePlateBadge(vehicle: vehicle, compact: true),
                 ),
               ),
             ],

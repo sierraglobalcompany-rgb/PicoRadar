@@ -7,23 +7,23 @@ import '../../../app/router/app_routes.dart';
 import '../../../app/shell/picoradar_app_header.dart';
 import '../../../app/theme/app_tokens.dart';
 import '../../../core/design_system/actions_and_badges.dart';
-import '../../../core/design_system/branding.dart';
 import '../../../core/design_system/surfaces.dart';
-import '../../../core/storage/app_preferences.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../pico_placa/data/pico_preferences.dart';
 import '../../visual_assets/presentation/visual_asset_widgets.dart';
 import '../application/vehicle_associated_data_cleaner.dart';
-import '../data/garage_favorites.dart';
 import '../data/vehicle_profile.dart';
 import '../data/vehicle_repository.dart';
+import 'vehicle_deletion_window.dart';
 import 'vehicle_display.dart';
+import 'vehicle_plate_badge.dart';
 
-enum GarageFilter { all, favorites, active }
+enum GarageFilter { all, favorites }
 
-const _garageViewportFraction = 0.58;
+const _garageViewportFraction = 0.70;
 const _garageSideCardScale = 0.91;
 const _garageCarouselHeight = 196.0;
+const _garageCarouselMaxHeight = 360.0;
 const _garageFilterVisualHeight = 46.0;
 const _garageFilterWidthFactor = 0.86;
 const _garageAddVehicleHeight = 66.0;
@@ -36,20 +36,36 @@ class GarageScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final vehicles = ref.watch(vehicleListProvider);
     final active = ref.watch(activeVehicleProvider);
-    final favorites = ref.watch(garageFavoriteVehicleIdsProvider);
     final alerts = ref.watch(picoAlertPreferencesProvider);
     final alertPreferences = alerts.asData?.value ?? _defaultAlertPreferences;
 
     return PicoSurface(
       child: vehicles.when(
         data: (items) {
+          final activeId = active.hasValue ? active.requireValue?.id : null;
+          final knownFavorite =
+              activeId != null && items.any((item) => item.id == activeId);
+          final retryFavorite = active.isLoading
+              ? null
+              : () => ref.invalidate(activeVehicleProvider);
+          if (active.hasError && !knownFavorite) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.l),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _GarageHeader(alertPreferences: alertPreferences),
+                  const SizedBox(height: AppSpacing.l),
+                  _FavoriteReadError(
+                    hasPrevious: false,
+                    onRetry: retryFavorite,
+                  ),
+                ],
+              ),
+            );
+          }
           if (items.isNotEmpty && active.isLoading && !active.hasValue) {
             return _GarageSkeleton(alertPreferences: alertPreferences);
-          }
-          String? activeId;
-          if (active.hasValue) {
-            activeId = active.requireValue?.id;
-            _ensureActiveVehicle(ref, items, activeId);
           }
 
           if (items.isEmpty) {
@@ -57,9 +73,10 @@ class GarageScreen extends ConsumerWidget {
           }
 
           return _GarageReady(
-            vehicles: items,
+            vehicles: [...items]..sort(compareVehiclesAlphabetically),
             activeId: activeId,
-            favoriteIds: favorites.asData?.value ?? const {},
+            favoriteReadFailed: active.hasError,
+            onRetryFavorite: retryFavorite,
             alertPreferences: alertPreferences,
           );
         },
@@ -73,42 +90,21 @@ class GarageScreen extends ConsumerWidget {
       ),
     );
   }
-
-  void _ensureActiveVehicle(
-    WidgetRef ref,
-    List<VehicleProfile> vehicles,
-    String? activeId,
-  ) {
-    if (vehicles.isEmpty ||
-        (activeId != null &&
-            vehicles.any((vehicle) => vehicle.id == activeId))) {
-      return;
-    }
-
-    Future<void>.microtask(() async {
-      final repository = ref.read(vehicleRepositoryProvider);
-      final latestActive = await repository.getActiveVehicle();
-      if (latestActive != null) {
-        return;
-      }
-      await repository.setActiveVehicle(vehicles.first.id);
-      ref.invalidate(activeVehicleProvider);
-      ref.invalidate(vehicleListProvider);
-    });
-  }
 }
 
 class _GarageReady extends ConsumerStatefulWidget {
   const _GarageReady({
     required this.vehicles,
     required this.activeId,
-    required this.favoriteIds,
+    required this.favoriteReadFailed,
+    required this.onRetryFavorite,
     required this.alertPreferences,
   });
 
   final List<VehicleProfile> vehicles;
   final String? activeId;
-  final Set<String> favoriteIds;
+  final bool favoriteReadFailed;
+  final VoidCallback? onRetryFavorite;
   final PicoAlertPreferences alertPreferences;
 
   @override
@@ -120,6 +116,13 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
   late PageController _controller;
   String? _focusedVehicleId;
   String? _deletingVehicleId;
+  bool _savingFavorite = false;
+  VehicleDeletionWindow? _pendingDeletion;
+  final GlobalKey _garageChromeTopKey = GlobalKey();
+  final GlobalKey _garageChromeBottomKey = GlobalKey();
+  double? _measuredChromeHeight;
+  Object? _carouselMinimumKey;
+  double _carouselMinimumHeight = _garageCarouselHeight;
 
   @override
   void initState() {
@@ -137,7 +140,6 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
     final oldFiltered = _filteredVehiclesFor(
       vehicles: oldWidget.vehicles,
       activeId: oldWidget.activeId,
-      favoriteIds: oldWidget.favoriteIds,
     );
     final filtered = _filteredVehicles();
     if (filtered.isEmpty) {
@@ -156,6 +158,7 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
 
   @override
   void dispose() {
+    _pendingDeletion?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -171,8 +174,28 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
         final horizontalPadding = constraints.maxWidth < 380
             ? AppSpacing.l
             : AppSpacing.l;
+        final contentWidth = (constraints.maxWidth - horizontalPadding * 2)
+            .clamp(0.0, 720.0);
+        _scheduleChromeMeasurement();
+        final measuredChrome = _measuredChromeHeight;
+        final availableCarouselHeight =
+            measuredChrome == null || constraints.maxHeight.isInfinite
+            ? _garageCarouselHeight
+            : constraints.maxHeight - measuredChrome;
+        _updateCarouselMinimum(
+          context: context,
+          width: contentWidth,
+          vehicles: filtered,
+        );
+        final fits =
+            measuredChrome != null &&
+            focused != null &&
+            availableCarouselHeight >= _carouselMinimumHeight;
         return SingleChildScrollView(
           key: const ValueKey('garage-v2-scroll'),
+          physics: fits
+              ? const NeverScrollableScrollPhysics()
+              : const ClampingScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
             horizontalPadding,
             AppSpacing.s,
@@ -186,13 +209,30 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _GarageHeader(alertPreferences: widget.alertPreferences),
-                  const SizedBox(height: AppSpacing.s),
-                  _GarageFilterSegment(
-                    selected: _filter,
-                    onChanged: _selectFilter,
+                  SizeChangedLayoutNotifier(
+                    child: Column(
+                      key: _garageChromeTopKey,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _GarageHeader(
+                          alertPreferences: widget.alertPreferences,
+                        ),
+                        const SizedBox(height: AppSpacing.s),
+                        if (widget.favoriteReadFailed) ...[
+                          _FavoriteReadError(
+                            hasPrevious: true,
+                            onRetry: widget.onRetryFavorite,
+                          ),
+                          const SizedBox(height: AppSpacing.s),
+                        ],
+                        _GarageFilterSegment(
+                          selected: _filter,
+                          onChanged: _selectFilter,
+                        ),
+                        const SizedBox(height: AppSpacing.s),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: AppSpacing.s),
                   if (focused == null)
                     _FilteredEmpty(filter: _filter, onShowAll: _showAll)
                   else ...[
@@ -200,8 +240,8 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
                       vehicles: filtered,
                       focusedIndex: focusedIndex,
                       activeId: widget.activeId,
-                      favoriteIds: widget.favoriteIds,
                       controller: _controller,
+                      availableHeight: availableCarouselHeight,
                       onChanged: (index) {
                         if (index < 0 || index >= filtered.length) {
                           return;
@@ -210,29 +250,39 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
                           _focusedVehicleId = filtered[index].id;
                         });
                       },
-                      onFavorite: _toggleFavorite,
+                      onFavorite:
+                          _savingFavorite ||
+                              _deletingVehicleId != null ||
+                              widget.favoriteReadFailed
+                          ? null
+                          : _useAsFavorite,
                       onOpen: (vehicle) =>
                           context.push('/garage/vehicle/${vehicle.id}'),
                     ),
-                    const SizedBox(height: AppSpacing.s),
-                    _CarouselIndicator(
-                      count: filtered.length,
-                      index: focusedIndex,
+                    SizeChangedLayoutNotifier(
+                      child: Column(
+                        key: _garageChromeBottomKey,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(height: AppSpacing.s),
+                          _CarouselIndicator(
+                            count: filtered.length,
+                            index: focusedIndex,
+                          ),
+                          const SizedBox(height: AppSpacing.s),
+                          _GarageInfoPanel(vehicle: focused),
+                          const SizedBox(height: AppSpacing.s),
+                          _GarageActions(
+                            vehicle: focused,
+                            deleteInProgress:
+                                _deletingVehicleId != null || _savingFavorite,
+                            onDelete: _confirmDelete,
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          _AddVehicleCard(onTap: _addVehicle),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: AppSpacing.s),
-                    _GarageInfoPanel(
-                      vehicle: focused,
-                      active: focused.id == widget.activeId,
-                      onMakeActive: _makeActive,
-                    ),
-                    const SizedBox(height: AppSpacing.s),
-                    _GarageActions(
-                      vehicle: focused,
-                      deleteInProgress: _deletingVehicleId != null,
-                      onDelete: _confirmDelete,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    _AddVehicleCard(onTap: _addVehicle),
                   ],
                 ],
               ),
@@ -243,26 +293,88 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
     );
   }
 
+  void _scheduleChromeMeasurement() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final topHeight = _garageChromeTopKey.currentContext?.size?.height ?? 0;
+      final bottomHeight =
+          _garageChromeBottomKey.currentContext?.size?.height ?? 0;
+      final nextHeight = topHeight + bottomHeight + AppSpacing.s * 2;
+      final previousHeight = _measuredChromeHeight;
+      if (previousHeight == null || (previousHeight - nextHeight).abs() > 0.5) {
+        setState(() {
+          _measuredChromeHeight = nextHeight;
+        });
+      }
+    });
+  }
+
+  void _updateCarouselMinimum({
+    required BuildContext context,
+    required double width,
+    required List<VehicleProfile> vehicles,
+  }) {
+    if (vehicles.isEmpty) {
+      _carouselMinimumHeight = _garageCarouselHeight;
+      return;
+    }
+    final textScaler = MediaQuery.textScalerOf(context);
+    final textScale = textScaler.scale(1);
+    final directionality = Directionality.of(context);
+    final titleWidth = width * _garageViewportFraction - 2 * AppSpacing.m;
+    final measurementKey = (vehicles, titleWidth, directionality, textScale);
+    if (_carouselMinimumKey == measurementKey) {
+      return;
+    }
+    _carouselMinimumKey = measurementKey;
+    var extraTitleHeight = 0.0;
+    final painter = TextPainter(
+      textDirection: directionality,
+      textScaler: textScaler,
+    );
+    for (final vehicle in vehicles) {
+      painter.text = TextSpan(
+        text: vehicleDisplayName(vehicle),
+        style: AppTextStyles.h2.copyWith(fontSize: 18),
+      );
+      painter.layout(maxWidth: titleWidth);
+      final extra = painter.height - painter.preferredLineHeight;
+      if (extra > extraTitleHeight) {
+        extraTitleHeight = extra;
+      }
+    }
+    painter.dispose();
+
+    var cardHeight = textScale <= 1.25 ? _garageCarouselHeight : 232.0;
+    for (final vehicle in vehicles) {
+      final needed =
+          VehiclePlateBadge.contentHeight(context, vehicle, titleWidth) +
+          18 * textScale * 1.3 +
+          (vehicle.year == null ? 0 : 22 * textScale) +
+          118;
+      if (needed > cardHeight) {
+        cardHeight = needed.ceilToDouble();
+      }
+    }
+    _carouselMinimumHeight = cardHeight + extraTitleHeight;
+  }
+
   List<VehicleProfile> _filteredVehicles() {
     return _filteredVehiclesFor(
       vehicles: widget.vehicles,
       activeId: widget.activeId,
-      favoriteIds: widget.favoriteIds,
     );
   }
 
   List<VehicleProfile> _filteredVehiclesFor({
     required List<VehicleProfile> vehicles,
     required String? activeId,
-    required Set<String> favoriteIds,
   }) {
     return switch (_filter) {
       GarageFilter.all => vehicles,
       GarageFilter.favorites =>
-        vehicles
-            .where((vehicle) => favoriteIds.contains(vehicle.id))
-            .toList(growable: false),
-      GarageFilter.active =>
         vehicles
             .where((vehicle) => vehicle.id == activeId)
             .toList(growable: false),
@@ -321,21 +433,31 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
     return true;
   }
 
-  Future<void> _toggleFavorite(VehicleProfile vehicle) async {
-    if (_deletingVehicleId != null) return;
-    await toggleGarageFavoriteVehicleId(
-      ref.read(appPreferencesProvider),
-      vehicle.id,
-    );
-    if (!mounted) return;
-    ref.invalidate(garageFavoriteVehicleIdsProvider);
-  }
-
-  Future<void> _makeActive(VehicleProfile vehicle) async {
-    await ref.read(vehicleRepositoryProvider).setActiveVehicle(vehicle.id);
-    if (!mounted) return;
-    ref.invalidate(activeVehicleProvider);
-    ref.invalidate(vehicleListProvider);
+  Future<void> _useAsFavorite(VehicleProfile vehicle) async {
+    if (_deletingVehicleId != null ||
+        _savingFavorite ||
+        widget.favoriteReadFailed ||
+        vehicle.id == widget.activeId) {
+      return;
+    }
+    final container = ProviderScope.containerOf(context, listen: false);
+    setState(() => _savingFavorite = true);
+    try {
+      await ref.read(vehicleRepositoryProvider).setActiveVehicle(vehicle.id);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No pudimos guardar el favorito. Inténtalo de nuevo.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingFavorite = false);
+      container.invalidate(activeVehicleProvider);
+    }
   }
 
   void _addVehicle() {
@@ -343,12 +465,12 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
   }
 
   Future<void> _confirmDelete(VehicleProfile vehicle) async {
-    if (_deletingVehicleId != null) {
+    if (_deletingVehicleId != null || _savingFavorite) {
       return;
     }
     final repository = ref.read(vehicleRepositoryProvider);
-    final preferences = ref.read(appPreferencesProvider);
     final cleaner = ref.read(vehicleAssociatedDataCleanerProvider);
+    final container = ProviderScope.containerOf(context, listen: false);
     final messenger = ScaffoldMessenger.maybeOf(context);
     final confirmed = await showDialog<bool>(
       context: context,
@@ -368,7 +490,7 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
                     'Se eliminarán el vehículo y sus datos locales asociados:\n'
                     'mantenimientos, obligaciones, documentos cifrados,\n'
                     'expedientes de Defensa, borrador de Peritajes y nota de Comparendos.\n'
-                    'Esta acción no se puede deshacer.',
+                    'Tendrás 5 segundos para deshacer. Después, la eliminación será irreversible.',
                   ),
                 ],
               ),
@@ -407,15 +529,17 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
     });
 
     late final _GarageDeleteResult result;
+    var committing = false;
     try {
-      result = await serializeGarageFavoriteMutation(
-        preferences,
-        () => _deleteVehicleAndAssociatedData(
-          repository: repository,
-          preferences: preferences,
-          cleaner: cleaner,
-          vehicle: vehicle,
-        ),
+      final pending = VehicleDeletionWindow(context);
+      _pendingDeletion = pending;
+      if (!await pending.wait()) return;
+      _pendingDeletion = null;
+      committing = true;
+      result = await _deleteVehicleAndAssociatedData(
+        repository: repository,
+        cleaner: cleaner,
+        vehicle: vehicle,
       );
     } on _GarageDeleteFailure catch (failure) {
       if (!mounted) {
@@ -441,21 +565,29 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
         ),
       );
       return;
+    } finally {
+      _pendingDeletion = null;
+      if (mounted) setState(() => _deletingVehicleId = null);
+      if (committing) {
+        container.invalidate(activeVehicleProvider);
+        container.invalidate(vehicleListProvider);
+        container.invalidate(obligationNotificationSyncProvider);
+      }
     }
 
     if (!mounted) {
       return;
     }
-    ref.invalidate(activeVehicleProvider);
-    ref.invalidate(vehicleListProvider);
-    ref.invalidate(garageFavoriteVehicleIdsProvider);
-    ref.invalidate(obligationNotificationSyncProvider);
     setState(() {
       _deletingVehicleId = null;
-      _focusedVehicleId = _initialFocusedId(
-        result.remainingVehicles,
-        widget.activeId,
-      );
+      if (!result.remainingVehicles.any(
+        (item) => item.id == _focusedVehicleId,
+      )) {
+        _focusedVehicleId = _initialFocusedId(
+          [...result.remainingVehicles]..sort(compareVehiclesAlphabetically),
+          widget.activeId,
+        );
+      }
     });
     final message = result.message;
     if (message != null) {
@@ -465,15 +597,9 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
 
   Future<_GarageDeleteResult> _deleteVehicleAndAssociatedData({
     required VehicleRepository repository,
-    required AppPreferences preferences,
     required VehicleAssociatedDataCleaner cleaner,
     required VehicleProfile vehicle,
   }) async {
-    final activeBeforeDelete = await repository.getActiveVehicle();
-    final wasActive = activeBeforeDelete?.id == vehicle.id;
-    final vehiclesBeforeDelete = wasActive
-        ? await repository.listVehicles()
-        : const <VehicleProfile>[];
     try {
       await cleaner.deleteForVehicle(vehicle.id);
     } catch (_) {
@@ -482,61 +608,17 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
       );
     }
 
-    final favoritesBeforeDelete = await loadGarageFavoriteVehicleIds(
-      preferences,
-    );
-    final updatedFavorites = {...favoritesBeforeDelete};
-    try {
-      if (updatedFavorites.remove(vehicle.id)) {
-        await saveGarageFavoriteVehicleIds(preferences, updatedFavorites);
-      }
-    } catch (_) {
-      throw const _GarageDeleteFailure(
-        'No pudimos completar la eliminación. Inténtalo de nuevo.',
-      );
-    }
-
-    if (wasActive) {
-      VehicleProfile? fallback;
-      for (final candidate in vehiclesBeforeDelete) {
-        if (candidate.id != vehicle.id) {
-          fallback = candidate;
-          break;
-        }
-      }
-      try {
-        if (fallback == null) {
-          await repository.clearActiveVehicle();
-        } else {
-          await repository.setActiveVehicle(fallback.id);
-        }
-      } catch (_) {
-        throw const _GarageDeleteFailure(
-          'No pudimos completar la eliminación. Inténtalo de nuevo.',
-        );
-      }
-    }
-
     try {
       await repository.deleteVehicle(vehicle.id);
     } catch (_) {
       final rowStillExists = await repository.getVehicle(vehicle.id) != null;
       if (rowStillExists) {
-        await _restoreGarageSelectionState(
-          repository: repository,
-          preferences: preferences,
-          activeVehicleId: activeBeforeDelete?.id,
-          favoriteIds: favoritesBeforeDelete,
-        );
         throw const _GarageDeleteFailure(
           'Los datos privados se limpiaron, pero no pudimos eliminar el vehículo. Inténtalo de nuevo.',
         );
       }
       return _GarageDeleteResult(
-        remainingVehicles: await _finishDeletedVehicleSelectionState(
-          repository,
-          vehicle.id,
-        ),
+        remainingVehicles: await repository.listVehicles(),
         message: 'El vehículo se eliminó, pero no pudimos completar algunos ajustes locales.',
       );
     }
@@ -544,47 +626,53 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
       remainingVehicles: await repository.listVehicles(),
     );
   }
-
-  Future<void> _restoreGarageSelectionState({
-    required VehicleRepository repository,
-    required AppPreferences preferences,
-    required String? activeVehicleId,
-    required Set<String> favoriteIds,
-  }) async {
-    try {
-      await saveGarageFavoriteVehicleIds(preferences, favoriteIds);
-      if (activeVehicleId == null) {
-        await repository.clearActiveVehicle();
-      } else {
-        await repository.setActiveVehicle(activeVehicleId);
-      }
-    } catch (_) {
-      return;
-    }
-  }
-
-  Future<List<VehicleProfile>> _finishDeletedVehicleSelectionState(
-    VehicleRepository repository,
-    String deletedVehicleId,
-  ) async {
-    final remainingVehicles = await repository.listVehicles();
-    final activeVehicle = await repository.getActiveVehicle();
-    if (activeVehicle?.id == deletedVehicleId ||
-        (activeVehicle == null && remainingVehicles.isNotEmpty)) {
-      try {
-        await repository.setActiveVehicle(remainingVehicles.first.id);
-      } catch (_) {
-        return remainingVehicles;
-      }
-    }
-    return repository.listVehicles();
-  }
 }
 
 class _GarageDeleteFailure implements Exception {
   const _GarageDeleteFailure(this.message);
 
   final String message;
+}
+
+class _FavoriteReadError extends StatelessWidget {
+  const _FavoriteReadError({required this.hasPrevious, required this.onRetry});
+
+  final bool hasPrevious;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      key: const ValueKey('garage-favorite-read-error'),
+      liveRegion: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.red),
+              const SizedBox(width: AppSpacing.s),
+              Expanded(
+                child: Text(
+                  hasPrevious
+                      ? 'No pudimos actualizar el favorito. Se muestra el último favorito conocido.'
+                      : 'No pudimos cargar el vehículo favorito.',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.s),
+          SecondaryButton(
+            key: const ValueKey('garage-favorite-retry'),
+            label: 'Reintentar',
+            icon: Icons.refresh,
+            onPressed: onRetry,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _GarageDeleteResult {
@@ -674,20 +762,8 @@ class _GarageFilterSegment extends StatelessWidget {
                         value: GarageFilter.favorites,
                         selected: selected == GarageFilter.favorites,
                         onChanged: onChanged,
-                        label: 'Favoritos',
+                        label: 'Favorito',
                         icon: Icons.star_border_rounded,
-                      ),
-                      _GarageFilterDivider(
-                        visible:
-                            selected != GarageFilter.favorites &&
-                            selected != GarageFilter.active,
-                      ),
-                      _GarageFilterButton(
-                        value: GarageFilter.active,
-                        selected: selected == GarageFilter.active,
-                        onChanged: onChanged,
-                        label: 'Activos',
-                        icon: Icons.radio_button_checked_rounded,
                       ),
                     ],
                   ),
@@ -788,8 +864,8 @@ class _GarageCarousel extends StatefulWidget {
     required this.vehicles,
     required this.focusedIndex,
     required this.activeId,
-    required this.favoriteIds,
     required this.controller,
+    required this.availableHeight,
     required this.onChanged,
     required this.onFavorite,
     required this.onOpen,
@@ -798,10 +874,10 @@ class _GarageCarousel extends StatefulWidget {
   final List<VehicleProfile> vehicles;
   final int focusedIndex;
   final String? activeId;
-  final Set<String> favoriteIds;
   final PageController controller;
+  final double availableHeight;
   final ValueChanged<int> onChanged;
-  final ValueChanged<VehicleProfile> onFavorite;
+  final ValueChanged<VehicleProfile>? onFavorite;
   final ValueChanged<VehicleProfile> onOpen;
 
   @override
@@ -815,6 +891,7 @@ class _GarageCarouselState extends State<_GarageCarousel> {
   @override
   Widget build(BuildContext context) {
     final vehicles = widget.vehicles;
+    final onFavorite = widget.onFavorite;
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -844,11 +921,25 @@ class _GarageCarouselState extends State<_GarageCarousel> {
           }
           painter.dispose();
         }
+        var cardHeight = textScale <= 1.25 ? _garageCarouselHeight : 232.0;
+        for (final vehicle in vehicles) {
+          final needed =
+              VehiclePlateBadge.contentHeight(context, vehicle, titleWidth) +
+              18 * textScale * 1.3 +
+              (vehicle.year == null ? 0 : 22 * textScale) +
+              118;
+          if (needed > cardHeight) cardHeight = needed.ceilToDouble();
+        }
+        final minimumHeight = cardHeight + _extraTitleHeight;
+        final maximumHeight = minimumHeight > _garageCarouselMaxHeight
+            ? minimumHeight
+            : _garageCarouselMaxHeight;
+        final adaptiveHeight = widget.availableHeight
+            .clamp(minimumHeight, maximumHeight)
+            .toDouble();
         return SizedBox(
           key: const ValueKey('garage-vehicle-carousel'),
-          height:
-              (textScale <= 1.25 ? _garageCarouselHeight : 232) +
-              _extraTitleHeight,
+          height: adaptiveHeight,
           child: PageView.builder(
             controller: widget.controller,
             itemCount: vehicles.length,
@@ -863,10 +954,11 @@ class _GarageCarouselState extends State<_GarageCarousel> {
                 scale: focused ? 1 : _garageSideCardScale,
                 child: _GarageVehicleCard(
                   vehicle: vehicle,
-                  active: vehicle.id == widget.activeId,
-                  favorite: widget.favoriteIds.contains(vehicle.id),
+                  favorite: vehicle.id == widget.activeId,
                   focused: focused,
-                  onFavorite: () => widget.onFavorite(vehicle),
+                  onFavorite: onFavorite == null
+                      ? null
+                      : () => onFavorite(vehicle),
                   onOpen: () => widget.onOpen(vehicle),
                 ),
               );
@@ -881,7 +973,6 @@ class _GarageCarouselState extends State<_GarageCarousel> {
 class _GarageVehicleCard extends StatelessWidget {
   const _GarageVehicleCard({
     required this.vehicle,
-    required this.active,
     required this.favorite,
     required this.focused,
     required this.onFavorite,
@@ -889,10 +980,9 @@ class _GarageVehicleCard extends StatelessWidget {
   });
 
   final VehicleProfile vehicle;
-  final bool active;
   final bool favorite;
   final bool focused;
-  final VoidCallback onFavorite;
+  final VoidCallback? onFavorite;
   final VoidCallback onOpen;
 
   @override
@@ -913,7 +1003,7 @@ class _GarageVehicleCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.card),
             border: Border.all(
-              color: active
+              color: favorite
                   ? AppColors.teal.withValues(alpha: 0.48)
                   : AppColors.border,
             ),
@@ -931,11 +1021,17 @@ class _GarageVehicleCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Expanded(
-                      child: VehicleVisualImage(
-                        vehicle: vehicle,
-                        cacheWidth: 420,
-                        fallbackBuilder: (_) =>
-                            Icon(vehicleIcon(vehicle), color: accent, size: 64),
+                      child: KeyedSubtree(
+                        key: ValueKey('garage-vehicle-art-${vehicle.id}'),
+                        child: VehicleVisualImage(
+                          vehicle: vehicle,
+                          cacheWidth: 420,
+                          fallbackBuilder: (_) => Icon(
+                            vehicleIcon(vehicle),
+                            color: accent,
+                            size: 64,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xs),
@@ -954,7 +1050,7 @@ class _GarageVehicleCard extends StatelessWidget {
                         ),
                       ),
                     const SizedBox(height: AppSpacing.xs),
-                    ColombianPlateBadge(plate: vehicle.plate),
+                    VehiclePlateBadge(vehicle: vehicle, compact: true),
                   ],
                 ),
               ),
@@ -963,36 +1059,47 @@ class _GarageVehicleCard extends StatelessWidget {
                 right: AppSpacing.xs,
                 child: Semantics(
                   button: true,
+                  enabled: onFavorite != null,
                   toggled: favorite,
-                  label: favorite
-                      ? 'Quitar de favoritos'
-                      : 'Agregar a favoritos',
+                  label: favorite ? 'Vehículo favorito' : 'Usar como favorito',
                   child: Tooltip(
+                    excludeFromSemantics: true,
                     message: favorite
-                        ? 'Quitar de favoritos'
-                        : 'Agregar a favoritos',
-                    child: InkWell(
-                      key: ValueKey('garage-favorite-${vehicle.id}'),
-                      onTap: onFavorite,
-                      borderRadius: BorderRadius.circular(24),
-                      child: SizedBox.square(
-                        dimension: 48,
-                        child: Center(
-                          child: Material(
-                            color: favorite
-                                ? AppColors.teal
-                                : AppColors.surface.withValues(alpha: 0.94),
-                            shape: const CircleBorder(),
-                            elevation: 2,
-                            clipBehavior: Clip.antiAlias,
-                            child: SizedBox.square(
-                              dimension: 36,
-                              child: Icon(
-                                favorite
-                                    ? Icons.star_rounded
-                                    : Icons.star_border_rounded,
-                                color: favorite ? Colors.white : AppColors.navy,
-                                size: 20,
+                        ? 'Vehículo favorito'
+                        : 'Usar como favorito',
+                    child: GestureDetector(
+                      // A disabled favorite control must not open its parent vehicle card.
+                      onTap: onFavorite == null ? () {} : null,
+                      behavior: HitTestBehavior.opaque,
+                      excludeFromSemantics: true,
+                      child: Opacity(
+                        opacity: onFavorite == null ? 0.45 : 1,
+                        child: InkWell(
+                          key: ValueKey('garage-favorite-${vehicle.id}'),
+                          onTap: onFavorite,
+                          borderRadius: BorderRadius.circular(24),
+                          child: SizedBox.square(
+                            dimension: 48,
+                            child: Center(
+                              child: Material(
+                                color: favorite
+                                    ? AppColors.teal
+                                    : AppColors.surface.withValues(alpha: 0.94),
+                                shape: const CircleBorder(),
+                                elevation: 2,
+                                clipBehavior: Clip.antiAlias,
+                                child: SizedBox.square(
+                                  dimension: 36,
+                                  child: Icon(
+                                    favorite
+                                        ? Icons.star_rounded
+                                        : Icons.star_border_rounded,
+                                    color: favorite
+                                        ? Colors.white
+                                        : AppColors.navy,
+                                    size: 20,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -1048,15 +1155,9 @@ class _CarouselIndicator extends StatelessWidget {
 }
 
 class _GarageInfoPanel extends StatelessWidget {
-  const _GarageInfoPanel({
-    required this.vehicle,
-    required this.active,
-    required this.onMakeActive,
-  });
+  const _GarageInfoPanel({required this.vehicle});
 
   final VehicleProfile vehicle;
-  final bool active;
-  final ValueChanged<VehicleProfile> onMakeActive;
 
   @override
   Widget build(BuildContext context) {
@@ -1066,13 +1167,6 @@ class _GarageInfoPanel extends StatelessWidget {
         Icons.directions_car_outlined,
         'Tipo',
         vehicleTypeLabel(vehicle),
-      ),
-      _InfoField(
-        Icons.verified_user_outlined,
-        'Estado',
-        active ? 'Activo' : 'No activo',
-        highlight: active,
-        action: active ? null : () => onMakeActive(vehicle),
       ),
       if (_hasText(vehicle.registrationCity))
         _InfoField(
@@ -1118,19 +1212,11 @@ class _GarageInfoPanel extends StatelessWidget {
 }
 
 class _InfoField {
-  const _InfoField(
-    this.icon,
-    this.label,
-    this.value, {
-    this.highlight = false,
-    this.action,
-  });
+  const _InfoField(this.icon, this.label, this.value);
 
   final IconData icon;
   final String label;
   final String value;
-  final bool highlight;
-  final VoidCallback? action;
 }
 
 class _InfoCell extends StatelessWidget {
@@ -1140,8 +1226,7 @@ class _InfoCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final action = field.action;
-    final content = Column(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
@@ -1165,25 +1250,12 @@ class _InfoCell extends StatelessWidget {
                       color: AppColors.navy.withValues(alpha: 0.72),
                     ),
                   ),
-                  Container(
-                    padding: field.highlight
-                        ? const EdgeInsets.symmetric(horizontal: 7, vertical: 1)
-                        : EdgeInsets.zero,
-                    decoration: field.highlight
-                        ? BoxDecoration(
-                            color: AppColors.teal.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(AppRadius.chip),
-                          )
-                        : null,
-                    child: Text(
-                      field.value,
-                      style: AppTextStyles.bodyStrong.copyWith(
-                        fontSize: 13.5,
-                        height: 1.05,
-                        color: field.highlight
-                            ? AppColors.teal
-                            : AppColors.navy,
-                      ),
+                  Text(
+                    field.value,
+                    style: AppTextStyles.bodyStrong.copyWith(
+                      fontSize: 13.5,
+                      height: 1.05,
+                      color: AppColors.navy,
                     ),
                   ),
                 ],
@@ -1191,57 +1263,7 @@ class _InfoCell extends StatelessWidget {
             ),
           ],
         ),
-        if (action != null) ...[
-          const SizedBox(height: 3),
-          _MakeActivePill(onTap: action),
-        ],
       ],
-    );
-    if (action == null) {
-      return content;
-    }
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: action,
-      child: content,
-    );
-  }
-}
-
-class _MakeActivePill extends StatelessWidget {
-  const _MakeActivePill({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Hacer activo',
-      child: ConstrainedBox(
-        key: const ValueKey('garage-action-make-active'),
-        constraints: const BoxConstraints(minHeight: 32),
-        child: Material(
-          color: AppColors.teal.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(AppRadius.chip),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 7),
-              child: Center(
-                child: Text(
-                  'Hacer activo',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.teal,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -1522,8 +1544,7 @@ class _FilteredEmpty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = switch (filter) {
-      GarageFilter.favorites => 'No tienes vehículos favoritos.',
-      GarageFilter.active => 'No hay vehículo activo.',
+      GarageFilter.favorites => 'No hay vehículo favorito.',
       GarageFilter.all => 'No tienes vehículos todavía',
     };
     return EmptyState(

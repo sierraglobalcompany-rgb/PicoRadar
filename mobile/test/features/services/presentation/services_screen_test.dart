@@ -7,6 +7,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/theme/app_theme.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
+import 'package:picoradar/features/location/application/location_controller.dart';
+import 'package:picoradar/features/location/platform/device_location_gateway.dart';
+import 'package:picoradar/features/onboarding/data/registration_city_catalog.dart';
 import 'package:picoradar/features/services/presentation/services_screen.dart';
 import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
@@ -15,195 +18,56 @@ import 'v01b_tools_test_font.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(loadV01bToolsTestFont);
-  for (final size in [
-    const Size(360, 800),
-    const Size(390, 844),
-    const Size(412, 915),
-  ]) {
-    for (final scale in [1.0, 1.5, 2.0]) {
-      testWidgets(
-        'V01B S02 repeated heading uses compact readable geometry $size/$scale',
-        (tester) async {
-          tester.view.devicePixelRatio = 1;
-          tester.view.physicalSize = size;
-          tester.platformDispatcher.textScaleFactorTestValue = scale;
-          addTearDown(tester.view.resetDevicePixelRatio);
-          addTearDown(tester.view.resetPhysicalSize);
-          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-          await _pumpServices(
-            tester,
-            activeVehicle: _vehicle(registrationCity: 'Cali'),
-          );
-          final heading = tester.renderObject<RenderParagraph>(
-            find.text('Servicios para tu vehículo'),
-          );
-          final metrics = TextPainter(
-            text: heading.text,
-            textDirection: heading.textDirection,
-            textScaler: heading.textScaler,
-          )..layout(maxWidth: heading.size.width);
-          if (scale == 1) {
-            expect(
-              metrics.computeLineMetrics(),
-              hasLength(1),
-              reason: 'Repeated heading should not push city/actions down with a second line at normal scale',
-            );
-          }
-          expect(heading.didExceedMaxLines, isFalse);
-          expect(metrics.height, lessThanOrEqualTo(heading.size.height + 0.1));
-          metrics.dispose();
-          final city = find.byKey(const ValueKey('services-city-field'));
-          await tester.ensureVisible(city);
-          await tester.pumpAndSettle();
-          expect(city.hitTestable(), findsOneWidget);
-          await tester.enterText(city, 'Pereira');
-          expect(find.text('Pereira'), findsOneWidget);
-          expect(tester.takeException(), isNull);
-        },
-      );
 
-      testWidgets(
-        'V01B S02 actions expose working semantic taps $size/$scale',
-        (tester) async {
-          tester.view.devicePixelRatio = 1;
-          tester.view.physicalSize = size;
-          tester.platformDispatcher.textScaleFactorTestValue = scale;
-          addTearDown(tester.view.resetDevicePixelRatio);
-          addTearDown(tester.view.resetPhysicalSize);
-          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-          final semantics = tester.ensureSemantics();
-          try {
-            final launcher = _FakeExternalLauncher();
-            var cdaOpens = 0;
-            await _pumpServices(
-              tester,
-              activeVehicle: _vehicle(registrationCity: 'Cali'),
-              externalLauncher: launcher,
-              onOpenCda: () => cdaOpens++,
-            );
-            for (final entry in [
-              ('services-open-cda', 'Abrir CDA dentro de PicoRadar'),
-              ('services-search-tow', 'Buscar grúa 24 horas'),
-              ('services-search-battery', 'Buscar batería'),
-              ('services-search-tires', 'Buscar llantas'),
-              ('services-search-mechanic', 'Buscar taller mecánico'),
-            ]) {
-              final action = find.byKey(ValueKey(entry.$1));
-              await tester.ensureVisible(action);
-              await tester.pumpAndSettle();
-              expect(action.hitTestable(), findsOneWidget);
-              expect(tester.getSize(action).height, greaterThanOrEqualTo(44));
-              final node = tester.getSemantics(find.bySemanticsLabel(entry.$2));
-              expect(
-                node.getSemanticsData().hasAction(SemanticsAction.tap),
-                isTrue,
-                reason:
-                    '${entry.$1} must be activatable by assistive technology',
-              );
-              node.owner!.performAction(node.id, SemanticsAction.tap);
-              await tester.pumpAndSettle();
-              expect(tester.takeException(), isNull);
-            }
-            expect(cdaOpens, 1);
-            expect(
-              launcher.openedUris.map(
-                (uri) => Uri.parse(uri).queryParameters['query'],
-              ),
-              [
-                'grúa 24 horas Cali',
-                'batería Cali',
-                'llantas Cali',
-                'taller mecánico Cali',
-              ],
-            );
-          } finally {
-            semantics.dispose();
-          }
-        },
-      );
-    }
-  }
-
-  testWidgets('prefills city from active vehicle and keeps required copy', (
+  testWidgets('renders the GPS-first mockup structure without city field', (
     tester,
   ) async {
     await _pumpServices(
       tester,
-      activeVehicle: _vehicle(registrationCity: 'Medellín'),
+      activeVehicle: _vehicle(registrationCity: 'Bogotá D. C.'),
+      locationGateway: _FakeDeviceLocationGateway.success(
+        const DeviceLocationPoint(
+          latitude: 6.244203,
+          longitude: -75.581212,
+          accuracyMeters: 18,
+        ),
+      ),
     );
+    await tester.pumpAndSettle();
 
-    expect(find.text('Servicios para tu vehículo'), findsOneWidget);
+    expect(find.text('Servicios'), findsNothing);
+    expect(find.text('Servicios para\ntu vehículo'), findsOneWidget);
     expect(find.text('Medellín'), findsOneWidget);
-    expect(find.text('Abrir CDA dentro de PicoRadar'), findsOneWidget);
+    expect(find.textContaining('Bogotá'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('services-location-pill')),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.gps_fixed), findsOneWidget);
+    expect(find.byKey(const ValueKey('services-city-field')), findsNothing);
     expect(find.text('Buscar grúa 24 horas'), findsOneWidget);
     expect(find.text('Buscar batería'), findsOneWidget);
     expect(find.text('Buscar llantas'), findsOneWidget);
     expect(find.text('Buscar taller mecánico'), findsOneWidget);
-    expect(
-      find.text(
-        'PicoRadar no presta estos servicios ni verifica proveedores en esta versión.\n'
-        'Revisa identidad, precio y condiciones antes de contratar.',
+    expect(find.text('Abrir CDA dentro de PicoRadar'), findsOneWidget);
+  });
+
+  testWidgets('each service opens Google Maps with current coordinates', (
+    tester,
+  ) async {
+    final launcher = _FakeExternalLauncher();
+    final location = _FakeDeviceLocationGateway.success(
+      const DeviceLocationPoint(
+        latitude: 6.244203,
+        longitude: -75.581212,
+        accuracyMeters: 18,
       ),
-      findsOneWidget,
     );
-  });
-
-  testWidgets('editable city is used only for the current external search', (
-    tester,
-  ) async {
-    final launcher = _FakeExternalLauncher();
-    final vehicle = _vehicle(registrationCity: 'Bogotá D. C.');
-
-    await _pumpServices(
-      tester,
-      activeVehicle: vehicle,
-      externalLauncher: launcher,
-    );
-
-    await tester.enterText(
-      find.byKey(const ValueKey('services-city-field')),
-      'Chía',
-    );
-    await tester.tap(find.byKey(const ValueKey('services-search-tow')));
-    await tester.pump();
-
-    expect(vehicle.registrationCity, 'Bogotá D. C.');
-    final opened = Uri.parse(launcher.openedUris.single);
-    expect(opened.scheme, 'https');
-    expect(opened.host, 'www.google.com');
-    expect(opened.path, '/maps/search/');
-    expect(opened.queryParameters, {'api': '1', 'query': 'grúa 24 horas Chía'});
-  });
-
-  testWidgets('edited city is not overwritten by later vehicle updates', (
-    tester,
-  ) async {
-    await _pumpServices(
-      tester,
-      activeVehicle: _vehicle(registrationCity: 'Medellín'),
-    );
-
-    await tester.enterText(
-      find.byKey(const ValueKey('services-city-field')),
-      'Chía',
-    );
-    await _pumpServices(
-      tester,
-      activeVehicle: _vehicle(registrationCity: 'Bogotá'),
-    );
-
-    expect(find.text('Chía'), findsOneWidget);
-    expect(find.text('Bogotá'), findsNothing);
-  });
-
-  testWidgets('service searches use only Google Maps official search URLs', (
-    tester,
-  ) async {
-    final launcher = _FakeExternalLauncher();
     await _pumpServices(
       tester,
       activeVehicle: _vehicle(registrationCity: 'Cali'),
       externalLauncher: launcher,
+      locationGateway: location,
     );
 
     for (final key in [
@@ -214,29 +78,186 @@ void main() {
     ]) {
       final action = find.byKey(ValueKey(key));
       await tester.ensureVisible(action);
-      await tester.pump();
+      await tester.pumpAndSettle();
       await tester.tap(action);
-      await tester.pump();
+      await tester.pumpAndSettle();
     }
 
+    expect(location.positionsRequested, 5);
+    expect(
+      launcher.openedUris.map((uri) => Uri.parse(uri).queryParameters['query']),
+      [
+        'grúa 24 horas cerca de 6.244203,-75.581212',
+        'batería cerca de 6.244203,-75.581212',
+        'llantas cerca de 6.244203,-75.581212',
+        'taller mecánico cerca de 6.244203,-75.581212',
+      ],
+    );
     expect(
       launcher.openedUris,
       everyElement(
         startsWith('https://www.google.com/maps/search/?api=1&query='),
       ),
     );
+  });
+
+  testWidgets(
+    'permission denial offers catalog city fallback without mutating vehicle',
+    (tester) async {
+      final launcher = _FakeExternalLauncher();
+      final location = _FakeDeviceLocationGateway(
+        checkPermissionResult: DeviceLocationPermission.denied,
+        requestPermissionResult: DeviceLocationPermission.denied,
+      );
+      final vehicle = _vehicle(registrationCity: 'Bogotá D. C.');
+      await _pumpServices(
+        tester,
+        activeVehicle: vehicle,
+        externalLauncher: launcher,
+        locationGateway: location,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('services-search-tow')));
+      await tester.pumpAndSettle();
+      expect(find.text('Permiso de ubicación'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Seleccionar ciudad'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('services-city-fallback-field')),
+        findsNothing,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('services-city-fallback-search')),
+        'medellin',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Medellín - Antioquia'));
+      await tester.pumpAndSettle();
+
+      expect(vehicle.registrationCity, 'Bogotá D. C.');
+      expect(location.positionsRequested, 0);
+      expect(
+        Uri.parse(launcher.openedUris.single).queryParameters['query'],
+        'grúa 24 horas Medellín - Antioquia',
+      );
+    },
+  );
+
+  testWidgets(
+    'typed city text without selecting a catalog row does not launch',
+    (tester) async {
+      final launcher = _FakeExternalLauncher();
+      await _pumpServices(
+        tester,
+        activeVehicle: _vehicle(registrationCity: 'Bogotá D. C.'),
+        externalLauncher: launcher,
+        locationGateway: _FakeDeviceLocationGateway(
+          checkPermissionResult: DeviceLocationPermission.denied,
+          requestPermissionResult: DeviceLocationPermission.denied,
+        ),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('services-search-tow')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Seleccionar ciudad'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('services-city-fallback-search')),
+        'ciudad inventada',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sin resultados en el catálogo local.'), findsOneWidget);
+      expect(launcher.openedUris, isEmpty);
+    },
+  );
+
+  testWidgets('service uses selected visit city when GPS keeps failing', (
+    tester,
+  ) async {
+    final launcher = _FakeExternalLauncher();
+    final location = _FakeDeviceLocationGateway(serviceEnabled: false);
+    await _pumpServices(
+      tester,
+      activeVehicle: _vehicle(registrationCity: 'Bogotá D. C.'),
+      externalLauncher: launcher,
+      locationGateway: location,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('services-location-pill')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Seleccionar ciudad'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('services-city-fallback-search')),
+      'medellin',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Medellín - Antioquia'));
+    await tester.pumpAndSettle();
+
+    final tires = find.byKey(const ValueKey('services-search-tires'));
+    await tester.ensureVisible(tires);
+    await tester.pumpAndSettle();
+    await tester.tap(tires);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Medellín'), findsOneWidget);
     expect(
-      launcher.openedUris.map((uri) {
-        return Uri.parse(uri).queryParameters['query'];
-      }),
-      [
-        'grúa 24 horas Cali',
-        'batería Cali',
-        'llantas Cali',
-        'taller mecánico Cali',
-      ],
+      Uri.parse(launcher.openedUris.single).queryParameters['query'],
+      'llantas Medellín - Antioquia',
     );
   });
+
+  testWidgets('disabled location can open location settings', (tester) async {
+    final location = _FakeDeviceLocationGateway(serviceEnabled: false);
+    await _pumpServices(
+      tester,
+      activeVehicle: _vehicle(registrationCity: null),
+      locationGateway: location,
+    );
+
+    final battery = find.byKey(const ValueKey('services-search-battery'));
+    await tester.ensureVisible(battery);
+    await tester.pumpAndSettle();
+    await tester.tap(battery);
+    await tester.pumpAndSettle();
+    expect(find.text('Activa la ubicación'), findsOneWidget);
+
+    await tester.tap(find.text('Abrir ajustes de ubicación'));
+    await tester.pumpAndSettle();
+
+    expect(location.locationSettingsOpened, 1);
+  });
+
+  testWidgets(
+    'launcher failure shows a controlled message after GPS succeeds',
+    (tester) async {
+      final launcher = _FakeExternalLauncher(openResult: false);
+      await _pumpServices(
+        tester,
+        activeVehicle: _vehicle(registrationCity: 'Cali'),
+        externalLauncher: launcher,
+        locationGateway: _FakeDeviceLocationGateway.success(
+          const DeviceLocationPoint(
+            latitude: 4.711,
+            longitude: -74.0721,
+            accuracyMeters: 20,
+          ),
+        ),
+      );
+
+      final battery = find.byKey(const ValueKey('services-search-battery'));
+      await tester.ensureVisible(battery);
+      await tester.pumpAndSettle();
+      await tester.tap(battery);
+      await tester.pumpAndSettle();
+
+      expect(launcher.openedUris, hasLength(1));
+      expect(find.text('No pudimos abrir Google Maps.'), findsOneWidget);
+    },
+  );
 
   testWidgets('CDA action stays inside PicoRadar and does not launch search', (
     tester,
@@ -250,94 +271,165 @@ void main() {
       externalLauncher: launcher,
     );
 
-    await tester.tap(find.byKey(const ValueKey('services-open-cda')));
+    final cda = find.byKey(const ValueKey('services-open-cda'));
+    await tester.ensureVisible(cda);
+    await tester.pumpAndSettle();
+    await tester.tap(cda);
     await tester.pump();
 
     expect(cdaOpened, isTrue);
     expect(launcher.openedUris, isEmpty);
   });
 
-  testWidgets('empty city blocks external search without GPS fallback', (
+  testWidgets('dispose during GPS lookup does not touch UI or ref', (
     tester,
   ) async {
+    final pendingPosition = Completer<DeviceLocationResult>();
+    final location = _FakeDeviceLocationGateway(
+      checkPermissionResult: DeviceLocationPermission.notRequested,
+      pendingPosition: pendingPosition,
+    );
     final launcher = _FakeExternalLauncher();
     await _pumpServices(
       tester,
-      activeVehicle: _vehicle(registrationCity: null),
-      externalLauncher: launcher,
-    );
-
-    await tester.tap(find.byKey(const ValueKey('services-search-battery')));
-    await tester.pump();
-
-    expect(launcher.openedUris, isEmpty);
-    expect(find.text('Ingresa una ciudad para buscar.'), findsOneWidget);
-  });
-
-  testWidgets('launcher failure shows a controlled message', (tester) async {
-    final launcher = _FakeExternalLauncher(openResult: false);
-    await _pumpServices(
-      tester,
       activeVehicle: _vehicle(registrationCity: 'Cali'),
       externalLauncher: launcher,
+      locationGateway: location,
     );
 
-    await tester.tap(find.byKey(const ValueKey('services-search-battery')));
-    await tester.pump();
-
-    expect(launcher.openedUris, hasLength(1));
-    expect(find.text('No pudimos abrir Google Maps.'), findsOneWidget);
-  });
-
-  testWidgets('dispose during launch does not touch UI or ref', (tester) async {
-    final pendingOpen = Completer<bool>();
-    final launcher = _FakeExternalLauncher(pendingOpen: pendingOpen);
-    await _pumpServices(
-      tester,
-      activeVehicle: _vehicle(registrationCity: 'Cali'),
-      externalLauncher: launcher,
-    );
-
-    await tester.tap(find.byKey(const ValueKey('services-search-battery')));
+    final battery = find.byKey(const ValueKey('services-search-battery'));
+    await tester.ensureVisible(battery);
+    await tester.pumpAndSettle();
+    await tester.tap(battery);
     await tester.pump();
     await tester.pumpWidget(const SizedBox.shrink());
-    pendingOpen.complete(false);
+    pendingPosition.complete(
+      const DeviceLocationSuccess(
+        DeviceLocationPoint(
+          latitude: 3.4516,
+          longitude: -76.532,
+          accuracyMeters: 16,
+        ),
+      ),
+    );
     await tester.pump();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('No pudimos abrir Google Maps.'), findsNothing);
+    expect(launcher.openedUris, isEmpty);
   });
 
-  testWidgets('services screen tolerates phone viewports and text scale', (
-    tester,
-  ) async {
-    for (final viewport in [
-      (name: '360x800', size: const Size(360, 800), scale: 1.0),
-      (name: '390x844 textScale 1.5', size: const Size(390, 844), scale: 1.5),
-      (name: '412x915 textScale 2.0', size: const Size(412, 915), scale: 2.0),
-    ]) {
+  testWidgets(
+    'normal Mi A3 viewport exposes CDA and disclaimer without scroll',
+    (tester) async {
       tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = viewport.size;
-      tester.platformDispatcher.textScaleFactorTestValue = viewport.scale;
+      tester.view.physicalSize = const Size(360, 780);
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
       await _pumpServices(
         tester,
-        activeVehicle: _vehicle(registrationCity: 'Medellín'),
+        activeVehicle: _vehicle(registrationCity: 'Bogotá D. C.'),
+        locationGateway: _FakeDeviceLocationGateway.success(
+          const DeviceLocationPoint(
+            latitude: 6.244203,
+            longitude: -75.581212,
+            accuracyMeters: 18,
+          ),
+        ),
       );
+      await tester.pumpAndSettle();
 
+      expect(find.text('CDA en PicoRadar').hitTestable(), findsOneWidget);
       expect(
-        find.byKey(const ValueKey('services-screen')),
+        find.textContaining('PicoRadar no presta').hitTestable(),
         findsOneWidget,
-        reason: viewport.name,
       );
-      expect(tester.takeException(), isNull, reason: viewport.name);
-      await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pump();
-    }
+    },
+  );
+
+  testWidgets('normal Mi A3 viewport keeps lower actions above shell nav', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(360, 780);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await _pumpServices(
+      tester,
+      activeVehicle: _vehicle(registrationCity: 'Bogotá D. C.'),
+      locationGateway: _FakeDeviceLocationGateway.success(
+        const DeviceLocationPoint(
+          latitude: 6.244203,
+          longitude: -75.581212,
+          accuracyMeters: 18,
+        ),
+      ),
+      bottomOverlayHeight: 92,
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('services-open-cda')).hitTestable(),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('PicoRadar no presta').hitTestable(),
+      findsOneWidget,
+    );
   });
+
+  for (final size in [
+    const Size(360, 780),
+    const Size(360, 800),
+    const Size(390, 844),
+    const Size(412, 915),
+    const Size(430, 932),
+  ]) {
+    for (final scale in [1.0, 1.5, 2.0]) {
+      testWidgets('services viewport has tappable actions $size/$scale', (
+        tester,
+      ) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = size;
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+        final semantics = tester.ensureSemantics();
+        try {
+          await _pumpServices(
+            tester,
+            activeVehicle: _vehicle(registrationCity: 'Medellín'),
+          );
+
+          for (final entry in [
+            ('services-search-tow', 'Buscar grúa 24 horas'),
+            ('services-search-battery', 'Buscar batería'),
+            ('services-search-tires', 'Buscar llantas'),
+            ('services-search-mechanic', 'Buscar taller mecánico'),
+            ('services-open-cda', 'Abrir CDA dentro de PicoRadar'),
+          ]) {
+            final action = find.byKey(ValueKey(entry.$1));
+            await tester.ensureVisible(action);
+            await tester.pumpAndSettle();
+            expect(action.hitTestable(), findsOneWidget);
+            expect(tester.getSize(action).height, greaterThanOrEqualTo(48));
+            final node = tester.getSemantics(find.bySemanticsLabel(entry.$2));
+            expect(
+              node.getSemanticsData().hasAction(SemanticsAction.tap),
+              isTrue,
+              reason: '${entry.$1} must be reachable with accessibility',
+            );
+          }
+          expect(tester.takeException(), isNull);
+        } finally {
+          semantics.dispose();
+        }
+      });
+    }
+  }
 }
 
 Future<void> _pumpServices(
@@ -345,6 +437,8 @@ Future<void> _pumpServices(
   required VehicleProfile? activeVehicle,
   VoidCallback? onOpenCda,
   ExternalLauncher? externalLauncher,
+  DeviceLocationGateway? locationGateway,
+  double bottomOverlayHeight = 0,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -353,15 +447,57 @@ Future<void> _pumpServices(
         externalLauncherProvider.overrideWithValue(
           externalLauncher ?? _FakeExternalLauncher(),
         ),
+        deviceLocationGatewayProvider.overrideWithValue(
+          locationGateway ?? _FakeDeviceLocationGateway.success(),
+        ),
+        registrationCityCatalogProvider.overrideWithValue(
+          const AsyncValue.data(_testRegistrationCatalog),
+        ),
       ],
       child: MaterialApp(
         theme: buildPicoRadarTheme(),
-        home: ServicesScreen(onOpenCda: onOpenCda),
+        home: bottomOverlayHeight <= 0
+            ? ServicesScreen(onOpenCda: onOpenCda)
+            : Stack(
+                children: [
+                  ServicesScreen(onOpenCda: onOpenCda),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: bottomOverlayHeight,
+                    child: const ColoredBox(color: Colors.white),
+                  ),
+                ],
+              ),
       ),
     ),
   );
   await tester.pump();
 }
+
+const _testRegistrationCatalog = RegistrationCityCatalog(
+  records: [
+    RegistrationCity(
+      municipality: 'Bogotá',
+      department: 'Bogotá D.C.',
+      displayName: 'Bogotá - Bogotá D.C.',
+      source: 'test',
+    ),
+    RegistrationCity(
+      municipality: 'Medellín',
+      department: 'Antioquia',
+      displayName: 'Medellín - Antioquia',
+      source: 'test',
+    ),
+    RegistrationCity(
+      municipality: 'Chía',
+      department: 'Cundinamarca',
+      displayName: 'Chía - Cundinamarca',
+      source: 'test',
+    ),
+  ],
+);
 
 VehicleProfile _vehicle({required String? registrationCity}) {
   return VehicleProfile(
@@ -375,11 +511,82 @@ VehicleProfile _vehicle({required String? registrationCity}) {
   );
 }
 
+class _FakeDeviceLocationGateway implements DeviceLocationGateway {
+  _FakeDeviceLocationGateway({
+    this.serviceEnabled = true,
+    this.checkPermissionResult = DeviceLocationPermission.granted,
+    this.requestPermissionResult = DeviceLocationPermission.granted,
+    this.positionResult = const DeviceLocationSuccess(
+      DeviceLocationPoint(
+        latitude: 4.711,
+        longitude: -74.0721,
+        accuracyMeters: 24,
+      ),
+    ),
+    this.pendingPosition,
+  });
+
+  factory _FakeDeviceLocationGateway.success([
+    DeviceLocationPoint point = const DeviceLocationPoint(
+      latitude: 4.711,
+      longitude: -74.0721,
+      accuracyMeters: 24,
+    ),
+  ]) {
+    return _FakeDeviceLocationGateway(
+      positionResult: DeviceLocationSuccess(point),
+    );
+  }
+
+  final bool serviceEnabled;
+  final DeviceLocationPermission checkPermissionResult;
+  final DeviceLocationPermission requestPermissionResult;
+  final DeviceLocationResult positionResult;
+  final Completer<DeviceLocationResult>? pendingPosition;
+  int positionsRequested = 0;
+  int appSettingsOpened = 0;
+  int locationSettingsOpened = 0;
+
+  @override
+  Future<bool> isLocationServiceEnabled() async => serviceEnabled;
+
+  @override
+  Future<DeviceLocationPermission> checkPermission() async {
+    return checkPermissionResult;
+  }
+
+  @override
+  Future<DeviceLocationPermission> requestPermission() async {
+    return requestPermissionResult;
+  }
+
+  @override
+  Future<DeviceLocationResult> getCurrentPosition() {
+    positionsRequested++;
+    final pending = pendingPosition;
+    if (pending != null) {
+      return pending.future;
+    }
+    return Future.value(positionResult);
+  }
+
+  @override
+  Future<bool> openAppSettings() async {
+    appSettingsOpened++;
+    return true;
+  }
+
+  @override
+  Future<bool> openLocationSettings() async {
+    locationSettingsOpened++;
+    return true;
+  }
+}
+
 class _FakeExternalLauncher implements ExternalLauncher {
-  _FakeExternalLauncher({this.openResult = true, this.pendingOpen});
+  _FakeExternalLauncher({this.openResult = true});
 
   final bool openResult;
-  final Completer<bool>? pendingOpen;
   final openedUris = <String>[];
   final calledPhones = <String>[];
 
@@ -390,10 +597,8 @@ class _FakeExternalLauncher implements ExternalLauncher {
   }
 
   @override
-  Future<bool> openExternal(String uri) {
+  Future<bool> openExternal(String uri) async {
     openedUris.add(uri);
-    final completer = pendingOpen;
-    if (completer != null) return completer.future;
-    return Future.value(openResult);
+    return openResult;
   }
 }

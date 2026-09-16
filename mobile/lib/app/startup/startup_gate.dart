@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/design_system/branding.dart';
+import '../../features/documents/application/wallet_draft.dart';
+import '../../features/documents/data/wallet_store.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/pico_placa/data/restriction_store.dart';
 import '../../features/visual_assets/data/vehicle_visual_resolver.dart';
@@ -19,6 +21,10 @@ final startupPrivacyCleanupProvider = FutureProvider<void>((ref) async {
   final gateway = ref.watch(vehicleDocumentGatewayProvider);
   await measureStartupPhase('PRIVACY_VIEWER', store.purgeViewerCache);
   await measureStartupPhase('PRIVACY_PICKER', gateway.clearTemporaryFiles);
+  await measureStartupPhase('PRIVACY_WALLET', () async {
+    await WalletStore.purgeTemporaryViewerFiles();
+    await WalletDraft.purgeAbandoned();
+  });
 });
 
 final startupReadinessProvider = FutureProvider.autoDispose<StartupReadiness>((
@@ -40,7 +46,7 @@ final startupReadinessProvider = FutureProvider.autoDispose<StartupReadiness>((
   );
   return measureStartupPhase('CORE_READINESS', () async {
     final vehicles = await ready(ref.watch(vehicleListProvider.future));
-    final activeVehicle = await ready(ref.watch(activeVehicleProvider.future));
+    await ready(ref.watch(activeVehicleProvider.future));
     final jurisdictions = await ready(
       ref.watch(restrictionJurisdictionsProvider.future),
     );
@@ -82,7 +88,7 @@ final startupReadinessProvider = FutureProvider.autoDispose<StartupReadiness>((
     if (snapshots.isNotEmpty && vehicleCatalog != null) {
       final focusedIndex = pickInitialHomeVehicleIndex(
         snapshots: snapshots,
-        activeVehicleId: activeVehicle?.id,
+        now: ref.read(bogotaNowProvider),
       );
       final resolver = VehicleVisualResolver(vehicleCatalog);
       for (final index in _initialVehicleIndexes(

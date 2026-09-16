@@ -4,17 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:picoradar/app/app_providers.dart';
-import 'package:picoradar/features/comparendos/presentation/comparendos_screen.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
+import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
 import '../../../test_app_harness.dart';
+import '../../../plate_test_fonts.dart';
+import 'comparendos_test_fixture.dart';
 
 late MemoryPreferences _preferences;
 late _FakeExternalLauncher _launcher;
 
 void main() {
+  setUpAll(loadPlateTestFonts);
   setUp(() {
     _preferences = MemoryPreferences();
     _launcher = _FakeExternalLauncher();
@@ -25,6 +27,23 @@ void main() {
     await _pumpScreen(tester, vehicleList: (ref) => completer.future);
 
     expect(find.byKey(const ValueKey('comparendos-loading')), findsOneWidget);
+  });
+
+  testWidgets('explicit vehicle remains usable when favorite lookup fails', (
+    tester,
+  ) async {
+    final vehicle = _vehicle();
+    await _pumpScreen(
+      tester,
+      vehicles: [vehicle],
+      vehicleId: vehicle.id,
+      activeLoader: () async => throw StateError('Favorite unavailable'),
+    );
+    expect(find.byKey(const ValueKey('comparendos-plate')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('comparendos-copy-plate')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('uses explicit valid vehicleId over active vehicle', (
@@ -44,9 +63,9 @@ void main() {
       vehicleId: second.id,
     );
 
-    expect(find.text('BBB222'), findsOneWidget);
-    expect(find.text('Medellín'), findsOneWidget);
-    expect(find.text('AAA111'), findsNothing);
+    expect(find.byKey(const ValueKey('comparendos-plate')), findsOneWidget);
+    expect(find.text('Matrícula: Medellín'), findsOneWidget);
+    expect(find.text('Matrícula: Bogotá'), findsNothing);
   });
 
   testWidgets('falls back to active vehicle without vehicleId', (tester) async {
@@ -55,7 +74,7 @@ void main() {
 
     await _pumpScreen(tester, vehicles: [first, active], active: active);
 
-    expect(find.text('ACT222'), findsOneWidget);
+    expect(find.byKey(const ValueKey('comparendos-plate')), findsOneWidget);
   });
 
   testWidgets('shows clear state without vehicle', (tester) async {
@@ -85,11 +104,10 @@ void main() {
       find.byKey(const ValueKey('comparendos-no-vehicle')),
       findsOneWidget,
     );
-    expect(find.text('AAA111'), findsNothing);
     expect(find.byKey(const ValueKey('comparendos-copy-plate')), findsNothing);
   });
 
-  testWidgets('shows plate type and registration city when present', (
+  testWidgets('shows plate and registration without duplicating vehicle type', (
     tester,
   ) async {
     final vehicle = _vehicle(
@@ -100,9 +118,9 @@ void main() {
 
     await _pumpScreen(tester, vehicles: [vehicle], active: vehicle);
 
-    expect(find.text('MOT123'), findsOneWidget);
-    expect(find.text('Moto'), findsOneWidget);
-    expect(find.text('Bogotá'), findsOneWidget);
+    expect(find.byKey(const ValueKey('comparendos-plate')), findsOneWidget);
+    expect(find.text('Moto'), findsNothing);
+    expect(find.text('Matrícula: Bogotá'), findsOneWidget);
   });
 
   testWidgets('copies plate only and shows snackbar', (tester) async {
@@ -139,7 +157,7 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('comparendos-open-simit')));
 
-    expect(_launcher.opened, ['https://www.simit.org.co/']);
+    expect(_launcher.opened, ['https://www.fcm.org.co/simit/']);
   });
 
   testWidgets('shows SIMIT launch failure visibly', (tester) async {
@@ -175,27 +193,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('opens Medellín territorial URL for Medellín vehicles', (
-    tester,
-  ) async {
-    final vehicle = _vehicle(registrationCity: 'Medellín');
-
-    await _pumpScreen(
-      tester,
-      vehicles: [vehicle],
-      active: vehicle,
-      launcher: _launcher,
-    );
-    await tester.tap(
-      find.byKey(const ValueKey('comparendos-open-territorial')),
-    );
-
-    expect(_launcher.opened, [
-      'https://www.medellin.gov.co/es/tramites-y-servicios/consulta-de-comparendos-electronicos/',
-    ]);
-  });
-
-  testWidgets('opens Bogotá territorial URL for Bogotá vehicles', (
+  testWidgets('opens Medellín territorial URL for Medellín context', (
     tester,
   ) async {
     final vehicle = _vehicle(registrationCity: 'Bogotá');
@@ -205,27 +203,59 @@ void main() {
       vehicles: [vehicle],
       active: vehicle,
       launcher: _launcher,
+      jurisdictionId: 'co-ant-medellin',
     );
+    expect(find.text('Consultar en Medellín'), findsOneWidget);
     await tester.tap(
       find.byKey(const ValueKey('comparendos-open-territorial')),
     );
 
-    expect(_launcher.opened, ['https://www.movilidadbogota.gov.co/node/15670']);
+    expect(_launcher.opened, [testMedellinUrl]);
   });
 
-  testWidgets('unsupported city does not expose a fake territorial link', (
+  testWidgets('opens Bogotá territorial URL for Bogotá context', (
     tester,
   ) async {
-    final vehicle = _vehicle(registrationCity: 'Cali');
+    final vehicle = _vehicle(registrationCity: 'Medellín');
 
-    await _pumpScreen(tester, vehicles: [vehicle], active: vehicle);
-
-    expect(
-      find.byKey(const ValueKey('comparendos-open-territorial')),
-      findsNothing,
+    await _pumpScreen(
+      tester,
+      vehicles: [vehicle],
+      active: vehicle,
+      launcher: _launcher,
+      jurisdictionId: 'co-dc-bogota',
     );
-    expect(find.text('Usa SIMIT para la consulta nacional.'), findsOneWidget);
+    expect(find.text('Consultar en Bogotá'), findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('comparendos-open-territorial')),
+    );
+
+    expect(_launcher.opened, [testBogotaUrl]);
   });
+
+  testWidgets(
+    'unsupported effective city does not expose a fake territorial link',
+    (tester) async {
+      final vehicle = _vehicle(registrationCity: 'Bogotá');
+
+      await _pumpScreen(
+        tester,
+        vehicles: [vehicle],
+        active: vehicle,
+        jurisdictionId: 'co-vac-cali',
+      );
+
+      expect(
+        find.byKey(const ValueKey('comparendos-open-territorial')),
+        findsNothing,
+      );
+      expect(find.text('Cali'), findsOneWidget);
+      expect(
+        find.textContaining('SIMIT queda disponible como consulta nacional.'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('marks checked today with Bogotá date and local note', (
     tester,
@@ -243,7 +273,7 @@ void main() {
     expect(find.text('Última consulta anotada: 2026-09-03'), findsOneWidget);
     expect(
       find.text(
-        'Esta fecha es una nota local. No guarda ni confirma el resultado oficial.',
+        'Los resultados se consultan en el portal oficial. PicoRadar no obtiene tus resultados.',
       ),
       findsOneWidget,
     );
@@ -288,7 +318,7 @@ void main() {
       vehicleId: second.id,
     );
 
-    expect(find.text('BBB222'), findsOneWidget);
+    expect(find.byKey(const ValueKey('comparendos-plate')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('comparendos-last-checked')),
       findsNothing,
@@ -354,39 +384,29 @@ Future<void> _pumpScreen(
   WidgetTester tester, {
   List<VehicleProfile> vehicles = const [],
   VehicleProfile? active,
+  Future<VehicleProfile?> Function()? activeLoader,
   String? vehicleId,
   ExternalLauncher? launcher,
   Future<List<VehicleProfile>> Function(Ref ref)? vehicleList,
+  String? jurisdictionId,
   Size size = const Size(390, 844),
   double textScale = 1,
 }) async {
-  tester.view.devicePixelRatio = 1;
-  tester.view.physicalSize = size;
-  addTearDown(tester.view.resetDevicePixelRatio);
-  addTearDown(tester.view.resetPhysicalSize);
-  await tester.pumpWidget(
-    ProviderScope(
-      overrides: [
-        appPreferencesProvider.overrideWithValue(_preferences),
-        vehicleListProvider.overrideWith(
-          vehicleList ?? (ref) async => vehicles,
-        ),
-        activeVehicleProvider.overrideWith((ref) async => active),
-        bogotaNowProvider.overrideWithValue(DateTime(2026, 9, 3, 8)),
-        externalLauncherProvider.overrideWithValue(
-          launcher ?? _FakeExternalLauncher(),
-        ),
-      ],
-      child: MaterialApp(
-        home: MediaQuery(
-          data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
-          child: ComparendosScreen(vehicleId: vehicleId),
-        ),
-      ),
-    ),
+  if (jurisdictionId != null) {
+    await _preferences.setString(picoJurisdictionPreferenceKey, jurisdictionId);
+  }
+  await pumpComparendos(
+    tester,
+    preferences: _preferences,
+    vehicles: vehicles,
+    active: active,
+    activeLoader: activeLoader,
+    vehicleId: vehicleId,
+    launcher: launcher,
+    vehicleLoader: vehicleList,
+    size: size,
+    textScale: textScale,
   );
-  await tester.pump();
-  await tester.pump(const Duration(milliseconds: 300));
 }
 
 VehicleProfile _vehicle({

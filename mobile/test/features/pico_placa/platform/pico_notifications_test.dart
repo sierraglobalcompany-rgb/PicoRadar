@@ -22,8 +22,12 @@ void main() {
     group('real scheduler pico=$pico', () {
       late _NotificationChannel channel;
       late PicoNotificationScheduler scheduler;
+      late DateTime futureDate;
 
       setUp(() {
+        // The real plugin rejects past dates before reaching the mocked channel.
+        final now = DateTime.now().toUtc();
+        futureDate = DateTime(now.year, now.month, now.day + 2);
         AndroidFlutterLocalNotificationsPlugin.registerWith();
         channel = _NotificationChannel();
         scheduler = PicoNotificationScheduler();
@@ -39,17 +43,14 @@ void main() {
       });
 
       Future<void> publish(String body, {String title = 'Reminder'}) {
-        final time = bogotaScheduledTime(
-          date: DateTime(2026, 9, 11),
-          minuteOfDay: 300,
-        );
+        final time = bogotaScheduledTime(date: futureDate, minuteOfDay: 300);
         return pico
             ? scheduler.reschedule([
                 PicoNotificationPlan(
                   id: 42,
                   type: PicoAlertType.sameDay,
                   vehicleId: 'car',
-                  targetDate: DateTime(2026, 9, 11),
+                  targetDate: futureDate,
                   scheduledAt: time,
                   title: title,
                   body: body,
@@ -61,7 +62,7 @@ void main() {
                   id: 42,
                   vehicleId: 'car',
                   type: VehicleObligationType.soat,
-                  dueDate: DateTime(2026, 9, 12),
+                  dueDate: futureDate.add(const Duration(days: 1)),
                   offsetDays: 1,
                   scheduledAt: time,
                   title: title,

@@ -43,6 +43,17 @@ class RegistrationCityCatalog {
 
   final List<RegistrationCity> records;
 
+  String plateMunicipality(String value) {
+    final normalized = normalizeRegistrationCityText(value);
+    if (normalized.isEmpty) return 'COLOMBIA';
+    for (final city in records) {
+      if (normalizeRegistrationCityText(city.displayName) == normalized) {
+        return city.municipality;
+      }
+    }
+    return value.trim();
+  }
+
   factory RegistrationCityCatalog.fromJson(Map<String, Object?> json) {
     final rows = json['records'];
     if (rows is! List) {

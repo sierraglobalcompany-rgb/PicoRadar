@@ -10,14 +10,18 @@ import '../core/database/app_database.dart'
 import '../core/storage/app_preferences.dart';
 import '../core/sync/dataset_sync_service.dart';
 import '../features/defense/application/defense_case_providers.dart';
+import '../features/documents/application/wallet_providers.dart'
+    show walletDocumentsProvider, walletSessionProvider, walletStoreProvider;
+import '../features/documents/data/wallet_models.dart';
 import '../features/garage/application/vehicle_associated_data_cleaner.dart';
-import '../features/garage/data/garage_favorites.dart';
 import '../features/garage/data/vehicle_profile.dart';
 import '../features/garage/data/vehicle_repository.dart';
 import '../features/home/data/home_banner_config.dart';
 import '../features/maintenance/data/maintenance_record.dart';
 import '../features/maintenance/data/maintenance_repository.dart';
 import '../features/vehicle_status/data/vehicle_obligation_store.dart';
+import '../features/vehicle_status/data/tax_catalog.dart';
+import '../features/vehicle_status/data/tax_catalog_store.dart';
 import '../features/vehicle_status/data/private_vehicle_document_store.dart';
 import '../features/vehicle_status/domain/vehicle_obligation.dart';
 import '../features/vehicle_status/platform/obligation_notifications.dart';
@@ -104,6 +108,8 @@ final datasetSyncCommitHandlerProvider =
           ref.invalidate(restrictionJurisdictionsProvider);
         } else if (datasetKey == tollInventoryDatasetKey) {
           ref.invalidate(tripTollInventoryProvider);
+        } else if (datasetKey == taxCalendarsDatasetKey) {
+          ref.invalidate(taxCatalogProvider);
         }
       };
     });
@@ -112,6 +118,64 @@ final tripTollInventoryProvider = FutureProvider<TollInventoryDataset>((
   ref,
 ) async {
   return (await ref.watch(tollInventoryStoreProvider.future)).load();
+});
+
+final taxCatalogStoreProvider = FutureProvider<TaxCatalogStore>((ref) async {
+  final directory = await ref.watch(datasetSnapshotsDirectoryProvider.future);
+  return TaxCatalogStore(
+    database: ref.watch(appDatabaseProvider),
+    snapshotFile: File(
+      '${directory.path}${Platform.pathSeparator}tax_calendars.json',
+    ),
+    bundledLoader: () => rootBundle.loadString(bundledTaxCatalogAsset),
+  );
+});
+
+final taxCatalogProvider = FutureProvider<TaxCatalog>((ref) async {
+  return (await ref.watch(taxCatalogStoreProvider.future)).load();
+});
+
+// Startup and an open tax screen share one request and the same cooldown.
+final _datasetRefreshProvider =
+    Provider<Future<DatasetSyncResult?> Function(bool)>((ref) {
+      Future<DatasetSyncResult?>? pending;
+      DateTime? retryAfter;
+      DatasetSyncResult? previous;
+      return (force) {
+        if (pending != null) return pending!;
+        final now = DateTime.now();
+        if (!force && retryAfter != null && now.isBefore(retryAfter!)) {
+          return Future.value(previous);
+        }
+        Future<DatasetSyncResult?> run() async {
+          try {
+            final service = await ref.read(datasetSyncServiceProvider.future);
+            if (service == null) return null;
+            await ref.read(bundledRestrictionsProvider.future);
+            previous = await service.sync();
+            retryAfter = DateTime.now().add(const Duration(hours: 6));
+            return previous;
+          } catch (_) {
+            retryAfter = DateTime.now().add(const Duration(minutes: 5));
+            rethrow;
+          } finally {
+            pending = null;
+          }
+        }
+
+        return pending = run();
+      };
+    });
+
+final taxCatalogRefreshProvider = Provider<Future<bool> Function(bool)>((ref) {
+  final refresh = ref.watch(_datasetRefreshProvider);
+  return (force) async {
+    final result = await refresh(force);
+    return result != null &&
+        (result.notModified ||
+            result.imported.contains(taxCalendarsDatasetKey) ||
+            result.skippedCurrent.contains(taxCalendarsDatasetKey));
+  };
 });
 
 final tripTollTariffCatalogProvider = FutureProvider<TollTariffCatalog>((ref) {
@@ -127,6 +191,7 @@ final datasetSyncServiceProvider = FutureProvider<DatasetSyncService?>((
   }
   _validateProductDatasetConfig(config);
   final tollStore = await ref.watch(tollInventoryStoreProvider.future);
+  final taxStore = await ref.watch(taxCatalogStoreProvider.future);
   return DatasetSyncService(
     database: ref.watch(appDatabaseProvider),
     preferences: ref.watch(appPreferencesProvider),
@@ -134,18 +199,14 @@ final datasetSyncServiceProvider = FutureProvider<DatasetSyncService?>((
     importers: const {restrictionsDatasetKey: importRestrictionsDataset},
     transactionalImporters: {
       tollInventoryDatasetKey: tollStore.transactionalImporter,
+      taxCalendarsDatasetKey: taxStore.transactionalImporter,
     },
     onDatasetCommitted: ref.watch(datasetSyncCommitHandlerProvider),
   );
 });
 
 final datasetSyncRunProvider = FutureProvider<DatasetSyncResult?>((ref) async {
-  final service = await ref.watch(datasetSyncServiceProvider.future);
-  if (service == null) {
-    return null;
-  }
-  await ref.read(bundledRestrictionsProvider.future);
-  return service.sync();
+  return ref.watch(_datasetRefreshProvider)(false);
 });
 
 final tripCameraPackSnapshotProvider = FutureProvider<TripCameraPackSnapshot>((
@@ -175,10 +236,6 @@ final vehicleVisualOverrideProvider = FutureProvider.family<String?, String>((
     ref.watch(appPreferencesProvider),
     vehicleId,
   );
-});
-
-final garageFavoriteVehicleIdsProvider = FutureProvider<Set<String>>((ref) {
-  return loadGarageFavoriteVehicleIds(ref.watch(appPreferencesProvider));
 });
 
 final vehicleRepositoryProvider = Provider<VehicleRepository>((ref) {
@@ -252,7 +309,7 @@ final vehicleAssociatedDataCleanerProvider =
     Provider<VehicleAssociatedDataCleaner>((ref) {
       final preferences = ref.watch(appPreferencesProvider);
       return VehicleAssociatedDataCleaner(
-        documentStore: ref.watch(privateVehicleDocumentStoreProvider),
+        walletStore: ref.watch(walletStoreProvider),
         defenseCaseStore: ref.watch(defenseCaseStoreProvider),
         peritajesDraftStore: PeritajesDraftStore(preferences),
         preferences: preferences,
@@ -287,6 +344,30 @@ final privateVehicleDocumentProvider =
           .watch(privateVehicleDocumentStoreProvider)
           .get(vehicleId: key.$1, documentType: key.$2);
     });
+
+final vehicleWalletDocumentProvider = FutureProvider.autoDispose
+    .family<WalletDocument?, (String, WalletDocumentType)>((ref, key) async {
+      final session = ref.watch(walletSessionProvider);
+      var access = (session.accessAllowed, session.epoch);
+      void sessionChanged() {
+        final next = (session.accessAllowed, session.epoch);
+        if (next == access) return;
+        access = next;
+        ref.invalidateSelf();
+      }
+
+      session.addListener(sessionChanged);
+      ref.onDispose(() => session.removeListener(sessionChanged));
+      if (!session.accessAllowed) return null;
+      final epoch = session.epoch;
+      final owner = WalletOwner.vehicle(key.$1);
+      final documents = await ref.watch(walletDocumentsProvider(owner).future);
+      if (!session.isAuthorizedEpoch(epoch)) return null;
+      for (final document in documents) {
+        if (document.owner == owner && document.type == key.$2) return document;
+      }
+      return null;
+    }, dependencies: [walletSessionProvider, walletDocumentsProvider]);
 
 final picoWidgetBridgeProvider = Provider<PicoWidgetBridge>((ref) {
   return const PicoWidgetBridge();

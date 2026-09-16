@@ -54,14 +54,14 @@ void main() {
   });
 
   group('K7-C local preferences fail closed', () {
-    test('corrupt AppPreferences JSON payloads are discarded', () async {
+    test('corrupt preferences fail closed and preserve purchase ownership for recovery', () async {
       final preferences = MemoryPreferences()
         ..values[tripDraftPreferenceKey] = '{broken trip'
         ..values[buySellDraftPreferenceKey] = '{"version":1,"mode":7}'
         ..values[peritajesDraftPreferenceKey('vehicle-a')] = '[bad]';
 
       expect(await TripDraftStore(preferences).loadDraft(), isNull);
-      expect(await loadBuySellDraft(preferences), isNull);
+      await expectLater(loadBuySellDraft(preferences), throwsFormatException);
       expect(
         await PeritajesDraftStore(preferences).loadDraft('vehicle-a'),
         isNull,
@@ -69,8 +69,8 @@ void main() {
 
       expect(preferences.values.containsKey(tripDraftPreferenceKey), isFalse);
       expect(
-        preferences.values.containsKey(buySellDraftPreferenceKey),
-        isFalse,
+        preferences.values[buySellDraftPreferenceKey],
+        '{"version":1,"mode":7}',
       );
       expect(
         preferences.values.containsKey(

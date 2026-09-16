@@ -1,329 +1,202 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/theme/app_tokens.dart';
-import '../../../features/location/application/location_controller.dart';
-import '../../../features/location/domain/jurisdiction_location_resolver.dart';
-import '../../../features/location/platform/device_location_gateway.dart';
-import '../../../features/vehicle_status/platform/external_launcher.dart';
 import '../data/cda_catalog.dart';
+import '../data/cda_geography.dart';
+import 'cda_detail_sheet.dart';
+import 'cda_directory_view.dart';
+import 'cda_home_view.dart';
+import 'cda_map_view.dart';
 
-final cdaCatalogProvider = FutureProvider<CdaCatalog>((ref) {
-  return loadCdaCatalog(rootBundle);
-});
+final cdaCatalogProvider = FutureProvider<CdaCatalog>(
+  (ref) => loadCdaCatalog(rootBundle),
+);
+final cdaGeographyProvider = FutureProvider<CdaGeography>(
+  (ref) => loadCdaGeography(rootBundle),
+);
+
+enum _CdaPage { home, directory, map }
 
 class CdaFinderScreen extends ConsumerStatefulWidget {
   const CdaFinderScreen({super.key});
-
   @override
   ConsumerState<CdaFinderScreen> createState() => _CdaFinderScreenState();
 }
 
 class _CdaFinderScreenState extends ConsumerState<CdaFinderScreen> {
-  final _searchController = TextEditingController();
-  String _query = '';
-  String? _locationMunicipality;
-  String? _locationLabel;
-  String? _locationMessage;
-  bool _locating = false;
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  _CdaPage _page = _CdaPage.home;
+  bool _mapVisited = false;
+  bool _nearMe = false;
+  void _back() {
+    if (_page != _CdaPage.home) {
+      setState(() => _page = _CdaPage.home);
+    } else if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      GoRouter.maybeOf(context)?.go('/apps');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final catalog = ref.watch(cdaCatalogProvider);
-    return Scaffold(
-      appBar: AppBar(title: const Text('Buscar CDA')),
-      body: SafeArea(
-        child: catalog.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stackTrace) => _MessagePane(message: error.toString()),
-          data: _buildCatalog,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCatalog(CdaCatalog catalog) {
+    final geography = ref.watch(cdaGeographyProvider);
     final now = ref.watch(bogotaNowProvider);
-    final effectiveQuery = _locationMunicipality ?? _query;
-    final results = searchCdaCatalog(catalog.entries, effectiveQuery);
-    final visibleResults = results.take(40).toList(growable: false);
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.l,
-        AppSpacing.l,
-        AppSpacing.l,
-        96,
-      ),
-      children: [
-        Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _SearchHeader(
-                  controller: _searchController,
-                  locating: _locating,
-                  onUseLocation: () => _useLocation(catalog),
-                  onChanged: (value) {
-                    setState(() {
-                      _query = value;
-                      _locationMunicipality = null;
-                      _locationLabel = null;
-                      _locationMessage = null;
-                    });
-                  },
-                ),
-                const SizedBox(height: AppSpacing.m),
-                Text(
-                  _locationLabel ?? cdaCatalogUpdateLabel(catalog),
-                  style: AppTextStyles.bodyStrong,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  '${results.length} CDA · orden alfabético oficial',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.navy.withValues(alpha: 0.68),
-                  ),
-                ),
-                if (_locationMessage != null) ...[
-                  const SizedBox(height: AppSpacing.s),
-                  _InfoBanner(message: _locationMessage!),
-                ],
-                if (isCdaCatalogStale(catalog, now)) ...[
-                  const SizedBox(height: AppSpacing.s),
-                  const _InfoBanner(
-                    message:
-                        'Actualización oficial pendiente en Datos Abiertos.',
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.m),
-                if (visibleResults.isEmpty)
-                  const _MessagePane(
-                    message: 'No encontramos CDA con esa búsqueda.',
-                  )
-                else
-                  for (final entry in visibleResults) ...[
-                    _CdaResultCard(
-                      entry: entry,
-                      sourceUrl: catalog.source.sourceUrl,
-                    ),
-                    const SizedBox(height: AppSpacing.s),
-                  ],
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _useLocation(CdaCatalog catalog) async {
-    setState(() {
-      _locating = true;
-      _locationMessage = null;
-    });
-    try {
-      final gateway = ref.read(deviceLocationGatewayProvider);
-      if (!await gateway.isLocationServiceEnabled()) {
-        _finishLocation(
-          message: 'Activa la ubicación para filtrar por ciudad.',
-        );
-        return;
-      }
-      var permission = await gateway.checkPermission();
-      if (permission != DeviceLocationPermission.granted) {
-        permission = await gateway.requestPermission();
-      }
-      if (permission != DeviceLocationPermission.granted) {
-        _finishLocation(message: 'Permiso de ubicación no concedido.');
-        return;
-      }
-      final result = await gateway.getCurrentPosition();
-      if (result is! DeviceLocationSuccess) {
-        _finishLocation(message: 'No pudimos leer tu ubicación actual.');
-        return;
-      }
-      final municipality = _municipalityForPoint(result.point);
-      if (municipality == null) {
-        _finishLocation(
-          message: 'No pudimos asociar esta ubicación a una ciudad soportada sin coordenadas oficiales de CDA.',
-        );
-        return;
-      }
-      final matchCount = searchCdaCatalog(catalog.entries, municipality).length;
-      final label = _friendlyMunicipality(municipality);
-      setState(() {
-        _locating = false;
-        _locationMunicipality = municipality;
-        _locationLabel = 'CDA en $label · según tu ubicación';
-        _locationMessage = '$matchCount resultados del catálogo RUNT.';
-        _query = '';
-        _searchController.clear();
-      });
-    } finally {
-      if (mounted && _locating) {
-        setState(() => _locating = false);
-      }
-    }
-  }
-
-  void _finishLocation({required String message}) {
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _locating = false;
-      _locationMessage = message;
-    });
-  }
-
-  String? _municipalityForPoint(DeviceLocationPoint point) {
-    final matches = <({String municipality, double distanceKm})>[];
-    for (final hint in jurisdictionLocationHints) {
-      final distanceKm = haversineDistanceKm(
-        point.latitude,
-        point.longitude,
-        hint.centerLat,
-        hint.centerLon,
-      );
-      if (distanceKm <= hint.maxDetectionRadiusKm) {
-        matches.add((
-          municipality: switch (hint.jurisdictionId) {
-            'co-dc-bogota' => 'BOGOTA',
-            'co-ant-medellin' => 'MEDELLIN',
-            _ => '',
-          },
-          distanceKm: distanceKm,
-        ));
-      }
-    }
-    matches.removeWhere((match) => match.municipality.isEmpty);
-    matches.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
-    return matches.isEmpty ? null : matches.first.municipality;
-  }
-}
-
-class _SearchHeader extends StatelessWidget {
-  const _SearchHeader({
-    required this.controller,
-    required this.locating,
-    required this.onUseLocation,
-    required this.onChanged,
-  });
-
-  final TextEditingController controller;
-  final bool locating;
-  final VoidCallback onUseLocation;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.m),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            FilledButton.icon(
-              key: const ValueKey('cda-use-location'),
-              onPressed: locating ? null : onUseLocation,
-              icon: locating
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.my_location),
-              label: const Text('Usar mi ubicación'),
-            ),
-            const SizedBox(height: AppSpacing.s),
-            TextField(
-              key: const ValueKey('cda-search-field'),
-              controller: controller,
-              onChanged: onChanged,
-              textInputAction: TextInputAction.search,
-              decoration: const InputDecoration(
-                hintText: 'Buscar ciudad o CDA',
-                prefixIcon: Icon(Icons.search),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CdaResultCard extends ConsumerWidget {
-  const _CdaResultCard({required this.entry, required this.sourceUrl});
-
-  final CdaCatalogEntry entry;
-  final String sourceUrl;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final enlarged = MediaQuery.textScalerOf(context).scale(1) > 1.25;
-    final details = TextButton(
-      key: ValueKey('cda-detail-${entry.id}'),
-      onPressed: () => _showDetails(context, ref, entry, sourceUrl),
-      child: const Text('Ver detalles'),
-    );
-    return Material(
-      key: ValueKey('cda-result-${entry.id}'),
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(AppRadius.card),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        onTap: () => _showDetails(context, ref, entry, sourceUrl),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.m),
+    final title = switch (_page) {
+      _CdaPage.home => 'Buscar CDA',
+      _CdaPage.directory => 'Directorio RUNT',
+      _CdaPage.map => _nearMe ? 'CDA cerca de ti' : 'Explorar mapa',
+    };
+    return PopScope(
+      canPop: _page == _CdaPage.home,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _back();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                children: [
-                  const CircleAvatar(
-                    backgroundColor: AppColors.navy,
-                    foregroundColor: AppColors.plateYellow,
-                    child: Icon(Icons.car_repair_outlined),
-                  ),
-                  const SizedBox(width: AppSpacing.m),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(entry.name, style: AppTextStyles.bodyStrong),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          '${entry.municipality} · ${entry.department}',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.navy.withValues(alpha: 0.70),
-                          ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  children: [
+                    IconButton(
+                      key: const ValueKey('cda-back'),
+                      onPressed: _back,
+                      tooltip: 'Volver',
+                      icon: const Icon(Icons.arrow_back),
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.navy,
                         ),
-                        const SizedBox(height: AppSpacing.s),
-                        const _RuntBadge(),
+                      ),
+                    ),
+                    if (_page != _CdaPage.home)
+                      IconButton(
+                        tooltip: 'Fuente y actualización',
+                        onPressed: catalog.value == null
+                            ? null
+                            : () => showCdaSources(
+                                context,
+                                ref,
+                                catalog.value!,
+                                geography.value,
+                                now,
+                              ),
+                        icon: const Icon(Icons.info_outline),
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          minHeight: 48,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: catalog.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (error, stack) => Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'No se pudo abrir el catálogo CDA.',
+                          textAlign: TextAlign.center,
+                        ),
+                        TextButton.icon(
+                          onPressed: () => ref.invalidate(cdaCatalogProvider),
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Reintentar'),
+                        ),
                       ],
                     ),
                   ),
-                  if (!enlarged) details,
-                ],
+                  data: (data) {
+                    final geo = geography.value;
+                    final coverage = geo?.coverage(data, now: now);
+                    final operationalCatalog = _operationalCatalog(
+                      data,
+                      geo,
+                      now,
+                    );
+                    void open(CdaCatalogEntry entry) => showCdaDetails(
+                      context,
+                      ref,
+                      data,
+                      entry,
+                      geo?.byId[entry.id],
+                      now,
+                    );
+                    return IndexedStack(
+                      index: _page.index,
+                      children: [
+                        CdaHomeView(
+                          catalog: data,
+                          operationalCount:
+                              coverage?.operationalTotal ??
+                              operationalCatalog.entries.length,
+                          geoReady: coverage?.mapEnabled ?? false,
+                          onDirectory: () =>
+                              setState(() => _page = _CdaPage.directory),
+                          onMap: () => _openMap(
+                            data,
+                            operationalCatalog,
+                            geo,
+                            now,
+                            false,
+                          ),
+                          onNearby: () => _openMap(
+                            data,
+                            operationalCatalog,
+                            geo,
+                            now,
+                            true,
+                          ),
+                          onSource: () =>
+                              showCdaSources(context, ref, data, geo, now),
+                        ),
+                        CdaDirectoryView(
+                          catalog: operationalCatalog,
+                          onOpen: open,
+                          verifiedVehicleTypes: {
+                            for (final entry in operationalCatalog.entries)
+                              if (geo?.byId[entry.id]?.matches(entry) ?? false)
+                                entry.id: geo!.byId[entry.id]!
+                                    .verifiedVehicleTypes(now),
+                          },
+                        ),
+                        if (_mapVisited && coverage?.mapEnabled == true)
+                          CdaMapView(
+                            key: ValueKey(_nearMe),
+                            catalog: operationalCatalog,
+                            geography: geo!,
+                            onOpen: open,
+                            now: now,
+                            nearMe: _nearMe,
+                          )
+                        else
+                          const SizedBox.shrink(),
+                      ],
+                    );
+                  },
+                ),
               ),
-              if (enlarged)
-                Align(alignment: Alignment.centerRight, child: details),
             ],
           ),
         ),
@@ -331,241 +204,94 @@ class _CdaResultCard extends ConsumerWidget {
     );
   }
 
-  void _showDetails(
-    BuildContext context,
-    WidgetRef ref,
-    CdaCatalogEntry entry,
-    String sourceUrl,
-  ) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (context) {
-        return SafeArea(
+  Future<void> _openMap(
+    CdaCatalog fullCatalog,
+    CdaCatalog operationalCatalog,
+    CdaGeography? geo,
+    DateTime now,
+    bool nearby,
+  ) async {
+    final coverage = geo?.coverage(fullCatalog, now: now);
+    if (coverage?.mapEnabled != true) {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        builder: (sheetContext) => SafeArea(
           child: SingleChildScrollView(
             child: Padding(
-              key: const ValueKey('cda-detail-sheet'),
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.l,
-                0,
-                AppSpacing.l,
-                AppSpacing.xl,
-              ),
+              key: const ValueKey('cda-geography-gate'),
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(entry.name, style: AppTextStyles.h2),
-                  const SizedBox(height: AppSpacing.s),
-                  Text('${entry.municipality} · ${entry.department}'),
-                  const SizedBox(height: AppSpacing.m),
-                  _DetailLine(
-                    label: 'Estado de fuente oficial',
-                    value: 'CDA certificado',
+                  const Text(
+                    'Ubicaciones por verificar',
+                    style: AppTextStyles.h2,
                   ),
-                  _DetailLine(
-                    label: 'Actualizado en catálogo',
-                    value:
-                        '${_friendlyMonth(entry.sourceMonth)} ${entry.sourceYear}',
+                  const SizedBox(height: 16),
+                  Text(
+                    '${coverage?.addressVerifiedCount ?? 0} de ${fullCatalog.entries.length} sedes con dirección respaldada.\n'
+                    '${coverage?.mapEligibleCount ?? 0} tienen coordenada para mapa y cercanía.',
+                    style: const TextStyle(fontSize: 16),
                   ),
-                  const _DetailLine(
-                    label: 'Fuente',
-                    value: 'RUNT / MinTransporte',
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Mapa y cercanía estarán disponibles con el catálogo operativo enriquecido. Mientras tanto, puedes consultar el directorio por nombre o territorio.',
+                    style: TextStyle(fontSize: 16),
                   ),
-                  const _DetailLine(
-                    label: 'Dirección / teléfono',
-                    value: 'No publicado en la fuente RUNT.',
-                  ),
-                  const SizedBox(height: AppSpacing.m),
-                  FilledButton.icon(
-                    key: const ValueKey('cda-open-directions'),
-                    onPressed: () => _openExternal(
-                      context,
-                      ref,
-                      _googleMapsSearchUrl(entry),
-                      'No pudimos abrir Google Maps.',
+                  if (ref.read(cdaGeographyProvider).hasError)
+                    TextButton.icon(
+                      onPressed: () {
+                        ref.invalidate(cdaGeographyProvider);
+                        Navigator.pop(sheetContext);
+                      },
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Reintentar datos de ubicación'),
                     ),
-                    icon: const Icon(Icons.directions),
-                    label: const Text('Cómo llegar'),
-                  ),
-                  const SizedBox(height: AppSpacing.s),
-                  OutlinedButton.icon(
-                    key: const ValueKey('cda-open-waze'),
-                    onPressed: () => _openExternal(
-                      context,
-                      ref,
-                      _wazeSearchUrl(entry),
-                      'No pudimos abrir Waze.',
-                    ),
-                    icon: const Icon(Icons.navigation_outlined),
-                    label: const Text('Abrir en Waze'),
-                  ),
-                  const SizedBox(height: AppSpacing.s),
-                  OutlinedButton.icon(
-                    key: const ValueKey('cda-open-source'),
-                    onPressed: () => _openExternal(
-                      context,
-                      ref,
-                      sourceUrl,
-                      'No pudimos abrir la fuente oficial.',
-                    ),
-                    icon: const Icon(Icons.open_in_new),
-                    label: const Text('Abrir fuente oficial'),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      setState(() => _page = _CdaPage.directory);
+                    },
+                    child: const Text('Buscar en el directorio'),
                   ),
                 ],
               ),
             ),
           ),
-        );
-      },
-    );
-  }
-
-  Future<void> _openExternal(
-    BuildContext context,
-    WidgetRef ref,
-    String url,
-    String failureMessage,
-  ) async {
-    final launcher = ref.read(externalLauncherProvider);
-    var opened = false;
-    try {
-      opened = await launcher.openExternal(url);
-    } catch (_) {
-      opened = false;
-    }
-    if (!context.mounted || opened) {
+        ),
+      );
       return;
     }
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(failureMessage)));
+    setState(() {
+      _nearMe = nearby;
+      _mapVisited = true;
+      _page = _CdaPage.map;
+    });
   }
 }
 
-String _googleMapsSearchUrl(CdaCatalogEntry entry) {
-  return Uri.https('www.google.com', '/maps/search/', {
-    'api': '1',
-    'query': _navigationQuery(entry),
-  }).toString();
-}
-
-String _wazeSearchUrl(CdaCatalogEntry entry) {
-  return Uri.https('waze.com', '/ul', {
-    'q': _navigationQuery(entry),
-    'navigate': 'yes',
-  }).toString();
-}
-
-String _navigationQuery(CdaCatalogEntry entry) {
-  return '${entry.name}, ${entry.municipality}, ${entry.department}, Colombia';
-}
-
-class _RuntBadge extends StatelessWidget {
-  const _RuntBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.teal.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(AppRadius.chip),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.s,
-          vertical: AppSpacing.xs,
-        ),
-        child: Text(
-          'Catálogo RUNT',
-          style: AppTextStyles.caption.copyWith(
-            color: AppColors.teal,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoBanner extends StatelessWidget {
-  const _InfoBanner({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.plateYellow.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        border: Border.all(color: AppColors.plateYellow),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.m),
-        child: Text(message, style: AppTextStyles.caption),
-      ),
-    );
-  }
-}
-
-class _MessagePane extends StatelessWidget {
-  const _MessagePane({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Text(message, textAlign: TextAlign.center),
-    );
-  }
-}
-
-class _DetailLine extends StatelessWidget {
-  const _DetailLine({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.s),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
-          Text(value),
-        ],
-      ),
-    );
-  }
-}
-
-String _friendlyMunicipality(String value) {
-  return switch (value) {
-    'BOGOTA' => 'Bogotá',
-    'MEDELLIN' => 'Medellín',
-    _ => value,
-  };
-}
-
-String _friendlyMonth(int month) {
-  const months = [
-    'enero',
-    'febrero',
-    'marzo',
-    'abril',
-    'mayo',
-    'junio',
-    'julio',
-    'agosto',
-    'septiembre',
-    'octubre',
-    'noviembre',
-    'diciembre',
-  ];
-  return months[month - 1];
+CdaCatalog _operationalCatalog(
+  CdaCatalog catalog,
+  CdaGeography? geography,
+  DateTime now,
+) {
+  if (geography == null) return catalog;
+  final entries = catalog.entries
+      .where((entry) {
+        final site = geography.byId[entry.id];
+        return site != null &&
+            site.matches(entry) &&
+            site.addressVerifiedAt(now);
+      })
+      .toList(growable: false);
+  if (entries.isEmpty) return catalog;
+  return CdaCatalog(
+    source: catalog.source,
+    metrics: catalog.metrics,
+    entries: entries,
+  );
 }
