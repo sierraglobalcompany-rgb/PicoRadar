@@ -15,6 +15,7 @@ import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/core/sync/dataset_sync_service.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_dataset.dart';
 import 'package:picoradar/features/trip/data/toll_inventory.dart';
+import 'package:picoradar/features/vehicle_status/data/tax_catalog.dart';
 
 void main() {
   late AppDatabase database;
@@ -63,7 +64,10 @@ void main() {
 
     expect(service, isNotNull);
     expect(service!.importers.keys, {restrictionsDatasetKey});
-    expect(service.transactionalImporters.keys, {tollInventoryDatasetKey});
+    expect(service.transactionalImporters.keys, {
+      tollInventoryDatasetKey,
+      taxCalendarsDatasetKey,
+    });
   });
 
   test('product sync rejects an HTTP CDN before storage', () async {

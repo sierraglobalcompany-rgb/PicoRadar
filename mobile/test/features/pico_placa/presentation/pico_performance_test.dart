@@ -8,8 +8,10 @@ import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.
 import 'package:picoradar/features/pico_placa/presentation/pico_detail_screen.dart';
 
 import '../../../performance_test_harness.dart';
+import '../../home/presentation/v01b_test_font.dart';
 
 void main() {
+  setUpAll(loadV01bTestFont);
   for (final personal in [true, false]) {
     testWidgets(
       'PERF Pico same-day expiry reloads once and reverses personal $personal',
@@ -30,14 +32,14 @@ void main() {
         if (personal) {
           await _reveal(
             tester,
-            find.byKey(const ValueKey('pico-immediate-state')),
+            find.byKey(const ValueKey('pico-summary-today')),
           );
           expect(_verdict(tester), 'Datos vencidos');
         } else {
           expect(
             find.descendant(
               of: find.byKey(const ValueKey('pico-city-freshness')),
-              matching: find.text('Verificado'),
+              matching: find.textContaining('Verificado'),
             ),
             findsOneWidget,
           );
@@ -55,7 +57,7 @@ void main() {
           expect(
             find.descendant(
               of: find.byKey(const ValueKey('pico-city-freshness')),
-              matching: find.text('Datos'),
+              matching: find.textContaining('Por revisar'),
             ),
             findsOneWidget,
           );
@@ -89,22 +91,22 @@ void main() {
           const PicoDetailScreen(vehicleId: 'personal'),
         );
         if (showMonth) {
-          await _reveal(tester, find.text('Mes'));
-          await tester.tap(find.text('Mes'));
-          await tester.pumpAndSettle();
+          await _reveal(tester, find.byKey(const ValueKey('pico-personal-month-calendar')));
           expect(find.text('Septiembre 2026'), findsOneWidget);
         }
         await _reveal(
           tester,
-          find.byKey(const ValueKey('pico-immediate-state')),
+          find.byKey(const ValueKey('pico-summary-today')),
         );
-        expect(_verdict(tester), 'Empieza a las 5:00 a. m.');
+        expect(_verdict(tester), '5:00 a. m. – 9:00 a. m.\n4:00 p. m. – 8:00 p. m.');
+        expect(find.text('Empieza en 1 min'), findsOneWidget);
         final reads = harness.store.ruleReads;
         final calls = harness.store.calls.length;
         expect(reads, greaterThan(0));
         expect(harness.container.exists(appClockProvider), isTrue);
         await harness.tick(tester, const Duration(minutes: 1));
-        expect(_verdict(tester), 'No puede circular');
+        expect(_verdict(tester), '5:00 a. m. – 9:00 a. m.\n4:00 p. m. – 8:00 p. m.');
+        expect(find.text('Este tramo termina en 4 h'), findsOneWidget);
         expect(harness.store.calls.length, calls);
         expect(harness.store.ruleReads, reads);
         await harness.tick(tester, const Duration(minutes: 1));
@@ -123,9 +125,9 @@ void main() {
     final reads = harness.store.ruleReads;
     final calls = harness.store.calls.length;
     expect(reads, greaterThan(0));
-    expect(find.text('Restricción hoy'), findsOneWidget);
+    expect(find.text('Pico y placa hoy'), findsOneWidget);
     await harness.tick(tester, const Duration(minutes: 1));
-    expect(find.text('Restricción hoy'), findsOneWidget);
+    expect(find.text('Pico y placa hoy'), findsOneWidget);
     expect(harness.store.calls.length, calls);
     expect(harness.store.ruleReads, reads);
     expect(tester.takeException(), isNull);
@@ -144,7 +146,7 @@ void main() {
       harness.container.invalidate(bundledRestrictionsProvider);
       await tester.pumpAndSettle();
       expect(harness.store.calls.length, 6);
-      expect(find.text('Restricción hoy'), findsOneWidget);
+      expect(find.text('Pico y placa hoy'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -155,7 +157,7 @@ void main() {
       final harness = PerformanceTestHarness([performanceVehicle('personal')]);
       harness.nowUtc = DateTime.utc(2026, 9, 11, 4, 59);
       await harness.pump(tester, const PicoDetailScreen(vehicleId: 'personal'));
-      await _reveal(tester, find.byKey(const ValueKey('pico-immediate-state')));
+      await _reveal(tester, find.byKey(const ValueKey('pico-summary-today')));
       expect(_verdict(tester), 'Restricción finalizada');
       final before = harness.store.calls.length;
       harness.store.pending = Completer<void>();
@@ -166,7 +168,7 @@ void main() {
       harness.store.pending = null;
       await tester.pumpAndSettle();
       expect(harness.store.calls.length, before + 1);
-      expect(_verdict(tester), 'Sin pico y placa hoy');
+      expect(_verdict(tester), 'Puede circular');
       for (final status in [
         RestrictionDayStatus.unknown,
         RestrictionDayStatus.stale,
@@ -203,17 +205,17 @@ void main() {
         builder: (_, value, _) => value,
       ),
     );
-    await _reveal(tester, find.byKey(const ValueKey('pico-immediate-state')));
-    expect(_verdict(tester), 'Empieza a las 5:00 a. m.');
+    await _reveal(tester, find.byKey(const ValueKey('pico-summary-today')));
+    expect(_verdict(tester), '5:00 a. m. – 9:00 a. m.\n4:00 p. m. – 8:00 p. m.');
     screen.value = const PicoDetailScreen(vehicleId: 'allowed');
     await tester.pumpAndSettle();
-    expect(_verdict(tester), 'Sin pico y placa hoy');
+    expect(_verdict(tester), 'Puede circular');
     screen.value = const PicoDetailScreen(
       vehicleId: 'allowed',
       jurisdictionId: 'co-dc-bogota',
     );
     await tester.pumpAndSettle();
-    expect(_verdict(tester), 'Empieza a las 5:00 a. m.');
+    expect(_verdict(tester), '5:00 a. m. – 9:00 a. m.\n4:00 p. m. – 8:00 p. m.');
     expect(
       await harness.container.read(selectedPicoJurisdictionIdProvider.future),
       'co-ant-medellin',
@@ -226,9 +228,7 @@ void main() {
   ) async {
     final harness = PerformanceTestHarness([performanceVehicle('personal')]);
     await harness.pump(tester, const PicoDetailScreen(vehicleId: 'personal'));
-    await _reveal(tester, find.text('Mes'));
-    await tester.tap(find.text('Mes'));
-    await tester.pumpAndSettle();
+    await _reveal(tester, find.byKey(const ValueKey('pico-personal-month-calendar')));
     final septemberReads = harness.store.ruleReads;
     final next = find.byKey(const ValueKey('pico-month-next'));
     await _reveal(tester, next);
@@ -246,8 +246,8 @@ void main() {
 }
 
 String? _verdict(WidgetTester tester) => tester
-    .widget<Text>(find.byKey(const ValueKey('pico-immediate-verdict')))
-    .data;
+    .widget<Text>(find.byKey(const ValueKey('pico-summary-main')))
+    .data?.replaceAll('\u00a0', ' ');
 
 Future<void> _reveal(WidgetTester tester, Finder target) async {
   await tester.scrollUntilVisible(

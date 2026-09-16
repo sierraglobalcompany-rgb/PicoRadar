@@ -65,6 +65,24 @@ class _HarnessWalletPreferences implements WalletSecurityPreferencesStore {
   }
 }
 
+class _NoDeviceLocationGateway implements DeviceLocationGateway {
+  @override
+  Future<bool> isLocationServiceEnabled() async => false;
+  @override
+  Future<DeviceLocationPermission> checkPermission() async =>
+      DeviceLocationPermission.notRequested;
+  @override
+  Future<DeviceLocationPermission> requestPermission() async =>
+      DeviceLocationPermission.denied;
+  @override
+  Future<DeviceLocationResult> getCurrentPosition() async =>
+      const DeviceLocationError(DeviceLocationFailure.serviceDisabled);
+  @override
+  Future<bool> openAppSettings() async => false;
+  @override
+  Future<bool> openLocationSettings() async => false;
+}
+
 class TestAppHarness {
   static final registrationCatalog = RegistrationCityCatalog.fromJson(
     jsonDecode(File(registrationCityCatalogAssetPath).readAsStringSync())
@@ -201,10 +219,9 @@ class TestAppHarness {
         vehicleDocumentGatewayProvider.overrideWithValue(
           documentGateway ?? _FakeVehicleDocumentGateway(),
         ),
-        if (deviceLocationGateway != null)
-          deviceLocationGatewayProvider.overrideWithValue(
-            deviceLocationGateway,
-          ),
+        deviceLocationGatewayProvider.overrideWithValue(
+          deviceLocationGateway ?? _NoDeviceLocationGateway(),
+        ),
         if (vehicleListOverride != null)
           vehicleListProvider.overrideWithValue(
             AsyncValue.data(vehicleListOverride),

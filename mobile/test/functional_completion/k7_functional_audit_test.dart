@@ -23,8 +23,10 @@ import 'package:picoradar/features/trip/data/trip_draft_store.dart';
 import 'package:picoradar/features/vehicle_status/platform/obligation_notifications.dart';
 
 import '../test_app_harness.dart';
+import '../features/home/presentation/v01b_test_font.dart';
 
 void main() {
+  setUpAll(loadV01bTestFont);
   group('K7-C functional audit documentation gate', () {
     test('records required source coverage and launcher matrix', () {
       final report = File('../docs/qa/K7_FUNCTIONAL_AUDIT.md');
@@ -208,6 +210,10 @@ void main() {
     testWidgets('visible launcher modules do not route to placeholders', (
       tester,
     ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       final vehicle = await harness.repository.createVehicle(
         plate: 'KTC123',
         kind: VehicleKind.car,

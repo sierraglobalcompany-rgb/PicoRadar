@@ -26,8 +26,11 @@ import 'package:picoradar/features/tramites/presentation/tramites_screen.dart';
 import 'package:picoradar/features/trip/presentation/trip_screen.dart';
 
 import '../../../test_app_harness.dart';
+import '../../../plate_test_fonts.dart';
+import '../../home/presentation/v01b_test_font.dart';
 
 void main() {
+  setUpAll(loadV01bTestFont);
   late TestAppHarness harness;
 
   setUp(() {
@@ -417,7 +420,7 @@ void main() {
     await _pumpRoute(tester);
 
     expect(find.byType(ComparendosScreen), findsOneWidget);
-    expect(find.text('CMP123'), findsOneWidget);
+    expect(findPlateNumber('CMP123'), findsOneWidget);
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
   });
 
@@ -523,11 +526,8 @@ void main() {
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
 
     await _openModuleFromApps(tester, harness, 'seguro_asistencia');
-    expect(find.text('Seguro y asistencia'), findsWidgets);
-    expect(
-      find.text('Disponible según las coberturas y condiciones de tu póliza.'),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('insurance-owner-content')), findsOneWidget);
+    expect(find.byKey(const ValueKey('insurance-register')), findsOneWidget);
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
 
     await _openModuleFromApps(tester, harness, 'impuestos');

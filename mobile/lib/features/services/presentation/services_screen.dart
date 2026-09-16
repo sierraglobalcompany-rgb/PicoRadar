@@ -693,8 +693,8 @@ class _PrimaryServiceCard extends StatelessWidget {
                 _InlineActionLabel(loading: loading),
               ],
             )
-          : SizedBox(
-              height: 76,
+          : ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 76),
               child: Stack(
                 children: [
                   ConstrainedBox(

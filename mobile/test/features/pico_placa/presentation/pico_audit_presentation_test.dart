@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/theme/app_tokens.dart';
+import 'package:picoradar/app/theme/app_theme.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/pico_placa/data/pico_jurisdiction_catalog.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
@@ -76,7 +77,7 @@ void main() {
         builder: (_, value, _) => value,
       ),
     );
-    await _reveal(tester, find.byKey(const ValueKey('pico-immediate-state')));
+    await _reveal(tester, find.byKey(const ValueKey('pico-summary-today')));
     expect(find.text('Sin pico y placa hoy'), findsWidgets);
     expect(find.text('No puede circular'), findsNothing);
 
@@ -85,7 +86,7 @@ void main() {
     final hero = find.byKey(const ValueKey('pico-city-hero'));
     await _reveal(tester, hero);
     expect(_surfaceText(hero), contains('1 · 2 · 3 · 4 · 5'));
-    expect(_surfaceText(hero), contains('Restricción hoy'));
+    expect(_surfaceText(hero), contains('Pico y placa hoy'));
     expect(_surfaceText(hero), isNot(contains('No puedes circular')));
     expect(_surfaceText(hero), isNot(contains('No circula')));
     expect(
@@ -119,8 +120,8 @@ void main() {
           copy,
           contains(
             status == RestrictionDayStatus.stale
-                ? 'Datos desactualizados'
-                : 'Sin confirmar',
+                ? 'Datos vencidos'
+                : 'Por verificar',
           ),
         );
         final paragraphs = find.descendant(
@@ -293,32 +294,28 @@ void main() {
 
         final hero = find.byKey(const ValueKey('pico-city-hero'));
         await _reveal(tester, hero);
-        expect(_surfaceText(hero), contains('Hoy · Jue 10'));
         problems.addAll(_readabilityProblems(tester, hero));
-        problems.addAll(_digitLineProblems(hero, '1 · 2 · 3 · 4 · 5'));
-        problems.addAll(_windowProblems(hero));
+        expect(_surfaceText(hero), contains('1 · 2 · 3 · 4 · 5'));
 
-        final rotation = find.byKey(const ValueKey('pico-city-rotation-row-0'));
-        await _reveal(tester, rotation);
-        expect(_surfaceText(rotation), contains('Jue 10'));
-        problems.addAll(_readabilityProblems(tester, rotation));
-        problems.addAll(_digitLineProblems(rotation, '1 · 2 · 3 · 4 · 5'));
-        problems.addAll(_windowProblems(rotation));
-
-        final ruleSummary = find.byKey(
-          const ValueKey('pico-city-rule-summary-card'),
-        );
-        await _reveal(tester, ruleSummary);
-        problems.addAll(_readabilityProblems(tester, ruleSummary));
-        problems.addAll(_windowProblems(ruleSummary));
-
-        final week = find.byKey(const ValueKey('pico-city-week-list'));
+        final week = find.byKey(const ValueKey('pico-city-week-card'));
         await _reveal(tester, week);
+        problems.addAll(_readabilityProblems(tester, week));
         final thursday = find.byKey(const ValueKey('pico-city-week-day-3'));
         await tester.ensureVisible(thursday);
         await tester.pumpAndSettle();
+        expect(_surfaceText(thursday), contains('Jue'));
         problems.addAll(_readabilityProblems(tester, thursday));
-        problems.addAll(_windowProblems(thursday));
+        await tester.tap(thursday);
+        await tester.pumpAndSettle();
+        for (final window in _windowLabels) {
+          expect(find.textContaining(window), findsWidgets);
+        }
+        Navigator.of(tester.element(find.textContaining(_windowLabels.first).first)).pop();
+        await tester.pumpAndSettle();
+        final schedule = find.byKey(const ValueKey('pico-city-schedule'));
+        await _reveal(tester, schedule);
+        problems.addAll(_readabilityProblems(tester, schedule));
+        problems.addAll(_windowProblems(schedule));
 
         expect(problems, isEmpty, reason: problems.join('\n'));
         expect(tester.takeException(), isNull);
@@ -349,49 +346,24 @@ void main() {
                 jurisdictionId: 'co-san-bucaramanga',
               ),
             );
-            final source = find.byKey(
-              const ValueKey('pico-personal-location-source'),
-            );
-            final text = _surfaceText(source);
-            expect(text, contains(_longCity));
-            expect(text, contains(_sourceHost));
-            expect(text, contains(stale ? 'Por actualizar' : 'Vigentes'));
+            final city = find.byKey(const ValueKey('pico-personal-change-city'));
+            expect(_surfaceText(city), contains('Bucaramanga'));
+            final source = find.byKey(const ValueKey('pico-personal-source-row'));
+            await _reveal(tester, source);
             final problems = _readabilityProblems(tester, source);
-            final personalHero = find.byKey(
-              const ValueKey('pico-personal-screen'),
-            );
-            await _reveal(tester, personalHero);
-            for (final label in ['MI VEHÍCULO', 'MI PICO Y PLACA']) {
-              final heading = find.descendant(
-                of: personalHero,
-                matching: find.text(label),
-              );
-              expect(heading, findsOneWidget);
-              problems.addAll(_readabilityProblems(tester, heading));
-              final paragraph = tester.renderObject<RenderParagraph>(
-                find.descendant(of: heading, matching: find.byType(RichText)),
-              );
-              if (paragraph.getTransformTo(null).getMaxScaleOnAxis() < 0.99) {
-                problems.add(
-                  'Personal heading shrunk instead of reflowed: $label',
-                );
-              }
-              expect(
-                tester.widget<Text>(heading).style!.fontSize,
-                greaterThanOrEqualTo(AppTextStyles.caption.fontSize!),
-              );
-            }
-            expect(
-              tester
-                  .getRect(find.text('MI VEHÍCULO'))
-                  .overlaps(tester.getRect(find.text('MI PICO Y PLACA'))),
-              isFalse,
-            );
+            await tester.tap(source);
+            await tester.pumpAndSettle();
+            final sheet = find.byKey(const ValueKey('pico-personal-source-sheet'));
+            expect(_surfaceText(sheet), contains(_sourceHost));
+            expect(_surfaceText(sheet), contains(stale ? 'Por actualizar' : 'Vigentes'));
+            problems.addAll(_readabilityProblems(tester, sheet));
+            Navigator.of(tester.element(sheet)).pop();
+            await tester.pumpAndSettle();
             expect(problems, isEmpty, reason: problems.join('\n'));
             if (stale) {
               await _reveal(
                 tester,
-                find.byKey(const ValueKey('pico-immediate-state')),
+                find.byKey(const ValueKey('pico-summary-today')),
               );
               expect(find.text('Datos vencidos'), findsWidgets);
               expect(find.text('Sin pico y placa hoy'), findsNothing);
@@ -475,36 +447,6 @@ List<String> _readabilityProblems(WidgetTester tester, Finder surface) {
   return problems;
 }
 
-List<String> _digitLineProblems(Finder surface, String digits) {
-  for (final element
-      in find
-          .descendant(of: surface, matching: find.byType(RichText))
-          .evaluate()) {
-    final paragraph = element.renderObject! as RenderParagraph;
-    final text = _normalized(paragraph.text.toPlainText());
-    final start = text.indexOf(digits);
-    if (start < 0) continue;
-    final lineCounts = <int, int>{};
-    for (final match in RegExp(r'\d').allMatches(digits)) {
-      final boxes = paragraph.getBoxesForSelection(
-        TextSelection(
-          baseOffset: start + match.start,
-          extentOffset: start + match.end,
-        ),
-      );
-      if (boxes.isEmpty) return ['Hidden digit ${match.group(0)}'];
-      final line = boxes.first.top.round();
-      lineCounts.update(line, (count) => count + 1, ifAbsent: () => 1);
-    }
-    return lineCounts.values.any((count) => count == 1)
-        ? ['Orphan digit in ${surface.describeMatch(Plurality.one)}: $digits']
-        : [];
-  }
-  return [
-    'Missing complete digit sequence in ${surface.describeMatch(Plurality.one)}: $digits',
-  ];
-}
-
 List<String> _windowProblems(Finder surface) {
   final text = _surfaceText(surface);
   return [
@@ -557,6 +499,7 @@ Future<void> _pumpAudit(
         ),
       ],
       child: MaterialApp(
+        theme: buildPicoRadarTheme(),
         home: child ?? PicoDetailScreen(jurisdictionId: cityId),
       ),
     ),

@@ -1,11 +1,11 @@
 {
   "version": "1.0",
   "timestamp": "2026-09-15",
-  "status": "partial_external_cleanup",
-  "phase_name": "Consolidacion y limpieza PicoRadar",
-  "branch": "codex/workspace-consolidation",
-  "checkpoint": "docs/WORKSPACE_CONSOLIDATION.md",
-  "implementation": "Latest installed runtime preserved from 5958f42 in canonical root. No phone changes or publication.",
+  "status": "paused",
+  "phase_name": "Estabilizacion de suite actual",
+  "branch": "codex/stabilize-current-suite",
+  "checkpoint": ".planning/STABILIZATION.md",
+  "implementation": "WIP paused by owner. Root consolidation preserved; focused regression 402 pass / 15 fail. Full suite, analysis and build not rerun after fixes.",
   "completed_tasks": [
     {
       "id": 1,
@@ -30,13 +30,36 @@
   ],
   "remaining_tasks": [
     {
-      "name": "External cleanup blocked by tool policy; unique design originals and empty locked directory retained"
+      "name": "Resolve 15 focused failures: Home 8, Garage 1, Apps 1, Pico geometry 4, K7 matrix 1"
     },
     {
-      "name": "Owner requested separate stabilization of all 87 known failures before final acceptance"
+      "name": "Format, analyze, focused and full suite, dev build, checkpoint and accurate handoff"
+    },
+    {
+      "name": "External cleanup and physical QA remain pending; do not resume deletion automatically"
     }
   ],
   "async_jobs": [],
   "active_agents": [],
-  "next_action": "Freeze cleanup checkpoint, then stabilize the 87 reproduced failures. Do not delete unrelated files or treat pending physical QA as completed."
+  "next_action": "Wait for owner instruction. Then read .planning/STABILIZATION.md and stabilization-regression-tests.log.",
+  "consolidation_checkpoint": "ccd00bd",
+  "background_processes": "Test session 56839 completed with exit 1; no test processes left by this run.",
+  "uncommitted_files_at_pause": [
+    " M .planning/.continue-here.md",
+    " M mobile/lib/features/pico_placa/presentation/city_pico_widgets.dart",
+    " M mobile/lib/features/services/presentation/services_screen.dart",
+    " M mobile/test/app/dataset_sync_composition_test.dart",
+    " M mobile/test/app/startup/startup_gate_test.dart",
+    " M mobile/test/features/apps_launcher/presentation/apps_screen_test.dart",
+    " M mobile/test/features/garage/presentation/garage_screen_test.dart",
+    " M mobile/test/features/home/presentation/home_screen_test.dart",
+    " M mobile/test/features/pico_placa/presentation/pico_audit_presentation_test.dart",
+    " M mobile/test/features/pico_placa/presentation/pico_performance_test.dart",
+    " M mobile/test/functional_completion/k7_functional_audit_test.dart",
+    " M mobile/test/test_app_harness.dart",
+    "?? .planning/STABILIZATION.md",
+    "?? capturas/",
+    "?? mockups/",
+    "?? output/"
+  ]
 }

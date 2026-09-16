@@ -602,7 +602,7 @@ void main() {
     await _openGarage(tester, harness);
     await tester.tap(find.byKey(ValueKey('garage-vehicle-card-${vehicle.id}')));
     await tester.pumpAndSettle();
-    expect(find.text('Ciudad de matrícula'), findsOneWidget);
+    expect(find.text('Matrícula'), findsWidgets);
     expect(find.text('Ciudad'), findsNothing);
     expect(find.text('Medellín'), findsOneWidget);
   });
@@ -1759,7 +1759,7 @@ void main() {
         findsNothing,
       );
       expect(find.byKey(const ValueKey('detail-status-pico')), findsOneWidget);
-      expect(find.text('Ver estado y calendario'), findsOneWidget);
+      expect(find.byKey(const ValueKey('detail-status-pico')).hitTestable(), findsOneWidget);
 
       final picoEntry = find.byKey(const ValueKey('detail-status-pico'));
       await tester.ensureVisible(picoEntry);

@@ -306,7 +306,9 @@ class _CityIdentity extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 48),
-          child: Row(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
             children: [
               const Icon(
                 Icons.location_on_rounded,
@@ -336,6 +338,7 @@ class _CityIdentity extends StatelessWidget {
               ),
               const Icon(Icons.expand_more, color: Color(0xFFCCDEE8), size: 22),
             ],
+            ),
           ),
         ),
       ),

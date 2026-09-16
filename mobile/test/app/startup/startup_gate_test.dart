@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui' show FrameTiming;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
@@ -13,6 +14,23 @@ import 'package:picoradar/features/vehicle_status/platform/vehicle_document_gate
 import '../../test_app_harness.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  late Directory walletCache;
+  const pathChannel = MethodChannel('plugins.flutter.io/path_provider');
+  setUp(() {
+    walletCache = Directory.systemTemp.createTempSync('picoradar-startup-test-');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pathChannel, (call) async {
+          if (call.method == 'getTemporaryDirectory') return walletCache.path;
+          throw MissingPluginException('Unexpected path lookup: ${call.method}');
+        });
+  });
+  tearDown(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pathChannel, null);
+    await walletCache.delete(recursive: true);
+  });
+
   testWidgets('explicit retry clears a cached transient privacy failure', (
     tester,
   ) async {
