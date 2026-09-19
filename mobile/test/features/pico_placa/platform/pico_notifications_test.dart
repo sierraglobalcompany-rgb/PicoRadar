@@ -51,8 +51,15 @@ void main() {
         String title = 'Reminder',
         bool alarm = false,
         bool enriched = false,
+        bool includeNormal = false,
+        DateTime? originalTime,
       }) {
-        final time = bogotaScheduledTime(date: futureDate, minuteOfDay: 300);
+        final time = originalTime == null
+            ? bogotaScheduledTime(date: futureDate, minuteOfDay: 300)
+            : bogotaScheduledTime(
+                date: originalTime,
+                minuteOfDay: originalTime.hour * 60 + originalTime.minute,
+              );
         return pico
             ? scheduler.reschedule([
                 PicoNotificationPlan(
@@ -67,6 +74,20 @@ void main() {
                   delivery: AlertSettings(alarm: alarm, enriched: enriched),
                   plate: 'DEM123',
                 ),
+                if (includeNormal)
+                  PicoNotificationPlan(
+                    id: 43,
+                    type: PicoAlertType.sameDay,
+                    vehicleId: 'normal-car',
+                    targetDate: futureDate,
+                    scheduledAt: bogotaScheduledTime(
+                      date: futureDate,
+                      minuteOfDay: 300,
+                    ),
+                    title: title,
+                    body: body,
+                    payload: '/pico?vehicleId=normal-car',
+                  ),
               ])
             : scheduler.rescheduleObligationNotifications([
                 ObligationNotificationPlan(
@@ -85,6 +106,24 @@ void main() {
                   delivery: AlertSettings(alarm: alarm, enriched: enriched),
                   plate: 'DEM123',
                 ),
+                if (includeNormal)
+                  ObligationNotificationPlan(
+                    id: 43,
+                    vehicleId: 'normal-car',
+                    type: VehicleObligationType.soat,
+                    dueDate: futureDate,
+                    offsetDays: 1,
+                    scheduledAt: bogotaScheduledTime(
+                      date: futureDate,
+                      minuteOfDay: 300,
+                    ),
+                    title: title,
+                    body: body,
+                    payload: obligationReminderPayload(
+                      type: VehicleObligationType.soat,
+                      vehicleId: 'normal-car',
+                    ),
+                  ),
               ]);
       }
 
@@ -98,6 +137,68 @@ void main() {
         await publish('same');
         expect(channel.schedules, 2);
         expect(channel.pending.keys, contains(42));
+      });
+
+      test(
+        'ordinary reconciliation never pre-cancels native projection',
+        () async {
+          await publish('same', alarm: true);
+          expect(alarms.cancellations, 0);
+          await publish('edited display only', alarm: true);
+          expect(alarms.cancellations, 0);
+          await cancel();
+          expect(alarms.cancellations, 1);
+        },
+      );
+
+      test(
+        'recorded native pending error still attempts reconciliation',
+        () async {
+          await publish('same', alarm: true);
+          alarms.failPending = true;
+          await publish('same', alarm: true);
+          expect(alarms.writes, 2);
+          expect(alarms.cancellations, 0);
+        },
+      );
+
+      test(
+        'exact permission loss preserves normal reminders for another car',
+        () async {
+          await publish('same', alarm: true, includeNormal: true);
+          alarms.available = false;
+          await expectLater(
+            publish('same', alarm: true, includeNormal: true),
+            throwsStateError,
+          );
+          expect(channel.pending.keys, {43});
+          expect(alarms.ids, isEmpty);
+          expect(channel.pending.containsKey(42), isFalse);
+        },
+      );
+
+      test(
+        'a recent original target is retention only, never replayed after stop',
+        () async {
+          final now = DateTime.now().toUtc().subtract(const Duration(hours: 5));
+          final original = now.subtract(const Duration(minutes: 2));
+          alarms.acceptPast = false;
+          await publish('same', alarm: true, originalTime: original);
+          expect(alarms.ids, isEmpty);
+          expect(channel.pending, isEmpty);
+        },
+      );
+
+      test('native active target survives reconciliation and later explicit cancel', () async {
+        final now = DateTime.now().toUtc().subtract(const Duration(hours: 5));
+        final original = now.subtract(const Duration(minutes: 2));
+        alarms.ids.add(42);
+        alarms.acceptPast = false;
+        await publish('same', alarm: true, originalTime: original);
+        expect(alarms.ids, {42});
+        expect(alarms.cancellations, 0);
+        await cancel();
+        expect(alarms.ids, isEmpty);
       });
 
       test('revocation cancels cache and grant retries same plan', () async {
@@ -381,6 +482,94 @@ void main() {
     );
   });
 
+  test(
+    'planner retains only unexpired alarm identities for reconciliation',
+    () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      for (final alarm in [false, true]) {
+        for (final minute in [2, 15]) {
+          final plans = await buildPicoNotificationPlans(
+            store: _FakeRestrictionStore(db),
+            currentInstant: DateTime.utc(2026, 8, 30, 10, minute),
+            nowBogota: DateTime(2026, 8, 30, 5, minute),
+            vehicles: [car],
+            jurisdiction: const RestrictionJurisdiction(
+              id: 'co-dc-bogota',
+              name: 'Bogota',
+            ),
+            alertPreferences: const PicoAlertPreferences(
+              enabled: true,
+              dayBeforeEnabled: false,
+              sameDayEnabled: true,
+              dayBeforeMinute: 1140,
+              sameDayMinute: 300,
+              permissionRequested: true,
+              permissionGranted: true,
+            ),
+            deliverySettings: [
+              VehicleAlertSettings(
+                car.id,
+                AlertCategory.pico,
+                AlertSettings(
+                  alarm: alarm,
+                  dayBefore: false,
+                  sameDayMinute: 300,
+                ),
+              ),
+            ],
+            retainRecentAlarms: true,
+          );
+          expect(
+            plans.any((p) => p.targetDate == DateTime(2026, 8, 30)),
+            alarm && minute < 15,
+            reason: 'alarm=$alarm minute=$minute',
+          );
+        }
+      }
+    },
+  );
+
+  test(
+    'previous-day late alarm identity survives midnight but not expiry',
+    () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final plans = await buildPicoNotificationPlans(
+        store: _FakeRestrictionStore(db),
+        currentInstant: DateTime.utc(2026, 8, 30, 5, 2),
+        nowBogota: DateTime(2026, 8, 30, 0, 2),
+        vehicles: [car],
+        jurisdiction: const RestrictionJurisdiction(
+          id: 'co-dc-bogota',
+          name: 'Bogota',
+        ),
+        alertPreferences: const PicoAlertPreferences(
+          enabled: true,
+          dayBeforeEnabled: false,
+          sameDayEnabled: true,
+          dayBeforeMinute: 1140,
+          sameDayMinute: 300,
+          permissionRequested: true,
+          permissionGranted: true,
+        ),
+        deliverySettings: [
+          VehicleAlertSettings(
+            car.id,
+            AlertCategory.pico,
+            const AlertSettings(
+              alarm: true,
+              dayBefore: false,
+              sameDayMinute: 1439,
+            ),
+          ),
+        ],
+        retainRecentAlarms: true,
+      );
+      expect(plans.any((p) => p.targetDate == DateTime(2026, 8, 29)), isTrue);
+    },
+  );
+
   test('pico route resolves from notification response payload', () {
     const response = NotificationResponse(
       notificationResponseType: NotificationResponseType.selectedNotification,
@@ -539,13 +728,24 @@ class _AlarmGateway extends AlertAlarmGateway {
   bool failNext = false;
   bool failCancellation = false;
   int writes = 0;
+  int cancellations = 0;
+  bool acceptPast = true;
+  bool failPending = false;
   @override
   Future<AlarmCapabilities> capabilities() async =>
       AlarmCapabilities(supported: true, notifications: true, exact: available);
   @override
-  Future<Set<int>> pending() async => {...ids};
+  Future<Set<int>> pending() async {
+    if (failPending) {
+      failPending = false;
+      throw PlatformException(code: 'PAST_NATIVE_FAILURE');
+    }
+    return {...ids};
+  }
+
   @override
   Future<void> cancel(String scope) async {
+    cancellations++;
     if (failCancellation) {
       failCancellation = false;
       throw PlatformException(code: 'test-cancel-failed');
@@ -563,7 +763,17 @@ class _AlarmGateway extends AlertAlarmGateway {
       failNext = false;
       throw PlatformException(code: 'test-alarm-failed');
     }
-    ids.addAll(wrongIds ? {999} : events.map((e) => e['id'] as int));
+    final wanted = events
+        .where(
+          (e) =>
+              acceptPast ||
+              (e['at'] as int) > DateTime.now().millisecondsSinceEpoch ||
+              ids.contains(e['id']),
+        )
+        .map((e) => e['id'] as int)
+        .toSet();
+    ids.clear();
+    ids.addAll(wrongIds ? {999} : wanted);
     return {...ids};
   }
 }

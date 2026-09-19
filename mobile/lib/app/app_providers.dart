@@ -461,6 +461,7 @@ final picoNotificationSyncProvider = FutureProvider<void>((ref) async {
       jurisdiction: jurisdiction,
       alertPreferences: alertPreferences,
       deliverySettings: deliverySettings,
+      retainRecentAlarms: true,
     );
     if (!active) return;
     await scheduler.reschedule(plans);
@@ -492,6 +493,7 @@ final obligationNotificationSyncProvider = FutureProvider<void>((ref) async {
       nowBogota: ref.read(bogotaNowProvider),
       permissionGranted: alertPreferences.permissionGranted,
       deliverySettings: deliverySettings,
+      retainRecentAlarms: true,
     );
     if (plans.isEmpty) {
       await scheduler.cancelObligationNotifications();

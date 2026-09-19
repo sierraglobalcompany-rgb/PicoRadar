@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as timezone;
 
@@ -76,6 +77,7 @@ List<PicoNotificationPlan> planPicoNotifications({
   required Iterable<PicoVehicleRestrictionDay> days,
   required PicoNotificationSettings settings,
   required DateTime nowBogota,
+  bool retainRecentAlarms = false,
 }) {
   if (!settings.enabled) {
     return const [];
@@ -94,6 +96,7 @@ List<PicoNotificationPlan> planPicoNotifications({
         DateTime(day.date.year, day.date.month, day.date.day - 1),
         settings.dayBeforeMinute,
         nowBogota,
+        retainRecentAlarms,
       );
     }
     if (settings.sameDayEnabled) {
@@ -104,6 +107,7 @@ List<PicoNotificationPlan> planPicoNotifications({
         day.date,
         settings.sameDayMinute,
         nowBogota,
+        retainRecentAlarms,
       );
     }
   }
@@ -274,17 +278,23 @@ class PicoNotificationScheduler {
     }
     final signature = _planSignature(plans);
     final hasAlarms = plans.any((p) => p.delivery?.alarm == true);
-    if (!await _deliveryAvailable(hasAlarms)) {
+    if (await areNotificationsEnabled() == false) {
       await _cancelPicoNotifications();
       throw StateError('Los permisos de aviso no estan disponibles.');
     }
-    if (_lastPlanSignature == signature &&
+    final alarmsAvailable =
+        !hasAlarms || (await _alarms.capabilities()).canSchedule;
+    if (alarmsAvailable &&
+        _lastPlanSignature == signature &&
         await _plansStillPending({
-          for (final p in plans) p.id: p.delivery?.alarm == true,
+          for (final p in plans)
+            if (p.scheduledAt.isAfter(DateTime.now()))
+              p.id: p.delivery?.alarm == true,
         })) {
       return;
     }
-    await _cancelPicoNotifications();
+    _lastPlanSignature = null;
+    await _cancelPluginPicoNotifications();
     final alarms = <Map<String, Object>>[];
     for (final plan in plans) {
       if (plan.delivery?.alarm == true) {
@@ -315,12 +325,20 @@ class PicoNotificationScheduler {
         payload: plan.payload,
       );
     }
+    if (!alarmsAvailable) {
+      await _alarms.cancel('pico');
+      throw StateError(
+        'Alarma no disponible. Las notificaciones normales se conservan.',
+      );
+    }
     if (alarms.isNotEmpty) {
       final accepted = await _alarms.reschedule('pico', alarms);
       if (!_acceptedAll(accepted, alarms)) {
-        await _cancelPicoNotifications();
+        await _alarms.cancel('pico');
         throw StateError('No se programaron todas las alarmas.');
       }
+    } else {
+      await _alarms.cancel('pico');
     }
     _lastPlanSignature = signature;
   }
@@ -331,12 +349,15 @@ class PicoNotificationScheduler {
   Future<void> _cancelPicoNotifications() async {
     _lastPlanSignature = null;
     await _alarms.cancel('pico');
+    await _cancelPluginPicoNotifications();
+  }
+
+  Future<void> _cancelPluginPicoNotifications() async {
     final pending = await _plugin.pendingNotificationRequests();
     final ids = picoPendingNotificationIdsToCancel(pending);
     for (final id in ids) {
       await _plugin.cancel(id: id);
     }
-    _lastPlanSignature = null;
   }
 
   Future<void> rescheduleObligationNotifications(
@@ -354,17 +375,23 @@ class PicoNotificationScheduler {
     }
     final signature = _obligationPlanSignature(plans);
     final hasAlarms = plans.any((p) => p.delivery?.alarm == true);
-    if (!await _deliveryAvailable(hasAlarms)) {
+    if (await areNotificationsEnabled() == false) {
       await _cancelObligationNotifications();
       throw StateError('Los permisos de aviso no estan disponibles.');
     }
-    if (_lastObligationPlanSignature == signature &&
+    final alarmsAvailable =
+        !hasAlarms || (await _alarms.capabilities()).canSchedule;
+    if (alarmsAvailable &&
+        _lastObligationPlanSignature == signature &&
         await _plansStillPending({
-          for (final p in plans) p.id: p.delivery?.alarm == true,
+          for (final p in plans)
+            if (p.scheduledAt.isAfter(DateTime.now()))
+              p.id: p.delivery?.alarm == true,
         })) {
       return;
     }
-    await _cancelObligationNotifications();
+    _lastObligationPlanSignature = null;
+    await _cancelPluginObligationNotifications();
     final alarms = <Map<String, Object>>[];
     for (final plan in plans) {
       if (plan.delivery?.alarm == true) {
@@ -396,12 +423,20 @@ class PicoNotificationScheduler {
         payload: plan.payload,
       );
     }
+    if (!alarmsAvailable) {
+      await _alarms.cancel('obligations');
+      throw StateError(
+        'Alarma no disponible. Las notificaciones normales se conservan.',
+      );
+    }
     if (alarms.isNotEmpty) {
       final accepted = await _alarms.reschedule('obligations', alarms);
       if (!_acceptedAll(accepted, alarms)) {
-        await _cancelObligationNotifications();
+        await _alarms.cancel('obligations');
         throw StateError('No se programaron todas las alarmas.');
       }
+    } else {
+      await _alarms.cancel('obligations');
     }
     _lastObligationPlanSignature = signature;
   }
@@ -412,36 +447,42 @@ class PicoNotificationScheduler {
   Future<void> _cancelObligationNotifications() async {
     _lastObligationPlanSignature = null;
     await _alarms.cancel('obligations');
+    await _cancelPluginObligationNotifications();
+  }
+
+  Future<void> _cancelPluginObligationNotifications() async {
     final pending = await _plugin.pendingNotificationRequests();
     final ids = obligationPendingNotificationIdsToCancel(pending);
     for (final id in ids) {
       await _plugin.cancel(id: id);
     }
-    _lastObligationPlanSignature = null;
-  }
-
-  Future<bool> _deliveryAvailable(bool hasAlarms) async {
-    if (await areNotificationsEnabled() == false) {
-      return false;
-    }
-    return !hasAlarms || (await _alarms.capabilities()).canSchedule;
   }
 
   Future<bool> _plansStillPending(Map<int, bool> expected) async {
-    final notifications = {
-      for (final p in await _plugin.pendingNotificationRequests()) p.id,
-    };
-    final alarms = await _alarms.pending();
-    return expected.entries.every(
-      (p) => (p.value ? alarms : notifications).contains(p.key),
-    );
+    try {
+      final notifications = {
+        for (final p in await _plugin.pendingNotificationRequests()) p.id,
+      };
+      final alarms = await _alarms.pending();
+      return expected.entries.every(
+        (p) => (p.value ? alarms : notifications).contains(p.key),
+      );
+    } on PlatformException {
+      // A recorded native failure must trigger reconciliation, not lock retries.
+      return false;
+    }
   }
 
   bool _acceptedAll(Set<int> accepted, List<Map<String, Object>> events) {
     final expected = {for (final event in events) event['id'] as int};
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final future = {
+      for (final event in events)
+        if ((event['at'] as int) > now) event['id'] as int,
+    };
     return expected.length == events.length &&
-        accepted.length == expected.length &&
-        accepted.containsAll(expected);
+        expected.containsAll(accepted) &&
+        accepted.containsAll(future);
   }
 }
 
@@ -505,6 +546,8 @@ Future<List<PicoNotificationPlan>> buildPicoNotificationPlans({
   required RestrictionJurisdiction jurisdiction,
   required PicoAlertPreferences alertPreferences,
   List<VehicleAlertSettings> deliverySettings = const [],
+  // Scheduler-only: these past identities may retain native state, never replay it.
+  bool retainRecentAlarms = false,
 }) async {
   final days = <PicoVehicleRestrictionDay>[];
   for (final vehicle in vehicles) {
@@ -514,7 +557,15 @@ Future<List<PicoNotificationPlan>> buildPicoNotificationPlans({
       vehicle.serviceType,
       currentInstant,
     );
-    for (var offset = 0; offset < 14; offset += 1) {
+    final retain =
+        retainRecentAlarms &&
+        deliverySettings.any(
+          (s) =>
+              s.vehicleId == vehicle.id &&
+              s.category == AlertCategory.pico &&
+              s.settings.alarm,
+        );
+    for (var offset = retain ? -1 : 0; offset < 14; offset += 1) {
       final date = DateTime(
         nowBogota.year,
         nowBogota.month,
@@ -558,6 +609,7 @@ Future<List<PicoNotificationPlan>> buildPicoNotificationPlans({
             selected?.sameDayMinute ?? alertPreferences.sameDayMinute,
       ),
       nowBogota: nowBogota,
+      retainRecentAlarms: retainRecentAlarms && selected?.alarm == true,
     );
     result.addAll(
       plans.map(
@@ -623,6 +675,7 @@ void _addPlan(
   DateTime scheduleDate,
   int minuteOfDay,
   DateTime nowBogota,
+  bool retainRecentAlarms,
 ) {
   final scheduledAt = bogotaScheduledTime(
     date: scheduleDate,
@@ -637,7 +690,9 @@ void _addPlan(
     nowBogota.minute,
     nowBogota.second,
   );
-  if (!scheduledAt.isAfter(now)) {
+  if (!scheduledAt.isAfter(now) &&
+      (!retainRecentAlarms ||
+          !scheduledAt.add(const Duration(minutes: 15)).isAfter(now))) {
     return;
   }
   final title = type == PicoAlertType.dayBefore

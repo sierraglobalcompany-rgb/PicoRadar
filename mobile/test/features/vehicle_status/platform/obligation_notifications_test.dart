@@ -17,6 +17,96 @@ void main() {
   );
 
   group('obligation notifications', () {
+    test(
+      'only scheduler opt-in retains recent alarm identity, including midnight',
+      () {
+        for (final minute in [2, 15]) {
+          for (final retain in [false, true]) {
+            for (final alarm in [false, true]) {
+              final plans = planObligationNotifications(
+                obligations: [
+                  _obligation(
+                    VehicleObligationType.soat,
+                    dueDate: DateTime(2026, 9, 15),
+                  ),
+                ],
+                vehiclesById: {vehicle.id: vehicle},
+                nowBogota: DateTime(2026, 9, 15, 9, minute),
+                permissionGranted: true,
+                deliverySettings: [
+                  VehicleAlertSettings(
+                    vehicle.id,
+                    AlertCategory.soat,
+                    AlertSettings(
+                      alarm: alarm,
+                      minute: 540,
+                      offsetDays: const [0],
+                    ),
+                  ),
+                ],
+                retainRecentAlarms: retain,
+              );
+              expect(plans.isNotEmpty, retain && alarm && minute < 15);
+            }
+          }
+        }
+        final plans = planObligationNotifications(
+          obligations: [
+            _obligation(
+              VehicleObligationType.soat,
+              dueDate: DateTime(2026, 9, 15),
+            ),
+          ],
+          vehiclesById: {vehicle.id: vehicle},
+          nowBogota: DateTime(2026, 9, 16, 0, 2),
+          permissionGranted: true,
+          deliverySettings: [
+            VehicleAlertSettings(
+              vehicle.id,
+              AlertCategory.soat,
+              const AlertSettings(alarm: true, minute: 1439, offsetDays: [0]),
+            ),
+          ],
+          retainRecentAlarms: true,
+        );
+        expect(plans.single.dueDate, DateTime(2026, 9, 15));
+      },
+    );
+
+    test(
+      'recent alarm identity absent after delete disable or date change',
+      () {
+        for (final scenario in ['deleted', 'disabled', 'date']) {
+          final plans = planObligationNotifications(
+            obligations: [
+              _obligation(
+                VehicleObligationType.soat,
+                reminderEnabled: scenario != 'disabled',
+                dueDate: scenario == 'date'
+                    ? DateTime(2026, 9, 16)
+                    : DateTime(2026, 9, 15),
+              ),
+            ],
+            vehiclesById: scenario == 'deleted' ? {} : {vehicle.id: vehicle},
+            nowBogota: DateTime(2026, 9, 15, 9, 2),
+            permissionGranted: true,
+            deliverySettings: [
+              VehicleAlertSettings(
+                vehicle.id,
+                AlertCategory.soat,
+                const AlertSettings(alarm: true, offsetDays: [0]),
+              ),
+            ],
+            retainRecentAlarms: true,
+          );
+          expect(
+            plans.any((p) => p.dueDate == DateTime(2026, 9, 15)),
+            isFalse,
+            reason: scenario,
+          );
+        }
+      },
+    );
     test('custom delivery affects only its vehicle and category', () {
       final plans = planObligationNotifications(
         obligations: [

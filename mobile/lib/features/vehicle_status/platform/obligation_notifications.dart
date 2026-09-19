@@ -51,6 +51,8 @@ List<ObligationNotificationPlan> planObligationNotifications({
   required DateTime nowBogota,
   required bool permissionGranted,
   List<VehicleAlertSettings> deliverySettings = const [],
+  // UI keeps the future-only default; reconciliation may retain an active alarm.
+  bool retainRecentAlarms = false,
 }) {
   if (!permissionGranted) {
     return const [];
@@ -76,9 +78,11 @@ List<ObligationNotificationPlan> planObligationNotifications({
       obligation.dueDate!.month,
       obligation.dueDate!.day,
     );
-    if (dueDate.isBefore(
-      DateTime(nowBogota.year, nowBogota.month, nowBogota.day),
-    )) {
+    final retain = retainRecentAlarms && selected?.alarm == true;
+    if (!retain &&
+        dueDate.isBefore(
+          DateTime(nowBogota.year, nowBogota.month, nowBogota.day),
+        )) {
       continue;
     }
     final vehicle = vehiclesById[obligation.vehicleId];
@@ -105,7 +109,9 @@ List<ObligationNotificationPlan> planObligationNotifications({
         nowBogota.minute,
         nowBogota.second,
       );
-      if (!scheduledAt.isAfter(now)) {
+      if (!scheduledAt.isAfter(now) &&
+          (!retain ||
+              !scheduledAt.add(const Duration(minutes: 15)).isAfter(now))) {
         continue;
       }
       plans.add(
