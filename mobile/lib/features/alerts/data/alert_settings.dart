@@ -124,9 +124,12 @@ class AlertSettingsStore {
   ];
 
   Future<AlertSettings?> load(String vehicleId, AlertCategory category) async {
-    for (final row in await loadAll()) {
-      if (row.vehicleId == vehicleId && row.category == category) {
-        return row.settings;
+    for (final row in await database.readAlertSettings()) {
+      if (row.read<String>('vehicle_id') == vehicleId &&
+          row.read<String>('category') == category.name) {
+        return AlertSettings.fromJson(
+          jsonDecode(row.read<String>('settings_json')) as Map<String, dynamic>,
+        );
       }
     }
     return null;

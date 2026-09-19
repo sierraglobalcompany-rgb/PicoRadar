@@ -118,6 +118,27 @@ void main() {
     });
     tearDown(() => db.close());
 
+    test(
+      'single settings lookup does not decode other vehicle or category',
+      () async {
+        await store.save(
+          'v1',
+          AlertCategory.soat,
+          const AlertSettings(enabled: false),
+        );
+        await db.writeAlertSettings('v2', 'soat', '{broken');
+        await db.writeAlertSettings('v1', 'rtm', '{broken');
+        expect((await store.load('v1', AlertCategory.soat))!.enabled, isFalse);
+        expect(await store.load('v1', AlertCategory.insurance), isNull);
+        await expectLater(store.loadAll(), throwsFormatException);
+        final rows = await db.readAlertSettings();
+        expect(
+          rows.where((row) => row.read<String>('settings_json') == '{broken'),
+          hasLength(2),
+        );
+      },
+    );
+
     for (final category in AlertCategory.values) {
       test(
         'saving ${category.name} changes only its vehicle reminder flag',

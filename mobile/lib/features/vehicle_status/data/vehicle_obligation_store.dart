@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/database/app_database.dart' as db;
+import '../../alerts/data/alert_settings.dart';
 import '../domain/vehicle_obligation.dart';
 
 class VehicleObligationStore {
@@ -46,10 +47,25 @@ class VehicleObligationStore {
     DateTime? dueDate,
     Map<String, String> details = const {},
     bool reminderEnabled = true,
-  }) async {
+  }) => database.transaction(() async {
     final id = vehicleObligationId(vehicleId, type);
     final now = DateTime.now().toUtc();
     final existing = await get(vehicleId, type);
+    var effectiveReminder = reminderEnabled;
+    if (existing == null) {
+      final category = switch (type) {
+        VehicleObligationType.soat => AlertCategory.soat,
+        VehicleObligationType.rtm => AlertCategory.rtm,
+        VehicleObligationType.insurance => AlertCategory.insurance,
+        VehicleObligationType.tax => null,
+      };
+      if (category != null) {
+        final saved = await AlertSettingsStore(database)
+            .load(vehicleId, category);
+        // Inherit the pre-creation choice once; later module edits own the flag.
+        effectiveReminder = saved?.enabled ?? reminderEnabled;
+      }
+    }
     await database
         .into(database.vehicleObligations)
         .insertOnConflictUpdate(
@@ -61,13 +77,13 @@ class VehicleObligationStore {
             startDate: Value(_dateOnly(startDate)),
             dueDate: Value(_dateOnly(dueDate)),
             detailsJson: Value(encodeVehicleObligationDetails(details)),
-            reminderEnabled: Value(reminderEnabled),
+            reminderEnabled: Value(effectiveReminder),
             createdAt: Value(existing?.createdAt ?? now),
             updatedAt: Value(now),
           ),
         );
     return (await get(vehicleId, type))!;
-  }
+  });
 
   Future<void> delete(String vehicleId, VehicleObligationType type) async {
     await (database.delete(database.vehicleObligations)
