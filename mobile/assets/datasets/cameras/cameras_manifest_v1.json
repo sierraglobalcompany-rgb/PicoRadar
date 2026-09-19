@@ -12,7 +12,20 @@
     },
     "recordCount": 360,
     "speedKnownCount": 293,
+    "speedUnknownCount": 67,
     "speedCoverage": 0.8139,
+    "departmentCount": 13,
+    "source": {
+        "title": "ANSV ubicaciones aprobadas de fotodetección",
+        "url": "https://fotodeteccion.ansv.gov.co/ubicaciones-aprobadas.html"
+    },
+    "semantics": {
+        "inventoryKind": "authorized_location_snapshot",
+        "snapshotOnly": true,
+        "currentOperationConfirmed": false,
+        "operationStatusMeaning": "Value reported by the source snapshot; it is not a live operational check.",
+        "missingSpeedMeaning": "Unknown; never zero and never inferred."
+    },
     "runtimeFilter": {
         "status": "active",
         "operationStatus": "Operando",

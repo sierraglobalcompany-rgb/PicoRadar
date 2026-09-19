@@ -1051,6 +1051,7 @@ class _MarkerDetails extends StatelessWidget {
         ? ['Tarifas propias cargando o no disponibles para este ID.']
         : [
             'Tarifas propias ${tollTariffCatalog!.version} · Cat I: ${_copPesosOrNoData(station.categoryI?.amountCop)}',
+            'Corte declarado ${tollTariffCatalog!.source.consultationCutoffAsStated} · ${tollTariffCatalog!.source.independentExternalReverification ? 'con reverificación externa' : 'sin reverificación externa'}.',
             _compactCategories(station.generalRates),
             '${station.publicationControl ?? 'Control no informado'} · ${station.categoryI?.sourceType ?? 'fuente no informada'}${station.categoryI?.sourceDate == null ? '' : ' · ${station.categoryI!.sourceDate}'}',
             if (station.specialRates.isNotEmpty)

@@ -627,8 +627,8 @@ void main() {
           const ValueKey('fotomultas-header-inventory'),
         );
         expect(header, findsOneWidget);
-        expect(find.text('ANSV · 31/08/26'), findsOneWidget);
-        expect(find.text('360 cámaras'), findsOneWidget);
+        expect(find.text('Snapshot ANSV · 31/08/26'), findsOneWidget);
+        expect(find.text('360 registros autorizados'), findsOneWidget);
         expect(
           tester.getRect(header).contains(tester.getRect(inventory).center),
           isTrue,
@@ -871,14 +871,14 @@ void main() {
           productionTheme: true,
         );
         await tester.pumpAndSettle();
-        final metric = find.text('ANSV · 31/08/26');
+        final metric = find.text('Snapshot ANSV · 31/08/26');
         final richText = find.descendant(
           of: metric,
           matching: find.byType(RichText),
         );
         final paragraph = tester.renderObject<RenderParagraph>(richText);
         expect(paragraph.didExceedMaxLines, isFalse);
-        expect(find.text('ANSV · 31/08/26'), findsOneWidget);
+        expect(find.text('Snapshot ANSV · 31/08/26'), findsOneWidget);
         expect(tester.takeException(), isNull);
       });
       testWidgets('V01B camera detail actions reachable $size scale $scale', (
@@ -1086,10 +1086,15 @@ void main() {
   ) async {
     await _pumpScreen(tester);
 
-    expect(find.text('3 cámaras'), findsOneWidget);
+    expect(find.text('3 registros autorizados'), findsOneWidget);
     await tester.tap(find.text('Información y fuentes'));
     await tester.pumpAndSettle();
     expect(find.text('2 con velocidad reportada'), findsOneWidget);
+    expect(find.text('1 sin velocidad reportada'), findsOneWidget);
+    expect(
+      find.text('Snapshot; no confirma operación actual.'),
+      findsOneWidget,
+    );
     expect(find.text('ANSV ubicaciones aprobadas'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('fotomultas-source-date')),
@@ -1354,7 +1359,7 @@ void main() {
 
     for (final testCase in cases) {
       await _pumpScreen(tester, size: testCase.$1, textScale: testCase.$2);
-      expect(find.text('3 cámaras'), findsOneWidget);
+      expect(find.text('3 registros autorizados'), findsOneWidget);
       expect(tester.takeException(), isNull);
     }
   });

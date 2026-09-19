@@ -160,9 +160,23 @@ class TerritorialAuthority {
 }
 
 class TerritorialCatalog {
-  const TerritorialCatalog({required this.authorities});
+  const TerritorialCatalog({
+    required this.authorities,
+    this.version = '',
+    this.reviewedAt = '',
+    this.procedureReviewedAt = '',
+    this.registrationFallbackUrl = runtActorsDirectoryUrl,
+    this.summary = const TerritorialCatalogSummary.empty(),
+    this.sources = const [],
+  });
 
   final List<TerritorialAuthority> authorities;
+  final String version;
+  final String reviewedAt;
+  final String procedureReviewedAt;
+  final String registrationFallbackUrl;
+  final TerritorialCatalogSummary summary;
+  final List<TerritorialCatalogSource> sources;
 
   /// Inventory search includes pending entries. Office matches are not coverage.
   /// An empty query lists the inventory; no implicit result cap hides authorities.
@@ -192,11 +206,19 @@ class TerritorialCatalog {
     if (json['schemaVersion'] != 1) {
       throw const FormatException('Unsupported territorial catalog schema');
     }
-    _string(json, 'version');
-    final sources = <String, int>{};
+    final version = _string(json, 'version');
+    final reviewedAt = _string(json, 'reviewedAt');
+    final procedureReviewedAt = _string(json, 'procedureReviewedAt');
+    final registrationFallbackUrl = _string(json, 'registrationFallbackUrl');
+    if (registrationFallbackUrl != runtActorsDirectoryUrl) {
+      throw const FormatException('Unrecognized registration fallback');
+    }
+    final sources = <TerritorialCatalogSource>[];
+    final sourceRowCounts = <String, int>{};
     for (final row in _maps(json, 'sources')) {
       final id = _string(row, 'id');
-      if (_directorySources[id] != row['url'] || sources.containsKey(id)) {
+      if (_directorySources[id] != row['url'] ||
+          sourceRowCounts.containsKey(id)) {
         throw const FormatException(
           'Unrecognized or duplicate directory source',
         );
@@ -205,9 +227,22 @@ class TerritorialCatalog {
       if (count is! int || count <= 0) {
         throw const FormatException('Invalid directory row count');
       }
-      sources[id] = count;
+      final source = TerritorialCatalogSource(
+        id: id,
+        url: _string(row, 'url'),
+        observedRowCount: count,
+        fileSha256: _string(row, 'fileSha256'),
+        retrievedAt: _string(row, 'retrievedAt'),
+        historical: row['historical'] == true,
+      );
+      if (!source.historical ||
+          !RegExp(r'^[a-f0-9]{64}$').hasMatch(source.fileSha256)) {
+        throw const FormatException('Invalid directory source provenance');
+      }
+      sourceRowCounts[id] = count;
+      sources.add(source);
     }
-    if (sources.length != _directorySources.length) {
+    if (sourceRowCounts.length != _directorySources.length) {
       throw const FormatException('Missing directory source');
     }
     final sourceRecords = <String, String>{};
@@ -215,7 +250,8 @@ class TerritorialCatalog {
     for (final row in _maps(json, 'sourceRecords')) {
       final id = _string(row, 'id');
       final sourceId = _string(row, 'sourceId');
-      if (!sources.containsKey(sourceId) || sourceRecords.containsKey(id)) {
+      if (!sourceRowCounts.containsKey(sourceId) ||
+          sourceRecords.containsKey(id)) {
         throw const FormatException('Invalid source record reference');
       }
       for (final field in ['page', 'row']) {
@@ -228,7 +264,7 @@ class TerritorialCatalog {
       sourceRecords[id] = _string(row, 'authorityId');
       sourceCounts.update(sourceId, (count) => count + 1, ifAbsent: () => 1);
     }
-    for (final source in sources.entries) {
+    for (final source in sourceRowCounts.entries) {
       if (sourceCounts[source.key] != source.value) {
         throw const FormatException('Incomplete directory intake');
       }
@@ -236,7 +272,11 @@ class TerritorialCatalog {
     final authorities = <TerritorialAuthority>[];
     final authorityIds = <String>{};
     final usedRecords = <String>{};
-    for (final row in _maps(json, 'authorities')) {
+    final authorityRows = _maps(json, 'authorities');
+    final hasRegistrationProcedureFields = authorityRows.any(
+      (row) => row.containsKey('supportsRegistrationProcedures'),
+    );
+    for (final row in authorityRows) {
       final authority = TerritorialAuthority.fromJson(row);
       if (!authorityIds.add(authority.id) ||
           authority.sourceRecordIds.isEmpty) {
@@ -252,7 +292,118 @@ class TerritorialCatalog {
     if (usedRecords.length != sourceRecords.length || authorities.isEmpty) {
       throw const FormatException('Orphaned directory source rows');
     }
-    return TerritorialCatalog(authorities: List.unmodifiable(authorities));
+    final declaredSummary = TerritorialCatalogSummary.fromJson(
+      _map(json, 'summary'),
+    );
+    final summary = hasRegistrationProcedureFields
+        ? declaredSummary
+        : TerritorialCatalogSummary(
+            sourceRows: declaredSummary.sourceRows,
+            inventoryEntries: declaredSummary.inventoryEntries,
+            verifiedEntries: declaredSummary.verifiedEntries,
+            directConsultationEntries:
+                declaredSummary.directConsultationEntries,
+            institutionOnlyEntries: declaredSummary.institutionOnlyEntries,
+            pendingEntries: declaredSummary.pendingEntries,
+            confirmedRegistrationProcedureEntries: 0,
+            unconfirmedRegistrationProcedureEntries: authorities.length,
+          );
+    if (summary.inventoryEntries != authorities.length ||
+        summary.sourceRows != sourceRecords.length ||
+        summary.verifiedEntries !=
+            authorities
+                .where((entry) => entry.verificationStatus == 'verified')
+                .length ||
+        summary.confirmedRegistrationProcedureEntries !=
+            authorities
+                .where((entry) => entry.supportsRegistrationProcedures)
+                .length ||
+        summary.unconfirmedRegistrationProcedureEntries +
+                summary.confirmedRegistrationProcedureEntries !=
+            authorities.length) {
+      throw const FormatException('Territorial summary does not match records');
+    }
+    return TerritorialCatalog(
+      authorities: List.unmodifiable(authorities),
+      version: version,
+      reviewedAt: reviewedAt,
+      procedureReviewedAt: procedureReviewedAt,
+      registrationFallbackUrl: registrationFallbackUrl,
+      summary: summary,
+      sources: List.unmodifiable(sources),
+    );
+  }
+}
+
+class TerritorialCatalogSource {
+  const TerritorialCatalogSource({
+    required this.id,
+    required this.url,
+    required this.observedRowCount,
+    required this.fileSha256,
+    required this.retrievedAt,
+    required this.historical,
+  });
+
+  final String id;
+  final String url;
+  final int observedRowCount;
+  final String fileSha256;
+  final String retrievedAt;
+  final bool historical;
+}
+
+class TerritorialCatalogSummary {
+  const TerritorialCatalogSummary({
+    required this.sourceRows,
+    required this.inventoryEntries,
+    required this.verifiedEntries,
+    required this.directConsultationEntries,
+    required this.institutionOnlyEntries,
+    required this.pendingEntries,
+    required this.confirmedRegistrationProcedureEntries,
+    required this.unconfirmedRegistrationProcedureEntries,
+  });
+
+  const TerritorialCatalogSummary.empty()
+    : sourceRows = 0,
+      inventoryEntries = 0,
+      verifiedEntries = 0,
+      directConsultationEntries = 0,
+      institutionOnlyEntries = 0,
+      pendingEntries = 0,
+      confirmedRegistrationProcedureEntries = 0,
+      unconfirmedRegistrationProcedureEntries = 0;
+
+  final int sourceRows;
+  final int inventoryEntries;
+  final int verifiedEntries;
+  final int directConsultationEntries;
+  final int institutionOnlyEntries;
+  final int pendingEntries;
+  final int confirmedRegistrationProcedureEntries;
+  final int unconfirmedRegistrationProcedureEntries;
+
+  factory TerritorialCatalogSummary.fromJson(Map<String, Object?> json) {
+    return TerritorialCatalogSummary(
+      sourceRows: _positiveInt(json, 'sourceRows'),
+      inventoryEntries: _positiveInt(json, 'inventoryEntries'),
+      verifiedEntries: _positiveInt(json, 'verifiedEntries'),
+      directConsultationEntries: _positiveInt(
+        json,
+        'directConsultationEntries',
+      ),
+      institutionOnlyEntries: _positiveInt(json, 'institutionOnlyEntries'),
+      pendingEntries: _positiveInt(json, 'pendingEntries'),
+      confirmedRegistrationProcedureEntries: _positiveInt(
+        json,
+        'confirmedRegistrationProcedureEntries',
+      ),
+      unconfirmedRegistrationProcedureEntries: _positiveInt(
+        json,
+        'unconfirmedRegistrationProcedureEntries',
+      ),
+    );
   }
 }
 
@@ -290,6 +441,22 @@ Iterable<Map<String, Object?>> _maps(Map<String, Object?> json, String key) {
     throw FormatException('Invalid territorial records: $key');
   }
   return values.cast<Map<String, Object?>>();
+}
+
+Map<String, Object?> _map(Map<String, Object?> json, String key) {
+  final value = json[key];
+  if (value is! Map<String, Object?>) {
+    throw FormatException('Invalid territorial object: $key');
+  }
+  return value;
+}
+
+int _positiveInt(Map<String, Object?> json, String key) {
+  final value = json[key];
+  if (value is! int || value <= 0) {
+    throw FormatException('Invalid territorial count: $key');
+  }
+  return value;
 }
 
 void _validateAuthority(TerritorialAuthority authority) {

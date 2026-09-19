@@ -88,6 +88,10 @@ void main() {
     expect(find.textContaining(r'Cat I: $18.500'), findsOneWidget);
     expect(find.textContaining('Oficial · 2026-09-08'), findsOneWidget);
     expect(
+      find.text('Corte declarado 2026-09-08 · sin reverificación externa.'),
+      findsOneWidget,
+    );
+    expect(
       find.textContaining('Este punto físico no confirma un cobro activo'),
       findsOneWidget,
     );

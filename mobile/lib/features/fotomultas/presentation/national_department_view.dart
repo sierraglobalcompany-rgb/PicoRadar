@@ -38,10 +38,12 @@ AppBar _nationalAppBar(BuildContext context, CameraPack? pack) {
   final dateStyle = base.merge(
     const TextStyle(fontSize: 12, height: 1.25, color: AppColors.navy),
   );
-  final count = pack == null ? '' : '${pack.cameras.length} cámaras';
+  final count = pack == null
+      ? ''
+      : '${pack.cameras.length} registros autorizados';
   final date = pack == null
       ? ''
-      : 'ANSV · ${_inventoryDate(pack.source.fetchedAtUtc, compact: true)}';
+      : 'Snapshot ANSV · ${_inventoryDate(pack.source.fetchedAtUtc, compact: true)}';
   final scaler = MediaQuery.textScalerOf(context);
   Size measure(
     String value,
@@ -62,8 +64,11 @@ AppBar _nationalAppBar(BuildContext context, CameraPack? pack) {
     1.0,
     MediaQuery.sizeOf(context).width - 48 - 4 - 16,
   );
+  final inventoryMaxWidth = scaler.scale(1) <= 1.01
+      ? math.min(available, 160.0)
+      : available;
   final inventoryWidth = math.min(
-    available,
+    inventoryMaxWidth,
     math.max(
           measure(count, countStyle).width + 22,
           measure(date, dateStyle).width,
@@ -99,7 +104,7 @@ AppBar _nationalAppBar(BuildContext context, CameraPack? pack) {
       ? const SizedBox.shrink()
       : Semantics(
           label:
-              '$count. Fuente ANSV. Fecha del inventario: ${_inventoryDate(pack.source.fetchedAtUtc)}',
+              '$count. Snapshot de la fuente ANSV: ${_inventoryDate(pack.source.fetchedAtUtc)}. No confirma operación actual.',
           child: ExcludeSemantics(
             child: Container(
               key: const ValueKey('fotomultas-header-inventory'),
@@ -121,13 +126,16 @@ AppBar _nationalAppBar(BuildContext context, CameraPack? pack) {
                         color: AppColors.teal,
                       ),
                       const SizedBox(width: 6),
-                      Expanded(child: Text(count, style: countStyle)),
+                      Expanded(
+                        child: Text(count, maxLines: 2, style: countStyle),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 2),
                   Text(
                     date,
                     key: const ValueKey('fotomultas-source-date'),
+                    maxLines: 2,
                     style: dateStyle,
                   ),
                 ],
@@ -328,16 +336,20 @@ class _NationalDepartmentViewState extends State<_NationalDepartmentView> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  '${widget.pack.cameras.length} cámaras del inventario. Cobertura parcial: sin registros no significa que no existan cámaras.',
+                  '${widget.pack.cameras.length} registros autorizados en el snapshot. Cobertura parcial: sin registros no significa que no existan cámaras.',
                 ),
                 Text(
                   '${widget.pack.cameras.where((c) => c.speedLimitKmh != null).length} con velocidad reportada',
+                ),
+                Text(
+                  '${widget.pack.cameras.where((c) => c.speedLimitKmh == null).length} sin velocidad reportada',
                 ),
                 const SizedBox(height: 12),
                 Text(widget.pack.source.name),
                 Text(
                   'Fecha del inventario: ${_inventoryDate(widget.pack.source.fetchedAtUtc)}',
                 ),
+                const Text('Snapshot; no confirma operación actual.'),
                 OutlinedButton.icon(
                   key: const ValueKey('fotomultas-country-source'),
                   onPressed: widget.onOpenSource,

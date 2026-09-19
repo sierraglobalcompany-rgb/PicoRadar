@@ -736,10 +736,17 @@ class _CitySelectorList extends StatelessWidget {
         })
         .toList(growable: false);
     final available = filtered
-        .where((entry) => runtimeJurisdictionIds.contains(entry.id))
+        .where(
+          (entry) =>
+              entry.engineEnabled && runtimeJurisdictionIds.contains(entry.id),
+        )
         .toList(growable: false);
     final upcoming = filtered
-        .where((entry) => !runtimeJurisdictionIds.contains(entry.id))
+        .where(
+          (entry) =>
+              !entry.engineEnabled ||
+              !runtimeJurisdictionIds.contains(entry.id),
+        )
         .toList(growable: false);
 
     if (filtered.isEmpty) {
@@ -838,7 +845,7 @@ class _PicoCatalogCityTile extends StatelessWidget {
       key: ValueKey('pico-city-option-${entry.id}'),
       enabled: available,
       minVerticalPadding: AppSpacing.s,
-      title: Text(entry.name),
+      title: Text(entry.selectorName),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -917,6 +924,9 @@ List<PicoJurisdictionCatalogEntry> _catalogWithRuntimeFallback(
           department: 'Colombia',
           classification: 'SUPPORTED_CURRENT',
           sourceDate: 'runtime',
+          status: PicoOperationalStatus.verified,
+          engineEnabled: true,
+          engineJurisdictionId: jurisdiction.id,
         ),
       );
     }
