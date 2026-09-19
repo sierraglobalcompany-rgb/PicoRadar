@@ -335,6 +335,25 @@ Referencia: [placa owner](design/reference/plate_owner_20260910.png).
 
 ## Inicio: vehiculos protagonistas y layout adaptable (2026-09-09)
 
+### Carrusel patrocinado borde a borde (2026-09-19)
+
+- En telefonos, cada campana ocupa todo el ancho fisico disponible y solo una
+  lamina es visible. No se insinua la pagina siguiente ni se agregan margenes
+  laterales. En pantallas anchas se limita a 720 dp y se centra.
+- El carrusel es manual y finito, sin avance automatico. Conserva las cuatro
+  campanas aprobadas y su altura adaptable; crecer en ancho no aumenta su alto.
+- La navegacion es una capsula navy semitransparente superpuesta en la zona
+  inferior central: flechas de 20-22 dp con objetivos de 48 dp, barra blanca
+  activa de 16x6 dp y tres puntos inactivos de 6x6 dp al 45%. Las flechas de
+  los extremos permanecen visibles, atenuadas y deshabilitadas.
+- El indice se comunica mediante semantica `Campana X de 4`; no aparece texto
+  visible `1 de 4`. La capsula reserva espacio y nunca cubre titular, texto o
+  CTA. Con movimiento reducido, el indicador cambia sin animacion.
+- Inicio no monta el antiguo bloque inferior `Aliado premium`. Su configuracion
+  compartida se conserva para SOAT y RTM. Con texto normal, Inicio no desplaza
+  verticalmente en 360x780, 360x800, 390x844, 412x915 y 430x932; con texto
+  ampliado mantiene un unico scroll accesible cuando sea necesario.
+
 ### Auditoria Inicio/Garaje/Pico 2026-09-10
 
 - Pico por ciudad describe la regulacion colectiva: "Restriccion hoy" con sus

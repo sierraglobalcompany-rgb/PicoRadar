@@ -34,9 +34,12 @@ No continuar la limpieza durante este lote.
 - Apps/Mas: se conserva el origen al volver. Talleres incorpora selector de
   vehiculo, proximos/vencidos, historial, costos, busqueda GPS/ciudad y
   recordatorios honestos por fecha o kilometraje actualizado.
-- Inicio: carrusel manual superior de cuatro campanas locales. Tres son demos y
-  la cuarta invita a ser aliado. El formulario real permanece cerrado hasta
-  cumplir HTTPS, privacidad versionada y bandeja administrativa.
+- Inicio: carrusel manual superior de cuatro campanas locales, borde a borde en
+  telefonos y sin mostrar la lamina siguiente. La navegacion vive dentro de la
+  imagen mediante flechas y cuatro indicadores; no hay contador visible ni el
+  antiguo banner inferior. Tres campanas son demos y la cuarta invita a ser
+  aliado. El formulario real permanece cerrado hasta cumplir HTTPS, privacidad
+  versionada y bandeja administrativa.
 - Tramites y cobertura: catalogos versionados con estado y evidencia. No se
   presenta como nacional lo pendiente o vencido.
 

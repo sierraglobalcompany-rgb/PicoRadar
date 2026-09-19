@@ -8,8 +8,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/theme/app_theme.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
-import 'package:picoradar/features/home/data/home_banner_config.dart';
-import 'package:picoradar/features/home/presentation/home_screen.dart';
 import 'package:picoradar/features/visual_assets/data/visual_asset_catalogs.dart';
 import 'package:picoradar/features/visual_assets/presentation/visual_asset_widgets.dart';
 
@@ -40,48 +38,6 @@ void main() {
     createdAt: DateTime(2026),
     updatedAt: DateTime(2026),
   );
-
-  for (final (scale, baselineHeight) in [
-    (1.0, 96.0),
-    (1.5, 124.0),
-    (2.0, 140.0),
-  ]) {
-    testWidgets(
-      'resolved compact banner retains baseline height $baselineHeight at scale $scale',
-      (tester) async {
-        const campaign = HomeBannerCampaign(
-          kind: HomeBannerKind.house,
-          enabled: true,
-          priority: 1,
-          id: 'compact-house',
-          label: 'PicoRadar',
-          title: 'Tu vehiculo',
-          subtitle: 'Al dia',
-          ctaText: '',
-        );
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              homeBannerCampaignProvider.overrideWith((ref) async => campaign),
-            ],
-            child: _surface(
-              scale,
-              const SizedBox(width: 328, child: HomeBannerSlot()),
-            ),
-          ),
-        );
-        await _settleData(tester);
-        expect(find.text(campaign.title), findsOneWidget);
-        expect(
-          tester
-              .getSize(find.byKey(const ValueKey('home-bottom-banner-slot')))
-              .height,
-          baselineHeight,
-        );
-        expect(tester.takeException(), isNull);
-      },
-    );
-  }
 
   for (final scale in [1.0, 2.0]) {
     testWidgets(
@@ -197,56 +153,6 @@ void main() {
           (resized.imageProvider as AssetImage).assetName,
           chosenVehicle.asset,
         );
-        expect(tester.takeException(), isNull);
-      },
-    );
-
-    testWidgets(
-      'deferred banner reserves baseline minimum without inflating resolved content at scale $scale',
-      (tester) async {
-        final pending = Completer<HomeBannerCampaign?>();
-        const campaign = HomeBannerCampaign(
-          kind: HomeBannerKind.house,
-          enabled: true,
-          priority: 1,
-          id: 'startup-house',
-          label: 'PicoRadar',
-          title: 'Tu vehiculo, al dia',
-          subtitle: 'Consulta tus recordatorios y documentos.',
-          ctaText: 'Ver opciones',
-          targetUrl: 'https://picoradar.co/demo/home-ally',
-        );
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              homeBannerCampaignProvider.overrideWith((ref) => pending.future),
-            ],
-            child: _surface(
-              scale,
-              const SizedBox(width: 328, child: HomeBannerSlot()),
-            ),
-          ),
-        );
-        final slot = find.byKey(const ValueKey('home-bottom-banner-slot'));
-        final before = tester.getRect(slot);
-        expect(find.text(campaign.title), findsNothing);
-        pending.complete(campaign);
-        await _settleData(tester);
-        final after = tester.getRect(slot);
-        final baselineHeight = scale == 1 ? 96.0 : 140.0;
-        expect(before.height, baselineHeight);
-        expect(after.width, before.width);
-        final contentConstraint = tester.widget<ConstrainedBox>(
-          find
-              .descendant(
-                of: find.byKey(const ValueKey('home-bottom-banner')),
-                matching: find.byType(ConstrainedBox),
-              )
-              .first,
-        );
-        expect(contentConstraint.constraints.minHeight, baselineHeight);
-        expect(find.text(campaign.title), findsOneWidget);
-        expect(find.text(campaign.subtitle), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );

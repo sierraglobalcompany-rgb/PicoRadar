@@ -62,13 +62,21 @@ void main() {
     tester,
   ) async {
     await _readyHome(harness, plate: 'ABC126');
-    await _pumpHome(tester, harness);
+    await _pumpHome(
+      tester,
+      harness,
+      viewportSize: const Size(360, 780),
+      bottomNavigationBar: const SizedBox(height: 96),
+    );
 
     final header = find.byKey(const ValueKey('home-compact-top-bar'));
     final partners = find.byType(HomePartnerCarousel);
     final vehicles = find.byKey(const ValueKey('home-vehicle-carousel'));
 
     expect(partners, findsOneWidget);
+    final partnerBounds = tester.getRect(partners);
+    expect(partnerBounds.left, closeTo(0, 0.1));
+    expect(partnerBounds.right, closeTo(360, 0.1));
     expect(
       tester.getBottomLeft(header).dy,
       lessThan(tester.getTopLeft(partners).dy),
@@ -334,68 +342,13 @@ void main() {
     );
   }
 
-  for (final width in [360.0, 390.0, 412.0, 430.0]) {
-    for (final scale in [1.0, 1.5, 2.0]) {
-      testWidgets('A6 Home banner full text $width scale $scale', (
-        tester,
-      ) async {
-        await _readyHome(harness, plate: 'ABC126');
-        const campaign = HomeBannerCampaign(
-          kind: HomeBannerKind.house,
-          enabled: true,
-          priority: 1,
-          id: 'audit-banner',
-          label: 'ALIADO PREMIUM · DEMO',
-          title: 'Protección que te acompaña',
-          subtitle: 'Espacio preparado para campañas de aliados verificados.',
-          ctaText: 'Conocer más',
-          targetUrl: 'https://picoradar.co/demo/home-ally',
-        );
-        await _pumpHome(
-          tester,
-          harness,
-          viewportSize: Size(width, 915),
-          textScaleFactor: scale,
-          homeBanner: campaign,
-        );
-        final banner = find.byKey(const ValueKey('home-bottom-banner-slot'));
-        await tester.ensureVisible(banner);
-        await tester.pump();
-        final bounds = tester.getRect(banner).inflate(0.5);
-        for (final label in [
-          campaign.label,
-          campaign.title,
-          campaign.subtitle,
-          campaign.ctaText,
-        ]) {
-          final text = find.descendant(of: banner, matching: find.text(label));
-          expect(text, findsOneWidget);
-          final paragraph = tester.renderObject<RenderParagraph>(
-            find.descendant(of: text, matching: find.byType(RichText)),
-          );
-          expect(paragraph.didExceedMaxLines, isFalse, reason: label);
-          for (final box in paragraph.getBoxesForSelection(
-            TextSelection(baseOffset: 0, extentOffset: label.length),
-          )) {
-            expect(
-              bounds.contains(
-                paragraph.localToGlobal(Offset(box.right, box.bottom)),
-              ),
-              isTrue,
-              reason: label,
-            );
-          }
-        }
-        expect(
-          tester
-              .widget<InkWell>(find.byKey(const ValueKey('home-bottom-banner')))
-              .onTap,
-          isNotNull,
-        );
-        expect(tester.takeException(), isNull);
-      });
-    }
-  }
+  testWidgets('legacy premium banner is not mounted on Home', (tester) async {
+    await _readyHome(harness, plate: 'ABC126');
+    await _pumpHome(tester, harness);
+
+    expect(find.byKey(const ValueKey('home-bottom-banner-slot')), findsNothing);
+    expect(find.byKey(const ValueKey('home-bottom-banner')), findsNothing);
+  });
 
   group('Home V2 shell states', () {
     for (final size in const [
@@ -518,85 +471,58 @@ void main() {
       }
     }
 
-    testWidgets(
-      'Home measured layout scrolls on Mi A3 and grows without losing focus',
-      (tester) async {
-        harness.now = DateTime(2026, 8, 27, 12);
-        await _createVehicle(harness, plate: 'XYZ125');
-        final vehicle = await _readyHome(harness, plate: 'ABC126');
-        tester.view.padding = const FakeViewPadding(top: 24);
-        addTearDown(tester.view.resetPadding);
-        await _pumpHome(
-          tester,
-          harness,
-          viewportSize: const Size(360, 780),
-          bottomNavigationBar: const SizedBox(height: 96),
-          homeBanner: const HomeBannerCampaign(
-            id: 'layout-full-banner',
-            kind: HomeBannerKind.house,
-            enabled: true,
-            label: 'PicoRadar',
-            title: 'Protección que te acompaña',
-            subtitle: 'Espacio preparado para campañas y aliados.',
-            ctaText: 'Conocer más',
-            targetUrl: 'https://picoradar.co/demo/home-ally',
-            priority: 1,
-          ),
-        );
-        await tester.pumpAndSettle();
+    testWidgets('Home measured layout fits Mi A3 without losing focus', (
+      tester,
+    ) async {
+      harness.now = DateTime(2026, 8, 27, 12);
+      await _createVehicle(harness, plate: 'XYZ125');
+      final vehicle = await _readyHome(harness, plate: 'ABC126');
+      tester.view.padding = const FakeViewPadding(top: 24);
+      addTearDown(tester.view.resetPadding);
+      await _pumpHome(
+        tester,
+        harness,
+        viewportSize: const Size(360, 780),
+        bottomNavigationBar: const SizedBox(height: 96),
+      );
+      await tester.pumpAndSettle();
 
-        final scroll = find.byKey(const ValueKey('home-v2-scroll'));
-        final carousel = find.byKey(const ValueKey('home-vehicle-carousel'));
-        final pageView = find.byKey(const ValueKey('home-vehicle-page-view'));
-        final controller = tester.widget<PageView>(pageView).controller!;
-        final initialPage = controller.page;
-        final container = ProviderScope.containerOf(
-          tester.element(find.byType(HomeScreen)),
-        );
-        expect(container.read(homeFocusedVehicleIdProvider), vehicle.id);
-        final position = tester
-            .state<ScrollableState>(
-              find
-                  .descendant(of: scroll, matching: find.byType(Scrollable))
-                  .first,
-            )
-            .position;
-        final smallHeight = tester.getSize(carousel).height;
-        expect(smallHeight, inInclusiveRange(220, 359));
-        expect(position.maxScrollExtent, greaterThan(0));
-        expect(
-          tester.widget<SingleChildScrollView>(scroll).physics,
-          isA<ClampingScrollPhysics>(),
-        );
-        final banner = find.byKey(const ValueKey('home-bottom-banner'));
-        expect(banner, findsOneWidget);
-        expect(tester.getSize(banner).height, greaterThanOrEqualTo(96));
-        final viewport = tester.getRect(scroll);
-        expect(
-          find.byKey(const ValueKey('home-bottom-banner-cta')),
-          findsOneWidget,
-        );
-        await tester.ensureVisible(banner);
-        await tester.pumpAndSettle();
-        expect(position.pixels, greaterThan(0));
-        expect(tester.getRect(banner).top, greaterThanOrEqualTo(viewport.top));
-        expect(
-          tester.getRect(banner).bottom,
-          lessThanOrEqualTo(viewport.bottom),
-        );
+      final scroll = find.byKey(const ValueKey('home-v2-scroll'));
+      final carousel = find.byKey(const ValueKey('home-vehicle-carousel'));
+      final pageView = find.byKey(const ValueKey('home-vehicle-page-view'));
+      final controller = tester.widget<PageView>(pageView).controller!;
+      final initialPage = controller.page;
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(HomeScreen)),
+      );
+      expect(container.read(homeFocusedVehicleIdProvider), vehicle.id);
+      final position = tester
+          .state<ScrollableState>(
+            find
+                .descendant(of: scroll, matching: find.byType(Scrollable))
+                .first,
+          )
+          .position;
+      final smallHeight = tester.getSize(carousel).height;
+      expect(smallHeight, inInclusiveRange(208, 359));
+      expect(position.maxScrollExtent, 0);
+      expect(
+        tester.widget<SingleChildScrollView>(scroll).physics,
+        isA<NeverScrollableScrollPhysics>(),
+      );
+      expect(find.byKey(const ValueKey('home-bottom-banner')), findsNothing);
 
-        tester.view.physicalSize = const Size(360, 1000);
-        await tester.pumpAndSettle();
-        expect(tester.getSize(carousel).height, greaterThan(smallHeight));
-        expect(tester.getSize(carousel).height, lessThanOrEqualTo(360));
-        expect(tester.widget<PageView>(pageView).controller, same(controller));
-        expect(controller.page, initialPage);
-        expect(container.read(homeFocusedVehicleIdProvider), vehicle.id);
-        expect(position.maxScrollExtent, greaterThan(0));
-        expect(tester.binding.hasScheduledFrame, isFalse);
-        expect(tester.takeException(), isNull);
-      },
-    );
+      tester.view.physicalSize = const Size(360, 1000);
+      await tester.pumpAndSettle();
+      expect(tester.getSize(carousel).height, greaterThan(smallHeight));
+      expect(tester.getSize(carousel).height, lessThanOrEqualTo(360));
+      expect(tester.widget<PageView>(pageView).controller, same(controller));
+      expect(controller.page, initialPage);
+      expect(container.read(homeFocusedVehicleIdProvider), vehicle.id);
+      expect(position.maxScrollExtent, 0);
+      expect(tester.binding.hasScheduledFrame, isFalse);
+      expect(tester.takeException(), isNull);
+    });
 
     for (final naming in [
       (nickname: '  Familiar  ', brand: 'Toyota', expected: 'Familiar'),
@@ -1715,7 +1641,7 @@ void main() {
       ]);
     });
 
-    testWidgets('390x844 keeps essential Home content reachable', (
+    testWidgets('390x844 keeps essential Home content above navigation', (
       tester,
     ) async {
       await _readyHome(harness, plate: 'ABC124');
@@ -1730,17 +1656,23 @@ void main() {
         ),
       );
 
-      final banner = find.byKey(const ValueKey('home-bottom-banner-slot'));
-      await tester.ensureVisible(banner);
-      await tester.pumpAndSettle();
-      final bannerBottom = tester.getBottomLeft(banner);
+      final status = find.byKey(const ValueKey('home-status-grid'));
+      final scroll = find.byKey(const ValueKey('home-v2-scroll'));
+      final position = tester
+          .state<ScrollableState>(
+            find
+                .descendant(of: scroll, matching: find.byType(Scrollable))
+                .first,
+          )
+          .position;
 
-      expect(bannerBottom.dy, lessThanOrEqualTo(844 - 96));
+      expect(tester.getBottomLeft(status).dy, lessThanOrEqualTo(844 - 96));
+      expect(position.maxScrollExtent, 0);
       expect(find.byKey(const ValueKey('home-start-driving')), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('360x800 keeps essential Home content reachable', (
+    testWidgets('360x800 keeps essential Home content above navigation', (
       tester,
     ) async {
       await _readyHome(harness, plate: 'ABC124');
@@ -1755,12 +1687,18 @@ void main() {
         ),
       );
 
-      final banner = find.byKey(const ValueKey('home-bottom-banner-slot'));
-      await tester.ensureVisible(banner);
-      await tester.pumpAndSettle();
-      final bannerBottom = tester.getBottomLeft(banner);
+      final status = find.byKey(const ValueKey('home-status-grid'));
+      final scroll = find.byKey(const ValueKey('home-v2-scroll'));
+      final position = tester
+          .state<ScrollableState>(
+            find
+                .descendant(of: scroll, matching: find.byType(Scrollable))
+                .first,
+          )
+          .position;
 
-      expect(bannerBottom.dy, lessThanOrEqualTo(800 - 96));
+      expect(tester.getBottomLeft(status).dy, lessThanOrEqualTo(800 - 96));
+      expect(position.maxScrollExtent, 0);
       expect(find.byKey(const ValueKey('home-start-driving')), findsNothing);
       expect(tester.takeException(), isNull);
     });
@@ -3630,9 +3568,11 @@ void main() {
 
   group('Home V2 viewport QA', () {
     final cases = <({String name, Size size, double textScale})>[
+      (name: '360x780', size: Size(360, 780), textScale: 1),
       (name: '360x800', size: Size(360, 800), textScale: 1),
       (name: '390x844', size: Size(390, 844), textScale: 1),
       (name: '412x915', size: Size(412, 915), textScale: 1),
+      (name: '430x932', size: Size(430, 932), textScale: 1),
       (name: '390x844 textScale 1.5', size: Size(390, 844), textScale: 1.5),
       (name: '390x844 textScale 2.0', size: Size(390, 844), textScale: 2),
     ];
@@ -3666,8 +3606,19 @@ void main() {
         expect(find.byKey(const ValueKey('home-status-grid')), findsOneWidget);
         expect(
           find.byKey(const ValueKey('home-bottom-banner-slot')),
-          findsOneWidget,
+          findsNothing,
         );
+        final carousel = tester.getRect(
+          find.byKey(const ValueKey('home-partner-carousel')),
+        );
+        expect(carousel.left, 0);
+        expect(carousel.right, viewport.size.width);
+        if (viewport.textScale == 1) {
+          final scrollable = tester.state<ScrollableState>(
+            find.byType(Scrollable).first,
+          );
+          expect(scrollable.position.maxScrollExtent, 0);
+        }
         expect(tester.takeException(), isNull);
       });
     }
@@ -4566,7 +4517,6 @@ Future<void> _pumpHome(
   DateTime Function()? homeGpsClock,
   DateTime Function()? currentInstantClock,
   RestrictionDayEvaluation? homeEvaluation,
-  HomeBannerCampaign? homeBanner,
 }) async {
   await _pump(
     tester,
@@ -4582,7 +4532,6 @@ Future<void> _pumpHome(
     homeGpsClock: homeGpsClock,
     currentInstantClock: currentInstantClock,
     homeEvaluation: homeEvaluation,
-    homeBanner: homeBanner,
   );
 }
 

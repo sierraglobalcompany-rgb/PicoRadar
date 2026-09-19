@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/router/app_routes.dart';
@@ -19,7 +18,6 @@ import '../../location/application/location_controller.dart';
 import '../../location/data/location_preferences.dart';
 import '../../location/domain/jurisdiction_location_resolver.dart';
 import '../../location/platform/device_location_gateway.dart';
-import '../data/home_banner_config.dart';
 import 'home_partner_carousel.dart';
 import 'pico_notification_sheet.dart';
 import '../../pico_placa/data/pico_preferences.dart';
@@ -32,7 +30,6 @@ import '../../visual_assets/presentation/visual_asset_widgets.dart';
 part 'home_vehicle_carousel.dart';
 part 'home_status_section.dart';
 part 'home_notification_sheet.dart';
-part 'home_banner_slot.dart';
 
 const _defaultHomeAlertPreferences = PicoAlertPreferences(
   enabled: true,
@@ -623,25 +620,26 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizeChangedLayoutNotifier(
-                      child: Padding(
+                      child: Column(
                         key: _headerLayoutKey,
-                        padding: EdgeInsets.fromLTRB(
-                          horizontalPadding,
-                          AppSpacing.xs,
-                          horizontalPadding,
-                          AppSpacing.s,
-                        ),
-                        child: Column(
-                          children: [
-                            _HomeHeader(
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              horizontalPadding,
+                              AppSpacing.xs,
+                              horizontalPadding,
+                              0,
+                            ),
+                            child: _HomeHeader(
                               alertPreferences: widget.alertPreferences,
                               jurisdictions: widget.jurisdictions,
                               selectedJurisdiction: widget.selectedJurisdiction,
                             ),
-                            const SizedBox(height: AppSpacing.s),
-                            const HomePartnerCarousel(),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          const HomePartnerCarousel(),
+                          const SizedBox(height: AppSpacing.xs),
+                        ],
                       ),
                     ),
                     _VehicleCarousel(
@@ -654,16 +652,16 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
                     SizeChangedLayoutNotifier(
                       child: Padding(
                         key: _footerLayoutKey,
-                        padding: const EdgeInsets.only(
-                          top: AppSpacing.s,
-                          bottom: AppSpacing.m,
-                        ),
+                        padding: EdgeInsets.zero,
                         child: Column(
                           children: [
-                            _CarouselIndicator(
-                              count: widget.snapshots.length,
-                              index: _focusedIndex,
-                            ),
+                            if (widget.snapshots.length > 1) ...[
+                              _CarouselIndicator(
+                                count: widget.snapshots.length,
+                                index: _focusedIndex,
+                              ),
+                              const SizedBox(height: AppSpacing.xs),
+                            ],
                             if (widget.selectedJurisdiction == null) ...[
                               const SizedBox(height: AppSpacing.m),
                               Padding(
@@ -676,7 +674,6 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
                                 ),
                               ),
                             ],
-                            const SizedBox(height: AppSpacing.s),
                             Padding(
                               padding: EdgeInsets.symmetric(
                                 horizontal: horizontalPadding,
@@ -686,13 +683,6 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
                                 selectedJurisdiction:
                                     widget.selectedJurisdiction,
                               ),
-                            ),
-                            const SizedBox(height: AppSpacing.s),
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: horizontalPadding,
-                              ),
-                              child: const HomeBannerSlot(),
                             ),
                           ],
                         ),

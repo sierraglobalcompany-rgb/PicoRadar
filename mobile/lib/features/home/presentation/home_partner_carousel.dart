@@ -21,7 +21,7 @@ class _HomePartnerCarouselState extends ConsumerState<HomePartnerCarousel> {
   @override
   void initState() {
     super.initState();
-    _controller = PageController(viewportFraction: 0.92);
+    _controller = PageController();
   }
 
   @override
@@ -37,69 +37,66 @@ class _HomePartnerCarouselState extends ConsumerState<HomePartnerCarousel> {
         final availableWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
             : MediaQuery.sizeOf(context).width;
-        final textWidth =
-            (availableWidth * 0.92 - AppSpacing.s - (AppSpacing.m * 2))
-                .clamp(120.0, 300.0)
-                .toDouble();
+        final textWidth = (availableWidth - (AppSpacing.m * 2))
+            .clamp(120.0, 328.0)
+            .toDouble();
         final height = _requiredCardHeight(context, textWidth);
         return Semantics(
-          label: 'Servicios y aliados, tarjeta ${_index + 1} de 4',
-          child: Column(
+          container: true,
+          label: 'Campaña ${_index + 1} de ${_slides.length}',
+          hint: 'Desliza horizontalmente para ver otras campañas.',
+          child: SizedBox(
             key: const ValueKey('home-partner-carousel'),
-            children: [
-              SizedBox(
-                height: height,
-                child: PageView.builder(
-                  key: const ValueKey('home-partner-page-view'),
-                  controller: _controller,
-                  itemCount: _slides.length,
-                  onPageChanged: (value) => setState(() => _index = value),
-                  itemBuilder: (context, index) {
-                    final slide = _slides[index];
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        right: index == _slides.length - 1 ? 0 : AppSpacing.s,
-                      ),
-                      child: _PartnerSlideCard(
+            width: double.infinity,
+            height: height,
+            child: Stack(
+              alignment: Alignment.bottomCenter,
+              children: [
+                Positioned.fill(
+                  child: PageView.builder(
+                    key: const ValueKey('home-partner-page-view'),
+                    controller: _controller,
+                    itemCount: _slides.length,
+                    onPageChanged: (value) => setState(() => _index = value),
+                    itemBuilder: (context, index) {
+                      final slide = _slides[index];
+                      return _PartnerSlideCard(
                         slide: slide,
                         onTap: () => _openSlide(context, slide),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (var index = 0; index < _slides.length; index++)
-                    AnimatedContainer(
-                      key: ValueKey('home-partner-dot-$index'),
-                      duration: const Duration(milliseconds: 180),
-                      width: index == _index ? 18 : 7,
-                      height: 7,
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      decoration: BoxDecoration(
-                        color: index == _index
-                            ? AppColors.teal
-                            : AppColors.navy.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  const SizedBox(width: AppSpacing.s),
-                  Text(
-                    '${_index + 1} de ${_slides.length}',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.navy.withValues(alpha: 0.72),
-                      fontWeight: FontWeight.w700,
-                    ),
+                      );
+                    },
                   ),
-                ],
-              ),
-            ],
+                ),
+                Positioned(
+                  bottom: 2,
+                  child: _CarouselControls(
+                    index: _index,
+                    count: _slides.length,
+                    onPrevious: _index == 0
+                        ? null
+                        : () => _showPage(_index - 1),
+                    onNext: _index == _slides.length - 1
+                        ? null
+                        : () => _showPage(_index + 1),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+
+  void _showPage(int page) {
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.jumpToPage(page);
+      return;
+    }
+    _controller.animateToPage(
+      page,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
     );
   }
 
@@ -120,8 +117,13 @@ class _HomePartnerCarouselState extends ConsumerState<HomePartnerCarousel> {
           _textHeight(context, slide.cta, captionStrong, textWidth - 20);
       if (contentHeight > tallest) tallest = contentHeight;
     }
-    // Reserve one icon line when a scaled CTA wraps before its trailing arrow.
-    final required = tallest + (AppSpacing.m * 2) + 18;
+    const topInset = 12.0;
+    const controlReserve = 52.0;
+    // The CTA arrow can wrap onto its own icon line at larger text scales.
+    final ctaIconLineReserve = MediaQuery.textScalerOf(context).scale(1) >= 1.4
+        ? 18.0
+        : 0.0;
+    final required = tallest + topInset + controlReserve + ctaIconLineReserve;
     return required < 184 ? 184 : required;
   }
 
@@ -172,6 +174,121 @@ class _HomePartnerCarouselState extends ConsumerState<HomePartnerCarousel> {
   }
 }
 
+class _CarouselControls extends StatelessWidget {
+  const _CarouselControls({
+    required this.index,
+    required this.count,
+    required this.onPrevious,
+    required this.onNext,
+  });
+
+  final int index;
+  final int count;
+  final VoidCallback? onPrevious;
+  final VoidCallback? onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    final indicatorDuration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 180);
+    return SizedBox(
+      key: const ValueKey('home-partner-carousel-controls'),
+      width: 160,
+      height: 48,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            left: 4,
+            right: 4,
+            top: 6,
+            bottom: 6,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.navy.withValues(alpha: 0.64),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+              ),
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Semantics(
+                label: 'Campaña anterior',
+                button: true,
+                enabled: onPrevious != null,
+                child: ExcludeSemantics(
+                  child: IconButton(
+                    key: const ValueKey('home-partner-previous'),
+                    tooltip: 'Campaña anterior',
+                    onPressed: onPrevious,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 48,
+                      height: 48,
+                    ),
+                    padding: EdgeInsets.zero,
+                    iconSize: 22,
+                    color: Colors.white,
+                    disabledColor: Colors.white.withValues(alpha: 0.3),
+                    icon: const Icon(Icons.chevron_left_rounded),
+                  ),
+                ),
+              ),
+              ExcludeSemantics(
+                child: SizedBox(
+                  width: 64,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      for (var index = 0; index < count; index++)
+                        AnimatedContainer(
+                          key: ValueKey('home-partner-dot-$index'),
+                          duration: indicatorDuration,
+                          width: index == this.index ? 16 : 6,
+                          height: 6,
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          decoration: BoxDecoration(
+                            color: index == this.index
+                                ? Colors.white
+                                : Colors.white.withValues(alpha: 0.45),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              Semantics(
+                label: 'Campaña siguiente',
+                button: true,
+                enabled: onNext != null,
+                child: ExcludeSemantics(
+                  child: IconButton(
+                    key: const ValueKey('home-partner-next'),
+                    tooltip: 'Campaña siguiente',
+                    onPressed: onNext,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 48,
+                      height: 48,
+                    ),
+                    padding: EdgeInsets.zero,
+                    iconSize: 22,
+                    color: Colors.white,
+                    disabledColor: Colors.white.withValues(alpha: 0.3),
+                    icon: const Icon(Icons.chevron_right_rounded),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PartnerSlideCard extends StatelessWidget {
   const _PartnerSlideCard({required this.slide, required this.onTap});
 
@@ -186,7 +303,6 @@ class _PartnerSlideCard extends StatelessWidget {
       child: Material(
         key: ValueKey('home-partner-slide-${slide.id}'),
         color: slide.fallbackColor,
-        borderRadius: BorderRadius.circular(AppRadius.card),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
@@ -227,11 +343,16 @@ class _PartnerSlideCard extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(AppSpacing.m),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.m,
+                  12,
+                  AppSpacing.m,
+                  52,
+                ),
                 child: Align(
-                  alignment: Alignment.centerLeft,
+                  alignment: Alignment.topLeft,
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 300),
+                    constraints: const BoxConstraints(maxWidth: 328),
                     child: Column(
                       key: ValueKey('home-partner-content-${slide.id}'),
                       mainAxisSize: MainAxisSize.min,

@@ -2,7 +2,7 @@ part of 'home_screen.dart';
 
 const _homeCarouselViewportFraction = 0.64;
 const _homeCarouselBaseHeight = 300.0;
-const _homeCarouselMinimumHeight = 220.0;
+const _homeCarouselMinimumHeight = 208.0;
 
 double _homeCarouselHeightForLayout(
   BuildContext context,

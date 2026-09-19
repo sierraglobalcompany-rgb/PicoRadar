@@ -13,12 +13,59 @@ void main() {
 
     expect(find.byKey(const ValueKey('home-partner-carousel')), findsOneWidget);
     expect(find.text('Automotor de demostración'), findsOneWidget);
-    expect(find.text('1 de 4'), findsOneWidget);
+    expect(find.text('1 de 4'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('home-partner-carousel-controls')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('home-partner-previous')), findsOneWidget);
+    expect(find.byKey(const ValueKey('home-partner-next')), findsOneWidget);
+
+    final pageView = tester.widget<PageView>(
+      find.byKey(const ValueKey('home-partner-page-view')),
+    );
+    expect(pageView.controller!.viewportFraction, 1);
 
     await tester.pump(const Duration(seconds: 20));
 
     expect(find.text('Automotor de demostración'), findsOneWidget);
-    expect(find.text('1 de 4'), findsOneWidget);
+    expect(find.text('1 de 4'), findsNothing);
+  });
+
+  testWidgets('overlay arrows move finitely and expose accessible labels', (
+    tester,
+  ) async {
+    await _pumpCarousel(tester);
+
+    final previous = find.byKey(const ValueKey('home-partner-previous'));
+    final next = find.byKey(const ValueKey('home-partner-next'));
+    expect(tester.getSize(previous), const Size(48, 48));
+    expect(tester.getSize(next), const Size(48, 48));
+    expect(tester.widget<IconButton>(previous).onPressed, isNull);
+    expect(find.bySemanticsLabel('Campaña 1 de 4'), findsOneWidget);
+    expect(find.bySemanticsLabel('Campaña anterior'), findsOneWidget);
+    expect(find.bySemanticsLabel('Campaña siguiente'), findsOneWidget);
+
+    await tester.tap(next);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Seguro de demostración'), findsOneWidget);
+    expect(tester.widget<IconButton>(previous).onPressed, isNotNull);
+
+    await _goToRecruitmentSlide(tester, remainingSlides: 2);
+    expect(tester.widget<IconButton>(next).onPressed, isNull);
+    expect(find.bySemanticsLabel('Campaña 4 de 4'), findsOneWidget);
+  });
+
+  testWidgets('reduced motion changes dots without an animation', (
+    tester,
+  ) async {
+    await _pumpCarousel(tester, disableAnimations: true);
+
+    final dot = tester.widget<AnimatedContainer>(
+      find.byKey(const ValueKey('home-partner-dot-0')),
+    );
+    expect(dot.duration, Duration.zero);
   });
 
   testWidgets('cards do not overflow across the Home viewport matrix', (
@@ -191,6 +238,7 @@ Future<void> _pumpCarousel(
   WidgetTester tester, {
   _RecordingPartnerInquiryClient? client,
   bool ready = false,
+  bool disableAnimations = false,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -202,9 +250,12 @@ Future<void> _pumpCarousel(
           client ?? _RecordingPartnerInquiryClient(),
         ),
       ],
-      child: const MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(child: HomePartnerCarousel()),
+      child: MaterialApp(
+        home: MediaQuery(
+          data: MediaQueryData(disableAnimations: disableAnimations),
+          child: const Scaffold(
+            body: SingleChildScrollView(child: HomePartnerCarousel()),
+          ),
         ),
       ),
     ),
@@ -212,8 +263,11 @@ Future<void> _pumpCarousel(
   await tester.pumpAndSettle();
 }
 
-Future<void> _goToRecruitmentSlide(WidgetTester tester) async {
-  for (var index = 0; index < 3; index++) {
+Future<void> _goToRecruitmentSlide(
+  WidgetTester tester, {
+  int remainingSlides = 3,
+}) async {
+  for (var index = 0; index < remainingSlides; index++) {
     await tester.fling(
       find.byKey(const ValueKey('home-partner-page-view')),
       const Offset(-500, 0),
@@ -222,7 +276,7 @@ Future<void> _goToRecruitmentSlide(WidgetTester tester) async {
     await tester.pumpAndSettle();
   }
   expect(find.text('Haz crecer tu negocio con PicoRadar'), findsOneWidget);
-  expect(find.text('4 de 4'), findsOneWidget);
+  expect(find.text('4 de 4'), findsNothing);
 }
 
 const _readyConfig = PartnerInquiryConfig(
