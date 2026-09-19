@@ -31,6 +31,44 @@ void main() {
     }
   });
 
+  test(
+    'F06 recovers interrupted replacement before reading or adding',
+    () async {
+      final original = await store.createCase(_draft(facts: 'Original'));
+      final index = _indexFile(root);
+      await index.rename('${index.path}.bak.100');
+      await File('${index.path}.tmp.100').writeAsBytes([1, 2, 3]);
+
+      expect((await store.listForVehicle('vehicle-1')).single.id, original.id);
+      await store.createCase(_draft(facts: 'New case'));
+      expect(await store.listForVehicle('vehicle-1'), hasLength(2));
+    },
+  );
+
+  test(
+    'F06 corrupt recovery candidate fails closed without overwriting',
+    () async {
+      final index = _indexFile(root);
+      await index.parent.create(recursive: true);
+      final backup = File('${index.path}.bak.100');
+      await backup.writeAsBytes([1, 2, 3]);
+      await expectLater(
+        store.createCase(_draft()),
+        throwsA(isA<DefenseCaseStoreException>()),
+      );
+      expect(await index.exists(), isFalse);
+      expect(await backup.readAsBytes(), [1, 2, 3]);
+    },
+  );
+
+  test('F06 current index wins over an obsolete backup', () async {
+    await store.createCase(_draft(facts: 'Original'));
+    final index = _indexFile(root);
+    await index.copy('${index.path}.bak.100');
+    await store.createCase(_draft(facts: 'Latest'));
+    expect(await store.listForVehicle('vehicle-1'), hasLength(2));
+  });
+
   test('creates vehicle-scoped cases in one encrypted index v1', () async {
     final item = await store.createCase(_draft(facts: 'Hechos sensibles'));
 

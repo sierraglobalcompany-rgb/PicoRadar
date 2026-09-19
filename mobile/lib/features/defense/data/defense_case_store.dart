@@ -48,19 +48,21 @@ class DefenseCaseStore {
   final DefenseCaseIdGenerator _idGenerator;
   Future<void> _mutationTail = Future<void>.value();
 
-  Future<List<DefenseCase>> listForVehicle(String vehicleId) async {
-    final requestedVehicleId = vehicleId.trim();
-    if (requestedVehicleId.isEmpty) {
-      return const [];
-    }
-    final cases = await _readIndex();
-    final filtered = [
-      for (final item in cases)
-        if (item.vehicleId == requestedVehicleId) item,
-    ];
-    filtered.sort((left, right) => right.updatedAt.compareTo(left.updatedAt));
-    return filtered;
-  }
+  Future<List<DefenseCase>> listForVehicle(String vehicleId) => _runMutation(
+    () async {
+      final requestedVehicleId = vehicleId.trim();
+      if (requestedVehicleId.isEmpty) {
+        return const [];
+      }
+      final cases = await _readIndex();
+      final filtered = [
+        for (final item in cases)
+          if (item.vehicleId == requestedVehicleId) item,
+      ];
+      filtered.sort((left, right) => right.updatedAt.compareTo(left.updatedAt));
+      return filtered;
+    },
+  );
 
   Future<DefenseCase> createCase(DefenseCaseDraft draft) {
     final normalized = _normalizeDraft(draft);
@@ -152,9 +154,27 @@ class DefenseCaseStore {
   Future<List<DefenseCase>> _readIndex() async {
     final indexFile = await _indexFile();
     if (!await indexFile.exists()) {
-      return const [];
+      // Recover indexes left by the previous two-rename write protocol.
+      final backups = <({File file, int stamp})>[];
+      final prefix = '$indexFileName.bak.';
+      await for (final entry in indexFile.parent.list(followLinks: false)) {
+        if (entry is! File) continue;
+        final name = entry.uri.pathSegments.last;
+        if (!name.startsWith(prefix)) continue;
+        final stamp = int.tryParse(name.substring(prefix.length));
+        if (stamp != null) backups.add((file: entry, stamp: stamp));
+      }
+      if (backups.isEmpty) return const [];
+      backups.sort((a, b) => b.stamp.compareTo(a.stamp));
+      final backup = backups.first.file;
+      final recovered = await _readIndexFile(backup);
+      await backup.rename(indexFile.path);
+      return recovered;
     }
+    return _readIndexFile(indexFile);
+  }
 
+  Future<List<DefenseCase>> _readIndexFile(File indexFile) async {
     try {
       final key = await _masterKey();
       final raw = await _fileCrypto.decryptBytes(
@@ -189,25 +209,12 @@ class DefenseCaseStore {
     await indexFile.parent.create(recursive: true);
     final stamp = _now().microsecondsSinceEpoch;
     final temp = File('${indexFile.path}.tmp.$stamp');
-    final backup = File('${indexFile.path}.bak.$stamp');
-    var backupCreated = false;
     try {
       await temp.writeAsBytes(encrypted, flush: true);
-      if (await indexFile.exists()) {
-        await indexFile.rename(backup.path);
-        backupCreated = true;
-      }
+      // Same-directory replacement keeps the committed index present throughout.
       await temp.rename(indexFile.path);
-      if (backupCreated && await backup.exists()) {
-        await _tryDeleteFile(backup);
-      }
     } catch (_) {
-      if (await temp.exists()) {
-        await temp.delete();
-      }
-      if (backupCreated && await backup.exists() && !await indexFile.exists()) {
-        await backup.rename(indexFile.path);
-      }
+      await _tryDeleteFile(temp);
       rethrow;
     }
   }
