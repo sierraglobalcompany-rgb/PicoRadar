@@ -9,8 +9,8 @@ class AlertCodecTest {
     private val event = AlertEvent(7, "pico", 1000, 2000, "/pico", "generation")
     private fun bytes(state: AlertProjection): ByteArray = ByteArrayOutputStream().also { AlertCodec.write(state, it) }.toByteArray()
 
-    @Test fun projectionRoundTripsIdentifiersTimesAndGenericRouteOnly() {
-        val state = AlertProjection(listOf(event), "EXACT_ACCESS_REQUIRED")
+    @Test fun projectionRoundTripsOpaqueOwnerWithoutOtherContext() {
+        val state = AlertProjection(listOf(event.copy(route = "/pico?vehicleId=owner_2")), "EXACT_ACCESS_REQUIRED")
         assertEquals(state, AlertCodec.read(ByteArrayInputStream(bytes(state))))
     }
 
@@ -25,10 +25,20 @@ class AlertCodecTest {
     }
 
     @Test fun persistedExternalRouteOrPrivateContextIsNeverAccepted() {
-        for (route in listOf("https://example.test", "/pico?vehicleId=private", "/pico?plate=ABC123")) {
+        for (route in listOf("https://example.test", "/pico?vehicleId=owner%20name", "/pico?plate=ABC123",
+            "/pico?vehicleId=owner&source=obligation_reminder")) {
             assertThrows(AlertFailure::class.java) {
                 AlertCodec.read(ByteArrayInputStream(bytes(AlertProjection(listOf(event.copy(route = route))))))
             }
+        }
+    }
+
+    @Test fun extraProjectionSlotIsOnlyForFictionalTest() {
+        val normal = (1..128).map { event.copy(id = it) }
+        val valid = AlertProjection(normal + event.copy(id = -1, scope = "test"))
+        assertEquals(valid, AlertCodec.read(ByteArrayInputStream(bytes(valid))))
+        assertThrows(AlertFailure::class.java) {
+            AlertCodec.read(ByteArrayInputStream(bytes(AlertProjection(normal + event.copy(id = 129)))))
         }
     }
 }

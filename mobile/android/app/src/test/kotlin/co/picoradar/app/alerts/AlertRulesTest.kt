@@ -40,12 +40,48 @@ class AlertRulesTest {
         assertThrows(AlertFailure::class.java) { AlertRules.requireScope("all") }
     }
 
-    @Test fun routesRejectExternalAndPrivatePayloadsAndStripLocalContext() {
-        assertEquals("/apps/module/soat", AlertRules.route("/apps/module/soat?vehicleId=local-id&source=obligation_reminder"))
+    @Test fun routesRetainOnlyValidatedOwnerContext() {
+        val id = "00112233445566778899aabbccddeeff"
+        assertEquals("/apps/module/soat?vehicleId=$id",
+            AlertRules.route("/apps/module/soat?vehicleId=$id&source=obligation_reminder"))
+        assertEquals("/pico?vehicleId=owner_2-ABC",
+            AlertRules.route("/pico?jurisdictionId=city-1&vehicleId=owner%5F2-ABC"))
+        assertEquals("/pico", AlertRules.route("/pico"))
         for (route in listOf("https://host/pico", "//host/pico", "/pico?plate=ABC123",
             "/apps/module/documentos", "/pico#secret", "/pico/../garage")) {
             assertThrows(AlertFailure::class.java) { AlertRules.route(route) }
         }
+    }
+
+    @Test fun invalidOwnerCannotSilentlyFallBackToFavorite() {
+        val invalid = listOf("", "a".repeat(65), "owner+name", "owner%20name", "%00", "%0A",
+            "owner%26plate%3DABC123", "owner%2Fother", "%2526", "%C3%B1", "owner@example.com")
+        invalid.forEach { id ->
+            assertEquals("INVALID_ROUTE", assertThrows(AlertFailure::class.java) {
+                AlertRules.route("/pico?vehicleId=$id")
+            }.code)
+        }
+        for (query in listOf("vehicleId=a&vehicleId=b", "vehicleId=a&vehicle%49d=b", "vehicleId",
+            "vehicleId=a&source=private", "vehicleId=a&unknown=x", "vehicleId=a&")) {
+            assertThrows(AlertFailure::class.java) { AlertRules.route("/pico?$query") }
+        }
+    }
+
+    @Test fun ownerLengthBoundariesAndRoutesAreIdempotent() {
+        for (id in listOf("a", "a".repeat(64), "00112233445566778899aabbccddeeff")) {
+            val value = "/apps/module/seguro_asistencia?vehicleId=$id"
+            assertEquals(value, AlertRules.route(value))
+            assertEquals(value, AlertRules.route(AlertRules.route(value)))
+        }
+    }
+
+    @Test fun incomingBatchLimitIsExplicitAt128And129() {
+        fun raw(count: Int) = (1..count).map { mapOf("id" to it, "at" to now + 1000,
+            "expiresAt" to now + 900_000, "route" to "/pico") }
+        assertEquals(128, AlertRules.parse("pico", raw(128), now).size)
+        assertEquals("TOO_MANY_EVENTS", assertThrows(AlertFailure::class.java) {
+            AlertRules.parse("pico", raw(129), now)
+        }.code)
     }
 
     @Test fun wireNumbersMustBeIntegralAndIdsMustFitCoordinatorContract() {

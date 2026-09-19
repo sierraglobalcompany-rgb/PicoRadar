@@ -31,12 +31,13 @@ internal class AlertEngine(
 
     @Synchronized fun reschedule(scope: String, events: List<AlertEvent>): List<Int> {
         AlertRules.requireScope(scope)
-        if (events.any { it.scope != scope } || events.size > AlertRules.MAX_EVENTS) throw AlertFailure("INVALID_ARGUMENTS")
+        if (events.any { it.scope != scope }) throw AlertFailure("INVALID_ARGUMENTS")
+        if (events.size > AlertRules.MAX_EVENTS) throw AlertFailure("TOO_MANY_EVENTS")
         val state = store.read()
         val others = AlertRules.withoutScope(state.events, scope)
         if (events.map { it.id }.distinct().size != events.size ||
             events.any { item -> others.any { it.id == item.id } }) throw AlertFailure("ID_CONFLICT")
-        if (others.size + events.size > AlertRules.MAX_EVENTS) throw AlertFailure("TOO_MANY_EVENTS")
+        if (others.count { it.scope != "test" } + events.size > AlertRules.MAX_EVENTS) throw AlertFailure("TOO_MANY_EVENTS")
         if (events.isNotEmpty()) alarms.requireAccess()
         // Revoke old tokens on disk before touching AlarmManager. Interrupted batches cannot ring.
         store.write(AlertProjection(others))

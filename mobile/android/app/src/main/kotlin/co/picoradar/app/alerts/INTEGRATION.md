@@ -106,16 +106,48 @@ entirely on lockscreen when that plugin cannot supply a generic public version.
 
 Events: `{id: int, at: UTC milliseconds, expiresAt: UTC milliseconds, route: String}`.
 Scope is exactly `pico` or `obligations`; IDs must be positive 32-bit, unique across
-both scopes, unchanged from coordinator IDs. Test uses reserved -1. Maximum 128
-projected normal events. Past events are not scheduled; duplicate/colliding IDs
+both scopes, unchanged from coordinator IDs. Test uses reserved -1 in its own extra
+slot. Maximum 128 projected normal events across both scopes, not 128 per scope.
+Past events are not scheduled; duplicate/colliding IDs
 reject before mutation. ExpiresAt is exclusive; snooze must remain within it.
+
+The 128 limit is an explicit native projection budget, not an Android guarantee.
+An incoming batch of 129 or a replacement exceeding the shared budget throws
+TOO_MANY_EVENTS before native cancellation/writes/scheduling; existing events in
+both scopes remain intact. No truncation, partial success or notification fallback.
+The codec also rejects 129 normal events; only the fictional test may use slot 129.
+The raw input batch is bounded at 128 even when it includes past events. Other
+scope entries still retained in the projection count toward capacity; pending
+prunes expired entries without changing future events.
+
+Current Dart planning can exceed this budget: pico examines 14 days with up to two
+alerts per restricted day per vehicle (upper bound 28); three supported obligations
+with up to five configured offsets add up to 15 per vehicle. Multiple vehicles can
+therefore exceed 128. The coordinator must surface TOO_MANY_EVENTS and explicitly
+select/replenish a supported horizon if needed; native code never silently shortens
+it. Use reschedule directly for scope replacement, not cancel-then-reschedule:
+preemptive Dart cancellation would discard the previous schedule before this guard.
 
 Route allowlist: `/pico`, `/garage`, `/apps/module/soat`,
 `/apps/module/tecnomecanica`, `/apps/module/seguro_asistencia`, `/apps/module/impuestos`.
-Only local context query keys vehicleId/source/jurisdictionId are accepted; context
-is stripped before persistence so the projection contains generic module routes.
+The projection retains only vehicleId from the query, validated after one URL decode
+as 1-64 ASCII characters `[A-Za-z0-9_-]`. Pass only the opaque Drift vehicle ID
+(production IDs are 32 hexadecimal characters), never plate, nickname, identity or
+document metadata. Empty/oversized/unsafe IDs, duplicate decoded query keys, unknown
+keys and malformed queries throw INVALID_ROUTE, never silently selecting a favorite.
+The known source=obligation_reminder and a similarly validated jurisdictionId are
+accepted as compatibility inputs but omitted from the stored route. Canonical
+routes are rebuilt using java.net.URI, and the private Android deep link uses
+Uri.Builder.path/appendQueryParameter after revalidation; no raw query interpolation.
 Private navigation occurs only after Keyguard reports unlocked and rechecks that
-the event exists and has not expired. This opens the module's current local context.
+the event exists and has not expired. Owner context survives persistence, restore,
+claim and snooze, and is never placed in notification text or PendingIntent identity.
+
+Coordinator requirement: include vehicleId for every per-vehicle alarm, including
+pico (`/pico?vehicleId=<opaque-id>`). Native cannot recover an owner from a bare
+`/pico` payload or from earlier projections that stripped the ID. Generic no-owner
+routes remain accepted for compatibility/test; rebuild per-vehicle projections
+from Drift after this fix. Flutter must revalidate owner existence upon navigation.
 
 MethodChannel errors contain a stable upper-case code, a generic message and null
 details; native exceptions, routes, documents and PII are never logged/returned.
@@ -130,7 +162,9 @@ ALARM_INTERRUPTED, PRIVATE_NAVIGATION_FAILED and BRIDGE_DISPOSED.
 - Status: PARTIAL pending coordinator wiring and physical Android/store QA.
 - Lot: C11 approved native optional alarms extension.
 - Branch: shared `codex/forensic-alerts`; no branch switch, merge or push by this owner.
-- Base HEAD at start: `91b804c`; exact scoped commit is supplied with the final handoff.
+- Initial native commit: `e1143c64dfe2920a7f19852c08e215bd9c7f1bb4`.
+  Owner-context correction base: `69eefc3`; exact scoped correction commit is supplied
+  with the final handoff. MainActivity/manifest wiring remains coordinator-owned.
 - Worktree: `C:/Users/felip/Documents/ChatGPT/PicoRadar_ Pico y Placa`.
 - Files: this alerts folder and corresponding `src/test/kotlin/co/picoradar/app/alerts` only.
 - Outcome: serialized scope replacement/cancellation, atomic no-backup projection,
@@ -140,8 +174,9 @@ ALARM_INTERRUPTED, PRIVATE_NAVIGATION_FAILED and BRIDGE_DISPOSED.
 - Dependencies added/changed: none.
 - Manual QA: source review only; no install, emulator, adb or physical device calls.
 - Physical Android QA: REQUIRED AND NOT RUN, per instruction. Device/Android/evidence: none.
-- Tests: direct Kotlin/JUnit rules tests RED (one expired-projection assertion), then
-  GREEN (24 tests); all native source compiled directly against installed Android
+- Tests: initial direct Kotlin/JUnit rules tests GREEN (24 tests). Owner/capacity
+  correction RED (7 failures in 31 tests), then GREEN (31 tests); all native source
+  compiled directly against installed Android
   37 SDK + cached Flutter/AndroidX. Runtime Android behavior is not covered by JVM tests.
 - Exact verification: from repo root,
   `& './mobile/android/app/src/test/kotlin/co/picoradar/app/alerts/run-pure-tests.ps1'`
@@ -152,6 +187,7 @@ ALARM_INTERRUPTED, PRIVATE_NAVIGATION_FAILED and BRIDGE_DISPOSED.
 - Every Gradle/Flutter invocation acquired `Local\PicoRadarFlutterGate`; later
   native-only Gradle attempts skipped execution when the mutex was busy.
 - No global Flutter suite executed. Direct Kotlin runner invokes neither Gradle nor Flutter.
+  This correction ran only the direct Kotlin runner with -CompileAndroid, no Gradle.
 - Risks/debt: physical permission/lockscreen/sound/background/reboot/clock/tap QA,
   Android 14+ full-screen eligibility and Play declarations remain open; force-stop,
   power-off and OS scheduling restrictions do not guarantee delivery. Only one

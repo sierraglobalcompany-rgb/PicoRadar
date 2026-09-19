@@ -189,4 +189,42 @@ class AlertEngineTest {
         assertTrue(engine.pending().isEmpty())
         assertTrue(alarms.scheduled.isEmpty())
     }
+
+    @Test fun aggregateCapacityRejectsWholeReplacementAndPreservesBothScopes() {
+        val store = MemoryStore(); val alarms = FakeAlarms(); val engine = AlertEngine(store, alarms) { now }
+        engine.reschedule("obligations", (1..100).map { event(it, "obligations") })
+        engine.reschedule("pico", (101..128).map { event(it) })
+        val before = store.state
+        val scheduledBefore = alarms.scheduled.toMap()
+        assertEquals("TOO_MANY_EVENTS", assertThrows(AlertFailure::class.java) {
+            engine.reschedule("pico", (201..229).map { event(it) })
+        }.code)
+        assertEquals(before, store.state)
+        assertEquals(scheduledBefore, alarms.scheduled)
+        assertEquals(128, engine.pending().size)
+    }
+
+    @Test fun testUsesSeparateSlotAndOversizedEngineBatchHasTypedError() {
+        val store = MemoryStore(); val alarms = FakeAlarms(); val engine = AlertEngine(store, alarms) { now }
+        engine.reschedule("obligations", (1..127).map { event(it, "obligations") })
+        engine.test()
+        assertEquals(listOf(128), engine.reschedule("pico", listOf(event(128))))
+        assertEquals("TOO_MANY_EVENTS", assertThrows(AlertFailure::class.java) {
+            engine.reschedule("pico", (201..329).map { event(it) })
+        }.code)
+        assertEquals(129, store.state.events.size)
+    }
+
+    @Test fun ownerSurvivesRestoreClaimAndSnooze() {
+        var clock = now
+        val store = MemoryStore(); val alarms = FakeAlarms(); val engine = AlertEngine(store, alarms) { clock }
+        val route = AlertRules.route("/apps/module/soat?vehicleId=owner_2&source=obligation_reminder")
+        engine.reschedule("obligations", listOf(event(7, "obligations").copy(route = route)))
+        engine.restore()
+        clock += 1000
+        val ringing = engine.claim(7, "token-7")!!
+        assertEquals("/apps/module/soat?vehicleId=owner_2", ringing.route)
+        engine.snooze(ringing.id, ringing.token)
+        assertEquals(ringing.route, alarms.scheduled[7]?.route)
+    }
 }

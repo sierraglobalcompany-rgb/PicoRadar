@@ -93,9 +93,12 @@ class AlertActivity : Activity() {
                 val current = current()
                 // Expired/deleted events cannot reopen private context from a stale intent.
                 if (current == null || current.expiresAt <= System.currentTimeMillis()) { finish(); return }
+                val destination = AlertRules.destination(current.route)
                 startActivity(Intent().setClassName(this, "co.picoradar.app.MainActivity").apply {
                     action = Intent.ACTION_VIEW
-                    data = Uri.parse("picoradar://${AlertRules.route(current.route)}")
+                    data = Uri.Builder().scheme("picoradar").authority("").path(destination.path).apply {
+                        destination.vehicleId?.let { appendQueryParameter("vehicleId", it) }
+                    }.build()
                     addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 })
                 action(event, AlertPlatform.STOP)

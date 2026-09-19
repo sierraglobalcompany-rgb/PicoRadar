@@ -37,12 +37,13 @@ internal object AlertCodec {
                 val event = AlertEvent(stream.readInt(), stream.readUTF(), stream.readLong(),
                     stream.readLong(), stream.readUTF(), stream.readUTF(), AlertPhase.entries[stream.readInt()])
                 if (event.scope !in setOf("pico", "obligations", "test") ||
-                    (event.id <= 0 && !(event.id == AlertRules.TEST_ID && event.scope == "test")) ||
+                    (if (event.scope == "test") event.id != AlertRules.TEST_ID else event.id <= 0) ||
                     event.at < 0 || event.expiresAt <= event.at || AlertRules.route(event.route) != event.route ||
                     !Regex("[a-zA-Z0-9-]{1,64}").matches(event.token)) throw AlertFailure("PROJECTION_CORRUPT")
                 event
             }
-            if (events.map { it.id }.distinct().size != events.size || stream.read() != -1)
+            if (events.count { it.scope != "test" } > AlertRules.MAX_EVENTS ||
+                events.map { it.id }.distinct().size != events.size || stream.read() != -1)
                 throw AlertFailure("PROJECTION_CORRUPT")
             return AlertProjection(events, failure)
         } catch (_: Exception) { throw AlertFailure("PROJECTION_CORRUPT") }

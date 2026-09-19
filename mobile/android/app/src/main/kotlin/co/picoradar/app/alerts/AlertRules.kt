@@ -1,6 +1,7 @@
 package co.picoradar.app.alerts
 
 import java.net.URI
+import java.net.URLDecoder
 import java.util.UUID
 
 internal enum class AlertPhase { STAGED, SCHEDULED, RINGING }
@@ -16,6 +17,7 @@ internal data class AlertEvent(
 )
 
 internal class AlertFailure(val code: String) : Exception("PicoRadar alarm operation failed: $code")
+internal data class AlertDestination(val path: String, val vehicleId: String?)
 
 internal object AlertRules {
     const val MAX_EVENTS = 128
@@ -30,16 +32,39 @@ internal object AlertRules {
         return value
     }
 
-    // Persist only the module destination. Vehicle context stays in the authoritative Drift DB.
+    // The only persisted query value is an opaque local owner ID, never vehicle display data.
     fun route(value: String): String {
+        val destination = destination(value)
+        return URI(null, null, destination.path,
+            destination.vehicleId?.let { "vehicleId=$it" }, null).toASCIIString()
+    }
+
+    fun destination(value: String): AlertDestination {
         val uri = try { URI(value) } catch (_: Exception) { throw AlertFailure("INVALID_ROUTE") }
         if (value.length > 1024 || uri.scheme != null || uri.rawAuthority != null ||
-            uri.rawFragment != null || uri.rawPath !in routes ||
-            uri.rawQuery?.split('&')?.any { it.substringBefore('=') !in setOf("vehicleId", "source", "jurisdictionId") } == true) {
+            uri.rawFragment != null || uri.rawPath !in routes) {
             throw AlertFailure("INVALID_ROUTE")
         }
-        return uri.rawPath
+        val parameters = mutableMapOf<String, String>()
+        uri.rawQuery?.split('&')?.forEach { part ->
+            val pair = part.split('=', limit = 2)
+            if (pair.size != 2) throw AlertFailure("INVALID_ROUTE")
+            val key = decode(pair[0])
+            val content = decode(pair[1])
+            if (parameters.containsKey(key)) throw AlertFailure("INVALID_ROUTE")
+            val valid = when (key) {
+                "vehicleId", "jurisdictionId" -> Regex("[A-Za-z0-9_-]{1,64}").matches(content)
+                "source" -> content == "obligation_reminder"
+                else -> false
+            }
+            if (!valid) throw AlertFailure("INVALID_ROUTE")
+            parameters[key] = content
+        }
+        return AlertDestination(uri.rawPath, parameters["vehicleId"])
     }
+
+    private fun decode(value: String): String = try { URLDecoder.decode(value, "UTF-8") }
+        catch (_: Exception) { throw AlertFailure("INVALID_ROUTE") }
 
     fun parse(scope: String, raw: Any?, now: Long): List<AlertEvent> {
         requireScope(scope)
