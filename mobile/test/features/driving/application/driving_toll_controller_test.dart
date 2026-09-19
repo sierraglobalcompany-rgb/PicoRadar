@@ -659,6 +659,8 @@ class _Feedback implements DrivingFeedbackGateway {
   int stops = 0;
   Completer<void>? block;
   @override
+  Future<bool> isSpeechAvailable() async => true;
+  @override
   Future<void> speak(String message) async {
     messages.add(message);
     await block?.future;

@@ -93,6 +93,7 @@ class MainActivity : FlutterFragmentActivity() {
             "co.picoradar.app/driving",
         ).setMethodCallHandler { call, result ->
             when (call.method) {
+                "isDrivingSpeechAvailable" -> result.success(ttsReady)
                 "speakDrivingAlert" -> {
                     val message = call.argument<String>("message").orEmpty()
                     if (ttsReady && message.isNotBlank()) {

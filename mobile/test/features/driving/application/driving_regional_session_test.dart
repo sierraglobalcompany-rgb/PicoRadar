@@ -386,6 +386,8 @@ class _Feedback implements DrivingFeedbackGateway {
   int? blockSpeakAt;
   Future<void>? blockedSpeak;
   @override
+  Future<bool> isSpeechAvailable() async => true;
+  @override
   Future<void> setKeepScreenOn(bool enabled) async {
     screen.add(enabled);
   }

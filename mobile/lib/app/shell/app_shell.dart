@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -82,6 +84,7 @@ class _ShellBranchState {
 class _AppShellState extends ConsumerState<AppShell> {
   bool _launcherOpen = false;
   bool _branchEntryScheduled = false;
+  bool _drivingExitPending = false;
 
   @override
   void initState() {
@@ -119,11 +122,27 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     final drivingHudActive = ref.watch(drivingHudActiveProvider);
+    final drivingActive = ref.watch(
+      drivingControllerProvider.select(
+        (value) => value.asData?.value.isActive ?? false,
+      ),
+    );
+    final path = GoRouterState.of(context).uri.path;
+    final isTabRoot = AppTab.values.any((tab) => tab.route.path == path);
+    final handlesRootBack =
+        isTabRoot &&
+        (drivingActive ||
+            widget.navigationShell.currentIndex != AppTab.home.index);
     return PopScope(
-      canPop: !_launcherOpen,
+      canPop: !_launcherOpen && !handlesRootBack,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _launcherOpen) {
+        if (didPop) return;
+        if (_launcherOpen) {
           _closeLauncher();
+          return;
+        }
+        if (handlesRootBack) {
+          unawaited(_handleRootBack(drivingActive: drivingActive));
         }
       },
       child: Scaffold(
@@ -179,6 +198,12 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 
   Future<void> _selectTab(int index) async {
+    final drivingActive =
+        ref.read(drivingControllerProvider).asData?.value.isActive ?? false;
+    if (drivingActive && index != AppTab.drive.index) {
+      if (!await _stopDrivingBeforeLeaving()) return;
+    }
+    if (!mounted) return;
     if (ref.exists(walletSessionProvider)) {
       ref.read(walletSessionProvider).lock();
     }
@@ -198,6 +223,43 @@ class _AppShellState extends ConsumerState<AppShell> {
         initialLocation:
             fromPico || index == widget.navigationShell.currentIndex,
       );
+    }
+  }
+
+  Future<void> _handleRootBack({required bool drivingActive}) async {
+    if (drivingActive && !await _stopDrivingBeforeLeaving()) return;
+    if (!mounted) return;
+    widget.navigationShell.goBranch(AppTab.home.index, initialLocation: true);
+  }
+
+  Future<bool> _stopDrivingBeforeLeaving() async {
+    if (_drivingExitPending) return false;
+    _drivingExitPending = true;
+    try {
+      final shouldStop = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Finalizar conducción'),
+          content: const Text(
+            'Para salir de Conducir, detén primero las alertas y el GPS de alta precisión.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Seguir conduciendo'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Finalizar y salir'),
+            ),
+          ],
+        ),
+      );
+      if (shouldStop != true || !mounted) return false;
+      await ref.read(drivingControllerProvider.notifier).stop();
+      return mounted;
+    } finally {
+      _drivingExitPending = false;
     }
   }
 

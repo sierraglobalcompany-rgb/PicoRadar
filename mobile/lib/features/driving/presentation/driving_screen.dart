@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme/app_tokens.dart';
 import '../../../core/design_system/branding.dart';
+import '../../location/application/location_controller.dart';
 import '../../trip/presentation/trip_toll_sheet.dart';
 import '../application/driving_controller.dart';
 import '../data/driving_preferences.dart';
@@ -55,14 +56,22 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.detached) {
+      ref.read(drivingControllerProvider.notifier).stop();
+    }
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
-      ref.read(drivingControllerProvider.notifier).stop();
       _visualPulseController
         ..stop()
         ..value = 0;
       _leaveHudMode();
+    } else if (state == AppLifecycleState.resumed) {
+      unawaited(
+        ref
+            .read(drivingControllerProvider.notifier)
+            .refreshSpeechAvailability(),
+      );
     }
   }
 
@@ -152,6 +161,11 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
             : null,
         onStop: () => ref.read(drivingControllerProvider.notifier).stop(),
         onSettings: () => _showSettings(context, defaultDrivingPreferences),
+        onGpsDiagnostic: () =>
+            _showGpsDiagnostic(context, _initialDrivingState),
+        onVoiceToggle: () => ref
+            .read(drivingControllerProvider.notifier)
+            .setVoiceEnabled(!defaultDrivingPreferences.voiceEnabled),
         onHud: null,
         onMirrorHud: null,
       ),
@@ -221,6 +235,10 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
               : null,
           onStop: () => ref.read(drivingControllerProvider.notifier).stop(),
           onSettings: () => _showSettings(context, state.preferences),
+          onGpsDiagnostic: () => _showGpsDiagnostic(context, state),
+          onVoiceToggle: () => ref
+              .read(drivingControllerProvider.notifier)
+              .setVoiceEnabled(!state.preferences.voiceEnabled),
           onHud: state.isActive
               ? () => _enterHudMode(mirror: state.preferences.hudMirrorEnabled)
               : null,
@@ -281,6 +299,39 @@ class _DrivingScreenState extends ConsumerState<DrivingScreen>
     }
   }
 
+  Future<void> _showGpsDiagnostic(
+    BuildContext context,
+    DrivingState state,
+  ) async {
+    final action = switch (state.status) {
+      DrivingSessionStatus.serviceDisabled => _GpsRecoveryAction.location,
+      DrivingSessionStatus.permissionDeniedForever =>
+        _GpsRecoveryAction.appSettings,
+      _ => _GpsRecoveryAction.retry,
+    };
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => _GpsDiagnosticSheet(
+        state: state,
+        recoveryAction: action,
+        onRecovery: () => _performGpsRecovery(action),
+      ),
+    );
+  }
+
+  Future<void> _performGpsRecovery(_GpsRecoveryAction action) async {
+    if (!mounted) return;
+    switch (action) {
+      case _GpsRecoveryAction.location:
+        await ref.read(deviceLocationGatewayProvider).openLocationSettings();
+      case _GpsRecoveryAction.appSettings:
+        await ref.read(deviceLocationGatewayProvider).openAppSettings();
+      case _GpsRecoveryAction.retry:
+        await ref.read(drivingControllerProvider.notifier).recoverLocation();
+    }
+  }
+
   void _enterHudMode({required bool mirror}) {
     setState(() {
       _hudMode = true;
@@ -332,6 +383,8 @@ class _DrivingDashboard extends StatelessWidget {
     required this.onDebugRegional,
     required this.onStop,
     required this.onSettings,
+    required this.onGpsDiagnostic,
+    required this.onVoiceToggle,
     required this.onHud,
     required this.onMirrorHud,
   });
@@ -347,6 +400,8 @@ class _DrivingDashboard extends StatelessWidget {
   final ValueChanged<DrivingSimulationScenario>? onDebugRegional;
   final VoidCallback onStop;
   final VoidCallback onSettings;
+  final VoidCallback onGpsDiagnostic;
+  final VoidCallback onVoiceToggle;
   final VoidCallback? onHud;
   final VoidCallback? onMirrorHud;
 
@@ -379,7 +434,11 @@ class _DrivingDashboard extends StatelessWidget {
                   );
                   return Column(
                     children: [
-                      _DrivingTopBar(state: state),
+                      _DrivingTopBar(
+                        state: state,
+                        onGpsDiagnostic: onGpsDiagnostic,
+                        onVoiceToggle: onVoiceToggle,
+                      ),
                       if (state.simulationName case final name?)
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
@@ -508,6 +567,13 @@ class _DrivingDashboard extends StatelessWidget {
           if (state.errorMessage != null) ...[
             const SizedBox(height: AppSpacing.l),
             _StatusMessage(message: state.errorMessage!),
+            const SizedBox(height: AppSpacing.s),
+            OutlinedButton.icon(
+              key: const ValueKey('driving-gps-diagnostic'),
+              onPressed: onGpsDiagnostic,
+              icon: const Icon(Icons.gps_fixed),
+              label: const Text('Diagnóstico GPS'),
+            ),
           ],
           const SizedBox(height: AppSpacing.l),
           FilledButton.icon(
@@ -1174,9 +1240,15 @@ class _ReadySummary extends StatelessWidget {
 }
 
 class _DrivingTopBar extends StatelessWidget {
-  const _DrivingTopBar({required this.state});
+  const _DrivingTopBar({
+    required this.state,
+    required this.onGpsDiagnostic,
+    required this.onVoiceToggle,
+  });
 
   final DrivingState state;
+  final VoidCallback onGpsDiagnostic;
+  final VoidCallback onVoiceToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -1217,6 +1289,7 @@ class _DrivingTopBar extends StatelessWidget {
           label: 'GPS',
           description: quality.label,
           color: gpsColor,
+          onTap: onGpsDiagnostic,
         ),
         const SizedBox(width: 8),
         _TopStatusChip(
@@ -1225,12 +1298,17 @@ class _DrivingTopBar extends StatelessWidget {
               ? Icons.volume_up_outlined
               : Icons.volume_off_outlined,
           label: 'Voz',
-          description: state.preferences.voiceEnabled
-              ? 'Voz habilitada en preferencias'
-              : 'Voz deshabilitada',
-          color: state.preferences.voiceEnabled
+          description: !state.preferences.voiceEnabled
+              ? 'Voz deshabilitada'
+              : state.speechAvailable
+              ? 'Voz activa'
+              : 'Voz no disponible',
+          color: !state.preferences.voiceEnabled
+              ? AppColors.red
+              : state.speechAvailable
               ? AppColors.green
-              : AppColors.red,
+              : AppColors.orange,
+          onTap: onVoiceToggle,
         ),
       ],
     );
@@ -1458,6 +1536,7 @@ class _TopStatusChip extends StatelessWidget {
     required this.label,
     required this.color,
     required this.description,
+    required this.onTap,
     super.key,
   });
 
@@ -1465,40 +1544,47 @@ class _TopStatusChip extends StatelessWidget {
   final String label;
   final Color color;
   final String description;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       label: description,
+      button: true,
+      onTap: onTap,
       excludeSemantics: true,
       child: Tooltip(
         message: description,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.06),
+        child: Material(
+          color: Colors.white.withValues(alpha: 0.06),
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
           ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 6,
-              vertical: AppSpacing.xs,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 18, color: color),
-                const SizedBox(width: AppSpacing.xs),
-                Flexible(
-                  child: Text(
-                    label,
-                    style: AppTextStyles.caption.copyWith(
-                      color: color,
-                      fontSize: 13,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 6,
+                vertical: AppSpacing.xs,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 18, color: color),
+                  const SizedBox(width: AppSpacing.xs),
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: AppTextStyles.caption.copyWith(
+                        color: color,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -1539,6 +1625,83 @@ class _DrivingStatusChip extends StatelessWidget {
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyStrong.copyWith(color: AppColors.orange),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+enum _GpsRecoveryAction { retry, location, appSettings }
+
+class _GpsDiagnosticSheet extends StatelessWidget {
+  const _GpsDiagnosticSheet({
+    required this.state,
+    required this.recoveryAction,
+    required this.onRecovery,
+  });
+
+  final DrivingState state;
+  final _GpsRecoveryAction recoveryAction;
+  final Future<void> Function() onRecovery;
+
+  @override
+  Widget build(BuildContext context) {
+    final accuracy = state.currentPoint?.accuracyMeters;
+    final actionLabel = switch (recoveryAction) {
+      _GpsRecoveryAction.retry => 'Reintentar GPS',
+      _GpsRecoveryAction.location => 'Abrir ajustes de ubicación',
+      _GpsRecoveryAction.appSettings => 'Abrir ajustes de la app',
+    };
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.l,
+          0,
+          AppSpacing.l,
+          AppSpacing.l,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text('Diagnóstico GPS', style: AppTextStyles.h2),
+                ),
+                IconButton(
+                  tooltip: 'Cerrar',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            Text(state.gpsQuality.label, style: AppTextStyles.bodyStrong),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              accuracy == null
+                  ? 'Sin muestra reciente.'
+                  : 'Precisión aproximada: ${accuracy.round()} m.',
+              style: AppTextStyles.body,
+            ),
+            const SizedBox(height: AppSpacing.s),
+            Text(
+              state.isActive
+                  ? 'La recuperación reinicia la lectura de ubicación sin desactivar la preferencia de conducción.'
+                  : 'PicoRadar solo usa ubicación precisa mientras Conducir está activo.',
+              style: AppTextStyles.caption,
+            ),
+            const SizedBox(height: AppSpacing.l),
+            FilledButton.icon(
+              key: const ValueKey('driving-gps-recovery'),
+              onPressed: () async {
+                await onRecovery();
+                if (context.mounted) Navigator.of(context).pop();
+              },
+              icon: const Icon(Icons.refresh),
+              label: Text(actionLabel),
+            ),
+          ],
         ),
       ),
     );
@@ -2200,12 +2363,15 @@ class _SpeedGauge extends StatelessWidget {
             key: gaugeKey,
             width: diameter,
             height: diameter,
-            child: RepaintBoundary(
-              child: CustomPaint(
-                painter: _SpeedRingPainter(
-                  color: AppColors.teal,
-                  speedKmh: state.speedKmh,
-                  fontFamily: DefaultTextStyle.of(context).style.fontFamily,
+            child: Semantics(
+              label: 'Velocímetro de 0 a 160 kilómetros por hora',
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  painter: _SpeedRingPainter(
+                    color: AppColors.teal,
+                    speedKmh: state.displayedSpeedKmh,
+                    fontFamily: DefaultTextStyle.of(context).style.fontFamily,
+                  ),
                 ),
               ),
             ),
@@ -2223,7 +2389,7 @@ class _SpeedGauge extends StatelessWidget {
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Text(
-                          '${state.speedKmh}',
+                          state.displayedSpeedKmh?.toString() ?? '—',
                           key: const ValueKey('driving-speed'),
                           textScaler: TextScaler.noScaling,
                           maxLines: 1,
@@ -2289,7 +2455,7 @@ class _SpeedRingPainter extends CustomPainter {
   });
 
   final Color color;
-  final int speedKmh;
+  final int? speedKmh;
   final String? fontFamily;
 
   @override
@@ -2330,7 +2496,7 @@ class _SpeedRingPainter extends CustomPainter {
       ).createShader(Rect.fromCircle(center: center, radius: radius));
     canvas.drawCircle(center, radius - 2, fillPaint);
     canvas.drawArc(rect, startAngle, sweepAngle, false, basePaint);
-    final progress = (speedKmh / 200).clamp(0.0, 1.0);
+    final progress = ((speedKmh ?? 0) / 160).clamp(0.0, 1.0);
     final activeSweep = sweepAngle * progress;
     canvas.drawArc(rect, startAngle, activeSweep, false, glowPaint);
     canvas.drawArc(rect, startAngle, activeSweep, false, activePaint);
@@ -2363,7 +2529,7 @@ class _SpeedRingPainter extends CustomPainter {
       );
       canvas.drawLine(start, end, tickPaint..strokeWidth = major ? 2.6 : 1.1);
     }
-    for (final mark in const [0, 50, 100, 150, 200]) {
+    for (final mark in const [0, 40, 80, 120, 160]) {
       _drawMarkLabel(canvas, center, radius, startAngle, sweepAngle, mark);
     }
   }
@@ -2376,7 +2542,7 @@ class _SpeedRingPainter extends CustomPainter {
     double sweepAngle,
     int mark,
   ) {
-    final angle = startAngle + sweepAngle * (mark / 200);
+    final angle = startAngle + sweepAngle * (mark / 160);
     final compact = radius < 115;
     final labelRadius = radius - (compact ? 20 : 32);
     final offset = Offset(
@@ -2514,7 +2680,7 @@ class _HudView extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '${state.speedKmh}',
+                      state.displayedSpeedKmh?.toString() ?? '—',
                       key: const ValueKey('hud-speed'),
                       style: TextStyle(
                         color: Colors.white,

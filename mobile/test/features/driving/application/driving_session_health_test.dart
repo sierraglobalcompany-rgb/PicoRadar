@@ -214,6 +214,8 @@ class _Feedback implements DrivingFeedbackGateway {
   bool screenOn = false;
   bool failScreen = false;
   @override
+  Future<bool> isSpeechAvailable() async => true;
+  @override
   Future<void> setKeepScreenOn(bool enabled) async {
     if (enabled && failScreen) throw StateError('Native screen failure');
     screenOn = enabled;

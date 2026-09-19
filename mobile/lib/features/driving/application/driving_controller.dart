@@ -134,6 +134,7 @@ class DrivingState {
     this.tollDataError,
     this.reliableHeadingDegrees,
     this.visualAlertPulseKey,
+    this.speechAvailable = false,
   });
 
   final DrivingSessionStatus status;
@@ -154,6 +155,7 @@ class DrivingState {
   final String? tollDataError;
   final double? reliableHeadingDegrees;
   final String? visualAlertPulseKey;
+  final bool speechAvailable;
 
   bool get showTollAlertPanel =>
       isActive &&
@@ -165,6 +167,10 @@ class DrivingState {
   bool get isActive => status == DrivingSessionStatus.active;
 
   int get speedKmh => (currentPoint?.speedKmh ?? 0).round();
+
+  int? get displayedSpeedKmh => currentPoint?.speedKmh.round();
+
+  bool get voiceEffective => preferences.voiceEnabled && speechAvailable;
 
   int get cameraSpeedUnknownCount => cameraCount - cameraSpeedKnownCount;
 
@@ -245,6 +251,7 @@ class DrivingState {
     bool clearReliableHeading = false,
     String? visualAlertPulseKey,
     bool clearVisualAlertPulse = false,
+    bool? speechAvailable,
   }) {
     return DrivingState(
       status: status ?? this.status,
@@ -264,6 +271,7 @@ class DrivingState {
       visualAlertPulseKey: clearVisualAlertPulse
           ? null
           : visualAlertPulseKey ?? this.visualAlertPulseKey,
+      speechAvailable: speechAvailable ?? this.speechAvailable,
       preferences: preferences ?? this.preferences,
       cameraCount: cameraCount ?? this.cameraCount,
       cameraSpeedKnownCount:
@@ -327,6 +335,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     });
     final preferences = await ref.watch(drivingPreferencesProvider.future);
     final pack = await ref.watch(cameraPackProvider.future);
+    final speechAvailable = await _speechAvailable(cleanupFeedback);
     final current = state.asData?.value;
     if (current != null && current.status != DrivingSessionStatus.idle) {
       return current.copyWith(
@@ -334,6 +343,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         cameraSpeedKnownCount: _knownSpeedCount(pack),
         cameraPackSource: pack.source,
         preferences: preferences,
+        speechAvailable: speechAvailable,
       );
     }
     return DrivingState(
@@ -342,6 +352,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       cameraCount: pack.cameras.length,
       cameraSpeedKnownCount: _knownSpeedCount(pack),
       cameraPackSource: pack.source,
+      speechAvailable: speechAvailable,
     );
   }
 
@@ -595,6 +606,34 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     );
   }
 
+  Future<void> recoverLocation() async {
+    final current = state.asData?.value ?? await build();
+    if (current.status == DrivingSessionStatus.starting) return;
+    if (current.isActive) {
+      await stop();
+    }
+    if (!ref.mounted) return;
+    await start();
+  }
+
+  Future<void> setVoiceEnabled(bool enabled) async {
+    final current = state.asData?.value ?? await build();
+    await savePreferences(current.preferences.copyWith(voiceEnabled: enabled));
+  }
+
+  Future<void> refreshSpeechAvailability() async {
+    final current = state.asData?.value;
+    if (current == null) return;
+    final available = await _speechAvailable(
+      ref.read(drivingFeedbackGatewayProvider),
+    );
+    if (!ref.mounted) return;
+    final latest = state.asData?.value;
+    if (latest != null && latest.speechAvailable != available) {
+      state = AsyncData(latest.copyWith(speechAvailable: available));
+    }
+  }
+
   Future<void> dismissCurrentCameraAlert() async {
     final current = state.asData?.value ?? await build();
     final cameraId = current.nearestCamera?.camera.id;
@@ -629,9 +668,14 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       _alertEngine = _alertEngineFor(preferences);
     }
     if (!preferences.tollAlertsEnabled) _tollSession.disable();
+    final speechAvailable = preferences.voiceEnabled
+        ? await _speechAvailable(ref.read(drivingFeedbackGatewayProvider))
+        : current.speechAvailable;
+    if (!ref.mounted) return;
     state = AsyncData(
       current.copyWith(
         preferences: preferences,
+        speechAvailable: speechAvailable,
         clearNearestToll: !preferences.tollAlertsEnabled,
         clearVisualAlertPulse: !preferences.visualAlertsEnabled,
       ),
@@ -898,7 +942,7 @@ class DrivingController extends AsyncNotifier<DrivingState> {
       await pendingStop;
       if (!valid()) return;
       final feedback = ref.read(drivingFeedbackGatewayProvider);
-      if (state.asData!.value.preferences.voiceEnabled) {
+      if (state.asData!.value.voiceEffective) {
         await feedback.speak(message);
       }
       if (!valid()) return;
@@ -937,6 +981,14 @@ class DrivingController extends AsyncNotifier<DrivingState> {
               'No se pudo reproducir o detener el aviso de conducción.',
         ),
       );
+    }
+  }
+
+  Future<bool> _speechAvailable(DrivingFeedbackGateway gateway) async {
+    try {
+      return await gateway.isSpeechAvailable();
+    } catch (_) {
+      return false;
     }
   }
 

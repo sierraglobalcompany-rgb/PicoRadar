@@ -994,6 +994,34 @@ void main() {
     expect(feedback.stopOngoingFeedbackCalls, greaterThanOrEqualTo(1));
   });
 
+  test('GPS recovery restarts the active location subscription', () async {
+    final gateway = _RestartableDrivingLocationGateway();
+    final container = ProviderContainer(
+      overrides: [
+        appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+        cameraPackProvider.overrideWith((ref) async => _pack()),
+        drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingClockProvider.overrideWithValue(() => gateway.now),
+        drivingFeedbackGatewayProvider.overrideWithValue(
+          _FakeDrivingFeedbackGateway(),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final controller = container.read(drivingControllerProvider.notifier);
+    await controller.start();
+    expect(gateway.listenCalls, 1);
+
+    await controller.recoverLocation();
+
+    expect(gateway.listenCalls, 2);
+    expect(
+      container.read(drivingControllerProvider).value!.status,
+      DrivingSessionStatus.active,
+    );
+  });
+
   test('direct gap after dismissal creates a new camera episode', () async {
     final gateway = _FakeDrivingLocationGateway();
     final feedback = _FakeDrivingFeedbackGateway();
@@ -1218,6 +1246,9 @@ class _FakeDrivingFeedbackGateway implements DrivingFeedbackGateway {
   var soundCalls = 0;
   var stopOngoingFeedbackCalls = 0;
   var vibrationCalls = 0;
+
+  @override
+  Future<bool> isSpeechAvailable() async => true;
 
   @override
   Future<void> playSound() async {

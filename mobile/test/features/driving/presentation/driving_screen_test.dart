@@ -2395,9 +2395,195 @@ void main() {
 
     expect(find.byKey(const ValueKey('stop-driving')), findsOneWidget);
   });
+
+  testWidgets('paused lifecycle keeps driving active for external navigation', (
+    tester,
+  ) async {
+    final gateway = _LifecycleGateway();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _pack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            _NoopDrivingFeedbackGateway(),
+          ),
+          drivingMapConfigProvider.overrideWithValue(
+            _testMapConfig(forceOfflineFallback: true),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(DrivingScreen)),
+    );
+    expect(
+      container.read(drivingControllerProvider).requireValue.isActive,
+      isTrue,
+    );
+    expect(gateway.cancelCalls, 0);
+    expect(find.byKey(const ValueKey('stop-driving')), findsOneWidget);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+  });
+
+  testWidgets(
+    'speed uses an em dash until a fresh sample and keeps 187 visible',
+    (tester) async {
+      final gateway = _StreamingGateway();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+            cameraPackProvider.overrideWith((ref) async => _emptyPack()),
+            drivingLocationGatewayProvider.overrideWithValue(gateway),
+            drivingClockProvider.overrideWithValue(() => gateway.now),
+            drivingFeedbackGatewayProvider.overrideWithValue(
+              _NoopDrivingFeedbackGateway(),
+            ),
+            drivingMapConfigProvider.overrideWithValue(
+              _testMapConfig(forceOfflineFallback: true),
+            ),
+          ],
+          child: const MaterialApp(home: DrivingScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('start-driving')));
+      await tester.pump();
+
+      expect(find.text('—'), findsOneWidget);
+      expect(
+        find.bySemanticsLabel('Velocímetro de 0 a 160 kilómetros por hora'),
+        findsOneWidget,
+      );
+
+      gateway.add(_point(latitude: 6.239, seconds: 0, speedKmh: 187));
+      await tester.pump();
+
+      expect(find.text('187'), findsOneWidget);
+    },
+  );
+
+  testWidgets('GPS status opens recovery without acting as an off toggle', (
+    tester,
+  ) async {
+    final gateway = _RestartableStreamingGateway();
+    final feedback = _NoopDrivingFeedbackGateway();
+    final controller = _RecoveryTrackingDrivingController();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(MemoryPreferences()),
+          cameraPackProvider.overrideWith((ref) async => _emptyPack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
+          drivingFeedbackGatewayProvider.overrideWithValue(feedback),
+          drivingControllerProvider.overrideWith(() => controller),
+          drivingMapConfigProvider.overrideWithValue(
+            _testMapConfig(forceOfflineFallback: true),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pumpAndSettle();
+    expect(gateway.positionStreamCalls, 1);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(DrivingScreen)),
+    );
+    expect(
+      container.read(drivingControllerProvider).requireValue.status,
+      DrivingSessionStatus.active,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('driving-connection-chip')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Diagnóstico GPS'), findsOneWidget);
+    expect(find.text('Desactivar GPS'), findsNothing);
+    final recoveryButton = find.byKey(const ValueKey('driving-gps-recovery'));
+    await tester.ensureVisible(recoveryButton);
+    tester.widget<FilledButton>(recoveryButton).onPressed!();
+    await tester.pumpAndSettle();
+
+    expect(controller.recoveryCalls, 1);
+    expect(gateway.positionStreamCalls, 1);
+    expect(
+      container.read(drivingControllerProvider).requireValue.isActive,
+      isTrue,
+    );
+    expect(find.text('Diagnóstico GPS'), findsNothing);
+  });
+
+  testWidgets('Voice toggle persists preference and reports unavailable TTS', (
+    tester,
+  ) async {
+    final gateway = _StreamingGateway();
+    final preferences = MemoryPreferences();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('co.picoradar.app/driving'),
+          (call) async =>
+              call.method == 'isDrivingSpeechAvailable' ? false : null,
+        );
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('co.picoradar.app/driving'),
+            null,
+          );
+    });
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appPreferencesProvider.overrideWithValue(preferences),
+          cameraPackProvider.overrideWith((ref) async => _emptyPack()),
+          drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
+          drivingFeedbackGatewayProvider.overrideWithValue(
+            const PlatformDrivingFeedbackGateway(),
+          ),
+          drivingMapConfigProvider.overrideWithValue(
+            _testMapConfig(forceOfflineFallback: true),
+          ),
+        ],
+        child: const MaterialApp(home: DrivingScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('start-driving')));
+    await tester.pump();
+
+    expect(find.byTooltip('Voz no disponible'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('driving-voice-chip')));
+    await tester.pumpAndSettle();
+
+    expect(await preferences.getBool('driving.alert.voice'), isFalse);
+    expect(find.byTooltip('Voz deshabilitada'), findsOneWidget);
+  });
 }
 
 class _NoopDrivingFeedbackGateway implements DrivingFeedbackGateway {
+  @override
+  Future<bool> isSpeechAvailable() async => true;
+
   @override
   Future<void> playSound() async {}
 
@@ -2412,6 +2598,15 @@ class _NoopDrivingFeedbackGateway implements DrivingFeedbackGateway {
 
   @override
   Future<void> vibrate() async {}
+}
+
+class _RecoveryTrackingDrivingController extends DrivingController {
+  int recoveryCalls = 0;
+
+  @override
+  Future<void> recoverLocation() async {
+    recoveryCalls += 1;
+  }
 }
 
 class _FakeExternalLauncher implements ExternalLauncher {
@@ -2712,6 +2907,51 @@ class _StreamingGateway implements DrivingLocationGateway {
   Future<DeviceLocationPermission> requestPermission() async {
     return DeviceLocationPermission.granted;
   }
+}
+
+class _RestartableStreamingGateway implements DrivingLocationGateway {
+  DateTime now = DateTime.now();
+  final _controller = StreamController<DrivingPoint>.broadcast();
+  int positionStreamCalls = 0;
+
+  @override
+  Future<DeviceLocationPermission> checkPermission() async =>
+      DeviceLocationPermission.granted;
+
+  @override
+  Future<bool> isLocationServiceEnabled() async => true;
+
+  @override
+  Stream<DrivingPoint> positionStream() {
+    positionStreamCalls += 1;
+    return _controller.stream;
+  }
+
+  @override
+  Future<DeviceLocationPermission> requestPermission() async =>
+      DeviceLocationPermission.granted;
+}
+
+class _LifecycleGateway implements DrivingLocationGateway {
+  DateTime now = DateTime.now();
+  int cancelCalls = 0;
+  late final _controller = StreamController<DrivingPoint>.broadcast(
+    onCancel: () => cancelCalls += 1,
+  );
+
+  @override
+  Future<DeviceLocationPermission> checkPermission() async =>
+      DeviceLocationPermission.granted;
+
+  @override
+  Future<bool> isLocationServiceEnabled() async => true;
+
+  @override
+  Stream<DrivingPoint> positionStream() => _controller.stream;
+
+  @override
+  Future<DeviceLocationPermission> requestPermission() async =>
+      DeviceLocationPermission.granted;
 }
 
 class _ControlledErrorGateway implements DrivingLocationGateway {
