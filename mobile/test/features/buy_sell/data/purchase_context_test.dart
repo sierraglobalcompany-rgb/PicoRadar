@@ -5,6 +5,62 @@ import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/features/buy_sell/data/buy_sell_draft.dart';
 
 void main() {
+  for (final path in [
+    ['preparations', 'buy'],
+    ['preparations', 'sell'],
+    ['contract'],
+    ['candidateVehicle'],
+    ['candidateRegistrationAttachment'],
+    ['archivedPurchases', 0, 'context'],
+    ['archivedPurchases', 0, 'candidate'],
+    ['archivedPurchases', 0, 'preparation'],
+    ['archivedPurchases', 0, 'legacyAttachment'],
+    ['archivedPurchases', 0, 'contract'],
+  ]) {
+    for (final invalid in [null, [], 'invalid', 42, false]) {
+      test(
+        'v4 preserves invalid nested $path = $invalid on load/save',
+        () async {
+          final payload =
+              jsonDecode(BuySellDraft.empty().toJsonString()) as Map;
+          payload['archivedPurchases'] = [
+            const BuySellPurchaseSnapshot(
+              context: PurchaseConsultationContext(preparationId: 'archived'),
+              candidate: BuySellCandidateVehicle(),
+              preparation: BuySellPreparation(),
+              legacyAttachment: BuySellRegistrationAttachment(),
+              contract: BuySellContractDraft(),
+            ).toJson(),
+          ];
+          dynamic parent = payload;
+          for (final key in path.take(path.length - 1)) {
+            parent = parent[key];
+          }
+          parent[path.last] = invalid;
+          final raw = jsonEncode(payload);
+          final preferences = _MemoryPreferences();
+          await preferences.setString(buySellDraftPreferenceKey, raw);
+          await expectLater(
+            loadBuySellDraft(preferences),
+            throwsFormatException,
+          );
+          await expectLater(
+            saveBuySellDraft(preferences, BuySellDraft.empty()),
+            throwsFormatException,
+          );
+          expect(await preferences.getString(buySellDraftPreferenceKey), raw);
+        },
+      );
+    }
+  }
+  test('v4 rejects a non-boolean city confirmation', () {
+    final payload = jsonDecode(BuySellDraft.empty().toJsonString()) as Map;
+    payload['candidateVehicle']['registrationCityConfirmed'] = 'true';
+    expect(
+      () => BuySellDraft.fromJsonString(jsonEncode(payload)),
+      throwsFormatException,
+    );
+  });
   test(
     'v3 preserves progress and legacy declarations without fabricating files',
     () {

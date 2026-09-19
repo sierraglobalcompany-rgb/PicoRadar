@@ -573,6 +573,46 @@ class BuySellDraft {
         (data['purchaseContext'] as Map)['preparationId'] is! String) {
       throw const FormatException('Missing preparation identity field.');
     }
+    if (version == 4) {
+      void requireObjects(Map source, List<String> keys) {
+        for (final key in keys) {
+          if (source[key] is! Map) {
+            throw const FormatException(
+              'Invalid nested preparation structure.',
+            );
+          }
+        }
+      }
+
+      void validateCandidate(Map candidate) {
+        final confirmed = candidate['registrationCityConfirmed'];
+        if (confirmed != null && confirmed is! bool) {
+          throw const FormatException('Invalid registration confirmation.');
+        }
+      }
+
+      requireObjects(data, [
+        'candidateVehicle',
+        'candidateRegistrationAttachment',
+        'preparations',
+        'contract',
+      ]);
+      requireObjects(data['preparations'] as Map, ['buy', 'sell']);
+      validateCandidate(data['candidateVehicle'] as Map);
+      for (final archive in data['archivedPurchases'] as List) {
+        if (archive is! Map) {
+          throw const FormatException('Invalid preparation archive.');
+        }
+        requireObjects(archive, [
+          'context',
+          'candidate',
+          'preparation',
+          'legacyAttachment',
+          'contract',
+        ]);
+        validateCandidate(archive['candidate'] as Map);
+      }
+    }
     final mode = _readMode(data['mode']);
     final candidatePlate = data['candidatePlate'];
     final city = data['city'];
@@ -716,8 +756,13 @@ Future<BuySellDraft?> loadBuySellDraft(AppPreferences preferences) async {
   }
 }
 
-Future<void> saveBuySellDraft(AppPreferences preferences, BuySellDraft draft) {
-  return preferences.setString(buySellDraftPreferenceKey, draft.toJsonString());
+Future<void> saveBuySellDraft(
+  AppPreferences preferences,
+  BuySellDraft draft,
+) async {
+  // Invalid persisted data must remain available for explicit recovery.
+  await loadBuySellDraft(preferences);
+  await preferences.setString(buySellDraftPreferenceKey, draft.toJsonString());
 }
 
 Future<void> deleteBuySellDraft(AppPreferences preferences) {
