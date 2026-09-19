@@ -24,10 +24,61 @@ Future<void> showInsuranceEditor(
   WidgetRef ref,
   VehicleProfile vehicle,
   VehicleObligation? obligation,
-) => _showSheet(
-  context,
-  _InsuranceEditor(vehicle: vehicle, original: obligation),
-);
+) async {
+  final session = ref.read(walletSessionProvider);
+  final security = ref.read(walletScreenSecurityProvider);
+  final owner = Object();
+  final route = ModalRoute.of(context);
+  final router = GoRouter.maybeOf(context);
+  final origin = router?.routeInformationProvider.value.uri;
+  var exited = false;
+  void routeChanged() {
+    if (router?.routeInformationProvider.value.uri != origin) {
+      exited = true;
+      session.lock();
+    }
+  }
+
+  bool current() => context.mounted && !exited && (route?.isCurrent ?? true);
+  router?.routeInformationProvider.addListener(routeChanged);
+  try {
+    if (!await session.initialize() || !current()) return;
+    if (!await session.unlock() || !current()) return;
+    final epoch = session.epoch;
+    await security.acquire(owner);
+    if (!context.mounted || !current() || !session.isAuthorizedEpoch(epoch)) {
+      return;
+    }
+    await _showSheet(
+      context,
+      DocumentsSessionSheet(
+        child: _InsuranceEditor(
+          vehicle: vehicle,
+          original: obligation,
+          protectedSession: true,
+        ),
+      ),
+    );
+  } catch (_) {
+    if (context.mounted && current()) {
+      _notice(context, 'No se pudo abrir el editor protegido.');
+    }
+  } finally {
+    router?.routeInformationProvider.removeListener(routeChanged);
+    if (!exited) session.lock();
+    try {
+      await WidgetsBinding.instance.endOfFrame;
+      await security.release(owner);
+    } catch (_) {
+      if (context.mounted && current()) {
+        _notice(
+          context,
+          'La pantalla conserva su protecci\u00f3n de privacidad.',
+        );
+      }
+    }
+  }
+}
 
 Future<void> showInsuranceDirectory(
   BuildContext context,

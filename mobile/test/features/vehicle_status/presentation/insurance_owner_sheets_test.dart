@@ -224,6 +224,26 @@ void main() {
   }
 
   testWidgets(
+    'direct editor requires authorization before revealing metadata',
+    (tester) async {
+      final vehicle = await car();
+      final original = await seed(vehicle);
+      await mount(tester, vehicle, original: original);
+      authenticator.pending = Completer<WalletAuthenticationResult>();
+      await _tap(tester, find.byKey(const ValueKey('open-editor')));
+      expect(authenticator.calls, 1);
+      expect(find.text(_secretPolicy), findsNothing);
+      authenticator.pending!.complete(WalletAuthenticationResult.cancelled);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('insurance-editor-save')), findsNothing);
+      expect(
+        (await store.get(vehicle.id, _type))!.details['policyNumber'],
+        _secretPolicy,
+      );
+    },
+  );
+
+  testWidgets(
     'editor saves original ID after favorite changes, preserving dates and unknown details',
     (tester) async {
       final first = await car();
