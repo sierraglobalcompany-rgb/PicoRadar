@@ -131,6 +131,27 @@ Final full Flutter rerun is required after these test-only corrections.
   new-APK device checks. F20 editorial freshness/CDN remains external and open.
 - No source cleanup, external-project edits, merge or publication performed.
 
+## Scanner physical finding, 2026-09-19
+
+The owner reproduced platform_failed on installed 057931d APK. Evidence:
+physical-scanner-error-20260919.png and scanner-r8-failure-sanitized.log, app PID4982.
+ML Kit CommonComponentRegistrar cannot be instantiated: NoSuchMethodException.
+Release usage.txt explicitly lists its public no-argument constructor as removed;
+apkanalyzer DEX inspection confirms the missing constructor. Debug/JVM tests did
+not exercise release shrinking. F01 remains open; repair must retain only the
+reflective entry point and verify actual release DEX before installation. No
+camera permission bypass, scanner substitution or disabled shrinking is justified.
+
+Correction ee7a734 retains that constructor and adds actual APK DEX verification
+to scripts/build_dev.ps1. 13 validator fixtures pass; old APK fails the gate and
+new APK passes. Fresh format (365 unchanged) and analyze (no issues) pass. No Dart
+or native workflow change after the 3196/57 suites, only release retention/tooling.
+New SHA256 A7ABC8D881E814DA68544DBD5472709F6A32F3A0C6C42070B2A957CBE66D21CD
+installed with -r at 12:38:37 Bogota; installed hash matches. New process6270 has
+no ComponentDiscovery error. Owner answered "YA funciona" to camera-open retest.
+Opening failure closed with physical confirmation; full capture/save/reopen/auth
+and alarm physical cases remain open. FLAG_SECURE unchanged; no private data reset.
+
 ## Dataset/config audit
 
 Bundled restrictions version 2026.09.10-r4-a, inspected 2026-09-19. Manizales car

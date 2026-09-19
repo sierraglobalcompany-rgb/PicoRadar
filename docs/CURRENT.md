@@ -8,16 +8,22 @@ no modifica aprobaciones del producto.
 ## Base de trabajo unica
 - Raiz: C:/Users/felip/Documents/ChatGPT/PicoRadar_ Pico y Placa.
 - Rama local: codex/forensic-alerts; base auditada 82ce6b8.
-- Estado: reparacion forense y Alertas en ejecucion; sin merge ni publicacion.
+- Estado: reparacion y Alertas implementadas, gates automaticos aprobados y APK
+  nueva instalada. Aceptacion fisica en curso; sin merge ni publicacion.
 - No trabajar en temp/VIAJE-R1-real-planner ni en B03/B04.
 - Checkpoints y recuperacion: docs/WORKSPACE_CONSOLIDATION.md.
 - GSD: .planning/.continue-here.md y .planning/HANDOFF.json.
 
-## Version instalada conservada
-APK: artifacts/current/apk/PicoRadar-dev-release-stabilized-20260915-235843.apk.
-SHA256: 53C7195D361F9DF984E63462EE2EB0533F14E5EF4316A7B3EBF788D4A56634C5.
-Esta es la instalacion previa a la reparacion; un build nuevo no implica aprobacion
-fisica. No borrar datos del telefono ni continuar la limpieza durante este lote.
+## Version instalada
+APK: artifacts/current/apk/PicoRadar-dev-release-scanner-fix-20260919.apk.
+SHA256: A7ABC8D881E814DA68544DBD5472709F6A32F3A0C6C42070B2A957CBE66D21CD.
+Build dev release con APP_ENV=dev, checkpoint ee7a734. Instalacion -r correcta en
+Mi A3 API30 el 2026-09-19 a las 12:38:37 (Bogota); hash de base.apk identico.
+Sin borrado de datos. Centro de Alertas y banner de Seguro capturados fisicamente.
+El usuario confirmo que el escaner ya abre. Se corrigio la eliminacion por R8 del
+constructor de CommonComponentRegistrar; un gate inspecciona ahora el DEX real.
+Guardar/reabrir frente y reverso, autenticacion y alarmas siguen en comprobacion.
+No continuar la limpieza durante este lote.
 
 ## Funcionalidad y aceptacion
 La base incluye las mejoras actuales de Inicio/Garaje/Pico, Viaje/Conducir,
@@ -28,9 +34,10 @@ ni activar cambios pendientes de otras ramas como parte de la limpieza.
   borrador v4 y documentos privados por preparacion. Portada conservada.
   Ver codex/PURCHASE_FUNCTIONAL_HANDOFF_20260915.md y
   codex/PURCHASE_LAYOUT_HANDOFF_20260915.md.
-- Drift instalado: schema v8. En desarrollo: v9 agrega ajustes de alertas por
+- Drift de la APK instalada: schema v9, agrega ajustes de alertas por
   vehiculo/categoria. Propietario documental exclusivo driver/vehicle/preparation,
-  cifrado y no-backup conservados. La migracion debe verificarse antes de instalar.
+  cifrado y no-backup conservados. Migracion aditiva 8 a 9 y conservacion de datos
+  cubiertas en la suite; la app instalada abre con los vehiculos existentes.
 - Documentos: reglas y pendientes en codex/C15_DOCUMENTS_OWNER_HANDOFF.md y
   codex/C15_DOCUMENTS_COMPACT_HANDOFF.md; sin fallback externo inseguro.
 - Seguro: canales con evidencia y limites; ver
@@ -47,8 +54,9 @@ ni activar cambios pendientes de otras ramas como parte de la limpieza.
   en data/sources/osrm/source.json. No cambiar contratos de proveedor.
 
 ## Pendientes en reposo
-- Importacion, escaner y autenticacion positiva documentales en Mi A3, y
-  aceptacion del propietario. Tests automatizados no sustituyen estos gates.
+- Importacion, guardado/reapertura de captura y autenticacion positiva en Mi A3.
+  Apertura del escaner confirmada por el usuario el 2026-09-19; no equivale a
+  validar todo el ciclo documental. Tests no sustituyen esos gates.
 - B04 comparador: fe0d8d4, codex/pending-B04-before-consolidation. No incorporado.
 - Auditoria fresca de 82ce6b8: 2959 pruebas moviles pasan, 11 omitidas; analisis
   limpio. Las 87 fallas historicas ya no se reproducen. Simulacion Conducir:
@@ -74,6 +82,13 @@ documentada en docs/ADR_ALERTS_ANDROID.md. Las reparaciones llevan checkpoints
 por alcance. No se cierran escaneo, autenticacion ni alarmas por pruebas unitarias.
 La APK dev nueva debe incluir APP_ENV=dev para mostrar Seguro demostrativo;
 produccion mantiene la promocion oculta. No alterar vigencia editorial de datasets.
+
+Verificacion final automatica: 3196 pruebas moviles pasan, 10 omisiones
+condicionales de simulacion; las 11 pruebas de esa suite pasan con su bandera.
+Formato limpio (365 archivos), analisis limpio, 57 pruebas Android nativas y
+493 de servidor (1993 assertions) pasan. Siete configuraciones reales de Seguro
+verificadas; tres pruebas Python de fixtures/rutas pasan. Los 87 fallos historicos
+no son deuda vigente. Handoff: codex/FORENSIC_ALERTS_HANDOFF.md.
 
 ## Invariantes
 Sin cuenta obligatoria; Android primero; Inicio/Garaje/Apps/Viaje/Conducir con
