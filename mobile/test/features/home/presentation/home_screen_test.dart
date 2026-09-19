@@ -18,6 +18,10 @@ import 'package:picoradar/app/startup/startup_gate.dart';
 import 'package:picoradar/core/database/app_database.dart'
     hide VehicleObligation;
 import 'package:picoradar/app/theme/app_tokens.dart';
+import 'package:picoradar/features/alerts/application/alert_center.dart';
+import 'package:picoradar/features/alerts/data/alert_settings.dart';
+import 'package:picoradar/features/alerts/platform/alert_alarm_gateway.dart';
+import 'package:picoradar/features/alerts/presentation/alerts_screen.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/presentation/vehicle_detail_screen.dart';
 import 'package:picoradar/features/home/data/home_banner_config.dart';
@@ -3319,82 +3323,115 @@ void main() {
   });
 
   group('Home V2 notifications and accessibility', () {
-    testWidgets('bell opens explicit notification activation sheet', (
+    testWidgets('Alerts route: bell opens categories and explicit activation', (
       tester,
     ) async {
-      await _readyHome(harness, plate: 'ABC124');
-
-      await _pumpHome(tester, harness);
-      expect(
-        find.byKey(const ValueKey('home-enable-notifications')),
-        findsNothing,
-      );
+      final vehicle = await _readyHome(harness, plate: 'ABC124');
+      final scheduler = _PermissionPicoNotificationScheduler(enabled: false);
+      await _pumpFullHomeApp(tester, harness, notificationScheduler: scheduler);
+      final router = GoRouter.of(tester.element(find.byType(HomeScreen)));
+      expect(find.byType(AlertsScreen), findsNothing);
+      expect(scheduler.permissionRequests, 0);
       await tester.tap(find.byKey(const ValueKey('home-notification-bell')));
       await tester.pumpAndSettle();
-
       expect(
-        find.byKey(const ValueKey('home-notification-sheet')),
-        findsOneWidget,
+        GoRouterState.of(tester.element(find.byType(AlertsScreen))).uri.path,
+        '/home/alerts',
       );
+      expect(router.canPop(), isTrue);
+      expect(find.byType(AlertsScreen), findsOneWidget);
+      expect(find.text('Activar'), findsOneWidget);
+      expect(scheduler.permissionRequests, 0);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AlertsScreen)),
+      );
+      final center = await container.read(alertCenterProvider.future);
+      expect(center.rows, hasLength(4));
       expect(
-        find.byKey(const ValueKey('home-enable-notifications')),
-        findsOneWidget,
+        center.rows.map((row) => row.category).toSet(),
+        AlertCategory.values.toSet(),
       );
-      expect(
-        find.byKey(const ValueKey('notification-sheet-close')),
-        findsOneWidget,
-      );
-
-      final close = find.byKey(const ValueKey('notification-sheet-close'));
-      await tester.ensureVisible(close);
-      await tester.tap(close);
+      expect(center.rows.every((row) => row.vehicle.id == vehicle.id), isTrue);
+      for (final label in ['Pico y Placa', 'SOAT', 'Tecnomecánica', 'Seguro']) {
+        await tester.scrollUntilVisible(
+          find.text(label),
+          150,
+          scrollable: find.descendant(
+            of: find.byType(AlertsScreen),
+            matching: find.byType(Scrollable),
+          ),
+        );
+        expect(find.text(label), findsOneWidget);
+      }
+      await tester.ensureVisible(find.text('Activar'));
+      await tester.tap(find.text('Activar'));
       await tester.pumpAndSettle();
-
-      expect(
-        find.byKey(const ValueKey('home-notification-sheet')),
-        findsNothing,
-      );
+      expect(scheduler.permissionRequests, 1);
+      expect(find.text('Notificaciones permitidas'), findsOneWidget);
+      final saved = await loadPicoAlertPreferences(harness.preferences);
+      expect(saved.permissionRequested, isTrue);
+      expect(saved.permissionGranted, isTrue);
+      await tester.tap(find.byTooltip('Volver'));
+      await tester.pumpAndSettle();
+      expect(router.routeInformationProvider.value.uri.path, '/home');
+      expect(find.byType(AlertsScreen), findsNothing);
       expect(
         find.byKey(const ValueKey('home-compact-top-bar')),
         findsOneWidget,
       );
-    });
-
-    testWidgets('denied notification permission does not re-prompt', (
-      tester,
-    ) async {
-      await _readyHome(harness, plate: 'ABC124');
-      await savePicoAlertPreferences(
-        harness.preferences,
-        const PicoAlertPreferences(
-          enabled: true,
-          dayBeforeEnabled: true,
-          sameDayEnabled: true,
-          dayBeforeMinute: 19 * 60,
-          sameDayMinute: 5 * 60,
-          permissionRequested: true,
-          permissionGranted: false,
-        ),
-      );
-
-      await _pumpHome(tester, harness);
-      await tester.tap(find.byKey(const ValueKey('home-notification-bell')));
-      await tester.pump(const Duration(milliseconds: 300));
-
-      expect(
-        find.byKey(const ValueKey('home-enable-notifications')),
-        findsNothing,
-      );
-      expect(
-        find.textContaining('Permiso de notificaciones desactivado'),
-        findsOneWidget,
-      );
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets(
-      'granted notification settings remain available in bell sheet',
+      'Alerts route: denied permission does not implicitly re-prompt',
       (tester) async {
         await _readyHome(harness, plate: 'ABC124');
+        await savePicoAlertPreferences(
+          harness.preferences,
+          const PicoAlertPreferences(
+            enabled: true,
+            dayBeforeEnabled: true,
+            sameDayEnabled: true,
+            dayBeforeMinute: 19 * 60,
+            sameDayMinute: 5 * 60,
+            permissionRequested: true,
+            permissionGranted: false,
+          ),
+        );
+
+        final scheduler = _PermissionPicoNotificationScheduler(enabled: false);
+        await _pumpFullHomeApp(
+          tester,
+          harness,
+          notificationScheduler: scheduler,
+        );
+        await tester.tap(find.byKey(const ValueKey('home-notification-bell')));
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertsScreen), findsOneWidget);
+        expect(
+          GoRouterState.of(tester.element(find.byType(AlertsScreen))).uri.path,
+          '/home/alerts',
+        );
+        expect(find.text('Notificaciones desactivadas'), findsOneWidget);
+        expect(find.text('Activar'), findsOneWidget);
+        expect(scheduler.permissionRequests, 0);
+        await tester.tap(find.byTooltip('Volver'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('home-notification-bell')));
+        await tester.pumpAndSettle();
+        expect(scheduler.permissionRequests, 0);
+        final saved = await loadPicoAlertPreferences(harness.preferences);
+        expect(saved.permissionRequested, isTrue);
+        expect(saved.permissionGranted, isFalse);
+        expect(find.text('Notificaciones desactivadas'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'Alerts route: granted permission keeps reminder windows available',
+      (tester) async {
+        final vehicle = await _readyHome(harness, plate: 'ABC124');
         await savePicoAlertPreferences(
           harness.preferences,
           const PicoAlertPreferences(
@@ -3408,24 +3445,56 @@ void main() {
           ),
         );
 
-        await _pumpHome(tester, harness);
+        final scheduler = _PermissionPicoNotificationScheduler(enabled: true);
+        await _pumpFullHomeApp(
+          tester,
+          harness,
+          notificationScheduler: scheduler,
+        );
         await tester.tap(find.byKey(const ValueKey('home-notification-bell')));
-        await tester.pump(const Duration(milliseconds: 300));
-
-        expect(find.text('Recordatorios habilitados'), findsOneWidget);
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertsScreen), findsOneWidget);
+        expect(find.text('Notificaciones permitidas'), findsOneWidget);
+        await tester.tap(find.byKey(ValueKey('alerts-${vehicle.id}-pico')));
+        await tester.pumpAndSettle();
+        expect(find.text('Recordatorio'), findsOneWidget);
         expect(find.text('Día anterior'), findsOneWidget);
-        expect(find.text('Hora día anterior'), findsOneWidget);
+        expect(find.text('Hora del día anterior'), findsOneWidget);
         expect(find.text('19:00'), findsOneWidget);
         expect(find.text('Mismo día'), findsOneWidget);
-        expect(find.text('Hora mismo día'), findsOneWidget);
+        expect(find.text('Hora del mismo día'), findsOneWidget);
         expect(find.text('05:00'), findsOneWidget);
+        for (final label in ['Recordatorio', 'Día anterior', 'Mismo día']) {
+          expect(
+            tester
+                .widget<SwitchListTile>(
+                  find.widgetWithText(SwitchListTile, label),
+                )
+                .value,
+            isTrue,
+          );
+        }
+        expect(scheduler.permissionRequests, 0);
+        expect(tester.takeException(), isNull);
       },
     );
 
-    testWidgets('alert preference toggle is saved from the bell sheet', (
+    testWidgets('Alerts route: toggle persists only the selected vehicle', (
       tester,
     ) async {
-      await _readyHome(harness, plate: 'ABC124');
+      final vehicle = await _readyHome(harness, plate: 'ABC124');
+      final other = await harness.repository.createVehicle(
+        plate: 'DEF456',
+        kind: VehicleKind.car,
+      );
+      final store = AlertSettingsStore(harness.database);
+      await store.save(vehicle.id, AlertCategory.pico, const AlertSettings());
+      await store.save(other.id, AlertCategory.pico, const AlertSettings());
+      await store.save(
+        vehicle.id,
+        AlertCategory.soat,
+        const AlertSettings(enabled: false),
+      );
       await savePicoAlertPreferences(
         harness.preferences,
         const PicoAlertPreferences(
@@ -3439,20 +3508,61 @@ void main() {
         ),
       );
 
-      await _pumpHome(tester, harness);
+      final scheduler = _PermissionPicoNotificationScheduler(enabled: true);
+      await _pumpFullHomeApp(tester, harness, notificationScheduler: scheduler);
       await tester.tap(find.byKey(const ValueKey('home-notification-bell')));
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
-      await tester.ensureVisible(
-        find.byKey(const ValueKey('pico-alerts-enabled')),
+      final row = find.byKey(ValueKey('alerts-${vehicle.id}-pico'));
+      await tester.ensureVisible(row);
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      final toggle = find.descendant(
+        of: row,
+        matching: find.widgetWithText(SwitchListTile, 'Recordatorio'),
       );
-      await tester.pump();
-      await tester.tap(find.byKey(const ValueKey('pico-alerts-enabled')));
-      await tester.pump();
+      expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+      await tester.ensureVisible(toggle);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(
+        (await store.load(vehicle.id, AlertCategory.pico))!.enabled,
+        isFalse,
+      );
+      expect((await store.load(other.id, AlertCategory.pico))!.enabled, isTrue);
+      expect(
+        (await store.load(vehicle.id, AlertCategory.soat))!.enabled,
+        isFalse,
+      );
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AlertsScreen)),
+      );
+      final center = await container.read(alertCenterProvider.future);
+      expect(
+        center.rows
+            .singleWhere(
+              (r) =>
+                  r.vehicle.id == vehicle.id &&
+                  r.category == AlertCategory.pico,
+            )
+            .settings
+            .enabled,
+        isFalse,
+      );
+      await tester.tap(find.byTooltip('Volver'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('home-notification-bell')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(row);
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
 
       final loaded = await loadPicoAlertPreferences(harness.preferences);
-      expect(loaded.enabled, isFalse);
+      expect(loaded.enabled, isTrue);
       expect(loaded.permissionRequested, isTrue);
       expect(loaded.permissionGranted, isTrue);
+      expect(scheduler.permissionRequests, 0);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('reduced motion keeps restricted state readable', (
@@ -4633,6 +4743,7 @@ Future<void> _pumpFullHomeApp(
   TestAppHarness harness, {
   DateTime Function()? appClockNow,
   RestrictionStore? restrictionStore,
+  PicoNotificationScheduler? notificationScheduler,
 }) async {
   await _installWidgetChannelMock(tester, harness);
   await tester.pumpWidget(
@@ -4640,6 +4751,7 @@ Future<void> _pumpFullHomeApp(
       harness,
       appClockNow: appClockNow,
       restrictionStore: restrictionStore,
+      notificationScheduler: notificationScheduler,
       child: const PicoRadarApp(),
     ),
   );
@@ -4682,6 +4794,7 @@ Widget _providerScope(
   required Widget child,
   DateTime Function()? appClockNow,
   RestrictionStore? restrictionStore,
+  PicoNotificationScheduler? notificationScheduler,
   DeviceLocationGateway? deviceLocationGateway,
   DateTime Function()? homeGpsClock,
   DateTime Function()? currentInstantClock,
@@ -4719,8 +4832,10 @@ Widget _providerScope(
         ),
       ),
       picoNotificationSchedulerProvider.overrideWithValue(
-        _FakePicoNotificationScheduler(),
+        notificationScheduler ?? _FakePicoNotificationScheduler(),
       ),
+      if (notificationScheduler != null)
+        alarmGatewayProvider.overrideWithValue(const _NoAlarmGateway()),
       if (appClockNow != null)
         appClockNowProvider.overrideWithValue(appClockNow)
       else ...[
@@ -5107,6 +5222,36 @@ RestrictionRule _rule({
     timeWindows: timeWindows,
     appliesOnHolidays: appliesOnHolidays,
   );
+}
+
+class _NoAlarmGateway extends AlertAlarmGateway {
+  const _NoAlarmGateway();
+
+  @override
+  Future<AlarmCapabilities> capabilities() async => const AlarmCapabilities();
+
+  @override
+  Future<void> requestPermissions() async =>
+      throw StateError('Alarm permission must not be requested implicitly.');
+}
+
+class _PermissionPicoNotificationScheduler
+    extends _FakePicoNotificationScheduler {
+  _PermissionPicoNotificationScheduler({required this.enabled});
+  bool enabled;
+  int permissionRequests = 0;
+
+  @override
+  Future<bool> requestPermission() async {
+    permissionRequests++;
+    return enabled = true;
+  }
+
+  @override
+  Future<bool?> areNotificationsEnabled() async => enabled;
+
+  @override
+  Future<Set<int>> pendingIds() async => {};
 }
 
 class _FakePicoNotificationScheduler extends PicoNotificationScheduler {

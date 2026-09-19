@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -6,10 +7,19 @@ import 'package:picoradar/app/app.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/router/app_routes.dart';
 import 'package:picoradar/app/shell/app_shell.dart';
+import 'package:picoradar/app/startup/startup_gate.dart';
+import 'package:picoradar/features/alerts/application/alert_center.dart';
+import 'package:picoradar/features/alerts/data/alert_settings.dart';
+import 'package:picoradar/features/alerts/platform/alert_alarm_gateway.dart';
+import 'package:picoradar/features/alerts/presentation/alerts_screen.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/home/presentation/home_screen.dart';
+import 'package:picoradar/features/onboarding/data/registration_city_catalog.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_store.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.dart';
+import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
+import 'package:picoradar/features/trip/data/trip_municipality_catalog.dart';
+import 'package:picoradar/features/vehicle_status/platform/obligation_notifications.dart';
 
 import '../features/home/presentation/v01b_test_font.dart';
 import '../plate_test_fonts.dart';
@@ -22,9 +32,11 @@ void main() {
   late TestAppHarness harness;
   late VehicleProfile favorite;
   late VehicleProfile restricted;
+  late _EntryNotificationScheduler scheduler;
 
   setUp(() {
     harness = TestAppHarness()..now = DateTime(2026, 9, 11, 12);
+    scheduler = _EntryNotificationScheduler();
   });
 
   Future<ProviderContainer> openHome(WidgetTester tester) async {
@@ -40,7 +52,7 @@ void main() {
       serviceType: VehicleServiceType.private,
     );
     await harness.repository.setActiveVehicle(favorite.id);
-    return _pumpHome(tester, harness);
+    return _pumpHome(tester, harness, scheduler);
   }
 
   tearDown(() async => harness.dispose());
@@ -94,7 +106,21 @@ void main() {
       await tester.tap(configure);
       await tester.pumpAndSettle();
 
+      expect(router.routeInformationProvider.value.uri.path, '/home/alerts');
+      expect(find.byType(AlertsScreen), findsOneWidget);
+      final alerts = await container.read(alertCenterProvider.future);
+      expect(alerts.rows, hasLength(8));
+      expect(
+        alerts.rows.map((row) => row.category).toSet(),
+        AlertCategory.values.toSet(),
+      );
+      expect(scheduler.permissionRequests, 0);
       expect(_branchIndex(tester), AppTab.home.index);
+      expect(container.read(homePriorityEntryProvider), 1);
+      await tester.tap(find.byTooltip('Volver'));
+      await tester.pumpAndSettle();
+      expect(router.routeInformationProvider.value.uri.path, '/home');
+      expect(find.byType(HomeScreen), findsOneWidget);
       expect(container.read(homePriorityEntryProvider), 1);
       expect(container.read(homeFocusedVehicleIdProvider), restricted.id);
       expect((await harness.repository.getActiveVehicle())?.id, favorite.id);
@@ -118,6 +144,15 @@ void main() {
     await tester.tap(configure);
     await tester.pumpAndSettle();
 
+    expect(router.routeInformationProvider.value.uri.path, '/home/alerts');
+    expect(find.byType(AlertsScreen), findsOneWidget);
+    expect(scheduler.permissionRequests, 0);
+    expect(container.read(homePriorityEntryProvider), 0);
+    expect(container.read(homeFocusedVehicleIdProvider), favorite.id);
+    await tester.tap(find.byTooltip('Volver'));
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, '/home');
+    expect(find.byType(HomeScreen), findsOneWidget);
     expect(container.read(homePriorityEntryProvider), 0);
     expect(container.read(homeFocusedVehicleIdProvider), favorite.id);
     expect(tester.takeException(), isNull);
@@ -189,15 +224,47 @@ Future<void> _focusVehicle(
 Future<ProviderContainer> _pumpHome(
   WidgetTester tester,
   TestAppHarness harness,
+  _EntryNotificationScheduler scheduler,
 ) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(390, 844);
   addTearDown(tester.view.resetDevicePixelRatio);
   addTearDown(tester.view.resetPhysicalSize);
-  await harness.pump(
-    tester,
-    childOverride: ProviderScope(
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+        const MethodChannel('co.picoradar.app/widget'),
+        (_) async => null,
+      );
+  addTearDown(() async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('co.picoradar.app/widget'),
+          null,
+        );
+  });
+  await tester.pumpWidget(
+    ProviderScope(
       overrides: [
+        appDatabaseProvider.overrideWithValue(harness.database),
+        appPreferencesProvider.overrideWithValue(harness.preferences),
+        tripMunicipalityCatalogProvider.overrideWithValue(
+          AsyncValue.data(TestAppHarness.tripCatalog),
+        ),
+        registrationCityCatalogProvider.overrideWithValue(
+          AsyncValue.data(TestAppHarness.registrationCatalog),
+        ),
+        currentInstantProvider.overrideWithValue(harness.now.toUtc()),
+        startupReadinessProvider.overrideWith(
+          (ref) async => const StartupReadiness(
+            imageAssets: [],
+            vehicleCount: 0,
+            selectedJurisdictionId: null,
+          ),
+        ),
+        picoNotificationSchedulerProvider.overrideWithValue(scheduler),
+        alarmGatewayProvider.overrideWithValue(const _NoAlarmGateway()),
         bogotaNowProvider.overrideWith((ref) => harness.now),
         bundledRestrictionsProvider.overrideWith((ref) async {}),
         restrictionJurisdictionsProvider.overrideWith(
@@ -235,4 +302,42 @@ Future<ProviderContainer> _pumpHome(
   );
   await tester.pumpAndSettle();
   return ProviderScope.containerOf(tester.element(find.byType(HomeScreen)));
+}
+
+class _NoAlarmGateway extends AlertAlarmGateway {
+  const _NoAlarmGateway();
+
+  @override
+  Future<AlarmCapabilities> capabilities() async => const AlarmCapabilities();
+
+  @override
+  Future<void> requestPermissions() async =>
+      throw StateError('Alarm permission must not be requested implicitly.');
+}
+
+class _EntryNotificationScheduler extends PicoNotificationScheduler {
+  int permissionRequests = 0;
+
+  @override
+  Future<void> initialize({void Function(String route)? onRoute}) async {}
+  @override
+  Future<bool> requestPermission() async {
+    permissionRequests++;
+    return true;
+  }
+
+  @override
+  Future<bool?> areNotificationsEnabled() async => true;
+  @override
+  Future<Set<int>> pendingIds() async => {};
+  @override
+  Future<void> reschedule(List<PicoNotificationPlan> plans) async {}
+  @override
+  Future<void> cancelPicoNotifications() async {}
+  @override
+  Future<void> rescheduleObligationNotifications(
+    List<ObligationNotificationPlan> plans,
+  ) async {}
+  @override
+  Future<void> cancelObligationNotifications() async {}
 }
