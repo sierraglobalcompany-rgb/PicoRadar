@@ -2,6 +2,7 @@ param(
     [ValidateSet('preflight', 'prepare', 'start', 'status', 'stop')]
     [string] $Mode = 'status',
     [string] $DataRoot = (Join-Path $PSScriptRoot '..\data\local\osrm'),
+    [string] $MetadataPath = (Join-Path $PSScriptRoot '..\data\sources\osrm\source.json'),
     [string] $Image = 'ghcr.io/project-osrm/osrm-backend:v5.27.1',
     [string] $PbfUrl = 'https://download.geofabrik.de/south-america/colombia-latest.osm.pbf',
     [int] $Port = 5001,
@@ -12,8 +13,8 @@ $ErrorActionPreference = 'Stop'
 $container = 'picoradar-osrm-pilot'
 $pbf = Join-Path $DataRoot 'colombia-latest.osm.pbf'
 $osrm = Join-Path $DataRoot 'colombia-latest.osrm'
-$metadataDir = Join-Path $DataRoot 'metadata'
-$metadata = Join-Path $metadataDir 'source.json'
+$metadata = $MetadataPath
+$metadataDir = Split-Path -Parent $metadata
 
 function Write-JsonFile($Path, $Value) {
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Path) | Out-Null
