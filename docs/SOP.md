@@ -103,6 +103,16 @@ Cuando el candidato visual ya parece estable:
 6. evidencia ligera con screenshot final y SHA cuando el prompt lo solicite;
 7. `git diff --check`.
 
+### APK dev reproducible
+
+Cuando el lote aprobado pide APK dev release, usar
+`scripts/build_dev.ps1 -FlutterPath <ruta-a-flutter>` desde la raiz. La receta
+incluye `--flavor dev --release --dart-define=APP_ENV=dev --no-pub`; no omitir
+APP_ENV, porque Seguro oculta su demostracion fuera del entorno dev. La receta
+no instala ni borra datos, no habilita publicidad real y no define un CDN ficticio.
+Instalar solo despues de los gates del lote, conservando datos con `adb install -r`.
+Comparar hash del APK construido e instalado y registrar dispositivo/QA restante.
+
 ### Release Gate
 
 Antes de release o merge aprobado:

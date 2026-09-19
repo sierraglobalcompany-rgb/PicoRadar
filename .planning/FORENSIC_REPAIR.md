@@ -53,4 +53,37 @@ Tests/builds run sequentially under coordinator control. Workers provide regress
 
 ## Verification ledger
 
-Implementation not yet verified. Add exact RED/GREEN commands, checkpoints and physical evidence before closing each finding.
+Implementation checkpoints are present; full integrated and physical gates remain open.
+
+- F01-F05: fd2cdb1, 69eefc3, 5e35647, f4606bb. 357 document/insurance/detail tests,
+  24 garage/navigation tests, 4 editor tests, 11 native wallet tests pass. Scanner's
+  original physical cause is not certified yet; do not call it physically fixed.
+- F06-F10/F13/F14/F16: 4c33485, 713b284, c182a0b, 1d719ef, 86d6289, b09a682,
+  2bba662, 88d0a9e. Scoped passes 227 and 173; seven real config variants pass.
+- F11/F12/F15/F17/F20 path: c542054, bae139b, 7880efe, f3a862a, 5b9d7e7.
+  Scoped groups 266/24/41 pass; synthetic HTTP/Drift bridge 1 pass and Python
+  compiler safety/determinism 2 pass. No production provenance weakened.
+- A01-A03 implementation: e1143c6, c03357b, a750080, 9b7a5a3, e22a186.
+  New controls use real shell; 15 screen/scale combinations including preview
+  interactions pass. Migration/additive data tests and owner-scoped persistence pass.
+- Current analyze after integration: no issues. This is not the final full-suite run.
+
+## Cross-review corrections before acceptance
+
+Native/Dart resynchronization must preserve snoozed/ringing events unless their
+underlying setting/owner/date is removed or changed. Additional reviewed scenarios:
+normal notifications survive exact-alarm permission revocation; delayed save after
+leaving screen still reconciles; obligation caches cannot restore old reminder flags;
+OFF before creating an obligation remains OFF; permission platform exceptions keep
+recovery controls; audio replacement releases previous resources; asynchronous
+playback failures and unattended alarms become visible. These are active repairs,
+not deferred cleanup. Follow-up tests must pass before final build.
+
+## Dataset/config audit
+
+Bundled restrictions version 2026.09.10-r4-a, inspected 2026-09-19. Manizales car
+coverage staleAfter 2026-09-14T05:00Z has expired. Eight coverages expire Sept23;
+Bogota taxi and Bucaramanga car/motorcycle Sept28. Day evaluation already rejects
+future dates outside staleAfter. No date was extended. Build without CDN_BASE_URL
+uses bundled data and no sync endpoint; no valid public endpoint was supplied or
+invented in this repair. Editorial refresh/CDN activation remains a real dependency.

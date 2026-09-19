@@ -6,7 +6,7 @@ proceso solo cambia la organizacion local. Autoridad actual: docs/CURRENT.md.
 | Pendiente | Evidencia / recuperacion | Condicion para retomar |
 | --- | --- | --- |
 | Compra y billetera: importacion fisica, escaner, autenticacion positiva | codex/PURCHASE_FUNCTIONAL_HANDOFF_20260915.md; quick/purchase-functional-20260915/STATE.md | Usuario disponible, documentos ficticios, sin desactivar FLAG_SECURE |
-| Fallos globales anteriores | artifacts/current/purchase/functional-full-tests.log y artifacts/current/consolidation/full-tests.log | Clasificar por causa en lote aprobado; no debilitar tests |
+| Reparacion forense y Alertas en ejecucion | FORENSIC_REPAIR.md; base 82ce6b8, 2959 pass / 11 skip, sin los 87 fallos historicos | Verificar nuevos cambios y gates fisicos; no confundir baseline verde con reparacion fisica |
 | Rendimiento Conducir | CONDUCIR_OWNER_CONSOLIDATED.md; artifacts/current/driving; artifacts/current/performance | Repetir perfil fisico y comparar objetivo, no inferirlo de tests |
 | Canales de seguros y autoridades pendientes | codex/PURCHASE_DIRECTORY_AUDIT_20260915.md y auditorias C13/C24 | Fuente oficial por entidad; no inventar canales |
 | B04 comparador | fe0d8d4, codex/pending-B04-before-consolidation | Comparar dependencias con raiz antes de integrar |

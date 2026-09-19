@@ -1,11 +1,11 @@
 {
   "version": "1.0",
-  "timestamp": "2026-09-16",
-  "status": "closed",
-  "phase_name": "Estabilizacion de suite actual",
-  "branch": "codex/stabilize-current-suite",
-  "checkpoint": ".planning/STABILIZATION.md",
-  "implementation": "Closed current-suite stabilization. The known 87 global failures are resolved in the final automated suite. Dev release APK was built and installed on the Mi A3.",
+  "timestamp": "2026-09-19",
+  "status": "in-progress",
+  "phase_name": "Reparacion forense y centro de Alertas",
+  "branch": "codex/forensic-alerts",
+  "checkpoint": ".planning/FORENSIC_REPAIR.md",
+  "implementation": "Base 82ce6b8 re-audited; repairs and Alerts integration e22a186 implemented. Cross-review corrections, integrated suite and new APK/physical QA remain. Results and APK below describe the prior installed baseline, not final repair acceptance.",
   "completed_tasks": [
     {
       "id": 1,
@@ -58,9 +58,9 @@
   ],
   "async_jobs": [],
   "active_agents": [],
-  "next_action": "Use this branch as the current stable checkpoint. For new visual work, start a scoped lot and rerun its gates.",
+  "next_action": "Complete active cross-review fixes, run serialized gates, build dev with APP_ENV=dev and install preserving data; owner available for wallet authentication. No cleanup or merge.",
   "consolidation_checkpoint": "ccd00bd",
-  "background_processes": "No test/build session left running by this handoff.",
+  "background_processes": "Execution active; agents own isolated paths and Flutter/test commands use Local\\PicoRadarFlutterGate. Verify live sessions before resuming; this is not a completion handoff.",
   "preserved_untracked": [
     "capturas/",
     "mockups/",
