@@ -53,6 +53,7 @@ void main() {
         appPreferencesProvider.overrideWithValue(MemoryPreferences()),
         cameraPackProvider.overrideWith((ref) async => _emptyPack()),
         drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingClockProvider.overrideWithValue(() => gateway.now),
         drivingFeedbackGatewayProvider.overrideWithValue(feedback),
       ],
     );
@@ -121,6 +122,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _emptyPack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -158,6 +160,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _emptyPack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -200,6 +203,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _emptyPack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -375,6 +379,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -405,6 +410,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -457,6 +463,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -496,6 +503,7 @@ void main() {
             ),
           ),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -531,6 +539,7 @@ void main() {
             (ref) async => _pack(operationStatus: null),
           ),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -563,6 +572,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -624,6 +634,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -680,6 +691,7 @@ void main() {
               (ref) async => _pack(speedLimitKmh: null),
             ),
             drivingLocationGatewayProvider.overrideWithValue(gateway),
+            drivingClockProvider.overrideWithValue(() => gateway.now),
             drivingFeedbackGatewayProvider.overrideWithValue(
               _NoopDrivingFeedbackGateway(),
             ),
@@ -740,6 +752,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -798,6 +811,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -856,6 +870,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -899,6 +914,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -946,6 +962,7 @@ void main() {
             appPreferencesProvider.overrideWithValue(MemoryPreferences()),
             cameraPackProvider.overrideWith((ref) async => _pack()),
             drivingLocationGatewayProvider.overrideWithValue(gateway),
+            drivingClockProvider.overrideWithValue(() => gateway.now),
             drivingFeedbackGatewayProvider.overrideWithValue(
               _NoopDrivingFeedbackGateway(),
             ),
@@ -1009,6 +1026,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -1054,6 +1072,7 @@ void main() {
             appPreferencesProvider.overrideWithValue(MemoryPreferences()),
             cameraPackProvider.overrideWith((ref) async => _pack()),
             drivingLocationGatewayProvider.overrideWithValue(gateway),
+            drivingClockProvider.overrideWithValue(() => gateway.now),
             drivingFeedbackGatewayProvider.overrideWithValue(
               _NoopDrivingFeedbackGateway(),
             ),
@@ -1135,6 +1154,7 @@ void main() {
             ),
           ),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -1202,6 +1222,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(preferences),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -1255,6 +1276,7 @@ void main() {
             appPreferencesProvider.overrideWithValue(preferences),
             cameraPackProvider.overrideWith((ref) async => _pack()),
             drivingLocationGatewayProvider.overrideWithValue(gateway),
+            drivingClockProvider.overrideWithValue(() => gateway.now),
             drivingFeedbackGatewayProvider.overrideWithValue(
               _NoopDrivingFeedbackGateway(),
             ),
@@ -1297,6 +1319,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -1344,6 +1367,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -1398,6 +1422,7 @@ void main() {
             (ref) async => _pack(speedLimitKmh: null),
           ),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -1439,6 +1464,7 @@ void main() {
             appPreferencesProvider.overrideWithValue(MemoryPreferences()),
             cameraPackProvider.overrideWith((ref) async => _pack()),
             drivingLocationGatewayProvider.overrideWithValue(gateway),
+            drivingClockProvider.overrideWithValue(() => gateway.now),
             drivingFeedbackGatewayProvider.overrideWithValue(
               _NoopDrivingFeedbackGateway(),
             ),
@@ -1490,6 +1516,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -1540,6 +1567,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -1594,6 +1622,7 @@ void main() {
               appPreferencesProvider.overrideWithValue(MemoryPreferences()),
               cameraPackProvider.overrideWith((ref) async => _pack()),
               drivingLocationGatewayProvider.overrideWithValue(gateway),
+              drivingClockProvider.overrideWithValue(() => gateway.now),
               drivingFeedbackGatewayProvider.overrideWithValue(
                 _NoopDrivingFeedbackGateway(),
               ),
@@ -1702,6 +1731,7 @@ void main() {
                   _LabelledDrivingController.new,
                 ),
                 drivingLocationGatewayProvider.overrideWithValue(gateway),
+                drivingClockProvider.overrideWithValue(() => gateway.now),
                 drivingFeedbackGatewayProvider.overrideWithValue(
                   _NoopDrivingFeedbackGateway(),
                 ),
@@ -1943,6 +1973,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(preferences),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -2016,6 +2047,7 @@ void main() {
             appPreferencesProvider.overrideWithValue(preferences),
             cameraPackProvider.overrideWith((ref) async => _pack()),
             drivingLocationGatewayProvider.overrideWithValue(gateway),
+            drivingClockProvider.overrideWithValue(() => gateway.now),
             drivingFeedbackGatewayProvider.overrideWithValue(
               _NoopDrivingFeedbackGateway(),
             ),
@@ -2096,6 +2128,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(preferences),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -2139,6 +2172,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -2209,6 +2243,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -2252,6 +2287,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -2296,6 +2332,7 @@ void main() {
             (ref) async => _pack(speedLimitKmh: null),
           ),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -2336,6 +2373,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(
             _NoopDrivingFeedbackGateway(),
           ),
@@ -2625,6 +2663,7 @@ DrivingPoint _point({
 }
 
 class _IdleGateway implements DrivingLocationGateway {
+  DateTime now = DateTime.now();
   var requestPermissionCalls = 0;
 
   @override
@@ -2648,9 +2687,11 @@ class _IdleGateway implements DrivingLocationGateway {
 }
 
 class _StreamingGateway implements DrivingLocationGateway {
+  DateTime now = DateTime.now();
   final _controller = StreamController<DrivingPoint>();
 
   void add(DrivingPoint point) {
+    now = point.recordedAt;
     _controller.add(point);
   }
 
@@ -2674,6 +2715,7 @@ class _StreamingGateway implements DrivingLocationGateway {
 }
 
 class _ControlledErrorGateway implements DrivingLocationGateway {
+  DateTime now = DateTime.now();
   _ControlledErrorGateway(this.stages);
 
   final List<String> stages;

@@ -26,6 +26,11 @@ const drivingSimulationEnabled = bool.fromEnvironment(
 bool get canUseDebugDrivingSimulation => kDebugMode && drivingSimulationEnabled;
 
 const drivingOverspeedVisualMarginKmh = 3;
+const drivingSampleMaxAge = Duration(seconds: 15);
+
+final drivingClockProvider = Provider<DateTime Function()>(
+  (ref) => DateTime.now,
+);
 
 enum DrivingSimulationScenario {
   knownSpeed,
@@ -291,6 +296,8 @@ class DrivingController extends AsyncNotifier<DrivingState> {
   static var _nextMapSessionId = 0;
   var _mapSessionId = 0;
   StreamSubscription<DrivingPoint>? _subscription;
+  Timer? _sampleExpiry;
+  DateTime? _lastPointAt;
   DrivingPoint? _previousPoint;
   DrivingAlertEngine? _alertEngine;
   String? _activeCameraId;
@@ -394,148 +401,169 @@ class DrivingController extends AsyncNotifier<DrivingState> {
         clearVisualAlertPulse: true,
       ),
     );
-    final pack = await ref.read(cameraPackProvider.future);
-    if (!_isCurrentStart(sessionSerial)) {
-      return;
-    }
-    final Stream<DrivingPoint> drivingStream;
-    final readyState = current.copyWith(
-      cameraCount: pack.cameras.length,
-      cameraSpeedKnownCount: _knownSpeedCount(pack),
-      cameraPackSource: pack.source,
-      simulationName: scenario?.label,
-      clearSimulation: !wantsSimulation,
-      clearCurrentPoint: true,
-    );
-    if (scenario == DrivingSimulationScenario.cocorna) {
-      await _ensureTollData();
-      if (!_isCurrentStart(sessionSerial)) return;
-      final toll = _tolls
-          .where((toll) => toll.id == 'INV-COCORNA-6A6F1282D1')
-          .firstOrNull;
-      if (toll == null) {
-        await _setStopped(
-          readyState,
-          DrivingSessionStatus.locationUnavailable,
-          'No se pudo cargar el peaje real para la simulación.',
-        );
+    try {
+      final pack = await ref.read(cameraPackProvider.future);
+      if (!_isCurrentStart(sessionSerial)) {
         return;
       }
-      drivingStream = _simulatedTollStream(toll);
-    } else if (scenario != null && scenario.isRegional) {
-      try {
-        final route = await ref.read(drivingRegionalDemoLoaderProvider)(
-          scenario.name,
-        );
+      final Stream<DrivingPoint> drivingStream;
+      final readyState = current.copyWith(
+        cameraCount: pack.cameras.length,
+        cameraSpeedKnownCount: _knownSpeedCount(pack),
+        cameraPackSource: pack.source,
+        simulationName: scenario?.label,
+        clearSimulation: !wantsSimulation,
+        clearCurrentPoint: true,
+      );
+      if (scenario == DrivingSimulationScenario.cocorna) {
+        await _ensureTollData();
         if (!_isCurrentStart(sessionSerial)) return;
-        drivingStream = route.play();
-      } catch (_) {
-        if (!_isCurrentStart(sessionSerial)) return;
-        await _setStopped(
-          readyState,
-          DrivingSessionStatus.locationUnavailable,
-          'No se pudo cargar la ruta de simulación local.',
-        );
-        return;
-      }
-    } else if (scenario != null) {
-      final camera = _simulationCamera(pack, scenario);
-      if (camera == null) {
-        await _setStopped(
-          current,
-          DrivingSessionStatus.locationUnavailable,
-          'No hay cámaras locales compatibles para simular la ruta.',
-        );
-        return;
-      }
-      drivingStream = _simulatedApproachStream(camera, scenario);
-    } else {
-      final gateway = ref.read(drivingLocationGatewayProvider);
-      if (!await gateway.isLocationServiceEnabled()) {
+        final toll = _tolls
+            .where((toll) => toll.id == 'INV-COCORNA-6A6F1282D1')
+            .firstOrNull;
+        if (toll == null) {
+          await _setStopped(
+            readyState,
+            DrivingSessionStatus.locationUnavailable,
+            'No se pudo cargar el peaje real para la simulación.',
+          );
+          return;
+        }
+        drivingStream = _simulatedTollStream(toll);
+      } else if (scenario != null && scenario.isRegional) {
+        try {
+          final route = await ref.read(drivingRegionalDemoLoaderProvider)(
+            scenario.name,
+          );
+          if (!_isCurrentStart(sessionSerial)) return;
+          drivingStream = route.play();
+        } catch (_) {
+          if (!_isCurrentStart(sessionSerial)) return;
+          await _setStopped(
+            readyState,
+            DrivingSessionStatus.locationUnavailable,
+            'No se pudo cargar la ruta de simulación local.',
+          );
+          return;
+        }
+      } else if (scenario != null) {
+        final camera = _simulationCamera(pack, scenario);
+        if (camera == null) {
+          await _setStopped(
+            current,
+            DrivingSessionStatus.locationUnavailable,
+            'No hay cámaras locales compatibles para simular la ruta.',
+          );
+          return;
+        }
+        drivingStream = _simulatedApproachStream(camera, scenario);
+      } else {
+        final gateway = ref.read(drivingLocationGatewayProvider);
+        if (!await gateway.isLocationServiceEnabled()) {
+          if (!_isCurrentStart(sessionSerial)) {
+            return;
+          }
+          await _setStopped(
+            current,
+            DrivingSessionStatus.serviceDisabled,
+            'Activa la ubicación del teléfono para iniciar.',
+          );
+          return;
+        }
         if (!_isCurrentStart(sessionSerial)) {
           return;
         }
-        await _setStopped(
-          current,
-          DrivingSessionStatus.serviceDisabled,
-          'Activa la ubicación del teléfono para iniciar.',
-        );
-        return;
+        var permission = await gateway.checkPermission();
+        if (!_isCurrentStart(sessionSerial)) {
+          return;
+        }
+        if (permission != DeviceLocationPermission.granted) {
+          permission = await gateway.requestPermission();
+        }
+        if (!_isCurrentStart(sessionSerial)) {
+          return;
+        }
+        if (permission != DeviceLocationPermission.granted) {
+          await _setStopped(
+            current,
+            _permissionStatus(permission),
+            _permissionMessage(permission),
+          );
+          return;
+        }
+        drivingStream = gateway.positionStream();
       }
-      if (!_isCurrentStart(sessionSerial)) {
-        return;
-      }
-      var permission = await gateway.checkPermission();
-      if (!_isCurrentStart(sessionSerial)) {
-        return;
-      }
-      if (permission != DeviceLocationPermission.granted) {
-        permission = await gateway.requestPermission();
-      }
-      if (!_isCurrentStart(sessionSerial)) {
-        return;
-      }
-      if (permission != DeviceLocationPermission.granted) {
-        await _setStopped(
-          current,
-          _permissionStatus(permission),
-          _permissionMessage(permission),
-        );
-        return;
-      }
-      drivingStream = gateway.positionStream();
-    }
 
-    await _cancelSubscription();
-    if (!_isCurrentStart(sessionSerial)) {
-      return;
+      await _cancelSubscription();
+      if (!_isCurrentStart(sessionSerial)) {
+        return;
+      }
+      _previousPoint = null;
+      _sessionPack = pack;
+      _tollSession = TollAlertSession();
+      _activeCameraId = null;
+      final latestPreferences =
+          state.asData?.value.preferences ?? readyState.preferences;
+      _alertEngine = _alertEngineFor(latestPreferences);
+      state = AsyncData(
+        readyState.copyWith(
+          status: DrivingSessionStatus.active,
+          preferences: latestPreferences,
+          clearNearestCamera: true,
+          clearNearestToll: true,
+          clearReliableHeading: true,
+          tollDataError: _tollLoadError,
+          clearTollDataError: _tollLoadError == null,
+          clearLastAlert: true,
+          clearDismissedCamera: true,
+          clearErrorMessage: true,
+        ),
+      );
+      await ref.read(drivingFeedbackGatewayProvider).setKeepScreenOn(true);
+      if (!_isActiveSession(sessionSerial)) {
+        await _stopNativeSessionCleanup(onlyWhenInactive: true);
+        return;
+      }
+      _subscription = drivingStream.listen(
+        (point) => _enqueuePoint(point, sessionSerial),
+        onError: (_) {
+          if (!_isActiveSession(sessionSerial)) return;
+          final latest = state.asData?.value ?? current;
+          unawaited(
+            _setStopped(
+              latest,
+              DrivingSessionStatus.locationUnavailable,
+              'No se pudo leer la ubicación en tiempo real.',
+            ),
+          );
+        },
+        onDone:
+            scenario?.isRegional == true ||
+                scenario == DrivingSimulationScenario.cocorna
+            ? () => unawaited(_finishSimulation(sessionSerial))
+            : scenario == null
+            ? () {
+                if (!_isActiveSession(sessionSerial)) return;
+                _subscription = null;
+                unawaited(
+                  _setStopped(
+                    state.asData!.value,
+                    DrivingSessionStatus.locationUnavailable,
+                    'Se interrumpió la ubicación en tiempo real. Vuelve a iniciar.',
+                  ),
+                );
+              }
+            : null,
+        cancelOnError: false,
+      );
+    } catch (_) {
+      if (!ref.mounted || sessionSerial != _sessionSerial) return;
+      await _setStopped(
+        state.asData?.value ?? current,
+        DrivingSessionStatus.locationUnavailable,
+        'No se pudo iniciar la ubicación en tiempo real. Vuelve a intentar.',
+      );
     }
-    _previousPoint = null;
-    _sessionPack = pack;
-    _tollSession = TollAlertSession();
-    _activeCameraId = null;
-    final latestPreferences =
-        state.asData?.value.preferences ?? readyState.preferences;
-    _alertEngine = _alertEngineFor(latestPreferences);
-    state = AsyncData(
-      readyState.copyWith(
-        status: DrivingSessionStatus.active,
-        preferences: latestPreferences,
-        clearNearestCamera: true,
-        clearNearestToll: true,
-        clearReliableHeading: true,
-        tollDataError: _tollLoadError,
-        clearTollDataError: _tollLoadError == null,
-        clearLastAlert: true,
-        clearDismissedCamera: true,
-        clearErrorMessage: true,
-      ),
-    );
-    await ref.read(drivingFeedbackGatewayProvider).setKeepScreenOn(true);
-    if (!_isActiveSession(sessionSerial)) {
-      await _stopNativeSessionCleanup(onlyWhenInactive: true);
-      return;
-    }
-    _subscription = drivingStream.listen(
-      (point) => _enqueuePoint(point, sessionSerial),
-      onError: (_) {
-        if (!_isActiveSession(sessionSerial)) return;
-        final latest = state.asData?.value ?? current;
-        unawaited(
-          _setStopped(
-            latest,
-            DrivingSessionStatus.locationUnavailable,
-            'No se pudo leer la ubicación en tiempo real.',
-          ),
-        );
-      },
-      onDone:
-          scenario?.isRegional == true ||
-              scenario == DrivingSimulationScenario.cocorna
-          ? () => unawaited(_finishSimulation(sessionSerial))
-          : null,
-      cancelOnError: false,
-    );
   }
 
   Future<void> _finishSimulation(int sessionSerial) async {
@@ -655,11 +683,21 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     if (!_isActiveSession(sessionSerial)) {
       return;
     }
-    final latestPoint = current.currentPoint;
-    if (latestPoint != null &&
-        !point.recordedAt.isAfter(latestPoint.recordedAt)) {
+    if (_lastPointAt != null && !point.recordedAt.isAfter(_lastPointAt!)) {
       return;
     }
+    if (current.simulationName == null) {
+      final age = ref.read(drivingClockProvider)().difference(point.recordedAt);
+      if (age >= drivingSampleMaxAge || age < const Duration(seconds: -5)) {
+        return;
+      }
+      _sampleExpiry?.cancel();
+      _sampleExpiry = Timer(
+        age.isNegative ? drivingSampleMaxAge : drivingSampleMaxAge - age,
+        () => _expireSample(sessionSerial),
+      );
+    }
+    _lastPointAt = point.recordedAt;
     final pack = _sessionPack;
     if (pack == null) return;
     if (!_isActiveSession(sessionSerial)) {
@@ -1076,7 +1114,29 @@ class DrivingController extends AsyncNotifier<DrivingState> {
     };
   }
 
+  void _expireSample(int sessionSerial) {
+    if (!_isActiveSession(sessionSerial)) return;
+    final current = state.asData!.value;
+    _previousPoint = null;
+    _tollSession = TollAlertSession();
+    unawaited(_invalidateFeedback());
+    state = AsyncData(
+      current.copyWith(
+        clearCurrentPoint: true,
+        clearNearestCamera: true,
+        clearNearestToll: true,
+        clearReliableHeading: true,
+        clearLastAlert: true,
+        clearVisualAlertPulse: true,
+        errorMessage: 'Sin ubicación reciente. Esperando una nueva señal GPS.',
+      ),
+    );
+  }
+
   Future<void> _cancelSubscription() async {
+    _sampleExpiry?.cancel();
+    _sampleExpiry = null;
+    _lastPointAt = null;
     final subscription = _subscription;
     _subscription = null;
     _previousPoint = null;

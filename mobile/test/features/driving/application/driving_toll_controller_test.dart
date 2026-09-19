@@ -554,6 +554,7 @@ class _Harness {
       overrides: [
         appPreferencesProvider.overrideWithValue(MemoryPreferences()),
         drivingLocationGatewayProvider.overrideWithValue(location),
+        drivingClockProvider.overrideWithValue(() => location.now),
         drivingFeedbackGatewayProvider.overrideWithValue(feedback),
         cameraPackProvider.overrideWith(
           (ref) async => CameraPack(
@@ -632,6 +633,7 @@ Future<void> _flush() async {
 }
 
 class _Location implements DrivingLocationGateway {
+  DateTime now = DateTime.now();
   final points = StreamController<DrivingPoint>.broadcast();
   Completer<bool>? serviceGate;
   @override
@@ -644,7 +646,10 @@ class _Location implements DrivingLocationGateway {
   Future<DeviceLocationPermission> requestPermission() async =>
       DeviceLocationPermission.granted;
   @override
-  Stream<DrivingPoint> positionStream() => points.stream;
+  Stream<DrivingPoint> positionStream() => points.stream.map((point) {
+    now = point.recordedAt;
+    return point;
+  });
 }
 
 class _Feedback implements DrivingFeedbackGateway {

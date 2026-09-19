@@ -26,6 +26,7 @@ void main() {
         appPreferencesProvider.overrideWithValue(MemoryPreferences()),
         cameraPackProvider.overrideWith((ref) async => _pack()),
         drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingClockProvider.overrideWithValue(() => gateway.now),
         drivingFeedbackGatewayProvider.overrideWithValue(
           _FakeDrivingFeedbackGateway(),
         ),
@@ -55,6 +56,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(feedback),
         ],
       );
@@ -124,6 +126,7 @@ void main() {
         appPreferencesProvider.overrideWithValue(MemoryPreferences()),
         cameraPackProvider.overrideWith((ref) async => _pack()),
         drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingClockProvider.overrideWithValue(() => gateway.now),
         drivingFeedbackGatewayProvider.overrideWithValue(feedback),
       ],
     );
@@ -158,6 +161,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(feedback),
         ],
       );
@@ -220,6 +224,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(feedback),
         ],
       );
@@ -265,6 +270,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(feedback),
         ],
       );
@@ -311,6 +317,7 @@ void main() {
           (ref) async => _pack(speedLimitKmh: null),
         ),
         drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingClockProvider.overrideWithValue(() => gateway.now),
         drivingFeedbackGatewayProvider.overrideWithValue(feedback),
       ],
     );
@@ -341,6 +348,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(feedback),
         ],
       );
@@ -379,6 +387,7 @@ void main() {
         appPreferencesProvider.overrideWithValue(MemoryPreferences()),
         cameraPackProvider.overrideWith((ref) async => _pack()),
         drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingClockProvider.overrideWithValue(() => gateway.now),
         drivingFeedbackGatewayProvider.overrideWithValue(feedback),
       ],
     );
@@ -458,6 +467,7 @@ void main() {
         appPreferencesProvider.overrideWithValue(MemoryPreferences()),
         cameraPackProvider.overrideWith((ref) async => _pack()),
         drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingClockProvider.overrideWithValue(() => gateway.now),
         drivingFeedbackGatewayProvider.overrideWithValue(feedback),
       ],
     );
@@ -554,6 +564,7 @@ void main() {
             ),
           ),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(feedback),
         ],
       );
@@ -600,6 +611,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(feedback),
         ],
       );
@@ -638,6 +650,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(feedback),
         ],
       );
@@ -674,6 +687,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(feedback),
         ],
       );
@@ -713,6 +727,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(feedback),
         ],
       );
@@ -753,6 +768,7 @@ void main() {
         appPreferencesProvider.overrideWithValue(MemoryPreferences()),
         cameraPackProvider.overrideWith((ref) => packCompleter.future),
         drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingClockProvider.overrideWithValue(() => gateway.now),
         drivingFeedbackGatewayProvider.overrideWithValue(feedback),
       ],
     );
@@ -789,6 +805,7 @@ void main() {
           appPreferencesProvider.overrideWithValue(MemoryPreferences()),
           cameraPackProvider.overrideWith((ref) async => _pack()),
           drivingLocationGatewayProvider.overrideWithValue(gateway),
+          drivingClockProvider.overrideWithValue(() => gateway.now),
           drivingFeedbackGatewayProvider.overrideWithValue(feedback),
         ],
       );
@@ -820,6 +837,7 @@ void main() {
         appPreferencesProvider.overrideWithValue(MemoryPreferences()),
         cameraPackProvider.overrideWith((ref) async => _pack()),
         drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingClockProvider.overrideWithValue(() => gateway.now),
         drivingFeedbackGatewayProvider.overrideWithValue(feedback),
       ],
     );
@@ -856,6 +874,7 @@ void main() {
             appPreferencesProvider.overrideWithValue(MemoryPreferences()),
             cameraPackProvider.overrideWith((ref) async => _pack()),
             drivingLocationGatewayProvider.overrideWithValue(gateway),
+            drivingClockProvider.overrideWithValue(() => gateway.now),
             drivingFeedbackGatewayProvider.overrideWithValue(feedback),
           ],
         );
@@ -915,6 +934,7 @@ void main() {
         appPreferencesProvider.overrideWithValue(MemoryPreferences()),
         cameraPackProvider.overrideWith((ref) async => _pack()),
         drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingClockProvider.overrideWithValue(() => gateway.now),
         drivingFeedbackGatewayProvider.overrideWithValue(feedback),
       ],
     );
@@ -947,6 +967,7 @@ void main() {
         appPreferencesProvider.overrideWithValue(MemoryPreferences()),
         cameraPackProvider.overrideWith((ref) async => _pack()),
         drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingClockProvider.overrideWithValue(() => gateway.now),
         drivingFeedbackGatewayProvider.overrideWithValue(feedback),
       ],
     );
@@ -981,6 +1002,7 @@ void main() {
         appPreferencesProvider.overrideWithValue(MemoryPreferences()),
         cameraPackProvider.overrideWith((ref) async => _pack()),
         drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingClockProvider.overrideWithValue(() => gateway.now),
         drivingFeedbackGatewayProvider.overrideWithValue(feedback),
       ],
     );
@@ -1017,6 +1039,7 @@ void main() {
         appPreferencesProvider.overrideWithValue(MemoryPreferences()),
         cameraPackProvider.overrideWith((ref) async => _pack()),
         drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingClockProvider.overrideWithValue(() => gateway.now),
         drivingFeedbackGatewayProvider.overrideWithValue(feedback),
       ],
     );
@@ -1046,6 +1069,7 @@ void main() {
         appPreferencesProvider.overrideWithValue(MemoryPreferences()),
         cameraPackProvider.overrideWith((ref) async => _pack()),
         drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingClockProvider.overrideWithValue(() => gateway.now),
         drivingFeedbackGatewayProvider.overrideWithValue(feedback),
       ],
     );
@@ -1082,6 +1106,7 @@ void main() {
         appPreferencesProvider.overrideWithValue(preferences),
         cameraPackProvider.overrideWith((ref) async => _pack()),
         drivingLocationGatewayProvider.overrideWithValue(gateway),
+        drivingClockProvider.overrideWithValue(() => gateway.now),
         drivingFeedbackGatewayProvider.overrideWithValue(feedback),
       ],
     );
@@ -1303,12 +1328,14 @@ class _ControllableDrivingFeedbackGateway extends _FakeDrivingFeedbackGateway {
 }
 
 class _FakeDrivingLocationGateway implements DrivingLocationGateway {
+  DateTime now = DateTime.now();
   final _controller = StreamController<DrivingPoint>();
   var requestPermissionCalls = 0;
   var cancelled = false;
   var listenCalls = 0;
 
   void add(DrivingPoint point) {
+    now = point.recordedAt;
     _controller.add(point);
   }
 
@@ -1377,12 +1404,14 @@ class _ControllableStartGateway extends _FakeDrivingLocationGateway {
 }
 
 class _RestartableDrivingLocationGateway implements DrivingLocationGateway {
+  DateTime now = DateTime.now();
   StreamController<DrivingPoint>? _controller;
   var requestPermissionCalls = 0;
   var listenCalls = 0;
   var cancelled = false;
 
   void add(DrivingPoint point) {
+    now = point.recordedAt;
     _controller?.add(point);
   }
 
