@@ -186,7 +186,8 @@ class LocationController extends AsyncNotifier<LocationState> {
         point.longitude < -180 ||
         point.longitude > 180 ||
         !point.accuracyMeters.isFinite ||
-        point.accuracyMeters < 0) {
+        point.accuracyMeters < 0 ||
+        point.accuracyMeters > maxJurisdictionAccuracyMeters) {
       return _finish(
         operation,
         current,
@@ -200,6 +201,7 @@ class LocationController extends AsyncNotifier<LocationState> {
     final detectedJurisdictionId = resolveJurisdictionForPosition(
       latitude: point.latitude,
       longitude: point.longitude,
+      accuracyMeters: point.accuracyMeters,
       supportedJurisdictions: jurisdictions,
     );
     final now = ref.read(currentInstantProvider).toUtc();

@@ -33,6 +33,23 @@ void main() {
     expect(result, 'co-ant-medellin');
   });
 
+  for (final point in [
+    (name: 'Rionegro', lat: 6.1536166, lon: -75.3741691),
+    (name: 'Bello', lat: 6.33778, lon: -75.5444),
+    (name: 'Envigado', lat: 6.1706, lon: -75.5877),
+  ]) {
+    test('does not assign Medellin to ${point.name}', () {
+      expect(
+        resolveJurisdictionForPosition(
+          latitude: point.lat,
+          longitude: point.lon,
+          supportedJurisdictions: jurisdictions,
+        ),
+        isNull,
+      );
+    });
+  }
+
   test(
     'resolves every supported current city with active restriction data',
     () {
@@ -66,6 +83,28 @@ void main() {
     );
 
     expect(result, isNull);
+  });
+
+  test('requires the accuracy circle to fit inside the detection core', () {
+    String? resolve(double accuracy) => resolveJurisdictionForPosition(
+      latitude: 6.2442,
+      longitude: -75.5812,
+      accuracyMeters: accuracy,
+      supportedJurisdictions: jurisdictions,
+      hints: const [
+        JurisdictionLocationHint(
+          jurisdictionId: 'co-ant-medellin',
+          centerLat: 6.2442,
+          centerLon: -75.5812,
+          maxDetectionRadiusKm: 0.1,
+        ),
+      ],
+    );
+    expect(resolve(50), 'co-ant-medellin');
+    expect(resolve(150), isNull);
+    expect(resolve(double.nan), isNull);
+    expect(resolve(-1), isNull);
+    expect(resolve(5000), isNull);
   });
 
   test('fails closed when detection is ambiguous', () {

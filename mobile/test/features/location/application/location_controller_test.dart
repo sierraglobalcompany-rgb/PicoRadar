@@ -47,6 +47,27 @@ void main() {
   });
 
   test(
+    'uncertain GPS cannot replace a manually selected jurisdiction',
+    () async {
+      final ref = container();
+      addTearDown(ref.dispose);
+      final controller = ref.read(locationStateProvider.notifier);
+      await controller.selectManual(_jurisdictions.first);
+      gateway.point = const DeviceLocationPoint(
+        latitude: 6.2442,
+        longitude: -75.5812,
+        accuracyMeters: 5000,
+      );
+      final result = await controller.enableGpsAuto();
+      expect(result, LocationRefreshStatus.positionUnavailable);
+      expect(
+        await preferences.getString(picoJurisdictionPreferenceKey),
+        'co-dc-bogota',
+      );
+    },
+  );
+
+  test(
     'manual selection persists as the effective Pico jurisdiction',
     () async {
       final ref = container();
