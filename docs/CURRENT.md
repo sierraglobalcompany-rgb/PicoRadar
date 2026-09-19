@@ -7,8 +7,8 @@ no modifica aprobaciones del producto.
 
 ## Base de trabajo unica
 - Raiz: C:/Users/felip/Documents/ChatGPT/PicoRadar_ Pico y Placa.
-- Rama local: codex/owner-improvements-integration; base d26ba84.
-- HEAD de codigo integrado: 9c256a5.
+- Rama local: fix/C11-home-sponsor-carousel; base 13190d0.
+- Checkpoint de implementacion: be61d43.
 - Estado: mejoras del propietario integradas, gates automaticos aprobados y APK
   nueva instalada. Aceptacion fisica documental en curso; sin merge ni publicacion.
 - No trabajar en temp/VIAJE-R1-real-planner ni en B03/B04.
@@ -16,10 +16,10 @@ no modifica aprobaciones del producto.
 - GSD: .planning/.continue-here.md y .planning/HANDOFF.json.
 
 ## Version instalada
-APK: artifacts/current/apk/PicoRadar-dev-release-owner-improvements-20260919.apk.
-SHA256: 703CF65F0852DBEC237B4FA399083BB44BB263E252F1DBFF686676CEB53E0116.
+APK: artifacts/current/apk/PicoRadar-dev-release-home-carousel-20260919.apk.
+SHA256: B1CA1EE0762252E476A9CA8C068A752B4F2B6DF7C460F1B8490E99DAB2E0E907.
 Build dev release con APP_ENV=dev. Instalacion -r correcta en Mi A3 API30 el
-2026-09-19 a las 15:30:15 (Bogota), sin borrar datos. El usuario ya habia
+2026-09-19 a las 17:32:32 (Bogota), sin borrar datos. El usuario ya habia
 confirmado que el escaner ML Kit abre. La captura guiada frente/reverso esta
 implementada y cubierta por pruebas; su ciclo fisico final con tarjeta ficticia
 sigue pendiente de confirmacion.

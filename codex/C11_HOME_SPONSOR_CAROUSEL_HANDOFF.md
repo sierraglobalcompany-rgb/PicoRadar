@@ -1,13 +1,14 @@
 # C11 Home Sponsor Carousel Handoff
 
 ## Status
-`PARTIAL - automatic gates passed; build and physical QA pending`
+`DONE - pending owner visual approval`
 
 ## Lot
 `C11 - Inicio: carrusel patrocinado borde a borde`
 
 ## Git
 - Branch: `fix/C11-home-sponsor-carousel`
+- Implementation checkpoint: `be61d43a38762cef3941c3d96b3a0590f382091c`
 - Base commit: `13190d0ff177995322806e67d1ca5fdf5d856495`
 - Worktree: `C:/Users/felip/.codex/worktrees/home-sponsor-carousel/PicoRadar_ Pico y Placa`
 
@@ -28,17 +29,24 @@
 | Command / test | Result |
 |---|---|
 | Home carousel, Home screen y startup visual slots | 198 passed |
-| `flutter analyze` | Pending |
-| Suite movil completa | Pending |
+| `flutter analyze --no-pub` | Passed, no issues |
+| Suite movil completa | 3,226 passed, 10 skipped |
+| Dev release build and wallet release gate | Passed |
 
 ## Manual QA
 - Matriz widget: 360x780, 360x800, 390x844, 412x915 y 430x932.
 - Texto 1.0 sin scroll; texto 1.5/2.0 sin overflow critico.
 
 ## Physical Android QA
-`Pending`
+`Required and passed`
 - Device: Mi A3 API 30
-- Evidence: pendiente de build e instalacion dev.
+- Installed with `adb install -r` at 2026-09-19 17:32:32 without clearing data.
+- APK: `artifacts/current/apk/PicoRadar-dev-release-home-carousel-20260919.apk`
+- SHA-256: `B1CA1EE0762252E476A9CA8C068A752B4F2B6DF7C460F1B8490E99DAB2E0E907`
+- Evidence: `artifacts/current/evidence/home-carousel-mi-a3-20260919.png`
+  and `artifacts/current/evidence/home-carousel-next-mi-a3-20260919.png`.
+- Observed: full-width single slide, integrated controls, successful next-arrow
+  navigation, no legacy lower banner and no overlap with the main status.
 
 ## Data / migration impact
 - Ninguno. No hay migracion ni cambio de datos del usuario.
@@ -51,7 +59,8 @@
 - Ninguna.
 
 ## Known risks / debt
-- La aprobacion visual del owner requiere captura fisica de la APK final.
+- La aprobacion visual final sigue correspondiendo al owner; la evidencia fisica
+  cumple los criterios medibles del lote.
 
 ## Stop conditions encountered
 - Ninguna.
