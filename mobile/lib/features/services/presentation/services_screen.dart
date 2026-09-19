@@ -158,55 +158,64 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
     required bool requestPermission,
   }) async {
     final operation = ++_pillLocationOperation;
-    if (mounted) {
-      setState(() => _locationPill = const _LocationPillState.detecting());
-    }
-    final gateway = ref.read(deviceLocationGatewayProvider);
-    final serviceEnabled = await gateway.isLocationServiceEnabled();
-    if (!mounted || operation != _pillLocationOperation) {
-      return null;
-    }
-    if (!serviceEnabled) {
-      const failure = DeviceLocationFailure.serviceDisabled;
-      setState(() => _locationPill = const _LocationPillState.failed(failure));
-      return failure;
-    }
-
-    var permission = await gateway.checkPermission();
-    if (!mounted || operation != _pillLocationOperation) {
-      return null;
-    }
-    if (permission != DeviceLocationPermission.granted) {
-      if (!requestPermission) {
-        setState(() => _locationPill = const _LocationPillState.idle());
-        return null;
+    try {
+      if (mounted) {
+        setState(() => _locationPill = const _LocationPillState.detecting());
       }
-      permission = await gateway.requestPermission();
+      final gateway = ref.read(deviceLocationGatewayProvider);
+      final serviceEnabled = await gateway.isLocationServiceEnabled();
       if (!mounted || operation != _pillLocationOperation) {
         return null;
       }
-    }
-    if (permission != DeviceLocationPermission.granted) {
-      final failure = permission == DeviceLocationPermission.deniedForever
-          ? DeviceLocationFailure.permissionDeniedForever
-          : DeviceLocationFailure.permissionDenied;
-      setState(() => _locationPill = _LocationPillState.failed(failure));
-      return failure;
-    }
-
-    final result = await gateway.getCurrentPosition();
-    if (!mounted || operation != _pillLocationOperation) {
-      return null;
-    }
-    switch (result) {
-      case DeviceLocationSuccess(:final point) when _isValidPoint(point):
-        _selectedFallbackCity = null;
-        _setLocationPillFromPoint(point);
-        return null;
-      case DeviceLocationSuccess() || DeviceLocationError():
-        const failure = DeviceLocationFailure.positionUnavailable;
-        _setLocationPillFailure(failure);
+      if (!serviceEnabled) {
+        const failure = DeviceLocationFailure.serviceDisabled;
+        setState(
+          () => _locationPill = const _LocationPillState.failed(failure),
+        );
         return failure;
+      }
+
+      var permission = await gateway.checkPermission();
+      if (!mounted || operation != _pillLocationOperation) {
+        return null;
+      }
+      if (permission != DeviceLocationPermission.granted) {
+        if (!requestPermission) {
+          setState(() => _locationPill = const _LocationPillState.idle());
+          return null;
+        }
+        permission = await gateway.requestPermission();
+        if (!mounted || operation != _pillLocationOperation) {
+          return null;
+        }
+      }
+      if (permission != DeviceLocationPermission.granted) {
+        final failure = permission == DeviceLocationPermission.deniedForever
+            ? DeviceLocationFailure.permissionDeniedForever
+            : DeviceLocationFailure.permissionDenied;
+        setState(() => _locationPill = _LocationPillState.failed(failure));
+        return failure;
+      }
+
+      final result = await gateway.getCurrentPosition();
+      if (!mounted || operation != _pillLocationOperation) {
+        return null;
+      }
+      switch (result) {
+        case DeviceLocationSuccess(:final point) when _isValidPoint(point):
+          _selectedFallbackCity = null;
+          _setLocationPillFromPoint(point);
+          return null;
+        case DeviceLocationSuccess() || DeviceLocationError():
+          const failure = DeviceLocationFailure.positionUnavailable;
+          _setLocationPillFailure(failure);
+          return failure;
+      }
+    } catch (_) {
+      if (!mounted || operation != _pillLocationOperation) return null;
+      const failure = DeviceLocationFailure.positionUnavailable;
+      _setLocationPillFailure(failure);
+      return failure;
     }
   }
 
@@ -245,34 +254,37 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
   }
 
   Future<_LocationSearchResult> _readCurrentLocation() async {
-    final gateway = ref.read(deviceLocationGatewayProvider);
-    final serviceEnabled = await gateway.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return const _LocationFailed(DeviceLocationFailure.serviceDisabled);
-    }
+    try {
+      final gateway = ref.read(deviceLocationGatewayProvider);
+      final serviceEnabled = await gateway.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return const _LocationFailed(DeviceLocationFailure.serviceDisabled);
+      }
 
-    var permission = await gateway.checkPermission();
-    if (permission == DeviceLocationPermission.denied ||
-        permission == DeviceLocationPermission.notRequested) {
-      permission = await gateway.requestPermission();
-    }
-    if (permission == DeviceLocationPermission.denied) {
-      return const _LocationFailed(DeviceLocationFailure.permissionDenied);
-    }
-    if (permission == DeviceLocationPermission.deniedForever) {
-      return const _LocationFailed(
-        DeviceLocationFailure.permissionDeniedForever,
-      );
-    }
+      var permission = await gateway.checkPermission();
+      if (permission == DeviceLocationPermission.denied ||
+          permission == DeviceLocationPermission.notRequested) {
+        permission = await gateway.requestPermission();
+      }
+      if (permission == DeviceLocationPermission.denied) {
+        return const _LocationFailed(DeviceLocationFailure.permissionDenied);
+      }
+      if (permission == DeviceLocationPermission.deniedForever) {
+        return const _LocationFailed(
+          DeviceLocationFailure.permissionDeniedForever,
+        );
+      }
 
-    final current = await gateway.getCurrentPosition();
-    return switch (current) {
-      DeviceLocationSuccess(:final point) when _isValidPoint(point) =>
-        _ResolvedLocation(point),
-      DeviceLocationSuccess() || DeviceLocationError() => const _LocationFailed(
-        DeviceLocationFailure.positionUnavailable,
-      ),
-    };
+      final current = await gateway.getCurrentPosition();
+      return switch (current) {
+        DeviceLocationSuccess(:final point) when _isValidPoint(point) =>
+          _ResolvedLocation(point),
+        DeviceLocationSuccess() || DeviceLocationError() =>
+          const _LocationFailed(DeviceLocationFailure.positionUnavailable),
+      };
+    } catch (_) {
+      return const _LocationFailed(DeviceLocationFailure.positionUnavailable);
+    }
   }
 
   bool _isValidPoint(DeviceLocationPoint point) {

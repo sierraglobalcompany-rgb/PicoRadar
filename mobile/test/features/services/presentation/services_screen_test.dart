@@ -19,6 +19,70 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(loadV01bToolsTestFont);
 
+  for (final stage in ['service', 'check', 'position']) {
+    testWidgets('F13 initial $stage exception leaves GPS retry available', (
+      tester,
+    ) async {
+      final location = _FakeDeviceLocationGateway.success(
+        const DeviceLocationPoint(
+          latitude: 6.244203,
+          longitude: -75.581212,
+          accuracyMeters: 18,
+        ),
+      )..throwAt = stage;
+      await _pumpServices(
+        tester,
+        activeVehicle: null,
+        locationGateway: location,
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Sin señal GPS'), findsOneWidget);
+      location.throwAt = null;
+      await tester.tap(find.byKey(const ValueKey('services-location-pill')));
+      await tester.pumpAndSettle();
+      expect(find.text('Medellín'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final stage in ['service', 'check', 'request', 'position']) {
+    testWidgets('F13 $stage exception permits fallback and a later search', (
+      tester,
+    ) async {
+      final location = _FakeDeviceLocationGateway(
+        checkPermissionResult: DeviceLocationPermission.denied,
+      );
+      final launcher = _FakeExternalLauncher();
+      await _pumpServices(
+        tester,
+        activeVehicle: null,
+        locationGateway: location,
+        externalLauncher: launcher,
+      );
+      await tester.pumpAndSettle();
+      location.throwAt = stage;
+      await tester.tap(find.byKey(const ValueKey('services-search-tow')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.text('Seleccionar ciudad'), findsOneWidget);
+      await tester.tap(find.text('Seleccionar ciudad'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('services-city-fallback-search')),
+        'medellin',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Medellín - Antioquia'));
+      await tester.pumpAndSettle();
+      expect(launcher.openedUris, hasLength(1));
+      location.throwAt = null;
+      await tester.tap(find.byKey(const ValueKey('services-search-tow')));
+      await tester.pumpAndSettle();
+      expect(launcher.openedUris, hasLength(2));
+    });
+  }
+
   testWidgets('renders the GPS-first mockup structure without city field', (
     tester,
   ) async {
@@ -546,22 +610,33 @@ class _FakeDeviceLocationGateway implements DeviceLocationGateway {
   int positionsRequested = 0;
   int appSettingsOpened = 0;
   int locationSettingsOpened = 0;
+  String? throwAt;
+
+  void _checkFailure(String stage) {
+    if (throwAt == stage) throw StateError('location unavailable');
+  }
 
   @override
-  Future<bool> isLocationServiceEnabled() async => serviceEnabled;
+  Future<bool> isLocationServiceEnabled() async {
+    _checkFailure('service');
+    return serviceEnabled;
+  }
 
   @override
   Future<DeviceLocationPermission> checkPermission() async {
+    _checkFailure('check');
     return checkPermissionResult;
   }
 
   @override
   Future<DeviceLocationPermission> requestPermission() async {
+    _checkFailure('request');
     return requestPermissionResult;
   }
 
   @override
   Future<DeviceLocationResult> getCurrentPosition() {
+    _checkFailure('position');
     positionsRequested++;
     final pending = pendingPosition;
     if (pending != null) {
