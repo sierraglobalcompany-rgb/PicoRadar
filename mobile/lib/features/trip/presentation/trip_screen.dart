@@ -91,6 +91,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
   String? _timeError;
   String? _vehicleError;
   String? _planError;
+  bool _retainedPreviousPlan = false;
   CancelToken? _cancelToken;
   TripPlanRequest? _request;
   TripPlan? _plan;
@@ -289,7 +290,7 @@ class _TripScreenState extends ConsumerState<TripScreen>
             ),
       planError: _planError,
       onPreview: () => _preview(catalog, selectedVehicle),
-      onCancelPreview: () => setState(_invalidatePlan),
+      onCancelPreview: () => setState(_cancelPreview),
       demoEnabled: tripDemoEnabled,
       onDemoScenarioSelected: (scenario) =>
           _loadDemoScenario(catalog, scenario),
@@ -298,6 +299,8 @@ class _TripScreenState extends ConsumerState<TripScreen>
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (_retainedPreviousPlan)
+                  const Text('Se conserva la consulta anterior.'),
                 _TripPlanWithLocalData(
                   request: currentRequest,
                   plan: currentPlan,
@@ -734,13 +737,19 @@ class _TripScreenState extends ConsumerState<TripScreen>
   }
 
   void _invalidatePlan() {
-    _generation++;
-    _cancelToken?.cancel();
-    _cancelToken = null;
+    _cancelPreview();
     _request = null;
     _plan = null;
     _selectedRouteId = null;
+    _retainedPreviousPlan = false;
     _planError = null;
+  }
+
+  void _cancelPreview() {
+    _generation++;
+    _cancelToken?.cancel();
+    _cancelToken = null;
+    if (_plan == null) _request = null;
   }
 
   void _swapLocations() {
@@ -976,8 +985,9 @@ class _TripScreenState extends ConsumerState<TripScreen>
     final token = CancelToken();
     final scrollRevision = _userScrollRevision;
     setState(() {
-      _invalidatePlan();
-      _request = request;
+      _cancelPreview();
+      _retainedPreviousPlan = _plan != null;
+      if (_plan == null) _request = request;
       _cancelToken = token;
       _originMunicipality = origin;
       _destinationMunicipality = destination;
@@ -992,7 +1002,9 @@ class _TripScreenState extends ConsumerState<TripScreen>
         throw const TripPlanFailure('invalid_upstream');
       }
       setState(() {
+        _request = request;
         _plan = plan;
+        _retainedPreviousPlan = false;
         _selectedRouteId =
             (plan.routes.toList()..sort(
                   (a, b) => a.durationSeconds.compareTo(b.durationSeconds),

@@ -942,6 +942,56 @@ void main() {
     );
   });
 
+  for (final outcome in ['network', 'cancel', 'success']) {
+    testWidgets('refresh retains previous plan until $outcome', (tester) async {
+      final client = _PendingPlanClient();
+      await TripDraftStore(preferences).saveDraft(
+        TripDraft(
+          origin: 'Bogotá',
+          destination: 'Medellín',
+          date: DateTime(2026, 9, 5),
+          departureMinute: 600,
+        ),
+      );
+      await _pumpScreen(
+        tester,
+        preferences: preferences,
+        activeVehicle: _vehicle(),
+        planClient: client,
+      );
+      _pressButtonByKey(tester, 'trip-preview');
+      await tester.pump();
+      final first = _testPlan(client.requests.single, withGeometry: true);
+      client.completions.single.complete(first);
+      await tester.pumpAndSettle();
+      await _tapByKey(tester, 'trip-preparation-compact');
+      await tester.pumpAndSettle();
+      _pressButtonByKey(tester, 'trip-preview');
+      await tester.pump();
+      expect(find.byType(TripPlanResult), findsOneWidget);
+      expect(
+        tester.widget<TripPlanResult>(find.byType(TripPlanResult)).plan,
+        same(first),
+      );
+      if (outcome == 'cancel') {
+        _pressButtonByKey(tester, 'trip-cancel-preview');
+      }
+      final replacement = _testPlan(client.requests.last, withGeometry: true);
+      if (outcome == 'network') {
+        client.completions.last.completeError(const TripPlanFailure('network'));
+      } else {
+        client.completions.last.complete(replacement);
+      }
+      await tester.pumpAndSettle();
+      final result = tester.widget<TripPlanResult>(find.byType(TripPlanResult));
+      expect(result.plan, same(outcome == 'success' ? replacement : first));
+      expect(result.request.requestId, result.plan.requestId);
+      if (outcome != 'success') {
+        expect(find.text('Se conserva la consulta anterior.'), findsOneWidget);
+      }
+    });
+  }
+
   testWidgets('VIAJE-R1 mismatched request ID cannot become current plan', (
     tester,
   ) async {
