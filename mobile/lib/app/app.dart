@@ -26,6 +26,7 @@ class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
   bool _secondaryReady = false;
   Future<bool>? _notificationInitialization;
   Future<bool>? _permissionRefreshInitialization;
+  int _permissionRefreshEpoch = 0;
   late final AppClockLifecycleObserver _clockObserver;
   late final _DocumentViewerCacheLifecycleObserver _documentCacheObserver;
 
@@ -39,7 +40,10 @@ class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
     _clockObserver = AppClockLifecycleObserver(
       clock: clock,
       onResume: () {
+        _permissionRefreshEpoch++;
+        _permissionRefreshInitialization = null;
         _startNotifications(ref.read(appRouterProvider));
+        _refreshNotificationPermission();
         ref.invalidate(picoNotificationSyncProvider);
         ref.invalidate(obligationNotificationSyncProvider);
       },
@@ -158,29 +162,32 @@ class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
         identical(initialization, _permissionRefreshInitialization)) {
       return;
     }
-    // Each initialization attempt reconciles permission once, after content.
+    // Reconcile again on each resume, ignoring late results from older visits.
     _permissionRefreshInitialization = initialization;
+    final epoch = _permissionRefreshEpoch;
     final scheduler = ref.read(picoNotificationSchedulerProvider);
     final preferences = ref.read(appPreferencesProvider);
     Future<void>.microtask(() async {
       try {
         final initialized = await initialization;
         if (!mounted || initialized != true) return;
-        final alerts = await loadPicoAlertPreferences(preferences);
-        if (!mounted || !alerts.permissionRequested) {
-          return;
-        }
         final enabled = await scheduler.areNotificationsEnabled();
-        if (!mounted ||
-            enabled == null ||
-            enabled == alerts.permissionGranted) {
+        if (!mounted || epoch != _permissionRefreshEpoch || enabled == null) {
           return;
         }
-        await savePicoAlertPreferences(
-          preferences,
-          alerts.copyWith(permissionGranted: enabled),
-        );
-        if (mounted) ref.invalidate(picoAlertPreferencesProvider);
+        final alerts = await loadPicoAlertPreferences(preferences);
+        if (!mounted || epoch != _permissionRefreshEpoch) return;
+        if (enabled != alerts.permissionGranted) {
+          // Refresh only OS state; never overwrite edits to reminder settings.
+          await preferences.setBool(
+            picoNotificationPermissionGrantedKey,
+            enabled,
+          );
+          if (!mounted || epoch != _permissionRefreshEpoch) return;
+          ref.invalidate(picoAlertPreferencesProvider);
+        }
+        ref.invalidate(picoNotificationSyncProvider);
+        ref.invalidate(obligationNotificationSyncProvider);
       } on MissingPluginException {
         return;
       } catch (error, stack) {

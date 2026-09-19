@@ -5,6 +5,9 @@ import 'package:timezone/timezone.dart' as timezone;
 
 import '../../garage/data/vehicle_profile.dart';
 import '../../garage/presentation/vehicle_display.dart';
+import '../../alerts/data/alert_settings.dart';
+import '../../alerts/platform/alert_alarm_gateway.dart';
+import '../../alerts/platform/notification_plate.dart';
 import '../../vehicle_status/platform/obligation_notifications.dart';
 import '../data/pico_preferences.dart';
 import '../data/restriction_store.dart';
@@ -23,6 +26,8 @@ class PicoNotificationPlan {
     required this.title,
     required this.body,
     required this.payload,
+    this.delivery,
+    this.plate,
   });
 
   final int id;
@@ -33,6 +38,8 @@ class PicoNotificationPlan {
   final String title;
   final String body;
   final String payload;
+  final AlertSettings? delivery;
+  final String? plate;
 }
 
 class PicoNotificationSettings {
@@ -117,12 +124,29 @@ int stablePicoNotificationId({
     hash ^= codeUnit;
     hash = (hash * 16777619) & 0x7fffffff;
   }
-  return hash == 0 ? 1 : hash;
+  // Obligation reminders occupy 0x40000000..0x7fffffff.
+  final id = hash & 0x3fffffff;
+  return id == 0 ? 1 : id;
 }
 
 class PicoNotificationScheduler {
-  PicoNotificationScheduler({FlutterLocalNotificationsPlugin? plugin})
-    : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
+  PicoNotificationScheduler({
+    FlutterLocalNotificationsPlugin? plugin,
+    this.settingsLoader,
+    AlertAlarmGateway alarmGateway = const AlertAlarmGateway(),
+  }) : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
+       _alarms = alarmGateway;
+
+  final Future<List<VehicleAlertSettings>> Function()? settingsLoader;
+  final AlertAlarmGateway _alarms;
+  Future<List<VehicleAlertSettings>> loadDeliverySettings() async =>
+      await settingsLoader?.call() ?? const [];
+
+  Future<Set<int>> pendingIds() async => {
+    for (final request in await _plugin.pendingNotificationRequests())
+      request.id,
+    ...await _alarms.pending(),
+  };
 
   static const _channelId = 'pico_restriction_alerts';
   static const picoPayload = '/pico';
@@ -205,6 +229,24 @@ class PicoNotificationScheduler {
     return null;
   }
 
+  Future<void> showPreview() async {
+    await initialize();
+    await _plugin.show(
+      id: 2147483000,
+      title: 'Recordatorio de ejemplo',
+      body: 'DEM123 - Vehiculo ficticio',
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channelId,
+          'Pico y Placa',
+          visibility: NotificationVisibility.secret,
+          styleInformation: await notificationPlate('DEM123'),
+        ),
+        iOS: const DarwinNotificationDetails(),
+      ),
+    );
+  }
+
   // Serialize native writes, including cancellation, so the latest request wins.
   // Failures still reach their caller; they do not block subsequent requests.
   Future<void> _enqueuePico(Future<void> Function() action) {
@@ -227,30 +269,58 @@ class PicoNotificationScheduler {
   }
 
   Future<void> _reschedulePico(List<PicoNotificationPlan> plans) async {
+    if (plans.isEmpty) {
+      return _cancelPicoNotifications();
+    }
     final signature = _planSignature(plans);
-    if (_lastPlanSignature == signature) {
+    final hasAlarms = plans.any((p) => p.delivery?.alarm == true);
+    if (!await _deliveryAvailable(hasAlarms)) {
+      await _cancelPicoNotifications();
+      throw StateError('Los permisos de aviso no estan disponibles.');
+    }
+    if (_lastPlanSignature == signature &&
+        await _plansStillPending({
+          for (final p in plans) p.id: p.delivery?.alarm == true,
+        })) {
       return;
     }
     await _cancelPicoNotifications();
+    final alarms = <Map<String, Object>>[];
     for (final plan in plans) {
+      if (plan.delivery?.alarm == true) {
+        alarms.add(_alarmEvent(plan.id, plan.scheduledAt, plan.payload));
+        continue;
+      }
       await _plugin.zonedSchedule(
         id: plan.id,
         title: plan.title,
         body: plan.body,
         scheduledDate: plan.scheduledAt,
-        notificationDetails: const NotificationDetails(
+        notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             _channelId,
             'Pico y Placa',
             channelDescription: 'Recordatorios locales de pico y placa.',
             importance: Importance.defaultImportance,
             priority: Priority.defaultPriority,
+            visibility: NotificationVisibility.secret,
+            styleInformation:
+                plan.delivery?.enriched == true && plan.plate != null
+                ? await notificationPlate(plan.plate!)
+                : null,
           ),
           iOS: DarwinNotificationDetails(),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         payload: plan.payload,
       );
+    }
+    if (alarms.isNotEmpty) {
+      final accepted = await _alarms.reschedule('pico', alarms);
+      if (!_acceptedAll(accepted, alarms)) {
+        await _cancelPicoNotifications();
+        throw StateError('No se programaron todas las alarmas.');
+      }
     }
     _lastPlanSignature = signature;
   }
@@ -260,6 +330,7 @@ class PicoNotificationScheduler {
 
   Future<void> _cancelPicoNotifications() async {
     _lastPlanSignature = null;
+    await _alarms.cancel('pico');
     final pending = await _plugin.pendingNotificationRequests();
     final ids = picoPendingNotificationIdsToCancel(pending);
     for (final id in ids) {
@@ -278,18 +349,34 @@ class PicoNotificationScheduler {
   Future<void> _rescheduleObligations(
     List<ObligationNotificationPlan> plans,
   ) async {
+    if (plans.isEmpty) {
+      return _cancelObligationNotifications();
+    }
     final signature = _obligationPlanSignature(plans);
-    if (_lastObligationPlanSignature == signature) {
+    final hasAlarms = plans.any((p) => p.delivery?.alarm == true);
+    if (!await _deliveryAvailable(hasAlarms)) {
+      await _cancelObligationNotifications();
+      throw StateError('Los permisos de aviso no estan disponibles.');
+    }
+    if (_lastObligationPlanSignature == signature &&
+        await _plansStillPending({
+          for (final p in plans) p.id: p.delivery?.alarm == true,
+        })) {
       return;
     }
     await _cancelObligationNotifications();
+    final alarms = <Map<String, Object>>[];
     for (final plan in plans) {
+      if (plan.delivery?.alarm == true) {
+        alarms.add(_alarmEvent(plan.id, plan.scheduledAt, plan.payload));
+        continue;
+      }
       await _plugin.zonedSchedule(
         id: plan.id,
         title: plan.title,
         body: plan.body,
         scheduledDate: plan.scheduledAt,
-        notificationDetails: const NotificationDetails(
+        notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             'vehicle_obligation_reminders',
             'Vencimientos del vehículo',
@@ -297,12 +384,24 @@ class PicoNotificationScheduler {
                 'Recordatorios locales de SOAT, tecnomecánica y seguro.',
             importance: Importance.defaultImportance,
             priority: Priority.defaultPriority,
+            visibility: NotificationVisibility.secret,
+            styleInformation:
+                plan.delivery?.enriched == true && plan.plate != null
+                ? await notificationPlate(plan.plate!)
+                : null,
           ),
           iOS: DarwinNotificationDetails(),
         ),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         payload: plan.payload,
       );
+    }
+    if (alarms.isNotEmpty) {
+      final accepted = await _alarms.reschedule('obligations', alarms);
+      if (!_acceptedAll(accepted, alarms)) {
+        await _cancelObligationNotifications();
+        throw StateError('No se programaron todas las alarmas.');
+      }
     }
     _lastObligationPlanSignature = signature;
   }
@@ -312,6 +411,7 @@ class PicoNotificationScheduler {
 
   Future<void> _cancelObligationNotifications() async {
     _lastObligationPlanSignature = null;
+    await _alarms.cancel('obligations');
     final pending = await _plugin.pendingNotificationRequests();
     final ids = obligationPendingNotificationIdsToCancel(pending);
     for (final id in ids) {
@@ -319,25 +419,79 @@ class PicoNotificationScheduler {
     }
     _lastObligationPlanSignature = null;
   }
+
+  Future<bool> _deliveryAvailable(bool hasAlarms) async {
+    if (await areNotificationsEnabled() == false) {
+      return false;
+    }
+    return !hasAlarms || (await _alarms.capabilities()).canSchedule;
+  }
+
+  Future<bool> _plansStillPending(Map<int, bool> expected) async {
+    final notifications = {
+      for (final p in await _plugin.pendingNotificationRequests()) p.id,
+    };
+    final alarms = await _alarms.pending();
+    return expected.entries.every(
+      (p) => (p.value ? alarms : notifications).contains(p.key),
+    );
+  }
+
+  bool _acceptedAll(Set<int> accepted, List<Map<String, Object>> events) {
+    final expected = {for (final event in events) event['id'] as int};
+    return expected.length == events.length &&
+        accepted.length == expected.length &&
+        accepted.containsAll(expected);
+  }
 }
 
 String? notificationRouteFromPayload(String? payload) {
-  if (payload == PicoNotificationScheduler.picoPayload) {
-    return payload;
-  }
-  return obligationRouteFromPayload(payload);
+  return picoRouteFromNotificationPayload(payload) ??
+      obligationRouteFromPayload(payload);
 }
 
 String? picoRouteFromNotificationPayload(String? payload) {
-  return payload == PicoNotificationScheduler.picoPayload ? payload : null;
+  if (payload == PicoNotificationScheduler.picoPayload) {
+    return payload;
+  }
+  if (payload == null) {
+    return null;
+  }
+  final uri = Uri.tryParse(payload);
+  if (uri == null ||
+      uri.hasScheme ||
+      uri.hasAuthority ||
+      uri.hasFragment ||
+      uri.path != '/pico') {
+    return null;
+  }
+  final Map<String, List<String>> query;
+  try {
+    query = uri.queryParametersAll;
+  } on FormatException {
+    return null;
+  }
+  final ids = query['vehicleId'];
+  if (query.length != 1 ||
+      ids == null ||
+      ids.length != 1 ||
+      ids.single.trim().isEmpty ||
+      ids.single.length > 200 ||
+      RegExp(r'[\x00-\x1f\x7f]').hasMatch(ids.single)) {
+    return null;
+  }
+  return uri.toString();
 }
+
+String picoVehicleNotificationPayload(String vehicleId) =>
+    Uri(path: '/pico', queryParameters: {'vehicleId': vehicleId}).toString();
 
 List<int> picoPendingNotificationIdsToCancel(
   Iterable<PendingNotificationRequest> pending,
 ) {
   return pending
       .where(
-        (request) => request.payload == PicoNotificationScheduler.picoPayload,
+        (request) => picoRouteFromNotificationPayload(request.payload) != null,
       )
       .map((request) => request.id)
       .toList(growable: false);
@@ -350,6 +504,7 @@ Future<List<PicoNotificationPlan>> buildPicoNotificationPlans({
   required List<VehicleProfile> vehicles,
   required RestrictionJurisdiction jurisdiction,
   required PicoAlertPreferences alertPreferences,
+  List<VehicleAlertSettings> deliverySettings = const [],
 }) async {
   final days = <PicoVehicleRestrictionDay>[];
   for (final vehicle in vehicles) {
@@ -382,17 +537,46 @@ Future<List<PicoNotificationPlan>> buildPicoNotificationPlans({
       );
     }
   }
-  return planPicoNotifications(
-    days: days,
-    settings: PicoNotificationSettings(
-      enabled: alertPreferences.enabled,
-      dayBeforeEnabled: alertPreferences.dayBeforeEnabled,
-      sameDayEnabled: alertPreferences.sameDayEnabled,
-      dayBeforeMinute: alertPreferences.dayBeforeMinute,
-      sameDayMinute: alertPreferences.sameDayMinute,
-    ),
-    nowBogota: nowBogota,
-  );
+  final result = <PicoNotificationPlan>[];
+  for (final vehicle in vehicles) {
+    final selected = deliverySettings
+        .where(
+          (s) => s.vehicleId == vehicle.id && s.category == AlertCategory.pico,
+        )
+        .firstOrNull
+        ?.settings;
+    final plans = planPicoNotifications(
+      days: days.where((d) => d.vehicle.id == vehicle.id),
+      settings: PicoNotificationSettings(
+        enabled: selected?.enabled ?? alertPreferences.enabled,
+        dayBeforeEnabled:
+            selected?.dayBefore ?? alertPreferences.dayBeforeEnabled,
+        sameDayEnabled: selected?.sameDay ?? alertPreferences.sameDayEnabled,
+        dayBeforeMinute:
+            selected?.dayBeforeMinute ?? alertPreferences.dayBeforeMinute,
+        sameDayMinute:
+            selected?.sameDayMinute ?? alertPreferences.sameDayMinute,
+      ),
+      nowBogota: nowBogota,
+    );
+    result.addAll(
+      plans.map(
+        (p) => PicoNotificationPlan(
+          id: p.id,
+          type: p.type,
+          vehicleId: p.vehicleId,
+          targetDate: p.targetDate,
+          scheduledAt: p.scheduledAt,
+          title: p.title,
+          body: p.body,
+          payload: p.payload,
+          delivery: selected,
+          plate: vehicle.plate,
+        ),
+      ),
+    );
+  }
+  return result;
 }
 
 String _planSignature(List<PicoNotificationPlan> plans) {
@@ -404,6 +588,8 @@ String _planSignature(List<PicoNotificationPlan> plans) {
         plan.title,
         plan.body,
         plan.payload,
+        plan.delivery?.toJson(),
+        plan.plate,
       ],
   ]);
 }
@@ -417,9 +603,18 @@ String _obligationPlanSignature(List<ObligationNotificationPlan> plans) {
         plan.title,
         plan.body,
         plan.payload,
+        plan.delivery?.toJson(),
+        plan.plate,
       ],
   ]);
 }
+
+Map<String, Object> _alarmEvent(int id, DateTime time, String route) => {
+  'id': id,
+  'at': time.millisecondsSinceEpoch,
+  'expiresAt': time.add(const Duration(minutes: 15)).millisecondsSinceEpoch,
+  'route': route,
+};
 
 void _addPlan(
   List<PicoNotificationPlan> plans,
@@ -463,7 +658,7 @@ void _addPlan(
       body:
           '${day.vehicle.plate} · ${shortVehicleTypeLabel(day.vehicle)} · '
           '${day.jurisdictionName}',
-      payload: PicoNotificationScheduler.picoPayload,
+      payload: picoVehicleNotificationPayload(day.vehicle.id),
     ),
   );
 }

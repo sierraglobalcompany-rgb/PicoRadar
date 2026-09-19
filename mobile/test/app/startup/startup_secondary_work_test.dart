@@ -21,7 +21,7 @@ void main() {
       'resume initialization recovery refreshes permission safely: dispose=$disposeBeforePermission',
       (tester) async {
         final scheduler = _RecoveringScheduler();
-        final preferences = MemoryPreferences();
+        final preferences = _PermissionPreferences();
         await preferences.setBool(picoNotificationPermissionRequestedKey, true);
         await preferences.setBool(picoNotificationPermissionGrantedKey, false);
         final router = GoRouter(
@@ -89,6 +89,7 @@ void main() {
           if (disposeBeforePermission) {
             await tester.pumpWidget(const SizedBox.shrink());
           }
+          preferences.boolWrites.clear();
           scheduler.permission.complete(true);
           await tester.pump();
           expect(
@@ -103,6 +104,42 @@ void main() {
           expect(scheduler.permissionRequests, 0);
           expect(scheduler.permissionChecks, 1);
           expect(tester.takeException(), isNull);
+          expect(
+            preferences.boolWrites,
+            disposeBeforePermission
+                ? isEmpty
+                : [picoNotificationPermissionGrantedKey],
+          );
+          if (!disposeBeforePermission) {
+            scheduler.currentPermission = false;
+            tester.binding.handleAppLifecycleStateChanged(
+              AppLifecycleState.paused,
+            );
+            tester.binding.handleAppLifecycleStateChanged(
+              AppLifecycleState.resumed,
+            );
+            await tester.pump();
+            expect(scheduler.permissionChecks, 2);
+            expect(
+              (await container.read(picoAlertPreferencesProvider.future))
+                  .permissionGranted,
+              isFalse,
+            );
+            scheduler.currentPermission = true;
+            tester.binding.handleAppLifecycleStateChanged(
+              AppLifecycleState.paused,
+            );
+            tester.binding.handleAppLifecycleStateChanged(
+              AppLifecycleState.resumed,
+            );
+            await tester.pump();
+            expect(scheduler.permissionChecks, 3);
+            expect(
+              (await loadPicoAlertPreferences(preferences)).permissionGranted,
+              isTrue,
+            );
+            expect(scheduler.permissionRequests, 0);
+          }
         } finally {
           await tester.pumpWidget(const SizedBox.shrink());
           container.dispose();
@@ -219,6 +256,7 @@ class _RecoveringScheduler extends PicoNotificationScheduler {
   int initializations = 0;
   int permissionChecks = 0;
   int permissionRequests = 0;
+  bool? currentPermission;
 
   @override
   Future<void> initialize({void Function(String route)? onRoute}) {
@@ -229,7 +267,9 @@ class _RecoveringScheduler extends PicoNotificationScheduler {
   @override
   Future<bool?> areNotificationsEnabled() {
     permissionChecks++;
-    return permission.future;
+    return permissionChecks == 1
+        ? permission.future
+        : Future.value(currentPermission);
   }
 
   @override
@@ -244,6 +284,15 @@ class _DocumentStore extends PrivateVehicleDocumentStore {
   Future<void> purgeViewerCache({
     PrivateVehicleDocumentMetadata? metadata,
   }) async {}
+}
+
+class _PermissionPreferences extends MemoryPreferences {
+  final boolWrites = <String>[];
+  @override
+  Future<void> setBool(String key, bool value) {
+    boolWrites.add(key);
+    return super.setBool(key, value);
+  }
 }
 
 class _PaintProbe extends CustomPainter {

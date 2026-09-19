@@ -6,6 +6,8 @@ import 'package:drift/native.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/core/database/app_database.dart';
+import 'package:picoradar/features/alerts/data/alert_settings.dart';
+import 'package:picoradar/features/alerts/platform/alert_alarm_gateway.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_store.dart';
@@ -23,6 +25,7 @@ void main() {
       late _NotificationChannel channel;
       late PicoNotificationScheduler scheduler;
       late DateTime futureDate;
+      late _AlarmGateway alarms;
 
       setUp(() {
         // The real plugin rejects past dates before reaching the mocked channel.
@@ -30,7 +33,8 @@ void main() {
         futureDate = DateTime(now.year, now.month, now.day + 2);
         AndroidFlutterLocalNotificationsPlugin.registerWith();
         channel = _NotificationChannel();
-        scheduler = PicoNotificationScheduler();
+        alarms = _AlarmGateway();
+        scheduler = PicoNotificationScheduler(alarmGateway: alarms);
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(
               _NotificationChannel.channel,
@@ -42,7 +46,12 @@ void main() {
             .setMockMethodCallHandler(_NotificationChannel.channel, null);
       });
 
-      Future<void> publish(String body, {String title = 'Reminder'}) {
+      Future<void> publish(
+        String body, {
+        String title = 'Reminder',
+        bool alarm = false,
+        bool enriched = false,
+      }) {
         final time = bogotaScheduledTime(date: futureDate, minuteOfDay: 300);
         return pico
             ? scheduler.reschedule([
@@ -55,6 +64,8 @@ void main() {
                   title: title,
                   body: body,
                   payload: '/pico',
+                  delivery: AlertSettings(alarm: alarm, enriched: enriched),
+                  plate: 'DEM123',
                 ),
               ])
             : scheduler.rescheduleObligationNotifications([
@@ -71,6 +82,8 @@ void main() {
                     type: VehicleObligationType.soat,
                     vehicleId: 'car',
                   ),
+                  delivery: AlertSettings(alarm: alarm, enriched: enriched),
+                  plate: 'DEM123',
                 ),
               ]);
       }
@@ -78,6 +91,97 @@ void main() {
       Future<void> cancel() => pico
           ? scheduler.cancelPicoNotifications()
           : scheduler.cancelObligationNotifications();
+
+      test('rebuilds identical plans removed by OS', () async {
+        await publish('same');
+        channel.pending.clear();
+        await publish('same');
+        expect(channel.schedules, 2);
+        expect(channel.pending.keys, contains(42));
+      });
+
+      test('revocation cancels cache and grant retries same plan', () async {
+        await publish('same');
+        channel.enabled = false;
+        await expectLater(publish('same'), throwsStateError);
+        expect(channel.pending, isEmpty);
+        channel.enabled = true;
+        await publish('same');
+        expect(channel.pending.keys, contains(42));
+      });
+
+      test('rejects wrong accepted alarm IDs and retries without notification fallback', () async {
+        alarms.wrongIds = true;
+        await expectLater(publish('same', alarm: true), throwsStateError);
+        expect(channel.schedules, 0);
+        expect(alarms.ids, isEmpty);
+        alarms.wrongIds = false;
+        await publish('same', alarm: true);
+        expect(alarms.ids, {42});
+        expect(alarms.writes, 2);
+        expect(channel.schedules, 0);
+        alarms.ids.clear();
+        await publish('same', alarm: true);
+        expect(alarms.writes, 3);
+      });
+
+      test(
+        'alarm permission revoked invalidates otherwise present alarm',
+        () async {
+          await publish('same', alarm: true);
+          alarms.available = false;
+          await expectLater(publish('same', alarm: true), throwsStateError);
+          expect(alarms.ids, isEmpty);
+          alarms.available = true;
+          await publish('same', alarm: true);
+          expect(alarms.ids, {42});
+        },
+      );
+
+      test(
+        'native failure retries identical plan and does not poison queue',
+        () async {
+          alarms.failNext = true;
+          await expectLater(
+            publish('same', alarm: true),
+            throwsA(isA<PlatformException>()),
+          );
+          await publish('same', alarm: true);
+          expect(alarms.ids, {42});
+          expect(channel.pending, isEmpty);
+        },
+      );
+
+      test(
+        'empty plan clears projection even after permission revoked',
+        () async {
+          await publish('same');
+          channel.enabled = false;
+          if (pico) {
+            await scheduler.reschedule([]);
+          } else {
+            await scheduler.rescheduleObligationNotifications([]);
+          }
+          expect(channel.pending, isEmpty);
+        },
+      );
+
+      test('failed cancellation clears signature before retry', () async {
+        await publish('same', alarm: true);
+        alarms.failCancellation = true;
+        await expectLater(cancel(), throwsA(isA<PlatformException>()));
+        await publish('same', alarm: true);
+        expect(alarms.writes, 2);
+      });
+
+      testWidgets('enriched plate remains hidden on lock screen', (
+        tester,
+      ) async {
+        await tester.runAsync(() => publish('same', enriched: true));
+        final details = channel.lastArguments!['platformSpecifics'] as Map;
+        expect(details['visibility'], NotificationVisibility.secret.index);
+        expect(details['style'], isNot(0));
+      });
 
       test(
         'same ids and dates refresh edited content and still deduplicate',
@@ -243,6 +347,25 @@ void main() {
     expect(first, second);
   });
 
+  test('pico IDs stay below obligation namespace and never use zero', () {
+    for (var i = 0; i < 300; i++) {
+      for (final type in PicoAlertType.values) {
+        final id = stablePicoNotificationId(
+          vehicleId: 'vehicle-$i',
+          date: DateTime(2026, 9, 20),
+          type: type,
+        );
+        expect(id, inInclusiveRange(1, 0x3fffffff));
+      }
+    }
+    expect(
+      picoPendingNotificationIdsToCancel(const [
+        PendingNotificationRequest(0x70000000, 'Pico', '', '/pico'),
+      ]),
+      [0x70000000],
+    );
+  });
+
   test('past scheduled times are skipped', () {
     final plans = planPicoNotifications(
       days: [
@@ -300,7 +423,35 @@ void main() {
       nowBogota: DateTime(2026, 8, 26, 12),
     );
 
-    expect(plans.every((plan) => plan.payload == '/pico'), isTrue);
+    expect(
+      plans.every(
+        (plan) =>
+            Uri.parse(plan.payload).queryParameters['vehicleId'] == car.id,
+      ),
+      isTrue,
+    );
+  });
+
+  test('per-vehicle payload is validated and recognized for cancellation', () {
+    const route = '/pico?vehicleId=car-2';
+    expect(notificationRouteFromPayload(route), route);
+    expect(
+      picoPendingNotificationIdsToCancel(const [
+        PendingNotificationRequest(3, 'Pico', '', route),
+      ]),
+      [3],
+    );
+    for (final invalid in [
+      '/pico?vehicleId=',
+      '/pico?vehicleId=a&vehicleId=b',
+      '/pico?other=x',
+      '/pico#fragment',
+      '/pico?vehicleId=%FF',
+      '/pico?vehicleId=%00',
+      'https://host/pico?vehicleId=a',
+    ]) {
+      expect(notificationRouteFromPayload(invalid), isNull, reason: invalid);
+    }
   });
 
   test('planner does not schedule target dates after staleAfter', () async {
@@ -341,11 +492,15 @@ class _NotificationChannel {
   final pending = <int, Map<String, dynamic>>{};
   int schedules = 0;
   bool failNext = false;
+  bool enabled = true;
+  Map<String, dynamic>? lastArguments;
   Completer<void>? gate;
   Completer<void>? started;
 
   Future<Object?> handle(MethodCall call) async {
     switch (call.method) {
+      case 'areNotificationsEnabled':
+        return enabled;
       case 'pendingNotificationRequests':
         return pending.values.toList();
       case 'cancel':
@@ -353,6 +508,7 @@ class _NotificationChannel {
         return null;
       case 'zonedSchedule':
         final args = Map<String, dynamic>.from(call.arguments as Map);
+        lastArguments = args;
         final delay = gate;
         if (delay != null) {
           started!.complete();
@@ -373,6 +529,42 @@ class _NotificationChannel {
       default:
         throw StateError('Unexpected notification call: ${call.method}');
     }
+  }
+}
+
+class _AlarmGateway extends AlertAlarmGateway {
+  final ids = <int>{};
+  bool wrongIds = false;
+  bool available = true;
+  bool failNext = false;
+  bool failCancellation = false;
+  int writes = 0;
+  @override
+  Future<AlarmCapabilities> capabilities() async =>
+      AlarmCapabilities(supported: true, notifications: true, exact: available);
+  @override
+  Future<Set<int>> pending() async => {...ids};
+  @override
+  Future<void> cancel(String scope) async {
+    if (failCancellation) {
+      failCancellation = false;
+      throw PlatformException(code: 'test-cancel-failed');
+    }
+    ids.clear();
+  }
+
+  @override
+  Future<Set<int>> reschedule(
+    String scope,
+    List<Map<String, Object>> events,
+  ) async {
+    writes++;
+    if (failNext) {
+      failNext = false;
+      throw PlatformException(code: 'test-alarm-failed');
+    }
+    ids.addAll(wrongIds ? {999} : events.map((e) => e['id'] as int));
+    return {...ids};
   }
 }
 
