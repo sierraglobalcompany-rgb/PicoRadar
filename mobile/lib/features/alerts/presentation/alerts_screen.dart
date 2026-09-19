@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,7 +9,9 @@ import '../../../app/theme/app_tokens.dart';
 import '../../../core/design_system/branding.dart';
 import '../../pico_placa/data/pico_preferences.dart';
 import '../application/alert_center.dart';
+import '../application/save_alert_settings.dart';
 import '../data/alert_settings.dart';
+import '../platform/alert_alarm_gateway.dart';
 
 class AlertsScreen extends ConsumerStatefulWidget {
   const AlertsScreen({super.key});
@@ -19,6 +23,8 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen>
     with WidgetsBindingObserver {
   bool _saving = false;
   String? _busyVehicle;
+  bool _testingAlarm = false;
+  int _alarmTestEpoch = 0;
 
   @override
   void initState() {
@@ -28,12 +34,17 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen>
 
   @override
   void dispose() {
+    _alarmTestEpoch++;
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      _alarmTestEpoch++;
+      if (_testingAlarm) setState(() => _testingAlarm = false);
+    }
     if (state == AppLifecycleState.resumed) _refresh();
   }
 
@@ -121,23 +132,47 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen>
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          value.permission
+                          !value.permissionsKnown
+                              ? 'Permisos sin confirmar'
+                              : value.permission
                               ? 'Notificaciones permitidas'
                               : 'Notificaciones desactivadas',
                           style: const TextStyle(fontSize: 16),
                         ),
                       ),
                       TextButton(
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(48, 48),
+                          textStyle: const TextStyle(fontSize: 14),
+                        ),
                         onPressed: _saving
                             ? null
-                            : value.permission
+                            : !value.permissionsKnown || value.permission
                             ? _notificationSettings
                             : _permission,
-                        child: Text(value.permission ? 'Revisar' : 'Activar'),
+                        child: Text(
+                          !value.permissionsKnown
+                              ? 'Ajustes'
+                              : value.permission
+                              ? 'Revisar'
+                              : 'Activar',
+                        ),
                       ),
                     ],
                   ),
-                  if (value.schedulingFailed)
+                  if (value.alarmFailureMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        value.alarmFailureMessage!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  if (value.schedulingFailed &&
+                      value.alarmFailureMessage == null)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Text(
@@ -178,8 +213,16 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen>
                       _row(row, value),
                     const Divider(height: 16),
                   ],
+                  if (_testingAlarm)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'Esperando confirmación de la alarma…',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                    ),
                   TextButton.icon(
-                    onPressed: () => _preview(value),
+                    onPressed: _testingAlarm ? null : () => _preview(value),
                     icon: const Icon(Icons.visibility_outlined),
                     label: const Text('Vista previa y prueba'),
                   ),
@@ -351,14 +394,18 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen>
 
   Future<void> _save(AlertCenterRow row, AlertSettings settings) async {
     if (_saving) return;
-    final store = ref.read(alertSettingsStoreProvider);
+    final container = ProviderScope.containerOf(context, listen: false);
     setState(() {
       _saving = true;
       _busyVehicle = '${row.vehicle.id}/${row.category.name}';
     });
     try {
-      await store.save(row.vehicle.id, row.category, settings);
-      if (mounted) _refresh();
+      await saveAlertSettings(
+        container,
+        vehicleId: row.vehicle.id,
+        category: row.category,
+        settings: settings,
+      );
     } catch (_) {
       _message('No se guardaron los cambios. Intenta de nuevo.');
     } finally {
@@ -437,6 +484,13 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen>
                   'Sonido hasta detenerla o durante dos minutos.',
                 ),
                 onTap: () => Navigator.pop(context, 'alarm'),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Text(
+                  'No cambia el volumen ni No molestar. No funciona con el teléfono apagado o la app detenida a la fuerza.',
+                  style: TextStyle(fontSize: 14),
+                ),
               ),
             ],
           ),
@@ -577,6 +631,11 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen>
                 const Text(
                   'La placa se oculta en la pantalla bloqueada. El sistema controla el aspecto final.',
                 ),
+                const SizedBox(height: 8),
+                const Text(
+                  'No cambia el volumen ni No molestar. No funciona con el teléfono apagado o la app detenida a la fuerza.',
+                  style: TextStyle(fontSize: 14),
+                ),
                 const SizedBox(height: 16),
                 FilledButton.icon(
                   onPressed: data.permission
@@ -601,7 +660,7 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen>
     if (!mounted || choice == null) return;
     try {
       if (choice == 'alarm') {
-        await ref.read(alarmGatewayProvider).test();
+        await _testAlarm();
       } else {
         await ref.read(picoNotificationSchedulerProvider).showPreview();
       }
@@ -609,6 +668,64 @@ class _AlertsScreenState extends ConsumerState<AlertsScreen>
       _message('No se pudo mostrar la prueba. Revisa los permisos.');
     }
   }
+
+  Future<void> _testAlarm() async {
+    if (_testingAlarm) return;
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (lifecycle != null && lifecycle != AppLifecycleState.resumed) return;
+    final gateway = ref.read(alarmGatewayProvider);
+    final epoch = ++_alarmTestEpoch;
+    bool active() => mounted && epoch == _alarmTestEpoch;
+    setState(() => _testingAlarm = true);
+    try {
+      final message = await _observeAlarmTest(
+        gateway,
+        active,
+      ).timeout(const Duration(seconds: 15));
+      if (active() && message != null) _message(message);
+    } on TimeoutException {
+      if (active()) {
+        _message(
+          'No se pudo confirmar el sonido de la alarma. Revisa los permisos y vuelve a probar.',
+        );
+      }
+    } catch (_) {
+      if (active()) _message(alarmFailureMessage(null));
+    } finally {
+      if (active()) {
+        _alarmTestEpoch++;
+        setState(() => _testingAlarm = false);
+      }
+    }
+  }
+}
+
+Future<String?> _observeAlarmTest(
+  AlertAlarmGateway gateway,
+  bool Function() active,
+) async {
+  await gateway.test();
+  while (active()) {
+    final status = await gateway.status();
+    if (!active()) return null;
+    if (status.failureMessage != null) return status.failureMessage;
+    switch (status.testState) {
+      case AlarmTestState.ringing:
+        return 'Sonido de alarma iniciado.';
+      case AlarmTestState.failed:
+        return alarmFailureMessage(null);
+      case AlarmTestState.stopped:
+        return 'Prueba de alarma detenida.';
+      case AlarmTestState.missed:
+        return 'La prueba de alarma no llegó a iniciarse. Vuelve a intentarlo.';
+      case AlarmTestState.snoozed:
+        return 'Prueba de alarma pospuesta.';
+      case AlarmTestState.idle:
+      case AlarmTestState.starting:
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+  }
+  return null;
 }
 
 String _clock(int minute) =>

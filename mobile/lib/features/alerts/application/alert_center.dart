@@ -35,10 +35,14 @@ class AlertCenterData {
     required this.rows,
     required this.permission,
     required this.capabilities,
+    this.permissionsKnown = true,
+    this.alarmFailureMessage,
     this.schedulingFailed = false,
   });
   final List<AlertCenterRow> rows;
   final bool permission, schedulingFailed;
+  final bool permissionsKnown;
+  final String? alarmFailureMessage;
   final AlarmCapabilities capabilities;
 }
 
@@ -47,11 +51,32 @@ final alertCenterProvider = FutureProvider<AlertCenterData>((ref) async {
   final legacy = await ref.watch(picoAlertPreferencesProvider.future);
   final saved = await ref.watch(alertSettingsStoreProvider).loadAll();
   final scheduler = ref.watch(picoNotificationSchedulerProvider);
-  await scheduler.initialize();
-  final permission =
-      await scheduler.areNotificationsEnabled() ?? legacy.permissionGranted;
-  final capabilities = await ref.watch(alarmGatewayProvider).capabilities();
+  final gateway = ref.watch(alarmGatewayProvider);
+  var permission = false;
+  var permissionsKnown = true;
+  var capabilities = const AlarmCapabilities();
   var schedulingFailed = false;
+  String? alarmFailure;
+  try {
+    final status = await gateway.status().timeout(const Duration(seconds: 3));
+    alarmFailure = status.failureMessage;
+  } catch (_) {
+    alarmFailure = alarmFailureMessage(null);
+  }
+  try {
+    await scheduler.initialize();
+    final currentPermission = await scheduler.areNotificationsEnabled();
+    permissionsKnown = currentPermission != null;
+    permission = currentPermission == true;
+  } catch (_) {
+    permissionsKnown = false;
+  }
+  try {
+    capabilities = await gateway.capabilities();
+  } catch (_) {
+    permissionsKnown = false;
+  }
+  schedulingFailed = !permissionsKnown || alarmFailure != null;
   try {
     await ref.watch(picoNotificationSyncProvider.future);
     await ref.watch(obligationNotificationSyncProvider.future);
@@ -114,7 +139,7 @@ final alertCenterProvider = FutureProvider<AlertCenterData>((ref) async {
       final settings = (stored ?? defaults).copyWith(
         enabled: category == AlertCategory.pico
             ? (stored ?? defaults).enabled
-            : (obligation?.reminderEnabled ?? defaults.enabled),
+            : (obligation?.reminderEnabled ?? (stored ?? defaults).enabled),
       );
       final events = category == AlertCategory.pico
           ? [
@@ -148,6 +173,8 @@ final alertCenterProvider = FutureProvider<AlertCenterData>((ref) async {
   return AlertCenterData(
     rows: rows,
     permission: permission,
+    permissionsKnown: permissionsKnown,
+    alarmFailureMessage: alarmFailure,
     capabilities: capabilities,
     schedulingFailed: schedulingFailed,
   );
