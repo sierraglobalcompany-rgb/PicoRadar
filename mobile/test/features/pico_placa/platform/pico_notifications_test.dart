@@ -201,6 +201,32 @@ void main() {
         expect(alarms.ids, isEmpty);
       });
 
+      test('switching notification to alarm after target does not replay or fail the batch', () async {
+        final now = DateTime.now().toUtc().subtract(const Duration(hours: 5));
+        final original = now.subtract(const Duration(minutes: 2));
+        // The previous notification has already fired; no native alarm ever existed.
+        await publish('notification before due');
+        channel.pending.clear();
+        alarms.acceptPast = false;
+        await publish(
+          'alarm mode enabled after due',
+          alarm: true,
+          originalTime: original,
+          includeNormal: true,
+        );
+        expect(alarms.ids, isEmpty);
+        expect(channel.pending.keys, {43});
+        expect(alarms.writes, 1);
+        expect(channel.schedules, 2);
+        expect(
+          alarms.lastEvents.single['at'],
+          bogotaScheduledTime(
+            date: original,
+            minuteOfDay: original.hour * 60 + original.minute,
+          ).millisecondsSinceEpoch,
+        );
+      });
+
       test('revocation cancels cache and grant retries same plan', () async {
         await publish('same');
         channel.enabled = false;
@@ -570,6 +596,42 @@ void main() {
     },
   );
 
+  test(
+    'alarm identity remains stable across month year and leap-day rollover',
+    () {
+      for (final target in [
+        DateTime(2026, 9, 30),
+        DateTime(2026, 12, 31),
+        DateTime(2028, 2, 29),
+      ]) {
+        List<PicoNotificationPlan> at(DateTime now) => planPicoNotifications(
+          days: [_day(car, RestrictionDayStatus.restricted, date: target)],
+          settings: const PicoNotificationSettings(
+            enabled: true,
+            dayBeforeEnabled: false,
+            sameDayEnabled: true,
+            dayBeforeMinute: 1140,
+            sameDayMinute: 1439,
+          ),
+          nowBogota: now,
+          retainRecentAlarms: true,
+        );
+        final before = at(
+          DateTime(target.year, target.month, target.day, 23, 58),
+        ).single;
+        final after = at(
+          DateTime(target.year, target.month, target.day + 1, 0, 2),
+        ).single;
+        expect(after.id, before.id);
+        expect(after.scheduledAt, before.scheduledAt);
+        expect(
+          at(DateTime(target.year, target.month, target.day + 1, 0, 14)),
+          isEmpty,
+        );
+      }
+    },
+  );
+
   test('pico route resolves from notification response payload', () {
     const response = NotificationResponse(
       notificationResponseType: NotificationResponseType.selectedNotification,
@@ -731,6 +793,7 @@ class _AlarmGateway extends AlertAlarmGateway {
   int cancellations = 0;
   bool acceptPast = true;
   bool failPending = false;
+  List<Map<String, Object>> lastEvents = [];
   @override
   Future<AlarmCapabilities> capabilities() async =>
       AlarmCapabilities(supported: true, notifications: true, exact: available);
@@ -759,6 +822,7 @@ class _AlarmGateway extends AlertAlarmGateway {
     List<Map<String, Object>> events,
   ) async {
     writes++;
+    lastEvents = events;
     if (failNext) {
       failNext = false;
       throw PlatformException(code: 'test-alarm-failed');

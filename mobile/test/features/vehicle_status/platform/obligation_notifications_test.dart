@@ -17,6 +17,37 @@ void main() {
   );
 
   group('obligation notifications', () {
+    test('original obligation alarm identity survives calendar rollover only until expiry', () {
+      for (final due in [
+        DateTime(2026, 9, 30),
+        DateTime(2026, 12, 31),
+        DateTime(2028, 2, 29),
+      ]) {
+        List<ObligationNotificationPlan> at(
+          DateTime now,
+        ) => planObligationNotifications(
+          obligations: [_obligation(VehicleObligationType.soat, dueDate: due)],
+          vehiclesById: {vehicle.id: vehicle},
+          nowBogota: now,
+          permissionGranted: true,
+          deliverySettings: [
+            VehicleAlertSettings(
+              vehicle.id,
+              AlertCategory.soat,
+              const AlertSettings(alarm: true, minute: 1439, offsetDays: [0]),
+            ),
+          ],
+          retainRecentAlarms: true,
+        );
+        final before = at(DateTime(due.year, due.month, due.day, 23, 58))
+            .single;
+        final after = at(DateTime(due.year, due.month, due.day + 1, 0, 2))
+            .single;
+        expect(after.id, before.id);
+        expect(after.scheduledAt, before.scheduledAt);
+        expect(at(DateTime(due.year, due.month, due.day + 1, 0, 14)), isEmpty);
+      }
+    });
     test(
       'only scheduler opt-in retains recent alarm identity, including midnight',
       () {
