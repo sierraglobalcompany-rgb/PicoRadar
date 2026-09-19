@@ -60,6 +60,7 @@ class VehicleRepository {
     final normalizedPlate = normalizePlate(plate);
 
     return database.transaction(() async {
+      await _ensurePlateAvailable(normalizedPlate);
       final existing = await listVehicles();
       if (existing.isNotEmpty) {
         // Repair against existing vehicles so adding one cannot take selection.
@@ -108,7 +109,7 @@ class VehicleRepository {
     int? year,
     String? color,
     String? fuel,
-  }) async {
+  }) => database.transaction(() async {
     final existing = await _vehicleRow(id);
     if (existing == null) {
       throw VehicleRepositoryException('Vehicle does not exist: $id.');
@@ -121,11 +122,13 @@ class VehicleRepository {
         : minimumUpdatedAt;
     _validateYear(year, now);
     _validateServiceType(kind, serviceType);
+    final normalizedPlate = normalizePlate(plate);
+    await _ensurePlateAvailable(normalizedPlate, exceptId: id);
     await (database.update(
       database.vehicles,
     )..where((row) => row.id.equals(id))).write(
       VehiclesCompanion(
-        plate: Value(normalizePlate(plate)),
+        plate: Value(normalizedPlate),
         kind: Value(kind.value),
         serviceType: Value(serviceType.value),
         subtype: Value(_optionalText(subtype)),
@@ -141,6 +144,17 @@ class VehicleRepository {
     );
 
     return (await getVehicle(id))!;
+  });
+
+  Future<void> _ensurePlateAvailable(String plate, {String? exceptId}) async {
+    final existing = await (database.select(
+      database.vehicles,
+    )..where((row) => row.plate.equals(plate))).getSingleOrNull();
+    if (existing != null && existing.id != exceptId) {
+      throw const VehicleRepositoryException(
+        'Esta placa ya existe en tu Garaje. Puedes editar ese vehículo o corregir la placa.',
+      );
+    }
   }
 
   Future<void> deleteVehicle(

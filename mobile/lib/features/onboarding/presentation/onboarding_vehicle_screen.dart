@@ -93,6 +93,9 @@ class _OnboardingVehicleScreenState
   bool _loadedInitialState = false;
   bool _writeDraft = false;
   bool _saving = false;
+  bool _loadFailed = false;
+  String? _savedVehicleId;
+  Future<void> _draftWrites = Future<void>.value();
   String? _error;
 
   bool get _isEditing => widget.vehicleId != null;
@@ -149,7 +152,10 @@ class _OnboardingVehicleScreenState
         body: SafeArea(
           child: !_loadedInitialState
               ? const Center(child: CircularProgressIndicator())
-              : _buildBody(context, step),
+              : AbsorbPointer(
+                  absorbing: _saving,
+                  child: _buildBody(context, step),
+                ),
         ),
       ),
     );
@@ -188,10 +194,21 @@ class _OnboardingVehicleScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Paso $step de 2'),
-              const SizedBox(height: AppSpacing.s),
-              if (_choice == null) _buildChoiceStep(context),
-              if (_choice != null) _buildFormStep(context),
+              if (_loadFailed) ...[
+                Text(_error!),
+                const SizedBox(height: AppSpacing.m),
+                OutlinedButton.icon(
+                  onPressed: _loadInitialState,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Reintentar'),
+                ),
+              ] else ...[
+                Text('Paso $step de 2'),
+                const SizedBox(height: AppSpacing.s),
+                if (_choice == null) _buildChoiceStep(context),
+                if (_choice != null) _buildFormStep(context),
+                if (_choice == null && _error != null) Text(_error!),
+              ],
             ],
           ),
         ),
@@ -379,11 +396,37 @@ class _OnboardingVehicleScreenState
   }
 
   Future<void> _loadInitialState() async {
-    if (_isEditing) {
-      await _loadVehicleForEdit();
-    } else {
-      await _restoreDraft();
+    if (!mounted) return;
+    setState(() {
+      _loadedInitialState = false;
+      _loadFailed = false;
+      _error = null;
+      _writeDraft = false;
+    });
+    try {
+      if (_isEditing) {
+        await _loadVehicleForEdit();
+      } else {
+        await _restoreDraft();
+      }
+    } on FormatException {
+      _showLoadError(
+        'No pudimos recuperar el borrador. Conservamos los datos originales. Reintenta o vuelve al Garaje.',
+      );
+    } catch (_) {
+      _showLoadError(
+        'No pudimos cargar los datos. Conservamos el borrador. Reintenta.',
+      );
     }
+  }
+
+  void _showLoadError(String message) {
+    if (!mounted) return;
+    setState(() {
+      _loadedInitialState = true;
+      _loadFailed = true;
+      _error = message;
+    });
   }
 
   Future<void> _loadVehicleForEdit() async {
@@ -394,10 +437,7 @@ class _OnboardingVehicleScreenState
       return;
     }
     if (vehicle == null) {
-      setState(() {
-        _error = 'Vehículo no encontrado.';
-        _loadedInitialState = true;
-      });
+      _showLoadError('Vehículo no encontrado. Vuelve al Garaje o reintenta.');
       return;
     }
 
@@ -419,7 +459,8 @@ class _OnboardingVehicleScreenState
     final raw = await ref
         .read(appPreferencesProvider)
         .getString(onboardingVehicleDraftKey);
-    if (raw == null || raw.isEmpty || !mounted) {
+    if (!mounted) return;
+    if (raw == null) {
       setState(() {
         _loadedInitialState = true;
         _writeDraft = true;
@@ -428,17 +469,39 @@ class _OnboardingVehicleScreenState
     }
 
     final decoded = jsonDecode(raw);
-    if (decoded is! Map<String, Object?> || !mounted) {
-      setState(() {
-        _loadedInitialState = true;
-        _writeDraft = true;
-      });
-      return;
+    if (decoded is! Map<String, Object?>) {
+      throw const FormatException('Invalid onboarding draft.');
+    }
+    for (final key in [
+      'choice',
+      'subtype',
+      'plate',
+      'registrationCity',
+      'nickname',
+      'brand',
+      'model',
+      'year',
+      'color',
+      'savedVehicleId',
+    ]) {
+      if (decoded[key] != null && decoded[key] is! String) {
+        throw const FormatException('Invalid onboarding draft field.');
+      }
+    }
+    if (decoded['alertsEnabled'] != null && decoded['alertsEnabled'] is! bool) {
+      throw const FormatException('Invalid onboarding alert preference.');
+    }
+    final choice = _choiceFromName(decoded['choice'] as String?);
+    final subtype = decoded['subtype'] as String?;
+    if ((decoded['choice'] != null && choice == null) ||
+        (choice != null && !_supportsSubtype(choice, subtype))) {
+      throw const FormatException('Invalid onboarding vehicle choice.');
     }
 
     setState(() {
-      _choice = _choiceFromName(decoded['choice'] as String?);
-      _subtype = decoded['subtype'] as String?;
+      _choice = choice;
+      _subtype = subtype;
+      _savedVehicleId = decoded['savedVehicleId'] as String?;
       _alertsEnabled = decoded['alertsEnabled'] as bool? ?? true;
       _plateController.text = decoded['plate'] as String? ?? '';
       _cityController.text = decoded['registrationCity'] as String? ?? '';
@@ -452,32 +515,43 @@ class _OnboardingVehicleScreenState
     });
   }
 
-  Future<void> _saveDraft() async {
-    if (_isEditing || !_writeDraft) {
-      return;
+  Map<String, Object?> _draftSnapshot() => {
+    'choice': _choice?.name,
+    'subtype': _subtype,
+    'plate': _plateController.text,
+    'registrationCity': _cityController.text,
+    'nickname': _nicknameController.text,
+    'brand': _brandController.text,
+    'model': _modelController.text,
+    'year': _yearController.text,
+    'color': _colorController.text,
+    'alertsEnabled': _alertsEnabled,
+    'savedVehicleId': _savedVehicleId,
+  };
+
+  Future<void> _saveDraft() {
+    if (!mounted || _isEditing || !_writeDraft || _saving) {
+      return Future<void>.value();
     }
-
-    final draft = <String, Object?>{
-      'choice': _choice?.name,
-      'subtype': _subtype,
-      'plate': _plateController.text,
-      'registrationCity': _cityController.text,
-      'nickname': _nicknameController.text,
-      'brand': _brandController.text,
-      'model': _modelController.text,
-      'year': _yearController.text,
-      'color': _colorController.text,
-      'alertsEnabled': _alertsEnabled,
-    };
-
-    await ref
-        .read(appPreferencesProvider)
-        .setString(onboardingVehicleDraftKey, jsonEncode(draft));
+    final preferences = ref.read(appPreferencesProvider);
+    final source = jsonEncode(_draftSnapshot());
+    _draftWrites = _draftWrites.then((_) async {
+      try {
+        await preferences.setString(onboardingVehicleDraftKey, source);
+      } catch (_) {
+        if (mounted) {
+          setState(
+            () => _error = 'No pudimos guardar el borrador. Tus datos siguen aquí; reintenta al continuar.',
+          );
+        }
+      }
+    });
+    return _draftWrites;
   }
 
   Future<void> _saveVehicle() async {
     final choice = _choice;
-    if (choice == null) {
+    if (choice == null || _saving || _loadFailed) {
       return;
     }
 
@@ -499,12 +573,19 @@ class _OnboardingVehicleScreenState
     var navigatedAway = false;
     try {
       final repository = ref.read(vehicleRepositoryProvider);
+      final preferences = ref.read(appPreferencesProvider);
+      final draft = _draftSnapshot();
+      final editing = _isEditing;
+      final alertsEnabled = _alertsEnabled;
       final year = _yearController.text.trim().isEmpty
           ? null
           : int.parse(_yearController.text.trim());
-      final targetId = widget.vehicleId;
+      final targetId = widget.vehicleId ?? _savedVehicleId;
+      await _draftWrites;
+      if (!mounted) return;
+      VehicleProfile saved;
       if (targetId == null) {
-        await repository.createVehicle(
+        saved = await repository.createVehicle(
           plate: _plateController.text,
           kind: choice.kind,
           serviceType: choice.serviceType,
@@ -517,7 +598,7 @@ class _OnboardingVehicleScreenState
           color: _colorController.text,
         );
       } else {
-        await repository.updateVehicle(
+        saved = await repository.updateVehicle(
           id: targetId,
           plate: _plateController.text,
           kind: choice.kind,
@@ -531,19 +612,30 @@ class _OnboardingVehicleScreenState
           color: _colorController.text,
         );
       }
-      final preferences = ref.read(appPreferencesProvider);
+      _savedVehicleId = saved.id;
+      if (mounted) {
+        ref.invalidate(activeVehicleProvider);
+        ref.invalidate(vehicleListProvider);
+      }
+      if (!editing) {
+        await preferences.setString(
+          onboardingVehicleDraftKey,
+          jsonEncode({...draft, 'savedVehicleId': saved.id}),
+        );
+      }
       await preferences.setBool(
         picoRestrictionAlertsPreferenceKey,
-        _alertsEnabled,
+        alertsEnabled,
       );
-      if (!_isEditing) {
+      if (!editing) {
         await preferences.remove(onboardingVehicleDraftKey);
       }
-      ref.invalidate(activeVehicleProvider);
-      ref.invalidate(vehicleListProvider);
 
       if (mounted) {
-        setState(() => _saving = false);
+        setState(() {
+          _saving = false;
+          _writeDraft = false;
+        });
         navigatedAway = true;
         if (_isEditing && context.canPop()) {
           context.pop();
@@ -558,6 +650,14 @@ class _OnboardingVehicleScreenState
     } on FormatException {
       if (mounted) {
         setState(() => _error = 'El año debe ser numérico.');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _error = _savedVehicleId == null
+              ? 'No pudimos guardar el vehículo. Tus datos siguen aquí. Reintenta.'
+              : 'El vehículo está guardado, pero falta completar la configuración. Reintenta para terminar.',
+        );
       }
     } finally {
       if (mounted && !navigatedAway) {
