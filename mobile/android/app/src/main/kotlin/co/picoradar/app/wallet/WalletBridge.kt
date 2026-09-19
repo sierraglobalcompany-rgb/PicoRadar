@@ -8,6 +8,7 @@ import android.os.Looper
 import android.view.WindowManager
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
+import com.google.android.gms.common.api.ApiException
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
@@ -119,8 +120,9 @@ class WalletBridge(private val activity: Activity, messenger: BinaryMessenger) {
             result.error("busy", "Scanner already active.", null)
             return
         }
-        if (GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(activity) != ConnectionResult.SUCCESS) {
-            result.error("unsupported", "Document scanner unavailable.", null)
+        val availability = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(activity)
+        if (availability != ConnectionResult.SUCCESS) {
+            result.error(WalletScannerErrors.services(availability), "Document scanner unavailable.", null)
             return
         }
         scanResult = result
@@ -138,14 +140,15 @@ class WalletBridge(private val activity: Activity, messenger: BinaryMessenger) {
                         activity.startIntentSenderForResult(sender, SCAN_REQUEST, null, 0, 0, 0)
                     } catch (error: Exception) {
                         scanResult = null
-                        fail(result, error)
+                        result.error("scanner_launch_failed", "Document scanner could not launch.", null)
                     }
                 }
             }
-            .addOnFailureListener {
+            .addOnFailureListener { error ->
                 if (scanResult === result) {
                     scanResult = null
-                    result.error("unsupported", "Document scanner unavailable.", null)
+                    result.error(WalletScannerErrors.startStatus((error as? ApiException)?.statusCode),
+                        "Document scanner unavailable.", null)
                 }
             }
     }

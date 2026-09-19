@@ -29,6 +29,41 @@ class WalletPlatformException implements Exception {
 
   final String code;
 
+  static const _codes = {
+    'unsupported',
+    'busy',
+    'cancelled',
+    'invalid_arguments',
+    'size_limit',
+    'invalid_file',
+    'invalid_session',
+    'invalid_pdf',
+    'protected_pdf',
+    'pdf_unavailable',
+    'closed',
+    'pdf_failed',
+    'render_failed',
+    'invalid_result',
+    'storage_failed',
+    'cleanup_failed',
+    'platform_failed',
+    'pdf_open_failed',
+    'pdf_render_failed',
+    'pdf_closed',
+    'scanner_services_missing',
+    'scanner_services_update',
+    'scanner_services_disabled',
+    'scanner_services_unavailable',
+    'scanner_services_updating',
+    'scanner_start_failed',
+    'scanner_launch_failed',
+    'scanner_network',
+    'scanner_timeout',
+  };
+
+  static String sanitizedCode(String code) =>
+      _codes.contains(code) ? code : 'platform_failed';
+
   @override
   String toString() => 'WalletPlatformException($code)';
 }
@@ -143,7 +178,9 @@ class WalletPlatform {
       throw const WalletPlatformException('unsupported');
     } on PlatformException catch (error) {
       // Native messages/details may contain file paths; expose only a code.
-      throw WalletPlatformException(error.code);
+      throw WalletPlatformException(
+        WalletPlatformException.sanitizedCode(error.code),
+      );
     }
   }
 }

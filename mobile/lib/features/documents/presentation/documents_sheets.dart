@@ -9,6 +9,7 @@ import 'documents_widgets.dart';
 import 'documents_async_content.dart';
 import 'documents_recovery_notice.dart';
 import 'wallet_actions.dart';
+import 'wallet_visit_scope.dart';
 
 export 'documents_driver_sheet.dart' show showWalletDriverSelector;
 
@@ -99,57 +100,59 @@ class _DocumentsSessionSheetState extends ConsumerState<DocumentsSessionSheet> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(walletSessionProvider);
-    return ListenableBuilder(
-      listenable: session,
-      builder: (context, _) {
-        final allowed = session.accessAllowed;
-        if (allowed) _opened = true;
-        return Stack(
-          children: [
-            if (_opened)
-              Offstage(
-                offstage: !allowed,
-                child: ExcludeFocus(
-                  excluding: !allowed,
-                  child: ExcludeSemantics(
+    return WalletVisitScope(
+      child: ListenableBuilder(
+        listenable: session,
+        builder: (context, _) {
+          final allowed = session.accessAllowed;
+          if (allowed) _opened = true;
+          return Stack(
+            children: [
+              if (_opened)
+                Offstage(
+                  offstage: !allowed,
+                  child: ExcludeFocus(
                     excluding: !allowed,
-                    child: TickerMode(enabled: allowed, child: widget.child),
-                  ),
-                ),
-              ),
-            if (!allowed)
-              Material(
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.lock_outline, color: AppColors.teal),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Documentos bloqueados',
-                          style: documentsStrongStyle,
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          style: TextButton.styleFrom(
-                            minimumSize: const Size(48, 48),
-                          ),
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: const Text(
-                            'Cerrar',
-                            style: documentsStrongStyle,
-                          ),
-                        ),
-                      ],
+                    child: ExcludeSemantics(
+                      excluding: !allowed,
+                      child: TickerMode(enabled: allowed, child: widget.child),
                     ),
                   ),
                 ),
-              ),
-          ],
-        );
-      },
+              if (!allowed)
+                Material(
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.lock_outline, color: AppColors.teal),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Documentos bloqueados',
+                            style: documentsStrongStyle,
+                          ),
+                          const SizedBox(height: 8),
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              minimumSize: const Size(48, 48),
+                            ),
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text(
+                              'Cerrar',
+                              style: documentsStrongStyle,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

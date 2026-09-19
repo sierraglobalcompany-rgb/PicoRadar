@@ -10,6 +10,7 @@ import '../application/wallet_providers.dart';
 import '../data/wallet_models.dart';
 import '../platform/wallet_platform.dart';
 import 'wallet_viewer.dart';
+import 'wallet_visit_scope.dart';
 
 class WalletActions {
   WalletActions(this.context, this.ref, {this.visitRouteName});
@@ -44,9 +45,7 @@ class WalletActions {
       }
     }
 
-    if (visitRouteName != null) {
-      router?.routeInformationProvider.addListener(routeChanged);
-    }
+    router?.routeInformationProvider.addListener(routeChanged);
     bool namedVisitActive() =>
         visitRouteName != null &&
         !visitEnded &&
@@ -55,7 +54,10 @@ class WalletActions {
         route?.isActive == true &&
         router?.routeInformationProvider.value.uri == origin;
     bool isCurrent() =>
-        context.mounted && (visitRouteName == null || namedVisitActive());
+        context.mounted &&
+        !visitEnded &&
+        (route?.isActive ?? true) &&
+        (visitRouteName == null || namedVisitActive());
     final walletVisit =
         visitRouteName == null &&
         (GoRouter.maybeOf(context)?.routeInformationProvider.value.uri.path
@@ -79,9 +81,7 @@ class WalletActions {
         'No se pudo completar la operación. Revisa el estado de la copia e intenta de nuevo.',
       );
     } finally {
-      if (visitRouteName != null) {
-        router?.routeInformationProvider.removeListener(routeChanged);
-      }
+      router?.routeInformationProvider.removeListener(routeChanged);
       mutex.busy = false;
       if (!walletVisit && !namedVisitActive()) session.lock();
     }
@@ -107,23 +107,25 @@ class WalletActions {
         (visitRouteName == null ||
             (route?.isActive == true &&
                 route?.settings.name == visitRouteName));
-    final source = await showModalBottomSheet<String>(
+    var source = await showModalBottomSheet<String>(
       context: context,
-      builder: (sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.document_scanner_outlined),
-              title: const Text('Escanear'),
-              onTap: () => Navigator.pop(sheet, 'scan'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.file_upload_outlined),
-              title: const Text('Importar archivo'),
-              onTap: () => Navigator.pop(sheet, 'import'),
-            ),
-          ],
+      builder: (sheet) => WalletVisitScope(
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.document_scanner_outlined),
+                title: const Text('Escanear'),
+                onTap: () => Navigator.pop(sheet, 'scan'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.file_upload_outlined),
+                title: const Text('Importar archivo'),
+                onTap: () => Navigator.pop(sheet, 'import'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -135,10 +137,22 @@ class WalletActions {
     final materials = <File>[];
     try {
       final inputs = <WalletDocumentInput>[];
+      List<WalletCaptureFile>? captured;
+      while (source == 'scan') {
+        try {
+          captured = await platform.scan(maxPages: twoSides ? 2 : 1);
+          break;
+        } on WalletPlatformException catch (error) {
+          if (!stillHere()) return;
+          if (!session.accessAllowed && !await session.unlock()) return;
+          if (!stillHere()) return;
+          source = await _scanRecovery(error);
+          if (source == null || !stillHere() || !session.accessAllowed) return;
+        }
+      }
       if (source == 'scan') {
-        final files = await platform.scan(maxPages: twoSides ? 2 : 1);
-        if (files == null || files.isEmpty) return;
-        for (final file in files) {
+        if (captured == null || captured.isEmpty) return;
+        for (final file in captured) {
           scans.add(file.path);
           inputs.add(
             WalletDocumentInput(
@@ -172,21 +186,23 @@ class WalletActions {
       if (twoSides && source == 'import' && !drafts.first.files.first.isPdf) {
         final reverse = await showDialog<bool>(
           context: context,
-          builder: (dialog) => AlertDialog(
-            title: const Text('Reverso del documento'),
-            content: const Text(
-              'Puedes añadir el reverso o guardar solo el frente.',
+          builder: (dialog) => WalletVisitScope(
+            child: AlertDialog(
+              title: const Text('Reverso del documento'),
+              content: const Text(
+                'Puedes añadir el reverso o guardar solo el frente.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialog, false),
+                  child: const Text('Solo frente'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(dialog, true),
+                  child: const Text('Agregar reverso'),
+                ),
+              ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialog, false),
-                child: const Text('Solo frente'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(dialog, true),
-                child: const Text('Agregar reverso'),
-              ),
-            ],
           ),
         );
         if (!stillHere() || !session.accessAllowed || reverse == null) return;
@@ -294,6 +310,34 @@ class WalletActions {
     if (await file.exists()) await file.delete();
   }
 
+  Future<String?> _scanRecovery(
+    WalletPlatformException error,
+  ) => showDialog<String>(
+    context: context,
+    builder: (dialog) => WalletVisitScope(
+      child: AlertDialog(
+        title: const Text('No se pudo abrir el esc\u00e1ner'),
+        content: Text(
+          'Puedes reintentar o importar una copia. C\u00f3digo: ${WalletPlatformException.sanitizedCode(error.code)}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialog),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, 'import'),
+            child: const Text('Importar archivo'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialog, 'scan'),
+            child: const Text('Reintentar'),
+          ),
+        ],
+      ),
+    ),
+  );
+
   Future<T?> _pushViewer<T>({
     required WalletViewer viewer,
     required bool Function() isCurrent,
@@ -318,17 +362,13 @@ class WalletActions {
       });
     }
 
-    if (visitRouteName != null) {
-      router?.routeInformationProvider.addListener(closeExpiredVisit);
-      parentRoute?.popped.then((_) => closeExpiredVisit());
-    }
+    router?.routeInformationProvider.addListener(closeExpiredVisit);
+    parentRoute?.popped.then((_) => closeExpiredVisit());
     try {
       return await navigator.push<T>(route);
     } finally {
       watching = false;
-      if (visitRouteName != null) {
-        router?.routeInformationProvider.removeListener(closeExpiredVisit);
-      }
+      router?.routeInformationProvider.removeListener(closeExpiredVisit);
     }
   }
 
@@ -386,21 +426,23 @@ class WalletActions {
     final epoch = session.epoch;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialog) => AlertDialog(
-        title: const Text('Eliminar copia'),
-        content: const Text(
-          'Se eliminará únicamente esta copia privada del dispositivo.',
+      builder: (dialog) => WalletVisitScope(
+        child: AlertDialog(
+          title: const Text('Eliminar copia'),
+          content: const Text(
+            'Se eliminará únicamente esta copia privada del dispositivo.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialog, false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialog, true),
+              child: const Text('Eliminar'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialog, false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialog, true),
-            child: const Text('Eliminar'),
-          ),
-        ],
       ),
     );
     if (confirmed != true ||
@@ -436,67 +478,70 @@ class WalletActions {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (sheet) => ListenableBuilder(
-        listenable: session,
-        builder: (sheet, _) => SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Protección de documentos',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Usa el desbloqueo de tu teléfono para proteger toda la billetera. PicoRadar no recibe ni guarda tu clave.',
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Quien pueda desbloquear este teléfono podrá abrir ambos conductores. Las copias no tienen respaldo automático.',
-                ),
-                if (session.failureMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: Text(session.failureMessage!),
+      builder: (sheet) => WalletVisitScope(
+        child: ListenableBuilder(
+          listenable: session,
+          builder: (sheet, _) => SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Protección de documentos',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                   ),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: session.busy
-                      ? null
-                      : () async {
-                          if (!active()) return;
-                          final okay = session.protectionEnabled
-                              ? await session.disableProtection()
-                              : await session.enableProtection();
-                          if (okay && sheet.mounted) Navigator.pop(sheet);
-                        },
-                  icon: Icon(
-                    session.protectionEnabled
-                        ? Icons.lock_open
-                        : Icons.lock_outline,
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Usa el desbloqueo de tu teléfono para proteger toda la billetera. PicoRadar no recibe ni guarda tu clave.',
                   ),
-                  label: Text(
-                    session.protectionEnabled
-                        ? 'Desactivar protección'
-                        : 'Proteger documentos',
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Quien pueda desbloquear este teléfono podrá abrir ambos conductores. Las copias no tienen respaldo automático.',
                   ),
-                ),
-                if (firstOffer)
-                  TextButton(
+                  if (session.failureMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16),
+                      child: Text(session.failureMessage!),
+                    ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
                     onPressed: session.busy
                         ? null
                         : () async {
                             if (!active()) return;
-                            if (await session.dismissOffer() && sheet.mounted) {
-                              Navigator.pop(sheet);
-                            }
+                            final okay = session.protectionEnabled
+                                ? await session.disableProtection()
+                                : await session.enableProtection();
+                            if (okay && sheet.mounted) Navigator.pop(sheet);
                           },
-                    child: const Text('Ahora no'),
+                    icon: Icon(
+                      session.protectionEnabled
+                          ? Icons.lock_open
+                          : Icons.lock_outline,
+                    ),
+                    label: Text(
+                      session.protectionEnabled
+                          ? 'Desactivar protección'
+                          : 'Proteger documentos',
+                    ),
                   ),
-              ],
+                  if (firstOffer)
+                    TextButton(
+                      onPressed: session.busy
+                          ? null
+                          : () async {
+                              if (!active()) return;
+                              if (await session.dismissOffer() &&
+                                  sheet.mounted) {
+                                Navigator.pop(sheet);
+                              }
+                            },
+                      child: const Text('Ahora no'),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
