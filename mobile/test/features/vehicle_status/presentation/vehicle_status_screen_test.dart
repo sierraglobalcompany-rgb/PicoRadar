@@ -23,6 +23,7 @@ import 'package:picoradar/features/vehicle_status/data/vehicle_obligation_store.
 import 'package:picoradar/features/vehicle_status/domain/vehicle_obligation.dart';
 import 'package:picoradar/features/vehicle_status/platform/vehicle_document_gateway.dart';
 import 'package:picoradar/features/vehicle_status/presentation/vehicle_status_screen.dart';
+import 'package:picoradar/features/vehicle_status/presentation/soat_rtm_owner_content.dart';
 
 import '../../../test_app_harness.dart';
 import 'v01b_obligations_test_font.dart';
@@ -275,6 +276,84 @@ void main() {
         });
       }
     }
+  }
+
+  for (final type in [VehicleObligationType.soat, VehicleObligationType.rtm]) {
+    final module = type == VehicleObligationType.soat
+        ? 'soat'
+        : 'tecnomecanica';
+    testWidgets(
+      'F09 $module rejects invalid dates without replacing saved data',
+      (tester) async {
+        final vehicle = await _createVehicle(harness, plate: 'AAA111');
+        final store = VehicleObligationStore(harness.database);
+        final original = await store.upsert(
+          vehicleId: vehicle.id,
+          type: type,
+          startDate: DateTime(2026, 1, 1),
+          dueDate: DateTime(2026, 12, 31),
+        );
+        await _openModule(tester, harness, module);
+        tester
+            .widget<SoatRtmOwnerContent>(find.byType(SoatRtmOwnerContent))
+            .onEdit();
+        await _pumpNavigation(tester);
+        for (final input in ['2026-02-31', '31/12/2026', '2025-12-31']) {
+          await _enterText(tester, 'status-due-date-field', input);
+          await tester.tap(find.byKey(const ValueKey('status-save-button')));
+          await _pumpNavigation(tester);
+          expect(find.byType(AlertDialog), findsOneWidget, reason: input);
+          expect(
+            find.byKey(const ValueKey('status-date-error')),
+            findsOneWidget,
+          );
+          final saved = await store.get(vehicle.id, type);
+          expect(saved?.dueDate, original.dueDate, reason: input);
+          expect(saved?.updatedAt, original.updatedAt, reason: input);
+          expect(tester.takeException(), isNull);
+        }
+        await _enterText(tester, 'status-due-date-field', '2028-02-29');
+        await _enterText(tester, 'status-start-date-field', '2026-13-01');
+        await tester.tap(find.byKey(const ValueKey('status-save-button')));
+        await _pumpNavigation(tester);
+        expect(find.byType(AlertDialog), findsOneWidget);
+        expect(
+          (await store.get(vehicle.id, type))?.startDate,
+          original.startDate,
+        );
+        await _enterText(tester, 'status-start-date-field', '2026-01-01');
+        await tester.tap(find.byKey(const ValueKey('status-save-button')));
+        await _pumpNavigation(tester);
+        expect(
+          (await store.get(vehicle.id, type))?.dueDate,
+          DateTime(2028, 2, 29),
+        );
+        tester
+            .widget<SoatRtmOwnerContent>(find.byType(SoatRtmOwnerContent))
+            .onEdit();
+        await _pumpNavigation(tester);
+        await _enterText(tester, 'status-start-date-field', '');
+        await _enterText(tester, 'status-due-date-field', '');
+        await tester.tap(find.byKey(const ValueKey('status-save-button')));
+        await _pumpNavigation(tester);
+        final cleared = await store.get(vehicle.id, type);
+        expect(cleared?.startDate, isNull);
+        expect(cleared?.dueDate, isNull);
+      },
+    );
+
+    testWidgets('F09 $module missing explicit vehicle never uses favorite', (
+      tester,
+    ) async {
+      final vehicle = await _createVehicle(harness, plate: 'AAA111');
+      await _openModule(tester, harness, module, vehicleId: 'deleted-vehicle');
+      expect(find.text('Este vehículo ya no está disponible.'), findsOneWidget);
+      expect(find.byKey(ValueKey('owner-primary-${type.value}')), findsNothing);
+      expect(
+        await VehicleObligationStore(harness.database).get(vehicle.id, type),
+        isNull,
+      );
+    });
   }
 
   testWidgets('SOAT can be saved locally and stays scoped to saved date', (
@@ -1313,6 +1392,7 @@ Future<void> _openModule(
   WidgetTester tester,
   TestAppHarness harness,
   String moduleId, {
+  String? vehicleId,
   ExternalLauncher? externalLauncher,
   VehicleDocumentGateway? documentGateway,
   PrivateVehicleDocumentStore? documentStoreOverride,
@@ -1382,9 +1462,12 @@ Future<void> _openModule(
                     (force) async => false,
                   ),
                 ],
-                child: VehicleStatusScreen(moduleId: moduleId, vehicleId: null),
+                child: VehicleStatusScreen(
+                  moduleId: moduleId,
+                  vehicleId: vehicleId,
+                ),
               )
-            : VehicleStatusScreen(moduleId: moduleId, vehicleId: null),
+            : VehicleStatusScreen(moduleId: moduleId, vehicleId: vehicleId),
       ),
     ),
     wrap: wrap,

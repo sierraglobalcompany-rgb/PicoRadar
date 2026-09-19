@@ -77,11 +77,10 @@ class _VehicleStatusScreenState extends ConsumerState<VehicleStatusScreen> {
               items,
               active.asData?.value,
               _selectedVehicleId,
-              fallbackForMissingId: type != VehicleObligationType.tax,
+              fallbackForMissingId: false,
             );
             if (vehicle == null) {
-              if (type == VehicleObligationType.tax &&
-                  _selectedVehicleId != null) {
+              if (_selectedVehicleId != null) {
                 return Center(
                   child: Padding(
                     padding: const EdgeInsets.all(AppSpacing.l),
@@ -91,7 +90,7 @@ class _VehicleStatusScreenState extends ConsumerState<VehicleStatusScreen> {
                         const Text('Este vehículo ya no está disponible.'),
                         const SizedBox(height: AppSpacing.m),
                         TextButton.icon(
-                          key: const ValueKey('tax-missing-vehicle-garage'),
+                          key: ValueKey('${type.value}-missing-vehicle-garage'),
                           onPressed: () => context.go('/garage'),
                           icon: const Icon(Icons.garage_outlined),
                           label: const Text('Ir a Garaje'),
@@ -568,6 +567,7 @@ Future<void> _editObligation(
     text: details['designatedDriverPhone'] ?? '',
   );
   var selectedProvider = _insuranceInitialProvider(details);
+  String? validationError;
 
   await showDialog<void>(
     context: context,
@@ -580,6 +580,11 @@ Future<void> _editObligation(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (validationError != null)
+                    Text(
+                      validationError!,
+                      key: const ValueKey('status-date-error'),
+                    ),
                   TextField(
                     key: const ValueKey('status-start-date-field'),
                     controller: startController,
@@ -681,23 +686,29 @@ Future<void> _editObligation(
               FilledButton(
                 key: const ValueKey('status-save-button'),
                 onPressed: () async {
-                  await _saveObligation(
-                    ref,
-                    vehicle.id,
-                    type,
-                    startController.text,
-                    dueController.text,
-                    firstController.text,
-                    selectedProvider,
-                    policyController.text,
-                    certificateController.text,
-                    assistanceController.text,
-                    towController.text,
-                    driverController.text,
-                    obligation?.reminderEnabled ?? true,
-                  );
-                  if (context.mounted) {
-                    Navigator.of(context).pop();
+                  try {
+                    await _saveObligation(
+                      ref,
+                      vehicle.id,
+                      type,
+                      startController.text,
+                      dueController.text,
+                      firstController.text,
+                      selectedProvider,
+                      policyController.text,
+                      certificateController.text,
+                      assistanceController.text,
+                      towController.text,
+                      driverController.text,
+                      obligation?.reminderEnabled ?? true,
+                    );
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  } on FormatException catch (error) {
+                    if (context.mounted) {
+                      setState(() => validationError = error.message);
+                    }
                   }
                 },
                 child: const Text('Guardar'),
@@ -735,6 +746,15 @@ Future<void> _saveObligation(
   String driverPhone,
   bool reminderEnabled,
 ) async {
+  final parsedStart = _parseInputDate(startDate);
+  final parsedDue = _parseInputDate(dueDate);
+  if (parsedStart != null &&
+      parsedDue != null &&
+      parsedDue.isBefore(parsedStart)) {
+    throw const FormatException(
+      'El vencimiento no puede ser anterior al inicio.',
+    );
+  }
   final details = <String, String>{};
   switch (type) {
     case VehicleObligationType.soat:
@@ -759,8 +779,8 @@ Future<void> _saveObligation(
       .upsert(
         vehicleId: vehicleId,
         type: type,
-        startDate: _parseInputDate(startDate),
-        dueDate: _parseInputDate(dueDate),
+        startDate: parsedStart,
+        dueDate: parsedDue,
         details: details,
         reminderEnabled: reminderEnabled,
       );
@@ -891,17 +911,18 @@ DateTime? _parseInputDate(String value) {
   if (trimmed.isEmpty) {
     return null;
   }
-  final parts = trimmed.split('-');
-  if (parts.length != 3) {
-    return null;
+  final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(trimmed);
+  if (match == null) {
+    throw const FormatException('Usa una fecha válida con formato AAAA-MM-DD.');
   }
-  final year = int.tryParse(parts[0]);
-  final month = int.tryParse(parts[1]);
-  final day = int.tryParse(parts[2]);
-  if (year == null || month == null || day == null) {
-    return null;
+  final year = int.parse(match[1]!);
+  final month = int.parse(match[2]!);
+  final day = int.parse(match[3]!);
+  final date = DateTime(year, month, day);
+  if (date.year != year || date.month != month || date.day != day) {
+    throw const FormatException('Usa una fecha válida con formato AAAA-MM-DD.');
   }
-  return DateTime(year, month, day);
+  return date;
 }
 
 String _inputDate(DateTime? date) {
