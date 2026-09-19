@@ -342,17 +342,24 @@ Referencia: [placa owner](design/reference/plate_owner_20260910.png).
   laterales. En pantallas anchas se limita a 720 dp y se centra.
 - El carrusel es manual y finito, sin avance automatico. Conserva las cuatro
   campanas aprobadas y su altura adaptable; crecer en ancho no aumenta su alto.
-- La navegacion es una capsula navy semitransparente superpuesta en la zona
-  inferior central: flechas de 20-22 dp con objetivos de 48 dp, barra blanca
-  activa de 16x6 dp y tres puntos inactivos de 6x6 dp al 45%. Las flechas de
-  los extremos permanecen visibles, atenuadas y deshabilitadas.
+- La navegacion no usa capsula, contador ni fondo. Las flechas viven en las
+  esquinas inferiores: icono blanco de 22 dp, sombra navy sutil y objetivo
+  tactil transparente de 48x48 dp. En los extremos permanecen visibles al 30%,
+  atenuadas y deshabilitadas.
+- Los cuatro indicadores se dibujan directamente sobre la imagen: activo
+  circular blanco de 8x8 dp e inactivos de 6x6 dp al 45%. No usan barra,
+  borde ni una fila exterior.
 - El indice se comunica mediante semantica `Campana X de 4`; no aparece texto
-  visible `1 de 4`. La capsula reserva espacio y nunca cubre titular, texto o
-  CTA. Con movimiento reducido, el indicador cambia sin animacion.
+  visible `1 de 4`. Los controles no cubren titular, texto o CTA. Con movimiento
+  reducido, el indicador cambia sin animacion.
 - Inicio no monta el antiguo bloque inferior `Aliado premium`. Su configuracion
   compartida se conserva para SOAT y RTM. Con texto normal, Inicio no desplaza
   verticalmente en 360x780, 360x800, 390x844, 412x915 y 430x932; con texto
   ampliado mantiene un unico scroll accesible cuando sea necesario.
+- El carrusel de vehiculos es el unico bloque elastico: parte de 168 dp en
+  360x780, alcanza aproximadamente 180 dp en 360x800 y crece de forma continua
+  hasta un maximo de 360 dp. Nombre, placa e imagen `BoxFit.contain` se conservan;
+  una pantalla mas alta no agranda textos, controles ni separaciones.
 
 ### Auditoria Inicio/Garaje/Pico 2026-09-10
 

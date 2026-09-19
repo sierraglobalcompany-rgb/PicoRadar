@@ -419,7 +419,11 @@ void main() {
           final imageBounds = tester.getRect(
             find.byKey(ValueKey('vehicle-visual-image-${vehicle.id}')),
           );
-          expect(imageBounds.height, greaterThan(120));
+          expect(
+            imageBounds.height,
+            greaterThanOrEqualTo(80),
+            reason: 'The contained vehicle image must not collapse.',
+          );
           expect(
             imageBounds.bottom,
             lessThanOrEqualTo(tester.getTopLeft(plate).dy),
@@ -504,7 +508,7 @@ void main() {
           )
           .position;
       final smallHeight = tester.getSize(carousel).height;
-      expect(smallHeight, inInclusiveRange(208, 359));
+      expect(smallHeight, inInclusiveRange(168, 359));
       expect(position.maxScrollExtent, 0);
       expect(
         tester.widget<SingleChildScrollView>(scroll).physics,
@@ -3581,13 +3585,15 @@ void main() {
       testWidgets('renders without layout exceptions at ${viewport.name}', (
         tester,
       ) async {
+        await _createVehicle(harness, plate: 'XYZ125');
         await _readyHome(harness, plate: 'ABC124');
 
-        await _pumpHome(
+        await _pumpFullHomeApp(
           tester,
           harness,
           viewportSize: viewport.size,
           textScaleFactor: viewport.textScale,
+          safePadding: const EdgeInsets.only(top: 24, bottom: 24),
         );
 
         expect(find.byKey(const ValueKey('home-brand-lockup')), findsOneWidget);
@@ -3614,10 +3620,24 @@ void main() {
         expect(carousel.left, 0);
         expect(carousel.right, viewport.size.width);
         if (viewport.textScale == 1) {
+          final homeScroll = find.byKey(const ValueKey('home-v2-scroll'));
           final scrollable = tester.state<ScrollableState>(
-            find.byType(Scrollable).first,
+            find
+                .descendant(of: homeScroll, matching: find.byType(Scrollable))
+                .first,
           );
           expect(scrollable.position.maxScrollExtent, 0);
+          final navigation = tester.getRect(
+            find.byKey(const ValueKey('app-bottom-navigation')),
+          );
+          for (final key in const ['home-status-soat', 'home-status-rtm']) {
+            final bounds = tester.getRect(find.byKey(ValueKey(key)));
+            expect(
+              bounds.bottom,
+              lessThanOrEqualTo(navigation.top),
+              reason: '$key must remain fully above the bottom navigation.',
+            );
+          }
         }
         expect(tester.takeException(), isNull);
       });
@@ -4737,8 +4757,20 @@ Future<void> _pumpFullHomeApp(
   DateTime Function()? appClockNow,
   RestrictionStore? restrictionStore,
   PicoNotificationScheduler? notificationScheduler,
+  Size viewportSize = _defaultViewportSize,
+  double? textScaleFactor,
+  EdgeInsets safePadding = EdgeInsets.zero,
 }) async {
-  await _installWidgetChannelMock(tester, harness);
+  await _installWidgetChannelMock(
+    tester,
+    harness,
+    viewportSize: viewportSize,
+    safePadding: safePadding,
+  );
+  if (textScaleFactor != null) {
+    tester.platformDispatcher.textScaleFactorTestValue = textScaleFactor;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+  }
   await tester.pumpWidget(
     _providerScope(
       harness,
@@ -4889,8 +4921,9 @@ Future<void> _installWidgetChannelMock(
   WidgetTester tester,
   TestAppHarness harness, {
   Size viewportSize = _defaultViewportSize,
+  EdgeInsets safePadding = EdgeInsets.zero,
 }) async {
-  _configureMobileViewport(tester, viewportSize);
+  _configureMobileViewport(tester, viewportSize, safePadding: safePadding);
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
         const MethodChannel('co.picoradar.app/widget'),
@@ -4910,12 +4943,23 @@ Future<void> _installWidgetChannelMock(
 
 const _defaultViewportSize = Size(390, 844);
 
-void _configureMobileViewport(WidgetTester tester, Size viewportSize) {
+void _configureMobileViewport(
+  WidgetTester tester,
+  Size viewportSize, {
+  EdgeInsets safePadding = EdgeInsets.zero,
+}) {
   tester.view.physicalSize = viewportSize;
   tester.view.devicePixelRatio = 1;
+  tester.view.padding = FakeViewPadding(
+    left: safePadding.left,
+    top: safePadding.top,
+    right: safePadding.right,
+    bottom: safePadding.bottom,
+  );
   addTearDown(() {
     tester.view.resetPhysicalSize();
     tester.view.resetDevicePixelRatio();
+    tester.view.resetPadding();
   });
 }
 

@@ -67,8 +67,7 @@ class _HomePartnerCarouselState extends ConsumerState<HomePartnerCarousel> {
                     },
                   ),
                 ),
-                Positioned(
-                  bottom: 2,
+                Positioned.fill(
                   child: _CarouselControls(
                     index: _index,
                     count: _slides.length,
@@ -118,7 +117,7 @@ class _HomePartnerCarouselState extends ConsumerState<HomePartnerCarousel> {
       if (contentHeight > tallest) tallest = contentHeight;
     }
     const topInset = 12.0;
-    const controlReserve = 52.0;
+    const controlReserve = 48.0;
     // The CTA arrow can wrap onto its own icon line at larger text scales.
     final ctaIconLineReserve = MediaQuery.textScalerOf(context).scale(1) >= 1.4
         ? 18.0
@@ -192,98 +191,102 @@ class _CarouselControls extends StatelessWidget {
     final indicatorDuration = MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : const Duration(milliseconds: 180);
-    return SizedBox(
+    return SizedBox.expand(
       key: const ValueKey('home-partner-carousel-controls'),
-      width: 160,
-      height: 48,
       child: Stack(
-        alignment: Alignment.center,
         children: [
           Positioned(
-            left: 4,
-            right: 4,
-            top: 6,
-            bottom: 6,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.navy.withValues(alpha: 0.64),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+            left: 0,
+            bottom: 0,
+            child: _CarouselArrow(
+              buttonKey: const ValueKey('home-partner-previous'),
+              semanticLabel: 'Campaña anterior',
+              icon: Icons.chevron_left_rounded,
+              onPressed: onPrevious,
+            ),
+          ),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: _CarouselArrow(
+              buttonKey: const ValueKey('home-partner-next'),
+              semanticLabel: 'Campaña siguiente',
+              icon: Icons.chevron_right_rounded,
+              onPressed: onNext,
+            ),
+          ),
+          Positioned(
+            left: 48,
+            right: 48,
+            bottom: 11,
+            child: ExcludeSemantics(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (var index = 0; index < count; index++)
+                    AnimatedContainer(
+                      key: ValueKey('home-partner-dot-$index'),
+                      duration: indicatorDuration,
+                      width: index == this.index ? 8 : 6,
+                      height: index == this.index ? 8 : 6,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        color: index == this.index
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.45),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Semantics(
-                label: 'Campaña anterior',
-                button: true,
-                enabled: onPrevious != null,
-                child: ExcludeSemantics(
-                  child: IconButton(
-                    key: const ValueKey('home-partner-previous'),
-                    tooltip: 'Campaña anterior',
-                    onPressed: onPrevious,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 48,
-                      height: 48,
-                    ),
-                    padding: EdgeInsets.zero,
-                    iconSize: 22,
-                    color: Colors.white,
-                    disabledColor: Colors.white.withValues(alpha: 0.3),
-                    icon: const Icon(Icons.chevron_left_rounded),
-                  ),
-                ),
-              ),
-              ExcludeSemantics(
-                child: SizedBox(
-                  width: 64,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      for (var index = 0; index < count; index++)
-                        AnimatedContainer(
-                          key: ValueKey('home-partner-dot-$index'),
-                          duration: indicatorDuration,
-                          width: index == this.index ? 16 : 6,
-                          height: 6,
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          decoration: BoxDecoration(
-                            color: index == this.index
-                                ? Colors.white
-                                : Colors.white.withValues(alpha: 0.45),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              Semantics(
-                label: 'Campaña siguiente',
-                button: true,
-                enabled: onNext != null,
-                child: ExcludeSemantics(
-                  child: IconButton(
-                    key: const ValueKey('home-partner-next'),
-                    tooltip: 'Campaña siguiente',
-                    onPressed: onNext,
-                    constraints: const BoxConstraints.tightFor(
-                      width: 48,
-                      height: 48,
-                    ),
-                    padding: EdgeInsets.zero,
-                    iconSize: 22,
-                    color: Colors.white,
-                    disabledColor: Colors.white.withValues(alpha: 0.3),
-                    icon: const Icon(Icons.chevron_right_rounded),
-                  ),
-                ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CarouselArrow extends StatelessWidget {
+  const _CarouselArrow({
+    required this.buttonKey,
+    required this.semanticLabel,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final Key buttonKey;
+  final String semanticLabel;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      enabled: onPressed != null,
+      child: ExcludeSemantics(
+        child: IconButton(
+          key: buttonKey,
+          tooltip: semanticLabel,
+          onPressed: onPressed,
+          constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+          padding: EdgeInsets.zero,
+          iconSize: 22,
+          color: Colors.white,
+          disabledColor: Colors.white.withValues(alpha: 0.3),
+          icon: Icon(
+            icon,
+            shadows: const [
+              Shadow(
+                color: Color(0xCC17324D),
+                offset: Offset(0, 1),
+                blurRadius: 4,
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -347,7 +350,7 @@ class _PartnerSlideCard extends StatelessWidget {
                   AppSpacing.m,
                   12,
                   AppSpacing.m,
-                  52,
+                  48,
                 ),
                 child: Align(
                   alignment: Alignment.topLeft,

@@ -36,8 +36,10 @@ No continuar la limpieza durante este lote.
   recordatorios honestos por fecha o kilometraje actualizado.
 - Inicio: carrusel manual superior de cuatro campanas locales, borde a borde en
   telefonos y sin mostrar la lamina siguiente. La navegacion vive dentro de la
-  imagen mediante flechas y cuatro indicadores; no hay contador visible ni el
-  antiguo banner inferior. Tres campanas son demos y la cuarta invita a ser
+  imagen mediante flechas transparentes en las esquinas y cuatro circulos, sin
+  capsula ni contador visible. El vehiculo absorbe el espacio variable para que
+  SOAT y Tecnomecanica queden completos sobre la navegacion sin scroll normal.
+  No existe el antiguo banner inferior. Tres campanas son demos y la cuarta invita a ser
   aliado. El formulario real permanece cerrado hasta cumplir HTTPS, privacidad
   versionada y bandeja administrativa.
 - Tramites y cobertura: catalogos versionados con estado y evidencia. No se

@@ -37,10 +37,43 @@ void main() {
   ) async {
     await _pumpCarousel(tester);
 
+    final carousel = find.byKey(const ValueKey('home-partner-carousel'));
+    final controls = find.byKey(
+      const ValueKey('home-partner-carousel-controls'),
+    );
     final previous = find.byKey(const ValueKey('home-partner-previous'));
     final next = find.byKey(const ValueKey('home-partner-next'));
     expect(tester.getSize(previous), const Size(48, 48));
     expect(tester.getSize(next), const Size(48, 48));
+    final carouselBounds = tester.getRect(carousel);
+    expect(
+      tester.getSize(controls),
+      carouselBounds.size,
+      reason: 'Controls should overlay the banner without a central capsule.',
+    );
+    final previousBounds = tester.getRect(previous);
+    final nextBounds = tester.getRect(next);
+    expect(previousBounds.left, closeTo(carouselBounds.left, 0.1));
+    expect(nextBounds.right, closeTo(carouselBounds.right, 0.1));
+    expect(previousBounds.bottom, closeTo(carouselBounds.bottom, 0.1));
+    expect(nextBounds.bottom, closeTo(carouselBounds.bottom, 0.1));
+    final ctaBounds = tester.getRect(
+      find.byKey(const ValueKey('home-partner-cta-automotor')),
+    );
+    expect(
+      ctaBounds.bottom,
+      lessThanOrEqualTo(previousBounds.top),
+      reason: 'The lower arrow targets must not cover the campaign CTA.',
+    );
+
+    for (var index = 0; index < 4; index++) {
+      final dot = tester.widget<AnimatedContainer>(
+        find.byKey(ValueKey('home-partner-dot-$index')),
+      );
+      expect(dot.constraints?.minWidth, dot.constraints?.minHeight);
+      expect(dot.constraints?.minWidth, index == 0 ? 8 : 6);
+      expect((dot.decoration! as BoxDecoration).shape, BoxShape.circle);
+    }
     expect(tester.widget<IconButton>(previous).onPressed, isNull);
     expect(find.bySemanticsLabel('Campaña 1 de 4'), findsOneWidget);
     expect(find.bySemanticsLabel('Campaña anterior'), findsOneWidget);

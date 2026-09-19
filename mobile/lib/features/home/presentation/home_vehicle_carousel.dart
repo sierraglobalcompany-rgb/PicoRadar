@@ -2,7 +2,8 @@ part of 'home_screen.dart';
 
 const _homeCarouselViewportFraction = 0.64;
 const _homeCarouselBaseHeight = 300.0;
-const _homeCarouselMinimumHeight = 208.0;
+const _homeCarouselMinimumHeight = 168.0;
+const _homeCarouselMaximumHeight = 360.0;
 
 double _homeCarouselHeightForLayout(
   BuildContext context,
@@ -14,11 +15,12 @@ double _homeCarouselHeightForLayout(
   if (!availableHeight.isFinite) {
     return _homeCarouselBaseHeight;
   }
-  var minimum = scale >= 1.8
+  final minimum = scale >= 1.8
       ? 320.0
       : scale >= 1.4
       ? 260.0
       : _homeCarouselMinimumHeight;
+  var contentMinimum = minimum;
   if (scale > 1.25) {
     final cardWidth = availableWidth * _homeCarouselViewportFraction - 16;
     final painter = TextPainter(
@@ -44,13 +46,28 @@ double _homeCarouselHeightForLayout(
         cardWidth - 24,
       );
       final needed = plateHeight + painter.height + 168;
-      if (needed > minimum) minimum = needed.ceilToDouble();
+      if (needed > contentMinimum) contentMinimum = needed.ceilToDouble();
     }
     painter.dispose();
   }
+  if (scale > 1.25) {
+    return availableHeight.floorToDouble().clamp(
+      contentMinimum,
+      contentMinimum > _homeCarouselMaximumHeight
+          ? contentMinimum
+          : _homeCarouselMaximumHeight,
+    );
+  }
+
+  final viewportHeight = MediaQuery.sizeOf(context).height;
+  final responsiveTarget =
+      (_homeCarouselMinimumHeight +
+              ((viewportHeight - 780).clamp(0.0, double.infinity) * 0.6))
+          .clamp(_homeCarouselMinimumHeight, _homeCarouselMaximumHeight)
+          .toDouble();
   return availableHeight.floorToDouble().clamp(
-    minimum,
-    minimum > 360 ? minimum : 360.0,
+    _homeCarouselMinimumHeight,
+    responsiveTarget,
   );
 }
 
