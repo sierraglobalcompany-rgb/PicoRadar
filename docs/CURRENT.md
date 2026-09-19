@@ -7,23 +7,38 @@ no modifica aprobaciones del producto.
 
 ## Base de trabajo unica
 - Raiz: C:/Users/felip/Documents/ChatGPT/PicoRadar_ Pico y Placa.
-- Rama local: codex/forensic-alerts; base auditada 82ce6b8.
-- Estado: reparacion y Alertas implementadas, gates automaticos aprobados y APK
-  nueva instalada. Aceptacion fisica en curso; sin merge ni publicacion.
+- Rama local: codex/owner-improvements-integration; base d26ba84.
+- HEAD de codigo integrado: 9c256a5.
+- Estado: mejoras del propietario integradas, gates automaticos aprobados y APK
+  nueva instalada. Aceptacion fisica documental en curso; sin merge ni publicacion.
 - No trabajar en temp/VIAJE-R1-real-planner ni en B03/B04.
 - Checkpoints y recuperacion: docs/WORKSPACE_CONSOLIDATION.md.
 - GSD: .planning/.continue-here.md y .planning/HANDOFF.json.
 
 ## Version instalada
-APK: artifacts/current/apk/PicoRadar-dev-release-scanner-fix-20260919.apk.
-SHA256: A7ABC8D881E814DA68544DBD5472709F6A32F3A0C6C42070B2A957CBE66D21CD.
-Build dev release con APP_ENV=dev, checkpoint ee7a734. Instalacion -r correcta en
-Mi A3 API30 el 2026-09-19 a las 12:38:37 (Bogota); hash de base.apk identico.
-Sin borrado de datos. Centro de Alertas y banner de Seguro capturados fisicamente.
-El usuario confirmo que el escaner ya abre. Se corrigio la eliminacion por R8 del
-constructor de CommonComponentRegistrar; un gate inspecciona ahora el DEX real.
-Guardar/reabrir frente y reverso, autenticacion y alarmas siguen en comprobacion.
+APK: artifacts/current/apk/PicoRadar-dev-release-owner-improvements-20260919.apk.
+SHA256: 703CF65F0852DBEC237B4FA399083BB44BB263E252F1DBFF686676CEB53E0116.
+Build dev release con APP_ENV=dev. Instalacion -r correcta en Mi A3 API30 el
+2026-09-19 a las 15:30:15 (Bogota), sin borrar datos. El usuario ya habia
+confirmado que el escaner ML Kit abre. La captura guiada frente/reverso esta
+implementada y cubierta por pruebas; su ciclo fisico final con tarjeta ficticia
+sigue pendiente de confirmacion.
 No continuar la limpieza durante este lote.
+
+## Mejoras del propietario integradas
+- Conducir: Atrás confirma el cierre de una sesion activa y vuelve a Inicio;
+  GPS abre diagnostico y recuperacion, Voz es alternable y persistente, y el
+  velocimetro usa escala visual de 160 km/h sin ocultar velocidades superiores.
+- Documentos: Cedula, Licencia de conduccion y Licencia de transito admiten
+  frente y reverso, guardado de solo frente y reemplazo atomico por lado o PDF.
+- Apps/Mas: se conserva el origen al volver. Talleres incorpora selector de
+  vehiculo, proximos/vencidos, historial, costos, busqueda GPS/ciudad y
+  recordatorios honestos por fecha o kilometraje actualizado.
+- Inicio: carrusel manual superior de cuatro campanas locales. Tres son demos y
+  la cuarta invita a ser aliado. El formulario real permanece cerrado hasta
+  cumplir HTTPS, privacidad versionada y bandeja administrativa.
+- Tramites y cobertura: catalogos versionados con estado y evidencia. No se
+  presenta como nacional lo pendiente o vencido.
 
 ## Funcionalidad y aceptacion
 La base incluye las mejoras actuales de Inicio/Garaje/Pico, Viaje/Conducir,
@@ -54,9 +69,9 @@ ni activar cambios pendientes de otras ramas como parte de la limpieza.
   en data/sources/osrm/source.json. No cambiar contratos de proveedor.
 
 ## Pendientes en reposo
-- Importacion, guardado/reapertura de captura y autenticacion positiva en Mi A3.
-  Apertura del escaner confirmada por el usuario el 2026-09-19; no equivale a
-  validar todo el ciclo documental. Tests no sustituyen esos gates.
+- Completar en Mi A3 el ciclo fisico frente/reverso con tarjeta ficticia,
+  autenticacion, guardado y reapertura. La apertura del escaner fue confirmada;
+  tests no sustituyen este gate fisico.
 - B04 comparador: fe0d8d4, codex/pending-B04-before-consolidation. No incorporado.
 - Auditoria fresca de 82ce6b8: 2959 pruebas moviles pasan, 11 omitidas; analisis
   limpio. Las 87 fallas historicas ya no se reproducen. Simulacion Conducir:
@@ -83,12 +98,21 @@ por alcance. No se cierran escaneo, autenticacion ni alarmas por pruebas unitari
 La APK dev nueva debe incluir APP_ENV=dev para mostrar Seguro demostrativo;
 produccion mantiene la promocion oculta. No alterar vigencia editorial de datasets.
 
-Verificacion final automatica: 3196 pruebas moviles pasan, 10 omisiones
-condicionales de simulacion; las 11 pruebas de esa suite pasan con su bandera.
-Formato limpio (365 archivos), analisis limpio, 57 pruebas Android nativas y
-493 de servidor (1993 assertions) pasan. Siete configuraciones reales de Seguro
-verificadas; tres pruebas Python de fixtures/rutas pasan. Los 87 fallos historicos
-no son deuda vigente. Handoff: codex/FORENSIC_ALERTS_HANDOFF.md.
+Verificacion final de la integracion: formato limpio (381 archivos), analisis
+limpio, 3238 pruebas moviles pasan y 10 quedan omitidas por condiciones de
+plataforma/simulacion. Las pruebas Android nativas pasan (224 tareas Gradle).
+Servidor: 503 pruebas y 2373 assertions pasan con SQLite habilitado solo para el
+proceso. El validador nacional pasa. Los 87 fallos historicos no se reproducen.
+Handoff principal: codex/OWNER_IMPROVEMENTS_INTEGRATION_HANDOFF.md.
+
+Cobertura vigente declarada: Pico y placa contiene 73 municipios (6 verificados,
+36 condicionales, 2 vencidos y 29 pendientes); solo cinco paquetes afirmativos
+existentes estan habilitados en motor. Fotomultas contiene 360 registros, 67 sin
+velocidad y 13 departamentos/unidades territoriales. Peajes contiene 184
+estaciones y no publica tarifas no comprobadas. Tramites contiene 769 autoridades
+y 1003 filas fuente; solo Bogota y Medellin tienen enlaces directos verificados,
+con 767 entradas pendientes. Estos conteos no equivalen a cobertura nacional
+completa ni a operacion actual confirmada.
 
 ## Invariantes
 Sin cuenta obligatoria; Android primero; Inicio/Garaje/Apps/Viaje/Conducir con
