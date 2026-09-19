@@ -508,6 +508,14 @@ void main() {
           )
           .position;
       final smallHeight = tester.getSize(carousel).height;
+      final vehicleCard = find.byKey(
+        ValueKey('home-vehicle-card-${vehicle.id}'),
+      );
+      final vehicleVisual = find.byKey(
+        ValueKey('home-vehicle-visual-area-${vehicle.id}'),
+      );
+      final smallCardSize = tester.getSize(vehicleCard);
+      final smallVisualSize = tester.getSize(vehicleVisual);
       expect(smallHeight, inInclusiveRange(168, 359));
       expect(position.maxScrollExtent, 0);
       expect(
@@ -518,10 +526,16 @@ void main() {
 
       tester.view.physicalSize = const Size(360, 1000);
       await tester.pumpAndSettle();
-      expect(tester.getSize(carousel).height, greaterThan(smallHeight));
-      expect(tester.getSize(carousel).height, lessThanOrEqualTo(360));
-      expect(tester.widget<PageView>(pageView).controller, same(controller));
-      expect(controller.page, initialPage);
+      final largeHeight = tester.getSize(carousel).height;
+      final largeCardSize = tester.getSize(vehicleCard);
+      final largeVisualSize = tester.getSize(vehicleVisual);
+      final resizedController = tester.widget<PageView>(pageView).controller!;
+      expect(largeHeight, 360);
+      expect(largeHeight, greaterThan(smallHeight));
+      expect(largeCardSize.width, greaterThan(smallCardSize.width));
+      expect(largeVisualSize.width, greaterThan(smallVisualSize.width));
+      expect(largeVisualSize.height, greaterThan(smallVisualSize.height));
+      expect(resizedController.page, initialPage);
       expect(container.read(homeFocusedVehicleIdProvider), vehicle.id);
       expect(position.maxScrollExtent, 0);
       expect(tester.binding.hasScheduledFrame, isFalse);
@@ -1869,7 +1883,10 @@ void main() {
         find.byKey(const ValueKey('home-vehicle-page-view')),
       );
 
-      expect(pageView.controller?.viewportFraction, closeTo(0.64, 0.001));
+      expect(
+        pageView.controller?.viewportFraction,
+        inInclusiveRange(0.64, 0.78),
+      );
       expect(pageView.pageSnapping, isTrue);
       final carouselHeight = tester
           .getSize(find.byKey(const ValueKey('home-vehicle-carousel')))

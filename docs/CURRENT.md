@@ -37,8 +37,10 @@ No continuar la limpieza durante este lote.
 - Inicio: carrusel manual superior de cuatro campanas locales, borde a borde en
   telefonos y sin mostrar la lamina siguiente. La navegacion vive dentro de la
   imagen mediante flechas transparentes en las esquinas y cuatro circulos, sin
-  capsula ni contador visible. El vehiculo absorbe el espacio variable para que
-  SOAT y Tecnomecanica queden completos sobre la navegacion sin scroll normal.
+  capsula ni contador visible. El carrusel del vehiculo absorbe todo el alto
+  restante entre 168 y 360 dp y ensancha su tarjeta central del 64% al 78%,
+  manteniendo foco, placa e imagen completa. SOAT y Tecnomecanica quedan
+  completos sobre la navegacion sin scroll normal.
   No existe el antiguo banner inferior. Tres campanas son demos y la cuarta invita a ser
   aliado. El formulario real permanece cerrado hasta cumplir HTTPS, privacidad
   versionada y bandeja administrativa.

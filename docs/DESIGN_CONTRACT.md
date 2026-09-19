@@ -356,10 +356,13 @@ Referencia: [placa owner](design/reference/plate_owner_20260910.png).
   compartida se conserva para SOAT y RTM. Con texto normal, Inicio no desplaza
   verticalmente en 360x780, 360x800, 390x844, 412x915 y 430x932; con texto
   ampliado mantiene un unico scroll accesible cuando sea necesario.
-- El carrusel de vehiculos es el unico bloque elastico: parte de 168 dp en
-  360x780, alcanza aproximadamente 180 dp en 360x800 y crece de forma continua
-  hasta un maximo de 360 dp. Nombre, placa e imagen `BoxFit.contain` se conservan;
-  una pantalla mas alta no agranda textos, controles ni separaciones.
+- El carrusel de vehiculos es el unico bloque elastico: usa todo el alto real
+  restante entre 168 y 360 dp. Su tarjeta central crece continuamente del 64%
+  al 78% del ancho para que una pantalla mayor aumente tambien el vehiculo
+  visible, no solo el aire vertical. Nombre, placa e imagen `BoxFit.contain` se
+  conservan; textos, controles y separaciones no escalan con la pantalla.
+- La resolucion solicitada para la imagen considera ancho de tarjeta y densidad,
+  entre 360 y 1024 px. Un cambio de tamano conserva vehiculo enfocado y pagina.
 
 ### Auditoria Inicio/Garaje/Pico 2026-09-10
 

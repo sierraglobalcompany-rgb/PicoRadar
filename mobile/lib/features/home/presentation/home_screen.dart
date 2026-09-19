@@ -454,6 +454,8 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
   final _footerLayoutKey = GlobalKey();
   double? _measuredChromeHeight;
   bool _chromeMeasurementScheduled = false;
+  bool _carouselControllerUpdateScheduled = false;
+  double? _pendingCarouselViewportFraction;
 
   bool get _needsPriority =>
       widget.readyForPriority &&
@@ -505,7 +507,7 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
     _syncFocusedVehicle();
     _controller = PageController(
       initialPage: _focusedIndex,
-      viewportFraction: _homeCarouselViewportFraction,
+      viewportFraction: _homeCarouselMinimumViewportFraction,
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -561,6 +563,35 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
     _syncFocusedVehicle();
   }
 
+  void _scheduleCarouselControllerUpdate(double viewportFraction) {
+    if ((_controller.viewportFraction - viewportFraction).abs() < 0.001) {
+      return;
+    }
+    _pendingCarouselViewportFraction = viewportFraction;
+    if (_carouselControllerUpdateScheduled) return;
+    _carouselControllerUpdateScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _carouselControllerUpdateScheduled = false;
+      if (!mounted) return;
+      final target = _pendingCarouselViewportFraction;
+      _pendingCarouselViewportFraction = null;
+      if (target == null ||
+          (_controller.viewportFraction - target).abs() < 0.001) {
+        return;
+      }
+      final previousController = _controller;
+      setState(() {
+        _controller = PageController(
+          initialPage: _focusedIndex,
+          viewportFraction: target,
+        );
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        previousController.dispose();
+      });
+    });
+  }
+
   Future<void> _refreshAutoGpsForCurrentCity() async {
     final state = await ref.read(locationStateProvider.future);
     if (!mounted || state.mode != LocationMode.gpsAuto) {
@@ -593,15 +624,17 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
         final availableHeight = _measuredChromeHeight == null
             ? _homeCarouselMinimumHeight
             : constraints.maxHeight - _measuredChromeHeight!;
-        final carouselHeight = _homeCarouselHeightForLayout(
+        final carouselLayout = _homeCarouselLayoutFor(
           context,
           availableHeight,
           constraints.maxWidth,
           widget.snapshots,
         );
+        _scheduleCarouselControllerUpdate(carouselLayout.viewportFraction);
         final fits =
             _measuredChromeHeight != null &&
-            carouselHeight + _measuredChromeHeight! <= constraints.maxHeight;
+            carouselLayout.height + _measuredChromeHeight! <=
+                constraints.maxHeight;
         return NotificationListener<SizeChangedLayoutNotification>(
           onNotification: (_) {
             _scheduleChromeMeasurement();
@@ -647,7 +680,8 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
                       snapshots: widget.snapshots,
                       focusedIndex: _focusedIndex,
                       onChanged: _setFocusedIndex,
-                      height: carouselHeight,
+                      height: carouselLayout.height,
+                      imageCacheWidth: carouselLayout.imageCacheWidth,
                     ),
                     SizeChangedLayoutNotifier(
                       child: Padding(

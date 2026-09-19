@@ -1,11 +1,24 @@
 part of 'home_screen.dart';
 
-const _homeCarouselViewportFraction = 0.64;
+const _homeCarouselMinimumViewportFraction = 0.64;
+const _homeCarouselMaximumViewportFraction = 0.78;
 const _homeCarouselBaseHeight = 300.0;
 const _homeCarouselMinimumHeight = 168.0;
 const _homeCarouselMaximumHeight = 360.0;
 
-double _homeCarouselHeightForLayout(
+class _HomeVehicleCarouselLayout {
+  const _HomeVehicleCarouselLayout({
+    required this.height,
+    required this.viewportFraction,
+    required this.imageCacheWidth,
+  });
+
+  final double height;
+  final double viewportFraction;
+  final int imageCacheWidth;
+}
+
+_HomeVehicleCarouselLayout _homeCarouselLayoutFor(
   BuildContext context,
   double availableHeight,
   double availableWidth,
@@ -13,16 +26,26 @@ double _homeCarouselHeightForLayout(
 ) {
   final scale = MediaQuery.textScalerOf(context).scale(1);
   if (!availableHeight.isFinite) {
-    return _homeCarouselBaseHeight;
+    return _homeVehicleCarouselLayout(
+      context,
+      height: _homeCarouselBaseHeight,
+      availableWidth: availableWidth,
+    );
   }
   final minimum = scale >= 1.8
       ? 320.0
       : scale >= 1.4
       ? 260.0
       : _homeCarouselMinimumHeight;
+  var height = availableHeight.floorToDouble().clamp(
+    minimum,
+    minimum > _homeCarouselMaximumHeight ? minimum : _homeCarouselMaximumHeight,
+  );
   var contentMinimum = minimum;
   if (scale > 1.25) {
-    final cardWidth = availableWidth * _homeCarouselViewportFraction - 16;
+    final progress = _homeCarouselGrowthProgress(height);
+    final viewportFraction = _homeCarouselViewportFractionFor(progress);
+    final cardWidth = availableWidth * viewportFraction - 16;
     final painter = TextPainter(
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
@@ -49,26 +72,51 @@ double _homeCarouselHeightForLayout(
       if (needed > contentMinimum) contentMinimum = needed.ceilToDouble();
     }
     painter.dispose();
-  }
-  if (scale > 1.25) {
-    return availableHeight.floorToDouble().clamp(
+    height = availableHeight.floorToDouble().clamp(
       contentMinimum,
       contentMinimum > _homeCarouselMaximumHeight
           ? contentMinimum
           : _homeCarouselMaximumHeight,
     );
   }
-
-  final viewportHeight = MediaQuery.sizeOf(context).height;
-  final responsiveTarget =
-      (_homeCarouselMinimumHeight +
-              ((viewportHeight - 780).clamp(0.0, double.infinity) * 0.6))
-          .clamp(_homeCarouselMinimumHeight, _homeCarouselMaximumHeight)
-          .toDouble();
-  return availableHeight.floorToDouble().clamp(
-    _homeCarouselMinimumHeight,
-    responsiveTarget,
+  return _homeVehicleCarouselLayout(
+    context,
+    height: height,
+    availableWidth: availableWidth,
   );
+}
+
+_HomeVehicleCarouselLayout _homeVehicleCarouselLayout(
+  BuildContext context, {
+  required double height,
+  required double availableWidth,
+}) {
+  final progress = _homeCarouselGrowthProgress(height);
+  final viewportFraction = _homeCarouselViewportFractionFor(progress);
+  final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+  final cardWidth = availableWidth * viewportFraction;
+  final imageCacheWidth = (cardWidth * devicePixelRatio).ceil().clamp(
+    360,
+    1024,
+  );
+  return _HomeVehicleCarouselLayout(
+    height: height,
+    viewportFraction: viewportFraction,
+    imageCacheWidth: imageCacheWidth,
+  );
+}
+
+double _homeCarouselGrowthProgress(double height) {
+  return ((height - _homeCarouselMinimumHeight) /
+          (_homeCarouselMaximumHeight - _homeCarouselMinimumHeight))
+      .clamp(0.0, 1.0);
+}
+
+double _homeCarouselViewportFractionFor(double progress) {
+  return _homeCarouselMinimumViewportFraction +
+      ((_homeCarouselMaximumViewportFraction -
+              _homeCarouselMinimumViewportFraction) *
+          progress);
 }
 
 class _VehicleCarousel extends StatelessWidget {
@@ -78,6 +126,7 @@ class _VehicleCarousel extends StatelessWidget {
     required this.focusedIndex,
     required this.onChanged,
     required this.height,
+    required this.imageCacheWidth,
   });
 
   final PageController controller;
@@ -85,6 +134,7 @@ class _VehicleCarousel extends StatelessWidget {
   final int focusedIndex;
   final ValueChanged<int> onChanged;
   final double height;
+  final int imageCacheWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -111,6 +161,7 @@ class _VehicleCarousel extends StatelessWidget {
                   child: _HomeVehicleCard(
                     snapshot: snapshots[index],
                     focused: index == focusedIndex,
+                    imageCacheWidth: imageCacheWidth,
                     onTap: () => context.push(
                       '/garage/vehicle/${snapshots[index].vehicle.id}',
                     ),
@@ -144,11 +195,13 @@ class _HomeVehicleCard extends StatelessWidget {
   const _HomeVehicleCard({
     required this.snapshot,
     required this.focused,
+    required this.imageCacheWidth,
     required this.onTap,
   });
 
   final HomeVehicleSnapshot snapshot;
   final bool focused;
+  final int imageCacheWidth;
   final VoidCallback onTap;
 
   @override
@@ -219,11 +272,16 @@ class _HomeVehicleCard extends StatelessWidget {
                 ),
               ),
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: _GenericVehicleVisual(
-                    vehicle: snapshot.vehicle,
-                    useProductionAsset: true,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Padding(
+                    key: ValueKey('home-vehicle-visual-area-${vehicle.id}'),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _GenericVehicleVisual(
+                      vehicle: snapshot.vehicle,
+                      useProductionAsset: true,
+                      cacheWidth: imageCacheWidth,
+                    ),
                   ),
                 ),
               ),
@@ -245,17 +303,19 @@ class _GenericVehicleVisual extends StatelessWidget {
   const _GenericVehicleVisual({
     required this.vehicle,
     this.useProductionAsset = false,
+    this.cacheWidth = 360,
   });
 
   final VehicleProfile vehicle;
   final bool useProductionAsset;
+  final int cacheWidth;
 
   @override
   Widget build(BuildContext context) {
     if (useProductionAsset) {
       return VehicleVisualImage(
         vehicle: vehicle,
-        cacheWidth: 360,
+        cacheWidth: cacheWidth,
         fallbackBuilder: (_) => _GenericVehicleVisual(vehicle: vehicle),
       );
     }
