@@ -83,6 +83,7 @@ class _ShellBranchState {
 
 class _AppShellState extends ConsumerState<AppShell> {
   bool _launcherOpen = false;
+  AppsLauncherMode _launcherMode = AppsLauncherMode.primary;
   bool _branchEntryScheduled = false;
   bool _drivingExitPending = false;
 
@@ -170,6 +171,8 @@ class _AppShellState extends ConsumerState<AppShell> {
                   vehicleId: _launcherVehicleId(),
                   onDismiss: _closeLauncher,
                   onNavigate: _openLauncherLocation,
+                  mode: _launcherMode,
+                  onModeChanged: (mode) => setState(() => _launcherMode = mode),
                 ),
               ),
             ],
@@ -188,7 +191,10 @@ class _AppShellState extends ConsumerState<AppShell> {
                       keyName: tab.name,
                     ),
                 ],
-                currentIndex: _launcherOpen
+                currentIndex:
+                    _launcherOpen ||
+                        GoRouterState.of(context).uri.path
+                            .startsWith('${AppRoute.apps.path}/')
                     ? AppTab.apps.index
                     : widget.navigationShell.currentIndex,
                 onSelect: _selectTab,
@@ -208,7 +214,12 @@ class _AppShellState extends ConsumerState<AppShell> {
       ref.read(walletSessionProvider).lock();
     }
     if (index == AppTab.apps.index) {
-      setState(() => _launcherOpen = !_launcherOpen);
+      setState(() {
+        if (!_launcherOpen) {
+          _launcherMode = AppsLauncherMode.primary;
+        }
+        _launcherOpen = !_launcherOpen;
+      });
       return;
     }
 
@@ -282,15 +293,38 @@ class _AppShellState extends ConsumerState<AppShell> {
     setState(() => _launcherOpen = false);
   }
 
-  void _openLauncherLocation(String location) {
+  Future<void> _openLauncherLocation(String location) async {
+    final origin = AppLaunchOrigin(
+      tab: AppTab.values[widget.navigationShell.currentIndex],
+      route: GoRouterState.of(context).uri.toString(),
+      launcherMode: _launcherMode,
+    );
     _closeLauncher();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
+    if (!location.startsWith('${AppRoute.apps.path}/')) {
       context.go(location);
+      return;
+    }
+    await context.push<void>(location);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _launcherMode = origin.launcherMode;
+      _launcherOpen = true;
     });
   }
+}
+
+class AppLaunchOrigin {
+  const AppLaunchOrigin({
+    required this.tab,
+    required this.route,
+    required this.launcherMode,
+  });
+
+  final AppTab tab;
+  final String route;
+  final AppsLauncherMode launcherMode;
 }
 
 bool _isPicoShellLocation(String path) {

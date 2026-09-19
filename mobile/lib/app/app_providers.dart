@@ -19,6 +19,7 @@ import '../features/garage/data/vehicle_repository.dart';
 import '../features/home/data/home_banner_config.dart';
 import '../features/maintenance/data/maintenance_record.dart';
 import '../features/maintenance/data/maintenance_repository.dart';
+import '../features/maintenance/application/maintenance_reminders.dart';
 import '../features/vehicle_status/data/vehicle_obligation_store.dart';
 import '../features/vehicle_status/data/tax_catalog.dart';
 import '../features/vehicle_status/data/tax_catalog_store.dart';
@@ -500,6 +501,59 @@ final obligationNotificationSyncProvider = FutureProvider<void>((ref) async {
       return;
     }
     await scheduler.rescheduleObligationNotifications(plans);
+  } on MissingPluginException {
+    return;
+  }
+});
+
+final maintenanceNotificationSyncProvider = FutureProvider<void>((ref) async {
+  var active = true;
+  ref.onDispose(() => active = false);
+  ref.watch(bogotaDateProvider);
+  final preferences = await ref.watch(picoAlertPreferencesProvider.future);
+  if (!active) return;
+  final scheduler = ref.watch(picoNotificationSchedulerProvider);
+  if (!preferences.permissionGranted) {
+    try {
+      await scheduler.cancelMaintenanceNotifications();
+    } on MissingPluginException {
+      return;
+    }
+    return;
+  }
+  final vehicles = await ref.watch(vehicleListProvider.future);
+  if (!active) return;
+  final reminders = <MaintenanceReminder>[];
+  for (final vehicle in vehicles) {
+    final records = await ref
+        .watch(maintenanceRepositoryProvider)
+        .listByVehicle(vehicle.id);
+    if (!active) return;
+    final latestOdometer = records
+        .map((record) => record.odometer)
+        .whereType<int>()
+        .fold<int?>(null, (latest, value) {
+          if (latest == null || value > latest) return value;
+          return latest;
+        });
+    reminders.addAll(
+      planMaintenanceReminders(
+        vehicleId: vehicle.id,
+        records: records,
+        now: ref.read(bogotaNowProvider),
+        latestOdometer: latestOdometer,
+      ),
+    );
+  }
+  try {
+    await scheduler.initialize();
+    if (!active) return;
+    await scheduler.rescheduleMaintenanceNotifications(
+      reminders,
+      platesByVehicleId: {
+        for (final vehicle in vehicles) vehicle.id: vehicle.plate,
+      },
+    );
   } on MissingPluginException {
     return;
   }

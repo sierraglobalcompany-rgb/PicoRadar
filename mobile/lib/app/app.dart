@@ -46,6 +46,7 @@ class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
         _refreshNotificationPermission();
         ref.invalidate(picoNotificationSyncProvider);
         ref.invalidate(obligationNotificationSyncProvider);
+        ref.invalidate(maintenanceNotificationSyncProvider);
       },
     );
     final binding = WidgetsBinding.instance;
@@ -84,6 +85,14 @@ class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
         obligationNotificationSyncProvider,
         (previous, next) =>
             _reportSecondaryFailure('obligation_notifications', previous, next),
+      );
+      ref.listen(
+        maintenanceNotificationSyncProvider,
+        (previous, next) => _reportSecondaryFailure(
+          'maintenance_notifications',
+          previous,
+          next,
+        ),
       );
       ref.listen(
         datasetSyncRunProvider,
@@ -188,6 +197,7 @@ class _PicoRadarAppState extends ConsumerState<PicoRadarApp> {
         }
         ref.invalidate(picoNotificationSyncProvider);
         ref.invalidate(obligationNotificationSyncProvider);
+        ref.invalidate(maintenanceNotificationSyncProvider);
       } on MissingPluginException {
         return;
       } catch (error, stack) {

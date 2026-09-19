@@ -14,6 +14,10 @@ import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/features/maintenance/data/maintenance_record.dart';
 import 'package:picoradar/features/maintenance/data/maintenance_repository.dart';
 import 'package:picoradar/features/maintenance/presentation/maintenance_screen.dart';
+import 'package:picoradar/features/location/application/location_controller.dart';
+import 'package:picoradar/features/location/platform/device_location_gateway.dart';
+import 'package:picoradar/features/onboarding/data/registration_city_catalog.dart';
+import 'package:picoradar/features/vehicle_status/platform/external_launcher.dart';
 
 import '../../services/presentation/v01b_tools_test_font.dart';
 
@@ -120,24 +124,71 @@ void main() {
     });
 
     testWidgets(
-      'missing vehicleId shows maintenance garage CTA without query',
+      'selects another vehicle without changing the garage favorite',
+      (tester) async {
+        await database
+            .into(database.vehicles)
+            .insert(VehiclesCompanion.insert(id: 'vehicle-2', plate: 'XYZ987'));
+        await repository.create(
+          vehicleId: 'vehicle-2',
+          serviceDate: DateTime(2026, 9, 10),
+          type: 'Frenos',
+          description: 'Pastillas delanteras',
+        );
+        await _pump(tester, database, repository);
+
+        await tester.tap(
+          find.byKey(const ValueKey('maintenance-vehicle-selector')),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('XYZ987').last);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Frenos'), findsOneWidget);
+        expect(find.text('Pastillas delanteras'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('maintenance-summary')),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('opens a nearby workshop search with a punctual GPS reading', (
+      tester,
+    ) async {
+      final launcher = _FakeLauncher();
+      await _pump(
+        tester,
+        database,
+        repository,
+        locationGateway: const _SuccessfulLocationGateway(),
+        launcher: launcher,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('maintenance-find-workshop')));
+      await tester.pumpAndSettle();
+
+      expect(launcher.opened, hasLength(1));
+      expect(
+        Uri.parse(launcher.opened.single).queryParameters['query'],
+        'taller mecánico cerca de 6.244200,-75.581200',
+      );
+    });
+
+    testWidgets(
+      'missing vehicleId selects the first available vehicle locally',
       (tester) async {
         final repository = _FakeMaintenanceRepository(database);
 
         await _pump(tester, database, repository, vehicleId: null);
 
-        expect(find.text('Talleres y mantenimiento'), findsWidgets);
+        expect(find.text('Talleres y mantenimiento'), findsOneWidget);
         expect(
-          find.byKey(const ValueKey('maintenance-missing-vehicle')),
+          find.byKey(const ValueKey('maintenance-vehicle-selector')),
           findsOneWidget,
         );
-        expect(
-          find.byKey(const ValueKey('maintenance-go-garage')),
-          findsOneWidget,
-        );
-        expect(find.text('Ir a Garaje'), findsOneWidget);
-        expect(find.text('Documentos'), findsNothing);
-        expect(repository.listedVehicleIds, isEmpty);
+        expect(find.text('ABC123'), findsOneWidget);
+        expect(repository.listedVehicleIds, contains('vehicle-1'));
       },
     );
 
@@ -359,6 +410,8 @@ Future<void> _pump(
   MaintenanceRepository repository, {
   String? vehicleId = 'vehicle-1',
   ThemeData? theme,
+  DeviceLocationGateway? locationGateway,
+  ExternalLauncher? launcher,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -366,6 +419,13 @@ Future<void> _pump(
         appDatabaseProvider.overrideWithValue(database),
         appPreferencesProvider.overrideWithValue(_MemoryPreferences()),
         maintenanceRepositoryProvider.overrideWithValue(repository),
+        if (locationGateway != null)
+          deviceLocationGatewayProvider.overrideWithValue(locationGateway),
+        if (launcher != null)
+          externalLauncherProvider.overrideWithValue(launcher),
+        registrationCityCatalogProvider.overrideWithValue(
+          const AsyncData(RegistrationCityCatalog(records: [])),
+        ),
       ],
       child: MaterialApp(
         theme: theme,
@@ -559,5 +619,49 @@ class _MemoryPreferences implements AppPreferences {
   @override
   Future<void> setString(String key, String value) async {
     values[key] = value;
+  }
+}
+
+class _SuccessfulLocationGateway implements DeviceLocationGateway {
+  const _SuccessfulLocationGateway();
+
+  @override
+  Future<DeviceLocationPermission> checkPermission() async =>
+      DeviceLocationPermission.granted;
+
+  @override
+  Future<DeviceLocationResult> getCurrentPosition() async =>
+      const DeviceLocationSuccess(
+        DeviceLocationPoint(
+          latitude: 6.2442,
+          longitude: -75.5812,
+          accuracyMeters: 12,
+        ),
+      );
+
+  @override
+  Future<bool> isLocationServiceEnabled() async => true;
+
+  @override
+  Future<bool> openAppSettings() async => true;
+
+  @override
+  Future<bool> openLocationSettings() async => true;
+
+  @override
+  Future<DeviceLocationPermission> requestPermission() async =>
+      DeviceLocationPermission.granted;
+}
+
+class _FakeLauncher implements ExternalLauncher {
+  final opened = <String>[];
+
+  @override
+  Future<bool> callPhone(String phone) async => true;
+
+  @override
+  Future<bool> openExternal(String uri) async {
+    opened.add(uri);
+    return true;
   }
 }

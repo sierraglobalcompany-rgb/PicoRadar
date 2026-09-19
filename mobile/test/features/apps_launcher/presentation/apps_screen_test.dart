@@ -391,6 +391,33 @@ void main() {
     expect(find.byType(DocumentsScreen), findsNothing);
   });
 
+  testWidgets(
+    'Back from Maintenance restores the Más launcher over its origin',
+    (tester) async {
+      await _createVehicle(harness, plate: 'TLL456');
+      await _openSecondaryModuleFromApps(tester, harness, 'talleres');
+
+      expect(find.byType(MaintenanceScreen), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MaintenanceScreen), findsNothing);
+      expect(
+        find.byKey(const ValueKey('apps-launcher-overlay')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('apps-launcher-more-list')),
+        findsOneWidget,
+      );
+      expect(_selectedBottomNavLabels(tester), contains('Apps'));
+      await tester.tap(find.byKey(const ValueKey('tab-apps')));
+      await tester.pumpAndSettle();
+      expect(_selectedBottomNavLabels(tester), contains('Inicio'));
+    },
+  );
+
   testWidgets('Apps Más opens Trip from Peajes y estado vial', (tester) async {
     await _openSecondaryModuleFromApps(tester, harness, 'peajes_estado_vial');
 

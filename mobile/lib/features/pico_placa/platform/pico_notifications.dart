@@ -6,6 +6,7 @@ import 'package:timezone/timezone.dart' as timezone;
 
 import '../../garage/data/vehicle_profile.dart';
 import '../../garage/presentation/vehicle_display.dart';
+import '../../maintenance/application/maintenance_reminders.dart';
 import '../../alerts/data/alert_settings.dart';
 import '../../alerts/platform/alert_alarm_gateway.dart';
 import '../../alerts/platform/notification_plate.dart';
@@ -161,8 +162,10 @@ class PicoNotificationScheduler {
   void Function(String route)? _onRoute;
   String? _lastPlanSignature;
   String? _lastObligationPlanSignature;
+  String? _lastMaintenancePlanSignature;
   Future<void> _picoQueue = Future<void>.value();
   Future<void> _obligationQueue = Future<void>.value();
+  Future<void> _maintenanceQueue = Future<void>.value();
 
   Future<void> initialize({void Function(String route)? onRoute}) async {
     if (onRoute != null) {
@@ -262,6 +265,13 @@ class PicoNotificationScheduler {
 
   Future<void> _enqueueObligations(Future<void> Function() action) {
     return _obligationQueue = _obligationQueue.then(
+      (_) => action(),
+      onError: (Object error, StackTrace stack) => action(),
+    );
+  }
+
+  Future<void> _enqueueMaintenance(Future<void> Function() action) {
+    return _maintenanceQueue = _maintenanceQueue.then(
       (_) => action(),
       onError: (Object error, StackTrace stack) => action(),
     );
@@ -455,6 +465,87 @@ class PicoNotificationScheduler {
     final ids = obligationPendingNotificationIdsToCancel(pending);
     for (final id in ids) {
       await _plugin.cancel(id: id);
+    }
+  }
+
+  Future<void> rescheduleMaintenanceNotifications(
+    List<MaintenanceReminder> reminders, {
+    required Map<String, String> platesByVehicleId,
+  }) {
+    final plans = reminders
+        .where(
+          (reminder) =>
+              reminder.kind == MaintenanceReminderKind.date &&
+              reminder.scheduledAt != null,
+        )
+        .toList(growable: false);
+    return _enqueueMaintenance(() async {
+      if (plans.isEmpty) {
+        await cancelMaintenanceNotifications();
+        return;
+      }
+      if (await areNotificationsEnabled() == false) {
+        await cancelMaintenanceNotifications();
+        return;
+      }
+      final signature = plans
+          .map((plan) => '${plan.id}/${plan.scheduledAt!.toIso8601String()}')
+          .join('|');
+      if (_lastMaintenancePlanSignature == signature &&
+          await _plansStillPending({
+            for (final plan in plans) plan.id: false,
+          })) {
+        return;
+      }
+      await _cancelPluginMaintenanceNotifications();
+      for (final plan in plans) {
+        final date = plan.scheduledAt!;
+        await _plugin.zonedSchedule(
+          id: plan.id,
+          title: 'Mantenimiento próximo',
+          body:
+              '${platesByVehicleId[plan.vehicleId] ?? 'Tu vehículo'} · ${plan.title}',
+          scheduledDate: bogotaScheduledTime(
+            date: date,
+            minuteOfDay: date.hour * 60 + date.minute,
+          ),
+          notificationDetails: const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'maintenance_reminders',
+              'Mantenimiento del vehículo',
+              channelDescription:
+                  'Recordatorios locales de próximos mantenimientos.',
+              importance: Importance.defaultImportance,
+              priority: Priority.defaultPriority,
+              visibility: NotificationVisibility.private,
+            ),
+            iOS: DarwinNotificationDetails(),
+          ),
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          payload: Uri(
+            path: '/apps/module/talleres',
+            queryParameters: {
+              'vehicleId': plan.vehicleId,
+              'source': 'maintenance_reminder',
+            },
+          ).toString(),
+        );
+      }
+      _lastMaintenancePlanSignature = signature;
+    });
+  }
+
+  Future<void> cancelMaintenanceNotifications() async {
+    _lastMaintenancePlanSignature = null;
+    await _cancelPluginMaintenanceNotifications();
+  }
+
+  Future<void> _cancelPluginMaintenanceNotifications() async {
+    final pending = await _plugin.pendingNotificationRequests();
+    for (final request in pending) {
+      if (request.id >= 0x20000000 && request.id < 0x40000000) {
+        await _plugin.cancel(id: request.id);
+      }
     }
   }
 
