@@ -245,6 +245,28 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('F10 dismissed saving sheet refreshes its vehicle list', (
+      tester,
+    ) async {
+      final repository = _FakeMaintenanceRepository(database)
+        ..createCompleter = Completer<void>();
+      await _pump(tester, database, repository);
+      await tester.tap(find.byKey(const ValueKey('maintenance-add')));
+      await tester.pumpAndSettle();
+      await _fillRequiredEditorFields(tester);
+      await tester.tap(find.byKey(const ValueKey('maintenance-save')));
+      await tester.pump();
+      Navigator.of(
+        tester.element(find.byKey(const ValueKey('maintenance-editor'))),
+      ).pop();
+      await tester.pumpAndSettle();
+      repository.createCompleter!.complete();
+      await tester.pumpAndSettle();
+      expect(repository.records, hasLength(1));
+      expect(find.text('Cambio de aceite y filtros'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('double tap creates exactly one record', (tester) async {
       final repository = _FakeMaintenanceRepository(database)
         ..createCompleter = Completer<void>();

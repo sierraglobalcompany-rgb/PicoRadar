@@ -586,6 +586,7 @@ class _MaintenanceEditorSheetState
 
     final repository = ref.read(maintenanceRepositoryProvider);
     final record = widget.record;
+    final container = ProviderScope.containerOf(context, listen: false);
     setState(() => _saving = true);
     try {
       final odometer = _optionalInt(_odometerController.text);
@@ -627,6 +628,10 @@ class _MaintenanceEditorSheetState
         ),
       );
       return;
+    }
+    final recordsProvider = maintenanceRecordsProvider(widget.vehicleId);
+    if (container.exists(recordsProvider)) {
+      container.invalidate(recordsProvider);
     }
     if (!mounted) {
       return;
