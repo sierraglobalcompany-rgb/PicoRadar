@@ -382,7 +382,7 @@ void main() {
     await _openSecondaryModuleFromApps(tester, harness, 'talleres');
 
     expect(find.byType(MaintenanceScreen), findsOneWidget);
-    expect(find.text('Talleres y mantenimiento'), findsWidgets);
+    expect(find.text('Talleres'), findsWidgets);
     expect(
       find.byKey(const ValueKey('maintenance-missing-vehicle')),
       findsNothing,

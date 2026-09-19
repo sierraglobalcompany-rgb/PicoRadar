@@ -118,7 +118,7 @@ void main() {
     testWidgets('shows visible title and empty state', (tester) async {
       await _pump(tester, database, repository);
 
-      expect(find.text('Talleres y mantenimiento'), findsOneWidget);
+      expect(find.text('Talleres'), findsOneWidget);
       expect(find.byKey(const ValueKey('maintenance-empty')), findsOneWidget);
       expect(find.text('Sin registros todavía'), findsOneWidget);
     });
@@ -182,7 +182,7 @@ void main() {
 
         await _pump(tester, database, repository, vehicleId: null);
 
-        expect(find.text('Talleres y mantenimiento'), findsOneWidget);
+        expect(find.text('Talleres'), findsOneWidget);
         expect(
           find.byKey(const ValueKey('maintenance-vehicle-selector')),
           findsOneWidget,

@@ -41,7 +41,7 @@ class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
     final selectedVehicleId = _resolveVehicleId(availableVehicles);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Talleres y mantenimiento'),
+        title: const Text('Talleres'),
         actions: [
           IconButton(
             key: const ValueKey('maintenance-find-workshop'),
