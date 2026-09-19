@@ -111,7 +111,10 @@ void main() {
       await _until(tester, () => remove.evaluate().isNotEmpty);
       await tester.tap(remove);
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(AlertDialog, 'Eliminar copia'), findsOneWidget);
+      expect(
+        find.widgetWithText(AlertDialog, 'Eliminar copia'),
+        findsOneWidget,
+      );
       harness.router.go('/other');
       await tester.pumpAndSettle();
       expect(find.byType(AlertDialog, skipOffstage: false), findsNothing);
@@ -385,7 +388,10 @@ void main() {
       final recovery = find.byType(AlertDialog);
       expect(recovery, findsOneWidget);
       expect(find.text('Reintentar'), findsOneWidget);
-      expect(find.textContaining('C\u00f3digo: platform_failed'), findsOneWidget);
+      expect(
+        find.textContaining('C\u00f3digo: platform_failed'),
+        findsOneWidget,
+      );
       expect(find.textContaining('scanner unavailable'), findsNothing);
       expect(harness.store.documents, isEmpty);
       expect(harness.session.accessAllowed, isTrue);

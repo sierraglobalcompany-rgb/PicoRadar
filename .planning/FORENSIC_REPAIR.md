@@ -79,6 +79,58 @@ recovery controls; audio replacement releases previous resources; asynchronous
 playback failures and unattended alarms become visible. These are active repairs,
 not deferred cleanup. Follow-up tests must pass before final build.
 
+Follow-up checkpoints: 32342ed / cef3f32 (identity retention and mixed channels),
+1fb54c6 (OFF before obligation), b432f4e (late saves/permission recovery/observed
+playback), fb74477 (native resource generations, silent missed notice and status).
+Native worker verification: 46 JVM tests; direct Android SDK compilation. This
+does not replace integrated Gradle tests or physical sound/lifecycle checks.
+
+## First integrated gate, 2026-09-19
+
+- Format: 365 files, zero changes. Analyze: no issues.
+- Full serial suite stopped after 1730 passes, 10 skips and 3 failures when a
+  Home test awaited an unmocked new status channel with a frozen fake clock.
+  This is an incomplete run, not a passing global result.
+- Two Purchase Documents tests expected an off-route dialog to remain and the
+  previous scanner snackbar. Keep owner-isolation/import assertions while
+  adapting to retired modals and the new retry/import dialog.
+- Home mocks must implement the new idle status response explicitly; preserve
+  actual permission and persistence assertions, not weaken the contract.
+- Read-only native cross-review found one further race: background can discard
+  a status reply after its failure latch is consumed. Recover testState.failed
+  on resume and exercise that sequence before final build.
+- First-run evidence: artifacts/current/forensic/integration-first-run-3-failures.log.
+  A fresh complete run is required after the narrow corrections.
+
+Corrections: e2908ef mocks the Home status channel and retains permission checks;
+a134d90 covers consumed error/background/resume and stronger purchase modal/import
+checks. Second complete run: 3191 pass / 10 skip / 2 fail (diagnostic still expected
+schema8; insurance editor test omitted the new authorization fixture). Settings now
+expects schema9 with all no-PII assertions intact; 36 Settings tests pass. 2013454
+replaces the editor fixture with four owner/auth-success/cancel cases, 18 tests pass.
+No product protection was bypassed to fix either expectation. Second-run log:
+artifacts/current/forensic/integration-second-run-2-failures.log.
+
+Integrated Android gate: :app:testDevDebugUnitTest --offline --console=plain,
+57 tests / 0 failures / 0 errors / 0 skips. Warnings concern deprecated Locale,
+legacy notification priority and Gradle10 compatibility; current build succeeds.
+Final full Flutter rerun is required after these test-only corrections.
+
+## Final automated checkpoint, 2026-09-19
+
+- Format: 365 files / zero changes. Analyze: no issues. Diff whitespace check clean.
+- Full suite: 3196 pass / 10 conditional simulation skips / zero failures (5m56s).
+- Explicit PICORADAR_DRIVING_SIMULATION=true regional session suite: 11 pass.
+- Integrated Android: 57 pass, zero failures/errors/skips. Server: 493 pass,
+  1993 assertions with SQLite enabled only for that PHP invocation.
+- Logs: artifacts/current/forensic/final-*.log. The two earlier failing runs
+  remain evidence of corrected test integration, not current unresolved failures.
+- The status table above lists acceptance criteria, not a claim of physical
+  completion. Code/test repairs are implemented; scanner reproduction, wallet
+  authentication/navigation, notification privacy and alarm operation still need
+  new-APK device checks. F20 editorial freshness/CDN remains external and open.
+- No source cleanup, external-project edits, merge or publication performed.
+
 ## Dataset/config audit
 
 Bundled restrictions version 2026.09.10-r4-a, inspected 2026-09-19. Manizales car

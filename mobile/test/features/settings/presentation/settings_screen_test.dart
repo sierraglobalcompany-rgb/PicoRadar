@@ -975,7 +975,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('settings-copy-diagnostic')));
     await tester.pumpAndSettle();
 
-    expect(clipboardText, contains('schemaVersion=8'));
+    expect(clipboardText, contains('schemaVersion=9'));
     expect(clipboardText, contains('cameraDatasetVersion=2026.08.31-ansv'));
     expect(clipboardText, contains('cameraDatasetCount=360'));
     expect(clipboardText, isNot(contains('ABC123')));
