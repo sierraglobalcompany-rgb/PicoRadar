@@ -6,7 +6,8 @@ import java.io.InputStream
 import java.io.OutputStream
 
 internal object AlertCodec {
-    private const val MAGIC = 0x50524131
+    private const val LEGACY_MAGIC = 0x50524131
+    private const val MAGIC = 0x50524132
 
     fun write(state: AlertProjection, output: OutputStream) {
         val stream = DataOutputStream(output)
@@ -21,6 +22,7 @@ internal object AlertCodec {
             stream.writeUTF(it.route)
             stream.writeUTF(it.token)
             stream.writeInt(it.phase.ordinal)
+            stream.writeLong(it.originalAt)
         }
         stream.flush()
     }
@@ -28,17 +30,20 @@ internal object AlertCodec {
     fun read(input: InputStream): AlertProjection {
         try {
             val stream = DataInputStream(input)
-            if (stream.readInt() != MAGIC) throw AlertFailure("PROJECTION_CORRUPT")
+            val version = stream.readInt()
+            if (version != MAGIC && version != LEGACY_MAGIC) throw AlertFailure("PROJECTION_CORRUPT")
             val count = stream.readInt()
             if (count !in 0..AlertRules.MAX_EVENTS + 1) throw AlertFailure("PROJECTION_CORRUPT")
             val failure = stream.readUTF().ifEmpty { null }
             if (failure != null && !Regex("[A-Z_]{1,64}").matches(failure)) throw AlertFailure("PROJECTION_CORRUPT")
             val events = (0 until count).map {
-                val event = AlertEvent(stream.readInt(), stream.readUTF(), stream.readLong(),
+                val raw = AlertEvent(stream.readInt(), stream.readUTF(), stream.readLong(),
                     stream.readLong(), stream.readUTF(), stream.readUTF(), AlertPhase.entries[stream.readInt()])
+                val event = if (version == MAGIC) raw.copy(originalAt = stream.readLong()) else raw
                 if (event.scope !in setOf("pico", "obligations", "test") ||
                     (if (event.scope == "test") event.id != AlertRules.TEST_ID else event.id <= 0) ||
-                    event.at < 0 || event.expiresAt <= event.at || AlertRules.route(event.route) != event.route ||
+                    event.originalAt < 0 || event.originalAt > event.at || event.expiresAt <= event.at ||
+                    AlertRules.route(event.route) != event.route ||
                     !Regex("[a-zA-Z0-9-]{1,64}").matches(event.token)) throw AlertFailure("PROJECTION_CORRUPT")
                 event
             }

@@ -18,6 +18,7 @@ class AlertEngineTest {
     }
     private class FakeAlarms : AlertAlarms {
         val scheduled = mutableMapOf<Int, AlertEvent>()
+        val missed = mutableListOf<AlertEvent>()
         var denied = false
         var failId: Int? = null
         override fun requireAccess() { if (denied) throw AlertFailure("EXACT_ACCESS_REQUIRED") }
@@ -26,6 +27,7 @@ class AlertEngineTest {
             scheduled[event.id] = event
         }
         override fun cancel(event: AlertEvent) { scheduled.remove(event.id) }
+        override fun missed(event: AlertEvent) { missed.add(event) }
     }
 
     @Test fun replaceAndCancelOnlyOwnScope() {
@@ -120,7 +122,8 @@ class AlertEngineTest {
         store.state = AlertProjection(listOf(event(7).copy(phase = AlertPhase.RINGING),
             event(8).copy(phase = AlertPhase.STAGED), event(9), event(10, at = now - 1)))
         engine.recoverInterrupted()
-        assertEquals(listOf(9, 10), store.state.events.map { it.id })
+        assertEquals(listOf(9, 10), store.state.events.filter { it.phase != AlertPhase.MISSED }.map { it.id })
+        assertEquals(listOf(7), alarms.missed.map { it.id })
         assertEquals("ALARM_INTERRUPTED", store.state.failure)
         assertNotNull(engine.claim(10, "token-10"))
     }
@@ -226,5 +229,182 @@ class AlertEngineTest {
         assertEquals("/apps/module/soat?vehicleId=owner_2", ringing.route)
         engine.snooze(ringing.id, ringing.token)
         assertEquals(ringing.route, alarms.scheduled[7]?.route)
+    }
+
+    @Test fun reconcileRetainsRingingAndSnoozeButOwnerEditCancels() {
+        var clock = now
+        val store = MemoryStore(); val alarms = FakeAlarms(); val engine = AlertEngine(store, alarms) { clock }
+        val original = event(7)
+        engine.reschedule("pico", listOf(original))
+        clock += 1000
+        engine.claim(7, original.token)
+        assertEquals(listOf(7), engine.reschedule("pico", listOf(original.copy(token = "new"))))
+        assertEquals(AlertPhase.RINGING, engine.find(7, original.token)?.phase)
+        engine.snooze(7, original.token)
+        val snoozed = store.state.events.single()
+        clock += 1000
+        assertEquals(listOf(7), engine.reschedule("pico", listOf(original)))
+        assertEquals(snoozed, store.state.events.single())
+        assertEquals(listOf(7), engine.pending())
+        engine.reschedule("pico", listOf(original.copy(route = "/pico?vehicleId=other")))
+        assertTrue(store.state.events.isEmpty())
+    }
+
+    @Test fun reconcilePreservesDueTokenButNeverInstallsUnmatchedPast() {
+        var clock = now
+        val store = MemoryStore(); val alarms = FakeAlarms(); val engine = AlertEngine(store, alarms) { clock }
+        val original = event(7)
+        engine.reschedule("pico", listOf(original))
+        clock += 1000
+        assertEquals(listOf(7), engine.reschedule("pico", listOf(original.copy(token = "new"), event(8, at = clock - 1))))
+        assertNotNull(engine.claim(7, original.token))
+        assertNull(engine.find(8, "token-8"))
+    }
+
+    @Test fun successfulWritesDoNotEraseUnobservedAsyncFailure() {
+        val store = MemoryStore(); val alarms = FakeAlarms(); val engine = AlertEngine(store, alarms) { now }
+        engine.recordFailure("PLAYBACK_FAILED")
+        engine.reschedule("pico", listOf(event(7)))
+        engine.cancel("pico")
+        engine.test()
+        assertEquals("PLAYBACK_FAILED", assertThrows(AlertFailure::class.java) { engine.pending() }.code)
+    }
+
+    @Test fun cutoffAndInterruptionCreateOneMissedNoticeWithoutReplay() {
+        for (reason in listOf(AlertEnd.CUTOFF, AlertEnd.INTERRUPTED)) {
+            var clock = now
+            val store = MemoryStore(); val alarms = FakeAlarms(); val engine = AlertEngine(store, alarms) { clock }
+            val original = event(7)
+            engine.reschedule("pico", listOf(original)); clock += 1000; engine.claim(7, original.token)
+            engine.finish(7, original.token, reason)
+            engine.finish(7, original.token, reason)
+            assertEquals(listOf(7), alarms.missed.map { it.id })
+            assertEquals(AlertPhase.MISSED, engine.find(7, original.token)?.phase)
+            assertNull(engine.claim(7, original.token))
+            assertTrue(engine.reschedule("pico", listOf(original)).isEmpty())
+            assertTrue(engine.pending().isEmpty())
+            assertTrue(engine.restore().isEmpty())
+            assertEquals(1, alarms.missed.size)
+            assertEquals(AlertPhase.MISSED, engine.find(7, original.token)?.phase)
+        }
+    }
+
+    @Test fun explicitStopSnoozeAndCancelledGenerationNeverPostMissed() {
+        for (action in listOf("stop", "snooze", "cancel")) {
+            var clock = now
+            val store = MemoryStore(); val alarms = FakeAlarms(); val engine = AlertEngine(store, alarms) { clock }
+            engine.reschedule("pico", listOf(event(7))); clock += 1000; engine.claim(7, "token-7")
+            when (action) {
+                "stop" -> engine.finish(7, "token-7", AlertEnd.STOP)
+                "snooze" -> engine.snooze(7, "token-7")
+                else -> engine.cancel("pico")
+            }
+            engine.finish(7, "token-7", AlertEnd.INTERRUPTED)
+            assertTrue(alarms.missed.isEmpty())
+            if (action == "snooze") assertEquals(now + 1000, store.state.events.single().originalAt)
+        }
+    }
+
+    @Test fun explicitStatusObservesFailureAndTestAcknowledgementIsNotPlayback() {
+        val store = MemoryStore(); val alarms = FakeAlarms(); val engine = AlertEngine(store, alarms) { now }
+        assertEquals("idle", engine.status()["testState"])
+        val test = engine.test()
+        assertEquals("starting", engine.status()["testState"])
+        engine.claim(test.id, test.token)
+        engine.playing(test.id, test.token)
+        assertEquals("ringing", engine.status()["testState"])
+        engine.recordFailure("PLAYBACK_FAILED")
+        engine.finish(test.id, test.token, AlertEnd.INTERRUPTED)
+        engine.reschedule("pico", listOf(event(7)))
+        assertEquals(mapOf("testState" to "failed", "failureCode" to "PLAYBACK_FAILED"), engine.status())
+        assertNull(engine.status()["failureCode"])
+        assertEquals(listOf(7), engine.pending())
+        engine.recordFailure("unsafe route or display data")
+        assertEquals("ALARM_OPERATION_FAILED", engine.status()["failureCode"])
+    }
+
+    @Test fun pendingDoesNotConsumeFailureAndItSurvivesProcessRecreation() {
+        val store = MemoryStore(); val alarms = FakeAlarms(); val engine = AlertEngine(store, alarms) { now }
+        engine.recordFailure("PLAYBACK_FAILED")
+        engine.reschedule("pico", listOf(event(7)))
+        val restarted = AlertEngine(store, alarms) { now }
+        restarted.restore()
+        repeat(2) { assertEquals("PLAYBACK_FAILED", assertThrows(AlertFailure::class.java) { restarted.pending() }.code) }
+        assertEquals("PLAYBACK_FAILED", restarted.status()["failureCode"])
+        assertEquals(listOf(7), restarted.pending())
+    }
+
+    @Test fun storedFailureCannotBeOverwrittenByLaterFailureBeforeObservation() {
+        val store = MemoryStore(); val alarms = FakeAlarms(); val engine = AlertEngine(store, alarms) { now }
+        engine.recordFailure("PLAYBACK_FAILED")
+        val restarted = AlertEngine(store, alarms) { now }
+        alarms.failId = 7
+        assertThrows(AlertFailure::class.java) { restarted.reschedule("pico", listOf(event(7))) }
+        restarted.recordFailure("SCHEDULE_FAILED")
+        assertEquals("PLAYBACK_FAILED", restarted.status()["failureCode"])
+    }
+
+    @Test fun deleteDateEditAndExpiryCancelSnoozedIdentityButOrdinaryReconcileNeverMovesIt() {
+        for (change in listOf("delete", "date", "expiry")) {
+            var clock = now
+            val store = MemoryStore(); val alarms = FakeAlarms(); val engine = AlertEngine(store, alarms) { clock }
+            val original = event(7)
+            engine.reschedule("pico", listOf(original)); clock += 1000; engine.claim(7, original.token)
+            engine.snooze(7, original.token)
+            val snoozed = store.state.events.single()
+            clock += 20_000
+            engine.reschedule("pico", listOf(original.copy(token = "unused")))
+            assertEquals(snoozed, alarms.scheduled[7])
+            when (change) {
+                "delete" -> engine.reschedule("pico", emptyList())
+                "date" -> engine.reschedule("pico", listOf(original.copy(at = clock + 1000, originalAt = clock + 1000)))
+                else -> { clock = original.expiresAt; engine.reschedule("pico", listOf(original)) }
+            }
+            assertNull(engine.find(7, snoozed.token))
+            assertNull(engine.claim(7, snoozed.token))
+        }
+    }
+
+    @Test fun sharedSnoozeFixtureKeepsOriginalTargetAndRebootRestoresOnlyFutureSnooze() {
+        var clock = now - 1
+        val store = MemoryStore(); val alarms = FakeAlarms(); val engine = AlertEngine(store, alarms) { clock }
+        val original = event(7, at = now)
+        engine.reschedule("pico", listOf(original))
+        clock = now; engine.claim(7, original.token)
+        clock = now + 10_000; engine.snooze(7, original.token)
+        val snoozed = store.state.events.single()
+        assertEquals(now + 610_000, snoozed.at)
+        assertEquals(now, snoozed.originalAt)
+        clock = now + 20_000
+        assertEquals(listOf(7), engine.reschedule("pico", listOf(original.copy(token = "new"))))
+        assertEquals(snoozed, store.state.events.single())
+        engine.restore()
+        assertEquals(snoozed, alarms.scheduled[7])
+        clock = snoozed.at
+        assertNotNull(engine.claim(7, snoozed.token))
+        engine.finish(7, snoozed.token, AlertEnd.CUTOFF)
+        engine.restore()
+        assertTrue(alarms.scheduled.isEmpty())
+    }
+
+    @Test fun failedStatusPersistenceDoesNotConsumeTheError() {
+        val store = MemoryStore(); val alarms = FakeAlarms(); val engine = AlertEngine(store, alarms) { now }
+        engine.recordFailure("PLAYBACK_FAILED")
+        store.failWrite = true
+        assertThrows(AlertFailure::class.java) { engine.status() }
+        store.failWrite = false
+        assertEquals("PLAYBACK_FAILED", engine.status()["failureCode"])
+    }
+
+    @Test fun interruptedRecoveryPostsOnceAndDoesNotBlockAnotherRing() {
+        val store = MemoryStore(); val alarms = FakeAlarms(); val engine = AlertEngine(store, alarms) { now }
+        store.state = AlertProjection(listOf(event(7, at = now).copy(phase = AlertPhase.RINGING)))
+        engine.recoverInterrupted()
+        engine.recoverInterrupted()
+        engine.restore()
+        assertEquals(listOf(7), alarms.missed.map { it.id })
+        assertEquals("ALARM_INTERRUPTED", engine.status()["failureCode"])
+        assertTrue(engine.pending().isEmpty())
+        assertNotNull(engine.claim(engine.test().id, store.state.events.last().token))
     }
 }

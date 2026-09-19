@@ -7,6 +7,8 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.WindowManager
 import android.widget.Button
@@ -17,19 +19,56 @@ import android.widget.TextView
 class AlertActivity : Activity() {
     private lateinit var runtime: AlertRuntime
     private var opening = false
+    private var rendered: AlertEvent? = null
+    private var shownAboveLock = false
+    private val handler = Handler(Looper.getMainLooper())
+    private val refresh = object : Runnable {
+        override fun run() {
+            refreshState()
+            if (!isFinishing && !isDestroyed) handler.postDelayed(this, 500)
+        }
+    }
 
     @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         runtime = AlertRuntime.get(this)
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        refreshState()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        handler.removeCallbacks(refresh)
+        refresh.run()
+    }
+
+    override fun onPause() {
+        handler.removeCallbacks(refresh)
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
+        super.onDestroy()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun refreshState() {
         try {
-            val event = current() ?: run { finish(); return }
-            // Only the generic alarm controls can be displayed above the lock screen.
-            if (event.phase == AlertPhase.RINGING && runtime.platform.fullScreenAllowed()) {
-                if (Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true) }
-                else window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+            val event = current()
+            if (event == null || event.expiresAt <= System.currentTimeMillis()) { finish(); return }
+            val aboveLock = event.phase == AlertPhase.RINGING && runtime.platform.fullScreenAllowed()
+            if (aboveLock != shownAboveLock) {
+                shownAboveLock = aboveLock
+                if (Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(aboveLock); setTurnScreenOn(aboveLock) }
+                else {
+                    val flags = WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+                    if (aboveLock) window.addFlags(flags) else window.clearFlags(flags)
+                }
             }
+            if (rendered == event) return
+            rendered = event
             render(event)
         } catch (error: Exception) { runtime.report(error, "ALARM_SCREEN_FAILED"); finish() }
     }
@@ -55,7 +94,9 @@ class AlertActivity : Activity() {
             setBackgroundColor(Color.WHITE)
         }
         content.addView(TextView(this).apply {
-            text = if (event.scope == "test") "Prueba ficticia de PicoRadar" else "Alarma de PicoRadar"
+            text = if (event.phase == AlertPhase.MISSED) {
+                if (event.scope == "test") "Prueba ficticia no atendida" else "Alarma no atendida"
+            } else if (event.scope == "test") "Prueba ficticia de PicoRadar" else "Alarma de PicoRadar"
             textSize = 24f
             setTextColor(Color.BLACK)
             gravity = Gravity.CENTER
@@ -77,7 +118,10 @@ class AlertActivity : Activity() {
     }
 
     private fun action(event: AlertEvent, action: String) {
-        try { startService(AlertPlatform.identity(Intent(this, AlertRingingService::class.java), event, action)) }
+        try {
+            if (runtime.engine.find(event.id, event.token)?.phase == AlertPhase.MISSED) runtime.engine.stop(event.id, event.token)
+            else startService(AlertPlatform.identity(Intent(this, AlertRingingService::class.java), event, action))
+        }
         catch (error: Exception) { runtime.report(error, "ALARM_ACTION_FAILED") }
         finish()
     }

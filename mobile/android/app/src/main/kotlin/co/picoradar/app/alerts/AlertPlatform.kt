@@ -48,6 +48,35 @@ internal class AlertPlatform(private val context: Context) : AlertAlarms {
             identity(Intent(context, AlertReceiver::class.java), event, FIRE),
             PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)
         if (pending != null) { alarms.cancel(pending); pending.cancel() }
+        notifications.cancel(MISSED_TAG, event.id)
+    }
+
+    @Suppress("DEPRECATION")
+    override fun missed(event: AlertEvent) {
+        if (!notifications.areNotificationsEnabled()) throw AlertFailure("NOTIFICATIONS_REQUIRED")
+        if (Build.VERSION.SDK_INT >= 26) {
+            val channel = NotificationChannel(MISSED_CHANNEL, "Alarmas no atendidas", NotificationManager.IMPORTANCE_LOW)
+            channel.setSound(null, null)
+            channel.enableVibration(false)
+            channel.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+            notifications.createNotificationChannel(channel)
+            if (notifications.getNotificationChannel(MISSED_CHANNEL)?.importance == NotificationManager.IMPORTANCE_NONE)
+                throw AlertFailure("NOTIFICATIONS_REQUIRED")
+        }
+        val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(context, MISSED_CHANNEL) else Notification.Builder(context)
+        builder.setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setContentTitle(if (event.scope == "test") "Prueba ficticia no atendida" else "Alarma no atendida")
+            .setContentText("PicoRadar: recordatorio local")
+            .setVisibility(Notification.VISIBILITY_PRIVATE).setCategory(Notification.CATEGORY_REMINDER)
+            .setPriority(Notification.PRIORITY_LOW).setSound(null).setDefaults(0).setVibrate(null)
+            .setOnlyAlertOnce(true).setAutoCancel(false).setContentIntent(activityIntent(event))
+            .setDeleteIntent(PendingIntent.getBroadcast(context, event.id,
+                identity(Intent(context, AlertReceiver::class.java), event, DISMISS), FLAGS))
+        if (Build.VERSION.SDK_INT >= 26) {
+            // Child-only group suppression also silences a user-customized channel.
+            builder.setGroup(MISSED_TAG).setGroupAlertBehavior(Notification.GROUP_ALERT_SUMMARY)
+        }
+        notifications.notify(MISSED_TAG, event.id, builder.build())
     }
 
     fun notification(event: AlertEvent): Notification {
@@ -95,6 +124,9 @@ internal class AlertPlatform(private val context: Context) : AlertAlarms {
 
     companion object {
         const val CHANNEL = "picoradar_optional_alarms_v1"
+        private const val MISSED_CHANNEL = "picoradar_missed_alarms_v1"
+        private const val MISSED_TAG = "picoradar_missed_alarm"
+        const val DISMISS = "co.picoradar.app.alerts.DISMISS"
         const val FIRE = "co.picoradar.app.alerts.FIRE"
         const val SHOW = "co.picoradar.app.alerts.SHOW"
         const val STOP = "co.picoradar.app.alerts.STOP"

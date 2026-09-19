@@ -28,16 +28,21 @@ class AlertsBridge(private val activity: FlutterFragmentActivity, messenger: Bin
                             runtime.platform.requireAccess()
                             val event = runtime.engine.test()
                             try { runtime.platform.start(event) }
-                            catch (error: Exception) { runtime.engine.stop(event.id, event.token); throw error }
+                            catch (error: Exception) {
+                                runtime.report(error, "FOREGROUND_START_FAILED")
+                                runtime.engine.stop(event.id, event.token)
+                                throw error
+                            }
                             result.success(null)
                         }
                     }
                 } catch (error: Exception) { fail(result, error) }
-            } else if (call.method in setOf("reschedule", "pending", "cancel")) {
+            } else if (call.method in setOf("reschedule", "pending", "cancel", "status")) {
                 runtime.worker.execute {
                     try {
                         if (disposed) throw AlertFailure("BRIDGE_DISPOSED")
                         val value: Any? = when (call.method) {
+                            "status" -> runtime.engine.status()
                             "pending" -> runtime.engine.pending()
                             "reschedule" -> {
                                 val scope = call.argument<String>("scope") ?: throw AlertFailure("INVALID_SCOPE")

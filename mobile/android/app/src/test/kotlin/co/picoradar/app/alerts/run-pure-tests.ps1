@@ -21,7 +21,7 @@ $compiler = @(
     (Jar 'org.jetbrains' 'annotations' '13.0'), $stdlib
 ) -join [IO.Path]::PathSeparator
 $source = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../../../../../main/kotlin/co/picoradar/app/alerts'))
-$files = @(@('AlertRules.kt', 'AlertEngine.kt', 'AlertCodec.kt') | ForEach-Object {
+$files = @(@('AlertRules.kt', 'AlertEngine.kt', 'AlertCodec.kt', 'AlertSession.kt') | ForEach-Object {
     $path = Join-Path $source $_
     if (Test-Path -LiteralPath $path) { $path }
 })

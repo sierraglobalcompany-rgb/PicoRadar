@@ -84,10 +84,11 @@ Channel: `co.picoradar.app/alerts`; constructor and dispose match the requested 
 | requestPermissions | none | current capabilities; opens exact access first, retry requests notification permission/settings |
 | requestFullScreen | none | current capabilities; opens full-screen access only on this explicit call |
 | openNotificationSettings | none | null; opens app notification settings (app details on API 24-25) |
-| reschedule | scope, events | IDs of the complete successfully persisted/scheduled batch |
+| reschedule | scope, events | installed future IDs plus retained matching ringing/snoozed/due IDs; unmatched recent past and MISSED may be absent |
 | cancel | scope | null; affects that scope only, including ringing state |
-| pending | none | future confirmed IDs; throws typed error on revoked access/asynchronous failure |
+| pending | none | future confirmed and current ringing/due IDs, excluding MISSED/test; throws typed error on revoked access/unobserved failure |
 | test | none | null after foreground start requested; explicit fictional test only |
+| status | none | testState and nullable failureCode; explicit observation consumes the failure latch |
 
 Corresponding coordinator-owned Dart methods:
 
@@ -110,6 +111,72 @@ both scopes, unchanged from coordinator IDs. Test uses reserved -1 in its own ex
 slot. Maximum 128 projected normal events across both scopes, not 128 per scope.
 Past events are not scheduled; duplicate/colliding IDs
 reject before mutation. ExpiresAt is exclusive; snooze must remain within it.
+
+### Reconciliation identity
+
+Ordinary reconciliation MUST NOT call cancel first. Send all still-valid,
+alarm-enabled identities, including original targets with an unexpired eligibility
+window of at most 15 minutes. Native bounds expiresAt - at to 1..900000 ms.
+Only an existing record matching id + originalAt + expiresAt + canonical owner route
+can retain RINGING, SNOOZED or MISSED. The persisted originalAt does not change on
+snooze; at becomes now + 10 minutes, strictly before the original expiresAt.
+An already scheduled due callback within the existing 120-second grace keeps its
+token. An unmatched past input (including newly enabled alarm mode) never installs
+or rings. Missing/changed identities are canceled. Explicit cancel(scope) remains
+destructive; disable/delete/date/time/owner edits must remove/change that identity.
+
+The accepted result includes future installs and retained ringing/snoozed/due IDs;
+MISSED is retained silently but absent from accepted/pending. Dart requires all
+future IDs, permits absent recent-past IDs, and rejects foreign IDs. Two independent
+scope updates are serialized but are not a cross-scope transaction: an increase
+submitted before another scope's decrease can explicitly hit TOO_MANY_EVENTS.
+Preflight preserves both scopes; no silent truncation or future-only workaround.
+
+### Test status and failure observation
+
+status has no arguments and returns exactly:
+`{testState: idle|starting|ringing|snoozed|missed|stopped|failed, failureCode: String?}`.
+test acknowledgement means requested, never successful playback. starting becomes
+ringing only after MediaPlayer.start succeeds. Async playback errors set failed.
+The first unobserved sanitized failure survives successful reschedule/cancel/test,
+pending queries and process recreation. Only a successful explicit status call
+clears it. A status persistence error does not acknowledge the original failure.
+Test state is process-local; persisted failure still reports an interrupted test
+after restart. Failure codes are allowlisted in AlertEngine; unknown input maps to
+ALARM_OPERATION_FAILED. Do not display raw native details. Permission codes are
+NOTIFICATIONS_REQUIRED, EXACT_ACCESS_REQUIRED, ACCESS_REVOKED and
+PERMISSION_CHECK_FAILED. Audio codes include AUDIO_FOCUS_DENIED, AUDIO_FOCUS_LOST,
+PLAYBACK_FAILED, RING_FAILED and TONE_UNAVAILABLE; remaining failures are generic.
+
+Goodall owns gateway/UI observation: bounded polling after an explicit test, no
+success from the initial acknowledgement, cancel observation on background/dispose;
+the alert center observes before sync so a later retry can proceed. Parfit owns
+the approved full-identity planner/provider/scheduler changes. Native pending IDs
+alone cannot preserve a snooze after a destructive Dart cancel.
+
+### Missed alarms and visible activity
+
+Cutoff and observed OS interruption release playback, focus and wake resources,
+remove the foreground notification, and persist a non-ringable MISSED phase. They
+post a separate tagged, generic, silent low-importance notice: no full-screen,
+sound, vibration or snooze action. Group alert suppression also silences a
+customized channel. Explicit Stop/Snooze/cancel never posts a missed notice.
+Stale generation callbacks cannot stop the next alarm or overwrite its failure.
+Opening a missed notice requires unlock and revalidates owner/expiry. Dismissal
+removes the projection; expiry pruning or explicit reconciliation can remove the
+notice. The notice itself is generic and may outlive the private route's expiry.
+
+An open AlertActivity refreshes at resume and every 500 ms only while resumed.
+It rerenders only a changed event/phase, removes Stop/Snooze and above-lock flags
+on MISSED, and closes for deleted/expired identities. Permission changes update
+above-lock flags without repeated rendering or keyguard requests. Pause/destroy
+remove polling callbacks. Validate this transition physically at the 120s cutoff.
+
+Observed onDestroy/audio-focus/foreground timeout interruptions post the same
+silent notice; the next process recovery converts an unexpired abandoned RINGING
+record once. Android may kill without callbacks or prevent all execution after
+force-stop/power-off: immediate missed delivery cannot be guaranteed in those cases.
+Reboot restores only future scheduled/snoozed records, never MISSED or old ringing.
 
 The 128 limit is an explicit native projection budget, not an Android guarantee.
 An incoming batch of 129 or a replacement exceeding the shared budget throws
@@ -159,18 +226,23 @@ ALARM_INTERRUPTED, PRIVATE_NAVIGATION_FAILED and BRIDGE_DISPOSED.
 
 ## Handoff status
 
-- Status: PARTIAL pending coordinator wiring and physical Android/store QA.
+- Status: PARTIAL pending physical Android/store QA; Main owns completed wiring.
 - Lot: C11 approved native optional alarms extension.
 - Branch: shared `codex/forensic-alerts`; no branch switch, merge or push by this owner.
 - Initial native commit: `e1143c64dfe2920a7f19852c08e215bd9c7f1bb4`.
-  Owner-context correction base: `69eefc3`; exact scoped correction commit is supplied
-  with the final handoff. MainActivity/manifest wiring remains coordinator-owned.
+  Owner-context correction: `c03357b740d35caa4d6bef87c522217a3f9b4fce`.
+  Follow-up base HEAD: `b432f4e40866904507ab4b4cc19c4dfafe614f60`; exact scoped
+  follow-up commit is supplied with the final handoff. No merge or branch change.
 - Worktree: `C:/Users/felip/Documents/ChatGPT/PicoRadar_ Pico y Placa`.
 - Files: this alerts folder and corresponding `src/test/kotlin/co/picoradar/app/alerts` only.
 - Outcome: serialized scope replacement/cancellation, atomic no-backup projection,
   AlarmClock scheduling, generic foreground alarm, Stop/Snooze, unlock-only routing.
 - Data: reconstructible `noBackupFilesDir/optional_alerts_v1.bin`; no Drift migration,
   preferences, external data, backups, notifications history, document or GPS fields.
+  Binary codec v2 adds originalAt and appends SNOOZED/MISSED phase values. Legacy
+  v1 records read with originalAt = at. Old v1 snoozes did not retain originalAt and
+  cannot be inferred safely; reconciliation may remove them. This feature has not
+  been device-installed by this owner. No private history beyond event eligibility.
 - Dependencies added/changed: none.
 - Manual QA: source review only; no install, emulator, adb or physical device calls.
 - Physical Android QA: REQUIRED AND NOT RUN, per instruction. Device/Android/evidence: none.
@@ -178,6 +250,14 @@ ALARM_INTERRUPTED, PRIVATE_NAVIGATION_FAILED and BRIDGE_DISPOSED.
   correction RED (7 failures in 31 tests), then GREEN (31 tests); all native source
   compiled directly against installed Android
   37 SDK + cached Flutter/AndroidX. Runtime Android behavior is not covered by JVM tests.
+- Follow-up evidence: 3 behavior regressions RED (active/snooze/due identity and
+  failure erased by successful writes), plus later RED for persisted first-error
+  overwrite. Missing new APIs initially failed compilation. Final GREEN: 46 JVM
+  tests, full native sources compiled with -CompileAndroid; only existing
+  pre-26 notification-priority deprecation warnings. Tests cover owner/date/delete/
+  expiry cancellation, shared snooze fixture, codec v1/v2, silent-missed engine
+  effects, recovery without replay, session callback generation and status latch.
+  Activity lifecycle and actual silent Android notifications still need device QA.
 - Exact verification: from repo root,
   `& './mobile/android/app/src/test/kotlin/co/picoradar/app/alerts/run-pure-tests.ps1'`
   and the same command with `-CompileAndroid`.
@@ -196,6 +276,11 @@ ALARM_INTERRUPTED, PRIVATE_NAVIGATION_FAILED and BRIDGE_DISPOSED.
   new batch is canceled, reports a typed error, and must be retried by the coordinator.
 - Next work unblocked: coordinator Activity/manifest/Dart integration and focused QA;
   this does not close C11 or authorize release.
+- Coordinated Dart commits: Parfit `32342ed` / `cef3f32`; Goodall status UI/gateway
+  `b432f4e`. Their test claims are separate from this owner's native evidence.
+- Handoff correction: the original implementation removed the notification at
+  cutoff and did NOT meet the requested missed-notice behavior. This follow-up
+  adds it; prior generic-foreground claims must not be read as missed-notice QA.
 - Git status: other agents' shared-tree modifications/untracked artifacts preserved;
   final scoped commit/status evidence is supplied in the response.
 - No merge performed.

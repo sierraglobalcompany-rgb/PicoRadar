@@ -93,6 +93,8 @@ class AlertRulesTest {
         }
         assertThrows(AlertFailure::class.java) { AlertRules.parse("pico", listOf(args(7, 1.5)), now) }
         assertThrows(AlertFailure::class.java) { AlertRules.parse("pico", listOf(args(7), args(7)), now) }
-        assertTrue(AlertRules.parse("pico", listOf(args(7, now - 1)), now).isEmpty())
+        val recent = args(7, now - 1) + ("expiresAt" to now + 899_999)
+        assertEquals(7, AlertRules.parse("pico", listOf(recent), now).single().id)
+        assertThrows(AlertFailure::class.java) { AlertRules.parse("pico", listOf(args(7, now - 1)), now) }
     }
 }

@@ -4,7 +4,7 @@ import java.net.URI
 import java.net.URLDecoder
 import java.util.UUID
 
-internal enum class AlertPhase { STAGED, SCHEDULED, RINGING }
+internal enum class AlertPhase { STAGED, SCHEDULED, RINGING, SNOOZED, MISSED }
 
 internal data class AlertEvent(
     val id: Int,
@@ -14,6 +14,7 @@ internal data class AlertEvent(
     val route: String,
     val token: String,
     val phase: AlertPhase = AlertPhase.SCHEDULED,
+    val originalAt: Long = at,
 )
 
 internal class AlertFailure(val code: String) : Exception("PicoRadar alarm operation failed: $code")
@@ -24,6 +25,7 @@ internal object AlertRules {
     const val MAX_RING_MS = 120_000L
     const val SNOOZE_MS = 600_000L
     const val TEST_ID = -1
+    const val ELIGIBILITY_MS = 900_000L
     private val routes = setOf("/pico", "/garage", "/apps/module/soat",
         "/apps/module/tecnomecanica", "/apps/module/seguro_asistencia", "/apps/module/impuestos")
 
@@ -76,12 +78,13 @@ internal object AlertRules {
             val id = integer(map["id"])
             val at = integer(map["at"])
             val expiry = integer(map["expiresAt"])
-            if (id !in 1..Int.MAX_VALUE.toLong() || at < 0 || expiry <= at) throw AlertFailure("INVALID_ARGUMENTS")
+            if (id !in 1..Int.MAX_VALUE.toLong() || at < 0 || expiry <= at || expiry - at > ELIGIBILITY_MS)
+                throw AlertFailure("INVALID_ARGUMENTS")
             AlertEvent(id.toInt(), scope, at, expiry,
                 route(map["route"] as? String ?: throw AlertFailure("INVALID_ROUTE")), UUID.randomUUID().toString())
         }
         if (events.map { it.id }.distinct().size != events.size) throw AlertFailure("ID_CONFLICT")
-        return future(events, now)
+        return events.filter { it.expiresAt > now }
     }
 
     private fun integer(value: Any?): Long = when (value) {
@@ -91,10 +94,10 @@ internal object AlertRules {
     }
 
     fun future(events: List<AlertEvent>, now: Long) = events.filter {
-        it.phase == AlertPhase.SCHEDULED && it.at > now && it.expiresAt > it.at
+        it.phase in setOf(AlertPhase.SCHEDULED, AlertPhase.SNOOZED) && it.at > now && it.expiresAt > it.at
     }
 
-    fun canRing(event: AlertEvent, now: Long): Boolean = event.phase == AlertPhase.SCHEDULED &&
+    fun canRing(event: AlertEvent, now: Long): Boolean = event.phase in setOf(AlertPhase.SCHEDULED, AlertPhase.SNOOZED) &&
         now >= event.at && now < event.expiresAt && now - event.at <= MAX_RING_MS
 
     fun ringMillis(event: AlertEvent, now: Long) =
@@ -102,7 +105,7 @@ internal object AlertRules {
 
     fun snooze(event: AlertEvent, now: Long): AlertEvent? {
         if (now > Long.MAX_VALUE - SNOOZE_MS || now + SNOOZE_MS >= event.expiresAt) return null
-        return event.copy(at = now + SNOOZE_MS, token = UUID.randomUUID().toString(), phase = AlertPhase.SCHEDULED)
+        return event.copy(at = now + SNOOZE_MS, token = UUID.randomUUID().toString(), phase = AlertPhase.SNOOZED)
     }
 
     fun withoutScope(events: List<AlertEvent>, scope: String) = events.filter { it.scope != scope }

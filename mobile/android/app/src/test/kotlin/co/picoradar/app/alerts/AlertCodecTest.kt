@@ -41,4 +41,16 @@ class AlertCodecTest {
             AlertCodec.read(ByteArrayInputStream(bytes(AlertProjection(normal + event.copy(id = 129)))))
         }
     }
+
+    @Test fun snoozePersistsOriginalTargetAndLegacyScheduledProjectionStillReads() {
+        val snoozed = event.copy(at = 1500, phase = AlertPhase.SNOOZED)
+        assertEquals(snoozed, AlertCodec.read(ByteArrayInputStream(bytes(AlertProjection(listOf(snoozed))))).events.single())
+        val legacy = ByteArrayOutputStream()
+        java.io.DataOutputStream(legacy).apply {
+            writeInt(0x50524131); writeInt(1); writeUTF("")
+            writeInt(event.id); writeUTF(event.scope); writeLong(event.at); writeLong(event.expiresAt)
+            writeUTF(event.route); writeUTF(event.token); writeInt(AlertPhase.SCHEDULED.ordinal)
+        }
+        assertEquals(event, AlertCodec.read(ByteArrayInputStream(legacy.toByteArray())).events.single())
+    }
 }

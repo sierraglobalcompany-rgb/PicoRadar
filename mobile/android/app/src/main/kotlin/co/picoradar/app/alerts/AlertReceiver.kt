@@ -8,12 +8,20 @@ import android.content.Intent
 class AlertReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val runtime = AlertRuntime.get(context)
+        if (intent.action == AlertPlatform.DISMISS) {
+            val key = AlertPlatform.key(intent) ?: return
+            try {
+                if (runtime.engine.find(key.first, key.second)?.phase == AlertPhase.MISSED)
+                    runtime.engine.stop(key.first, key.second)
+            } catch (error: Exception) { runtime.report(error, "CANCEL_FAILED") }
+            return
+        }
         if (intent.action == AlertPlatform.FIRE) {
             val key = AlertPlatform.key(intent) ?: return
             try {
                 val event = runtime.engine.find(key.first, key.second) ?: return
                 if (!AlertRules.canRing(event, System.currentTimeMillis())) {
-                    if (event.phase != AlertPhase.RINGING) runtime.engine.stop(event.id, event.token)
+                    if (event.phase !in setOf(AlertPhase.RINGING, AlertPhase.MISSED)) runtime.engine.stop(event.id, event.token)
                     return
                 }
                 runtime.platform.requireAccess()
