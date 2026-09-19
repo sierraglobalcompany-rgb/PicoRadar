@@ -15,6 +15,23 @@ import 'package:picoradar/features/vehicle_status/domain/vehicle_obligation.dart
 import 'package:picoradar/features/vehicle_status/platform/obligation_notifications.dart';
 
 void main() {
+  testWidgets('empty garage cancels only restriction reminders', (
+    tester,
+  ) async {
+    final scheduler = _RecordingScheduler();
+    final container = ProviderContainer(
+      overrides: [
+        currentInstantProvider.overrideWithValue(DateTime.utc(2026, 9, 19)),
+        bundledRestrictionsProvider.overrideWith((ref) async {}),
+        vehicleListProvider.overrideWith((ref) async => []),
+        picoNotificationSchedulerProvider.overrideWithValue(scheduler),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(picoNotificationSyncProvider.future);
+    expect(scheduler.picoCancellations, 1);
+    expect(scheduler.obligationCalls, 0);
+  });
   for (final pico in [true, false]) {
     for (final dispose in [false, true]) {
       testWidgets(
@@ -306,6 +323,12 @@ class _ObligationStore implements VehicleObligationStore {
 }
 
 class _RecordingScheduler extends PicoNotificationScheduler {
+  int picoCancellations = 0;
+  @override
+  Future<void> cancelPicoNotifications() async {
+    picoCancellations++;
+  }
+
   var picoCalls = 0;
   var obligationCalls = 0;
   List<PicoNotificationPlan> picoPlans = [];

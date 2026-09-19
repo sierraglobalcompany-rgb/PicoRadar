@@ -40,6 +40,7 @@ import '../features/trip/data/toll_inventory.dart';
 import '../features/trip/data/toll_tariff_catalog.dart';
 import '../features/trip/data/trip_route_preview_data.dart';
 import 'app_clock.dart';
+import '../features/alerts/data/alert_settings.dart';
 
 final appDatabaseProvider = Provider<AppDatabase>((ref) {
   final database = AppDatabase();
@@ -282,7 +283,10 @@ final picoAlertPreferencesProvider = FutureProvider<PicoAlertPreferences>((
 final picoNotificationSchedulerProvider = Provider<PicoNotificationScheduler>((
   ref,
 ) {
-  final scheduler = PicoNotificationScheduler();
+  final scheduler = PicoNotificationScheduler(
+    settingsLoader: () =>
+        AlertSettingsStore(ref.read(appDatabaseProvider)).loadAll(),
+  );
   ref.onDispose(() {});
   return scheduler;
 });
@@ -409,6 +413,7 @@ final picoNotificationSyncProvider = FutureProvider<void>((ref) async {
   final vehicles = await ref.watch(vehicleListProvider.future);
   if (!active) return;
   if (vehicles.isEmpty) {
+    await _tryCancelPicoNotifications(ref, () => active);
     return;
   }
 
@@ -431,6 +436,7 @@ final picoNotificationSyncProvider = FutureProvider<void>((ref) async {
   if (!active) return;
   final jurisdiction = _jurisdiction(jurisdictions, selectedJurisdictionId);
   if (jurisdiction == null) {
+    await _tryCancelPicoNotifications(ref, () => active);
     return;
   }
 
@@ -438,7 +444,12 @@ final picoNotificationSyncProvider = FutureProvider<void>((ref) async {
   try {
     await scheduler.initialize();
     if (!active) return;
-    if (!alertPreferences.enabled) {
+    final deliverySettings = await scheduler.loadDeliverySettings();
+    if (!active) return;
+    if (!alertPreferences.enabled &&
+        !deliverySettings.any(
+          (s) => s.category == AlertCategory.pico && s.settings.enabled,
+        )) {
       await scheduler.cancelPicoNotifications();
       return;
     }
@@ -449,6 +460,7 @@ final picoNotificationSyncProvider = FutureProvider<void>((ref) async {
       vehicles: vehicles,
       jurisdiction: jurisdiction,
       alertPreferences: alertPreferences,
+      deliverySettings: deliverySettings,
     );
     if (!active) return;
     await scheduler.reschedule(plans);
@@ -472,11 +484,14 @@ final obligationNotificationSyncProvider = FutureProvider<void>((ref) async {
   try {
     await scheduler.initialize();
     if (!active) return;
+    final deliverySettings = await scheduler.loadDeliverySettings();
+    if (!active) return;
     final plans = planObligationNotifications(
       obligations: obligations,
       vehiclesById: vehiclesById,
       nowBogota: ref.read(bogotaNowProvider),
       permissionGranted: alertPreferences.permissionGranted,
+      deliverySettings: deliverySettings,
     );
     if (plans.isEmpty) {
       await scheduler.cancelObligationNotifications();

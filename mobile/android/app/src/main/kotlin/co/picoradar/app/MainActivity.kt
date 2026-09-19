@@ -10,6 +10,7 @@ import android.util.Log
 import android.view.WindowManager
 import androidx.glance.appwidget.updateAll
 import co.picoradar.app.wallet.WalletBridge
+import co.picoradar.app.alerts.AlertsBridge
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -23,6 +24,7 @@ class MainActivity : FlutterFragmentActivity() {
     private var tts: TextToSpeech? = null
     private var ttsReady = false
     private var walletBridge: WalletBridge? = null
+    private var alertsBridge: AlertsBridge? = null
 
     private fun logStartup(marker: String, extra: String = "") {
         val nowNs = SystemClock.elapsedRealtimeNanos()
@@ -43,6 +45,8 @@ class MainActivity : FlutterFragmentActivity() {
         val pluginsAtNs = SystemClock.elapsedRealtimeNanos()
         logStartup("PLUGIN_REGISTRATION_BEGIN")
         super.configureFlutterEngine(flutterEngine)
+        alertsBridge?.dispose()
+        alertsBridge = AlertsBridge(this, flutterEngine.dartExecutor.binaryMessenger)
         walletBridge = WalletBridge(this, flutterEngine.dartExecutor.binaryMessenger)
         logStartup(
             "PLUGIN_REGISTRATION_END",
@@ -120,6 +124,8 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     override fun onDestroy() {
+        alertsBridge?.dispose()
+        alertsBridge = null
         walletBridge?.dispose()
         walletBridge = null
         tts?.stop()

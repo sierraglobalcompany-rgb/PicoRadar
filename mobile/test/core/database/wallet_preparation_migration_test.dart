@@ -97,7 +97,7 @@ void main() {
           (await db.customSelect('PRAGMA user_version').getSingle()).read<int>(
             'user_version',
           ),
-          8,
+          AppDatabase.currentSchemaVersion,
         );
         if (version < 8) {
           expect((await db.select(db.vehicles).get()).single.plate, 'ABC123');

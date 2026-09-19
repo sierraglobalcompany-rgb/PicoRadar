@@ -1,5 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:picoradar/features/alerts/data/alert_settings.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
 import 'package:picoradar/features/vehicle_status/domain/vehicle_obligation.dart';
@@ -16,6 +17,84 @@ void main() {
   );
 
   group('obligation notifications', () {
+    test('custom delivery affects only its vehicle and category', () {
+      final plans = planObligationNotifications(
+        obligations: [
+          _obligation(VehicleObligationType.soat),
+          _obligation(VehicleObligationType.rtm),
+        ],
+        vehiclesById: {vehicle.id: vehicle},
+        nowBogota: DateTime(2026, 7, 1),
+        permissionGranted: true,
+        deliverySettings: [
+          VehicleAlertSettings(
+            vehicle.id,
+            AlertCategory.soat,
+            const AlertSettings(
+              alarm: true,
+              enriched: true,
+              minute: 615,
+              offsetDays: [15, 0],
+            ),
+          ),
+          const VehicleAlertSettings(
+            'other',
+            AlertCategory.rtm,
+            AlertSettings(minute: 700, offsetDays: [2]),
+          ),
+        ],
+      );
+      final soat = plans
+          .where((p) => p.type == VehicleObligationType.soat)
+          .toList();
+      final rtm = plans
+          .where((p) => p.type == VehicleObligationType.rtm)
+          .toList();
+      expect(soat.map((p) => p.offsetDays), [15, 0]);
+      expect(
+        soat.every(
+          (p) => p.scheduledAt.hour == 10 && p.scheduledAt.minute == 15,
+        ),
+        isTrue,
+      );
+      expect(
+        soat.every(
+          (p) =>
+              p.delivery!.alarm &&
+              p.delivery!.enriched &&
+              p.plate == vehicle.plate,
+        ),
+        isTrue,
+      );
+      expect(rtm.map((p) => p.offsetDays), [30, 7, 1]);
+      expect(
+        rtm.every((p) => p.delivery == null && p.scheduledAt.hour == 9),
+        isTrue,
+      );
+    });
+
+    test(
+      'module reminder switch remains authoritative after a delivery override',
+      () {
+        final plans = planObligationNotifications(
+          obligations: [
+            _obligation(VehicleObligationType.soat, reminderEnabled: false),
+          ],
+          vehiclesById: {vehicle.id: vehicle},
+          nowBogota: DateTime(2026, 7, 1),
+          permissionGranted: true,
+          deliverySettings: [
+            VehicleAlertSettings(
+              vehicle.id,
+              AlertCategory.soat,
+              const AlertSettings(enabled: true, alarm: true),
+            ),
+          ],
+        );
+        expect(plans, isEmpty);
+      },
+    );
+
     test('schedules SOAT, RTM and insurance at 30, 7 and 1 days', () {
       final plans = planObligationNotifications(
         obligations: [

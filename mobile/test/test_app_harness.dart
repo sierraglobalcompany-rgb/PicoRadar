@@ -298,6 +298,14 @@ class _NoOpVehicleAssociatedDataCleaner extends VehicleAssociatedDataCleaner {
 
   @override
   Future<void> deleteForVehicle(String vehicleId) async {}
+
+  @override
+  Future<void> deletePrivateDataForVehicle(
+    String vehicleId, {
+    required bool Function() isAuthorized,
+  }) async {
+    if (!isAuthorized()) throw StateError('Wallet authorization expired.');
+  }
 }
 
 class _FakePicoNotificationScheduler extends PicoNotificationScheduler {

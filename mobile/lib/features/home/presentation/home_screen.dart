@@ -728,13 +728,8 @@ class _HomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return PicoRadarAppHeader(
       alertPreferences: alertPreferences,
-      onNotificationsPressed: () => showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        showDragHandle: true,
-        builder: (context) =>
-            HomeNotificationSheet(alertPreferences: alertPreferences),
-      ),
+      onNotificationsPressed: () =>
+          context.push('${AppRoute.home.path}/alerts'),
       headerKey: const ValueKey('home-compact-top-bar'),
       brandKey: const ValueKey('home-brand-lockup'),
       capsuleKey: const ValueKey('home-user-controls-capsule'),

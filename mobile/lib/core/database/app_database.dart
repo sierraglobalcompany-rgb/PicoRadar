@@ -217,14 +217,17 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'picoradar'));
 
-  static const currentSchemaVersion = 8;
+  static const currentSchemaVersion = 9;
 
   @override
   int get schemaVersion => currentSchemaVersion;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) => m.createAll(),
+    onCreate: (m) async {
+      await m.createAll();
+      await _createAlertSettings();
+    },
     onUpgrade: _upgrade,
     beforeOpen: (_) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -315,6 +318,11 @@ class AppDatabase extends _$AppDatabase {
       from = 8;
     }
 
+    if (from == 8) {
+      await _createAlertSettings();
+      from = 9;
+    }
+
     if (from == to) {
       return;
     }
@@ -328,4 +336,40 @@ class AppDatabase extends _$AppDatabase {
     final columns = await customSelect('PRAGMA table_info($tableName)').get();
     return columns.any((row) => row.read<String>('name') == columnName);
   }
+
+  // Projection preferences only; dates remain in obligations/restriction data.
+  Future<void> _createAlertSettings() => customStatement('''
+    CREATE TABLE IF NOT EXISTS alert_delivery_settings (
+      vehicle_id TEXT NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+      category TEXT NOT NULL CHECK(category IN ('pico','soat','rtm','insurance')),
+      settings_json TEXT NOT NULL,
+      PRIMARY KEY(vehicle_id, category)
+    )
+  ''');
+
+  Future<List<QueryRow>> readAlertSettings() => customSelect(
+    'SELECT vehicle_id, category, settings_json FROM alert_delivery_settings',
+  ).get();
+
+  Future<void> writeAlertSettings(
+    String vehicleId,
+    String category,
+    String json,
+  ) => customStatement(
+    '''
+        INSERT INTO alert_delivery_settings(vehicle_id, category, settings_json)
+        VALUES (?, ?, ?)
+        ON CONFLICT(vehicle_id, category) DO UPDATE SET settings_json=excluded.settings_json
+      ''',
+    [vehicleId, category, json],
+  );
+
+  Future<void> setObligationReminder(
+    String vehicleId,
+    String category,
+    bool enabled,
+  ) => customStatement(
+    'UPDATE vehicle_obligations SET reminder_enabled = ? WHERE vehicle_id = ? AND type = ?',
+    [enabled ? 1 : 0, vehicleId, category],
+  );
 }
