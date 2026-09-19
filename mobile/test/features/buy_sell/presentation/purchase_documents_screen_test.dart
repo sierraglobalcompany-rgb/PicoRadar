@@ -112,7 +112,7 @@ void main() {
       await tester.tap(remove);
       await tester.pumpAndSettle();
       expect(
-        find.widgetWithText(AlertDialog, 'Eliminar copia'),
+        find.widgetWithText(AlertDialog, 'Eliminar documento completo'),
         findsOneWidget,
       );
       harness.router.go('/other');

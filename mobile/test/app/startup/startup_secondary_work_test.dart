@@ -46,6 +46,7 @@ void main() {
             picoWidgetSyncProvider.overrideWith((ref) async {}),
             picoNotificationSyncProvider.overrideWith((ref) async {}),
             obligationNotificationSyncProvider.overrideWith((ref) async {}),
+            maintenanceNotificationSyncProvider.overrideWith((ref) async {}),
             datasetSyncRunProvider.overrideWith((ref) async => null),
           ],
         );
@@ -187,6 +188,7 @@ void main() {
               expect(painted, isTrue);
               starts.add('obligations');
             }),
+            maintenanceNotificationSyncProvider.overrideWith((ref) async {}),
             datasetSyncRunProvider.overrideWith((ref) async {
               expect(painted, isTrue);
               starts.add('dataset');

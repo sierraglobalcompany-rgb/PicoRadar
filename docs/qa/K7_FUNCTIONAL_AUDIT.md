@@ -45,6 +45,7 @@ This matrix documents all current production launcher call sites after K7 integr
 | `lib/features/defense/presentation/defense_screen.dart` | SIMIT, Corte C-038/20, Corte C-321/22 | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/fotomultas/presentation/fotomultas_screen.dart` | ANSV source from camera pack | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/driving/presentation/driving_screen.dart` | Camera Google Maps handoff | Controlled visible snackbar | Controlled visible snackbar | PASS |
+| `lib/features/maintenance/presentation/maintenance_screen.dart` | Taller mecánico cercano por GPS o ciudad seleccionada | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/services/presentation/services_screen.dart` | Google Maps service searches | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/vehicle_status/presentation/vehicle_status_screen.dart` | Phone actions, tax calendar portal, official status links | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/vehicle_status/presentation/tax_owner_content.dart` | Tax authority portal and official source links | Controlled visible snackbar with retry/copy | Controlled visible snackbar with retry/copy | PASS |

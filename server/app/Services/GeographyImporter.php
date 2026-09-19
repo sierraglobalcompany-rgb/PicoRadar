@@ -74,12 +74,17 @@ class GeographyImporter
                 if (count($coverage) !== count($mapping['coverageDivipolaCodes'])) {
                     throw new DomainException('Pico jurisdiction coverage cannot be reconciled.');
                 }
-                $metadata = ['picoClassification' => $record['classification'], 'sourceDate' => $record['sourceDate']];
+                $metadata = [
+                    'picoClassification' => $record['classification'],
+                    'operationalStatus' => $record['operationalStatus'],
+                    'engineEnabled' => $record['engineEnabled'],
+                    'sourceDate' => $record['sourceDate'],
+                ];
                 if (($mapping['coverageStatus'] ?? null) === 'reference_only') {
                     $metadata['coverageStatus'] = 'reference_only';
                 }
                 $jurisdiction = Jurisdiction::query()->where('key', $record['id'])->first();
-                $attributes = ['name' => $record['name'], 'kind' => JurisdictionKind::from($mapping['kind']), 'primary_geographic_unit_id' => $primary->id, 'enabled' => $record['classification'] === 'SUPPORTED_CURRENT', 'timezone' => 'America/Bogota', 'metadata' => $metadata];
+                $attributes = ['name' => $record['name'], 'kind' => JurisdictionKind::from($mapping['kind']), 'primary_geographic_unit_id' => $primary->id, 'enabled' => $record['engineEnabled'], 'timezone' => 'America/Bogota', 'metadata' => $metadata];
                 if ($jurisdiction) {
                     $jurisdiction = $this->jurisdictions->syncFromCanonicalMapping($jurisdiction, $attributes, $coverage);
                 } else {
@@ -211,7 +216,7 @@ class GeographyImporter
         }
         $catalogKeys = [];
         foreach ($records as $record) {
-            if (! is_array($record) || ! is_string($record['id'] ?? null) || ! is_string($record['classification'] ?? null) || ! is_string($record['sourceDate'] ?? null) || isset($catalogKeys[$record['id']])) {
+            if (! is_array($record) || ! is_string($record['id'] ?? null) || ! is_string($record['classification'] ?? null) || ! is_string($record['operationalStatus'] ?? null) || ! is_bool($record['engineEnabled'] ?? null) || ! is_string($record['sourceDate'] ?? null) || isset($catalogKeys[$record['id']])) {
                 throw new DomainException('Pico jurisdiction catalog is invalid.');
             }
             $catalogKeys[$record['id']] = true;

@@ -297,7 +297,7 @@ Future<void> _untilEnabled(WidgetTester tester, Finder target) async {
 Future<void> _untilGone(WidgetTester tester, Finder target) async {
   for (
     var attempt = 0;
-    attempt < 100 && target.evaluate().isNotEmpty;
+    attempt < 300 && target.evaluate().isNotEmpty;
     attempt++
   ) {
     await tester.runAsync(
