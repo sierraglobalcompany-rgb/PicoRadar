@@ -60,6 +60,7 @@ class WalletStore {
         importedCount: _migrationReport.importedCount,
         orphanedCount: _migrationReport.orphanedCount,
         pendingCleanupCount: _migrationReport.pendingCleanupCount,
+        unreadableRecordCount: _migrationReport.unreadableRecordCount,
         migrationFailed: true,
       );
       rethrow;
@@ -159,7 +160,11 @@ class WalletStore {
         orphanedCount: unresolved.length,
       );
     });
-    _migrationReport = report;
+    _migrationReport = WalletMigrationReport(
+      importedCount: report.importedCount,
+      orphanedCount: report.orphanedCount,
+      unreadableRecordCount: _migrationReport.unreadableRecordCount,
+    );
     await _drainPendingCleanup();
     if (!_initialized) await _purgeUnreferencedEncryptedFiles();
     _initialized = true;
@@ -719,6 +724,7 @@ class WalletStore {
   Future<WalletMigrationReport> retryPendingCleanup() => _serialized(() async {
     await _ensureInitialized();
     await _drainPendingCleanup();
+    await _purgeUnreferencedEncryptedFiles();
     return _migrationReport;
   });
 
@@ -757,34 +763,56 @@ class WalletStore {
       orphanedCount: _migrationReport.orphanedCount,
       migrationFailed: _migrationReport.migrationFailed,
       pendingCleanupCount: pending,
+      unreadableRecordCount: _migrationReport.unreadableRecordCount,
     );
   }
 
   Future<void> _purgeUnreferencedEncryptedFiles() async {
     final root = Directory('${(await _rootDirectory()).path}/wallet_documents');
-    if (!await root.exists()) return;
     final referenced = <String>{};
-    for (final document in await _documents(null)) {
-      for (final side in document.sides) {
-        final ref = document.fileFor(side)!;
-        if (ref.legacyMetadata == null) {
-          referenced.add(_checkedPath(ref.encryptedRelativePath));
+    var unreadable = 0;
+    for (final row in await _db.select(_db.privateDocuments).get()) {
+      try {
+        final document = await _document(row);
+        for (final side in document.sides) {
+          final ref = document.fileFor(side)!;
+          if (ref.legacyMetadata == null) {
+            referenced.add(_checkedPath(ref.encryptedRelativePath));
+          }
         }
+      } catch (_) {
+        // An unreadable owner must never turn its ciphertext into garbage.
+        unreadable++;
       }
     }
     for (final row in await (_db.select(
       _db.walletMigrations,
     )..where((r) => r.id.like('$_cleanupPrefix%'))).get()) {
-      final data = await _decrypt(row.encryptedMetadata);
-      for (final item in data['files']! as List) {
-        final ref = WalletFileRef.fromJson(
-          Map<String, Object?>.from(item as Map),
-        );
-        if (ref.legacyMetadata == null) {
-          referenced.add(_checkedPath(ref.encryptedRelativePath));
+      try {
+        final data = await _decrypt(row.encryptedMetadata);
+        if (data['id'] != row.id) {
+          throw const FormatException('Invalid wallet cleanup record.');
         }
+        for (final item in data['files']! as List) {
+          final ref = WalletFileRef.fromJson(
+            Map<String, Object?>.from(item as Map),
+          );
+          if (ref.legacyMetadata == null) {
+            referenced.add(_checkedPath(ref.encryptedRelativePath));
+          }
+        }
+      } catch (_) {
+        unreadable++;
       }
     }
+    _migrationReport = WalletMigrationReport(
+      importedCount: _migrationReport.importedCount,
+      orphanedCount: _migrationReport.orphanedCount,
+      pendingCleanupCount: _migrationReport.pendingCleanupCount,
+      migrationFailed: _migrationReport.migrationFailed,
+      unreadableRecordCount: unreadable,
+    );
+    if (unreadable > 0 || !await root.exists()) return;
     // A crash can leave ciphertext written before a transaction commits, or an
     // obsolete file after commit. Only collect files in this store's namespace.
     final prefix = '${root.absolute.path.replaceAll('\\', '/')}/';

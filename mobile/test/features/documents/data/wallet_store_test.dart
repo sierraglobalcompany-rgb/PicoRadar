@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
@@ -84,6 +83,98 @@ void main() {
     expect(await store.listDrivers(), hasLength(1));
     await store.saveDriver(displayName: 'Replacement');
     expect(await store.listDrivers(), hasLength(2));
+  });
+
+  test(
+    'corrupt metadata on reopen preserves files and healthy owners',
+    () async {
+      final bad = await store.saveDocument(
+        owner: const WalletOwner.driver('principal'),
+        type: WalletDocumentType.identityCard,
+        pdf: await input('bad.pdf', [37, 80, 68, 70, 1]),
+      );
+      final other = await store.saveDriver(displayName: 'Other');
+      final healthy = await store.saveDocument(
+        owner: WalletOwner.driver(other.id),
+        type: WalletDocumentType.identityCard,
+        pdf: await input('healthy.pdf', [37, 80, 68, 70, 2]),
+      );
+      final damaged = Uint8List.fromList([1, 2, 3]);
+      await (db.update(db.privateDocuments)..where((r) => r.id.equals(bad.id)))
+          .write(PrivateDocumentsCompanion(encryptedMetadata: Value(damaged)));
+      final unreferenced = File(
+        '${root.path}/wallet_documents/docs/${'f' * 32}/pdf.prcf',
+      );
+      await unreferenced.parent.create(recursive: true);
+      await unreferenced.writeAsBytes([4, 5, 6]);
+
+      store = createStore();
+      expect((await store.initialize()).needsRecovery, isTrue);
+      expect((await store.listDrivers()), hasLength(2));
+      expect(
+        (await store.listDocuments(owner: WalletOwner.driver(other.id)))
+            .single
+            .id,
+        healthy.id,
+      );
+      expect(await store.readDocumentBytes(healthy, WalletDocumentSide.pdf), [
+        37,
+        80,
+        68,
+        70,
+        2,
+      ]);
+      await store.deleteDriver(other.id, isAuthorized: () => true);
+      expect(await unreferenced.readAsBytes(), [4, 5, 6]);
+      expect(
+        await File(
+          '${root.path}/wallet_documents/${bad.pdf!.encryptedRelativePath}',
+        ).exists(),
+        isTrue,
+      );
+      final retained = await (db.select(
+        db.privateDocuments,
+      )..where((r) => r.id.equals(bad.id))).getSingle();
+      expect(retained.encryptedMetadata, damaged);
+      await expectLater(store.deleteDocument(bad.id), throwsFormatException);
+      expect((await store.initialize()).needsRecovery, isTrue);
+    },
+  );
+
+  test('corrupt cleanup journal disables garbage collection without blocking healthy reads', () async {
+    final saved = await store.saveDocument(
+      owner: const WalletOwner.driver('principal'),
+      type: WalletDocumentType.identityCard,
+      pdf: await input('healthy.pdf', [37, 80, 68, 70, 2]),
+    );
+    final retained = File(
+      '${root.path}/wallet_documents/docs/${'f' * 32}/front.prcf',
+    );
+    await retained.parent.create(recursive: true);
+    await retained.writeAsBytes([7, 8, 9]);
+    final damaged = Uint8List.fromList([1, 2, 3]);
+    await db
+        .into(db.walletMigrations)
+        .insert(
+          WalletMigrationsCompanion.insert(
+            id: 'cleanup:unreadable',
+            encryptedMetadata: damaged,
+          ),
+        );
+    store = createStore();
+    final report = await store.initialize();
+    expect(report.unreadableRecordCount, 1);
+    expect(report.pendingCleanupCount, 1);
+    expect((await store.listDocuments()).single.id, saved.id);
+    expect((await store.retryPendingCleanup()).needsRecovery, isTrue);
+    expect(await retained.readAsBytes(), [7, 8, 9]);
+    expect(
+      (await (db.select(
+            db.walletMigrations,
+          )..where((r) => r.id.equals('cleanup:unreadable'))).getSingle())
+          .encryptedMetadata,
+      damaged,
+    );
   });
 
   test('concurrent second profile requests cannot create a third', () async {

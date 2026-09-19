@@ -103,6 +103,7 @@ void main() {
     WalletMigrationReport(orphanedCount: 1),
     WalletMigrationReport(pendingCleanupCount: 1),
     WalletMigrationReport(migrationFailed: true),
+    WalletMigrationReport(unreadableRecordCount: 1),
   ]) {
     testWidgets(
       'recovery warning remains visible for ${report.orphanedCount}/${report.pendingCleanupCount}/${report.migrationFailed}',

@@ -151,12 +151,17 @@ class WalletMigrationReport {
     this.importedCount = 0,
     this.orphanedCount = 0,
     this.pendingCleanupCount = 0,
+    this.unreadableRecordCount = 0,
     this.migrationFailed = false,
   });
   final int importedCount;
   final int orphanedCount;
   final int pendingCleanupCount;
+  final int unreadableRecordCount;
   final bool migrationFailed;
   bool get needsRecovery =>
-      orphanedCount > 0 || pendingCleanupCount > 0 || migrationFailed;
+      orphanedCount > 0 ||
+      pendingCleanupCount > 0 ||
+      unreadableRecordCount > 0 ||
+      migrationFailed;
 }
