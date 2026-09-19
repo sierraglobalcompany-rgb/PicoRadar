@@ -59,7 +59,11 @@ final alertCenterProvider = FutureProvider<AlertCenterData>((ref) async {
   String? alarmFailure;
   try {
     final status = await gateway.status().timeout(const Duration(seconds: 3));
-    alarmFailure = status.failureMessage;
+    alarmFailure =
+        status.failureMessage ??
+        (status.testState == AlarmTestState.failed
+            ? alarmFailureMessage(null)
+            : null);
   } catch (_) {
     alarmFailure = alarmFailureMessage(null);
   }

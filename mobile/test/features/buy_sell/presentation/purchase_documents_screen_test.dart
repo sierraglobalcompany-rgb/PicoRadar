@@ -111,13 +111,20 @@ void main() {
       await _until(tester, () => remove.evaluate().isNotEmpty);
       await tester.tap(remove);
       await tester.pumpAndSettle();
+      expect(find.widgetWithText(AlertDialog, 'Eliminar copia'), findsOneWidget);
       harness.router.go('/other');
       await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog, skipOffstage: false), findsNothing);
+      expect(find.text('Other route').hitTestable(), findsOneWidget);
+      expect(harness.session.accessAllowed, isFalse);
+      expect(harness.container!.read(walletOperationProvider).busy, isFalse);
       expect(await harness.session.unlock(), isTrue);
-      await tester.tap(find.text('Eliminar').last);
       await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog, skipOffstage: false), findsNothing);
+      expect(find.text('Other route').hitTestable(), findsOneWidget);
       expect(harness.store.deleted, isEmpty);
-      expect(harness.store.documents, hasLength(1));
+      expect(harness.store.documents.single.id, 'soat');
+      expect(harness.store.documents.single.owner, _owner);
     },
   );
 
@@ -375,12 +382,29 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Escanear'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Puedes importar un archivo'), findsOneWidget);
+      final recovery = find.byType(AlertDialog);
+      expect(recovery, findsOneWidget);
+      expect(find.text('Reintentar'), findsOneWidget);
+      expect(find.textContaining('C\u00f3digo: platform_failed'), findsOneWidget);
+      expect(find.textContaining('scanner unavailable'), findsNothing);
       expect(harness.store.documents, isEmpty);
       expect(harness.session.accessAllowed, isTrue);
-      await tester.tap(add);
+      await tester.tap(
+        find.descendant(
+          of: recovery,
+          matching: find.widgetWithText(TextButton, 'Importar archivo'),
+        ),
+      );
+      await _until(
+        tester,
+        () =>
+            harness.gateway.picks == 1 &&
+            !harness.container!.read(walletOperationProvider).busy,
+      );
       await tester.pumpAndSettle();
-      expect(find.text('Importar archivo'), findsOneWidget);
+      expect(find.byType(AlertDialog, skipOffstage: false), findsNothing);
+      expect(harness.store.documents, isEmpty);
+      expect(harness.session.accessAllowed, isTrue);
     },
   );
 

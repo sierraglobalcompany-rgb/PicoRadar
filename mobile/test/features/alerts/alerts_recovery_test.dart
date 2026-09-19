@@ -120,6 +120,74 @@ void main() {
     expect(recovered.alarmFailureMessage, isNull);
   });
 
+  testWidgets('consumed failure while backgrounded remains visible on resume', (
+    tester,
+  ) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    await tester.runAsync(() => _seed(db, VehicleObligationStore(db)));
+    final gateway = _ConsumedFailureGateway();
+    final container = _centerContainer(db, gateway: gateway);
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      container.dispose();
+      await db.close();
+    });
+    await tester.runAsync(() => container.read(alertCenterProvider.future));
+    await _pump(tester, container);
+    await tester.scrollUntilVisible(find.text('Vista previa y prueba'), 200);
+    await tester.tap(find.text('Vista previa y prueba'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Probar sonido de alarma'));
+    await tester.tap(find.text('Probar sonido de alarma'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(gateway.observations, 2);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    gateway.state = AlarmTestState.failed;
+    gateway.pendingStatus.complete(
+      const AlarmStatus(
+        testState: AlarmTestState.failed,
+        failureCode: 'PLAYBACK_FAILED',
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(SnackBar), findsNothing);
+    expect(gateway.observations, 2);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    for (var frame = 0; frame < 50; frame++) {
+      await tester.pump(const Duration(milliseconds: 20));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 2)),
+      );
+      if (gateway.observations >= 3 &&
+          !container.read(alertCenterProvider).isLoading) {
+        break;
+      }
+    }
+    await tester.pumpAndSettle();
+    final recovered = container.read(alertCenterProvider).requireValue;
+    const message =
+        'No se pudo iniciar la alarma. Revisa los permisos y vuelve a probar.';
+    expect(gateway.observations, 3);
+    expect(recovered.alarmFailureMessage, message);
+    expect(recovered.schedulingFailed, isTrue);
+    expect(recovered.rows.every((row) => !row.scheduled), isTrue);
+    await tester.scrollUntilVisible(find.text(message), -200);
+    expect(find.text(message).hitTestable(), findsOneWidget);
+    expect(find.textContaining('Programada:'), findsNothing);
+    expect(find.text('Sonido de alarma iniciado.'), findsNothing);
+    await tester.scrollUntilVisible(find.text('Vista previa y prueba'), 200);
+    expect(
+      tester
+          .widget<TextButton>(
+            find.widgetWithText(TextButton, 'Vista previa y prueba'),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   for (final unmount in [false, true]) {
     testWidgets('save refreshes owner and schedules after unmount=$unmount', (
       tester,
@@ -288,6 +356,7 @@ void main() {
 ProviderContainer _centerContainer(
   AppDatabase db, {
   bool nativeStatus = false,
+  AlertAlarmGateway? gateway,
 }) => ProviderContainer(
   overrides: [
     appDatabaseProvider.overrideWithValue(db),
@@ -297,7 +366,7 @@ ProviderContainer _centerContainer(
       _PermissionScheduler(null),
     ),
     alarmGatewayProvider.overrideWithValue(
-      _PermissionGateway(null, nativeStatus: nativeStatus),
+      gateway ?? _PermissionGateway(null, nativeStatus: nativeStatus),
     ),
     picoNotificationSyncProvider.overrideWith((ref) async {}),
     obligationNotificationSyncProvider.overrideWith((ref) async {}),
@@ -416,5 +485,25 @@ class _PermissionGateway extends AlertAlarmGateway {
   @override
   Future<void> openNotificationSettings() async {
     settingsOpened++;
+  }
+}
+
+class _ConsumedFailureGateway extends _PermissionGateway {
+  _ConsumedFailureGateway() : super(null);
+  final pendingStatus = Completer<AlarmStatus>();
+  var state = AlarmTestState.idle;
+  var observations = 0;
+
+  @override
+  Future<void> test() async {
+    state = AlarmTestState.starting;
+  }
+
+  @override
+  Future<AlarmStatus> status() async {
+    observations++;
+    if (state == AlarmTestState.starting) return pendingStatus.future;
+    // The prior observation consumed the code, but native failed is sticky.
+    return AlarmStatus(testState: state);
   }
 }
