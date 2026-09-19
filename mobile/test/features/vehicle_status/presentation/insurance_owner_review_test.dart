@@ -228,25 +228,92 @@ void main() {
     );
   }
 
-  testWidgets('vehicle tap without a policy opens its editor', (tester) async {
-    await _pump(tester, configured: false);
-    await tester.tap(find.byKey(ValueKey('insurance-vehicle-open-${_car.id}')));
-    await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey('insurance-editor-insurer')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('insurance-editor-providerName')),
-      findsNothing,
-    );
-    expect(
-      find.byKey(const ValueKey('insurance-editor-policyNumber')),
-      findsOneWidget,
-    );
-    expect(find.byType(DocumentsSessionSheet), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
+  for (final vehicle in [_car, _moto]) {
+    for (final result in [
+      WalletAuthenticationResult.success,
+      WalletAuthenticationResult.cancelled,
+    ]) {
+      testWidgets(
+        'vehicle tap without a policy protects the ${vehicle.id} editor: $result',
+        (tester) async {
+          final wallet = _WalletFixture();
+          wallet.authenticator.pending =
+              Completer<WalletAuthenticationResult>();
+          final incoming = ValueNotifier<String?>(vehicle.id);
+          addTearDown(incoming.dispose);
+          await _pump(
+            tester,
+            configured: false,
+            incoming: incoming,
+            wallet: wallet,
+          );
+          _expectFocus(tester, vehicle);
+          await tester.tap(
+            find.byKey(ValueKey('insurance-vehicle-open-${vehicle.id}')),
+          );
+          await tester.pumpAndSettle();
+          final editor = find.byKey(const ValueKey('insurance-editor-insurer'));
+          final protectedSheet = find.byType(DocumentsSessionSheet);
+          expect(wallet.authenticator.calls, 1);
+          expect(wallet.session.accessAllowed, isFalse);
+          expect(editor, findsNothing);
+          expect(protectedSheet, findsNothing);
+          expect(wallet.reads, isEmpty);
+
+          wallet.authenticator.pending!.complete(result);
+          await tester.pumpAndSettle();
+          if (result == WalletAuthenticationResult.success) {
+            expect(editor, findsOneWidget);
+            expect(protectedSheet, findsOneWidget);
+            expect(wallet.session.accessAllowed, isTrue);
+            expect(wallet.platform.secure, isTrue);
+            expect(
+              find.descendant(
+                of: protectedSheet,
+                matching: find.text(vehicle.nickname!),
+              ),
+              findsOneWidget,
+            );
+            final other = vehicle.id == _car.id ? _moto : _car;
+            expect(
+              find.descendant(
+                of: protectedSheet,
+                matching: find.text(other.nickname!),
+              ),
+              findsNothing,
+            );
+            expect(
+              find.byKey(const ValueKey('insurance-editor-providerName')),
+              findsNothing,
+            );
+            expect(
+              find.byKey(const ValueKey('insurance-editor-policyNumber')),
+              findsOneWidget,
+            );
+          } else {
+            expect(editor, findsNothing);
+            expect(protectedSheet, findsNothing);
+            expect(
+              find.byKey(const ValueKey('insurance-editor-policyNumber')),
+              findsNothing,
+            );
+            expect(wallet.session.accessAllowed, isFalse);
+            expect(wallet.platform.secure, isFalse);
+          }
+          final container = ProviderScope.containerOf(
+            tester.element(find.byType(InsuranceOwnerScreen)),
+          );
+          expect(
+            (await container.read(activeVehicleProvider.future))?.id,
+            _car.id,
+          );
+          expect(wallet.authenticator.calls, 1);
+          expect(wallet.reads, isEmpty);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
 
   for (final result in [
     WalletAuthenticationResult.success,
