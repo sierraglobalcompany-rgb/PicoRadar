@@ -27,4 +27,7 @@
         <a class="mt-6 inline-flex rounded-md border border-slate-300 px-4 py-2 font-medium text-slate-800" href="{{ route('admin.geography.index') }}">Geography</a>
         <a class="mt-6 inline-flex rounded-md border border-slate-300 px-4 py-2 font-medium text-slate-800" href="{{ route('admin.jurisdictions.index') }}">Jurisdictions</a>
     @endcan
+    @can('partner_inquiries.view')
+        <a class="mt-6 inline-flex rounded-md border border-slate-300 px-4 py-2 font-medium text-slate-800" href="{{ route('admin.partner-inquiries.index') }}">Partner inquiries</a>
+    @endcan
 @endsection

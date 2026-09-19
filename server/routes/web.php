@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DatasetController;
 use App\Http\Controllers\Admin\GeographyController;
 use App\Http\Controllers\Admin\JurisdictionController;
+use App\Http\Controllers\Admin\PartnerInquiryController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Middleware\EnsureActiveOperator;
 use App\Http\Middleware\SecurityHeaders;
@@ -31,6 +32,9 @@ Route::middleware(['auth', EnsureActiveOperator::class, SecurityHeaders::class])
     Route::get('/admin/jurisdictions/create', [JurisdictionController::class, 'create'])->name('admin.jurisdictions.create');
     Route::post('/admin/jurisdictions', [JurisdictionController::class, 'store'])->name('admin.jurisdictions.store');
     Route::get('/admin/jurisdictions/{jurisdiction}', [JurisdictionController::class, 'show'])->name('admin.jurisdictions.show');
+    Route::get('/admin/partner-inquiries', [PartnerInquiryController::class, 'index'])->name('admin.partner-inquiries.index');
+    Route::get('/admin/partner-inquiries/audit', [PartnerInquiryController::class, 'audit'])->name('admin.partner-inquiries.audit');
+    Route::put('/admin/partner-inquiries/{inquiry}/status', [PartnerInquiryController::class, 'updateStatus'])->name('admin.partner-inquiries.status');
     Route::resource('/admin/camera-sources', CameraSourceController::class)->except('destroy')->parameters(['camera-sources' => 'source'])->names('admin.camera-sources');
     Route::get('/admin/cameras/quality', [CameraController::class, 'quality'])->name('admin.cameras.quality');
     Route::get('/admin/cameras/review', [CameraController::class, 'review'])->name('admin.cameras.review');

@@ -25,6 +25,7 @@ import 'package:picoradar/features/alerts/presentation/alerts_screen.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/presentation/vehicle_detail_screen.dart';
 import 'package:picoradar/features/home/data/home_banner_config.dart';
+import 'package:picoradar/features/home/presentation/home_partner_carousel.dart';
 import 'package:picoradar/features/home/presentation/home_screen.dart';
 import 'package:picoradar/features/location/application/location_controller.dart';
 import 'package:picoradar/features/location/data/location_preferences.dart';
@@ -54,6 +55,27 @@ void main() {
 
   setUp(() {
     harness = TestAppHarness();
+  });
+
+  testWidgets('partner carousel sits between compact header and vehicle', (
+    tester,
+  ) async {
+    await _readyHome(harness, plate: 'ABC126');
+    await _pumpHome(tester, harness);
+
+    final header = find.byKey(const ValueKey('home-compact-top-bar'));
+    final partners = find.byType(HomePartnerCarousel);
+    final vehicles = find.byKey(const ValueKey('home-vehicle-carousel'));
+
+    expect(partners, findsOneWidget);
+    expect(
+      tester.getBottomLeft(header).dy,
+      lessThan(tester.getTopLeft(partners).dy),
+    );
+    expect(
+      tester.getBottomLeft(partners).dy,
+      lessThan(tester.getTopLeft(vehicles).dy),
+    );
   });
 
   for (final scale in [1.0, 2.0]) {
@@ -496,7 +518,7 @@ void main() {
     }
 
     testWidgets(
-      'Home measured layout fits Mi A3 and grows without losing focus',
+      'Home measured layout scrolls on Mi A3 and grows without losing focus',
       (tester) async {
         harness.now = DateTime(2026, 8, 27, 12);
         await _createVehicle(harness, plate: 'XYZ125');
@@ -539,28 +561,28 @@ void main() {
             )
             .position;
         final smallHeight = tester.getSize(carousel).height;
-        expect(smallHeight, inInclusiveRange(188, 359));
-        expect(position.maxScrollExtent, 0);
+        expect(smallHeight, inInclusiveRange(220, 359));
+        expect(position.maxScrollExtent, greaterThan(0));
         expect(
           tester.widget<SingleChildScrollView>(scroll).physics,
-          isA<NeverScrollableScrollPhysics>(),
+          isA<ClampingScrollPhysics>(),
         );
         final banner = find.byKey(const ValueKey('home-bottom-banner'));
         expect(banner, findsOneWidget);
         expect(tester.getSize(banner).height, greaterThanOrEqualTo(96));
         final viewport = tester.getRect(scroll);
+        expect(
+          find.byKey(const ValueKey('home-bottom-banner-cta')),
+          findsOneWidget,
+        );
+        await tester.ensureVisible(banner);
+        await tester.pumpAndSettle();
+        expect(position.pixels, greaterThan(0));
         expect(tester.getRect(banner).top, greaterThanOrEqualTo(viewport.top));
         expect(
           tester.getRect(banner).bottom,
           lessThanOrEqualTo(viewport.bottom),
         );
-        expect(
-          find.byKey(const ValueKey('home-bottom-banner-cta')),
-          findsOneWidget,
-        );
-        await tester.drag(banner, const Offset(0, -100));
-        await tester.pumpAndSettle();
-        expect(position.pixels, 0);
 
         tester.view.physicalSize = const Size(360, 1000);
         await tester.pumpAndSettle();
@@ -569,7 +591,7 @@ void main() {
         expect(tester.widget<PageView>(pageView).controller, same(controller));
         expect(controller.page, initialPage);
         expect(container.read(homeFocusedVehicleIdProvider), vehicle.id);
-        expect(position.maxScrollExtent, 0);
+        expect(position.maxScrollExtent, greaterThan(0));
         expect(tester.binding.hasScheduledFrame, isFalse);
         expect(tester.takeException(), isNull);
       },
@@ -1692,7 +1714,7 @@ void main() {
       ]);
     });
 
-    testWidgets('390x844 keeps essential Home content above bottom nav', (
+    testWidgets('390x844 keeps essential Home content reachable', (
       tester,
     ) async {
       await _readyHome(harness, plate: 'ABC124');
@@ -1707,16 +1729,17 @@ void main() {
         ),
       );
 
-      final bannerBottom = tester.getBottomLeft(
-        find.byKey(const ValueKey('home-bottom-banner-slot')),
-      );
+      final banner = find.byKey(const ValueKey('home-bottom-banner-slot'));
+      await tester.ensureVisible(banner);
+      await tester.pumpAndSettle();
+      final bannerBottom = tester.getBottomLeft(banner);
 
       expect(bannerBottom.dy, lessThanOrEqualTo(844 - 96));
       expect(find.byKey(const ValueKey('home-start-driving')), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('360x800 keeps essential Home content above bottom nav', (
+    testWidgets('360x800 keeps essential Home content reachable', (
       tester,
     ) async {
       await _readyHome(harness, plate: 'ABC124');
@@ -1731,9 +1754,10 @@ void main() {
         ),
       );
 
-      final bannerBottom = tester.getBottomLeft(
-        find.byKey(const ValueKey('home-bottom-banner-slot')),
-      );
+      final banner = find.byKey(const ValueKey('home-bottom-banner-slot'));
+      await tester.ensureVisible(banner);
+      await tester.pumpAndSettle();
+      final bannerBottom = tester.getBottomLeft(banner);
 
       expect(bannerBottom.dy, lessThanOrEqualTo(800 - 96));
       expect(find.byKey(const ValueKey('home-start-driving')), findsNothing);

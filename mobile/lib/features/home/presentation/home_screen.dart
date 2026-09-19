@@ -20,6 +20,7 @@ import '../../location/data/location_preferences.dart';
 import '../../location/domain/jurisdiction_location_resolver.dart';
 import '../../location/platform/device_location_gateway.dart';
 import '../data/home_banner_config.dart';
+import 'home_partner_carousel.dart';
 import 'pico_notification_sheet.dart';
 import '../../pico_placa/data/pico_preferences.dart';
 import '../../pico_placa/data/restriction_store.dart';
@@ -630,10 +631,16 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
                           horizontalPadding,
                           AppSpacing.s,
                         ),
-                        child: _HomeHeader(
-                          alertPreferences: widget.alertPreferences,
-                          jurisdictions: widget.jurisdictions,
-                          selectedJurisdiction: widget.selectedJurisdiction,
+                        child: Column(
+                          children: [
+                            _HomeHeader(
+                              alertPreferences: widget.alertPreferences,
+                              jurisdictions: widget.jurisdictions,
+                              selectedJurisdiction: widget.selectedJurisdiction,
+                            ),
+                            const SizedBox(height: AppSpacing.s),
+                            const HomePartnerCarousel(),
+                          ],
                         ),
                       ),
                     ),

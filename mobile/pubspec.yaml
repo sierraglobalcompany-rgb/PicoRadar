@@ -90,6 +90,7 @@ flutter:
     - assets/maps/colombia_departments_dane2025.geojson
     - assets/catalogs/
     - assets/config/
+    - assets/home/partners/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
