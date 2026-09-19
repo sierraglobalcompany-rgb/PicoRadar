@@ -7,6 +7,7 @@ import '../../../app/app_providers.dart';
 import '../../../app/router/app_routes.dart';
 import '../../../app/theme/app_tokens.dart';
 import '../../onboarding/data/registration_city_catalog.dart';
+import '../../documents/application/wallet_providers.dart';
 import '../../vehicle_status/data/tax_authority_resolution.dart';
 import '../../vehicle_status/domain/vehicle_obligation.dart';
 import '../../vehicle_status/platform/obligation_notifications.dart';
@@ -15,6 +16,7 @@ import '../application/vehicle_associated_data_cleaner.dart';
 import '../data/vehicle_profile.dart';
 import '../data/vehicle_repository.dart';
 import 'vehicle_deletion_window.dart';
+import 'vehicle_deletion_authorization.dart';
 import 'vehicle_display.dart';
 import 'vehicle_plate_badge.dart';
 
@@ -486,13 +488,20 @@ class _VehicleDetailState extends ConsumerState<_VehicleDetail> {
       _pendingDeletion = pending;
       if (!await pending.wait()) return;
       _pendingDeletion = null;
-      committing = true;
-      message = await _deleteVehicleAndAssociatedData(
-        repository,
-        cleaner,
-        target.id,
+      if (!mounted) return;
+      deleted = await authorizeVehicleDeletion(
+        context,
+        ref.read(walletSessionProvider),
+        (isAuthorized) async {
+          committing = true;
+          message = await _deleteVehicleAndAssociatedData(
+            repository,
+            cleaner,
+            target.id,
+            isAuthorized,
+          );
+        },
       );
-      deleted = true;
     } on _VehicleDeleteFailure catch (failure) {
       message = failure.message;
     } catch (_) {
@@ -509,7 +518,7 @@ class _VehicleDetailState extends ConsumerState<_VehicleDetail> {
     if (!mounted) return;
     if (deleted) context.go('/garage');
     if (message != null) {
-      messenger?.showSnackBar(SnackBar(content: Text(message)));
+      messenger?.showSnackBar(SnackBar(content: Text(message!)));
     }
   }
 
@@ -517,9 +526,14 @@ class _VehicleDetailState extends ConsumerState<_VehicleDetail> {
     VehicleRepository repository,
     VehicleAssociatedDataCleaner cleaner,
     String vehicleId,
+    bool Function() isAuthorized,
   ) async {
     try {
-      await cleaner.deleteForVehicle(vehicleId);
+      await cleaner.deletePrivateDataForVehicle(
+        vehicleId,
+        isAuthorized: isAuthorized,
+      );
+      if (!isAuthorized()) throw StateError('Wallet authorization expired.');
     } catch (_) {
       throw const _VehicleDeleteFailure(
         'No pudimos limpiar los datos asociados. Inténtalo de nuevo.',

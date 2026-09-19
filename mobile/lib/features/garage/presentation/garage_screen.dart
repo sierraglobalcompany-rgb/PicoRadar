@@ -9,12 +9,14 @@ import '../../../app/theme/app_tokens.dart';
 import '../../../core/design_system/actions_and_badges.dart';
 import '../../../core/design_system/surfaces.dart';
 import '../../home/presentation/home_screen.dart';
+import '../../documents/application/wallet_providers.dart';
 import '../../pico_placa/data/pico_preferences.dart';
 import '../../visual_assets/presentation/visual_asset_widgets.dart';
 import '../application/vehicle_associated_data_cleaner.dart';
 import '../data/vehicle_profile.dart';
 import '../data/vehicle_repository.dart';
 import 'vehicle_deletion_window.dart';
+import 'vehicle_deletion_authorization.dart';
 import 'vehicle_display.dart';
 import 'vehicle_plate_badge.dart';
 
@@ -535,12 +537,21 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
       _pendingDeletion = pending;
       if (!await pending.wait()) return;
       _pendingDeletion = null;
-      committing = true;
-      result = await _deleteVehicleAndAssociatedData(
-        repository: repository,
-        cleaner: cleaner,
-        vehicle: vehicle,
+      if (!mounted) return;
+      final completed = await authorizeVehicleDeletion(
+        context,
+        ref.read(walletSessionProvider),
+        (isAuthorized) async {
+          committing = true;
+          result = await _deleteVehicleAndAssociatedData(
+            repository: repository,
+            cleaner: cleaner,
+            vehicle: vehicle,
+            isAuthorized: isAuthorized,
+          );
+        },
       );
+      if (!completed) return;
     } on _GarageDeleteFailure catch (failure) {
       if (!mounted) {
         return;
@@ -599,9 +610,14 @@ class _GarageReadyState extends ConsumerState<_GarageReady> {
     required VehicleRepository repository,
     required VehicleAssociatedDataCleaner cleaner,
     required VehicleProfile vehicle,
+    required bool Function() isAuthorized,
   }) async {
     try {
-      await cleaner.deleteForVehicle(vehicle.id);
+      await cleaner.deletePrivateDataForVehicle(
+        vehicle.id,
+        isAuthorized: isAuthorized,
+      );
+      if (!isAuthorized()) throw StateError('Wallet authorization expired.');
     } catch (_) {
       throw const _GarageDeleteFailure(
         'No pudimos limpiar los datos asociados. Inténtalo de nuevo.',

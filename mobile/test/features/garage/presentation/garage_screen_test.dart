@@ -13,6 +13,8 @@ import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/features/apps_launcher/presentation/module_placeholder_screen.dart';
 import 'package:picoradar/features/documents/presentation/documents_screen.dart';
+import 'package:picoradar/features/documents/application/wallet_providers.dart';
+import 'package:picoradar/features/documents/application/wallet_session.dart';
 import 'package:picoradar/features/defense/data/defense_case_store.dart';
 import 'package:picoradar/features/garage/application/vehicle_associated_data_cleaner.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
@@ -1343,6 +1345,38 @@ void main() {
     },
   );
 
+  testWidgets(
+    'garage denies deletion when wallet authentication is cancelled',
+    (tester) async {
+      final seeded = await _seedThreeVehicles(harness);
+      final cleaner = _RecordingVehicleDataCleaner();
+      final auth = _GarageAuthenticator();
+      final session = WalletSession(
+        authenticator: auth,
+        preferences: _GarageWalletPreferences(),
+      );
+      addTearDown(session.dispose);
+      await _openGarage(
+        tester,
+        harness,
+        vehicleAssociatedDataCleaner: cleaner,
+        walletSession: session,
+      );
+      await _focusNewestVehicle(tester);
+      await tester.tap(find.byKey(const ValueKey('garage-action-delete')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('garage-confirm-delete-vehicle')),
+      );
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      expect(auth.calls, 1);
+      expect(cleaner.deletedVehicleIds, isEmpty);
+      expect(await harness.repository.getVehicle(seeded.newest.id), isNotNull);
+    },
+  );
+
   testWidgets('delete action keeps vehicle when associated cleanup fails', (
     tester,
   ) async {
@@ -1399,7 +1433,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(cleaner.deletedVehicleIds, [seeded.newest.id]);
-    expect(repository.deletedVehicleIds, [seeded.newest.id]);
+    expect(repository.deletedVehicleIds, isEmpty);
     expect(tester.takeException(), isNull);
   });
 
@@ -2125,6 +2159,7 @@ Future<void> _openGarage(
   VehicleAssociatedDataCleaner? vehicleAssociatedDataCleaner,
   VehicleRepository? vehicleRepository,
   AppPreferences? preferences,
+  WalletSession? walletSession,
   List<VehicleProfile>? vehicleListOverride,
 }) async {
   tester.view.devicePixelRatio = 1;
@@ -2135,12 +2170,18 @@ Future<void> _openGarage(
   addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
   await harness.pump(
     tester,
-    vehicleAssociatedDataCleaner: vehicleAssociatedDataCleaner,
+    vehicleAssociatedDataCleaner:
+        vehicleAssociatedDataCleaner ?? _RecordingVehicleDataCleaner(),
     vehicleListOverride: vehicleListOverride,
-    childOverride: preferences == null && vehicleRepository == null
+    childOverride:
+        preferences == null &&
+            vehicleRepository == null &&
+            walletSession == null
         ? null
         : ProviderScope(
             overrides: [
+              if (walletSession != null)
+                walletSessionProvider.overrideWithValue(walletSession),
               if (preferences != null)
                 appPreferencesProvider.overrideWithValue(preferences),
               vehicleRepositoryProvider.overrideWithValue(
@@ -2160,6 +2201,25 @@ Future<void> _openGarage(
   }
 }
 
+class _GarageAuthenticator implements WalletDeviceAuthenticator {
+  int calls = 0;
+  @override
+  Future<bool> canAuthenticate() async => true;
+  @override
+  Future<WalletAuthenticationResult> authenticate() async {
+    calls++;
+    return WalletAuthenticationResult.cancelled;
+  }
+}
+
+class _GarageWalletPreferences implements WalletSecurityPreferencesStore {
+  @override
+  Future<WalletSecurityPreferences> read() async =>
+      const WalletSecurityPreferences(protectionEnabled: true, offerSeen: true);
+  @override
+  Future<void> write(WalletSecurityPreferences preferences) async {}
+}
+
 class _RecordingVehicleDataCleaner extends VehicleAssociatedDataCleaner {
   _RecordingVehicleDataCleaner()
     : super(
@@ -2172,6 +2232,16 @@ class _RecordingVehicleDataCleaner extends VehicleAssociatedDataCleaner {
   final deletedVehicleIds = <String>[];
   Completer<void>? gate;
   var fail = false;
+
+  @override
+  Future<void> deletePrivateDataForVehicle(
+    String vehicleId, {
+    required bool Function() isAuthorized,
+  }) async {
+    if (!isAuthorized()) throw StateError('Wallet locked');
+    await deleteForVehicle(vehicleId);
+    if (!isAuthorized()) throw StateError('Wallet locked');
+  }
 
   @override
   Future<void> deleteForVehicle(String vehicleId) async {

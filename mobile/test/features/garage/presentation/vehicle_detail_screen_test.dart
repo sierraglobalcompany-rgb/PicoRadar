@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/features/defense/data/defense_case_store.dart';
+import 'package:picoradar/features/documents/application/wallet_providers.dart';
+import 'package:picoradar/features/documents/application/wallet_session.dart';
 import 'package:picoradar/features/garage/application/vehicle_associated_data_cleaner.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
@@ -36,6 +38,7 @@ void main() {
   Future<GoRouter> openDetail(
     WidgetTester tester, {
     bool isFavorite = true,
+    WalletSession? session,
   }) async {
     // Seed queued mutations in the widget test's async zone, not setUp's zone.
     target = await harness.repository.createVehicle(
@@ -73,7 +76,10 @@ void main() {
       tester,
       vehicleAssociatedDataCleaner: cleaner,
       childOverride: ProviderScope(
-        overrides: [vehicleRepositoryProvider.overrideWithValue(repository)],
+        overrides: [
+          vehicleRepositoryProvider.overrideWithValue(repository),
+          if (session != null) walletSessionProvider.overrideWithValue(session),
+        ],
         child: MaterialApp.router(routerConfig: router),
       ),
     );
@@ -84,6 +90,62 @@ void main() {
     await tester.pumpAndSettle();
     return router;
   }
+
+  testWidgets(
+    'detail denies deletion when wallet authentication is cancelled',
+    (tester) async {
+      final auth = _DeletionAuthenticator();
+      final session = WalletSession(
+        authenticator: auth,
+        preferences: _DeletionPreferences(),
+      );
+      addTearDown(session.dispose);
+      await openDetail(tester, session: session);
+      await _confirmDelete(tester);
+      expect(auth.calls, 1);
+      expect(operations, isEmpty);
+      expect(await harness.repository.getVehicle(target.id), isNotNull);
+    },
+  );
+
+  testWidgets('detail rejects authentication completed after route exit', (
+    tester,
+  ) async {
+    final auth = _DeletionAuthenticator()
+      ..pending = Completer<WalletAuthenticationResult>();
+    final session = WalletSession(
+      authenticator: auth,
+      preferences: _DeletionPreferences(),
+    );
+    addTearDown(session.dispose);
+    final router = await openDetail(tester, session: session);
+    await _confirmDelete(tester);
+    expect(auth.calls, 1);
+    router.go('/garage');
+    await tester.pumpAndSettle();
+    auth.pending!.complete(WalletAuthenticationResult.success);
+    await tester.pumpAndSettle();
+    expect(operations, isEmpty);
+    expect(await harness.repository.getVehicle(target.id), isNotNull);
+  });
+
+  testWidgets(
+    'detail stops before row deletion when background revokes cleanup authorization',
+    (tester) async {
+      cleaner.gate = Completer<void>();
+      await openDetail(tester);
+      await _confirmDelete(tester);
+      expect(operations, ['cleanup:${target.id}']);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump();
+      cleaner.gate!.complete();
+      await tester.pumpAndSettle();
+      expect(operations, ['cleanup:${target.id}']);
+      expect(await repository.getVehicle(target.id), isNotNull);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+    },
+  );
 
   testWidgets('detail exposes the mockup actions without a scroll view', (
     tester,
@@ -317,7 +379,7 @@ void main() {
   );
 
   testWidgets(
-    'detail deletion finishes and invalidates favorite after route disposal',
+    'detail deletion preserves vehicle if route exits during private cleanup',
     (tester) async {
       cleaner.gate = Completer<void>();
       addTearDown(() {
@@ -336,11 +398,11 @@ void main() {
       await tester.pumpAndSettle();
       cleaner.gate!.complete();
       await tester.pumpAndSettle();
-      expect(operations, ['cleanup:${target.id}', 'delete:${target.id}']);
-      expect(await repository.getVehicle(target.id), isNull);
+      expect(operations, ['cleanup:${target.id}']);
+      expect(await repository.getVehicle(target.id), isNotNull);
       expect(
         (await container.read(activeVehicleProvider.future))?.id,
-        other.id,
+        target.id,
       );
       expect(tester.takeException(), isNull);
     },
@@ -366,6 +428,28 @@ Future<void> _confirmDelete(WidgetTester tester, {bool expire = true}) async {
   }
 }
 
+class _DeletionAuthenticator implements WalletDeviceAuthenticator {
+  int calls = 0;
+  Completer<WalletAuthenticationResult>? pending;
+  @override
+  Future<bool> canAuthenticate() async => true;
+  @override
+  Future<WalletAuthenticationResult> authenticate() async {
+    calls++;
+    return pending == null
+        ? WalletAuthenticationResult.cancelled
+        : await pending!.future;
+  }
+}
+
+class _DeletionPreferences implements WalletSecurityPreferencesStore {
+  @override
+  Future<WalletSecurityPreferences> read() async =>
+      const WalletSecurityPreferences(protectionEnabled: true, offerSeen: true);
+  @override
+  Future<void> write(WalletSecurityPreferences preferences) async {}
+}
+
 class _DetailCleaner extends VehicleAssociatedDataCleaner {
   _DetailCleaner(TestAppHarness harness, this.operations)
     : super(
@@ -378,6 +462,16 @@ class _DetailCleaner extends VehicleAssociatedDataCleaner {
   final List<String> operations;
   bool fail = false;
   Completer<void>? gate;
+
+  @override
+  Future<void> deletePrivateDataForVehicle(
+    String vehicleId, {
+    required bool Function() isAuthorized,
+  }) async {
+    if (!isAuthorized()) throw StateError('Wallet locked');
+    await deleteForVehicle(vehicleId);
+    if (!isAuthorized()) throw StateError('Wallet locked');
+  }
 
   @override
   Future<void> deleteForVehicle(String vehicleId) async {
