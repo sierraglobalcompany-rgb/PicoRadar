@@ -109,6 +109,11 @@ void main() {
       expect(router.routeInformationProvider.value.uri.path, '/home/alerts');
       expect(find.byType(AlertsScreen), findsOneWidget);
       final alerts = await container.read(alertCenterProvider.future);
+      expect(alerts.permissionsKnown, isTrue);
+      expect(alerts.permission, isTrue);
+      expect(alerts.alarmFailureMessage, isNull);
+      expect(find.text('Notificaciones permitidas'), findsOneWidget);
+      expect(find.text('Permisos sin confirmar'), findsNothing);
       expect(alerts.rows, hasLength(8));
       expect(
         alerts.rows.map((row) => row.category).toSet(),
@@ -146,6 +151,8 @@ void main() {
 
     expect(router.routeInformationProvider.value.uri.path, '/home/alerts');
     expect(find.byType(AlertsScreen), findsOneWidget);
+    expect(find.text('Notificaciones permitidas'), findsOneWidget);
+    expect(find.text('Permisos sin confirmar'), findsNothing);
     expect(scheduler.permissionRequests, 0);
     expect(container.read(homePriorityEntryProvider), 0);
     expect(container.read(homeFocusedVehicleIdProvider), favorite.id);
@@ -306,6 +313,10 @@ Future<ProviderContainer> _pumpHome(
 
 class _NoAlarmGateway extends AlertAlarmGateway {
   const _NoAlarmGateway();
+
+  @override
+  Future<AlarmStatus> status() async =>
+      const AlarmStatus(testState: AlarmTestState.idle);
 
   @override
   Future<AlarmCapabilities> capabilities() async => const AlarmCapabilities();

@@ -3347,6 +3347,10 @@ void main() {
       );
       final center = await container.read(alertCenterProvider.future);
       expect(center.rows, hasLength(4));
+      expect(center.permissionsKnown, isTrue);
+      expect(center.permission, isFalse);
+      expect(center.alarmFailureMessage, isNull);
+      expect(find.text('Permisos sin confirmar'), findsNothing);
       expect(
         center.rows.map((row) => row.category).toSet(),
         AlertCategory.values.toSet(),
@@ -3368,6 +3372,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(scheduler.permissionRequests, 1);
       expect(find.text('Notificaciones permitidas'), findsOneWidget);
+      expect(find.text('Permisos sin confirmar'), findsNothing);
+      final refreshed = container.read(alertCenterProvider);
+      expect(refreshed.isLoading, isFalse);
+      expect(refreshed.requireValue.permissionsKnown, isTrue);
+      expect(refreshed.requireValue.permission, isTrue);
+      expect(refreshed.requireValue.alarmFailureMessage, isNull);
       final saved = await loadPicoAlertPreferences(harness.preferences);
       expect(saved.permissionRequested, isTrue);
       expect(saved.permissionGranted, isTrue);
@@ -3414,6 +3424,7 @@ void main() {
         );
         expect(find.text('Notificaciones desactivadas'), findsOneWidget);
         expect(find.text('Activar'), findsOneWidget);
+        expect(find.text('Permisos sin confirmar'), findsNothing);
         expect(scheduler.permissionRequests, 0);
         await tester.tap(find.byTooltip('Volver'));
         await tester.pumpAndSettle();
@@ -3455,6 +3466,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(AlertsScreen), findsOneWidget);
         expect(find.text('Notificaciones permitidas'), findsOneWidget);
+        expect(find.text('Permisos sin confirmar'), findsNothing);
         await tester.tap(find.byKey(ValueKey('alerts-${vehicle.id}-pico')));
         await tester.pumpAndSettle();
         expect(find.text('Recordatorio'), findsOneWidget);
@@ -3512,6 +3524,8 @@ void main() {
       await _pumpFullHomeApp(tester, harness, notificationScheduler: scheduler);
       await tester.tap(find.byKey(const ValueKey('home-notification-bell')));
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
+      expect(find.text('Notificaciones permitidas'), findsOneWidget);
+      expect(find.text('Permisos sin confirmar'), findsNothing);
       final row = find.byKey(ValueKey('alerts-${vehicle.id}-pico'));
       await tester.ensureVisible(row);
       await tester.tap(row);
@@ -3537,6 +3551,9 @@ void main() {
         tester.element(find.byType(AlertsScreen)),
       );
       final center = await container.read(alertCenterProvider.future);
+      expect(center.permissionsKnown, isTrue);
+      expect(center.permission, isTrue);
+      expect(center.alarmFailureMessage, isNull);
       expect(
         center.rows
             .singleWhere(
@@ -3552,6 +3569,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('home-notification-bell')));
       await tester.pumpAndSettle();
+      expect(find.text('Notificaciones permitidas'), findsOneWidget);
+      expect(find.text('Permisos sin confirmar'), findsNothing);
       await tester.ensureVisible(row);
       await tester.tap(row);
       await tester.pumpAndSettle();
@@ -5226,6 +5245,10 @@ RestrictionRule _rule({
 
 class _NoAlarmGateway extends AlertAlarmGateway {
   const _NoAlarmGateway();
+
+  @override
+  Future<AlarmStatus> status() async =>
+      const AlarmStatus(testState: AlarmTestState.idle);
 
   @override
   Future<AlarmCapabilities> capabilities() async => const AlarmCapabilities();
