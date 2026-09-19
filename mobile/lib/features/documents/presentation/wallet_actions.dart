@@ -91,7 +91,14 @@ class WalletActions {
     WalletOwner owner,
     WalletDocumentType type, {
     required String ownerLabel,
+    WalletDocument? document,
+    WalletDocumentSide? side,
   }) => _run((isCurrent) async {
+    if ((document == null) != (side == null) ||
+        (document != null &&
+            (document.owner != owner || document.type != type))) {
+      throw ArgumentError('Invalid document side operation.');
+    }
     final store = ref.read(walletStoreProvider);
     final session = ref.read(walletSessionProvider);
     final platform = ref.read(walletPlatformProvider);
@@ -107,99 +114,100 @@ class WalletActions {
         (visitRouteName == null ||
             (route?.isActive == true &&
                 route?.settings.name == visitRouteName));
-    var source = await showModalBottomSheet<String>(
-      context: context,
-      builder: (sheet) => WalletVisitScope(
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.document_scanner_outlined),
-                title: const Text('Escanear'),
-                onTap: () => Navigator.pop(sheet, 'scan'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.file_upload_outlined),
-                title: const Text('Importar archivo'),
-                onTap: () => Navigator.pop(sheet, 'import'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    var source = side == WalletDocumentSide.pdf
+        ? 'import'
+        : await _captureSource();
     if (source == null || !stillHere() || !session.accessAllowed) return;
-    final twoSides =
-        type.isDriverDocument || type == WalletDocumentType.trafficLicense;
+    final twoSides = type.supportsTwoSides;
     final scans = <String>[];
     final drafts = <WalletDraft>[];
     final materials = <File>[];
     try {
-      final inputs = <WalletDocumentInput>[];
-      List<WalletCaptureFile>? captured;
-      while (source == 'scan') {
-        try {
-          captured = await platform.scan(maxPages: twoSides ? 2 : 1);
-          break;
-        } on WalletPlatformException catch (error) {
-          if (!stillHere()) return;
-          if (!session.accessAllowed && !await session.unlock()) return;
-          if (!stillHere()) return;
-          source = await _scanRecovery(error);
-          if (source == null || !stillHere() || !session.accessAllowed) return;
+      Future<WalletDraft?> captureDraft(String selectedSource) async {
+        List<WalletCaptureFile>? captured;
+        while (selectedSource == 'scan') {
+          try {
+            captured = await platform.scan(maxPages: 1);
+            break;
+          } on WalletPlatformException catch (error) {
+            if (!stillHere()) return null;
+            if (!session.accessAllowed && !await session.unlock()) return null;
+            if (!stillHere()) return null;
+            final recovery = await _scanRecovery(error);
+            if (recovery == null || !stillHere() || !session.accessAllowed) {
+              return null;
+            }
+            selectedSource = recovery;
+          }
         }
-      }
-      if (source == 'scan') {
-        if (captured == null || captured.isEmpty) return;
-        for (final file in captured) {
+        late WalletDocumentInput input;
+        if (selectedSource == 'scan') {
+          if (captured == null || captured.length != 1) {
+            if (captured == null || captured.isEmpty) return null;
+            throw const FormatException(
+              'Captura un lado a la vez para identificar frente y reverso.',
+            );
+          }
+          final file = captured.single;
           scans.add(file.path);
-          inputs.add(
-            WalletDocumentInput(
-              source: file.file,
-              originalName: file.originalName,
-              mimeType: file.mimeType,
-            ),
+          input = WalletDocumentInput(
+            source: file.file,
+            originalName: file.originalName,
+            mimeType: file.mimeType,
           );
-        }
-      } else {
-        final picked = await gateway.pickDocument();
-        if (picked == null) return;
-        inputs.add(
-          WalletDocumentInput(
+        } else {
+          final picked = await gateway.pickDocument();
+          if (picked == null) return null;
+          input = WalletDocumentInput(
             source: picked.file,
             originalName: picked.originalName,
             mimeType: picked.mimeType,
-          ),
-        );
+          );
+        }
+        // External activities revoke the visit. Persist only ciphertext before re-authentication.
+        final draft = await WalletDraft.stage([input], key: await keyLoader());
+        drafts.add(draft);
+        if (selectedSource == 'scan') {
+          await platform.deleteScanTemps(scans);
+          scans.clear();
+        } else {
+          await gateway.clearTemporaryFiles();
+        }
+        return draft;
       }
-      // External activities revoke the visit. Persist only ciphertext before re-authentication.
-      drafts.add(await WalletDraft.stage(inputs, key: await keyLoader()));
-      if (source == 'scan') {
-        await platform.deleteScanTemps(scans);
-      } else {
-        await gateway.clearTemporaryFiles();
+
+      final first = await captureDraft(source);
+      if (first == null) return;
+      if (side == WalletDocumentSide.pdf && !first.files.single.isPdf) {
+        throw const FormatException('Selecciona un PDF válido.');
+      }
+      if (side != null &&
+          side != WalletDocumentSide.pdf &&
+          first.files.single.isPdf) {
+        throw const FormatException('Selecciona una imagen para este lado.');
       }
       if (!stillHere()) return;
       if (!session.accessAllowed && !await session.unlock()) return;
       if (!context.mounted || !stillHere()) return;
-      if (twoSides && source == 'import' && !drafts.first.files.first.isPdf) {
+      if (twoSides && side == null && !first.files.single.isPdf) {
         final reverse = await showDialog<bool>(
           context: context,
           builder: (dialog) => WalletVisitScope(
             child: AlertDialog(
               title: const Text('Reverso del documento'),
               content: const Text(
-                'Puedes añadir el reverso o guardar solo el frente.',
+                'Puedes guardar solo el frente o capturar el reverso ahora.',
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialog, false),
-                  child: const Text('Solo frente'),
+                  child: const Text('Guardar solo frente'),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.pop(dialog, true),
-                  child: const Text('Agregar reverso'),
+                  child: Text(
+                    source == 'scan' ? 'Capturar reverso' : 'Importar reverso',
+                  ),
                 ),
               ],
             ),
@@ -207,20 +215,10 @@ class WalletActions {
         );
         if (!stillHere() || !session.accessAllowed || reverse == null) return;
         if (reverse == true) {
-          final picked = await gateway.pickDocument();
-          if (picked != null) {
-            final draft = await WalletDraft.stage([
-              WalletDocumentInput(
-                source: picked.file,
-                originalName: picked.originalName,
-                mimeType: picked.mimeType,
-              ),
-            ], key: await keyLoader());
-            drafts.add(draft);
-            await gateway.clearTemporaryFiles();
-            if (draft.files.first.isPdf) {
-              throw const FormatException('El reverso debe ser una imagen.');
-            }
+          final reverseDraft = await captureDraft(source);
+          if (reverseDraft == null) return;
+          if (reverseDraft.files.single.isPdf) {
+            throw const FormatException('El reverso debe ser una imagen.');
           }
           if (!stillHere()) return;
           if (!session.accessAllowed && !await session.unlock()) return;
@@ -239,6 +237,10 @@ class WalletActions {
           WalletViewSource(
             label: draft.files[i].isPdf
                 ? 'PDF'
+                : side == WalletDocumentSide.back
+                ? 'Reverso'
+                : side == WalletDocumentSide.front
+                ? 'Frente'
                 : (index == 0 ? 'Frente' : 'Reverso'),
             mimeType: draft.files[i].mimeType,
             readBytes: () => draft.read(i),
@@ -271,22 +273,34 @@ class WalletActions {
                   ),
                 );
               }
-              await store.saveDocument(
-                owner: owner,
-                type: type,
-                pdf: ready.first.mimeType == 'application/pdf'
-                    ? ready.first
-                    : null,
-                front: ready.first.mimeType == 'application/pdf'
-                    ? null
-                    : ready.first,
-                back: ready.length > 1 ? ready[1] : null,
-                metadata: {
-                  if (pdfPageCount != null) 'pdfPageCount': '$pdfPageCount',
-                },
-                isAuthorized: () =>
-                    stillHere() && session.isAuthorizedEpoch(epoch),
-              );
+              final metadata = {
+                if (pdfPageCount != null) 'pdfPageCount': '$pdfPageCount',
+              };
+              if (document != null && side != null) {
+                await store.saveDocumentSide(
+                  document: document,
+                  side: side,
+                  input: ready.single,
+                  metadata: metadata,
+                  isAuthorized: () =>
+                      stillHere() && session.isAuthorizedEpoch(epoch),
+                );
+              } else {
+                await store.saveDocument(
+                  owner: owner,
+                  type: type,
+                  pdf: ready.first.mimeType == 'application/pdf'
+                      ? ready.first
+                      : null,
+                  front: ready.first.mimeType == 'application/pdf'
+                      ? null
+                      : ready.first,
+                  back: ready.length > 1 ? ready[1] : null,
+                  metadata: metadata,
+                  isAuthorized: () =>
+                      stillHere() && session.isAuthorizedEpoch(epoch),
+                );
+              }
               container.invalidate(walletDocumentsProvider(owner));
             } finally {
               await Future.wait([
@@ -305,6 +319,29 @@ class WalletActions {
       ]);
     }
   });
+
+  Future<String?> _captureSource() => showModalBottomSheet<String>(
+    context: context,
+    builder: (sheet) => WalletVisitScope(
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.document_scanner_outlined),
+              title: const Text('Escanear'),
+              onTap: () => Navigator.pop(sheet, 'scan'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.file_upload_outlined),
+              title: const Text('Importar archivo'),
+              onTap: () => Navigator.pop(sheet, 'import'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 
   static Future<void> _removeTemporary(File file) async {
     if (await file.exists()) await file.delete();
@@ -428,7 +465,7 @@ class WalletActions {
       context: context,
       builder: (dialog) => WalletVisitScope(
         child: AlertDialog(
-          title: const Text('Eliminar copia'),
+          title: const Text('Eliminar documento completo'),
           content: const Text(
             'Se eliminará únicamente esta copia privada del dispositivo.',
           ),

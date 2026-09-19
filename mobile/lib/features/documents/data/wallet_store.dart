@@ -455,6 +455,114 @@ class WalletStore {
     return saved;
   });
 
+  Future<WalletDocument> saveDocumentSide({
+    required WalletDocument document,
+    required WalletDocumentSide side,
+    required WalletDocumentInput input,
+    Map<String, String> metadata = const {},
+    bool Function()? isAuthorized,
+  }) => _serialized(() async {
+    _requireAuthorized(isAuthorized);
+    await _ensureInitialized();
+    await _validateInput(input, side);
+    if (metadata.length > 32 ||
+        utf8.encode(jsonEncode(metadata)).length > 16384) {
+      throw ArgumentError('Document metadata is too large.');
+    }
+    await _purgeViewerCache();
+    final created = <File>[];
+    late WalletDocument saved;
+    var committed = false;
+    try {
+      await _db.transaction(() async {
+        final current = await _current(document);
+        await _validateOwner(current.owner);
+        if (side == WalletDocumentSide.back && !current.type.supportsTwoSides) {
+          throw ArgumentError('Document type does not support a back side.');
+        }
+        if (side == WalletDocumentSide.back && current.front == null) {
+          throw ArgumentError('A back side requires an existing front side.');
+        }
+        final id = _id();
+        final relativePath = 'docs/$id/${side.name}.prcf';
+        final destination = await _ownedFile(relativePath);
+        created.add(destination);
+        final bytes = await _readLimited(input.source);
+        try {
+          final encrypted = await _crypto.encryptBytes(
+            bytes,
+            await _masterKey(),
+          );
+          await destination.parent.create(recursive: true);
+          await destination.writeAsBytes(encrypted, flush: true);
+        } finally {
+          bytes.fillRange(0, bytes.length, 0);
+        }
+        final replacement = WalletFileRef(
+          encryptedRelativePath: relativePath,
+          originalName: _safeName(input.originalName),
+          mimeType: input.mimeType,
+        );
+        final nextMetadata = <String, String>{...current.metadata, ...metadata}
+          ..remove('pdfPageCount');
+        if (side == WalletDocumentSide.pdf &&
+            metadata['pdfPageCount'] != null) {
+          nextMetadata['pdfPageCount'] = metadata['pdfPageCount']!;
+        }
+        saved = WalletDocument(
+          id: id,
+          owner: current.owner,
+          type: current.type,
+          importedAt: _now().toUtc(),
+          front: side == WalletDocumentSide.pdf
+              ? null
+              : side == WalletDocumentSide.front
+              ? replacement
+              : current.front,
+          back: side == WalletDocumentSide.pdf
+              ? null
+              : side == WalletDocumentSide.back
+              ? replacement
+              : current.back,
+          pdf: side == WalletDocumentSide.pdf ? replacement : null,
+          metadata: nextMetadata,
+        );
+        final replaced = side == WalletDocumentSide.pdf
+            ? [
+                if (current.front != null) current.front!,
+                if (current.back != null) current.back!,
+                if (current.pdf != null) current.pdf!,
+              ]
+            : [
+                if (current.pdf != null) current.pdf!,
+                if (current.fileFor(side) != null) current.fileFor(side)!,
+              ];
+        _requireAuthorized(isAuthorized);
+        if (replaced.isNotEmpty) {
+          await _queueCleanupRefs(
+            replaced,
+            id: '$_cleanupPrefix${current.id}:$id',
+          );
+        }
+        await (_db.delete(
+          _db.privateDocuments,
+        )..where((r) => r.id.equals(current.id))).go();
+        await _insert(saved, isAuthorized: isAuthorized);
+        await _validateOwner(current.owner);
+        _requireAuthorized(isAuthorized);
+      });
+      committed = true;
+    } finally {
+      if (!committed) {
+        for (final file in created) {
+          if (await file.exists()) await file.delete();
+        }
+      }
+    }
+    await _drainPendingCleanup();
+    return saved;
+  });
+
   Future<void> deleteDocument(String id, {bool Function()? isAuthorized}) =>
       _serialized(() async {
         _requireAuthorized(isAuthorized);
@@ -705,6 +813,15 @@ class WalletStore {
 
   Future<void> _queueCleanup(WalletDocument document) async {
     final id = '$_cleanupPrefix${document.id}';
+    await _queueCleanupRefs([
+      for (final side in document.sides) document.fileFor(side)!,
+    ], id: id);
+  }
+
+  Future<void> _queueCleanupRefs(
+    List<WalletFileRef> files, {
+    required String id,
+  }) async {
     await _db
         .into(_db.walletMigrations)
         .insertOnConflictUpdate(
@@ -712,10 +829,7 @@ class WalletStore {
             id: id,
             encryptedMetadata: await _encrypt({
               'id': id,
-              'files': [
-                for (final side in document.sides)
-                  document.fileFor(side)!.toJson(),
-              ],
+              'files': [for (final file in files) file.toJson()],
             }),
           ),
         );

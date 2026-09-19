@@ -26,6 +26,7 @@ enum WalletDocumentType {
   final String value;
   final String label;
   bool get isDriverDocument => this == driverLicense || this == identityCard;
+  bool get supportsTwoSides => isDriverDocument || this == trafficLicense;
 
   static WalletDocumentType fromValue(String value) =>
       values.firstWhere((type) => type.value == value);

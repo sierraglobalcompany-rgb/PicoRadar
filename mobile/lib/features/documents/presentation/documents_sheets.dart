@@ -59,16 +59,45 @@ Future<void> showWalletDocumentMenu(
               style: documentsStrongStyle,
             ),
             const SizedBox(height: 8),
-            ListTile(
-              minTileHeight: 48,
-              leading: const Icon(Icons.swap_horiz),
-              title: const Text('Reemplazar copia', style: documentsTextStyle),
-              onTap: () => Navigator.of(context).pop('replace'),
-            ),
+            if (document.pdf != null)
+              ListTile(
+                minTileHeight: 48,
+                leading: const Icon(Icons.picture_as_pdf_outlined),
+                title: const Text('Reemplazar PDF', style: documentsTextStyle),
+                onTap: () => Navigator.of(context).pop('pdf'),
+              )
+            else ...[
+              ListTile(
+                minTileHeight: 48,
+                leading: const Icon(Icons.flip_to_front_outlined),
+                title: Text(
+                  document.front == null
+                      ? 'Agregar frente'
+                      : 'Reemplazar frente',
+                  style: documentsTextStyle,
+                ),
+                onTap: () => Navigator.of(context).pop('front'),
+              ),
+              if (document.type.supportsTwoSides && document.front != null)
+                ListTile(
+                  minTileHeight: 48,
+                  leading: const Icon(Icons.flip_to_back_outlined),
+                  title: Text(
+                    document.back == null
+                        ? 'Agregar reverso'
+                        : 'Reemplazar reverso',
+                    style: documentsTextStyle,
+                  ),
+                  onTap: () => Navigator.of(context).pop('back'),
+                ),
+            ],
             ListTile(
               minTileHeight: 48,
               leading: const Icon(Icons.delete_outline, color: AppColors.red),
-              title: const Text('Eliminar copia', style: documentsTextStyle),
+              title: const Text(
+                'Eliminar documento completo',
+                style: documentsTextStyle,
+              ),
               onTap: () => Navigator.of(context).pop('delete'),
             ),
           ],
@@ -78,8 +107,20 @@ Future<void> showWalletDocumentMenu(
   );
   if (!context.mounted || !session.isAuthorizedEpoch(epoch)) return;
   final actions = WalletActions(context, ref);
-  if (choice == 'replace') {
-    await actions.add(document.owner, document.type, ownerLabel: ownerLabel);
+  final side = switch (choice) {
+    'front' => WalletDocumentSide.front,
+    'back' => WalletDocumentSide.back,
+    'pdf' => WalletDocumentSide.pdf,
+    _ => null,
+  };
+  if (side != null) {
+    await actions.add(
+      document.owner,
+      document.type,
+      ownerLabel: ownerLabel,
+      document: document,
+      side: side,
+    );
   } else if (choice == 'delete') {
     await actions.delete(document);
   }

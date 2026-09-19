@@ -327,7 +327,7 @@ void main() {
         find.byKey(const ValueKey('documents-vehicle-menu-soat')),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Eliminar copia'));
+      await tester.tap(find.text('Eliminar documento completo'));
       await tester.pumpAndSettle();
     }
 

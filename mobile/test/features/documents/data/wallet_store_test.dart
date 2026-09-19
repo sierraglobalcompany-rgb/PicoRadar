@@ -226,6 +226,176 @@ void main() {
     },
   );
 
+  test('adding a back preserves the encrypted front atomically', () async {
+    final original = await store.saveDocument(
+      owner: const WalletOwner.driver('principal'),
+      type: WalletDocumentType.identityCard,
+      front: await input('identity-front.png', [137, 80, 78, 71, 1]),
+    );
+
+    final saved = await store.saveDocumentSide(
+      document: original,
+      side: WalletDocumentSide.back,
+      input: await input('identity-back.png', [137, 80, 78, 71, 2]),
+    );
+
+    expect(
+      saved.front!.encryptedRelativePath,
+      original.front!.encryptedRelativePath,
+    );
+    expect(saved.back, isNotNull);
+    expect(saved.pdf, isNull);
+    expect(await store.readDocumentBytes(saved, WalletDocumentSide.front), [
+      137,
+      80,
+      78,
+      71,
+      1,
+    ]);
+    expect(await store.readDocumentBytes(saved, WalletDocumentSide.back), [
+      137,
+      80,
+      78,
+      71,
+      2,
+    ]);
+  });
+
+  test('single-sided document types reject a back side', () async {
+    final original = await store.saveDocument(
+      owner: const WalletOwner.driver('principal'),
+      type: WalletDocumentType.other,
+      front: await input('soat.png', [137, 80, 78, 71, 1]),
+    );
+
+    await expectLater(
+      store.saveDocumentSide(
+        document: original,
+        side: WalletDocumentSide.back,
+        input: await input('back.png', [137, 80, 78, 71, 2]),
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('replacing the front preserves the back and removes only old front', () async {
+    final original = await store.saveDocument(
+      owner: const WalletOwner.driver('principal'),
+      type: WalletDocumentType.driverLicense,
+      front: await input('old-front.png', [137, 80, 78, 71, 1]),
+      back: await input('keep-back.png', [137, 80, 78, 71, 2]),
+    );
+    final oldFront = File(
+      '${root.path}/wallet_documents/${original.front!.encryptedRelativePath}',
+    );
+    final keptBack = File(
+      '${root.path}/wallet_documents/${original.back!.encryptedRelativePath}',
+    );
+
+    final saved = await store.saveDocumentSide(
+      document: original,
+      side: WalletDocumentSide.front,
+      input: await input('new-front.png', [137, 80, 78, 71, 3]),
+    );
+
+    expect(
+      saved.back!.encryptedRelativePath,
+      original.back!.encryptedRelativePath,
+    );
+    expect(await oldFront.exists(), isFalse);
+    expect(await keptBack.exists(), isTrue);
+    expect(await store.readDocumentBytes(saved, WalletDocumentSide.front), [
+      137,
+      80,
+      78,
+      71,
+      3,
+    ]);
+    expect(await store.readDocumentBytes(saved, WalletDocumentSide.back), [
+      137,
+      80,
+      78,
+      71,
+      2,
+    ]);
+  });
+
+  test(
+    'replacing images with a PDF clears both sides and records page count',
+    () async {
+      final original = await store.saveDocument(
+        owner: const WalletOwner.driver('principal'),
+        type: WalletDocumentType.driverLicense,
+        front: await input('front.png', [137, 80, 78, 71, 1]),
+        back: await input('back.png', [137, 80, 78, 71, 2]),
+      );
+
+      final saved = await store.saveDocumentSide(
+        document: original,
+        side: WalletDocumentSide.pdf,
+        input: await input('license.pdf', [37, 80, 68, 70, 3]),
+        metadata: const {'pdfPageCount': '2'},
+      );
+
+      expect(saved.front, isNull);
+      expect(saved.back, isNull);
+      expect(saved.pdf, isNotNull);
+      expect(saved.metadata['pdfPageCount'], '2');
+      expect(await store.readDocumentBytes(saved, WalletDocumentSide.pdf), [
+        37,
+        80,
+        68,
+        70,
+        3,
+      ]);
+    },
+  );
+
+  test(
+    'authorization loss aborts a side replacement without data loss',
+    () async {
+      final original = await store.saveDocument(
+        owner: const WalletOwner.driver('principal'),
+        type: WalletDocumentType.identityCard,
+        front: await input('front.png', [137, 80, 78, 71, 1]),
+        back: await input('back.png', [137, 80, 78, 71, 2]),
+      );
+      var authorized = true;
+      final guarded = WalletStore(
+        db: db,
+        legacyStore: legacy,
+        rootDirectory: () async => root,
+        cacheDirectory: () async => root,
+        masterKey: () async => key,
+        fileCrypto: _RevokeOnEncrypt(() => authorized = false),
+      );
+
+      await expectLater(
+        guarded.saveDocumentSide(
+          document: original,
+          side: WalletDocumentSide.front,
+          input: await input('replacement.png', [137, 80, 78, 71, 9]),
+          isAuthorized: () => authorized,
+        ),
+        throwsA(isA<WalletAuthorizationException>()),
+      );
+
+      final restored = (await store.listDocuments()).single;
+      expect(restored.id, original.id);
+      expect(
+        await store.readDocumentBytes(restored, WalletDocumentSide.front),
+        [137, 80, 78, 71, 1],
+      );
+      expect(await store.readDocumentBytes(restored, WalletDocumentSide.back), [
+        137,
+        80,
+        78,
+        71,
+        2,
+      ]);
+    },
+  );
+
   test(
     'unknown owners and mixed PDF/images fail without inserting rows',
     () async {

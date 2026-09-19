@@ -673,7 +673,9 @@ void main() {
           await tester.pumpAndSettle();
         }
         final content = find.text(
-          confirmStage ? 'Eliminar copias del conductor' : 'Eliminar copia',
+          confirmStage
+              ? 'Eliminar copias del conductor'
+              : 'Eliminar documento completo',
         );
         final element = tester.element(content);
         session.lock();
