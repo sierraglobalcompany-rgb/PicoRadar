@@ -1177,6 +1177,22 @@ def compile_release(
     pico = _read_json(source_package / "data/staging/pico_colombia_source_v1.json")
     tolls = _read_json(source_package / "data/staging/tolls_inventory_v1.json")
     source_counts = _read_json(source_package / "reports/SOURCE_COUNTS.json")
+    return _compile_inputs(
+        pico, tolls, source_counts, repo_root, reviewed_decisions_path,
+        verified_staging_hashes=APPROVED_SOURCE_HASHES,
+    )
+
+
+def _compile_inputs(
+    pico: dict,
+    tolls: dict,
+    source_counts: dict,
+    repo_root: Path,
+    reviewed_decisions_path: Path | None,
+    *,
+    verified_staging_hashes: dict,
+) -> dict:
+    # Transformation shared with synthetic tests; the public entry verifies bytes first.
     if pico.get("automaticActivationAuthorized") is not False:
         raise ValueError("Restriction staging activation must remain disabled")
     if tolls.get("automaticActivationAuthorized") is not False:
@@ -1271,7 +1287,7 @@ def compile_release(
         "generatedAt": compile_generated_at,
         "distribution": "local_simulation_only",
         "serverPublished": False,
-        "stagingHashesVerified": APPROVED_SOURCE_HASHES,
+        "stagingHashesVerified": verified_staging_hashes,
         "restrictions": {
             "existingAssetPreserved": not approved,
             "existingAssetSha256": restriction_hash if not approved else None,
@@ -1308,6 +1324,8 @@ def compile_release(
             "sha256": _sha256_file(reviewed_decisions_path),
             "reviewVersion": reviewed_decisions["reviewVersion"],
         }
+    if not verified_staging_hashes:
+        report["inputKind"] = "NON_PRODUCTION_FIXTURE"
     _write_json(report_path, report)
 
     if not approved and restriction_path.read_bytes() != restriction_bytes:

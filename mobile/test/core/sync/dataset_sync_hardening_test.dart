@@ -53,19 +53,14 @@ void main() {
   });
 
   test('Python compiler bytes reach the engine through HTTP and Drift', () async {
-    final sourcePackage = _viajeR2SourcePackage();
-    if (sourcePackage == null) {
-      markTestSkipped('VIAJE-R2 source package is unavailable.');
-      return;
-    }
     expect(
       (await _compiledRuleEvaluation(db)).status,
       RestrictionStatus.unknown,
     );
     final firstOutput = Directory('${tempDirectory.path}/compiled-first');
     final secondOutput = Directory('${tempDirectory.path}/compiled-second');
-    await _compileViajeR2Fixture(sourcePackage, firstOutput);
-    await _compileViajeR2Fixture(sourcePackage, secondOutput);
+    await _compileViajeR2Fixture(firstOutput);
+    await _compileViajeR2Fixture(secondOutput);
 
     final manifestFile = File(
       '${firstOutput.path}/data/releases/viaje_r2/local_test/manifest.json',
@@ -898,30 +893,10 @@ Future<_Payload> _payload(
   );
 }
 
-Directory? _viajeR2SourcePackage() {
-  final configured = Platform.environment['VIAJE_R2_SOURCE_PACKAGE'];
-  final candidates = [
-    if (configured != null && configured.isNotEmpty) Directory(configured),
-    Directory(
-      '${Directory.current.parent.parent.path}${Platform.pathSeparator}'
-      'VIAJE_R2${Platform.pathSeparator}source-package',
-    ),
-  ];
-  for (final candidate in candidates) {
-    if (candidate.existsSync()) return candidate;
-  }
-  return null;
-}
-
-Future<void> _compileViajeR2Fixture(
-  Directory sourcePackage,
-  Directory outputRoot,
-) async {
+Future<void> _compileViajeR2Fixture(Directory outputRoot) async {
   final repoRoot = Directory.current.parent;
   final result = await Process.run(Platform.environment['PYTHON'] ?? 'python', [
     '${repoRoot.path}/scripts/tests/viaje_r2_bridge_fixture.py',
-    '--source-package',
-    sourcePackage.path,
     '--seed-repo-root',
     repoRoot.path,
     '--output-root',
