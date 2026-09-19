@@ -155,7 +155,10 @@ class _CdaMapViewState extends ConsumerState<CdaMapView> {
   @override
   Widget build(BuildContext context) => Stack(
     children: [
-      if (_mode == _CdaMapMode.map) _map(context) else _list(context),
+      IndexedStack(
+        index: _mode.index,
+        children: [_map(context), _list(context)],
+      ),
       Positioned(left: 16, right: 16, top: 8, child: _toolbar(context)),
       if (_mode == _CdaMapMode.map)
         Positioned(

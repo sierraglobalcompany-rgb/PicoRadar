@@ -16,6 +16,33 @@ import '../domain/cda_spatial_query_test.dart'
     show fictionalCatalog, fictionalEntry, fictionalGeography;
 
 void main() {
+  testWidgets('F14 list round trip never reuses a disposed tile provider', (
+    tester,
+  ) async {
+    final tiles = _Tiles();
+    await tester.pumpWidget(_app(_Location(), tiles: tiles));
+    await tester.pumpAndSettle();
+    final controller = tester
+        .widget<FlutterMap>(find.byType(FlutterMap))
+        .mapController!;
+    controller.move(const LatLng(6.24, -75.58), 12);
+    await tester.pumpAndSettle();
+    final center = controller.camera.center;
+    final zoom = controller.camera.zoom;
+    await tester.tap(find.byTooltip('Ver lista'));
+    await tester.pumpAndSettle();
+    expect(tiles.disposed, isFalse);
+    await tester.tap(find.byTooltip('Ver mapa'));
+    await tester.pumpAndSettle();
+    expect(controller.camera.center, center);
+    expect(controller.camera.zoom, zoom);
+    controller.move(const LatLng(4.71, -74.07), 13);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    expect(tiles.disposed, isTrue);
+  });
+
   testWidgets(
     'explore starts nationally without GPS, and preserves map across list',
     (tester) async {
@@ -204,12 +231,13 @@ Widget _app(
   List<CdaCatalogEntry>? entries,
   ValueChanged<CdaCatalogEntry>? onOpen,
   _Launcher? launcher,
+  _Tiles? tiles,
 }) {
   final inventory = entries ?? [fictionalEntry('one')];
   return ProviderScope(
     overrides: [
       deviceLocationGatewayProvider.overrideWithValue(gateway),
-      cdaTileProviderFactory.overrideWithValue(() => _Tiles()),
+      cdaTileProviderFactory.overrideWithValue(() => tiles ?? _Tiles()),
       externalLauncherProvider.overrideWithValue(launcher ?? _Launcher()),
     ],
     child: MaterialApp(
@@ -276,6 +304,13 @@ class _Location implements DeviceLocationGateway {
 }
 
 class _Tiles extends TileProvider {
+  bool disposed = false;
+  @override
+  void dispose() {
+    disposed = true;
+    super.dispose();
+  }
+
   @override
   ImageProvider getImage(TileCoordinates coordinates, TileLayer options) =>
       MemoryImage(
