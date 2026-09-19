@@ -304,6 +304,10 @@ class _AppShellState extends ConsumerState<AppShell> {
       context.go(location);
       return;
     }
+    if (Uri.parse(origin.route).path.startsWith('${AppRoute.apps.path}/')) {
+      context.go(location);
+      return;
+    }
     await context.push<void>(location);
     if (!mounted) {
       return;

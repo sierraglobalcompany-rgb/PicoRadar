@@ -31,6 +31,7 @@ import 'package:picoradar/features/location/application/location_controller.dart
 import 'package:picoradar/features/location/data/location_preferences.dart';
 import 'package:picoradar/features/location/domain/jurisdiction_location_resolver.dart';
 import 'package:picoradar/features/location/platform/device_location_gateway.dart';
+import 'package:picoradar/features/maintenance/application/maintenance_reminders.dart';
 import 'package:picoradar/features/pico_placa/data/pico_jurisdiction_catalog.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_store.dart';
@@ -5324,6 +5325,15 @@ class _FakePicoNotificationScheduler extends PicoNotificationScheduler {
 
   @override
   Future<void> cancelObligationNotifications() async {}
+
+  @override
+  Future<void> rescheduleMaintenanceNotifications(
+    List<MaintenanceReminder> reminders, {
+    required Map<String, String> platesByVehicleId,
+  }) async {}
+
+  @override
+  Future<void> cancelMaintenanceNotifications() async {}
 }
 
 Color? _satelliteColor(WidgetTester tester) {
