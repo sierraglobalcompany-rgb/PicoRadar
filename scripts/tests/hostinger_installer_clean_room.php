@@ -81,9 +81,13 @@ try {
         || (int) $operator['is_active'] !== 1) {
         throw new RuntimeException('The initial operator contract failed.');
     }
-    if (! is_link($publicRoot.DIRECTORY_SEPARATOR.'storage')
-        || ! is_link($publicRoot.DIRECTORY_SEPARATOR.'v1')) {
-        throw new RuntimeException('The required public links were not created.');
+    foreach ([
+        $publicRoot.DIRECTORY_SEPARATOR.'storage' => $privateRoot.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
+        $publicRoot.DIRECTORY_SEPARATOR.'v1' => $privateRoot.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'manifest'.DIRECTORY_SEPARATOR.'v1',
+    ] as $link => $target) {
+        if (realpath($link) !== realpath($target)) {
+            throw new RuntimeException('A required public link does not resolve to its private target.');
+        }
     }
 
     echo json_encode([

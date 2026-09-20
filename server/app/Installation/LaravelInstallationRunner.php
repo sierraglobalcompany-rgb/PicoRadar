@@ -41,6 +41,7 @@ class LaravelInstallationRunner
     {
         $this->ensurePublicLinkTargets();
         $this->command('storage:link', ['--force' => true]);
+        $this->verifyPublicLinks();
         $this->command('config:cache');
         $this->command('route:cache');
         $this->command('view:cache');
@@ -64,6 +65,20 @@ class LaravelInstallationRunner
         ] as $directory) {
             if (! is_dir($directory) && ! mkdir($directory, 0755, true) && ! is_dir($directory)) {
                 throw new RuntimeException('The installer could not prepare a public-link target.');
+            }
+        }
+    }
+
+    private function verifyPublicLinks(): void
+    {
+        foreach ([
+            $this->publicRoot.DIRECTORY_SEPARATOR.'storage' => $this->privateRoot.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
+            $this->publicRoot.DIRECTORY_SEPARATOR.'v1' => $this->privateRoot.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'manifest'.DIRECTORY_SEPARATOR.'v1',
+        ] as $link => $target) {
+            $resolvedLink = realpath($link);
+            $resolvedTarget = realpath($target);
+            if ($resolvedLink === false || $resolvedTarget === false || $resolvedLink !== $resolvedTarget) {
+                throw new RuntimeException('A required public link does not resolve to its private target.');
             }
         }
     }
