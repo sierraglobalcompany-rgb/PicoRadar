@@ -2,7 +2,8 @@ param(
     [string] $ArtifactDirectory = 'artifacts/current/hostinger-staging',
     [string] $MariaDbRoot = 'C:\codex\_tool-cache\mariadb-11.8.8-winx64',
     [string] $PhpPath = 'C:\xampphp\php\php.exe',
-    [string] $OpenSslPath = 'C:\xampphp\apache\bin\openssl.exe'
+    [string] $OpenSslPath = 'C:\xampphp\apache\bin\openssl.exe',
+    [string] $OpenSslConfig = 'C:\xampphp\apache\conf\openssl.cnf'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -88,7 +89,7 @@ try {
 
     $cert = Join-Path $scratch 'localhost.crt'
     $key = Join-Path $scratch 'localhost.key'
-    & $OpenSslPath req -x509 -newkey rsa:2048 -nodes -keyout $key -out $cert -subj '/CN=127.0.0.1' -days 1 2>$null
+    & $OpenSslPath req -x509 -newkey rsa:2048 -nodes -keyout $key -out $cert -subj '/CN=127.0.0.1' -days 1 -config $OpenSslConfig 2>$null
     if ($LASTEXITCODE -ne 0) { throw 'Local HTTPS certificate generation failed.' }
 
     $env:PICORADAR_TEST_PUBLIC_ROOT = $publicRoot
@@ -123,10 +124,17 @@ try {
     if (-not $proxyReady) { throw 'Local HTTPS/private barrier did not start.' }
 
     $playwrightRoot = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'npm-cache/_npx') -Directory -ErrorAction SilentlyContinue |
-        Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'node_modules/playwright/package.json') } |
+        Where-Object {
+            $package = Join-Path $_.FullName 'node_modules/playwright/package.json'
+            (Test-Path -LiteralPath $package -PathType Leaf) -and (Get-Item -LiteralPath $package).Length -gt 20
+        } |
         Select-Object -First 1
     if ($null -eq $playwrightRoot) { throw 'A local Playwright runtime is unavailable.' }
     $env:NODE_PATH = Join-Path $playwrightRoot.FullName 'node_modules'
+    $chromium = Get-ChildItem (Join-Path $env:LOCALAPPDATA 'ms-playwright/chromium-*') -Filter chrome.exe -Recurse -ErrorAction SilentlyContinue |
+        Sort-Object FullName -Descending | Select-Object -First 1
+    if ($null -eq $chromium) { throw 'A local Chromium executable is unavailable.' }
+    $env:PICORADAR_TEST_CHROMIUM = $chromium.FullName
     $env:PICORADAR_TEST_DB_PORT = "$dbPort"
     $env:PICORADAR_TEST_DB_NAME = $database
     $env:PICORADAR_TEST_DB_USER = $dbUser
@@ -149,7 +157,7 @@ try {
     foreach ($name in @(
         'PICORADAR_TEST_PUBLIC_ROOT', 'PICORADAR_TEST_BASIC_USER', 'PICORADAR_TEST_BASIC_PASSWORD',
         'PICORADAR_TEST_DB_PORT', 'PICORADAR_TEST_DB_NAME', 'PICORADAR_TEST_DB_USER',
-        'PICORADAR_TEST_DB_PASSWORD', 'PICORADAR_TEST_OPERATOR_PASSWORD', 'NODE_PATH'
+        'PICORADAR_TEST_DB_PASSWORD', 'PICORADAR_TEST_OPERATOR_PASSWORD', 'PICORADAR_TEST_CHROMIUM', 'NODE_PATH'
     )) { Remove-Item "Env:$name" -ErrorAction SilentlyContinue }
     if ($succeeded -and (Test-Path -LiteralPath $scratch)) {
         Remove-Item -LiteralPath $scratch -Recurse -Force

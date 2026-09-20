@@ -40,7 +40,10 @@ async function unlock(page) {
 }
 
 (async () => {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.PICORADAR_TEST_CHROMIUM || undefined,
+  });
   try {
     const publicContext = await browser.newContext({ ignoreHTTPSErrors: true });
     for (const path of ['/', '/login', '/_setup/']) {

@@ -59,22 +59,44 @@ class HostPreflightCollector
         $suffix = bin2hex(random_bytes(6));
         $target = $directory.DIRECTORY_SEPARATOR.'symlink-target-'.$suffix;
         $link = $this->publicRoot.DIRECTORY_SEPARATOR.'.picoradar-symlink-'.$suffix;
-        if (@file_put_contents($target, 'test', LOCK_EX) === false) {
+        if (! @mkdir($target, 0700) && ! is_dir($target)) {
             return false;
         }
 
         try {
+            if (DIRECTORY_SEPARATOR === '\\') {
+                $process = proc_open(
+                    ['cmd.exe', '/d', '/c', 'mklink', '/J', $link, $target],
+                    [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                    $pipes,
+                );
+                if (! is_resource($process)) {
+                    return false;
+                }
+                foreach ($pipes as $pipe) {
+                    fclose($pipe);
+                }
+
+                return proc_close($process) === 0 && realpath($link) === realpath($target);
+            }
+
             return @symlink($target, $link) && is_link($link);
         } finally {
-            if (is_link($link) || file_exists($link)) {
+            if (is_link($link)) {
                 @unlink($link);
+            } elseif (is_dir($link)) {
+                @rmdir($link);
             }
-            @unlink($target);
+            @rmdir($target);
         }
     }
 
     private function permissions(string $path): string
     {
+        if (DIRECTORY_SEPARATOR === '\\') {
+            return '';
+        }
+
         $permissions = @fileperms($path);
 
         return $permissions === false ? '' : substr(sprintf('%o', $permissions), -4);
