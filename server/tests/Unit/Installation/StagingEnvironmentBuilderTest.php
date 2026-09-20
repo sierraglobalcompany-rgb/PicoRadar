@@ -37,6 +37,14 @@ class StagingEnvironmentBuilderTest extends TestCase
         $this->assertStringContainsString('SESSION_SAME_SITE="strict"', $environment);
         $this->assertStringContainsString('QUEUE_CONNECTION="database"', $environment);
         $this->assertStringContainsString('MAIL_MAILER="array"', $environment);
+        $this->assertStringContainsString(
+            'DATASET_PUBLIC_BASE_URL="https://picoradar.bodegadigitalmedellin.com/storage"',
+            $environment,
+        );
+        $this->assertStringContainsString(
+            'CAMPAIGN_PUBLIC_BASE_URL="https://picoradar.bodegadigitalmedellin.com/storage"',
+            $environment,
+        );
         $this->assertStringContainsString('TRIPS_ENABLED="false"', $environment);
         $this->assertStringContainsString('PRIVATE_OSRM_ENABLED="false"', $environment);
         $this->assertStringContainsString('PARTNER_INQUIRIES_ENABLED="false"', $environment);
