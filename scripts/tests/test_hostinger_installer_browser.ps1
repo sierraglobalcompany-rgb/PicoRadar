@@ -42,7 +42,16 @@ function Remove-VerifiedTestScratch {
     }
 
     $extendedPath = if ($resolved.StartsWith('\\?\')) { $resolved } else { '\\?\' + $resolved }
-    [System.IO.Directory]::Delete($extendedPath, $true)
+    for ($attempt = 0; $attempt -lt 5; $attempt++) {
+        try {
+            if (-not [System.IO.Directory]::Exists($extendedPath)) { return }
+            [System.IO.Directory]::Delete($extendedPath, $true)
+            return
+        } catch {
+            if ($attempt -eq 4) { throw }
+            Start-Sleep -Milliseconds 250
+        }
+    }
 }
 $rootPassword = 'Root-Browser-Test-2026'
 $database = 'picoradar_browser_qa'
