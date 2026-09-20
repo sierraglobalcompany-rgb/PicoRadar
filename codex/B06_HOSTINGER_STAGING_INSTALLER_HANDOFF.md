@@ -12,8 +12,10 @@ Hostinger remains `HOSTINGER_NOT_TOUCHED / PENDING_TARGET_SMOKE`.
 - Branch: `feat/B06-hostinger-staging-installer`
 - Base: `e6406f2f7841d49ef2653f83b728c2cdfe68274f`
 - Pre-closure checkpoint: `4616dcc36334184bfefedb9ffc6944d27ccf0a25`
-- Final implementation/test HEAD: `e40b103`
-- Final delivery HEAD: recorded after packaging in the evidence manifest.
+- Final package source HEAD: `8f7801ecd99bd82112a9dc510096d448e7ebe392`
+- Final package release: `20260920T071526Z-8f7801ecd9`
+- Final package SHA-256: `5158D3A984F07F927441F4015EE44DDAAF077C2D8FCEAB11122F6FB28C307F75`
+- Final documentation HEAD: recorded in the external evidence manifest to avoid a self-referential commit.
 - Worktree: `C:\Users\felip\.codex\worktrees\b06-hostinger-installer\PicoRadar_ Pico y Placa`
 
 ## Outcome
