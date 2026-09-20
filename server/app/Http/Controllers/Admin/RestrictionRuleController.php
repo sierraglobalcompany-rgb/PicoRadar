@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Dataset;
+use App\Models\GeographicUnit;
 use App\Models\Jurisdiction;
 use App\Models\RestrictionImport;
 use App\Models\RestrictionPublication;
@@ -16,6 +17,7 @@ use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -26,9 +28,55 @@ class RestrictionRuleController extends Controller
     {
         Gate::authorize('datasets.view');
 
+        $search = mb_substr(trim((string) $request->query('q', '')), 0, 100);
+        $department = preg_match('/^\d{2}$/', (string) $request->query('department', ''))
+            ? (string) $request->query('department')
+            : '';
+        $vehicleKind = in_array($request->query('vehicle_kind'), ['car', 'motorcycle'], true)
+            ? (string) $request->query('vehicle_kind')
+            : '';
+        $query = Jurisdiction::query()
+            ->where('enabled', true)
+            ->with([
+                'primaryGeographicUnit.parent',
+                'restrictionRuleVersions' => fn ($query) => $query->latest('version'),
+            ])
+            ->orderBy('name');
+        if ($search !== '') {
+            $query->where(function ($query) use ($search): void {
+                $query->where('name', 'like', "%$search%")
+                    ->orWhere('key', 'like', "%$search%")
+                    ->orWhereHas('primaryGeographicUnit', fn ($unit) => $unit->where('name', 'like', "%$search%"));
+            });
+        }
+        if ($department !== '') {
+            $query->whereHas('primaryGeographicUnit.parent', fn ($parent) => $parent->where('code', $department));
+        }
+        $filtered = $query->get();
+        if ($vehicleKind !== '') {
+            $filtered = $filtered->filter(function (Jurisdiction $jurisdiction) use ($vehicleKind): bool {
+                $latest = $jurisdiction->restrictionRuleVersions->first();
+
+                return collect($latest?->payload['coverages'] ?? [])->contains(
+                    fn ($coverage): bool => is_array($coverage) && ($coverage['vehicleKind'] ?? null) === $vehicleKind,
+                );
+            })->values();
+        }
+        $perPage = 50;
+        $page = max(1, (int) $request->query('page', 1));
+        $jurisdictions = new LengthAwarePaginator(
+            $filtered->forPage($page, $perPage)->values(),
+            $filtered->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()],
+        );
+
         return view('admin.restrictions.index', [
             'operator' => $request->user(),
-            'jurisdictions' => Jurisdiction::query()->where('enabled', true)->with(['restrictionRuleVersions' => fn ($query) => $query->latest('version')])->orderBy('name')->get(),
+            'jurisdictions' => $jurisdictions,
+            'departments' => GeographicUnit::query()->where('level', 'department')->where('is_active', true)->orderBy('name')->get(['code', 'name']),
+            'filters' => ['q' => $search, 'department' => $department, 'vehicle_kind' => $vehicleKind],
             'dataset' => Dataset::query()->where('key', 'restrictions')->first(),
         ]);
     }
