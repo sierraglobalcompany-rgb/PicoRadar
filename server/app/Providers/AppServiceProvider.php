@@ -42,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('cameras.reopen', fn (User $user): bool => in_array($user->role, [OperatorRole::SuperAdmin, OperatorRole::Admin], true));
         Gate::define('partner_inquiries.view', fn (User $user): bool => in_array($user->role, [OperatorRole::SuperAdmin, OperatorRole::Admin, OperatorRole::Commercial], true));
         Gate::define('partner_inquiries.update', fn (User $user): bool => in_array($user->role, [OperatorRole::SuperAdmin, OperatorRole::Admin, OperatorRole::Commercial], true));
+        Gate::define('operators.manage', fn (User $user): bool => $user->role === OperatorRole::SuperAdmin);
         RateLimiter::for('health', function (Request $request): Limit {
             return Limit::perMinute(60)
                 ->by('health|'.$request->ip())

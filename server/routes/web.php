@@ -7,7 +7,9 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DatasetController;
 use App\Http\Controllers\Admin\GeographyController;
 use App\Http\Controllers\Admin\JurisdictionController;
+use App\Http\Controllers\Admin\OperatorController;
 use App\Http\Controllers\Admin\PartnerInquiryController;
+use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Middleware\EnsureActiveOperator;
 use App\Http\Middleware\SecurityHeaders;
@@ -25,6 +27,11 @@ Route::middleware(['guest', SecurityHeaders::class])->group(function (): void {
 Route::middleware(['auth', EnsureActiveOperator::class, SecurityHeaders::class])->group(function (): void {
     Route::get('/admin', DashboardController::class)->name('admin.dashboard');
     Route::get('/admin/audit', [AuditLogController::class, 'index'])->name('admin.audit.index');
+    Route::get('/admin/profile', [ProfileController::class, 'edit'])->name('admin.profile.edit');
+    Route::put('/admin/profile/password', [ProfileController::class, 'updatePassword'])->name('admin.profile.password');
+    Route::get('/admin/operators', [OperatorController::class, 'index'])->name('admin.operators.index');
+    Route::post('/admin/operators', [OperatorController::class, 'store'])->name('admin.operators.store');
+    Route::put('/admin/operators/{operator}', [OperatorController::class, 'update'])->name('admin.operators.update');
     Route::get('/admin/geography', [GeographyController::class, 'index'])->name('admin.geography.index');
     Route::get('/admin/jurisdictions', [JurisdictionController::class, 'index'])->name('admin.jurisdictions.index');
     Route::get('/admin/jurisdictions/create', [JurisdictionController::class, 'create'])->name('admin.jurisdictions.create');
