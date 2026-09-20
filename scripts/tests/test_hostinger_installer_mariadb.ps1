@@ -18,7 +18,7 @@ $rootPassword = 'Root-Test-Only-2026'
 $database = 'picoradar_clean_room'
 $restoreDatabase = 'picoradar_restore_probe'
 $dbUser = 'picoradar_test'
-$dbPassword = 'Db_${APP_NAME}_#\" Unicode-á-2026'
+$dbPassword = 'Db_${APP_NAME}_#" Unicode-á-2026'
 $operatorPassword = 'Operator-Test-Only-2026'
 $serverProcess = $null
 $webProcess = $null
@@ -117,20 +117,24 @@ FLUSH PRIVILEGES;
 
         $cronProbe = Join-Path $root 'scripts/tests/hostinger_cron_probe.php'
         $cronMarker = Join-Path $scratch 'cron-probe.marker'
-        & $PhpPath $cronProbe $privateRoot dispatch $cronMarker | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw 'Synthetic cron job could not be queued.' }
+        $dispatchOutput = (& $PhpPath $cronProbe $privateRoot dispatch $cronMarker).Trim()
+        if ($LASTEXITCODE -ne 0 -or $dispatchOutput -ne 'QUEUED') { throw 'Synthetic cron job could not be queued.' }
         $cronOutput = (& $PhpPath (Join-Path $privateRoot 'bin/cron.php')).Trim()
         if ($LASTEXITCODE -ne 0 -or $cronOutput -ne 'OK') { throw "Cron verification failed: $cronOutput" }
         $cronStatus = (& $PhpPath $cronProbe $privateRoot status $cronMarker | ConvertFrom-Json)
-        if ($cronStatus.queued -ne 0 -or $cronStatus.marker -ne 'processed') { throw 'Cron did not process the synthetic queued job.' }
+        if ($cronStatus.queued -ne 0 -or $cronStatus.marker -ne 'processed') {
+            throw "Cron did not process the synthetic queued job (queued=$($cronStatus.queued), failed=$($cronStatus.failed), marker=$($cronStatus.marker))."
+        }
 
         Remove-Item -LiteralPath $cronMarker -Force
-        & $PhpPath $cronProbe $privateRoot dispatch-failure $cronMarker | Out-Null
+        $failureDispatchOutput = (& $PhpPath $cronProbe $privateRoot dispatch-failure $cronMarker).Trim()
+        if ($LASTEXITCODE -ne 0 -or $failureDispatchOutput -ne 'QUEUED_FAILURE') { throw 'Synthetic failing cron job could not be queued.' }
         $failedCronOutput = (& $PhpPath (Join-Path $privateRoot 'bin/cron.php')).Trim()
         if ($LASTEXITCODE -ne 0 -or $failedCronOutput -ne 'OK') { throw "Cron failure-path runner failed: $failedCronOutput" }
         $failedStatus = (& $PhpPath $cronProbe $privateRoot status $cronMarker | ConvertFrom-Json)
         if ($failedStatus.failed -lt 1 -or $failedStatus.queued -ne 0) { throw 'Failed cron job was not recorded honestly.' }
-        & $PhpPath $cronProbe $privateRoot dispatch $cronMarker | Out-Null
+        $recoveryDispatchOutput = (& $PhpPath $cronProbe $privateRoot dispatch $cronMarker).Trim()
+        if ($LASTEXITCODE -ne 0 -or $recoveryDispatchOutput -ne 'QUEUED') { throw 'Synthetic recovery cron job could not be queued.' }
         $recoveryCronOutput = (& $PhpPath (Join-Path $privateRoot 'bin/cron.php')).Trim()
         if ($LASTEXITCODE -ne 0 -or $recoveryCronOutput -ne 'OK') { throw 'Cron did not recover after a failed job.' }
 

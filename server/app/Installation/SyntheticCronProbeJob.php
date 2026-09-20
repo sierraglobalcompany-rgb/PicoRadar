@@ -4,10 +4,12 @@ namespace App\Installation;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
 use RuntimeException;
 
 final class SyntheticCronProbeJob implements ShouldQueue
 {
+    use Dispatchable;
     use Queueable;
 
     public int $tries = 1;
