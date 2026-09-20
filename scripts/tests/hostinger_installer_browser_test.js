@@ -31,6 +31,16 @@ const operator = {
   email: 'browser-owner@example.test',
   password: requiredEnv('PICORADAR_TEST_OPERATOR_PASSWORD'),
 };
+const evidenceDirectory = process.env.PICORADAR_BROWSER_EVIDENCE_DIR;
+
+async function captureEvidence(page, name) {
+  if (!evidenceDirectory) return;
+  fs.mkdirSync(evidenceDirectory, { recursive: true });
+  await page.screenshot({
+    path: `${evidenceDirectory}/${name}.png`,
+    fullPage: true,
+  });
+}
 
 async function unlock(page) {
   await page.goto(`${baseUrl}/_setup/`);
@@ -94,6 +104,7 @@ async function unlock(page) {
     await first.getByText('Preparación final').waitFor();
     await first.getByRole('button', { name: 'Completar y bloquear instalador' }).click();
     await first.getByRole('heading', { name: 'Instalación completada', exact: true }).waitFor();
+    await captureEvidence(first, 'installer-completed');
 
     const locked = await firstContext.request.get(`${baseUrl}/_setup/`);
     if (locked.status() !== 404) throw new Error('Completed installer remains reusable.');
@@ -113,6 +124,7 @@ async function unlock(page) {
     await first.getByRole('button', { name: 'Sign in' }).click();
     await first.waitForURL(/\/admin/);
     await first.getByText(/PicoRadar/i).first().waitFor();
+    await captureEvidence(first, 'admin-panel');
 
     await secondContext.close();
     await firstContext.close();

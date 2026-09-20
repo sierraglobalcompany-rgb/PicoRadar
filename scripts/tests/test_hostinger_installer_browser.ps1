@@ -1,5 +1,6 @@
 param(
     [string] $ArtifactDirectory = 'artifacts/current/hostinger-staging',
+    [string] $EvidenceDirectory,
     [string] $MariaDbRoot = 'C:\codex\_tool-cache\mariadb-11.8.8-winx64',
     [string] $PhpPath = 'C:\xampphp\php\php.exe',
     [string] $OpenSslPath = 'C:\xampphp\apache\bin\openssl.exe',
@@ -140,6 +141,9 @@ try {
     $env:PICORADAR_TEST_DB_USER = $dbUser
     $env:PICORADAR_TEST_DB_PASSWORD = $dbPassword
     $env:PICORADAR_TEST_OPERATOR_PASSWORD = $operatorPassword
+    if ($EvidenceDirectory) {
+        $env:PICORADAR_BROWSER_EVIDENCE_DIR = [System.IO.Path]::GetFullPath($EvidenceDirectory)
+    }
     & node (Join-Path $root 'scripts/tests/hostinger_installer_browser_test.js') "https://127.0.0.1:$httpsPort" $tokenFile
     if ($LASTEXITCODE -ne 0) { throw 'Browser-driven installer verification failed.' }
 
@@ -158,6 +162,7 @@ try {
         'PICORADAR_TEST_PUBLIC_ROOT', 'PICORADAR_TEST_BASIC_USER', 'PICORADAR_TEST_BASIC_PASSWORD',
         'PICORADAR_TEST_DB_PORT', 'PICORADAR_TEST_DB_NAME', 'PICORADAR_TEST_DB_USER',
         'PICORADAR_TEST_DB_PASSWORD', 'PICORADAR_TEST_OPERATOR_PASSWORD', 'PICORADAR_TEST_CHROMIUM', 'NODE_PATH'
+        , 'PICORADAR_BROWSER_EVIDENCE_DIR'
     )) { Remove-Item "Env:$name" -ErrorAction SilentlyContinue }
     if ($succeeded -and (Test-Path -LiteralPath $scratch)) {
         Remove-Item -LiteralPath $scratch -Recurse -Force
