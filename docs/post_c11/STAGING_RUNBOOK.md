@@ -1,64 +1,82 @@
-# Staging privado: preparacion sin despliegue
+# Staging privado en Hostinger: instalacion manual guiada
 
-## Preflight Laravel/panel
+## Alcance aprobado
 
-Ejecutar `scripts/server_preflight.ps1 -Profile laravel -AsJson`. El modo
-predeterminado solo lee capacidades: no instala paquetes, no crea `.env`, no
-migra, no abre puertos, no se conecta a la base y no inicia Laravel ni OSRM.
-`-RequireReady` falla tanto ante `FAIL` como ante `UNKNOWN`.
+El lote B06 prepara un paquete autocontenido para
+`https://picoradar.bodegadigitalmedellin.com`. No despliega, no cambia Flutter,
+no modifica C11 y no activa registro movil, Lite, anuncios, Pro, pagos,
+WhatsApp, solicitudes publicas de aliados ni OSRM.
 
-El perfil Laravel usa PHP y extensiones derivadas de `composer.json` y
-`composer.lock`. La presencia de `pdo_mysql` solo demuestra transporte; la
-conectividad de la base es una comprobacion independiente. La estrategia
-inicial es `bounded-cron`: requiere cron, procesa lotes acotados y debe usar
-prevencion de solapamiento; no requiere un daemon persistente. Tambien se puede
-evaluar `sync` o `persistent-worker` de forma explicita.
+El paquete se construye localmente con Composer y los recursos web compilados.
+Hostinger no necesita SSH, Composer, Node ni un proceso persistente.
 
-## Preflight OSRM
+## Distribucion en el hosting
 
-Ejecutar `scripts/server_preflight.ps1 -Profile osrm -AsJson`. Este perfil
-evalua por separado runtime, grafo, memoria, almacenamiento y proceso
-persistente. Un Laravel apto no acredita OSRM, ni un OSRM apto acredita Laravel.
-OSRM permanece apagado y sin despliegue en este cierre.
+```text
+/home/u390570745/domains/bodegadigitalmedellin.com/
+|-- picoradar_app/
+|   `-- current/                  # Laravel, vendor, .env y storage privados
+`-- public_html/
+    `-- picoradar/                # index, assets, setup y enlaces publicos
+```
 
-Para pruebas deterministas se admite `-FixturePath` con capacidades sinteticas;
-su procedencia queda marcada como fixture y nunca acredita el host objetivo.
-`-TargetHostEvidencePath` acepta un inventario recogido con las herramientas
-nativas del hosting; Hostinger no necesita PowerShell. Los estados son `PASS`,
-`FAIL`, `UNKNOWN` y `NOT_APPLICABLE`.
+El ZIP solo contiene esas dos areas y sus archivos de instalacion. El `.env`,
+los logs, las caches y Laravel permanecen fuera de `public_html`.
 
-La prueba `scripts/tests/test_server_preflight.ps1` cubre dependencias ausentes,
-host desconocido, fixture no productivo, Laravel sin daemon bajo cron acotado,
-OSRM sin recursos, driver sin conectividad y ausencia de escrituras.
+## Preparacion obligatoria
 
-## Primera prueba privada
+1. Activar PHP 8.5 para el subdominio y confirmar HTTPS valido.
+2. Proteger `public_html/picoradar` con contrasena desde hPanel.
+3. Crear una base MySQL/MariaDB exclusiva y vacia.
+4. Subir el ZIP a la raiz del dominio y extraerlo alli.
+5. Conservar `PicoRadar-INSTALL_TOKEN.txt` solo en el computador del propietario.
+6. Abrir `/_setup/`, introducir el token y seguir las etapas del asistente.
 
-1. Crear un subdominio de staging con HTTPS y acceso restringido.
-2. Crear una DB independiente sin datos reales.
-3. Copiar `server/.env.staging.example` fuera del repositorio y completar secretos
-   solo en el host.
-4. Usar `MAIL_MAILER=array` o una bandeja de captura local; no enviar correo real.
-5. Instalar dependencias bloqueadas por `composer.lock`, ejecutar pruebas y luego
-   migrar exclusivamente la DB de staging.
-6. Importar solo fixtures sinteticos y comprobar `/api/v1/health`.
-7. Mantener partner inquiries, cuentas moviles, viajes externos y OSRM apagados.
-8. Probar backup y restauracion en otra DB aislada antes de admitir PII.
+El instalador se detiene antes de migrar si falla integridad, HTTPS, permisos,
+extensiones, enlaces simbolicos, conexion o vaciedad de la base. Nunca solicita
+permisos `777`.
 
-## Recoleccion pendiente del hosting
+## Flujo del asistente
 
-La siguiente accion autorizada es solicitar o exportar, sin secretos: plan
-exacto, tipo de acceso, version PHP, Composer, extensiones, MariaDB, HTTPS,
-cron, almacenamiento escribible y posibilidad de procesos persistentes. El
-resultado se guarda como JSON fuera de credenciales y se evalua con
-`-TargetHostEvidencePath`. Hasta entonces el host es `UNKNOWN`, no `FAIL` y no
-`PASS`.
+1. Valida token, sesion segura, CSRF y limite de intentos.
+2. Diagnostica PHP 8.3-8.5, extensiones, rutas, escritura e integridad.
+3. Comprueba las credenciales y que la base este vacia.
+4. Crea `.env` y `APP_KEY` fuera del webroot con staging y funciones publicas
+   apagadas.
+5. Ejecuta migraciones sin datos personales ni datasets productivos.
+6. Crea un unico `super_admin` con contrasena minima de 12 caracteres.
+7. Crea y verifica los enlaces `storage` y `v1`, las caches, Health y Login.
+8. Escribe `installed.lock`; desde entonces `/_setup/` responde 404.
 
-## Logs y rollback
+Al finalizar se elimina manualmente `public_html/picoradar/_setup` desde File
+Manager. Este asistente no se reutiliza para actualizaciones ni restauraciones.
 
-- Sanitizar placa, documento, GPS exacto y textos privados.
-- Registrar release, commit, manifiesto y hashes publicados.
-- El rollback cambia al release anterior y restaura la DB solo desde un backup
-  ensayado; no reutiliza una DB de produccion.
-- Se conserva la procedencia OSRM y su script. El grafo pesado no esta presente
-  en los worktrees comprobados; no se descarga ni reconstruye por rutina. Un
-  lote aprobado debe decidir su almacenamiento, hash y restauracion.
+## Cron en hPanel
+
+Crear un cron de tipo PHP cada cinco minutos, en UTC, apuntando a:
+
+```text
+/home/u390570745/domains/bodegadigitalmedellin.com/picoradar_app/current/bin/cron.php
+```
+
+El ejecutor usa bloqueo de archivo, corre `schedule:run` y una cola acotada. Su
+salida publica solo `OK`, `SKIPPED_LOCKED` o un codigo de error sanitizado.
+
+## Preflight y recuperacion
+
+`scripts/server_preflight.ps1 -Profile laravel -DeploymentStrategy prebuilt-package`
+evalua el paquete precompilado. Composer es obligatorio en el constructor, no
+en Hostinger. OSRM conserva un perfil independiente y permanece apagado.
+
+Si una migracion falla no se eliminan tablas automaticamente: se crea otra base
+vacia y se reinicia. Si falla despues de migrar, el estado permite retomar la
+creacion del operador o el cierre sin duplicarlo y sin guardar credenciales.
+
+## Evidencia local
+
+El paquete final se verifica por manifiesto y SHA-256 y se instala desde cero
+contra MariaDB temporal. La prueba exige migraciones, operador, Login y Health
+HTTP reales, enlaces publicos al destino privado, cron y rollback. Esta prueba
+local no acredita Hostinger: el diagnostico del host se ejecuta en el asistente
+antes de tocar la base.
+
