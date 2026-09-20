@@ -113,7 +113,9 @@ async function exerciseAdminContent(page, context) {
     throw new Error(`Campaign draft was rejected. URL=${page.url()} BODY=${body}`);
   }
   await page.getByRole('button', { name: 'Activar' }).click();
-  await page.getByText('Campana activada y catalogo publicado.').waitFor();
+  await page.getByRole('status').filter({
+    hasText: 'Campana activada y catalogo publicado.',
+  }).waitFor();
 
   const campaignManifestResponse = await context.request.get(`${baseUrl}/storage/campaigns/v1/catalog.json`);
   if (campaignManifestResponse.status() !== 200) throw new Error('Campaign manifest was not published.');
