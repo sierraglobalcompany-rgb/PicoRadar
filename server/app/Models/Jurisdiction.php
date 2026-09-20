@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use LogicException;
 
 #[Fillable(['key', 'name', 'kind', 'primary_geographic_unit_id', 'enabled', 'timezone', 'metadata'])]
@@ -25,6 +26,11 @@ class Jurisdiction extends Model
     public function geographicUnits(): BelongsToMany
     {
         return $this->belongsToMany(GeographicUnit::class, 'jurisdiction_geographic_unit')->withTimestamps();
+    }
+
+    public function restrictionRuleVersions(): HasMany
+    {
+        return $this->hasMany(RestrictionRuleVersion::class);
     }
 
     protected static function booted(): void
