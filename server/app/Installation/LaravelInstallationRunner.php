@@ -39,6 +39,7 @@ class LaravelInstallationRunner
 
     public function prepareApplication(): void
     {
+        $this->ensurePublicLinkTargets();
         $this->command('storage:link', ['--force' => true]);
         $this->command('config:cache');
         $this->command('route:cache');
@@ -53,6 +54,18 @@ class LaravelInstallationRunner
                 && ($payload['apiVersion'] ?? null) === 'v1';
         });
         $this->verifyLoginContract();
+    }
+
+    private function ensurePublicLinkTargets(): void
+    {
+        foreach ([
+            $this->privateRoot.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
+            $this->privateRoot.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'manifest'.DIRECTORY_SEPARATOR.'v1',
+        ] as $directory) {
+            if (! is_dir($directory) && ! mkdir($directory, 0755, true) && ! is_dir($directory)) {
+                throw new RuntimeException('The installer could not prepare a public-link target.');
+            }
+        }
     }
 
     private function command(string $command, array $parameters = []): void
