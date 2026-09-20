@@ -105,6 +105,8 @@ try {
     $phpInfo.Environment['APP_URL'] = "https://127.0.0.1:$httpsPort"
     foreach ($argument in @('-S', "127.0.0.1:$backendPort", '-t', $publicRoot, (Join-Path $root 'scripts/tests/php_https_router.php'))) { $phpInfo.ArgumentList.Add($argument) }
     $phpProcess = [System.Diagnostics.Process]::Start($phpInfo)
+    $phpProcess.BeginOutputReadLine()
+    $phpProcess.BeginErrorReadLine()
 
     $env:PICORADAR_TEST_BASIC_USER = $basicUser
     $env:PICORADAR_TEST_BASIC_PASSWORD = $basicPassword
@@ -116,6 +118,8 @@ try {
     $proxyInfo.RedirectStandardError = $true
     foreach ($argument in @((Join-Path $root 'scripts/tests/https_basic_proxy.js'), "$httpsPort", "$backendPort", $cert, $key)) { $proxyInfo.ArgumentList.Add($argument) }
     $proxyProcess = [System.Diagnostics.Process]::Start($proxyInfo)
+    $proxyProcess.BeginOutputReadLine()
+    $proxyProcess.BeginErrorReadLine()
     $proxyReady = $false
     for ($attempt = 0; $attempt -lt 50; $attempt++) {
         Start-Sleep -Milliseconds 200

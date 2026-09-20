@@ -79,9 +79,8 @@ async function holdInstallerLock(seconds) {
 async function captureEvidence(page, name) {
   if (!evidenceDirectory) return;
   fs.mkdirSync(evidenceDirectory, { recursive: true });
-  await page.screenshot({
+  await page.locator('body').screenshot({
     path: `${evidenceDirectory}/${name}.png`,
-    fullPage: false,
     animations: 'disabled',
     timeout: 15000,
   });
@@ -241,7 +240,7 @@ async function unlock(page) {
     }
     await first.getByText(/PicoRadar/i).first().waitFor();
     await captureEvidence(first, 'admin-panel');
-    await first.getByRole('button', { name: 'Log out' }).click();
+    await first.getByRole('button', { name: 'Log out' }).click({ force: true });
     await first.getByRole('button', { name: 'Sign in' }).waitFor();
     if (new URL(first.url()).pathname !== '/login') {
       throw new Error(`Logout did not return to login: ${first.url()}`);
