@@ -46,6 +46,16 @@ async function exerciseAdminContent(page, context) {
     csv: requiredEnv('PICORADAR_TEST_RULES_CSV'),
     xlsx: requiredEnv('PICORADAR_TEST_RULES_XLSX'),
   };
+  await page.goto(`${baseUrl}/admin/datasets`);
+  await page.getByRole('link', { name: /Pico y placa por ciudad/ }).click();
+  const sourceForm = page.locator('form', { has: page.getByRole('button', { name: 'Add source' }) });
+  await sourceForm.locator('[name="title"]').fill('Fuente sintética B07');
+  await sourceForm.locator('[name="authority"]').fill('Autoridad sintética B07');
+  await sourceForm.locator('[name="url"]').fill('https://example.test/b07-browser-rules');
+  await sourceForm.locator('[name="verified_at"]').fill('2026-09-20T12:00');
+  await sourceForm.getByRole('button', { name: 'Add source' }).click();
+  await page.getByText('Autoridad sintética B07').waitFor();
+
   for (const [format, filePath] of Object.entries(fixtures)) {
     await page.goto(`${baseUrl}/admin/restrictions/import`);
     await page.getByLabel('Archivo JSON, CSV o XLSX').setInputFiles(filePath);

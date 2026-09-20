@@ -45,6 +45,7 @@ $dataRoot = Join-Path $scratch 'mariadb-data'
 $logs = Join-Path $scratch 'logs'
 $rootPassword = 'Root-Browser-Test-2026'
 $database = 'picoradar_browser_qa'
+$restoreDatabase = 'picoradar_browser_restore'
 $dbUser = 'picoradar_browser'
 $dbPassword = 'Browser_${APP_NAME}_#" Unicode-á-2026'
 $operatorPassword = 'Browser-Operator-Test-2026'
@@ -87,7 +88,7 @@ try {
         if ($mariaProcess.HasExited) { break }
     }
     if (-not $ready) { throw 'MariaDB did not start.' }
-    $sql = "CREATE DATABASE ``$database`` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER '$dbUser'@'127.0.0.1' IDENTIFIED BY '$dbPassword'; GRANT ALL PRIVILEGES ON ``$database``.* TO '$dbUser'@'127.0.0.1'; FLUSH PRIVILEGES;"
+    $sql = "CREATE DATABASE ``$database`` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE ``$restoreDatabase`` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER '$dbUser'@'127.0.0.1' IDENTIFIED BY '$dbPassword'; GRANT ALL PRIVILEGES ON ``$database``.* TO '$dbUser'@'127.0.0.1'; GRANT ALL PRIVILEGES ON ``$restoreDatabase``.* TO '$dbUser'@'127.0.0.1'; FLUSH PRIVILEGES;"
     & $client --protocol=tcp --host=127.0.0.1 "--port=$dbPort" --user=root "--password=$rootPassword" --execute=$sql
     if ($LASTEXITCODE -ne 0) { throw 'Disposable browser database provisioning failed.' }
 
@@ -179,6 +180,49 @@ try {
             if ($LASTEXITCODE -ne 0) { throw 'The real Flutter publication bridge failed.' }
         } finally {
             Pop-Location
+        }
+
+        $expectedCounts = '1|1|1|1|1'
+        $contentCountsSql = "SELECT CONCAT((SELECT COUNT(*) FROM restriction_rule_versions),'|',(SELECT COUNT(*) FROM restriction_publications),'|',(SELECT COUNT(*) FROM sponsors),'|',(SELECT COUNT(*) FROM campaigns),'|',(SELECT COUNT(*) FROM campaign_catalog_releases));"
+        $contentCounts = (& $client --protocol=tcp --host=127.0.0.1 "--port=$dbPort" --user=root "--password=$rootPassword" "--database=$database" --silent --skip-column-names --execute=$contentCountsSql).Trim()
+        if ($contentCounts -ne $expectedCounts) {
+            throw "The browser flow did not persist the expected administrative content: $contentCounts"
+        }
+
+        $backupRoot = Join-Path $scratch 'admin-content-backup'
+        $restoredPublic = Join-Path $scratch 'admin-content-restored-public'
+        New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
+        $privatePublic = Join-Path $domainRoot 'picoradar_app/current/storage/app/public'
+        Copy-Item -LiteralPath $privatePublic -Destination (Join-Path $backupRoot 'public') -Recurse -Force
+        $dumpPath = Join-Path $backupRoot 'database.sql'
+        $dump = Join-Path $MariaDbRoot 'bin/mariadb-dump.exe'
+        & $dump --protocol=tcp --host=127.0.0.1 "--port=$dbPort" --user=root "--password=$rootPassword" --single-transaction --skip-comments "--result-file=$dumpPath" $database
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $dumpPath)) {
+            throw 'Administrative content database backup failed.'
+        }
+        $dumpUnix = $dumpPath.Replace('\', '/')
+        & $client --protocol=tcp --host=127.0.0.1 "--port=$dbPort" --user=root "--password=$rootPassword" "--database=$restoreDatabase" "--execute=source $dumpUnix"
+        if ($LASTEXITCODE -ne 0) { throw 'Administrative content database restore failed.' }
+        $restoredCounts = (& $client --protocol=tcp --host=127.0.0.1 "--port=$dbPort" --user=root "--password=$rootPassword" "--database=$restoreDatabase" --silent --skip-column-names --execute=$contentCountsSql).Trim()
+        if ($restoredCounts -ne $contentCounts) {
+            throw "Administrative content changed during database restore: $restoredCounts"
+        }
+        Copy-Item -LiteralPath (Join-Path $backupRoot 'public') -Destination $restoredPublic -Recurse -Force
+        foreach ($relativePath in @('manifest/v1/manifest.json', 'campaigns/v1/catalog.json')) {
+            $sourceFile = Join-Path $privatePublic $relativePath
+            $restoredFile = Join-Path $restoredPublic $relativePath
+            if (-not (Test-Path -LiteralPath $sourceFile) -or -not (Test-Path -LiteralPath $restoredFile)) {
+                throw "Published pointer missing from content backup: $relativePath"
+            }
+            if ((Get-FileHash -LiteralPath $sourceFile -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $restoredFile -Algorithm SHA256).Hash) {
+                throw "Published pointer changed during storage restore: $relativePath"
+            }
+        }
+        $campaignAsset = Get-ChildItem -LiteralPath (Join-Path $privatePublic 'campaigns/assets') -File | Select-Object -First 1
+        if ($null -eq $campaignAsset) { throw 'The published campaign asset is missing from private storage.' }
+        $restoredAsset = Join-Path (Join-Path $restoredPublic 'campaigns/assets') $campaignAsset.Name
+        if ((Get-FileHash -LiteralPath $campaignAsset.FullName -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $restoredAsset -Algorithm SHA256).Hash) {
+            throw 'The campaign image changed during storage restore.'
         }
     }
 

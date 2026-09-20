@@ -95,6 +95,18 @@ try {
         || (int) $operator['is_active'] !== 1) {
         throw new RuntimeException('The initial operator contract failed.');
     }
+    $foundationCounts = [
+        'geographicUnits' => (int) $pdo->query('SELECT COUNT(*) FROM geographic_units')->fetchColumn(),
+        'jurisdictions' => (int) $pdo->query('SELECT COUNT(*) FROM jurisdictions')->fetchColumn(),
+        'restrictionDatasets' => (int) $pdo->query("SELECT COUNT(*) FROM datasets WHERE `key` = 'restrictions'")->fetchColumn(),
+    ];
+    if ($foundationCounts !== [
+        'geographicUnits' => 1138,
+        'jurisdictions' => 73,
+        'restrictionDatasets' => 1,
+    ]) {
+        throw new RuntimeException('The clean installation did not bootstrap the administrative content foundation.');
+    }
     foreach ([
         $publicRoot.DIRECTORY_SEPARATOR.'storage' => $privateRoot.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public',
         $publicRoot.DIRECTORY_SEPARATOR.'v1' => $privateRoot.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'manifest'.DIRECTORY_SEPARATOR.'v1',
@@ -115,6 +127,7 @@ try {
         'releaseId' => $releaseId,
         'operator' => 'owner@example.test',
         'manifestFiles' => count($manifest['files'] ?? []),
+        'foundation' => $foundationCounts,
     ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR).PHP_EOL;
 } catch (Throwable $exception) {
     fwrite(STDERR, 'Clean-room installer failed: '.$exception->getMessage().PHP_EOL);
