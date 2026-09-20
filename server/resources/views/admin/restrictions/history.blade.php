@@ -1,0 +1,6 @@
+@extends('layouts.admin', ['title' => 'Historial de reglas | PicoRadar'])
+@section('content')
+<h1 class="text-3xl font-semibold">Historial de publicación</h1><p class="mt-2 text-sm text-slate-600">Revisión actual {{ $dataset?->publication_revision ?? 0 }}</p>
+@if($errors->any())<div class="mt-4 rounded bg-red-50 p-3 text-red-800">{{ $errors->first() }}</div>@endif
+<div class="mt-6 space-y-6">@foreach($publications as $publication)<section><div class="border-b pb-2"><strong>{{ $publication->action }}</strong> · {{ $publication->datasetRelease->version }} · revisión {{ $publication->result_publication_revision }} · {{ $publication->created_at }}</div>@foreach($publication->items as $item)<div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 py-2 text-sm"><span>{{ $item->jurisdiction->name }} · versión {{ $item->ruleVersion->version }}</span>@can('datasets.review')<form method="POST" action="{{ route('admin.restrictions.rollback', $item->ruleVersion) }}">@csrf<input type="hidden" name="publication_revision" value="{{ $dataset?->publication_revision ?? 0 }}"><button class="rounded border px-3 py-1">Restaurar solo esta ciudad</button></form>@endcan</div>@endforeach</section>@endforeach</div>{{ $publications->links() }}
+@endsection
