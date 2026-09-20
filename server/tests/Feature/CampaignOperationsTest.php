@@ -172,6 +172,21 @@ class CampaignOperationsTest extends TestCase
         $this->assertDatabaseCount('campaigns', 0);
     }
 
+    public function test_image_validation_accepts_the_approved_c11_ratio(): void
+    {
+        $admin = User::factory()->create(['role' => OperatorRole::Admin]);
+        $sponsor = app(SponsorService::class)->create($this->sponsorData(), $admin);
+
+        $campaign = app(CampaignService::class)->create(
+            $this->campaignData($sponsor),
+            $this->syntheticPng('c11-approved.png', 1200, 480),
+            $admin,
+        );
+
+        $this->assertSame(1200, $campaign->image_width);
+        $this->assertSame(480, $campaign->image_height);
+    }
+
     public function test_rejected_edit_with_identical_image_keeps_validated_source(): void
     {
         $admin = User::factory()->create(['role' => OperatorRole::Admin]);

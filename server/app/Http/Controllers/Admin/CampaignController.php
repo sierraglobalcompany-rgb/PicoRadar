@@ -12,6 +12,7 @@ use App\Models\GeographicUnit;
 use App\Models\Sponsor;
 use App\Services\CampaignAccess;
 use App\Services\CampaignService;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -43,7 +44,11 @@ class CampaignController extends Controller
 
     public function store(CampaignRequest $request, CampaignService $service): RedirectResponse
     {
-        $campaign = $service->create($request->safe()->except('image'), $request->file('image'), $request->user());
+        try {
+            $campaign = $service->create($request->safe()->except('image'), $request->file('image'), $request->user());
+        } catch (DomainException $error) {
+            return back()->withInput()->withErrors(['image' => $error->getMessage()]);
+        }
 
         return redirect()->route('admin.campaigns.show', $campaign)->with('status', 'Campana creada como borrador.');
     }
@@ -65,7 +70,11 @@ class CampaignController extends Controller
 
     public function update(CampaignRequest $request, Campaign $campaign, CampaignService $service): RedirectResponse
     {
-        $service->update($campaign, $request->safe()->except('image'), $request->file('image'), $request->user());
+        try {
+            $service->update($campaign, $request->safe()->except('image'), $request->file('image'), $request->user());
+        } catch (DomainException $error) {
+            return back()->withInput()->withErrors(['image' => $error->getMessage()]);
+        }
 
         return redirect()->route('admin.campaigns.show', $campaign)->with('status', 'Campana actualizada.');
     }

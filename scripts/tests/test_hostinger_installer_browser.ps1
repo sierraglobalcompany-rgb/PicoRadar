@@ -83,10 +83,15 @@ try {
 
     $cert = Join-Path $scratch 'localhost.crt'
     $key = Join-Path $scratch 'localhost.key'
-    & $OpenSslPath req -x509 -newkey rsa:2048 -nodes -keyout $key -out $cert -subj '/CN=127.0.0.1' -days 1 -config $OpenSslConfig 2>$null
-    if ($LASTEXITCODE -ne 0) { throw 'Local HTTPS certificate generation failed.' }
+    $opensslProcess = Start-Process -FilePath $OpenSslPath `
+        -ArgumentList 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', $key, '-out', $cert, '-subj', '/CN=127.0.0.1', '-days', '1', '-config', $OpenSslConfig `
+        -WindowStyle Hidden -PassThru -Wait `
+        -RedirectStandardOutput (Join-Path $logs 'openssl.out.log') `
+        -RedirectStandardError (Join-Path $logs 'openssl.err.log')
+    if ($opensslProcess.ExitCode -ne 0) { throw 'Local HTTPS certificate generation failed.' }
 
     $env:PICORADAR_TEST_PUBLIC_ROOT = $publicRoot
+    $env:PICORADAR_TEST_PRIVATE_PUBLIC_ROOT = Join-Path $domainRoot 'picoradar_app/current/storage/app/public'
     $phpInfo = [System.Diagnostics.ProcessStartInfo]::new($PhpPath)
     $phpInfo.WorkingDirectory = $publicRoot
     $phpInfo.UseShellExecute = $false
@@ -119,8 +124,8 @@ try {
     for ($attempt = 0; $attempt -lt 50; $attempt++) {
         Start-Sleep -Milliseconds 200
         try {
-            $response = Invoke-WebRequest -Uri "https://127.0.0.1:$httpsPort/" -SkipCertificateCheck -UseBasicParsing -TimeoutSec 2 -SkipHttpErrorCheck
-            if ($response.StatusCode -eq 401) { $proxyReady = $true; break }
+            $statusCode = (& curl.exe -k -s -o NUL -w '%{http_code}' "https://127.0.0.1:$httpsPort/").Trim()
+            if ($statusCode -eq '401') { $proxyReady = $true; break }
         } catch {}
         if ($proxyProcess.HasExited -or $phpProcess.HasExited) { break }
     }
@@ -227,12 +232,12 @@ try {
 } finally {
     foreach ($process in @($proxyProcess, $phpProcess, $mariaProcess)) {
         if ($process -and -not $process.HasExited) {
-            $process.Kill($true)
+            $process.Kill()
             $process.WaitForExit(5000) | Out-Null
         }
     }
     foreach ($name in @(
-        'PICORADAR_TEST_PUBLIC_ROOT', 'PICORADAR_TEST_BASIC_USER', 'PICORADAR_TEST_BASIC_PASSWORD',
+        'PICORADAR_TEST_PUBLIC_ROOT', 'PICORADAR_TEST_PRIVATE_PUBLIC_ROOT', 'PICORADAR_TEST_BASIC_USER', 'PICORADAR_TEST_BASIC_PASSWORD',
         'PICORADAR_TEST_DB_PORT', 'PICORADAR_TEST_DB_NAME', 'PICORADAR_TEST_DB_USER',
         'PICORADAR_TEST_DB_PASSWORD', 'PICORADAR_TEST_OPERATOR_PASSWORD', 'PICORADAR_TEST_CHROMIUM', 'NODE_PATH'
         , 'PICORADAR_BROWSER_EVIDENCE_DIR', 'PICORADAR_TEST_SCENARIO', 'PICORADAR_TEST_PRIVATE_ROOT'

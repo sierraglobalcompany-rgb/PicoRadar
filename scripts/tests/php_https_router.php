@@ -12,8 +12,17 @@ $_SERVER['SERVER_PORT'] = 443;
 $requestPath = rawurldecode((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH));
 $candidate = realpath($publicRoot.DIRECTORY_SEPARATOR.ltrim($requestPath, '/'));
 $root = realpath($publicRoot);
+$privatePublicRoot = realpath((string) getenv('PICORADAR_TEST_PRIVATE_PUBLIC_ROOT'));
+$approvedRoots = array_values(array_filter([$root, $privatePublicRoot]));
+$isApproved = false;
+foreach ($approvedRoots as $approvedRoot) {
+    if ($candidate !== false && ($candidate === $approvedRoot || str_starts_with($candidate, $approvedRoot.DIRECTORY_SEPARATOR))) {
+        $isApproved = true;
+        break;
+    }
+}
 
-if ($candidate !== false && $root !== false && str_starts_with($candidate, $root.DIRECTORY_SEPARATOR)) {
+if ($isApproved) {
     if (is_file($candidate)) {
         if (pathinfo($candidate, PATHINFO_EXTENSION) === 'php') {
             require $candidate;

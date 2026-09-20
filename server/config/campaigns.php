@@ -10,6 +10,8 @@ return [
     'min_image_height' => 180,
     'max_image_width' => 4096,
     'max_image_height' => 4096,
+    'min_image_aspect_ratio' => 2.5,
+    'max_image_aspect_ratio' => 5.0,
     'cache_ttl_seconds' => (int) env('CAMPAIGN_CACHE_TTL_SECONDS', 3600),
     'catalog_manifest_path' => 'campaigns/v1/catalog.json',
     'catalog_release_directory' => 'campaigns/v1/releases',

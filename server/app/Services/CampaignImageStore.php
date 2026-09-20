@@ -27,7 +27,7 @@ class CampaignImageStore
             throw new DomainException('Campaign image dimensions are outside the C11-safe range.');
         }
         $ratio = $width / $height;
-        if ($ratio < 3 || $ratio > 5) {
+        if ($ratio < config('campaigns.min_image_aspect_ratio') || $ratio > config('campaigns.max_image_aspect_ratio')) {
             throw new DomainException('Campaign image aspect ratio must fit the C11 carousel.');
         }
         $content = $file->getContent();

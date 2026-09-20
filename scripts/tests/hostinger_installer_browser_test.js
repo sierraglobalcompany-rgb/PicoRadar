@@ -77,7 +77,7 @@ async function exerciseAdminContent(page, context) {
   await page.getByRole('button', { name: 'Revisar selección' }).click();
   await page.getByRole('heading', { name: 'Revisar publicación selectiva' }).waitFor();
   await page.getByRole('button', { name: 'Publicar ciudades seleccionadas' }).click();
-  await page.getByRole('heading', { name: 'Historial de publicaciones' }).waitFor();
+  await page.getByRole('heading', { name: 'Historial de publicación' }).waitFor();
 
   const datasetManifestResponse = await context.request.get(`${baseUrl}/v1/manifest.json`);
   if (datasetManifestResponse.status() !== 200) throw new Error('Dataset manifest was not published.');
@@ -97,17 +97,21 @@ async function exerciseAdminContent(page, context) {
   await page.goto(`${baseUrl}/admin/campaigns/create`);
   await page.getByLabel('Patrocinador').selectOption({ label: 'Patrocinador B07 sintético' });
   await page.getByLabel('Etiqueta').fill('DEMOSTRACIÓN LOCAL');
-  await page.getByLabel('Titulo').fill('Aliado B07 sintético');
-  await page.getByLabel('Subtitulo').fill('Campaña publicada desde el panel local aislado.');
+  await page.getByLabel('Titulo', { exact: true }).fill('Aliado B07 sintético');
+  await page.getByLabel('Subtitulo', { exact: true }).fill('Campaña publicada desde el panel local aislado.');
   await page.getByLabel('Texto CTA').fill('Ver demostración');
   await page.getByLabel('Destino HTTPS').fill('https://example.test/b07');
   await page.getByLabel('Prioridad').fill('10');
   await page.getByLabel('Alcance').selectOption('national');
-  await page.getByLabel('Inicio').fill('2026-09-20T00:00');
-  await page.getByLabel('Fin').fill('2026-12-31T23:59');
+  await page.getByLabel('Inicio', { exact: true }).fill('2026-09-20T00:00');
+  await page.getByLabel('Fin', { exact: true }).fill('2026-12-31T23:59');
   await page.getByLabel(/Imagen C11/).setInputFiles(requiredEnv('PICORADAR_TEST_CAMPAIGN_IMAGE'));
   await page.getByRole('button', { name: 'Guardar borrador' }).click();
-  await page.getByRole('heading', { name: 'Aliado B07 sintético' }).waitFor();
+  await page.waitForLoadState('networkidle');
+  if (!await page.getByRole('heading', { name: 'Aliado B07 sintético' }).isVisible().catch(() => false)) {
+    const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ').slice(0, 1000);
+    throw new Error(`Campaign draft was rejected. URL=${page.url()} BODY=${body}`);
+  }
   await page.getByRole('button', { name: 'Activar' }).click();
   await page.getByText('Campana activada y catalogo publicado.').waitFor();
 
@@ -316,7 +320,7 @@ async function unlock(page) {
     }
     await first.getByRole('button', { name: 'Sign in' }).click();
     try {
-      await first.getByText('Operator dashboard').waitFor({ timeout: 15000 });
+      await first.getByText('Panel administrativo', { exact: true }).first().waitFor({ timeout: 15000 });
       if (!new URL(first.url()).pathname.startsWith('/admin')) {
         throw new Error(`Unexpected authenticated path: ${first.url()}`);
       }

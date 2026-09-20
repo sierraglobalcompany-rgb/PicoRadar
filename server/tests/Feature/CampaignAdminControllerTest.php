@@ -111,6 +111,25 @@ class CampaignAdminControllerTest extends TestCase
         $this->assertDatabaseCount('campaigns', 0);
     }
 
+    public function test_campaign_form_reports_a_c11_ratio_error_without_a_server_failure(): void
+    {
+        $commercial = User::factory()->create(['role' => OperatorRole::Commercial]);
+        $sponsor = Sponsor::query()->create([
+            'public_id' => 'sp_ratio_error',
+            'name' => 'Aliado sintetico',
+            'status' => 'active',
+        ]);
+
+        $this->actingAs($commercial)->from(route('admin.campaigns.create'))->post(
+            route('admin.campaigns.store'),
+            $this->campaignData($sponsor) + [
+                'image' => $this->syntheticPng('square.png', 720, 720),
+            ],
+        )->assertRedirect(route('admin.campaigns.create'))->assertSessionHasErrors('image');
+
+        $this->assertDatabaseCount('campaigns', 0);
+    }
+
     /** @return array<string, mixed> */
     private function campaignData(Sponsor $sponsor): array
     {
