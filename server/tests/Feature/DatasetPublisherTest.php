@@ -80,6 +80,19 @@ class DatasetPublisherTest extends TestCase
         $release->save();
     }
 
+    public function test_publish_can_guard_the_reviewed_publication_revision(): void
+    {
+        $operator = User::factory()->create(['role' => OperatorRole::Admin, 'is_active' => true]);
+        $dataset = Dataset::query()->create(['key' => 'restrictions', 'title' => 'Restrictions', 'schema_version' => 1, 'enabled' => true]);
+        $dataset->sources()->create(['title' => 'Official', 'authority' => 'Authority', 'url' => 'https://example.test/rules', 'verified_at' => now(), 'is_active' => true]);
+        $release = $this->draft($dataset, '2026.09.20-reviewed');
+        app(DatasetReleaseValidator::class)->validate($release, $operator);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('The dataset changed after review; refresh the publication preview.');
+        app(DatasetPublisher::class)->publish($release, $operator, 9);
+    }
+
     public function test_validation_requires_an_active_verified_source(): void
     {
         $operator = User::factory()->create(['role' => OperatorRole::Admin, 'is_active' => true]);
