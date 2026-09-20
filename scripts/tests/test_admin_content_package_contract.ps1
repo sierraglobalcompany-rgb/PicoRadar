@@ -13,5 +13,11 @@ if ($build -notmatch '\$zipName = "\$PackagePrefix-\$releaseId\.zip"') {
 if ($wrapper -notmatch "PackagePrefix 'PicoRadar-admin-contenidos'") {
     throw 'The B07 wrapper does not select the required installable name.'
 }
+if ($build -notmatch "pico_jurisdiction_catalog_v1\.json") {
+    throw 'The package builder does not bundle the Pico jurisdiction fixture required by a clean install.'
+}
+if ($build -notmatch "colombia_registration_cities_v1\.json") {
+    throw 'The package builder does not bundle the registration-city fixture required by a clean install.'
+}
 
-Write-Output 'PASS: B06 keeps its default name and B07 selects a separate installable prefix.'
+Write-Output 'PASS: B06 keeps its default name and B07 selects a complete, separate installable.'

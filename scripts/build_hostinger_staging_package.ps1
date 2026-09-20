@@ -82,6 +82,19 @@ try {
         Copy-Item -LiteralPath $source -Destination $destination -Force
     }
 
+    foreach ($catalog in @(
+        'pico_jurisdiction_catalog_v1.json',
+        'colombia_registration_cities_v1.json'
+    )) {
+        $source = Join-Path $root "mobile/assets/catalogs/$catalog"
+        $destination = Join-Path $privateRoot "database/data/$catalog"
+        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+            throw "Required clean-install catalog is missing: $catalog"
+        }
+        New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+        Copy-Item -LiteralPath $source -Destination $destination -Force
+    }
+
     Copy-Item -LiteralPath (Join-Path $serverRoot 'deploy/hostinger/public/index.php') -Destination (Join-Path $publicRoot 'index.php') -Force
     New-Item -ItemType Directory -Path (Join-Path $publicRoot '_setup') -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $serverRoot 'deploy/hostinger/public/_setup/index.php') -Destination (Join-Path $publicRoot '_setup/index.php') -Force

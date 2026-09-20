@@ -23,6 +23,7 @@ class LaravelInstallationRunner
     public function migrate(): void
     {
         $this->command('migrate', ['--force' => true, '--no-interaction' => true]);
+        $this->command('picoradar:content:bootstrap', ['--no-interaction' => true]);
     }
 
     public function createInitialOperator(
