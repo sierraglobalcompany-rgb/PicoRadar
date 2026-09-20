@@ -40,6 +40,82 @@ const privateRoot = requiredEnv('PICORADAR_TEST_PRIVATE_ROOT');
 const statePath = requiredEnv('PICORADAR_TEST_STATE_PATH');
 const mutationLockPath = requiredEnv('PICORADAR_TEST_MUTATION_LOCK_PATH');
 
+async function exerciseAdminContent(page, context) {
+  const fixtures = {
+    json: requiredEnv('PICORADAR_TEST_RULES_JSON'),
+    csv: requiredEnv('PICORADAR_TEST_RULES_CSV'),
+    xlsx: requiredEnv('PICORADAR_TEST_RULES_XLSX'),
+  };
+  for (const [format, filePath] of Object.entries(fixtures)) {
+    await page.goto(`${baseUrl}/admin/restrictions/import`);
+    await page.getByLabel('Archivo JSON, CSV o XLSX').setInputFiles(filePath);
+    if (format === 'xlsx') {
+      await page.getByLabel('Hoja XLSX (opcional)').fill('Rules');
+    }
+    await page.getByRole('button', { name: 'Analizar' }).click();
+    await page.getByText('Medellín').waitFor();
+    await page.getByText(/1 filas/).waitFor();
+  }
+
+  await page.getByRole('button', { name: 'Crear borradores seleccionados' }).click();
+  await page.getByRole('heading', { name: 'Reglas por ciudad' }).waitFor();
+  const medellinRow = page.locator('tr', { hasText: 'Medellín' });
+  await medellinRow.getByRole('link', { name: 'Abrir' }).click();
+  await page.getByRole('button', { name: 'Validar' }).click();
+  await page.goto(`${baseUrl}/admin/restrictions`);
+  await page.getByLabel('Publicar Medellín').check();
+  await page.getByRole('button', { name: 'Revisar selección' }).click();
+  await page.getByRole('heading', { name: 'Revisar publicación selectiva' }).waitFor();
+  await page.getByRole('button', { name: 'Publicar ciudades seleccionadas' }).click();
+  await page.getByRole('heading', { name: 'Historial de publicaciones' }).waitFor();
+
+  const datasetManifestResponse = await context.request.get(`${baseUrl}/v1/manifest.json`);
+  if (datasetManifestResponse.status() !== 200) throw new Error('Dataset manifest was not published.');
+  const datasetManifest = await datasetManifestResponse.json();
+  const restrictionEntry = datasetManifest.datasets?.restrictions;
+  if (!restrictionEntry || !String(restrictionEntry.url).startsWith(`${baseUrl}/storage/`)) {
+    throw new Error(`Restriction manifest is not consumable by mobile: ${JSON.stringify(restrictionEntry)}`);
+  }
+
+  await page.goto(`${baseUrl}/admin/sponsors/create`);
+  await page.getByLabel('Nombre').fill('Patrocinador B07 sintético');
+  await page.getByLabel('Contacto privado').fill('Contacto de prueba');
+  await page.getByLabel('Correo privado').fill('partner-b07@example.test');
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await page.getByRole('heading', { name: 'Patrocinador B07 sintético' }).waitFor();
+
+  await page.goto(`${baseUrl}/admin/campaigns/create`);
+  await page.getByLabel('Patrocinador').selectOption({ label: 'Patrocinador B07 sintético' });
+  await page.getByLabel('Etiqueta').fill('DEMOSTRACIÓN LOCAL');
+  await page.getByLabel('Titulo').fill('Aliado B07 sintético');
+  await page.getByLabel('Subtitulo').fill('Campaña publicada desde el panel local aislado.');
+  await page.getByLabel('Texto CTA').fill('Ver demostración');
+  await page.getByLabel('Destino HTTPS').fill('https://example.test/b07');
+  await page.getByLabel('Prioridad').fill('10');
+  await page.getByLabel('Alcance').selectOption('national');
+  await page.getByLabel('Inicio').fill('2026-09-20T00:00');
+  await page.getByLabel('Fin').fill('2026-12-31T23:59');
+  await page.getByLabel(/Imagen C11/).setInputFiles(requiredEnv('PICORADAR_TEST_CAMPAIGN_IMAGE'));
+  await page.getByRole('button', { name: 'Guardar borrador' }).click();
+  await page.getByRole('heading', { name: 'Aliado B07 sintético' }).waitFor();
+  await page.getByRole('button', { name: 'Activar' }).click();
+  await page.getByText('Campana activada y catalogo publicado.').waitFor();
+
+  const campaignManifestResponse = await context.request.get(`${baseUrl}/storage/campaigns/v1/catalog.json`);
+  if (campaignManifestResponse.status() !== 200) throw new Error('Campaign manifest was not published.');
+  const campaignManifest = await campaignManifestResponse.json();
+  if (!String(campaignManifest.url).startsWith(`${baseUrl}/storage/`)) {
+    throw new Error(`Campaign manifest is not consumable by mobile: ${JSON.stringify(campaignManifest)}`);
+  }
+  const campaignCatalogResponse = await context.request.get(campaignManifest.url);
+  const campaignCatalog = await campaignCatalogResponse.json();
+  if (!campaignCatalog.campaigns?.some((campaign) => campaign.title === 'Aliado B07 sintético')) {
+    throw new Error('The activated campaign did not reach the published catalog.');
+  }
+  await captureEvidence(page, 'admin-campaign-active');
+  process.stdout.write('PASS: browser imported JSON/CSV/XLSX and published restrictions plus a C11 campaign.\n');
+}
+
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 async function waitForFile(filePath, timeoutMilliseconds = 5000) {
@@ -240,6 +316,9 @@ async function unlock(page) {
     }
     await first.getByText(/PicoRadar/i).first().waitFor();
     await captureEvidence(first, 'admin-panel');
+    if (scenario === 'admin-content') {
+      await exerciseAdminContent(first, firstContext);
+    }
     await first.getByRole('button', { name: 'Log out' }).click({ force: true });
     await first.getByRole('button', { name: 'Sign in' }).waitFor();
     if (new URL(first.url()).pathname !== '/login') {

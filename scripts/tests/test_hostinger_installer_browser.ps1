@@ -1,7 +1,7 @@
 param(
     [string] $ArtifactDirectory = 'artifacts/current/hostinger-staging',
     [string] $EvidenceDirectory,
-    [ValidateSet('happy', 'migration-failure')]
+    [ValidateSet('happy', 'migration-failure', 'admin-content')]
     [string] $Scenario = 'happy',
     [string] $ZipPattern = 'PicoRadar-staging-hostinger-*.zip',
     [string] $MariaDbRoot = 'C:\codex\_tool-cache\mariadb-11.8.8-winx64',
@@ -104,6 +104,8 @@ try {
     $phpInfo.RedirectStandardOutput = $true
     $phpInfo.RedirectStandardError = $true
     $phpInfo.Environment['APP_URL'] = "https://127.0.0.1:$httpsPort"
+    $phpInfo.Environment['DATASET_PUBLIC_BASE_URL'] = "https://127.0.0.1:$httpsPort/storage"
+    $phpInfo.Environment['CAMPAIGN_PUBLIC_BASE_URL'] = "https://127.0.0.1:$httpsPort/storage"
     foreach ($argument in @('-S', "127.0.0.1:$backendPort", '-t', $publicRoot, (Join-Path $root 'scripts/tests/php_https_router.php'))) { $phpInfo.ArgumentList.Add($argument) }
     $phpProcess = [System.Diagnostics.Process]::Start($phpInfo)
     $phpProcess.BeginOutputReadLine()
@@ -155,11 +157,30 @@ try {
     $env:PICORADAR_TEST_MUTATION_LOCK_PATH = (Join-Path $domainRoot 'picoradar_app/current/storage/app/installer/mutation.lock')
     $env:PICORADAR_TEST_HOLD_LOCK_SCRIPT = (Join-Path $root 'scripts/tests/hold_file_lock.php')
     $env:PICORADAR_TEST_PHP = $PhpPath
+    if ($Scenario -eq 'admin-content') {
+        $fixtureRoot = Join-Path $scratch 'admin-content-fixtures'
+        & $PhpPath (Join-Path $root 'scripts/tests/create_admin_content_browser_fixtures.php') $fixtureRoot | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'Admin-content browser fixtures could not be generated.' }
+        $env:PICORADAR_TEST_RULES_JSON = Join-Path $fixtureRoot 'b07-rules.json'
+        $env:PICORADAR_TEST_RULES_CSV = Join-Path $fixtureRoot 'b07-rules.csv'
+        $env:PICORADAR_TEST_RULES_XLSX = Join-Path $fixtureRoot 'b07-rules.xlsx'
+        $env:PICORADAR_TEST_CAMPAIGN_IMAGE = Join-Path $root 'mobile/assets/home/partners/campaign_automotor.png'
+    }
     if ($EvidenceDirectory) {
         $env:PICORADAR_BROWSER_EVIDENCE_DIR = [System.IO.Path]::GetFullPath($EvidenceDirectory)
     }
     & node (Join-Path $root 'scripts/tests/hostinger_installer_browser_test.js') "https://127.0.0.1:$httpsPort" $tokenFile
     if ($LASTEXITCODE -ne 0) { throw 'Browser-driven installer verification failed.' }
+    if ($Scenario -eq 'admin-content') {
+        $env:PICORADAR_B07_BASE_URL = "https://127.0.0.1:$httpsPort"
+        Push-Location (Join-Path $root 'mobile')
+        try {
+            & 'C:\Users\felip\.codex\tooling\flutter_3.47.1\flutter\bin\flutter.bat' test test/integration/admin_content_publication_bridge_test.dart
+            if ($LASTEXITCODE -ne 0) { throw 'The real Flutter publication bridge failed.' }
+        } finally {
+            Pop-Location
+        }
+    }
 
     $htaccess = Get-Content -LiteralPath (Join-Path $publicRoot '.htaccess') -Raw
     if ($htaccess -notmatch 'AuthType Basic') { throw 'The synthetic private barrier was not preserved.' }
@@ -182,6 +203,8 @@ try {
         , 'PICORADAR_BROWSER_EVIDENCE_DIR', 'PICORADAR_TEST_SCENARIO', 'PICORADAR_TEST_PRIVATE_ROOT'
         , 'PICORADAR_TEST_STATE_PATH', 'PICORADAR_TEST_MUTATION_LOCK_PATH', 'PICORADAR_TEST_HOLD_LOCK_SCRIPT'
         , 'PICORADAR_TEST_PHP'
+        , 'PICORADAR_TEST_RULES_JSON', 'PICORADAR_TEST_RULES_CSV', 'PICORADAR_TEST_RULES_XLSX'
+        , 'PICORADAR_TEST_CAMPAIGN_IMAGE', 'PICORADAR_B07_BASE_URL'
     )) { Remove-Item "Env:$name" -ErrorAction SilentlyContinue }
     if ($succeeded -and (Test-Path -LiteralPath $scratch)) {
         Remove-Item -LiteralPath $scratch -Recurse -Force
