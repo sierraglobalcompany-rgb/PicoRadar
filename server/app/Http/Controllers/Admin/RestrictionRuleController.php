@@ -8,6 +8,7 @@ use App\Models\Jurisdiction;
 use App\Models\RestrictionImport;
 use App\Models\RestrictionPublication;
 use App\Models\RestrictionRuleVersion;
+use App\Services\RestrictionFormPayloadBuilder;
 use App\Services\RestrictionImportService;
 use App\Services\RestrictionPublicationService;
 use App\Services\RestrictionRuleVersionService;
@@ -17,7 +18,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
-use JsonException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RestrictionRuleController extends Controller
@@ -40,12 +40,22 @@ class RestrictionRuleController extends Controller
         return view('admin.restrictions.form', ['operator' => $request->user(), 'jurisdictions' => Jurisdiction::query()->where('enabled', true)->orderBy('name')->get(), 'version' => null]);
     }
 
-    public function store(Request $request, RestrictionRuleVersionService $service): RedirectResponse
+    public function store(Request $request, RestrictionRuleVersionService $service, RestrictionFormPayloadBuilder $builder): RedirectResponse
     {
         Gate::authorize('datasets.edit');
-        $data = $request->validate(['jurisdiction_id' => ['required', 'integer', 'exists:jurisdictions,id'], 'payload' => ['required', 'string', 'max:1048576']]);
+        $data = $request->validate([
+            'jurisdiction_id' => ['required', 'integer', 'exists:jurisdictions,id'],
+            'coverages' => ['required', 'array', 'min:1', 'max:8'],
+            'coverages.*' => ['required', 'array'],
+            'coverages.*.rules' => ['present', 'array', 'max:1000'],
+        ]);
         $jurisdiction = Jurisdiction::query()->where('enabled', true)->findOrFail($data['jurisdiction_id']);
-        $version = $service->createDraft($jurisdiction, $this->payload($data['payload']), $request->user());
+        try {
+            $payload = $builder->build($jurisdiction, ['coverages' => $request->input('coverages')]);
+        } catch (DomainException $error) {
+            throw ValidationException::withMessages(['coverages' => $error->getMessage()]);
+        }
+        $version = $service->createDraft($jurisdiction, $payload, $request->user());
 
         return redirect()->route('admin.restrictions.edit', $version);
     }
@@ -57,14 +67,19 @@ class RestrictionRuleController extends Controller
         return view('admin.restrictions.form', ['operator' => $request->user(), 'jurisdictions' => collect([$version->jurisdiction]), 'version' => $version, 'editable' => Gate::allows('datasets.edit')]);
     }
 
-    public function update(Request $request, RestrictionRuleVersion $version, RestrictionRuleVersionService $service): RedirectResponse
+    public function update(Request $request, RestrictionRuleVersion $version, RestrictionRuleVersionService $service, RestrictionFormPayloadBuilder $builder): RedirectResponse
     {
         Gate::authorize('datasets.edit');
-        $data = $request->validate(['payload' => ['required', 'string', 'max:1048576']]);
+        $request->validate([
+            'coverages' => ['required', 'array', 'min:1', 'max:8'],
+            'coverages.*' => ['required', 'array'],
+            'coverages.*.rules' => ['present', 'array', 'max:1000'],
+        ]);
         try {
-            $service->updateDraft($version, $this->payload($data['payload']), $request->user());
+            $payload = $builder->build($version->jurisdiction, ['coverages' => $request->input('coverages')]);
+            $service->updateDraft($version, $payload, $request->user());
         } catch (DomainException $error) {
-            return back()->withErrors(['payload' => $error->getMessage()]);
+            return back()->withInput()->withErrors(['coverages' => $error->getMessage()]);
         }
 
         return back();
@@ -211,21 +226,6 @@ class RestrictionRuleController extends Controller
             }
             fclose($stream);
         }, "restriction-import-{$import->id}-report.csv", ['Content-Type' => 'text/csv; charset=UTF-8']);
-    }
-
-    /** @return array<string,mixed> */
-    private function payload(string $json): array
-    {
-        try {
-            $payload = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException) {
-            throw ValidationException::withMessages(['payload' => 'The rule payload is not valid JSON.']);
-        }
-        if (! is_array($payload) || array_is_list($payload)) {
-            throw ValidationException::withMessages(['payload' => 'The rule payload must be a JSON object.']);
-        }
-
-        return $payload;
     }
 
     private function spreadsheetSafe(mixed $value): string
