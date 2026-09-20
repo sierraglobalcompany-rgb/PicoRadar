@@ -45,4 +45,23 @@ class HostPreflightCollectorTest extends TestCase
 
         $this->assertContains('https', $report->blockers);
     }
+
+    public function test_windows_clean_room_uses_directory_junction_capability_without_posix_permission_false_positives(): void
+    {
+        if (DIRECTORY_SEPARATOR !== '\\') {
+            $this->markTestSkipped('Windows-specific clean-room capability test.');
+        }
+
+        $report = (new HostPreflightCollector(
+            $this->root.DIRECTORY_SEPARATOR.'private',
+            $this->root.DIRECTORY_SEPARATOR.'public',
+        ))->collect([
+            'REMOTE_ADDR' => '127.0.0.1',
+            'HTTPS' => 'on',
+            'SERVER_PORT' => 443,
+        ]);
+
+        $this->assertNotContains('symlink', $report->blockers);
+        $this->assertNotContains('unsafe_permissions', $report->blockers);
+    }
 }

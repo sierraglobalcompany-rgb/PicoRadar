@@ -65,26 +65,20 @@ class HostPreflightCollector
 
         try {
             if (DIRECTORY_SEPARATOR === '\\') {
-                $process = proc_open(
-                    ['cmd.exe', '/d', '/c', 'mklink', '/J', $link, $target],
-                    [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
-                    $pipes,
+                exec(
+                    'cmd.exe /d /c mklink /J '.escapeshellarg($link).' '.escapeshellarg($target).' 2>NUL',
+                    $output,
+                    $status,
                 );
-                if (! is_resource($process)) {
-                    return false;
-                }
-                foreach ($pipes as $pipe) {
-                    fclose($pipe);
-                }
 
-                return proc_close($process) === 0 && realpath($link) === realpath($target);
+                return $status === 0 && realpath($link) === realpath($target);
             }
 
             return @symlink($target, $link) && is_link($link);
         } finally {
             if (is_link($link)) {
                 @unlink($link);
-            } elseif (is_dir($link)) {
+            } elseif (is_dir($link) || DIRECTORY_SEPARATOR === '\\') {
                 @rmdir($link);
             }
             @rmdir($target);
