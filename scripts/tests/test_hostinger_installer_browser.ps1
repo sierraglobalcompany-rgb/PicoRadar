@@ -24,20 +24,6 @@ function Get-FreePort {
     try { return ([System.Net.IPEndPoint]$listener.LocalEndpoint).Port } finally { $listener.Stop() }
 }
 
-function Start-StructuredProcess([string] $FilePath, [string[]] $Arguments, [string] $WorkingDirectory, [string] $Stdout, [string] $Stderr) {
-    $info = [System.Diagnostics.ProcessStartInfo]::new($FilePath)
-    $info.WorkingDirectory = $WorkingDirectory
-    $info.UseShellExecute = $false
-    $info.CreateNoWindow = $true
-    $info.RedirectStandardOutput = $true
-    $info.RedirectStandardError = $true
-    foreach ($argument in $Arguments) { $info.ArgumentList.Add($argument) }
-    $process = [System.Diagnostics.Process]::Start($info)
-    $process.BeginOutputReadLine()
-    $process.BeginErrorReadLine()
-    return $process
-}
-
 $scratch = Join-Path ([System.IO.Path]::GetTempPath()) ('picoradar-hostinger-browser-' + [guid]::NewGuid().ToString('N'))
 $domainRoot = Join-Path $scratch 'domain'
 $publicRoot = Join-Path $domainRoot 'public_html/picoradar'
@@ -110,7 +96,8 @@ try {
     $phpInfo.Environment['APP_URL'] = "https://127.0.0.1:$httpsPort"
     $phpInfo.Environment['DATASET_PUBLIC_BASE_URL'] = "https://127.0.0.1:$httpsPort/storage"
     $phpInfo.Environment['CAMPAIGN_PUBLIC_BASE_URL'] = "https://127.0.0.1:$httpsPort/storage"
-    foreach ($argument in @('-S', "127.0.0.1:$backendPort", '-t', $publicRoot, (Join-Path $root 'scripts/tests/php_https_router.php'))) { $phpInfo.ArgumentList.Add($argument) }
+    $phpInfo.Arguments = (@('-S', "127.0.0.1:$backendPort", '-t', $publicRoot, (Join-Path $root 'scripts/tests/php_https_router.php')) |
+        ForEach-Object { '"' + $_.Replace('"', '\"') + '"' }) -join ' '
     $phpProcess = [System.Diagnostics.Process]::Start($phpInfo)
     $phpProcess.BeginOutputReadLine()
     $phpProcess.BeginErrorReadLine()
@@ -123,7 +110,8 @@ try {
     $proxyInfo.CreateNoWindow = $true
     $proxyInfo.RedirectStandardOutput = $true
     $proxyInfo.RedirectStandardError = $true
-    foreach ($argument in @((Join-Path $root 'scripts/tests/https_basic_proxy.js'), "$httpsPort", "$backendPort", $cert, $key)) { $proxyInfo.ArgumentList.Add($argument) }
+    $proxyInfo.Arguments = (@((Join-Path $root 'scripts/tests/https_basic_proxy.js'), "$httpsPort", "$backendPort", $cert, $key) |
+        ForEach-Object { '"' + $_.Replace('"', '\"') + '"' }) -join ' '
     $proxyProcess = [System.Diagnostics.Process]::Start($proxyInfo)
     $proxyProcess.BeginOutputReadLine()
     $proxyProcess.BeginErrorReadLine()
