@@ -380,6 +380,8 @@ class _MaintenanceHeader extends StatelessWidget {
           const SizedBox(height: AppSpacing.s),
           _MaintenanceSummary(records: records),
           const SizedBox(height: AppSpacing.s),
+          _MaintenanceReminderToggle(vehicleId: selectedVehicle.id),
+          const SizedBox(height: AppSpacing.s),
           OutlinedButton.icon(
             key: const ValueKey('maintenance-find-workshop-inline'),
             onPressed: onFindWorkshop,
@@ -387,6 +389,71 @@ class _MaintenanceHeader extends StatelessWidget {
             label: const Text('Buscar taller mecánico cerca de mí'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MaintenanceReminderToggle extends ConsumerWidget {
+  const _MaintenanceReminderToggle({required this.vehicleId});
+
+  final String vehicleId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(
+      maintenanceDateRemindersEnabledProvider(vehicleId),
+    );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadius.input),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(
+          left: AppSpacing.m,
+          right: AppSpacing.xs,
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.notifications_outlined, color: AppColors.teal),
+            const SizedBox(width: AppSpacing.s),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Recordatorios por fecha',
+                    style: AppTextStyles.bodyStrong,
+                  ),
+                  Text(
+                    'Opcional para este vehículo',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.navy.withValues(alpha: 0.68),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              key: const ValueKey('maintenance-date-reminders-toggle'),
+              value: enabled.value ?? false,
+              onChanged: enabled.isLoading
+                  ? null
+                  : (value) async {
+                      await ref
+                          .read(maintenanceNotificationPreferencesProvider)
+                          .setEnabled(vehicleId, value);
+                      ref.invalidate(
+                        maintenanceDateRemindersEnabledProvider(vehicleId),
+                      );
+                      ref.invalidate(maintenanceNotificationSyncProvider);
+                    },
+            ),
+          ],
+        ),
       ),
     );
   }

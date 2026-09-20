@@ -18,6 +18,7 @@ import '../features/garage/data/vehicle_profile.dart';
 import '../features/garage/data/vehicle_repository.dart';
 import '../features/home/data/home_banner_config.dart';
 import '../features/maintenance/data/maintenance_record.dart';
+import '../features/maintenance/data/maintenance_notification_preferences.dart';
 import '../features/maintenance/data/maintenance_repository.dart';
 import '../features/maintenance/application/maintenance_reminders.dart';
 import '../features/vehicle_status/data/vehicle_obligation_store.dart';
@@ -52,6 +53,20 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
 final appPreferencesProvider = Provider<AppPreferences>((ref) {
   return AppPreferences();
 });
+
+final maintenanceNotificationPreferencesProvider =
+    Provider<MaintenanceNotificationPreferences>((ref) {
+      return MaintenanceNotificationPreferences(
+        ref.watch(appPreferencesProvider),
+      );
+    });
+
+final maintenanceDateRemindersEnabledProvider =
+    FutureProvider.family<bool, String>((ref, vehicleId) {
+      return ref
+          .watch(maintenanceNotificationPreferencesProvider)
+          .isEnabled(vehicleId);
+    });
 
 final avatarCatalogProvider = FutureProvider<AvatarCatalog>((ref) {
   return loadAvatarCatalog(rootBundle);
@@ -524,7 +539,14 @@ final maintenanceNotificationSyncProvider = FutureProvider<void>((ref) async {
   final vehicles = await ref.watch(vehicleListProvider.future);
   if (!active) return;
   final reminders = <MaintenanceReminder>[];
+  final maintenancePreferences = ref.watch(
+    maintenanceNotificationPreferencesProvider,
+  );
   for (final vehicle in vehicles) {
+    if (!await maintenancePreferences.isEnabled(vehicle.id)) {
+      continue;
+    }
+    if (!active) return;
     final records = await ref
         .watch(maintenanceRepositoryProvider)
         .listByVehicle(vehicle.id);
@@ -550,9 +572,7 @@ final maintenanceNotificationSyncProvider = FutureProvider<void>((ref) async {
     if (!active) return;
     await scheduler.rescheduleMaintenanceNotifications(
       reminders,
-      platesByVehicleId: {
-        for (final vehicle in vehicles) vehicle.id: vehicle.plate,
-      },
+      platesByVehicleId: const {},
     );
   } on MissingPluginException {
     return;

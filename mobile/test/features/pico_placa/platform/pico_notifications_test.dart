@@ -9,6 +9,7 @@ import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/features/alerts/data/alert_settings.dart';
 import 'package:picoradar/features/alerts/platform/alert_alarm_gateway.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
+import 'package:picoradar/features/maintenance/application/maintenance_reminders.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_store.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.dart';
@@ -309,6 +310,97 @@ void main() {
         expect(details['visibility'], NotificationVisibility.secret.index);
         expect(details['style'], isNot(0));
       });
+
+      test('maintenance reminder hides plate and private title', () async {
+        final scheduledAt = DateTime(
+          futureDate.year,
+          futureDate.month,
+          futureDate.day,
+          9,
+        );
+        await scheduler.rescheduleMaintenanceNotifications(
+          [
+            MaintenanceReminder(
+              id: 0x20000001,
+              vehicleId: 'car',
+              recordId: 'record',
+              kind: MaintenanceReminderKind.date,
+              title: 'Cambio correa de distribución',
+              due: false,
+              scheduledAt: scheduledAt,
+            ),
+          ],
+          platesByVehicleId: const {'car': 'PRV123'},
+        );
+
+        expect(channel.lastArguments!['body'], isNot(contains('PRV123')));
+        expect(
+          channel.lastArguments!['body'],
+          isNot(contains('Cambio correa')),
+        );
+        final details = channel.lastArguments!['platformSpecifics'] as Map;
+        expect(details['visibility'], NotificationVisibility.secret.index);
+      });
+
+      test(
+        'maintenance reminders fail closed when OS permission is off',
+        () async {
+          channel.enabled = false;
+          await scheduler.rescheduleMaintenanceNotifications(
+            [
+              MaintenanceReminder(
+                id: 0x20000001,
+                vehicleId: 'car',
+                recordId: 'record',
+                kind: MaintenanceReminderKind.date,
+                title: 'Aceite',
+                due: false,
+                scheduledAt: DateTime(
+                  futureDate.year,
+                  futureDate.month,
+                  futureDate.day,
+                  9,
+                ),
+              ),
+            ],
+            platesByVehicleId: const {'car': 'PRV123'},
+          );
+
+          expect(channel.pending, isEmpty);
+        },
+      );
+
+      test(
+        'editing one maintenance reminder keeps sibling reminders',
+        () async {
+          MaintenanceReminder reminder(int id, int hour) => MaintenanceReminder(
+            id: id,
+            vehicleId: 'car',
+            recordId: 'record-$id',
+            kind: MaintenanceReminderKind.date,
+            title: 'Servicio $id',
+            due: false,
+            scheduledAt: DateTime(
+              futureDate.year,
+              futureDate.month,
+              futureDate.day,
+              hour,
+            ),
+          );
+
+          await scheduler.rescheduleMaintenanceNotifications(
+            [reminder(0x20000001, 9), reminder(0x20000002, 10)],
+            platesByVehicleId: const {'car': 'PRV123'},
+          );
+          await scheduler.rescheduleMaintenanceNotifications(
+            [reminder(0x20000001, 11), reminder(0x20000002, 10)],
+            platesByVehicleId: const {'car': 'PRV123'},
+          );
+
+          expect(channel.pending.keys, containsAll([0x20000001, 0x20000002]));
+          expect(channel.pending, hasLength(2));
+        },
+      );
 
       test(
         'same ids and dates refresh edited content and still deduplicate',

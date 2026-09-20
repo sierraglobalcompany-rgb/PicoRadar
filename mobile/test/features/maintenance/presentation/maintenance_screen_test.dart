@@ -123,6 +123,28 @@ void main() {
       expect(find.text('Sin registros todavía'), findsOneWidget);
     });
 
+    testWidgets('maintenance date reminders are explicit and vehicle scoped', (
+      tester,
+    ) async {
+      final preferences = _MemoryPreferences();
+      await _pump(tester, database, repository, preferences: preferences);
+
+      final toggle = find.byKey(
+        const ValueKey('maintenance-date-reminders-toggle'),
+      );
+      expect(toggle, findsOneWidget);
+      expect(tester.widget<Switch>(toggle).value, isFalse);
+
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Switch>(toggle).value, isTrue);
+      expect(
+        preferences.values['maintenance.notifications.date.vehicle-1'],
+        isTrue,
+      );
+    });
+
     testWidgets(
       'selects another vehicle without changing the garage favorite',
       (tester) async {
@@ -412,12 +434,15 @@ Future<void> _pump(
   ThemeData? theme,
   DeviceLocationGateway? locationGateway,
   ExternalLauncher? launcher,
+  AppPreferences? preferences,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         appDatabaseProvider.overrideWithValue(database),
-        appPreferencesProvider.overrideWithValue(_MemoryPreferences()),
+        appPreferencesProvider.overrideWithValue(
+          preferences ?? _MemoryPreferences(),
+        ),
         maintenanceRepositoryProvider.overrideWithValue(repository),
         if (locationGateway != null)
           deviceLocationGatewayProvider.overrideWithValue(locationGateway),

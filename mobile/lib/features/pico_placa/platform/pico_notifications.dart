@@ -470,6 +470,8 @@ class PicoNotificationScheduler {
 
   Future<void> rescheduleMaintenanceNotifications(
     List<MaintenanceReminder> reminders, {
+    // Retained for source compatibility with existing scheduler fakes. Private
+    // vehicle labels are deliberately not rendered in notifications.
     required Map<String, String> platesByVehicleId,
   }) {
     final plans = reminders
@@ -503,8 +505,7 @@ class PicoNotificationScheduler {
         await _plugin.zonedSchedule(
           id: plan.id,
           title: 'Mantenimiento próximo',
-          body:
-              '${platesByVehicleId[plan.vehicleId] ?? 'Tu vehículo'} · ${plan.title}',
+          body: 'Tienes un recordatorio de mantenimiento. Abre PicoRadar para ver los detalles.',
           scheduledDate: bogotaScheduledTime(
             date: date,
             minuteOfDay: date.hour * 60 + date.minute,
@@ -517,7 +518,7 @@ class PicoNotificationScheduler {
                   'Recordatorios locales de próximos mantenimientos.',
               importance: Importance.defaultImportance,
               priority: Priority.defaultPriority,
-              visibility: NotificationVisibility.private,
+              visibility: NotificationVisibility.secret,
             ),
             iOS: DarwinNotificationDetails(),
           ),
