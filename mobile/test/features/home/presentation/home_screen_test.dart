@@ -524,6 +524,53 @@ void main() {
       );
       expect(find.byKey(const ValueKey('home-bottom-banner')), findsNothing);
 
+      var previousHeight = smallHeight;
+      var previousCardSize = smallCardSize;
+      var previousVisualSize = smallVisualSize;
+      for (final viewport in const [
+        Size(360, 800),
+        Size(390, 844),
+        Size(412, 915),
+        Size(430, 932),
+      ]) {
+        tester.view.physicalSize = viewport;
+        await tester.pumpAndSettle();
+        final nextHeight = tester.getSize(carousel).height;
+        final nextCardSize = tester.getSize(vehicleCard);
+        final nextVisualSize = tester.getSize(vehicleVisual);
+        expect(
+          nextHeight,
+          greaterThanOrEqualTo(previousHeight),
+          reason: '$viewport',
+        );
+        if (nextHeight == previousHeight) {
+          expect(nextHeight, 360, reason: '$viewport may plateau only at max');
+        }
+        expect(
+          nextCardSize.width,
+          greaterThan(previousCardSize.width),
+          reason: '$viewport',
+        );
+        expect(
+          nextVisualSize.width,
+          greaterThan(previousVisualSize.width),
+          reason: '$viewport',
+        );
+        expect(
+          nextVisualSize.height,
+          greaterThanOrEqualTo(previousVisualSize.height),
+          reason: '$viewport',
+        );
+        if (nextVisualSize.height == previousVisualSize.height) {
+          expect(nextHeight, 360, reason: '$viewport may plateau only at max');
+        }
+        expect(tester.widget<PageView>(pageView).controller!.page, initialPage);
+        expect(container.read(homeFocusedVehicleIdProvider), vehicle.id);
+        previousHeight = nextHeight;
+        previousCardSize = nextCardSize;
+        previousVisualSize = nextVisualSize;
+      }
+
       tester.view.physicalSize = const Size(360, 1000);
       await tester.pumpAndSettle();
       final largeHeight = tester.getSize(carousel).height;
