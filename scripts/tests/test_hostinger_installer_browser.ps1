@@ -29,6 +29,21 @@ $domainRoot = Join-Path $scratch 'domain'
 $publicRoot = Join-Path $domainRoot 'public_html/picoradar'
 $dataRoot = Join-Path $scratch 'mariadb-data'
 $logs = Join-Path $scratch 'logs'
+
+function Remove-VerifiedTestScratch {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $resolved = [System.IO.Path]::GetFullPath($Path).TrimEnd([System.IO.Path]::DirectorySeparatorChar)
+    $temporaryRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+    $leaf = [System.IO.Path]::GetFileName($resolved)
+    if (-not $resolved.StartsWith($temporaryRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
+        -not $leaf.StartsWith('picoradar-hostinger-browser-', [System.StringComparison]::Ordinal)) {
+        throw "Refusing to remove an unverified browser fixture path: $resolved"
+    }
+
+    $extendedPath = if ($resolved.StartsWith('\\?\')) { $resolved } else { '\\?\' + $resolved }
+    [System.IO.Directory]::Delete($extendedPath, $true)
+}
 $rootPassword = 'Root-Browser-Test-2026'
 $database = 'picoradar_browser_qa'
 $restoreDatabase = 'picoradar_browser_restore'
@@ -247,7 +262,7 @@ try {
         , 'PICORADAR_TEST_CAMPAIGN_IMAGE', 'PICORADAR_B07_BASE_URL'
     )) { Remove-Item "Env:$name" -ErrorAction SilentlyContinue }
     if ($succeeded -and (Test-Path -LiteralPath $scratch)) {
-        Remove-Item -LiteralPath $scratch -Recurse -Force
+        Remove-VerifiedTestScratch -Path $scratch
     } elseif (Test-Path -LiteralPath $scratch) {
         Write-Warning "Browser fixture preserved for diagnosis: $scratch"
     }
