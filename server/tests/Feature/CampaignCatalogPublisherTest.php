@@ -13,6 +13,7 @@ use App\Models\GeographicUnit;
 use App\Models\Sponsor;
 use App\Models\User;
 use App\Services\CampaignCatalogPublisher;
+use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -114,6 +115,29 @@ class CampaignCatalogPublisherTest extends TestCase
 
         $notModified = $controller(Request::create('/api/v1/campaign-catalog', 'GET', server: ['HTTP_IF_NONE_MATCH' => $etag]));
         $this->assertSame(304, $notModified->getStatusCode());
+    }
+
+    public function test_invalid_next_release_keeps_last_static_catalog_available(): void
+    {
+        $admin = User::factory()->create(['role' => OperatorRole::Admin]);
+        $sponsor = $this->sponsor('Aliado vigente', SponsorStatus::Active);
+        $this->campaign($sponsor, 'valid', 10);
+        $publisher = app(CampaignCatalogPublisher::class);
+        $publisher->publish($admin);
+        $lastManifest = Storage::disk('public')->get('campaigns/v1/catalog.json');
+
+        $corrupt = $this->campaign($sponsor, 'corrupt', 1);
+        Storage::disk('public')->put($corrupt->public_image_path, 'changed-after-validation');
+
+        try {
+            $publisher->publish($admin);
+            $this->fail('A corrupt campaign image was published.');
+        } catch (DomainException) {
+            $this->addToAssertionCount(1);
+        }
+
+        $this->assertSame($lastManifest, Storage::disk('public')->get('campaigns/v1/catalog.json'));
+        $this->assertDatabaseCount('campaign_catalog_releases', 1);
     }
 
     private function sponsor(string $name, SponsorStatus $status): Sponsor

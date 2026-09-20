@@ -13,6 +13,7 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class CampaignCatalogPublisher
 {
@@ -90,24 +91,29 @@ class CampaignCatalogPublisher
             throw new DomainException('Campaign catalog release verification failed.');
         }
 
-        $release = DB::transaction(function () use ($actor, $assetPath, $sha256, $entries, $generatedAt, $expiresAt, $version): CampaignCatalogRelease {
-            $release = CampaignCatalogRelease::query()->create([
-                'version' => $version,
-                'asset_path' => $assetPath,
-                'sha256' => $sha256,
-                'campaign_count' => count($entries),
-                'generated_at' => $generatedAt,
-                'expires_at' => $expiresAt,
-                'published_by_id' => $actor->id,
-            ]);
-            $this->audit->log($actor, 'campaign_catalog.published', $release, [
-                'version' => $version,
-                'sha256' => $sha256,
-                'campaignCount' => count($entries),
-            ]);
+        try {
+            $release = DB::transaction(function () use ($actor, $assetPath, $sha256, $entries, $generatedAt, $expiresAt, $version): CampaignCatalogRelease {
+                $release = CampaignCatalogRelease::query()->create([
+                    'version' => $version,
+                    'asset_path' => $assetPath,
+                    'sha256' => $sha256,
+                    'campaign_count' => count($entries),
+                    'generated_at' => $generatedAt,
+                    'expires_at' => $expiresAt,
+                    'published_by_id' => $actor->id,
+                ]);
+                $this->audit->log($actor, 'campaign_catalog.published', $release, [
+                    'version' => $version,
+                    'sha256' => $sha256,
+                    'campaignCount' => count($entries),
+                ]);
 
-            return $release;
-        });
+                return $release;
+            });
+        } catch (Throwable $exception) {
+            $disk->delete($assetPath);
+            throw $exception;
+        }
 
         $manifest = json_encode([
             'schemaVersion' => 1,

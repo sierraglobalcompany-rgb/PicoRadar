@@ -63,6 +63,7 @@ class CampaignService
     {
         $currentData = Arr::only($campaign->getAttributes(), self::CONTENT_FIELDS);
         $attributes = $this->validatedAttributes(array_replace($currentData, $data));
+        $previousSourcePath = $campaign->source_image_path;
         $imageAttributes = $image ? $this->images->store($image, $campaign->public_id) : [];
 
         try {
@@ -83,7 +84,7 @@ class CampaignService
                 return $current->refresh();
             });
         } catch (Throwable $exception) {
-            if ($imageAttributes !== []) {
+            if ($imageAttributes !== [] && $imageAttributes['source_image_path'] !== $previousSourcePath) {
                 Storage::disk(config('campaigns.private_disk'))->delete($imageAttributes['source_image_path']);
             }
             throw $exception;

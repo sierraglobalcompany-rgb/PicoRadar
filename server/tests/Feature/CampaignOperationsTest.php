@@ -172,6 +172,55 @@ class CampaignOperationsTest extends TestCase
         $this->assertDatabaseCount('campaigns', 0);
     }
 
+    public function test_rejected_edit_with_identical_image_keeps_validated_source(): void
+    {
+        $admin = User::factory()->create(['role' => OperatorRole::Admin]);
+        $sponsor = app(SponsorService::class)->create($this->sponsorData(), $admin);
+        $service = app(CampaignService::class);
+        $campaign = $service->create(
+            $this->campaignData($sponsor),
+            $this->syntheticPng('campaign.png', 1440, 360),
+            $admin,
+        );
+        $service->activate($campaign, $admin);
+
+        try {
+            $service->update(
+                $campaign->refresh(),
+                ['title' => 'No permitido mientras esta activa'],
+                $this->syntheticPng('same-campaign.png', 1440, 360),
+                $admin,
+            );
+            $this->fail('An active campaign was edited.');
+        } catch (DomainException) {
+            $this->addToAssertionCount(1);
+        }
+
+        Storage::disk('local')->assertExists($campaign->source_image_path);
+    }
+
+    public function test_archive_uses_locked_state_to_remove_campaign_from_catalog(): void
+    {
+        $admin = User::factory()->create(['role' => OperatorRole::Admin]);
+        $sponsor = app(SponsorService::class)->create($this->sponsorData(), $admin);
+        $service = app(CampaignService::class);
+        $campaign = $service->create(
+            $this->campaignData($sponsor),
+            $this->syntheticPng('campaign.png', 1440, 360),
+            $admin,
+        );
+        $staleDraft = $campaign->fresh();
+        $service->activate($campaign, $admin);
+
+        $service->archive($staleDraft, $admin);
+
+        $manifest = json_decode(Storage::disk('public')->get('campaigns/v1/catalog.json'), true, flags: JSON_THROW_ON_ERROR);
+        $catalogPath = parse_url($manifest['url'], PHP_URL_PATH);
+        $catalogPath = preg_replace('#^/storage/#', '', $catalogPath);
+        $catalog = json_decode(Storage::disk('public')->get($catalogPath), true, flags: JSON_THROW_ON_ERROR);
+        $this->assertSame([], $catalog['campaigns']);
+    }
+
     public function test_partner_inquiry_never_creates_a_sponsor_or_campaign(): void
     {
         PartnerInquiry::query()->create([
