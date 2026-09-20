@@ -79,4 +79,3 @@ contra MariaDB temporal. La prueba exige migraciones, operador, Login y Health
 HTTP reales, enlaces publicos al destino privado, cron y rollback. Esta prueba
 local no acredita Hostinger: el diagnostico del host se ejecuta en el asistente
 antes de tocar la base.
-
