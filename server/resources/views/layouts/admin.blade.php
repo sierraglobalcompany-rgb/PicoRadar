@@ -13,6 +13,7 @@
             <nav class="hidden items-center gap-3 text-sm md:flex" aria-label="Administración">
                 <a class="font-medium text-slate-700 hover:text-slate-950" href="{{ route('admin.dashboard') }}">Resumen</a>
                 @can('datasets.view')<a class="font-medium text-slate-700 hover:text-slate-950" href="{{ route('admin.datasets.index') }}">Datos</a>@endcan
+                @can('campaigns.view')<a class="font-medium text-slate-700 hover:text-slate-950" href="{{ route('admin.campaigns.index') }}">Campañas</a>@endcan
                 <a class="font-medium text-slate-700 hover:text-slate-950" href="{{ route('admin.profile.edit') }}">Mi acceso</a>
             </nav>
             <div class="flex items-center gap-3 text-sm">

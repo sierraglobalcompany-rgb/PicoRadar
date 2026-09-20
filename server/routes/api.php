@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\CampaignCatalogController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\PartnerInquiryController;
 use App\Http\Controllers\Api\TripPreviewController;
@@ -18,3 +19,6 @@ Route::post('v1/trips/preview', TripPreviewController::class)
 Route::post('v1/partner-inquiries', PartnerInquiryController::class)
     ->middleware('throttle:partner-inquiries')
     ->name('api.v1.partner-inquiries.store');
+
+Route::get('v1/campaign-catalog', CampaignCatalogController::class)
+    ->name('api.v1.campaign-catalog');

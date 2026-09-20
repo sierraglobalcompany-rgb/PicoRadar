@@ -55,6 +55,10 @@
             @can('partner_inquiries.view')
                 <a class="min-h-12 rounded-lg border border-slate-200 bg-white p-4 font-medium hover:border-teal-500" href="{{ route('admin.partner-inquiries.index') }}">Solicitudes de aliados</a>
             @endcan
+            @can('campaigns.view')
+                <a class="min-h-12 rounded-lg border border-slate-200 bg-white p-4 font-medium hover:border-teal-500" href="{{ route('admin.sponsors.index') }}">Patrocinadores</a>
+                <a class="min-h-12 rounded-lg border border-slate-200 bg-white p-4 font-medium hover:border-teal-500" href="{{ route('admin.campaigns.index') }}">Campañas del carrusel</a>
+            @endcan
             @can('operators.manage')
                 <a class="min-h-12 rounded-lg border border-slate-200 bg-white p-4 font-medium hover:border-teal-500" href="{{ route('admin.operators.index') }}">Operadores</a>
             @endcan

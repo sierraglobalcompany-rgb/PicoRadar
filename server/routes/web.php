@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CameraController;
 use App\Http\Controllers\Admin\CameraSourceController;
+use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DatasetController;
 use App\Http\Controllers\Admin\GeographyController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\Admin\JurisdictionController;
 use App\Http\Controllers\Admin\OperatorController;
 use App\Http\Controllers\Admin\PartnerInquiryController;
 use App\Http\Controllers\Admin\ProfileController;
+use App\Http\Controllers\Admin\SponsorController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Middleware\EnsureActiveOperator;
 use App\Http\Middleware\SecurityHeaders;
@@ -32,6 +34,19 @@ Route::middleware(['auth', EnsureActiveOperator::class, SecurityHeaders::class])
     Route::get('/admin/operators', [OperatorController::class, 'index'])->name('admin.operators.index');
     Route::post('/admin/operators', [OperatorController::class, 'store'])->name('admin.operators.store');
     Route::put('/admin/operators/{operator}', [OperatorController::class, 'update'])->name('admin.operators.update');
+    Route::resource('/admin/sponsors', SponsorController::class)
+        ->except(['destroy'])
+        ->names('admin.sponsors');
+    Route::delete('/admin/sponsors/{sponsor}', [SponsorController::class, 'archive'])->name('admin.sponsors.archive');
+    Route::resource('/admin/campaigns', CampaignController::class)
+        ->except(['destroy'])
+        ->names('admin.campaigns');
+    Route::post('/admin/campaigns/{campaign}/duplicate', [CampaignController::class, 'duplicate'])->name('admin.campaigns.duplicate');
+    Route::get('/admin/campaigns/{campaign}/preview', [CampaignController::class, 'preview'])->name('admin.campaigns.preview');
+    Route::get('/admin/campaigns/{campaign}/image', [CampaignController::class, 'image'])->name('admin.campaigns.image');
+    Route::post('/admin/campaigns/{campaign}/activate', [CampaignController::class, 'activate'])->name('admin.campaigns.activate');
+    Route::post('/admin/campaigns/{campaign}/pause', [CampaignController::class, 'pause'])->name('admin.campaigns.pause');
+    Route::delete('/admin/campaigns/{campaign}', [CampaignController::class, 'archive'])->name('admin.campaigns.archive');
     Route::get('/admin/geography', [GeographyController::class, 'index'])->name('admin.geography.index');
     Route::get('/admin/jurisdictions', [JurisdictionController::class, 'index'])->name('admin.jurisdictions.index');
     Route::get('/admin/jurisdictions/create', [JurisdictionController::class, 'create'])->name('admin.jurisdictions.create');
