@@ -141,7 +141,7 @@ class CampaignService
         }
         $publicPath = $this->images->promote($campaign->source_image_path, $campaign->image_sha256, $campaign->image_mime);
 
-        $active = DB::transaction(function () use ($campaign, $actor, $publicPath): Campaign {
+        return DB::transaction(function () use ($campaign, $actor, $publicPath): Campaign {
             $current = Campaign::query()->lockForUpdate()->findOrFail($campaign->id);
             if (! in_array($current->status, [CampaignStatus::Draft, CampaignStatus::Paused], true)) {
                 throw new DomainException('Campaign state changed before activation.');
@@ -156,17 +156,15 @@ class CampaignService
                 'updated_by_id' => $actor->id,
             ])->save();
             $this->audit->log($actor, 'campaign.activated', $current, $this->metadata($current));
+            $this->catalog->publish($actor);
 
             return $current->refresh();
         });
-        $this->catalog->publish($actor);
-
-        return $active;
     }
 
     public function pause(Campaign $campaign, User $actor): Campaign
     {
-        $paused = DB::transaction(function () use ($campaign, $actor): Campaign {
+        return DB::transaction(function () use ($campaign, $actor): Campaign {
             $current = Campaign::query()->lockForUpdate()->findOrFail($campaign->id);
             if ($current->status !== CampaignStatus::Active) {
                 throw new DomainException('Only active campaigns can be paused.');
@@ -178,22 +176,20 @@ class CampaignService
                 'updated_by_id' => $actor->id,
             ])->save();
             $this->audit->log($actor, 'campaign.paused', $current, $this->metadata($current));
+            $this->catalog->publish($actor);
 
             return $current->refresh();
         });
-        $this->catalog->publish($actor);
-
-        return $paused;
     }
 
     public function archive(Campaign $campaign, User $actor): Campaign
     {
-        $wasActive = $campaign->status === CampaignStatus::Active;
-        $archived = DB::transaction(function () use ($campaign, $actor): Campaign {
+        return DB::transaction(function () use ($campaign, $actor): Campaign {
             $current = Campaign::query()->lockForUpdate()->findOrFail($campaign->id);
             if ($current->status === CampaignStatus::Archived) {
                 return $current;
             }
+            $wasActive = $current->status === CampaignStatus::Active;
             $current->forceFill([
                 'status' => CampaignStatus::Archived,
                 'archived_at' => now(),
@@ -201,14 +197,12 @@ class CampaignService
                 'updated_by_id' => $actor->id,
             ])->save();
             $this->audit->log($actor, 'campaign.archived', $current, $this->metadata($current));
+            if ($wasActive) {
+                $this->catalog->publish($actor);
+            }
 
             return $current->refresh();
         });
-        if ($wasActive) {
-            $this->catalog->publish($actor);
-        }
-
-        return $archived;
     }
 
     /** @param array<string, mixed> $data @return array<string, mixed> */

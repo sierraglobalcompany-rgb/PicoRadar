@@ -11,7 +11,10 @@ use App\Models\PartnerInquiry;
 use App\Models\Sponsor;
 use App\Models\User;
 use App\Services\CampaignAccess;
+use App\Services\CampaignCatalogPublisher;
+use App\Services\CampaignImageStore;
 use App\Services\CampaignService;
+use App\Services\DatasetAuditLogger;
 use App\Services\SponsorService;
 use DomainException;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -188,6 +191,40 @@ class CampaignOperationsTest extends TestCase
 
         $this->assertDatabaseCount('sponsors', 0);
         $this->assertDatabaseCount('campaigns', 0);
+    }
+
+    public function test_failed_catalog_publication_does_not_leave_campaign_paused(): void
+    {
+        $admin = User::factory()->create(['role' => OperatorRole::Admin]);
+        $sponsor = app(SponsorService::class)->create($this->sponsorData(), $admin);
+        $campaign = app(CampaignService::class)->create(
+            $this->campaignData($sponsor),
+            $this->syntheticPng('campaign.png', 1440, 360),
+            $admin,
+        );
+        app(CampaignService::class)->activate($campaign, $admin);
+
+        $publisher = \Mockery::mock(CampaignCatalogPublisher::class);
+        $publisher->shouldReceive('publish')->once()->andThrow(new DomainException('Synthetic catalog failure.'));
+        $service = new CampaignService(
+            app(CampaignImageStore::class),
+            $publisher,
+            app(DatasetAuditLogger::class),
+        );
+
+        try {
+            $service->pause($campaign->refresh(), $admin);
+            $this->fail('The synthetic publication failure was not propagated.');
+        } catch (DomainException $error) {
+            $this->assertSame('Synthetic catalog failure.', $error->getMessage());
+        }
+
+        $this->assertSame(CampaignStatus::Active, $campaign->refresh()->status);
+        $this->assertDatabaseMissing('audit_logs', [
+            'action' => 'campaign.paused',
+            'subject_type' => Campaign::class,
+            'subject_id' => $campaign->id,
+        ]);
     }
 
     /** @return array<string, mixed> */
