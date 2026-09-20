@@ -16,7 +16,12 @@ use JsonException;
 
 class DatasetReleaseValidator
 {
-    public function __construct(private readonly DatasetAuditLogger $audit) {}
+    private readonly RestrictionContractValidator $restrictions;
+
+    public function __construct(private readonly DatasetAuditLogger $audit, ?RestrictionContractValidator $restrictions = null)
+    {
+        $this->restrictions = $restrictions ?? new RestrictionContractValidator;
+    }
 
     public function validate(DatasetRelease $release, User $actor): DatasetRelease
     {
@@ -75,91 +80,17 @@ class DatasetReleaseValidator
         if (($payload['datasetKey'] ?? null) !== 'restrictions' || ! $this->list($payload['jurisdictions'] ?? null)) {
             throw new DomainException('Restrictions payload does not match the mobile contract.');
         }
-        $coverageIds = [];
-        $ruleIds = [];
+        $jurisdictionIds = [];
         foreach ($payload['jurisdictions'] as $jurisdiction) {
             if (! is_array($jurisdiction) || array_is_list($jurisdiction)) {
                 throw new DomainException('Invalid restrictions jurisdiction.');
             }
             $jurisdictionId = $this->string($jurisdiction, 'id');
-            $this->string($jurisdiction, 'name');
-            if (! $this->list($jurisdiction['coverages'] ?? null)) {
-                throw new DomainException('Restrictions coverages are required.');
+            if (isset($jurisdictionIds[$jurisdictionId])) {
+                throw new DomainException('Duplicate restrictions jurisdiction.');
             }
-            foreach ($jurisdiction['coverages'] as $coverage) {
-                if (! is_array($coverage) || array_is_list($coverage)) {
-                    throw new DomainException('Invalid restriction coverage.');
-                }
-                $kind = $this->string($coverage, 'vehicleKind');
-                $service = $this->string($coverage, 'serviceType');
-                if (! in_array($kind, ['car', 'motorcycle'], true) || ! in_array($service, ['private', 'taxi'], true)) {
-                    throw new DomainException('Unsupported restrictions vehicle coverage.');
-                }
-                $coverageId = "$jurisdictionId:$kind:$service";
-                if (isset($coverageIds[$coverageId])) {
-                    throw new DomainException('Duplicate restriction coverage.');
-                }
-                $coverageIds[$coverageId] = true;
-                $this->date($coverage, 'verifiedAt');
-                $this->date($coverage, 'staleAfter');
-                if (! $this->list($coverage['sourceUrls'] ?? null) || $coverage['sourceUrls'] === [] || ! $this->list($coverage['rules'] ?? null)) {
-                    throw new DomainException('Restrictions sourceUrls and rules are required.');
-                }
-                foreach ($coverage['sourceUrls'] as $url) {
-                    $this->httpsUrl($url, 'sourceUrls[]');
-                }
-                foreach ($coverage['rules'] as $rule) {
-                    if (! is_array($rule) || array_is_list($rule)) {
-                        throw new DomainException('Invalid restriction rule.');
-                    }
-                    $ruleId = $this->string($rule, 'id');
-                    if (isset($ruleIds["$jurisdictionId/$ruleId"])) {
-                        throw new DomainException('Duplicate restriction rule id.');
-                    }
-                    $ruleIds["$jurisdictionId/$ruleId"] = true;
-                    if (! is_int($rule['priority'] ?? null) || ! in_array($this->string($rule, 'effect'), ['restrict', 'allow'], true) || ! $this->list($rule['timeWindows'] ?? null) || ! is_bool($rule['appliesOnHolidays'] ?? null)) {
-                        throw new DomainException('Restrictions rule has invalid required values.');
-                    }
-                    $this->date($rule, 'validFrom');
-                    $this->date($rule, 'verifiedAt');
-                    $this->httpsUrl($rule['sourceUrl'] ?? null, 'sourceUrl');
-                    if (array_key_exists('validUntil', $rule) && $rule['validUntil'] !== null) {
-                        $this->date($rule, 'validUntil');
-                    }
-                    $this->validateOptionalRules($rule);
-                    foreach ($rule['timeWindows'] as $window) {
-                        if (! is_array($window) || array_is_list($window) || ! is_int($window['startMinute'] ?? null) || ! is_int($window['endMinute'] ?? null) || $window['startMinute'] < 0 || $window['startMinute'] >= 1440 || $window['endMinute'] < 0 || $window['endMinute'] >= 1440 || $window['startMinute'] === $window['endMinute']) {
-                            throw new DomainException('Restrictions timeWindow is invalid.');
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /** @param array<string,mixed> $rule */
-    private function validateOptionalRules(array $rule): void
-    {
-        foreach (['registrationOrigins' => ['local', 'foreign', 'unknown'], 'weekdays' => null, 'digits' => null] as $key => $allowed) {
-            if (! array_key_exists($key, $rule) || $rule[$key] === null) {
-                continue;
-            }
-            if (! $this->list($rule[$key])) {
-                throw new DomainException("$key must be a list.");
-            }
-            foreach ($rule[$key] as $value) {
-                if (($allowed && (! is_string($value) || ! in_array($value, $allowed, true))) || ($key === 'weekdays' && (! is_int($value) || $value < 1 || $value > 7)) || ($key === 'digits' && (! is_int($value) || $value < 0 || $value > 9))) {
-                    throw new DomainException("$key contains an invalid value.");
-                }
-            }
-        }
-        foreach (['dateParity' => ['odd', 'even'], 'digitPosition' => ['firstNumeric', 'lastNumeric']] as $key => $allowed) {
-            if (array_key_exists($key, $rule) && $rule[$key] !== null && (! is_string($rule[$key]) || ! in_array($rule[$key], $allowed, true))) {
-                throw new DomainException("$key is invalid.");
-            }
-        }
-        if (array_key_exists('digits', $rule) && $rule['digits'] !== null && (! array_key_exists('digitPosition', $rule) || $rule['digitPosition'] === null)) {
-            throw new DomainException('digitPosition is required with digits.');
+            $jurisdictionIds[$jurisdictionId] = true;
+            $this->restrictions->validateJurisdiction($jurisdiction, $jurisdictionId);
         }
     }
 
@@ -190,12 +121,5 @@ class DatasetReleaseValidator
     private function list(mixed $value): bool
     {
         return is_array($value) && array_is_list($value);
-    }
-
-    private function httpsUrl(mixed $value, string $key): void
-    {
-        if (! is_string($value) || filter_var($value, FILTER_VALIDATE_URL) === false || strtolower((string) parse_url($value, PHP_URL_SCHEME)) !== 'https') {
-            throw new DomainException("$key must be an HTTPS URL.");
-        }
     }
 }

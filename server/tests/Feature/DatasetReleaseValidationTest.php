@@ -61,6 +61,38 @@ class DatasetReleaseValidationTest extends TestCase
         $this->assertSame(DatasetReleaseStatus::Validated, $canonical->refresh()->status);
     }
 
+    public function test_restrictions_release_rejects_a_rule_whose_validity_is_inverted(): void
+    {
+        $operator = $this->operator();
+        $dataset = $this->dataset();
+        $release = $this->draft($dataset, 'inverted-validity', [
+            'jurisdictions' => [[
+                'id' => 'co-test',
+                'name' => 'Test',
+                'coverages' => [[
+                    'vehicleKind' => 'car',
+                    'serviceType' => 'private',
+                    'verifiedAt' => '2026-08-27T00:00:00Z',
+                    'staleAfter' => '2027-01-01T00:00:00Z',
+                    'sourceUrls' => ['https://example.test/rules'],
+                    'rules' => [[
+                        'id' => 'rule-1',
+                        'priority' => 1,
+                        'effect' => 'restrict',
+                        'validFrom' => '2026-09-01T00:00:00Z',
+                        'validUntil' => '2026-08-31T23:59:59Z',
+                        'timeWindows' => [],
+                        'appliesOnHolidays' => false,
+                        'sourceUrl' => 'https://example.test/rules',
+                        'verifiedAt' => '2026-08-27T00:00:00Z',
+                    ]],
+                ]],
+            ]],
+        ]);
+
+        $this->assertValidationFails($release, $operator);
+    }
+
     public function test_release_versions_are_path_safe_and_state_machine_rejects_direct_advanced_creates(): void
     {
         $dataset = $this->dataset();
