@@ -1,12 +1,13 @@
 param(
     [Parameter(Mandatory = $true)]
-    [string] $ArtifactDirectory
+    [string] $ArtifactDirectory,
+    [string] $ZipPattern = 'PicoRadar-staging-hostinger-*.zip'
 )
 
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $artifacts = (Resolve-Path -LiteralPath $ArtifactDirectory).Path
-$zip = @(Get-ChildItem -LiteralPath $artifacts -Filter 'PicoRadar-staging-hostinger-*.zip' -File)
+$zip = @(Get-ChildItem -LiteralPath $artifacts -Filter $ZipPattern -File)
 if ($zip.Count -ne 1) { throw 'Exactly one Hostinger staging ZIP is required.' }
 
 $tokenFile = Join-Path $artifacts 'PicoRadar-INSTALL_TOKEN.txt'

@@ -1,5 +1,6 @@
 param(
     [string] $ArtifactDirectory = 'artifacts/current/hostinger-staging',
+    [string] $ZipPattern = 'PicoRadar-staging-hostinger-*.zip',
     [string] $MariaDbRoot = 'C:\codex\_tool-cache\mariadb-11.8.8-winx64',
     [string] $PhpPath = 'C:\xampphp\php\php.exe'
 )
@@ -7,7 +8,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $artifacts = (Resolve-Path -LiteralPath (Join-Path $root $ArtifactDirectory)).Path
-$zip = @(Get-ChildItem -LiteralPath $artifacts -Filter 'PicoRadar-staging-hostinger-*.zip' -File)
+$zip = @(Get-ChildItem -LiteralPath $artifacts -Filter $ZipPattern -File)
 if ($zip.Count -ne 1) { throw 'Exactly one Hostinger staging ZIP is required.' }
 
 $scratch = Join-Path ([System.IO.Path]::GetTempPath()) ('picoradar-hostinger-db-' + [guid]::NewGuid().ToString('N'))

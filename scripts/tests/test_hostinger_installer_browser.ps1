@@ -3,6 +3,7 @@ param(
     [string] $EvidenceDirectory,
     [ValidateSet('happy', 'migration-failure')]
     [string] $Scenario = 'happy',
+    [string] $ZipPattern = 'PicoRadar-staging-hostinger-*.zip',
     [string] $MariaDbRoot = 'C:\codex\_tool-cache\mariadb-11.8.8-winx64',
     [string] $PhpPath = 'C:\xampphp\php\php.exe',
     [string] $OpenSslPath = 'C:\xampphp\apache\bin\openssl.exe',
@@ -12,7 +13,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $artifacts = (Resolve-Path -LiteralPath (Join-Path $root $ArtifactDirectory)).Path
-$zip = @(Get-ChildItem -LiteralPath $artifacts -Filter 'PicoRadar-staging-hostinger-*.zip' -File)
+$zip = @(Get-ChildItem -LiteralPath $artifacts -Filter $ZipPattern -File)
 if ($zip.Count -ne 1) { throw 'Exactly one Hostinger staging ZIP is required.' }
 $tokenFile = Join-Path $artifacts 'PicoRadar-INSTALL_TOKEN.txt'
 if (-not (Test-Path -LiteralPath $tokenFile -PathType Leaf)) { throw 'The private local token file is unavailable.' }

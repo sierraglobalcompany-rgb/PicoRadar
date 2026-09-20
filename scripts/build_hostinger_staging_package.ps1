@@ -1,7 +1,9 @@
 param(
     [string] $OutputDirectory,
     [string] $PhpPath = 'php',
-    [string] $AppUrl = 'https://picoradar.bodegadigitalmedellin.com'
+    [string] $AppUrl = 'https://picoradar.bodegadigitalmedellin.com',
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]{2,80}$')]
+    [string] $PackagePrefix = 'PicoRadar-staging-hostinger'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -151,7 +153,7 @@ try {
 
     if (Test-Path -LiteralPath $outputRoot) { Remove-Item -LiteralPath $outputRoot -Recurse -Force }
     New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
-    $zipName = "PicoRadar-staging-hostinger-$releaseId.zip"
+    $zipName = "$PackagePrefix-$releaseId.zip"
     $zipPath = Join-Path $outputRoot $zipName
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zipStream = [System.IO.File]::Open($zipPath, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
