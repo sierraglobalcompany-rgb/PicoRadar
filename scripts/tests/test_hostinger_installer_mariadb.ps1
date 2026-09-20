@@ -20,6 +20,7 @@ $dbUser = 'picoradar_test'
 $dbPassword = 'Db-Test-Only-2026'
 $operatorPassword = 'Operator-Test-Only-2026'
 $serverProcess = $null
+$webProcess = $null
 $succeeded = $false
 
 $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
@@ -85,6 +86,32 @@ FLUSH PRIVILEGES;
         if ($harnessExit -ne 0) { throw "The clean-room installer harness failed with exit code $harnessExit." }
 
         $privateRoot = Join-Path $domainRoot 'picoradar_app/current'
+        $publicRoot = Join-Path $domainRoot 'public_html/picoradar'
+        $webListener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+        $webListener.Start()
+        $webPort = ([System.Net.IPEndPoint]$webListener.LocalEndpoint).Port
+        $webListener.Stop()
+        $webProcess = Start-Process -FilePath $PhpPath `
+            -ArgumentList '-S', "127.0.0.1:$webPort", '-t', $publicRoot, (Join-Path $publicRoot 'index.php') `
+            -WorkingDirectory $publicRoot -WindowStyle Hidden -PassThru `
+            -RedirectStandardOutput (Join-Path $logs 'php-web.out.log') `
+            -RedirectStandardError (Join-Path $logs 'php-web.err.log')
+        $health = $null
+        for ($attempt = 0; $attempt -lt 40; $attempt++) {
+            Start-Sleep -Milliseconds 250
+            try {
+                $health = Invoke-WebRequest -Uri "http://127.0.0.1:$webPort/api/v1/health" -UseBasicParsing -TimeoutSec 2
+                break
+            } catch {
+                if ($webProcess.HasExited) { break }
+            }
+        }
+        if ($null -eq $health -or $health.StatusCode -ne 200) { throw 'Real HTTP health verification failed.' }
+        $healthPayload = $health.Content | ConvertFrom-Json
+        if ($healthPayload.status -ne 'ok' -or $healthPayload.apiVersion -ne 'v1') { throw 'Health response contract failed.' }
+        $login = Invoke-WebRequest -Uri "http://127.0.0.1:$webPort/login" -UseBasicParsing -TimeoutSec 5
+        if ($login.StatusCode -ne 200 -or $login.Content -notmatch 'PicoRadar') { throw 'Real HTTP login verification failed.' }
+
         $cronOutput = (& $PhpPath (Join-Path $privateRoot 'bin/cron.php')).Trim()
         if ($LASTEXITCODE -ne 0 -or $cronOutput -ne 'OK') { throw "Cron verification failed: $cronOutput" }
 
@@ -105,6 +132,10 @@ FLUSH PRIVILEGES;
     Write-Output "PASS: extracted package installed on disposable MariaDB 11.8.8 at port $port; operator, login, health, links, cron, and rollback verified."
     $succeeded = $true
 } finally {
+    if ($webProcess -and -not $webProcess.HasExited) {
+        Stop-Process -Id $webProcess.Id -Force -ErrorAction SilentlyContinue
+        $webProcess.WaitForExit(5000) | Out-Null
+    }
     if ($serverProcess -and -not $serverProcess.HasExited) {
         Stop-Process -Id $serverProcess.Id -Force -ErrorAction SilentlyContinue
         $serverProcess.WaitForExit(5000) | Out-Null
