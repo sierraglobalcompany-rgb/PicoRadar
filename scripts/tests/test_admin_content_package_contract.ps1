@@ -13,6 +13,9 @@ if ($build -notmatch '\$zipName = "\$PackagePrefix-\$releaseId\.zip"') {
 if ($wrapper -notmatch "PackagePrefix 'PicoRadar-admin-contenidos'") {
     throw 'The B07 wrapper does not select the required installable name.'
 }
+if ($wrapper -notmatch 'PicoRadar_GUIA_PANEL_ADMIN_CONTENIDOS\.md') {
+    throw 'The B07 package output does not include the Spanish owner guide.'
+}
 if ($build -notmatch "pico_jurisdiction_catalog_v1\.json") {
     throw 'The package builder does not bundle the Pico jurisdiction fixture required by a clean install.'
 }

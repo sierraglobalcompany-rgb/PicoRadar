@@ -16,3 +16,19 @@ $output = [System.IO.Path]::GetFullPath((Join-Path $root $OutputDirectory))
 if ($LASTEXITCODE -ne 0) {
     throw "Admin content package build failed with exit code $LASTEXITCODE."
 }
+
+$guideSource = Join-Path $root 'docs/operations/PicoRadar_GUIA_PANEL_ADMIN_CONTENIDOS.md'
+$guideDestination = Join-Path $output 'PicoRadar_GUIA_PANEL_ADMIN_CONTENIDOS.md'
+Copy-Item -LiteralPath $guideSource -Destination $guideDestination -Force
+
+$hashLines = @(
+    Get-ChildItem -LiteralPath $output -File |
+        Where-Object Name -ne 'SHA256SUMS.txt' |
+        Sort-Object Name |
+        ForEach-Object { "$(($_ | Get-FileHash -Algorithm SHA256).Hash)  $($_.Name)" }
+)
+[System.IO.File]::WriteAllText(
+    (Join-Path $output 'SHA256SUMS.txt'),
+    (($hashLines -join "`n") + "`n"),
+    [System.Text.UTF8Encoding]::new($false)
+)
