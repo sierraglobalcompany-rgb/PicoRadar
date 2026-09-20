@@ -2,9 +2,11 @@
 
 use App\Installation\AtomicFileWriter;
 use App\Installation\DatabaseCredentials;
+use App\Installation\DatabaseProbeReceipt;
+use App\Installation\DatabaseReadinessProbe;
 use App\Installation\DeploymentLayout;
-use App\Installation\EmptyDatabaseVerifier;
 use App\Installation\HostPreflightCollector;
+use App\Installation\InstallationMutationLock;
 use App\Installation\InstallationStage;
 use App\Installation\InstallationStateStore;
 use App\Installation\InstallAttemptLimiter;
@@ -35,6 +37,16 @@ if (! is_array($config)
     || ! isset($config['releaseId'], $config['tokenHash'], $config['tokenExpiresAt'], $config['appUrl'], $config['manifestPath'])) {
     http_response_code(503);
     exit('Installer configuration is unavailable.');
+}
+
+$trustedProxyIps = isset($config['trustedProxyIps']) && is_array($config['trustedProxyIps'])
+    ? array_values(array_filter($config['trustedProxyIps'], 'is_string'))
+    : [];
+$preflightCollector = new HostPreflightCollector($privateRoot, $publicRoot, $trustedProxyIps);
+if (! $preflightCollector->transportIsSecure($_SERVER)) {
+    http_response_code(426);
+    header('Content-Type: text/plain; charset=UTF-8');
+    exit('HTTPS is required before using the installer.');
 }
 
 header('X-Frame-Options: DENY');
@@ -69,7 +81,13 @@ $csrfValid = static fn (): bool => isset($_POST['_token'])
     && hash_equals((string) $_SESSION['csrf'], $_POST['_token']);
 
 $releaseId = (string) $config['releaseId'];
-$authorized = ($_SESSION['authorized_release'] ?? null) === $releaseId;
+$authorizedAt = $_SESSION['authorized_at'] ?? null;
+$authorized = ($_SESSION['authorized_release'] ?? null) === $releaseId
+    && is_int($authorizedAt)
+    && $authorizedAt >= time() - 1800;
+if (! $authorized) {
+    unset($_SESSION['authorized_release'], $_SESSION['authorized_at'], $_SESSION['db_probe']);
+}
 $clientIp = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
 $clientKey = hash_hmac('sha256', $clientIp, (string) $config['tokenHash']);
 $limiter = new InstallAttemptLimiter(
@@ -101,6 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'unloc
     $limiter->clear($clientKey);
     session_regenerate_id(true);
     $_SESSION['authorized_release'] = $releaseId;
+    $_SESSION['authorized_at'] = time();
+    $_SESSION['csrf'] = bin2hex(random_bytes(32));
     $_SESSION['message'] = 'Acceso verificado.';
     $redirect();
 }
@@ -125,15 +145,30 @@ if (! $authorized) {
 $manifestPath = $layout->domainRoot.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, (string) $config['manifestPath']);
 $manifest = is_file($manifestPath) ? json_decode((string) file_get_contents($manifestPath), true) : null;
 $manifestReport = is_array($manifest)
-    ? (new PackageManifestVerifier)->verify($layout->domainRoot, $manifest)
+    ? (new PackageManifestVerifier([
+        'picoradar_app/current/artisan',
+        'picoradar_app/current/vendor/autoload.php',
+        'picoradar_app/current/bin/cron.php',
+        'picoradar_app/current/deploy/hostinger/setup.php',
+        'picoradar_app/current/deploy/hostinger/routing.htaccess',
+        'public_html/picoradar/index.php',
+        'public_html/picoradar/_setup/index.php',
+    ]))->verify($layout->domainRoot, $manifest, $releaseId)
     : null;
-$preflight = (new HostPreflightCollector($privateRoot, $publicRoot))->collect($_SERVER);
+$preflight = $preflightCollector->collect($_SERVER);
 $statePath = $privateRoot.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'installer'.DIRECTORY_SEPARATOR.'installation-state.json';
-$stateStore = new InstallationStateStore($statePath);
+$stateStore = new InstallationStateStore($statePath, $releaseId);
 $state = $stateStore->read();
 $effectiveStage = $state->stage === InstallationStage::Failed
     ? ($state->retryStage ?? InstallationStage::New)
     : $state->stage;
+
+$databaseFields = is_array($_SESSION['db_fields'] ?? null)
+    ? $_SESSION['db_fields']
+    : ['host' => 'localhost', 'port' => 3306, 'database' => '', 'username' => ''];
+$operatorFields = is_array($_SESSION['operator_fields'] ?? null)
+    ? $_SESSION['operator_fields']
+    : ['name' => '', 'email' => ''];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'unlock') {
     if (! $csrfValid()) {
@@ -146,13 +181,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'unloc
     }
 
     $action = (string) ($_POST['action'] ?? '');
+    $mutationLock = new InstallationMutationLock(
+        $privateRoot.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'installer'.DIRECTORY_SEPARATOR.'mutation.lock',
+    );
     try {
-        if ($action === 'configure' && $effectiveStage === InstallationStage::New) {
+        $mutationLock->acquire();
+        $state = $stateStore->read();
+        $effectiveStage = $state->stage === InstallationStage::Failed
+            ? ($state->retryStage ?? InstallationStage::New)
+            : $state->stage;
+
+        if (in_array($action, ['probe_database', 'configure'], true)) {
+            $databaseFields = [
+                'host' => trim((string) ($_POST['db_host'] ?? '')),
+                'port' => (int) ($_POST['db_port'] ?? 3306),
+                'database' => trim((string) ($_POST['db_database'] ?? '')),
+                'username' => trim((string) ($_POST['db_username'] ?? '')),
+            ];
+            $_SESSION['db_fields'] = $databaseFields;
+        }
+        if ($action === 'operator') {
+            $operatorFields = [
+                'name' => trim((string) ($_POST['operator_name'] ?? '')),
+                'email' => strtolower(trim((string) ($_POST['operator_email'] ?? ''))),
+            ];
+            $_SESSION['operator_fields'] = $operatorFields;
+        }
+
+        if ($action === 'probe_database' && $effectiveStage === InstallationStage::New) {
             $credentials = new DatabaseCredentials(
-                trim((string) ($_POST['db_host'] ?? '')),
-                (int) ($_POST['db_port'] ?? 3306),
-                trim((string) ($_POST['db_database'] ?? '')),
-                trim((string) ($_POST['db_username'] ?? '')),
+                (string) $databaseFields['host'],
+                (int) $databaseFields['port'],
+                (string) $databaseFields['database'],
+                (string) $databaseFields['username'],
                 (string) ($_POST['db_password'] ?? ''),
             );
             $pdo = new PDO($credentials->dsn(), $credentials->username, $credentials->password, [
@@ -160,27 +221,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'unloc
                 PDO::ATTR_TIMEOUT => 5,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
-            if (! (new EmptyDatabaseVerifier)->isEmpty($pdo)) {
-                throw new RuntimeException('database_not_empty');
+            (new DatabaseReadinessProbe)->assertReady($pdo);
+            $_SESSION['db_probe'] = (new DatabaseProbeReceipt((string) $config['tokenHash']))
+                ->issue($credentials);
+            $_SESSION['message'] = 'Conexión, base vacía y permisos comprobados. Vuelve a escribir la contraseña para guardar.';
+        } elseif ($action === 'configure' && $effectiveStage === InstallationStage::New) {
+            $credentials = new DatabaseCredentials(
+                (string) $databaseFields['host'],
+                (int) $databaseFields['port'],
+                (string) $databaseFields['database'],
+                (string) $databaseFields['username'],
+                (string) ($_POST['db_password'] ?? ''),
+            );
+            $receipt = is_array($_SESSION['db_probe'] ?? null) ? $_SESSION['db_probe'] : [];
+            if (! (new DatabaseProbeReceipt((string) $config['tokenHash']))->verify($credentials, $receipt)) {
+                throw new RuntimeException('database_probe_expired');
             }
 
-            $appKey = 'base64:'.base64_encode(random_bytes(32));
-            $environment = (new StagingEnvironmentBuilder)->build($credentials, $appKey, (string) $config['appUrl']);
-            (new AtomicFileWriter)->write($privateRoot.DIRECTORY_SEPARATOR.'.env', $environment);
+            $pdo = new PDO($credentials->dsn(), $credentials->username, $credentials->password, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_TIMEOUT => 5,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ]);
+            (new DatabaseReadinessProbe)->assertReady($pdo);
+
+            $environmentPath = $privateRoot.DIRECTORY_SEPARATOR.'.env';
+            if (is_file($environmentPath)) {
+                $existing = Dotenv\Dotenv::parse((string) file_get_contents($environmentPath));
+                $expected = [
+                    'APP_ENV' => 'staging',
+                    'APP_URL' => (string) $config['appUrl'],
+                    'DB_HOST' => $credentials->host,
+                    'DB_PORT' => (string) $credentials->port,
+                    'DB_DATABASE' => $credentials->database,
+                    'DB_USERNAME' => $credentials->username,
+                    'DB_PASSWORD' => $credentials->password,
+                ];
+                foreach ($expected as $key => $value) {
+                    if (($existing[$key] ?? null) !== $value) {
+                        throw new RuntimeException('existing_environment_mismatch');
+                    }
+                }
+            } else {
+                $appKey = 'base64:'.base64_encode(random_bytes(32));
+                $environment = (new StagingEnvironmentBuilder)->build($credentials, $appKey, (string) $config['appUrl']);
+                (new AtomicFileWriter)->write($environmentPath, $environment);
+            }
             $stateStore->write(InstallationStage::Configured, $releaseId);
+            unset($_SESSION['db_probe']);
             $_SESSION['message'] = 'Configuración privada creada. La contraseña no fue guardada en el estado del instalador.';
         } elseif ($action === 'migrate' && $effectiveStage === InstallationStage::Configured) {
             (new LaravelInstallationRunner($privateRoot, $publicRoot))->migrate();
             $stateStore->write(InstallationStage::Migrated, $releaseId);
             $_SESSION['message'] = 'Migraciones completadas.';
         } elseif ($action === 'operator' && $effectiveStage === InstallationStage::Migrated) {
-            (new LaravelInstallationRunner($privateRoot, $publicRoot))->createInitialOperator(
-                (string) ($_POST['operator_name'] ?? ''),
-                (string) ($_POST['operator_email'] ?? ''),
-                (string) ($_POST['operator_password'] ?? ''),
-                (string) ($_POST['operator_password_confirmation'] ?? ''),
-            );
+            $runner = new LaravelInstallationRunner($privateRoot, $publicRoot);
+            if (! $runner->initialOperatorMatches((string) $operatorFields['email'])) {
+                $runner->createInitialOperator(
+                    (string) $operatorFields['name'],
+                    (string) $operatorFields['email'],
+                    (string) ($_POST['operator_password'] ?? ''),
+                    (string) ($_POST['operator_password_confirmation'] ?? ''),
+                );
+            }
             $stateStore->write(InstallationStage::OperatorCreated, $releaseId);
+            unset($_SESSION['operator_fields']);
             $_SESSION['message'] = 'Primer operador creado.';
         } elseif ($action === 'finalize' && in_array($effectiveStage, [InstallationStage::OperatorCreated, InstallationStage::Completed], true)) {
             (new LaravelInstallationRunner($privateRoot, $publicRoot))->prepareApplication();
@@ -202,23 +307,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'unloc
         $stateStore->fail($effectiveStage, $releaseId, 'validation_failed');
     } catch (Throwable $exception) {
         $code = match ($action) {
-            'configure' => 'configuration_failed',
+            'probe_database' => match ($exception->getMessage()) {
+                'database_not_empty' => 'database_not_empty',
+                'database_privileges_insufficient' => 'database_privileges_insufficient',
+                default => 'database_connection_failed',
+            },
+            'configure' => match ($exception->getMessage()) {
+                'database_probe_expired' => 'database_probe_expired',
+                'database_not_empty' => 'database_not_empty',
+                'database_privileges_insufficient' => 'database_privileges_insufficient',
+                'existing_environment_mismatch' => 'existing_environment_mismatch',
+                default => 'configuration_failed',
+            },
             'migrate' => 'migration_failed',
             'operator' => 'operator_failed',
             'finalize' => 'finalization_failed',
             default => 'invalid_action',
         };
         $_SESSION['error'] = match ($code) {
+            'database_not_empty' => 'La base contiene tablas. Usa una base exclusiva y vacía.',
+            'database_privileges_insufficient' => 'El usuario no tiene los permisos mínimos de lectura y escritura.',
+            'database_connection_failed' => 'No fue posible conectar con esos datos. Revisa host, puerto, base y usuario.',
+            'database_probe_expired' => 'La comprobación venció o cambió algún dato. Comprueba la conexión nuevamente.',
+            'existing_environment_mismatch' => 'Ya existe una configuración privada diferente. No fue sobrescrita.',
             'configuration_failed' => 'No fue posible validar la base vacía o guardar la configuración.',
             'migration_failed' => 'La migración falló. No se eliminaron tablas; usa una base nueva y vacía antes de reiniciar.',
             'operator_failed' => 'No fue posible crear el primer operador.',
             'finalization_failed' => 'No fue posible completar enlaces, cachés o comprobaciones internas.',
             default => 'La acción no corresponde a la etapa actual.',
         };
-        $retryStage = $code === 'migration_failed'
-            ? InstallationStage::New
-            : $effectiveStage;
-        $stateStore->fail($retryStage, $releaseId, $code);
+        if (! in_array($code, [
+            'database_not_empty',
+            'database_privileges_insufficient',
+            'database_connection_failed',
+            'database_probe_expired',
+        ], true)) {
+            $retryStage = $code === 'migration_failed'
+                ? InstallationStage::New
+                : $effectiveStage;
+            $stateStore->fail($retryStage, $releaseId, $code);
+        }
+    } finally {
+        $mutationLock->release();
     }
 
     if (! is_file($lockPath)) {
@@ -236,6 +366,8 @@ installer_page('Instalación privada de PicoRadar', $message, $error, static fun
     $state,
     $blockers,
     $privateRoot,
+    $databaseFields,
+    $operatorFields,
 ): void {
     ?>
     <div class="meta"><span>Release <?= $escape($releaseId) ?></span><span>Etapa: <?= $escape($state->stage->value) ?></span></div>
@@ -247,18 +379,32 @@ installer_page('Instalación privada de PicoRadar', $message, $error, static fun
         </section>
     <?php } elseif ($effectiveStage === InstallationStage::New) { ?>
         <h2>1. Base de datos exclusiva y vacía</h2>
-        <p>Estos datos se escribirán en el archivo privado <code>.env</code>. La contraseña no se guarda en el estado del asistente.</p>
+        <p>Primero se comprueban conexión, base vacía y permisos. Este paso no escribe <code>.env</code> ni crea tablas permanentes.</p>
         <form method="post" autocomplete="off">
-            <?= installer_hidden('configure', $escape) ?>
+            <?= installer_hidden('probe_database', $escape) ?>
             <div class="grid">
-                <label>Host<input name="db_host" required value="localhost"></label>
-                <label>Puerto<input name="db_port" type="number" min="1" max="65535" required value="3306"></label>
+                <label>Host<input name="db_host" required value="<?= $escape($databaseFields['host'] ?? 'localhost') ?>"></label>
+                <label>Puerto<input name="db_port" type="number" min="1" max="65535" required value="<?= $escape($databaseFields['port'] ?? 3306) ?>"></label>
             </div>
-            <label>Base de datos<input name="db_database" required autocomplete="off"></label>
-            <label>Usuario<input name="db_username" required autocomplete="off"></label>
+            <label>Base de datos<input name="db_database" required autocomplete="off" value="<?= $escape($databaseFields['database'] ?? '') ?>"></label>
+            <label>Usuario<input name="db_username" required autocomplete="off" value="<?= $escape($databaseFields['username'] ?? '') ?>"></label>
             <label>Contraseña<input name="db_password" type="password" required autocomplete="new-password"></label>
-            <button type="submit">Comprobar y configurar</button>
+            <button type="submit">Probar conexión y base vacía</button>
         </form>
+        <?php if (is_array($_SESSION['db_probe'] ?? null)) { ?>
+            <section class="notice">
+                <strong>Comprobación vigente.</strong> Para guardar la configuración, vuelve a escribir la misma contraseña.
+                <form method="post" autocomplete="off">
+                    <?= installer_hidden('configure', $escape) ?>
+                    <input type="hidden" name="db_host" value="<?= $escape($databaseFields['host'] ?? '') ?>">
+                    <input type="hidden" name="db_port" value="<?= $escape($databaseFields['port'] ?? 3306) ?>">
+                    <input type="hidden" name="db_database" value="<?= $escape($databaseFields['database'] ?? '') ?>">
+                    <input type="hidden" name="db_username" value="<?= $escape($databaseFields['username'] ?? '') ?>">
+                    <label>Confirmar contraseña<input name="db_password" type="password" required autocomplete="new-password"></label>
+                    <button type="submit">Guardar configuración privada</button>
+                </form>
+            </section>
+        <?php } ?>
     <?php } elseif ($effectiveStage === InstallationStage::Configured) { ?>
         <h2>2. Crear estructura</h2>
         <p>La conexión ya fue comprobada. Las migraciones comenzarán únicamente al confirmar.</p>
@@ -268,8 +414,8 @@ installer_page('Instalación privada de PicoRadar', $message, $error, static fun
         <p>Se creará un único superadministrador activo. Esto no habilita cuentas móviles.</p>
         <form method="post" autocomplete="off">
             <?= installer_hidden('operator', $escape) ?>
-            <label>Nombre<input name="operator_name" required maxlength="255"></label>
-            <label>Correo<input name="operator_email" type="email" required maxlength="255"></label>
+            <label>Nombre<input name="operator_name" required maxlength="255" value="<?= $escape($operatorFields['name'] ?? '') ?>"></label>
+            <label>Correo<input name="operator_email" type="email" required maxlength="255" value="<?= $escape($operatorFields['email'] ?? '') ?>"></label>
             <label>Contraseña<input name="operator_password" type="password" minlength="12" required autocomplete="new-password"></label>
             <label>Confirmación<input name="operator_password_confirmation" type="password" minlength="12" required autocomplete="new-password"></label>
             <button type="submit">Crear operador</button>

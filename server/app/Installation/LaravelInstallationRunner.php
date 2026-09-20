@@ -3,6 +3,8 @@
 namespace App\Installation;
 
 use App\Actions\Admin\InitialOperatorCreator;
+use App\Enums\OperatorRole;
+use App\Models\User;
 use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Foundation\Application;
@@ -37,8 +39,26 @@ class LaravelInstallationRunner
         );
     }
 
+    public function initialOperatorMatches(string $email): bool
+    {
+        $this->boot();
+        $operators = User::query()->limit(2)->get();
+        if ($operators->count() !== 1) {
+            return false;
+        }
+        $operator = $operators->first();
+
+        return hash_equals(strtolower(trim($email)), strtolower($operator->email))
+            && $operator->role === OperatorRole::SuperAdmin
+            && $operator->is_active;
+    }
+
     public function prepareApplication(): void
     {
+        (new HtaccessInstaller)->install(
+            $this->publicRoot.DIRECTORY_SEPARATOR.'.htaccess',
+            $this->privateRoot.DIRECTORY_SEPARATOR.'deploy'.DIRECTORY_SEPARATOR.'hostinger'.DIRECTORY_SEPARATOR.'routing.htaccess',
+        );
         $this->ensurePublicLinkTargets();
         $this->command('storage:link', ['--force' => true]);
         $this->verifyPublicLinks();

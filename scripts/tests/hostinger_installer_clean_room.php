@@ -25,8 +25,20 @@ $operatorPassword = (string) getenv('PICORADAR_TEST_OPERATOR_PASSWORD');
 require $privateRoot.DIRECTORY_SEPARATOR.'vendor'.DIRECTORY_SEPARATOR.'autoload.php';
 
 try {
+    $config = json_decode((string) file_get_contents(
+        $privateRoot.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'installer'.DIRECTORY_SEPARATOR.'package.json',
+    ), true, 16, JSON_THROW_ON_ERROR);
+    $releaseId = (string) $config['releaseId'];
     $manifest = json_decode((string) file_get_contents($domainRoot.DIRECTORY_SEPARATOR.'package-manifest.json'), true, 32, JSON_THROW_ON_ERROR);
-    $manifestReport = (new PackageManifestVerifier)->verify($domainRoot, $manifest);
+    $manifestReport = (new PackageManifestVerifier([
+        'picoradar_app/current/artisan',
+        'picoradar_app/current/vendor/autoload.php',
+        'picoradar_app/current/bin/cron.php',
+        'picoradar_app/current/deploy/hostinger/setup.php',
+        'picoradar_app/current/deploy/hostinger/routing.htaccess',
+        'public_html/picoradar/index.php',
+        'public_html/picoradar/_setup/index.php',
+    ]))->verify($domainRoot, $manifest, $releaseId);
     if (! $manifestReport->valid) {
         throw new RuntimeException('Package manifest failed before installation.');
     }
@@ -45,13 +57,13 @@ try {
         'https://picoradar.bodegadigitalmedellin.com',
     );
     (new AtomicFileWriter)->write($privateRoot.DIRECTORY_SEPARATOR.'.env', $environment);
-
-    $config = json_decode((string) file_get_contents(
-        $privateRoot.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'installer'.DIRECTORY_SEPARATOR.'package.json',
-    ), true, 16, JSON_THROW_ON_ERROR);
-    $releaseId = (string) $config['releaseId'];
+    $parsedEnvironment = Dotenv\Dotenv::parse($environment);
+    if (($parsedEnvironment['DB_PASSWORD'] ?? null) !== $password) {
+        throw new RuntimeException('The database password changed during environment serialization.');
+    }
     $state = new InstallationStateStore(
         $privateRoot.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'app'.DIRECTORY_SEPARATOR.'installer'.DIRECTORY_SEPARATOR.'installation-state.json',
+        $releaseId,
     );
     $state->write(InstallationStage::Configured, $releaseId);
 
@@ -65,6 +77,8 @@ try {
         $operatorPassword,
     );
     $state->write(InstallationStage::OperatorCreated, $releaseId);
+    $htaccess = $publicRoot.DIRECTORY_SEPARATOR.'.htaccess';
+    file_put_contents($htaccess, "AuthType Basic\nAuthName \"Private staging\"\nRequire valid-user\n");
     $runner->prepareApplication();
     $state->write(InstallationStage::Completed, $releaseId);
 
@@ -88,6 +102,12 @@ try {
         if (realpath($link) !== realpath($target)) {
             throw new RuntimeException('A required public link does not resolve to its private target.');
         }
+    }
+    $htaccessContents = (string) file_get_contents($htaccess);
+    if (! str_contains($htaccessContents, 'AuthType Basic')
+        || ! str_contains($htaccessContents, 'Require valid-user')
+        || ! str_contains($htaccessContents, '# BEGIN PICORADAR ROUTING')) {
+        throw new RuntimeException('The existing staging protection was not preserved.');
     }
 
     echo json_encode([

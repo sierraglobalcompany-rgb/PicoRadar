@@ -88,6 +88,10 @@ class StagingEnvironmentBuilder
             throw new InvalidArgumentException('Environment values cannot contain control characters.');
         }
 
-        return '"'.str_replace(['\\', '"'], ['\\\\', '\\"'], $value).'"';
+        return '"'.str_replace(
+            ['\\', '"', '$'],
+            ['\\\\', '\\"', '\\$'],
+            $value,
+        ).'"';
     }
 }

@@ -81,7 +81,6 @@ try {
     }
 
     Copy-Item -LiteralPath (Join-Path $serverRoot 'deploy/hostinger/public/index.php') -Destination (Join-Path $publicRoot 'index.php') -Force
-    Copy-Item -LiteralPath (Join-Path $serverRoot 'deploy/hostinger/public/.htaccess') -Destination (Join-Path $publicRoot '.htaccess') -Force
     New-Item -ItemType Directory -Path (Join-Path $publicRoot '_setup') -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $serverRoot 'deploy/hostinger/public/_setup/index.php') -Destination (Join-Path $publicRoot '_setup/index.php') -Force
     foreach ($publicFile in @('favicon.ico', 'robots.txt')) {
@@ -124,6 +123,7 @@ try {
         tokenExpiresAt = (Get-Date).ToUniversalTime().AddDays(30).ToString('o')
         appUrl = $AppUrl.TrimEnd('/')
         manifestPath = 'package-manifest.json'
+        trustedProxyIps = @()
     }
     Write-Utf8NoBom (Join-Path $installerDirectory 'package.json') (($packageConfig | ConvertTo-Json -Depth 5) + "`n")
 
@@ -154,7 +154,30 @@ try {
     $zipName = "PicoRadar-staging-hostinger-$releaseId.zip"
     $zipPath = Join-Path $outputRoot $zipName
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::CreateFromDirectory($packageRoot, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
+    $zipStream = [System.IO.File]::Open($zipPath, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+    try {
+        $archive = [System.IO.Compression.ZipArchive]::new($zipStream, [System.IO.Compression.ZipArchiveMode]::Create, $true)
+        try {
+            $packageFiles = @(Get-ChildItem -LiteralPath $packageRoot -Recurse -File -Force | Sort-Object FullName)
+            foreach ($file in $packageFiles) {
+                $entryName = Get-RelativeUnixPath $packageRoot $file.FullName
+                if ($entryName.Contains('\')) { throw "ZIP entry is not portable: $entryName" }
+                $entry = $archive.CreateEntry($entryName, [System.IO.Compression.CompressionLevel]::Optimal)
+                $entryStream = $entry.Open()
+                $sourceStream = [System.IO.File]::OpenRead($file.FullName)
+                try {
+                    $sourceStream.CopyTo($entryStream)
+                } finally {
+                    $sourceStream.Dispose()
+                    $entryStream.Dispose()
+                }
+            }
+        } finally {
+            $archive.Dispose()
+        }
+    } finally {
+        $zipStream.Dispose()
+    }
 
     Copy-Item -LiteralPath $manifestPath -Destination (Join-Path $outputRoot 'package-manifest.json') -Force
     Write-Utf8NoBom (Join-Path $outputRoot 'PicoRadar-INSTALL_TOKEN.txt') @"
@@ -172,7 +195,7 @@ Keep this file only on the owner's computer. It is not included in the ZIP.
 <h1>PicoRadar: instalación guiada en Hostinger</h1><p>Release <strong>$releaseId</strong></p>
 <h2>Antes de subir</h2><ol><li>Activa PHP 8.5 y HTTPS.</li><li>Crea una base MySQL/MariaDB exclusiva y vacía.</li><li>Protege con contraseña la carpeta <code>public_html/picoradar</code> desde hPanel.</li><li>Conserva el token separado en tu computador.</li></ol>
 <h2>Extraer el ZIP</h2><p>Sube <strong>$zipName</strong> a:</p><code>/home/u390570745/domains/bodegadigitalmedellin.com/</code><p>Extrae allí. Deben quedar exactamente:</p><code>picoradar_app/current<br>public_html/picoradar<br>package-manifest.json</code>
-<p class="warn">No muevas Laravel dentro de public_html y no uses permisos 777.</p>
+<p class="warn">No muevas Laravel dentro de public_html y no uses permisos 777. El ZIP no incluye un .htaccess raíz: así conserva la protección por contraseña que configuraste. Al finalizar, el asistente añade únicamente las reglas de PicoRadar.</p>
 <h2>Asistente</h2><p>Abre <code>https://picoradar.bodegadigitalmedellin.com/_setup/</code>, introduce el token y sigue las etapas. No cierres la protección por contraseña de Hostinger.</p>
 <h2>Cron</h2><p>Al finalizar, crea en hPanel un cron de tipo PHP cada cinco minutos. El asistente mostrará esta ruta:</p><code>/home/u390570745/domains/bodegadigitalmedellin.com/picoradar_app/current/bin/cron.php</code><p>Hostinger interpreta la programación en UTC.</p>
 <h2>Cierre</h2><ol><li>Comprueba Login y Health.</li><li>Elimina manualmente <code>public_html/picoradar/_setup</code>.</li><li>Mantén staging protegido por contraseña.</li><li>No cargues datos reales en esta prueba.</li></ol>

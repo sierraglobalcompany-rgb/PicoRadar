@@ -16,8 +16,9 @@ $dataRoot = Join-Path $scratch 'mariadb-data'
 $logs = Join-Path $scratch 'logs'
 $rootPassword = 'Root-Test-Only-2026'
 $database = 'picoradar_clean_room'
+$restoreDatabase = 'picoradar_restore_probe'
 $dbUser = 'picoradar_test'
-$dbPassword = 'Db-Test-Only-2026'
+$dbPassword = 'Db_${APP_NAME}_#\" Unicode-á-2026'
 $operatorPassword = 'Operator-Test-Only-2026'
 $serverProcess = $null
 $webProcess = $null
@@ -69,8 +70,10 @@ max_connections=20
 
     $sql = @"
 CREATE DATABASE ``$database`` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE ``$restoreDatabase`` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER '$dbUser'@'127.0.0.1' IDENTIFIED BY '$dbPassword';
 GRANT ALL PRIVILEGES ON ``$database``.* TO '$dbUser'@'127.0.0.1';
+GRANT ALL PRIVILEGES ON ``$restoreDatabase``.* TO '$dbUser'@'127.0.0.1';
 FLUSH PRIVILEGES;
 "@
     & $client --protocol=tcp --host=127.0.0.1 "--port=$port" --user=root "--password=$rootPassword" --execute=$sql
@@ -112,8 +115,57 @@ FLUSH PRIVILEGES;
         $login = Invoke-WebRequest -Uri "http://127.0.0.1:$webPort/login" -UseBasicParsing -TimeoutSec 5
         if ($login.StatusCode -ne 200 -or $login.Content -notmatch 'PicoRadar') { throw 'Real HTTP login verification failed.' }
 
+        $cronProbe = Join-Path $root 'scripts/tests/hostinger_cron_probe.php'
+        $cronMarker = Join-Path $scratch 'cron-probe.marker'
+        & $PhpPath $cronProbe $privateRoot dispatch $cronMarker | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'Synthetic cron job could not be queued.' }
         $cronOutput = (& $PhpPath (Join-Path $privateRoot 'bin/cron.php')).Trim()
         if ($LASTEXITCODE -ne 0 -or $cronOutput -ne 'OK') { throw "Cron verification failed: $cronOutput" }
+        $cronStatus = (& $PhpPath $cronProbe $privateRoot status $cronMarker | ConvertFrom-Json)
+        if ($cronStatus.queued -ne 0 -or $cronStatus.marker -ne 'processed') { throw 'Cron did not process the synthetic queued job.' }
+
+        Remove-Item -LiteralPath $cronMarker -Force
+        & $PhpPath $cronProbe $privateRoot dispatch-failure $cronMarker | Out-Null
+        $failedCronOutput = (& $PhpPath (Join-Path $privateRoot 'bin/cron.php')).Trim()
+        if ($LASTEXITCODE -ne 0 -or $failedCronOutput -ne 'OK') { throw "Cron failure-path runner failed: $failedCronOutput" }
+        $failedStatus = (& $PhpPath $cronProbe $privateRoot status $cronMarker | ConvertFrom-Json)
+        if ($failedStatus.failed -lt 1 -or $failedStatus.queued -ne 0) { throw 'Failed cron job was not recorded honestly.' }
+        & $PhpPath $cronProbe $privateRoot dispatch $cronMarker | Out-Null
+        $recoveryCronOutput = (& $PhpPath (Join-Path $privateRoot 'bin/cron.php')).Trim()
+        if ($LASTEXITCODE -ne 0 -or $recoveryCronOutput -ne 'OK') { throw 'Cron did not recover after a failed job.' }
+
+        $cronLock = Join-Path $privateRoot 'storage/framework/picoradar-cron.lock'
+        $lockReady = Join-Path $scratch 'cron-lock.ready'
+        $lockHolder = Start-Process -FilePath $PhpPath `
+            -ArgumentList (Join-Path $root 'scripts/tests/hold_file_lock.php'), $cronLock, $lockReady, '3' `
+            -WindowStyle Hidden -PassThru
+        for ($attempt = 0; $attempt -lt 40 -and -not (Test-Path -LiteralPath $lockReady); $attempt++) {
+            Start-Sleep -Milliseconds 100
+        }
+        if (-not (Test-Path -LiteralPath $lockReady)) { throw 'Cron overlap probe did not acquire its lock.' }
+        $overlapOutput = (& $PhpPath (Join-Path $privateRoot 'bin/cron.php')).Trim()
+        if ($LASTEXITCODE -ne 0 -or $overlapOutput -ne 'SKIPPED_LOCKED') { throw "Cron overlap contract failed: $overlapOutput" }
+        $lockHolder.WaitForExit(5000) | Out-Null
+
+        $storageProbe = Join-Path $privateRoot 'storage/app/public/backup-probe.txt'
+        [System.IO.File]::WriteAllText($storageProbe, 'synthetic-backup-probe', [System.Text.UTF8Encoding]::new($false))
+        $backupRoot = Join-Path $scratch 'synthetic-backup'
+        $restoredStorage = Join-Path $scratch 'synthetic-restored-storage'
+        New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $privateRoot 'storage/app/public') -Destination (Join-Path $backupRoot 'public') -Recurse -Force
+        $dumpPath = Join-Path $backupRoot 'database.sql'
+        $dump = Join-Path $MariaDbRoot 'bin/mariadb-dump.exe'
+        & $dump --protocol=tcp --host=127.0.0.1 "--port=$port" --user=root "--password=$rootPassword" --single-transaction --skip-comments "--result-file=$dumpPath" $database
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $dumpPath)) { throw 'Synthetic database backup failed.' }
+        $dumpUnix = $dumpPath.Replace('\', '/')
+        & $client --protocol=tcp --host=127.0.0.1 "--port=$port" --user=root "--password=$rootPassword" "--database=$restoreDatabase" "--execute=source $dumpUnix"
+        if ($LASTEXITCODE -ne 0) { throw 'Synthetic database restore failed.' }
+        $restoredOperator = (& $client --protocol=tcp --host=127.0.0.1 "--port=$port" --user=root "--password=$rootPassword" "--database=$restoreDatabase" --silent --skip-column-names --execute="SELECT CONCAT(email, '|', role, '|', is_active) FROM users LIMIT 1").Trim()
+        if ($restoredOperator -ne 'owner@example.test|super_admin|1') { throw 'Restored operator contract failed.' }
+        Copy-Item -LiteralPath (Join-Path $backupRoot 'public') -Destination $restoredStorage -Recurse -Force
+        $sourceProbeHash = (Get-FileHash -LiteralPath $storageProbe -Algorithm SHA256).Hash
+        $restoredProbeHash = (Get-FileHash -LiteralPath (Join-Path $restoredStorage 'backup-probe.txt') -Algorithm SHA256).Hash
+        if ($sourceProbeHash -ne $restoredProbeHash) { throw 'Synthetic storage restore failed.' }
 
         Push-Location $privateRoot
         try {
@@ -129,7 +181,7 @@ FLUSH PRIVILEGES;
         Remove-Item Env:PICORADAR_TEST_OPERATOR_PASSWORD -ErrorAction SilentlyContinue
     }
 
-    Write-Output "PASS: extracted package installed on disposable MariaDB 11.8.8 at port $port; operator, login, health, links, cron, and rollback verified."
+    Write-Output "PASS: extracted package installed on disposable MariaDB 11.8.8; operator, login, health, protected routing, real queue cron, overlap, failure recovery, backup/restore, links, and rollback verified."
     $succeeded = $true
 } finally {
     if ($webProcess -and -not $webProcess.HasExited) {

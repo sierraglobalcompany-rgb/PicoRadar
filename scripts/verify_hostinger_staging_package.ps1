@@ -19,14 +19,31 @@ foreach ($required in @($tokenFile, $hashFile, $manifestFile, $guideFile)) {
 
 $scratch = Join-Path ([System.IO.Path]::GetTempPath()) ('picoradar-hostinger-verify-' + [guid]::NewGuid().ToString('N'))
 try {
+    $archive = $null
+    $zipStream = [System.IO.File]::OpenRead($zip[0].FullName)
+    try {
+        $archive = [System.IO.Compression.ZipArchive]::new($zipStream, [System.IO.Compression.ZipArchiveMode]::Read, $false)
+        $entryNames = @($archive.Entries | ForEach-Object FullName)
+        if ($entryNames.Count -eq 0) { throw 'ZIP has no entries.' }
+        foreach ($entryName in $entryNames) {
+            if ($entryName.Contains('\')) { throw "ZIP contains a Windows-only entry: $entryName" }
+            if ($entryName -match '(^/|^[A-Za-z]:|(^|/)\.\.(/|$))') { throw "ZIP contains an unsafe entry: $entryName" }
+        }
+        $duplicates = @($entryNames | Group-Object | Where-Object Count -gt 1)
+        if ($duplicates.Count -gt 0) { throw "ZIP contains duplicate entries: $($duplicates[0].Name)" }
+    } finally {
+        if ($archive) { $archive.Dispose() }
+        $zipStream.Dispose()
+    }
+
     [System.IO.Compression.ZipFile]::ExtractToDirectory($zip[0].FullName, $scratch)
     foreach ($requiredPath in @(
         'picoradar_app/current/artisan',
         'picoradar_app/current/vendor/autoload.php',
         'picoradar_app/current/bin/cron.php',
         'picoradar_app/current/deploy/hostinger/setup.php',
+        'picoradar_app/current/deploy/hostinger/routing.htaccess',
         'public_html/picoradar/index.php',
-        'public_html/picoradar/.htaccess',
         'public_html/picoradar/_setup/index.php',
         'package-manifest.json'
     )) {
@@ -47,6 +64,11 @@ try {
     if ($zipTextHits) { throw 'The plaintext installation token is present in the ZIP.' }
 
     $manifest = Get-Content -LiteralPath (Join-Path $scratch 'package-manifest.json') -Raw | ConvertFrom-Json
+    if ($manifest.schemaVersion -ne 1 -or -not $manifest.releaseId -or @($manifest.files).Count -eq 0) {
+        throw 'Manifest contract is missing or empty.'
+    }
+    $manifestDuplicates = @($manifest.files | Group-Object path | Where-Object Count -gt 1)
+    if ($manifestDuplicates.Count -gt 0) { throw "Manifest contains duplicate entries: $($manifestDuplicates[0].Name)" }
     foreach ($entry in $manifest.files) {
         if ([string]$entry.path -match '(^/|^[A-Za-z]:|(^|/)\.\.(/|$))') { throw "Unsafe manifest path: $($entry.path)" }
         $path = Join-Path $scratch ([string]$entry.path)

@@ -9,19 +9,50 @@ use RuntimeException;
 
 class InstallationStateStore
 {
-    public function __construct(private readonly string $path) {}
+    public function __construct(
+        private readonly string $path,
+        private readonly ?string $expectedReleaseId = null,
+    ) {}
 
     public function read(): InstallationState
     {
-        $payload = $this->readPayload($this->path)
-            ?? $this->readPayload($this->backupPath());
+        $primaryExists = is_file($this->path);
+        $backupExists = is_file($this->backupPath());
+        $primaryError = null;
+
+        try {
+            $payload = $this->readPayload($this->path);
+        } catch (RuntimeException $exception) {
+            $primaryError = $exception;
+            $payload = null;
+        }
 
         if ($payload === null) {
+            try {
+                $payload = $this->readPayload($this->backupPath());
+            } catch (RuntimeException $backupError) {
+                throw new RuntimeException(
+                    'The installation state and its backup are invalid.',
+                    0,
+                    $backupError,
+                );
+            }
+        }
+
+        if ($payload === null) {
+            if ($primaryExists || $backupExists) {
+                throw new RuntimeException(
+                    'The installation state cannot be recovered.',
+                    0,
+                    $primaryError,
+                );
+            }
+
             return new InstallationState(InstallationStage::New);
         }
 
         try {
-            return new InstallationState(
+            $state = new InstallationState(
                 InstallationStage::from((string) $payload['stage']),
                 isset($payload['releaseId']) ? (string) $payload['releaseId'] : null,
                 isset($payload['updatedAt'])
@@ -32,6 +63,14 @@ class InstallationStateStore
                     : null,
                 isset($payload['errorCode']) ? (string) $payload['errorCode'] : null,
             );
+
+            if ($this->expectedReleaseId !== null
+                && $state->releaseId !== null
+                && ! hash_equals($this->expectedReleaseId, $state->releaseId)) {
+                throw new RuntimeException('The installation state belongs to another release.');
+            }
+
+            return $state;
         } catch (\Throwable $exception) {
             throw new RuntimeException('The installation state is invalid.', 0, $exception);
         }
@@ -39,9 +78,16 @@ class InstallationStateStore
 
     public function write(InstallationStage $stage, string $releaseId): InstallationState
     {
+        $this->assertReleaseId($releaseId);
         $current = $this->read();
         if ($current->stage === InstallationStage::Completed && $stage !== InstallationStage::Completed) {
             throw new LogicException('A completed installation cannot move backwards.');
+        }
+        $currentStage = $current->stage === InstallationStage::Failed
+            ? ($current->retryStage ?? InstallationStage::New)
+            : $current->stage;
+        if ($stage !== $currentStage && $stage !== $this->nextStage($currentStage)) {
+            throw new LogicException('The installation transition is invalid.');
         }
 
         $state = new InstallationState($stage, $releaseId, new DateTimeImmutable);
@@ -55,6 +101,11 @@ class InstallationStateStore
         string $releaseId,
         string $errorCode,
     ): InstallationState {
+        $this->assertReleaseId($releaseId);
+        $current = $this->read();
+        if ($current->stage === InstallationStage::Completed) {
+            throw new LogicException('A completed installation cannot fail.');
+        }
         if ($retryStage === InstallationStage::Failed || $retryStage === InstallationStage::Completed) {
             throw new LogicException('The retry stage is invalid.');
         }
@@ -143,5 +194,24 @@ class InstallationStateStore
     private function backupPath(): string
     {
         return $this->path.'.bak';
+    }
+
+    private function assertReleaseId(string $releaseId): void
+    {
+        if ($releaseId === ''
+            || ($this->expectedReleaseId !== null && ! hash_equals($this->expectedReleaseId, $releaseId))) {
+            throw new LogicException('The installation release is invalid.');
+        }
+    }
+
+    private function nextStage(InstallationStage $stage): ?InstallationStage
+    {
+        return match ($stage) {
+            InstallationStage::New => InstallationStage::Configured,
+            InstallationStage::Configured => InstallationStage::Migrated,
+            InstallationStage::Migrated => InstallationStage::OperatorCreated,
+            InstallationStage::OperatorCreated => InstallationStage::Completed,
+            InstallationStage::Completed, InstallationStage::Failed => null,
+        };
     }
 }

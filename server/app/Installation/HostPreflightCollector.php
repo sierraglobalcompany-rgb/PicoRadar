@@ -7,6 +7,7 @@ class HostPreflightCollector
     public function __construct(
         private readonly string $privateRoot,
         private readonly string $publicRoot,
+        private readonly array $trustedProxyIps = [],
     ) {}
 
     /** @param array<string, mixed> $server */
@@ -18,7 +19,7 @@ class HostPreflightCollector
         return (new HostPreflight)->evaluate([
             'phpVersion' => PHP_VERSION,
             'extensions' => get_loaded_extensions(),
-            'https' => $this->isHttps($server),
+            'https' => $this->transportIsSecure($server),
             'writablePaths' => [
                 'storage' => is_dir($storage) && is_writable($storage),
                 'bootstrap/cache' => is_dir($cache) && is_writable($cache),
@@ -32,12 +33,15 @@ class HostPreflightCollector
     }
 
     /** @param array<string, mixed> $server */
-    private function isHttps(array $server): bool
+    public function transportIsSecure(array $server): bool
     {
-        $forwarded = strtolower((string) ($server['HTTP_X_FORWARDED_PROTO'] ?? ''));
+        $remoteAddress = (string) ($server['REMOTE_ADDR'] ?? '');
+        $forwarded = strtolower(trim(explode(',', (string) ($server['HTTP_X_FORWARDED_PROTO'] ?? ''))[0]));
+        $trustedForwardedHttps = in_array($remoteAddress, $this->trustedProxyIps, true)
+            && $forwarded === 'https';
 
         return strtolower((string) ($server['HTTPS'] ?? '')) === 'on'
-            || $forwarded === 'https'
+            || $trustedForwardedHttps
             || (int) ($server['SERVER_PORT'] ?? 0) === 443;
     }
 

@@ -35,6 +35,7 @@ class InstallationStateStoreTest extends TestCase
 
         $this->assertSame(InstallationStage::New, $store->read()->stage);
 
+        $store->write(InstallationStage::Configured, 'release-test');
         $store->write(InstallationStage::Migrated, 'release-test');
 
         $state = $store->read();
@@ -47,6 +48,9 @@ class InstallationStateStoreTest extends TestCase
     public function test_completed_installations_cannot_move_backwards(): void
     {
         $store = new InstallationStateStore($this->directory.DIRECTORY_SEPARATOR.'state.json');
+        $store->write(InstallationStage::Configured, 'release-test');
+        $store->write(InstallationStage::Migrated, 'release-test');
+        $store->write(InstallationStage::OperatorCreated, 'release-test');
         $store->write(InstallationStage::Completed, 'release-test');
 
         $this->expectException(\LogicException::class);
@@ -69,5 +73,56 @@ class InstallationStateStoreTest extends TestCase
         $this->assertSame(InstallationStage::Configured, $state->retryStage);
         $this->assertSame('migration_failed', $state->errorCode);
         $this->assertStringNotContainsString('password', file_get_contents($path));
+    }
+
+    public function test_it_recovers_from_a_valid_backup_when_the_primary_state_is_corrupt(): void
+    {
+        $path = $this->directory.DIRECTORY_SEPARATOR.'recovery-state.json';
+        file_put_contents($path, '{');
+        file_put_contents($path.'.bak', json_encode([
+            'stage' => 'migrated',
+            'releaseId' => 'release-test',
+            'updatedAt' => '2026-09-20T00:00:00+00:00',
+            'retryStage' => null,
+            'errorCode' => null,
+        ], JSON_THROW_ON_ERROR));
+
+        $state = (new InstallationStateStore($path, 'release-test'))->read();
+
+        $this->assertSame(InstallationStage::Migrated, $state->stage);
+        $this->assertSame('release-test', $state->releaseId);
+    }
+
+    public function test_fail_cannot_degrade_a_completed_installation(): void
+    {
+        $store = new InstallationStateStore($this->directory.DIRECTORY_SEPARATOR.'completed-state.json');
+        $store->write(InstallationStage::Configured, 'release-test');
+        $store->write(InstallationStage::Migrated, 'release-test');
+        $store->write(InstallationStage::OperatorCreated, 'release-test');
+        $store->write(InstallationStage::Completed, 'release-test');
+
+        $this->expectException(\LogicException::class);
+        $store->fail(InstallationStage::OperatorCreated, 'release-test', 'finalization_failed');
+    }
+
+    public function test_state_from_another_release_is_rejected(): void
+    {
+        $path = $this->directory.DIRECTORY_SEPARATOR.'release-state.json';
+        file_put_contents($path, json_encode([
+            'stage' => 'configured',
+            'releaseId' => 'old-release',
+            'updatedAt' => '2026-09-20T00:00:00+00:00',
+        ], JSON_THROW_ON_ERROR));
+
+        $this->expectException(\RuntimeException::class);
+        (new InstallationStateStore($path, 'current-release'))->read();
+    }
+
+    public function test_it_rejects_skipping_an_installation_stage(): void
+    {
+        $store = new InstallationStateStore($this->directory.DIRECTORY_SEPARATOR.'skip-state.json');
+
+        $this->expectException(\LogicException::class);
+        $store->write(InstallationStage::Migrated, 'release-test');
     }
 }

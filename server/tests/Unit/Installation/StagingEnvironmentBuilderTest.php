@@ -4,6 +4,7 @@ namespace Tests\Unit\Installation;
 
 use App\Installation\DatabaseCredentials;
 use App\Installation\StagingEnvironmentBuilder;
+use Dotenv\Dotenv;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
@@ -77,6 +78,32 @@ class StagingEnvironmentBuilderTest extends TestCase
             } catch (InvalidArgumentException) {
                 $this->addToAssertionCount(1);
             }
+        }
+    }
+
+    public function test_database_password_round_trips_through_the_real_dotenv_parser(): void
+    {
+        $passwords = [
+            'test_${APP_NAME}_tail',
+            'dollar$DB_HOST and # hash',
+            'single\' and "double" quotes',
+            'backslash\\path\\value',
+            ' leading and trailing ',
+            'unicode-ñ-á-车辆',
+            'mixed $ ${DB_HOST} \\ \' " # value',
+        ];
+
+        foreach ($passwords as $password) {
+            $credentials = new DatabaseCredentials('localhost', 3306, 'database', 'user', $password);
+            $environment = (new StagingEnvironmentBuilder)->build(
+                $credentials,
+                'base64:'.base64_encode(str_repeat('a', 32)),
+                'https://picoradar.example.test',
+            );
+
+            $parsed = Dotenv::parse($environment);
+
+            $this->assertSame($password, $parsed['DB_PASSWORD'], 'Password bytes changed after dotenv parsing.');
         }
     }
 }
