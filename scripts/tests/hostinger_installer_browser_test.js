@@ -81,7 +81,9 @@ async function captureEvidence(page, name) {
   fs.mkdirSync(evidenceDirectory, { recursive: true });
   await page.screenshot({
     path: `${evidenceDirectory}/${name}.png`,
-    fullPage: true,
+    fullPage: false,
+    animations: 'disabled',
+    timeout: 15000,
   });
 }
 
@@ -156,7 +158,10 @@ async function unlock(page) {
     await second.getByText('Crear estructura').waitFor();
 
     const stateBeforeContention = fs.readFileSync(statePath);
-    const heldLock = await holdInstallerLock(3);
+    const heldLock = await holdInstallerLock(8);
+    if (heldLock.child.exitCode !== null) {
+      throw new Error('The contention helper exited before the installer request started.');
+    }
     await second.getByRole('button', { name: 'Ejecutar migraciones' }).click();
     await second.getByText('Hay otra operación de instalación en curso.').waitFor();
     const stateAfterContention = fs.readFileSync(statePath);
@@ -173,6 +178,10 @@ async function unlock(page) {
       first.getByRole('button', { name: 'Ejecutar migraciones' }).click(),
       second.getByRole('button', { name: 'Ejecutar migraciones' }).click(),
     ]);
+    const migratedState = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+    if (migratedState.stage !== 'migrated' || migratedState.errorCode !== null) {
+      throw new Error('Concurrent migration requests did not converge on the migrated stage.');
+    }
     await first.getByText('Primer operador').waitFor();
     await second.getByText('Primer operador').waitFor();
 
@@ -188,8 +197,19 @@ async function unlock(page) {
       first.getByRole('button', { name: 'Completar y bloquear instalador' }).click(),
       second.getByRole('button', { name: 'Completar y bloquear instalador' }).click(),
     ]);
-    await first.getByRole('heading', { name: 'Instalación completada', exact: true }).waitFor();
-    await captureEvidence(first, 'installer-completed');
+    let completedPage = null;
+    for (const page of [first, second]) {
+      if (await page.getByRole('heading', { name: 'Instalación completada', exact: true }).isVisible().catch(() => false)) {
+        completedPage = page;
+        break;
+      }
+    }
+    if (!completedPage) throw new Error('Concurrent finalization did not render a completed result.');
+    const completedState = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+    if (completedState.stage !== 'completed' || completedState.errorCode !== null) {
+      throw new Error('Concurrent finalization requests did not converge on the completed stage.');
+    }
+    await captureEvidence(completedPage, 'installer-completed');
 
     const locked = await firstContext.request.get(`${baseUrl}/_setup/`);
     if (locked.status() !== 404) throw new Error('Completed installer remains reusable.');
@@ -210,11 +230,22 @@ async function unlock(page) {
       throw new Error(`Login form action escaped the isolated origin: ${loginAction}`);
     }
     await first.getByRole('button', { name: 'Sign in' }).click();
-    await first.waitForURL(/\/admin/);
+    try {
+      await first.getByText('Operator dashboard').waitFor({ timeout: 15000 });
+      if (!new URL(first.url()).pathname.startsWith('/admin')) {
+        throw new Error(`Unexpected authenticated path: ${first.url()}`);
+      }
+    } catch {
+      const body = (await first.locator('body').innerText()).replace(/\s+/g, ' ').slice(0, 500);
+      throw new Error(`Login did not reach the admin panel. URL=${first.url()} BODY=${body}`);
+    }
     await first.getByText(/PicoRadar/i).first().waitFor();
     await captureEvidence(first, 'admin-panel');
     await first.getByRole('button', { name: 'Log out' }).click();
-    await first.waitForURL(/\/login$/);
+    await first.getByRole('button', { name: 'Sign in' }).waitFor();
+    if (new URL(first.url()).pathname !== '/login') {
+      throw new Error(`Logout did not return to login: ${first.url()}`);
+    }
 
     await secondContext.close();
     await firstContext.close();
@@ -223,6 +254,6 @@ async function unlock(page) {
     await browser.close();
   }
 })().catch((error) => {
-  process.stderr.write(`${error.message}\n`);
+  process.stderr.write(`${error.stack || error.message}\n`);
   process.exit(1);
 });

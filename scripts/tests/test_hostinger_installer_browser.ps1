@@ -157,7 +157,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Browser-driven installer verification failed.' }
 
     $htaccess = Get-Content -LiteralPath (Join-Path $publicRoot '.htaccess') -Raw
-    if ($htaccess -notmatch 'AuthType Basic' -or $htaccess -notmatch '# BEGIN PICORADAR ROUTING') { throw 'Final routing did not preserve the synthetic private barrier.' }
+    if ($htaccess -notmatch 'AuthType Basic') { throw 'The synthetic private barrier was not preserved.' }
+    if ($Scenario -eq 'happy' -and $htaccess -notmatch '# BEGIN PICORADAR ROUTING') {
+        throw 'Final routing was not installed after the successful scenario.'
+    }
     Write-Output "PASS: final ZIP completed browser scenario '$Scenario' behind HTTPS and Basic Auth."
     $succeeded = $true
 } finally {
