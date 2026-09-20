@@ -83,12 +83,16 @@ return new class extends Migration
 
         Schema::create('restriction_publication_items', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('restriction_publication_id')->constrained('restriction_publications')->cascadeOnDelete();
-            $table->foreignId('jurisdiction_id')->constrained()->restrictOnDelete();
-            $table->foreignId('restriction_rule_version_id')->constrained('restriction_rule_versions')->restrictOnDelete();
-            $table->foreignId('previous_rule_version_id')->nullable()->constrained('restriction_rule_versions')->restrictOnDelete();
+            $table->foreignId('restriction_publication_id');
+            $table->foreignId('jurisdiction_id');
+            $table->foreignId('restriction_rule_version_id');
+            $table->foreignId('previous_rule_version_id')->nullable();
             $table->string('action', 16);
             $table->timestamps();
+            $table->foreign('restriction_publication_id', 'rpi_publication_fk')->references('id')->on('restriction_publications')->cascadeOnDelete();
+            $table->foreign('jurisdiction_id', 'rpi_jurisdiction_fk')->references('id')->on('jurisdictions')->restrictOnDelete();
+            $table->foreign('restriction_rule_version_id', 'rpi_rule_version_fk')->references('id')->on('restriction_rule_versions')->restrictOnDelete();
+            $table->foreign('previous_rule_version_id', 'rpi_previous_rule_fk')->references('id')->on('restriction_rule_versions')->restrictOnDelete();
             $table->unique(['restriction_publication_id', 'jurisdiction_id'], 'restriction_publication_items_publication_jurisdiction_unique');
             $table->index(['jurisdiction_id', 'created_at'], 'restriction_publication_items_jurisdiction_created_index');
         });
