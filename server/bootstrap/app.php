@@ -9,7 +9,7 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
-return Application::configure(basePath: dirname(__DIR__))
+$application = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         api: __DIR__.'/../routes/api.php',
         web: __DIR__.'/../routes/web.php',
@@ -58,3 +58,10 @@ return Application::configure(basePath: dirname(__DIR__))
             ], $status);
         });
     })->create();
+
+$publicPath = $_SERVER['PICORADAR_PUBLIC_PATH'] ?? getenv('PICORADAR_PUBLIC_PATH') ?: null;
+if (is_string($publicPath) && $publicPath !== '') {
+    $application->usePublicPath($publicPath);
+}
+
+return $application;

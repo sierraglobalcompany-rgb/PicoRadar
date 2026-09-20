@@ -3,6 +3,8 @@ param(
     [string] $Profile = 'laravel',
     [ValidateSet('sync', 'bounded-cron', 'persistent-worker')]
     [string] $QueueStrategy = 'bounded-cron',
+    [ValidateSet('source', 'prebuilt-package')]
+    [string] $DeploymentStrategy = 'source',
     [string] $FixturePath,
     [string] $TargetHostEvidencePath,
     [switch] $AsJson,
@@ -93,7 +95,8 @@ function Get-LiveCapabilities {
         php = [pscustomobject]@{ available = $phpAvailable; version = $phpVersion; extensions = $extensions }
         composer = [pscustomobject]@{ available = $composerAvailable; version = $composerVersion }
         database = [pscustomobject]@{ mysqlDriverAvailable = $extensions -contains 'pdo_mysql'; connectivity = $null }
-        hosting = [pscustomobject]@{ https = $null; cron = $null; persistentProcesses = $null; writableStorage = $null }
+        hosting = [pscustomobject]@{ https = $null; cron = $null; persistentProcesses = $null; writableStorage = $null; symlink = $null }
+        package = [pscustomobject]@{ integrity = $null; vendorIncluded = $null }
         osrm = [pscustomobject]@{
             dockerAvailable = Test-CommandAvailable 'docker'
             graphPresent = Test-Path (Join-Path $root 'data/local/osrm/colombia-latest.osrm.cell_metrics')
@@ -155,13 +158,24 @@ if ($Profile -eq 'laravel') {
         $phpStatus = 'UNKNOWN'
     } else {
         try {
-            $phpStatus = if ([version] $phpVersion -ge $requirements.minimumPhp) { 'PASS' } else { 'FAIL' }
+            $observedPhp = [version] $phpVersion
+            $phpStatus = if ($observedPhp -ge $requirements.minimumPhp -and $observedPhp -lt [version] '8.6.0') { 'PASS' } else { 'FAIL' }
         } catch {
             $phpStatus = 'FAIL'
         }
     }
     Add-Check 'php-version' $phpStatus "Composer requires $($requirements.phpConstraint); observed $phpVersion"
-    Add-Check 'composer' (Get-BooleanStatus $capabilities.composer.available) ([string] $capabilities.composer.version)
+    if ($DeploymentStrategy -eq 'prebuilt-package') {
+        Add-Check 'composer' 'NOT_APPLICABLE' 'Dependencies are installed on the trusted build machine' $false
+        Add-Check 'package-integrity' (Get-BooleanStatus $capabilities.package.integrity) 'Final package manifest and SHA-256 verification'
+        Add-Check 'package-vendor' (Get-BooleanStatus $capabilities.package.vendorIncluded) 'Production vendor directory included in the package'
+        Add-Check 'hosting-symlink' (Get-BooleanStatus $capabilities.hosting.symlink) 'Required for public storage and v1 links'
+    } else {
+        Add-Check 'composer' (Get-BooleanStatus $capabilities.composer.available) ([string] $capabilities.composer.version)
+        Add-Check 'package-integrity' 'NOT_APPLICABLE' 'Source deployment selected' $false
+        Add-Check 'package-vendor' 'NOT_APPLICABLE' 'Source deployment selected' $false
+        Add-Check 'hosting-symlink' 'NOT_APPLICABLE' 'Validated by the selected source deployment procedure' $false
+    }
 
     $availableExtensions = @($capabilities.php.extensions | ForEach-Object { ([string] $_).ToLowerInvariant() })
     foreach ($extension in $requirements.extensions) {
@@ -212,10 +226,11 @@ $unknowns = @($checksArray | Where-Object { $_.required -and $_.status -eq 'UNKN
 $readiness = if ($failures.Count -gt 0) { 'FAIL' } elseif ($unknowns.Count -gt 0) { 'UNKNOWN' } else { 'PASS' }
 
 $report = [pscustomobject]@{
-    schemaVersion = 2
+    schemaVersion = 3
     mode = 'read-only'
     profile = $Profile
     queueStrategy = if ($Profile -eq 'laravel') { $QueueStrategy } else { $null }
+    deploymentStrategy = if ($Profile -eq 'laravel') { $DeploymentStrategy } else { $null }
     source = $source
     checkedAt = (Get-Date).ToUniversalTime().ToString('o')
     projectRoot = $root

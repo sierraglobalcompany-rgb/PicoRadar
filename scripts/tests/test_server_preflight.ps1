@@ -11,7 +11,8 @@ try {
         php = @{ available = $true; version = '8.3.12'; extensions = @('ctype', 'dom', 'fileinfo', 'filter', 'hash', 'iconv', 'json', 'libxml', 'mbstring', 'openssl', 'pcre', 'phar', 'session', 'tokenizer', 'xml', 'xmlwriter') }
         composer = @{ available = $true; version = '2.8.0' }
         database = @{ mysqlDriverAvailable = $true; connectivity = $true }
-        hosting = @{ https = $true; cron = $true; persistentProcesses = $true; writableStorage = $true }
+        hosting = @{ https = $true; cron = $true; persistentProcesses = $true; writableStorage = $true; symlink = $true }
+        package = @{ integrity = $true; vendorIncluded = $true }
         osrm = @{ dockerAvailable = $true; graphPresent = $true }
     } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $readyFixture -Encoding UTF8
 
@@ -28,12 +29,23 @@ try {
     }
     if ($before -ne $after) { throw 'Default preflight wrote unexpected files.' }
 
+    $prebuilt = (& $script -Profile laravel -DeploymentStrategy prebuilt-package -FixturePath $readyFixture -AsJson) | ConvertFrom-Json
+    if ($prebuilt.readiness -ne 'PASS') { throw 'Ready prebuilt package fixture was rejected.' }
+    if ($prebuilt.deploymentStrategy -ne 'prebuilt-package') { throw 'Prebuilt deployment strategy was not reported.' }
+    if (@($prebuilt.checks | Where-Object id -eq 'composer')[0].status -ne 'NOT_APPLICABLE') {
+        throw 'Composer must not be required on a prebuilt-package target.'
+    }
+    if (@($prebuilt.checks | Where-Object id -eq 'hosting-symlink')[0].status -ne 'PASS') {
+        throw 'Prebuilt packages must require symlink support.'
+    }
+
     $missingFixture = Join-Path $scratch 'missing.json'
     @{
         php = @{ available = $false; version = $null; extensions = @() }
         composer = @{ available = $false; version = $null }
         database = @{ mysqlDriverAvailable = $false; connectivity = $false }
-        hosting = @{ https = $false; cron = $false; persistentProcesses = $false; writableStorage = $false }
+        hosting = @{ https = $false; cron = $false; persistentProcesses = $false; writableStorage = $false; symlink = $false }
+        package = @{ integrity = $false; vendorIncluded = $false }
         osrm = @{ dockerAvailable = $false; graphPresent = $false }
     } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $missingFixture -Encoding UTF8
 
@@ -46,7 +58,8 @@ try {
         php = @{ available = $true; version = '8.3.12'; extensions = @('ctype', 'dom', 'fileinfo', 'filter', 'hash', 'iconv', 'json', 'libxml', 'mbstring', 'openssl', 'pcre', 'phar', 'session', 'tokenizer', 'xml', 'xmlwriter') }
         composer = @{ available = $true; version = '2.8.0' }
         database = @{ mysqlDriverAvailable = $true; connectivity = $null }
-        hosting = @{ https = $null; cron = $null; persistentProcesses = $null; writableStorage = $null }
+        hosting = @{ https = $null; cron = $null; persistentProcesses = $null; writableStorage = $null; symlink = $null }
+        package = @{ integrity = $null; vendorIncluded = $null }
         osrm = @{ dockerAvailable = $null; graphPresent = $null; memoryGb = $null; diskGb = $null; persistentProcess = $null }
     } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $unknownFixture -Encoding UTF8
 
@@ -71,7 +84,8 @@ try {
         php = @{ available = $null; version = $null; extensions = $null }
         composer = @{ available = $null; version = $null }
         database = @{ mysqlDriverAvailable = $null; connectivity = $null }
-        hosting = @{ https = $null; cron = $null; persistentProcesses = $false; writableStorage = $null }
+        hosting = @{ https = $null; cron = $null; persistentProcesses = $false; writableStorage = $null; symlink = $null }
+        package = @{ integrity = $null; vendorIncluded = $null }
         osrm = @{ dockerAvailable = $false; graphPresent = $false; memoryGb = 4; diskGb = 10; persistentProcess = $false }
     } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $missingOsrmFixture -Encoding UTF8
     $missingOsrm = (& $script -Profile osrm -FixturePath $missingOsrmFixture -AsJson) | ConvertFrom-Json

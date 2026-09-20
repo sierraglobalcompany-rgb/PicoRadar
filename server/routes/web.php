@@ -13,9 +13,7 @@ use App\Http\Middleware\EnsureActiveOperator;
 use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::view('/', 'welcome');
 
 Route::middleware(['guest', SecurityHeaders::class])->group(function (): void {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
