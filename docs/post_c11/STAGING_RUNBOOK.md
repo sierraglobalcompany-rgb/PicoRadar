@@ -1,14 +1,35 @@
 # Staging privado: preparacion sin despliegue
 
-## Preflight
+## Preflight Laravel/panel
 
-Ejecutar `scripts/server_preflight.ps1 -AsJson`. El modo predeterminado solo
-lee capacidades: no instala paquetes, no crea `.env`, no migra, no abre puertos
-y no inicia Laravel, DB u OSRM. `-RequireReady` falla si falta un requisito.
+Ejecutar `scripts/server_preflight.ps1 -Profile laravel -AsJson`. El modo
+predeterminado solo lee capacidades: no instala paquetes, no crea `.env`, no
+migra, no abre puertos, no se conecta a la base y no inicia Laravel ni OSRM.
+`-RequireReady` falla tanto ante `FAIL` como ante `UNKNOWN`.
 
-Para pruebas deterministas se admite `-FixturePath` con capacidades sinteticas.
-La prueba `scripts/tests/test_server_preflight.ps1` cubre host listo, host
-incompleto, fallo cerrado y ausencia de archivos nuevos.
+El perfil Laravel usa PHP y extensiones derivadas de `composer.json` y
+`composer.lock`. La presencia de `pdo_mysql` solo demuestra transporte; la
+conectividad de la base es una comprobacion independiente. La estrategia
+inicial es `bounded-cron`: requiere cron, procesa lotes acotados y debe usar
+prevencion de solapamiento; no requiere un daemon persistente. Tambien se puede
+evaluar `sync` o `persistent-worker` de forma explicita.
+
+## Preflight OSRM
+
+Ejecutar `scripts/server_preflight.ps1 -Profile osrm -AsJson`. Este perfil
+evalua por separado runtime, grafo, memoria, almacenamiento y proceso
+persistente. Un Laravel apto no acredita OSRM, ni un OSRM apto acredita Laravel.
+OSRM permanece apagado y sin despliegue en este cierre.
+
+Para pruebas deterministas se admite `-FixturePath` con capacidades sinteticas;
+su procedencia queda marcada como fixture y nunca acredita el host objetivo.
+`-TargetHostEvidencePath` acepta un inventario recogido con las herramientas
+nativas del hosting; Hostinger no necesita PowerShell. Los estados son `PASS`,
+`FAIL`, `UNKNOWN` y `NOT_APPLICABLE`.
+
+La prueba `scripts/tests/test_server_preflight.ps1` cubre dependencias ausentes,
+host desconocido, fixture no productivo, Laravel sin daemon bajo cron acotado,
+OSRM sin recursos, driver sin conectividad y ausencia de escrituras.
 
 ## Primera prueba privada
 
@@ -22,6 +43,15 @@ incompleto, fallo cerrado y ausencia de archivos nuevos.
 6. Importar solo fixtures sinteticos y comprobar `/api/v1/health`.
 7. Mantener partner inquiries, cuentas moviles, viajes externos y OSRM apagados.
 8. Probar backup y restauracion en otra DB aislada antes de admitir PII.
+
+## Recoleccion pendiente del hosting
+
+La siguiente accion autorizada es solicitar o exportar, sin secretos: plan
+exacto, tipo de acceso, version PHP, Composer, extensiones, MariaDB, HTTPS,
+cron, almacenamiento escribible y posibilidad de procesos persistentes. El
+resultado se guarda como JSON fuera de credenciales y se evalua con
+`-TargetHostEvidencePath`. Hasta entonces el host es `UNKNOWN`, no `FAIL` y no
+`PASS`.
 
 ## Logs y rollback
 

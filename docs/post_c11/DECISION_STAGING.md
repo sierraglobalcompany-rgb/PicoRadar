@@ -2,12 +2,14 @@
 
 Fecha de precios: 2026-09-19. No se contrato ni desplego ningun servicio.
 
-## Recomendacion
+## Referencias, no decision automatica
 
-Usar un **Hostinger KVM 2** para el primer staging privado combinado de Laravel,
-MariaDB y, solo en un lote posterior, OSRM. Publica 2 vCPU, 8 GB RAM, 100 GB
-NVMe y 8 TB de transferencia por COP 28.900/mes promocionales; renovacion
-publicada de COP 50.900/mes por dos anos. Incluye backups semanales. Fuente:
+Antes de elegir un plan se inspeccionara el plan que el propietario ya posee.
+**Hostinger KVM 2** queda solo como referencia comparativa para un staging
+privado que eventualmente reuniera Laravel, MariaDB y OSRM. Publica 2 vCPU,
+8 GB RAM, 100 GB NVMe y 8 TB de transferencia por COP 28.900/mes
+promocionales; renovacion publicada de COP 50.900/mes por dos anos. Incluye
+backups semanales. Fuente:
 https://www.hostinger.com/co/vps-servidor-web
 
 El primer ensayo no necesita correo pagado, proveedor de peajes ni mapas de pago:
@@ -39,5 +41,6 @@ PII, partner leads, anuncios, pagos, WhatsApp, DNS productivo ni OSRM publico.
 
 Confirmar el **nombre exacto del plan Hostinger que ya posee** y si ofrece
 VPS/root, SSH, cron, Docker/procesos persistentes, PHP/Composer, MariaDB, dominio
-y HTTPS. Con ese inventario se decide reutilizarlo o contratar KVM 2; no se
-solicitan contrasenas para tomar la decision.
+y HTTPS. Con ese inventario se decide si sirve para Laravel, para OSRM, para
+ambos o para ninguno. No se solicitan contrasenas y la falta de esta respuesta
+no bloquea el cierre de coherencia local.

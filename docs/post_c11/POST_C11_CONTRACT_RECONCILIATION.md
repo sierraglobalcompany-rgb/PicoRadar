@@ -32,10 +32,18 @@ siguen apagados.
 ## Evidencia
 
 `FUENTE_INSPECCIONADA` significa que el codigo y su alcanzabilidad fueron
-revisados. `PRUEBA_AUTOMATIZADA` cubre un contrato ejecutado en fixtures.
-`DISPOSITIVO_REPORTADO_C11` identifica evidencia heredada y no una nueva prueba
-fisica. `SERVICIO_PRODUCTIVO` solo se usara despues de un despliegue real; no
-aplica a esta entrega.
+revisados. `PRUEBA_AUTOMATIZADA` cubre un contrato ejecutado localmente o en
+fixtures. `DISPOSITIVO_HISTORICO_C11` identifica las capturas del carrusel con
+capsula ovalada; son anteriores al cierre visual. `DISPOSITIVO_FINAL_C11`
+identifica las capturas `home-light-controls-*`, donde se ven flechas y puntos
+sin capsula, vehiculo adaptable y SOAT/Tecnomecanica completos. Ninguna captura
+prueba por si sola que el binario y el codigo sean iguales: esa relacion exige
+identidad de build adicional. `SERVICIO_PRODUCTIVO` solo se usara despues de un
+despliegue real; no aplica a esta entrega.
+
+Los hashes y el diff de los cuatro archivos protegidos C11 se registran en el
+handoff de coherencia. Un checkpoint Git local permite recuperar el trabajo en
+este equipo, pero no constituye respaldo remoto.
 
 ## Datos que no se reinterpretan
 

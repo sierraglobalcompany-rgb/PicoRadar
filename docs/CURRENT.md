@@ -9,7 +9,7 @@ no modifica aprobaciones del producto.
 - Raiz: C:/Users/felip/Documents/ChatGPT/PicoRadar_ Pico y Placa.
 - Base efectiva: fix/C11-home-sponsor-carousel en 2e8f2ed, descendiente de
   13190d0 y con las correcciones C11 posteriores conservadas.
-- Rama de preparacion actual: chore/C11-post-server-contracts.
+- Rama de cierre de coherencia actual: chore/C11-post-coherence.
 - Checkpoint de seguridad: codex/checkpoint-before-post-c11-server-modes en
   2e8f2ed.
 - Estado heredado: mejoras del propietario integradas y APK C11 previamente
@@ -119,11 +119,23 @@ produccion mantiene la promocion oculta. No alterar vigencia editorial de datase
   compartida que permanece se conserva porque SOAT/RTM aun la consumen.
 - Registro, Lite, Pro, anuncios reales y WhatsApp continúan desactivados.
 - El servidor dispone de un preflight de solo lectura y una configuracion de
-  staging sin secretos. No hay staging desplegado ni hosting modificado.
+  staging sin secretos. Laravel y OSRM se evalúan con perfiles separados; un
+  resultado local o sintetico no acredita el host objetivo. No hay staging
+  desplegado ni hosting modificado.
 - Contratos y decision de staging: docs/post_c11/.
+- La matriz conserva 189 acciones e identifica por separado acceso Lite,
+  Completo, Pro, administrador y endpoint. Los modos siguen siendo propuesta:
+  ningun gate fue activado.
+- La evidencia C11 distingue capturas historicas con capsula y capturas finales
+  con controles ligeros. Sus hashes y limitaciones estan documentados en
+  docs/post_c11/EVIDENCIA_C11_CLASIFICACION.md.
+- La prueba puntual del callback de mantenimiento reprodujo una lectura de
+  Riverpod despues de desmontar la pantalla y una vista obsoleta al cambiar de
+  vehiculo. El guardado ahora queda serializado, ligado al vehiculo original,
+  informa fallos y refresca el valor persistido sin tocar el schema.
 
 Verificacion de este lote: formato limpio en los archivos Dart modificados,
-analisis limpio, 3234 pruebas moviles pasan y 10 quedan omitidas por condiciones
+analisis limpio, 3238 pruebas moviles pasan y 10 quedan omitidas por condiciones
 de plataforma/simulacion. Las 192 pruebas protegidas de Inicio pasan y los cuatro
 archivos criticos de C11 conservan sus hashes. La suite Laravel termina sin
 fallos al habilitar SQLite y una clave de pruebas solo para el proceso; reporta

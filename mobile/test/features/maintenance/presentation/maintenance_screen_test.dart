@@ -145,6 +145,114 @@ void main() {
       );
     });
 
+    testWidgets('delayed reminder save is ignored after leaving the screen', (
+      tester,
+    ) async {
+      final preferences = _ControlledPreferences();
+      await _pump(tester, database, repository, preferences: preferences);
+
+      await tester.tap(
+        find.byKey(const ValueKey('maintenance-date-reminders-toggle')),
+      );
+      await tester.pump();
+      await tester.pumpWidget(const SizedBox.shrink());
+      preferences.completeSave();
+      await tester.pump();
+
+      expect(preferences.setBoolCalls, 1);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('reminder persistence failure is visible and keeps old value', (
+      tester,
+    ) async {
+      final preferences = _ControlledPreferences(saveError: Exception('boom'));
+      await _pump(tester, database, repository, preferences: preferences);
+
+      await tester.tap(
+        find.byKey(const ValueKey('maintenance-date-reminders-toggle')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('No pudimos cambiar el recordatorio. Intenta de nuevo.'),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<Switch>(
+              find.byKey(const ValueKey('maintenance-date-reminders-toggle')),
+            )
+            .value,
+        isFalse,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('reminder toggle serializes rapid taps', (tester) async {
+      final preferences = _ControlledPreferences();
+      await _pump(tester, database, repository, preferences: preferences);
+      final toggle = find.byKey(
+        const ValueKey('maintenance-date-reminders-toggle'),
+      );
+
+      await tester.tap(toggle);
+      await tester.pump();
+      await tester.tap(toggle);
+      await tester.pump();
+
+      expect(preferences.setBoolCalls, 1);
+      expect(tester.widget<Switch>(toggle).onChanged, isNull);
+
+      preferences.completeSave();
+      await tester.pumpAndSettle();
+      expect(
+        preferences.values['maintenance.notifications.date.vehicle-1'],
+        isTrue,
+      );
+    });
+
+    testWidgets('delayed reminder save stays scoped to its original vehicle', (
+      tester,
+    ) async {
+      await database
+          .into(database.vehicles)
+          .insert(VehiclesCompanion.insert(id: 'vehicle-2', plate: 'XYZ987'));
+      final preferences = _ControlledPreferences();
+      await _pump(tester, database, repository, preferences: preferences);
+      final toggle = find.byKey(
+        const ValueKey('maintenance-date-reminders-toggle'),
+      );
+
+      await tester.tap(toggle);
+      await tester.pump();
+      await tester.tap(
+        find.byKey(const ValueKey('maintenance-vehicle-selector')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('XYZ987').last);
+      await tester.pumpAndSettle();
+
+      preferences.completeSave();
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('maintenance-vehicle-selector')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('ABC123').last);
+      await tester.pumpAndSettle();
+
+      expect(
+        preferences.values['maintenance.notifications.date.vehicle-1'],
+        isTrue,
+      );
+      expect(
+        preferences.values['maintenance.notifications.date.vehicle-2'],
+        isNull,
+      );
+      expect(tester.widget<Switch>(toggle).value, isTrue);
+    });
+
     testWidgets(
       'selects another vehicle without changing the garage favorite',
       (tester) async {
@@ -644,6 +752,31 @@ class _MemoryPreferences implements AppPreferences {
   @override
   Future<void> setString(String key, String value) async {
     values[key] = value;
+  }
+}
+
+class _ControlledPreferences extends _MemoryPreferences {
+  _ControlledPreferences({this.saveError});
+
+  final Object? saveError;
+  final Completer<void> _saveCompleter = Completer<void>();
+  int setBoolCalls = 0;
+
+  void completeSave() {
+    if (!_saveCompleter.isCompleted) {
+      _saveCompleter.complete();
+    }
+  }
+
+  @override
+  Future<void> setBool(String key, bool value) async {
+    setBoolCalls += 1;
+    if (saveError == null) {
+      await _saveCompleter.future;
+      values[key] = value;
+      return;
+    }
+    throw saveError!;
   }
 }
 

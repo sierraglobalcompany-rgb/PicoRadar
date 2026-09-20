@@ -394,15 +394,62 @@ class _MaintenanceHeader extends StatelessWidget {
   }
 }
 
-class _MaintenanceReminderToggle extends ConsumerWidget {
+class _MaintenanceReminderToggle extends ConsumerStatefulWidget {
   const _MaintenanceReminderToggle({required this.vehicleId});
 
   final String vehicleId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_MaintenanceReminderToggle> createState() =>
+      _MaintenanceReminderToggleState();
+}
+
+class _MaintenanceReminderToggleState
+    extends ConsumerState<_MaintenanceReminderToggle> {
+  var _saving = false;
+
+  Future<void> _setEnabled(bool value) async {
+    if (_saving) {
+      return;
+    }
+    setState(() => _saving = true);
+    final vehicleId = widget.vehicleId;
+    final preferences = ref.read(maintenanceNotificationPreferencesProvider);
+    try {
+      await preferences.setEnabled(vehicleId, value);
+      if (!mounted) {
+        return;
+      }
+      final refreshedPreference = ref.refresh(
+        maintenanceDateRemindersEnabledProvider(vehicleId).future,
+      );
+      await refreshedPreference;
+      if (!mounted) {
+        return;
+      }
+      ref.invalidate(maintenanceNotificationSyncProvider);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No pudimos cambiar el recordatorio. Intenta de nuevo.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final enabled = ref.watch(
-      maintenanceDateRemindersEnabledProvider(vehicleId),
+      maintenanceDateRemindersEnabledProvider(widget.vehicleId),
     );
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -440,17 +487,7 @@ class _MaintenanceReminderToggle extends ConsumerWidget {
             Switch(
               key: const ValueKey('maintenance-date-reminders-toggle'),
               value: enabled.value ?? false,
-              onChanged: enabled.isLoading
-                  ? null
-                  : (value) async {
-                      await ref
-                          .read(maintenanceNotificationPreferencesProvider)
-                          .setEnabled(vehicleId, value);
-                      ref.invalidate(
-                        maintenanceDateRemindersEnabledProvider(vehicleId),
-                      );
-                      ref.invalidate(maintenanceNotificationSyncProvider);
-                    },
+              onChanged: enabled.isLoading || _saving ? null : _setEnabled,
             ),
           ],
         ),

@@ -61,8 +61,8 @@ final maintenanceNotificationPreferencesProvider =
       );
     });
 
-final maintenanceDateRemindersEnabledProvider =
-    FutureProvider.family<bool, String>((ref, vehicleId) {
+final maintenanceDateRemindersEnabledProvider = FutureProvider.autoDispose
+    .family<bool, String>((ref, vehicleId) {
       return ref
           .watch(maintenanceNotificationPreferencesProvider)
           .isEnabled(vehicleId);
