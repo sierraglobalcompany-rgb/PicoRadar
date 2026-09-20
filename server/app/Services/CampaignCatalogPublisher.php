@@ -19,16 +19,16 @@ class CampaignCatalogPublisher
 {
     public function __construct(private readonly DatasetAuditLogger $audit) {}
 
-    public function publish(User $actor): CampaignCatalogRelease
+    public function publish(?User $actor): CampaignCatalogRelease
     {
         return $this->withPublicationLock(fn (): CampaignCatalogRelease => $this->publishLocked($actor));
     }
 
-    private function publishLocked(User $actor): CampaignCatalogRelease
+    private function publishLocked(?User $actor): CampaignCatalogRelease
     {
         $disk = Storage::disk(config('campaigns.public_disk'));
         $generatedAt = now();
-        $expiresAt = $generatedAt->copy()->addSeconds(config('campaigns.cache_ttl_seconds'));
+        $expiresAt = $generatedAt->copy()->addSeconds(config('campaigns.catalog_validity_seconds'));
         $version = ((int) CampaignCatalogRelease::query()->max('version')) + 1;
 
         $campaigns = Campaign::query()
@@ -100,7 +100,7 @@ class CampaignCatalogPublisher
                     'campaign_count' => count($entries),
                     'generated_at' => $generatedAt,
                     'expires_at' => $expiresAt,
-                    'published_by_id' => $actor->id,
+                    'published_by_id' => $actor?->id,
                 ]);
                 $this->audit->log($actor, 'campaign_catalog.published', $release, [
                     'version' => $version,

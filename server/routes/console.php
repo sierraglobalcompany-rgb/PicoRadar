@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('partner-inquiries:purge')->dailyAt('02:15')->withoutOverlapping();
+Schedule::command('campaigns:refresh-catalog')->hourly()->withoutOverlapping();

@@ -13,6 +13,8 @@ return [
     'min_image_aspect_ratio' => 2.5,
     'max_image_aspect_ratio' => 5.0,
     'cache_ttl_seconds' => (int) env('CAMPAIGN_CACHE_TTL_SECONDS', 3600),
+    'catalog_validity_seconds' => (int) env('CAMPAIGN_CATALOG_VALIDITY_SECONDS', 172800),
+    'catalog_refresh_before_seconds' => (int) env('CAMPAIGN_CATALOG_REFRESH_BEFORE_SECONDS', 86400),
     'catalog_manifest_path' => 'campaigns/v1/catalog.json',
     'catalog_release_directory' => 'campaigns/v1/releases',
     'publication_lock_name' => 'picoradar:campaign-catalog-publication',

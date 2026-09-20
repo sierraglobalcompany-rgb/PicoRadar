@@ -33,6 +33,8 @@ class CampaignCatalogPublisherTest extends TestCase
             'campaigns.catalog_manifest_path' => 'campaigns/v1/catalog.json',
             'campaigns.catalog_release_directory' => 'campaigns/v1/releases',
             'campaigns.cache_ttl_seconds' => 3600,
+            'campaigns.catalog_validity_seconds' => 172800,
+            'campaigns.catalog_refresh_before_seconds' => 86400,
         ]);
         $this->travelTo('2026-09-20 15:00:00');
     }
@@ -72,6 +74,7 @@ class CampaignCatalogPublisherTest extends TestCase
         $this->assertSame(1, $manifest['version']);
         $this->assertSame($release->sha256, $manifest['sha256']);
         $this->assertSame('https://cdn.picoradar.test/storage/'.$release->asset_path, $manifest['url']);
+        $this->assertSame(now()->addHours(48)->toAtomString(), $manifest['expiresAt']);
 
         $catalogBytes = Storage::disk('public')->get($release->asset_path);
         $this->assertSame($release->sha256, hash('sha256', $catalogBytes));
@@ -138,6 +141,29 @@ class CampaignCatalogPublisherTest extends TestCase
 
         $this->assertSame($lastManifest, Storage::disk('public')->get('campaigns/v1/catalog.json'));
         $this->assertDatabaseCount('campaign_catalog_releases', 1);
+    }
+
+    public function test_scheduled_refresh_only_republishes_catalog_near_expiration(): void
+    {
+        $admin = User::factory()->create(['role' => OperatorRole::Admin]);
+        $sponsor = $this->sponsor('Aliado vigente', SponsorStatus::Active);
+        $this->campaign($sponsor, 'renewed', 10, ['ends_at' => now()->addDays(5)]);
+        app(CampaignCatalogPublisher::class)->publish($admin);
+
+        $this->artisan('campaigns:refresh-catalog')
+            ->expectsOutputToContain('SKIPPED_FRESH')
+            ->assertSuccessful();
+        $this->assertDatabaseCount('campaign_catalog_releases', 1);
+
+        $this->travel(25)->hours();
+        $this->artisan('campaigns:refresh-catalog')
+            ->expectsOutputToContain('PUBLISHED 2')
+            ->assertSuccessful();
+        $this->assertDatabaseCount('campaign_catalog_releases', 2);
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_id' => null,
+            'action' => 'campaign_catalog.published',
+        ]);
     }
 
     private function sponsor(string $name, SponsorStatus $status): Sponsor
