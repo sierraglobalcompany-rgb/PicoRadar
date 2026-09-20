@@ -93,7 +93,7 @@ async function unlock(page) {
     await first.getByRole('button', { name: 'Crear operador' }).click();
     await first.getByText('Preparación final').waitFor();
     await first.getByRole('button', { name: 'Completar y bloquear instalador' }).click();
-    await first.getByText('Instalación completada').waitFor();
+    await first.getByRole('heading', { name: 'Instalación completada', exact: true }).waitFor();
 
     const locked = await firstContext.request.get(`${baseUrl}/_setup/`);
     if (locked.status() !== 404) throw new Error('Completed installer remains reusable.');
@@ -107,10 +107,10 @@ async function unlock(page) {
     }
 
     await first.goto(`${baseUrl}/login`);
-    await first.getByLabel('Correo').fill(operator.email);
-    await first.getByLabel('Contraseña').fill(operator.password);
+    await first.getByLabel('Email').fill(operator.email);
+    await first.getByLabel('Password').fill(operator.password);
     await first.locator('form').evaluate((form) => form.setAttribute('action', '/login'));
-    await first.getByRole('button', { name: /Ingresar|Iniciar/ }).click();
+    await first.getByRole('button', { name: 'Sign in' }).click();
     await first.waitForURL(/\/admin/);
     await first.getByText(/PicoRadar/i).first().waitFor();
 

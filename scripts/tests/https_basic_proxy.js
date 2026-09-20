@@ -22,7 +22,7 @@ const server = https.createServer({
     return;
   }
 
-  const headers = { ...request.headers, host: `127.0.0.1:${backendPort}` };
+  const headers = { ...request.headers };
   const upstream = http.request({
     hostname: '127.0.0.1',
     port: Number(backendPort),
@@ -30,7 +30,18 @@ const server = https.createServer({
     method: request.method,
     headers,
   }, (upstreamResponse) => {
-    response.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers);
+    const responseHeaders = { ...upstreamResponse.headers };
+    if (responseHeaders.location) {
+      try {
+        const location = new URL(responseHeaders.location);
+        if (location.hostname === 'picoradar.bodegadigitalmedellin.com') {
+          responseHeaders.location = `https://127.0.0.1:${httpsPort}${location.pathname}${location.search}${location.hash}`;
+        }
+      } catch {
+        // Relative redirects already remain inside the local fixture.
+      }
+    }
+    response.writeHead(upstreamResponse.statusCode ?? 502, responseHeaders);
     upstreamResponse.pipe(response);
   });
   upstream.on('error', () => {
