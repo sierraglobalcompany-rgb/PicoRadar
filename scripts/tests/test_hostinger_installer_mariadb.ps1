@@ -140,9 +140,14 @@ FLUSH PRIVILEGES;
 
         $cronLock = Join-Path $privateRoot 'storage/framework/picoradar-cron.lock'
         $lockReady = Join-Path $scratch 'cron-lock.ready'
-        $lockHolder = Start-Process -FilePath $PhpPath `
-            -ArgumentList (Join-Path $root 'scripts/tests/hold_file_lock.php'), $cronLock, $lockReady, '3' `
-            -WindowStyle Hidden -PassThru
+        $lockInfo = [System.Diagnostics.ProcessStartInfo]::new($PhpPath)
+        $lockInfo.UseShellExecute = $false
+        $lockInfo.CreateNoWindow = $true
+        $lockInfo.ArgumentList.Add((Join-Path $root 'scripts/tests/hold_file_lock.php'))
+        $lockInfo.ArgumentList.Add($cronLock)
+        $lockInfo.ArgumentList.Add($lockReady)
+        $lockInfo.ArgumentList.Add('3')
+        $lockHolder = [System.Diagnostics.Process]::Start($lockInfo)
         for ($attempt = 0; $attempt -lt 40 -and -not (Test-Path -LiteralPath $lockReady); $attempt++) {
             Start-Sleep -Milliseconds 100
         }

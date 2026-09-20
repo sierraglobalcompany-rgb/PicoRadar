@@ -225,6 +225,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'unloc
             $_SESSION['db_probe'] = (new DatabaseProbeReceipt((string) $config['tokenHash']))
                 ->issue($credentials);
             $_SESSION['message'] = 'Conexión, base vacía y permisos comprobados. Vuelve a escribir la contraseña para guardar.';
+        } elseif (in_array($action, ['probe_database', 'configure'], true)
+            && $effectiveStage !== InstallationStage::New) {
+            $_SESSION['message'] = 'La configuración privada ya fue completada.';
         } elseif ($action === 'configure' && $effectiveStage === InstallationStage::New) {
             $credentials = new DatabaseCredentials(
                 (string) $databaseFields['host'],
@@ -274,6 +277,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'unloc
             (new LaravelInstallationRunner($privateRoot, $publicRoot))->migrate();
             $stateStore->write(InstallationStage::Migrated, $releaseId);
             $_SESSION['message'] = 'Migraciones completadas.';
+        } elseif ($action === 'migrate' && in_array($effectiveStage, [
+            InstallationStage::Migrated,
+            InstallationStage::OperatorCreated,
+            InstallationStage::Completed,
+        ], true)) {
+            $_SESSION['message'] = 'Las migraciones ya fueron completadas.';
         } elseif ($action === 'operator' && $effectiveStage === InstallationStage::Migrated) {
             $runner = new LaravelInstallationRunner($privateRoot, $publicRoot);
             if (! $runner->initialOperatorMatches((string) $operatorFields['email'])) {
@@ -287,6 +296,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'unloc
             $stateStore->write(InstallationStage::OperatorCreated, $releaseId);
             unset($_SESSION['operator_fields']);
             $_SESSION['message'] = 'Primer operador creado.';
+        } elseif ($action === 'operator' && in_array($effectiveStage, [
+            InstallationStage::OperatorCreated,
+            InstallationStage::Completed,
+        ], true)) {
+            $_SESSION['message'] = 'El primer operador ya fue creado.';
         } elseif ($action === 'finalize' && in_array($effectiveStage, [InstallationStage::OperatorCreated, InstallationStage::Completed], true)) {
             (new LaravelInstallationRunner($privateRoot, $publicRoot))->prepareApplication();
             $stateStore->write(InstallationStage::Completed, $releaseId);
@@ -341,6 +355,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'unloc
             'database_privileges_insufficient',
             'database_connection_failed',
             'database_probe_expired',
+            'invalid_action',
         ], true)) {
             $retryStage = $code === 'migration_failed'
                 ? InstallationStage::New
