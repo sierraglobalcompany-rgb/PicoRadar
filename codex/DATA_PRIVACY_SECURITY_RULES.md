@@ -12,6 +12,15 @@
 - GPS samples;
 - camera matching state.
 
+## Map network boundary
+- PicoRadar does not send a continuous GPS stream to its application backend.
+- Loading remote map tiles still exposes the requested map area, request time,
+  IP address and ordinary transport metadata to the configured tile provider.
+- A map view must keep visible attribution and must not be described as fully
+  offline or private merely because matching is performed locally.
+- Exported diagnostics must not include exact GPS, plates, documents or case
+  contents.
+
 ## Private documents
 - AES-256-GCM;
 - master key in secure storage;

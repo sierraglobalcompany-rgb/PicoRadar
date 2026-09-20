@@ -7,10 +7,14 @@ no modifica aprobaciones del producto.
 
 ## Base de trabajo unica
 - Raiz: C:/Users/felip/Documents/ChatGPT/PicoRadar_ Pico y Placa.
-- Rama local: fix/C11-home-sponsor-carousel; base 13190d0.
-- Checkpoint de implementacion: be61d43.
-- Estado: mejoras del propietario integradas, gates automaticos aprobados y APK
-  nueva instalada. Aceptacion fisica documental en curso; sin merge ni publicacion.
+- Base efectiva: fix/C11-home-sponsor-carousel en 2e8f2ed, descendiente de
+  13190d0 y con las correcciones C11 posteriores conservadas.
+- Rama de preparacion actual: chore/C11-post-server-contracts.
+- Checkpoint de seguridad: codex/checkpoint-before-post-c11-server-modes en
+  2e8f2ed.
+- Estado heredado: mejoras del propietario integradas y APK C11 previamente
+  instalada. Este lote no instala otra APK ni modifica datos del telefono;
+  permanece sin merge ni publicacion.
 - No trabajar en temp/VIAJE-R1-real-planner ni en B03/B04.
 - Checkpoints y recuperacion: docs/WORKSPACE_CONSOLIDATION.md.
 - GSD: .planning/.continue-here.md y .planning/HANDOFF.json.
@@ -34,6 +38,8 @@ No continuar la limpieza durante este lote.
 - Apps/Mas: se conserva el origen al volver. Talleres incorpora selector de
   vehiculo, proximos/vencidos, historial, costos, busqueda GPS/ciudad y
   recordatorios honestos por fecha o kilometraje actualizado.
+  Los avisos por fecha ahora requieren opt-in explicito por vehiculo, quedan
+  desactivados por defecto y no muestran placa ni detalle privado en bloqueo.
 - Inicio: carrusel manual superior de cuatro campanas locales, borde a borde en
   telefonos y sin mostrar la lamina siguiente. La navegacion vive dentro de la
   imagen mediante flechas transparentes en las esquinas y cuatro circulos, sin
@@ -72,8 +78,9 @@ ni activar cambios pendientes de otras ramas como parte de la limpieza.
 - Conducir: .planning/CONDUCIR_OWNER_CONSOLIDATED.md y
   artifacts/current/driving/INFORME_OWNER_CONSOLIDADO.md. El ultimo perfil
   documentado no alcanzo el objetivo de 95%; no cerrado por esta limpieza.
-- Viaje: piloto OSRM local detenido. Entradas en data/local/osrm y procedencia
-  en data/sources/osrm/source.json. No cambiar contratos de proveedor.
+- Viaje: piloto OSRM local detenido. La procedencia permanece en
+  data/sources/osrm/source.json, pero el grafo pesado ignorado no esta presente
+  en los worktrees comprobados. No descargarlo ni reconstruirlo por rutina.
 
 ## Pendientes en reposo
 - Completar en Mi A3 el ciclo fisico frente/reverso con tarjeta ficticia,
@@ -105,9 +112,23 @@ por alcance. No se cierran escaneo, autenticacion ni alarmas por pruebas unitari
 La APK dev nueva debe incluir APP_ENV=dev para mostrar Seguro demostrativo;
 produccion mantiene la promocion oculta. No alterar vigencia editorial de datasets.
 
-Verificacion final de la integracion: formato limpio (381 archivos), analisis
-limpio, 3238 pruebas moviles pasan y 10 quedan omitidas por condiciones de
-plataforma/simulacion. Las pruebas Android nativas pasan (224 tareas Gradle).
+## Preparacion posterior a C11
+- C11 permanece protegido: no se modificaron sus carruseles de patrocinador o
+  vehiculo ni sus pruebas visuales.
+- El slot comercial inferior anterior no existe en Inicio. La configuracion
+  compartida que permanece se conserva porque SOAT/RTM aun la consumen.
+- Registro, Lite, Pro, anuncios reales y WhatsApp continúan desactivados.
+- El servidor dispone de un preflight de solo lectura y una configuracion de
+  staging sin secretos. No hay staging desplegado ni hosting modificado.
+- Contratos y decision de staging: docs/post_c11/.
+
+Verificacion de este lote: formato limpio en los archivos Dart modificados,
+analisis limpio, 3234 pruebas moviles pasan y 10 quedan omitidas por condiciones
+de plataforma/simulacion. Las 192 pruebas protegidas de Inicio pasan y los cuatro
+archivos criticos de C11 conservan sus hashes. La suite Laravel termina sin
+fallos al habilitar SQLite y una clave de pruebas solo para el proceso; reporta
+166 pruebas aprobadas, 2373 aserciones y 337 advertencias del entorno. El APK dev
+compila, pero no se instala ni se publica.
 Servidor: 503 pruebas y 2373 assertions pasan con SQLite habilitado solo para el
 proceso. El validador nacional pasa. Los 87 fallos historicos no se reproducen.
 Handoff principal: codex/OWNER_IMPROVEMENTS_INTEGRATION_HANDOFF.md.
