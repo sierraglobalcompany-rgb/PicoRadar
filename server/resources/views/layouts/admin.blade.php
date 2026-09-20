@@ -9,7 +9,7 @@
 <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
     <header class="border-b border-slate-200 bg-white">
         <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-4">
-            <a class="font-semibold tracking-tight text-slate-900" href="{{ route('admin.dashboard') }}">PicoRadar <span class="font-normal text-slate-500">Control Plane</span></a>
+            <a class="font-semibold tracking-tight text-slate-900" href="{{ route('admin.dashboard') }}" aria-label="PicoRadar Control Plane">PicoRadar <span class="font-normal text-slate-500">Control Plane</span></a>
             <nav class="hidden items-center gap-3 text-sm md:flex" aria-label="Administración">
                 <a class="font-medium text-slate-700 hover:text-slate-950" href="{{ route('admin.dashboard') }}">Resumen</a>
                 @can('datasets.view')<a class="font-medium text-slate-700 hover:text-slate-950" href="{{ route('admin.datasets.index') }}">Datos</a>@endcan
