@@ -18,8 +18,10 @@ import '../../location/application/location_controller.dart';
 import '../../location/data/location_preferences.dart';
 import '../../location/domain/jurisdiction_location_resolver.dart';
 import '../../location/platform/device_location_gateway.dart';
+import '../data/home_partner_catalog.dart';
 import 'home_partner_carousel.dart';
 import 'pico_notification_sheet.dart';
+import '../../pico_placa/data/pico_jurisdiction_catalog.dart';
 import '../../pico_placa/data/pico_preferences.dart';
 import '../../pico_placa/data/restriction_store.dart';
 import '../../pico_placa/domain/restriction_day_evaluation.dart';
@@ -40,6 +42,28 @@ const _defaultHomeAlertPreferences = PicoAlertPreferences(
   permissionRequested: false,
   permissionGranted: false,
 );
+
+CampaignTerritoryContext _campaignTerritory(
+  String? jurisdictionId,
+  List<PicoJurisdictionCatalogEntry> records,
+) {
+  if (jurisdictionId == null) return const CampaignTerritoryContext();
+  for (final entry in records) {
+    if (entry.engineJurisdictionId != jurisdictionId &&
+        entry.id != jurisdictionId) {
+      continue;
+    }
+    final municipalityCode = entry.municipalityCode;
+    return CampaignTerritoryContext(
+      departmentCode: municipalityCode.length >= 2
+          ? municipalityCode.substring(0, 2)
+          : null,
+      municipalityCode: municipalityCode,
+      municipalityKey: jurisdictionId,
+    );
+  }
+  return CampaignTerritoryContext(municipalityKey: jurisdictionId);
+}
 
 final homeFocusedVehicleIdProvider =
     NotifierProvider<HomeFocusedVehicleNotifier, String?>(
@@ -615,6 +639,20 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
   @override
   Widget build(BuildContext context) {
     final focused = widget.snapshots[_focusedIndex];
+    final campaignTerritory = ref
+        .watch(picoJurisdictionCatalogProvider)
+        .when(
+          data: (catalog) => _campaignTerritory(
+            widget.selectedJurisdiction?.id,
+            catalog.records,
+          ),
+          loading: () => CampaignTerritoryContext(
+            municipalityKey: widget.selectedJurisdiction?.id,
+          ),
+          error: (error, stackTrace) => CampaignTerritoryContext(
+            municipalityKey: widget.selectedJurisdiction?.id,
+          ),
+        );
     return LayoutBuilder(
       builder: (context, constraints) {
         final horizontalPadding = constraints.maxWidth < 380
@@ -670,7 +708,7 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
                             ),
                           ),
                           const SizedBox(height: AppSpacing.xs),
-                          const HomePartnerCarousel(),
+                          HomePartnerCarousel(territory: campaignTerritory),
                           const SizedBox(height: AppSpacing.xs),
                         ],
                       ),

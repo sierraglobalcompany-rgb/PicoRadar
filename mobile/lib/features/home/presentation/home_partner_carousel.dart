@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/link.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/theme/app_tokens.dart';
+import '../application/home_partner_catalog_provider.dart';
+import '../data/home_partner_catalog.dart';
 import '../data/partner_inquiry_client.dart';
 import '../data/partner_inquiry_config.dart';
 
 class HomePartnerCarousel extends ConsumerStatefulWidget {
-  const HomePartnerCarousel({super.key});
+  const HomePartnerCarousel({
+    this.territory = const CampaignTerritoryContext(),
+    super.key,
+  });
+
+  final CampaignTerritoryContext territory;
 
   @override
   ConsumerState<HomePartnerCarousel> createState() =>
@@ -32,6 +40,23 @@ class _HomePartnerCarouselState extends ConsumerState<HomePartnerCarousel> {
 
   @override
   Widget build(BuildContext context) {
+    final campaigns = ref
+        .watch(homePartnerCampaignsProvider(widget.territory))
+        .when(
+          skipLoadingOnRefresh: true,
+          skipLoadingOnReload: true,
+          data: (value) => value,
+          loading: () => fallbackHomePartnerCampaigns,
+          error: (error, stackTrace) => fallbackHomePartnerCampaigns,
+        );
+    final resolvedCampaigns = campaigns.isEmpty
+        ? fallbackHomePartnerCampaigns
+        : campaigns;
+    final slides = [
+      for (final campaign in resolvedCampaigns) _PartnerSlide.from(campaign),
+    ];
+    final visibleIndex = _index.clamp(0, slides.length - 1);
+    _restoreValidPage(visibleIndex);
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableWidth = constraints.maxWidth.isFinite
@@ -40,10 +65,10 @@ class _HomePartnerCarouselState extends ConsumerState<HomePartnerCarousel> {
         final textWidth = (availableWidth - (AppSpacing.m * 2))
             .clamp(120.0, 328.0)
             .toDouble();
-        final height = _requiredCardHeight(context, textWidth);
+        final height = _requiredCardHeight(context, textWidth, slides);
         return Semantics(
           container: true,
-          label: 'Campaña ${_index + 1} de ${_slides.length}',
+          label: 'Campaña ${visibleIndex + 1} de ${slides.length}',
           hint: 'Desliza horizontalmente para ver otras campañas.',
           child: SizedBox(
             key: const ValueKey('home-partner-carousel'),
@@ -56,10 +81,10 @@ class _HomePartnerCarouselState extends ConsumerState<HomePartnerCarousel> {
                   child: PageView.builder(
                     key: const ValueKey('home-partner-page-view'),
                     controller: _controller,
-                    itemCount: _slides.length,
+                    itemCount: slides.length,
                     onPageChanged: (value) => setState(() => _index = value),
                     itemBuilder: (context, index) {
-                      final slide = _slides[index];
+                      final slide = slides[index];
                       return _PartnerSlideCard(
                         slide: slide,
                         onTap: () => _openSlide(context, slide),
@@ -69,14 +94,14 @@ class _HomePartnerCarouselState extends ConsumerState<HomePartnerCarousel> {
                 ),
                 Positioned.fill(
                   child: _CarouselControls(
-                    index: _index,
-                    count: _slides.length,
-                    onPrevious: _index == 0
+                    index: visibleIndex,
+                    count: slides.length,
+                    onPrevious: visibleIndex == 0
                         ? null
-                        : () => _showPage(_index - 1),
-                    onNext: _index == _slides.length - 1
+                        : () => _showPage(visibleIndex - 1),
+                    onNext: visibleIndex == slides.length - 1
                         ? null
-                        : () => _showPage(_index + 1),
+                        : () => _showPage(visibleIndex + 1),
                   ),
                 ),
               ],
@@ -85,6 +110,16 @@ class _HomePartnerCarouselState extends ConsumerState<HomePartnerCarousel> {
         );
       },
     );
+  }
+
+  void _restoreValidPage(int visibleIndex) {
+    if (visibleIndex == _index) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || visibleIndex == _index) return;
+      _index = visibleIndex;
+      if (_controller.hasClients) _controller.jumpToPage(visibleIndex);
+      setState(() {});
+    });
   }
 
   void _showPage(int page) {
@@ -99,13 +134,17 @@ class _HomePartnerCarouselState extends ConsumerState<HomePartnerCarousel> {
     );
   }
 
-  double _requiredCardHeight(BuildContext context, double textWidth) {
+  double _requiredCardHeight(
+    BuildContext context,
+    double textWidth,
+    List<_PartnerSlide> slides,
+  ) {
     final defaultStyle = DefaultTextStyle.of(context).style;
     final caption = defaultStyle.merge(AppTextStyles.caption);
     final captionStrong = caption.copyWith(fontWeight: FontWeight.w800);
     final heading = defaultStyle.merge(AppTextStyles.h2);
     var tallest = 0.0;
-    for (final slide in _slides) {
+    for (final slide in slides) {
       final contentHeight =
           _textHeight(context, slide.eyebrow, captionStrong, textWidth) +
           4 +
@@ -141,7 +180,31 @@ class _HomePartnerCarouselState extends ConsumerState<HomePartnerCarousel> {
   }
 
   Future<void> _openSlide(BuildContext context, _PartnerSlide slide) async {
-    if (slide.id != 'recruitment') {
+    if (slide.targetUrl != null) {
+      var opened = false;
+      final target = slide.targetUrl!;
+      if (target.scheme == 'https' &&
+          target.host.isNotEmpty &&
+          target.userInfo.isEmpty) {
+        try {
+          opened = await launchUrl(
+            target,
+            mode: LaunchMode.externalApplication,
+          );
+        } catch (_) {
+          opened = false;
+        }
+      }
+      if (!opened && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No pudimos abrir el enlace del aliado.'),
+          ),
+        );
+      }
+      return;
+    }
+    if (!slide.isRecruitment) {
       await showModalBottomSheet<void>(
         context: context,
         useSafeArea: true,
@@ -312,25 +375,7 @@ class _PartnerSlideCard extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.asset(
-                slide.asset,
-                fit: BoxFit.cover,
-                alignment: Alignment.centerRight,
-                errorBuilder: (context, error, stackTrace) => ColoredBox(
-                  color: slide.fallbackColor,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSpacing.l),
-                      child: Icon(
-                        slide.icon,
-                        size: 64,
-                        color: Colors.white.withValues(alpha: 0.3),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+              _PartnerSlideImage(slide: slide),
               const DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -807,9 +852,12 @@ class _PartnerSlide {
     required this.subtitle,
     required this.cta,
     required this.explanation,
-    required this.asset,
+    required this.isRecruitment,
     required this.icon,
     required this.fallbackColor,
+    this.asset,
+    this.imageUrl,
+    this.targetUrl,
   });
 
   final String id;
@@ -818,54 +866,88 @@ class _PartnerSlide {
   final String subtitle;
   final String cta;
   final String explanation;
-  final String asset;
+  final bool isRecruitment;
+  final String? asset;
+  final Uri? imageUrl;
+  final Uri? targetUrl;
   final IconData icon;
   final Color fallbackColor;
+
+  factory _PartnerSlide.from(HomePartnerCampaign campaign) {
+    final visual = switch (campaign.id) {
+      'automotor' => (
+        icon: Icons.directions_car_filled_outlined,
+        color: const Color(0xFF2D5C78),
+      ),
+      'insurance' => (
+        icon: Icons.shield_outlined,
+        color: const Color(0xFF176A63),
+      ),
+      'appraisal' => (
+        icon: Icons.fact_check_outlined,
+        color: const Color(0xFF705633),
+      ),
+      'recruitment' => (
+        icon: Icons.handshake_outlined,
+        color: const Color(0xFF4E3F72),
+      ),
+      _ => (icon: Icons.campaign_outlined, color: const Color(0xFF2D5C78)),
+    };
+    return _PartnerSlide(
+      id: campaign.id,
+      eyebrow: campaign.eyebrow,
+      title: campaign.title,
+      subtitle: campaign.subtitle,
+      cta: campaign.ctaText,
+      explanation: campaign.explanation,
+      isRecruitment: campaign.isLocalFallback && campaign.id == 'recruitment',
+      asset: campaign.assetPath,
+      imageUrl: campaign.imageUrl,
+      targetUrl: campaign.targetUrl,
+      icon: visual.icon,
+      fallbackColor: visual.color,
+    );
+  }
 }
 
-const _slides = [
-  _PartnerSlide(
-    id: 'automotor',
-    eyebrow: 'DEMO LOCAL',
-    title: 'Automotor de demostración',
-    subtitle: 'Conoce cómo podría funcionar una experiencia de compra y venta.',
-    cta: 'Ver explicación',
-    explanation: 'Esta vista explica una futura experiencia con aliados automotores. No ofrece inventario, valoración ni contacto comercial real.',
-    asset: 'assets/home/partners/campaign_automotor.png',
-    icon: Icons.directions_car_filled_outlined,
-    fallbackColor: Color(0xFF2D5C78),
-  ),
-  _PartnerSlide(
-    id: 'insurance',
-    eyebrow: 'DEMO LOCAL',
-    title: 'Seguro de demostración',
-    subtitle: 'Una vista informativa sin cotización ni envío de datos.',
-    cta: 'Ver explicación',
-    explanation: 'Esta demostración describe un posible acceso a seguros. No cotiza, no compara pólizas y no transmite información personal.',
-    asset: 'assets/home/partners/campaign_insurance.png',
-    icon: Icons.shield_outlined,
-    fallbackColor: Color(0xFF176A63),
-  ),
-  _PartnerSlide(
-    id: 'appraisal',
-    eyebrow: 'DEMO LOCAL',
-    title: 'Peritaje de demostración',
-    subtitle: 'Explora el concepto antes de integrar centros reales.',
-    cta: 'Ver explicación',
-    explanation: 'Esta explicación muestra el alcance previsto para peritajes. No agenda citas, no emite diagnósticos y no comparte datos.',
-    asset: 'assets/home/partners/campaign_appraisal.png',
-    icon: Icons.fact_check_outlined,
-    fallbackColor: Color(0xFF705633),
-  ),
-  _PartnerSlide(
-    id: 'recruitment',
-    eyebrow: 'PROGRAMA DE ALIADOS',
-    title: 'Haz crecer tu negocio con PicoRadar',
-    subtitle: 'Cuéntanos qué servicio prestas y revisaremos tu solicitud.',
-    cta: 'Quiero ser aliado',
-    explanation: '',
-    asset: 'assets/home/partners/campaign_partners.png',
-    icon: Icons.handshake_outlined,
-    fallbackColor: Color(0xFF4E3F72),
-  ),
-];
+class _PartnerSlideImage extends StatelessWidget {
+  const _PartnerSlideImage({required this.slide});
+
+  final _PartnerSlide slide;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = ColoredBox(
+      color: slide.fallbackColor,
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.l),
+          child: Icon(
+            slide.icon,
+            size: 64,
+            color: Colors.white.withValues(alpha: 0.3),
+          ),
+        ),
+      ),
+    );
+    if (slide.imageUrl != null) {
+      return Image.network(
+        slide.imageUrl.toString(),
+        key: ValueKey('home-partner-image-${slide.id}'),
+        fit: BoxFit.cover,
+        alignment: Alignment.centerRight,
+        errorBuilder: (context, error, stackTrace) => fallback,
+      );
+    }
+    if (slide.asset != null) {
+      return Image.asset(
+        slide.asset!,
+        fit: BoxFit.cover,
+        alignment: Alignment.centerRight,
+        errorBuilder: (context, error, stackTrace) => fallback,
+      );
+    }
+    return fallback;
+  }
+}

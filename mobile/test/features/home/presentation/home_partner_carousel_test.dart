@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:picoradar/features/home/application/home_partner_catalog_provider.dart';
+import 'package:picoradar/features/home/data/home_partner_catalog.dart';
 import 'package:picoradar/features/home/data/partner_inquiry_client.dart';
 import 'package:picoradar/features/home/data/partner_inquiry_config.dart';
 import 'package:picoradar/features/home/presentation/home_partner_carousel.dart';
@@ -30,6 +32,65 @@ void main() {
 
     expect(find.text('Automotor de demostración'), findsOneWidget);
     expect(find.text('1 de 4'), findsNothing);
+  });
+
+  testWidgets('provider campaigns reuse finite C11 geometry and controls', (
+    tester,
+  ) async {
+    final campaigns = [
+      HomePartnerCampaign(
+        id: 'remote-first',
+        sponsorId: 'sp_one',
+        eyebrow: 'PATROCINADO',
+        title: 'Campaña remota uno',
+        subtitle: 'Contenido remoto versionado.',
+        ctaText: 'Conocer más',
+        imageUrl: Uri.parse('https://cdn.picoradar.test/campaign-one.png'),
+        targetUrl: Uri.parse('https://example.test/one'),
+        priority: 1,
+      ),
+      HomePartnerCampaign(
+        id: 'remote-second',
+        sponsorId: 'sp_two',
+        eyebrow: 'PATROCINADO',
+        title: 'Campaña remota dos',
+        subtitle: 'Segunda campaña sin rotación automática.',
+        ctaText: 'Ver aliado',
+        imageUrl: Uri.parse('https://cdn.picoradar.test/campaign-two.png'),
+        targetUrl: Uri.parse('https://example.test/two'),
+        priority: 2,
+      ),
+    ];
+    await _pumpCarousel(tester, campaigns: campaigns);
+
+    expect(find.text('Campaña remota uno'), findsOneWidget);
+    expect(find.text('Automotor de demostración'), findsNothing);
+    final carousel = find.byKey(const ValueKey('home-partner-carousel'));
+    final controls = find.byKey(
+      const ValueKey('home-partner-carousel-controls'),
+    );
+    expect(tester.getSize(controls), tester.getSize(carousel));
+    expect(
+      tester
+          .widget<PageView>(
+            find.byKey(const ValueKey('home-partner-page-view')),
+          )
+          .controller!
+          .viewportFraction,
+      1,
+    );
+
+    await tester.pump(const Duration(seconds: 20));
+    expect(find.text('Campaña remota uno'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('home-partner-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('Campaña remota dos'), findsOneWidget);
+    expect(
+      tester
+          .widget<IconButton>(find.byKey(const ValueKey('home-partner-next')))
+          .onPressed,
+      isNull,
+    );
   });
 
   testWidgets('overlay arrows move finitely and expose accessible labels', (
@@ -270,12 +331,17 @@ void main() {
 Future<void> _pumpCarousel(
   WidgetTester tester, {
   _RecordingPartnerInquiryClient? client,
+  List<HomePartnerCampaign>? campaigns,
   bool ready = false,
   bool disableAnimations = false,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        if (campaigns != null)
+          homePartnerCampaignsProvider.overrideWith(
+            (ref, territory) async => campaigns,
+          ),
         partnerInquiryConfigProvider.overrideWithValue(
           ready ? _readyConfig : const PartnerInquiryConfig.disabled(),
         ),
