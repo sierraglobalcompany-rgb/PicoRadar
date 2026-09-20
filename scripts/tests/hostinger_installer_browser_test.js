@@ -1,6 +1,9 @@
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { spawn } = require('child_process');
 const { chromium } = require('playwright');
 
 const [baseUrl, tokenFile] = process.argv.slice(2);
@@ -32,6 +35,46 @@ const operator = {
   password: requiredEnv('PICORADAR_TEST_OPERATOR_PASSWORD'),
 };
 const evidenceDirectory = process.env.PICORADAR_BROWSER_EVIDENCE_DIR;
+const scenario = process.env.PICORADAR_TEST_SCENARIO || 'happy';
+const privateRoot = requiredEnv('PICORADAR_TEST_PRIVATE_ROOT');
+const statePath = requiredEnv('PICORADAR_TEST_STATE_PATH');
+const mutationLockPath = requiredEnv('PICORADAR_TEST_MUTATION_LOCK_PATH');
+
+const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+async function waitForFile(filePath, timeoutMilliseconds = 5000) {
+  const deadline = Date.now() + timeoutMilliseconds;
+  while (Date.now() < deadline) {
+    if (fs.existsSync(filePath)) return;
+    await sleep(25);
+  }
+  throw new Error(`Timed out waiting for ${filePath}.`);
+}
+
+function waitForProcess(child) {
+  return new Promise((resolve, reject) => {
+    let stderr = '';
+    child.stderr?.on('data', (chunk) => { stderr += chunk.toString(); });
+    child.once('error', reject);
+    child.once('exit', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`Lock helper failed (${code}): ${stderr.trim()}`));
+    });
+  });
+}
+
+async function holdInstallerLock(seconds) {
+  const readyPath = path.join(os.tmpdir(), `picoradar-lock-ready-${process.pid}-${Date.now()}`);
+  const child = spawn(requiredEnv('PICORADAR_TEST_PHP'), [
+    requiredEnv('PICORADAR_TEST_HOLD_LOCK_SCRIPT'),
+    mutationLockPath,
+    readyPath,
+    String(seconds),
+  ], { stdio: ['ignore', 'ignore', 'pipe'] });
+  await waitForFile(readyPath);
+  fs.rmSync(readyPath, { force: true });
+  return { child, completion: waitForProcess(child) };
+}
 
 async function captureEvidence(page, name) {
   if (!evidenceDirectory) return;
@@ -87,7 +130,44 @@ async function unlock(page) {
     await first.getByRole('button', { name: 'Guardar configuración privada' }).click();
     await first.getByText('Crear estructura').waitFor();
 
+    if (scenario === 'migration-failure') {
+      const environmentPath = path.join(privateRoot, '.env');
+      const environment = fs.readFileSync(environmentPath, 'utf8');
+      fs.writeFileSync(
+        environmentPath,
+        environment.replace(/^DB_PASSWORD=.*$/m, 'DB_PASSWORD=invalid-migration-password'),
+        'utf8',
+      );
+      await first.getByRole('button', { name: 'Ejecutar migraciones' }).click();
+      await first.getByText('La migración falló.').waitFor();
+      const failedState = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+      if (failedState.stage !== 'failed'
+          || failedState.retryStage !== 'new'
+          || failedState.errorCode !== 'migration_failed') {
+        throw new Error('A real migration failure was not recorded while the request owned the lock.');
+      }
+      process.stdout.write('PASS: a real migration failure under the owned lock is recorded for a fresh database retry.\n');
+      await secondContext.close();
+      await firstContext.close();
+      return;
+    }
+
     await second.reload();
+    await second.getByText('Crear estructura').waitFor();
+
+    const stateBeforeContention = fs.readFileSync(statePath);
+    const heldLock = await holdInstallerLock(3);
+    await second.getByRole('button', { name: 'Ejecutar migraciones' }).click();
+    await second.getByText('Hay otra operación de instalación en curso.').waitFor();
+    const stateAfterContention = fs.readFileSync(statePath);
+    if (!stateBeforeContention.equals(stateAfterContention)) {
+      throw new Error('A request without the mutation lock changed installation state.');
+    }
+    await heldLock.completion;
+
+    await first.reload();
+    await second.reload();
+    await first.getByText('Crear estructura').waitFor();
     await second.getByText('Crear estructura').waitFor();
     await Promise.all([
       first.getByRole('button', { name: 'Ejecutar migraciones' }).click(),
@@ -102,7 +182,12 @@ async function unlock(page) {
     await first.getByLabel('Confirmación').fill(operator.password);
     await first.getByRole('button', { name: 'Crear operador' }).click();
     await first.getByText('Preparación final').waitFor();
-    await first.getByRole('button', { name: 'Completar y bloquear instalador' }).click();
+    await second.reload();
+    await second.getByText('Preparación final').waitFor();
+    await Promise.all([
+      first.getByRole('button', { name: 'Completar y bloquear instalador' }).click(),
+      second.getByRole('button', { name: 'Completar y bloquear instalador' }).click(),
+    ]);
     await first.getByRole('heading', { name: 'Instalación completada', exact: true }).waitFor();
     await captureEvidence(first, 'installer-completed');
 
@@ -120,11 +205,16 @@ async function unlock(page) {
     await first.goto(`${baseUrl}/login`);
     await first.getByLabel('Email').fill(operator.email);
     await first.getByLabel('Password').fill(operator.password);
-    await first.locator('form').evaluate((form) => form.setAttribute('action', '/login'));
+    const loginAction = await first.locator('form').getAttribute('action');
+    if (new URL(loginAction, baseUrl).origin !== new URL(baseUrl).origin) {
+      throw new Error(`Login form action escaped the isolated origin: ${loginAction}`);
+    }
     await first.getByRole('button', { name: 'Sign in' }).click();
     await first.waitForURL(/\/admin/);
     await first.getByText(/PicoRadar/i).first().waitFor();
     await captureEvidence(first, 'admin-panel');
+    await first.getByRole('button', { name: 'Log out' }).click();
+    await first.waitForURL(/\/login$/);
 
     await secondContext.close();
     await firstContext.close();

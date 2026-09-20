@@ -1,6 +1,8 @@
 param(
     [string] $ArtifactDirectory = 'artifacts/current/hostinger-staging',
     [string] $EvidenceDirectory,
+    [ValidateSet('happy', 'migration-failure')]
+    [string] $Scenario = 'happy',
     [string] $MariaDbRoot = 'C:\codex\_tool-cache\mariadb-11.8.8-winx64',
     [string] $PhpPath = 'C:\xampphp\php\php.exe',
     [string] $OpenSslPath = 'C:\xampphp\apache\bin\openssl.exe',
@@ -100,6 +102,7 @@ try {
     $phpInfo.CreateNoWindow = $true
     $phpInfo.RedirectStandardOutput = $true
     $phpInfo.RedirectStandardError = $true
+    $phpInfo.Environment['APP_URL'] = "https://127.0.0.1:$httpsPort"
     foreach ($argument in @('-S', "127.0.0.1:$backendPort", '-t', $publicRoot, (Join-Path $root 'scripts/tests/php_https_router.php'))) { $phpInfo.ArgumentList.Add($argument) }
     $phpProcess = [System.Diagnostics.Process]::Start($phpInfo)
 
@@ -141,6 +144,12 @@ try {
     $env:PICORADAR_TEST_DB_USER = $dbUser
     $env:PICORADAR_TEST_DB_PASSWORD = $dbPassword
     $env:PICORADAR_TEST_OPERATOR_PASSWORD = $operatorPassword
+    $env:PICORADAR_TEST_SCENARIO = $Scenario
+    $env:PICORADAR_TEST_PRIVATE_ROOT = (Join-Path $domainRoot 'picoradar_app/current')
+    $env:PICORADAR_TEST_STATE_PATH = (Join-Path $domainRoot 'picoradar_app/current/storage/app/installer/installation-state.json')
+    $env:PICORADAR_TEST_MUTATION_LOCK_PATH = (Join-Path $domainRoot 'picoradar_app/current/storage/app/installer/mutation.lock')
+    $env:PICORADAR_TEST_HOLD_LOCK_SCRIPT = (Join-Path $root 'scripts/tests/hold_file_lock.php')
+    $env:PICORADAR_TEST_PHP = $PhpPath
     if ($EvidenceDirectory) {
         $env:PICORADAR_BROWSER_EVIDENCE_DIR = [System.IO.Path]::GetFullPath($EvidenceDirectory)
     }
@@ -149,7 +158,7 @@ try {
 
     $htaccess = Get-Content -LiteralPath (Join-Path $publicRoot '.htaccess') -Raw
     if ($htaccess -notmatch 'AuthType Basic' -or $htaccess -notmatch '# BEGIN PICORADAR ROUTING') { throw 'Final routing did not preserve the synthetic private barrier.' }
-    Write-Output 'PASS: final ZIP completed the real browser wizard behind HTTPS and Basic Auth.'
+    Write-Output "PASS: final ZIP completed browser scenario '$Scenario' behind HTTPS and Basic Auth."
     $succeeded = $true
 } finally {
     foreach ($process in @($proxyProcess, $phpProcess, $mariaProcess)) {
@@ -162,7 +171,9 @@ try {
         'PICORADAR_TEST_PUBLIC_ROOT', 'PICORADAR_TEST_BASIC_USER', 'PICORADAR_TEST_BASIC_PASSWORD',
         'PICORADAR_TEST_DB_PORT', 'PICORADAR_TEST_DB_NAME', 'PICORADAR_TEST_DB_USER',
         'PICORADAR_TEST_DB_PASSWORD', 'PICORADAR_TEST_OPERATOR_PASSWORD', 'PICORADAR_TEST_CHROMIUM', 'NODE_PATH'
-        , 'PICORADAR_BROWSER_EVIDENCE_DIR'
+        , 'PICORADAR_BROWSER_EVIDENCE_DIR', 'PICORADAR_TEST_SCENARIO', 'PICORADAR_TEST_PRIVATE_ROOT'
+        , 'PICORADAR_TEST_STATE_PATH', 'PICORADAR_TEST_MUTATION_LOCK_PATH', 'PICORADAR_TEST_HOLD_LOCK_SCRIPT'
+        , 'PICORADAR_TEST_PHP'
     )) { Remove-Item "Env:$name" -ErrorAction SilentlyContinue }
     if ($succeeded -and (Test-Path -LiteralPath $scratch)) {
         Remove-Item -LiteralPath $scratch -Recurse -Force

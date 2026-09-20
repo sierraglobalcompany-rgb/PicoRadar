@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Installation;
 
+use App\Installation\InstallationLockBusyException;
 use App\Installation\InstallationMutationLock;
 use PHPUnit\Framework\TestCase;
 
@@ -15,7 +16,7 @@ class InstallationMutationLockTest extends TestCase
 
         try {
             $first->acquire();
-            $this->expectException(\RuntimeException::class);
+            $this->expectException(InstallationLockBusyException::class);
             $second->acquire(0);
         } finally {
             $second->release();

@@ -6,6 +6,7 @@ use App\Installation\DatabaseProbeReceipt;
 use App\Installation\DatabaseReadinessProbe;
 use App\Installation\DeploymentLayout;
 use App\Installation\HostPreflightCollector;
+use App\Installation\InstallationLockBusyException;
 use App\Installation\InstallationMutationLock;
 use App\Installation\InstallationStage;
 use App\Installation\InstallationStateStore;
@@ -186,6 +187,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'unloc
     );
     try {
         $mutationLock->acquire();
+    } catch (InstallationLockBusyException) {
+        $_SESSION['error'] = 'Hay otra operación de instalación en curso. Espera unos segundos y vuelve a consultar el progreso.';
+        $redirect();
+    } catch (Throwable) {
+        $_SESSION['error'] = 'No fue posible obtener el bloqueo del instalador. Vuelve a intentarlo.';
+        $redirect();
+    }
+
+    try {
         $state = $stateStore->read();
         $effectiveStage = $state->stage === InstallationStage::Failed
             ? ($state->retryStage ?? InstallationStage::New)
@@ -301,7 +311,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'unloc
             InstallationStage::Completed,
         ], true)) {
             $_SESSION['message'] = 'El primer operador ya fue creado.';
-        } elseif ($action === 'finalize' && in_array($effectiveStage, [InstallationStage::OperatorCreated, InstallationStage::Completed], true)) {
+        } elseif ($action === 'finalize' && $effectiveStage === InstallationStage::OperatorCreated) {
             (new LaravelInstallationRunner($privateRoot, $publicRoot))->prepareApplication();
             $stateStore->write(InstallationStage::Completed, $releaseId);
             (new AtomicFileWriter)->write($lockPath, json_encode([
@@ -312,6 +322,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') !== 'unloc
             $message = 'Instalación completada. El instalador quedó bloqueado.';
             $effectiveStage = InstallationStage::Completed;
             $state = $stateStore->read();
+        } elseif ($action === 'finalize' && $effectiveStage === InstallationStage::Completed) {
+            $message = 'La instalación ya fue completada y permanece bloqueada.';
         } else {
             throw new RuntimeException('invalid_stage');
         }

@@ -42,7 +42,7 @@ class InstallationMutationLock
         } while (true);
 
         fclose($handle);
-        throw new RuntimeException('Another installation action is in progress.');
+        throw new InstallationLockBusyException('Another installation action is in progress.');
     }
 
     public function release(): void
