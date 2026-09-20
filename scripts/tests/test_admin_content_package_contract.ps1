@@ -7,6 +7,9 @@ $wrapper = Get-Content -LiteralPath (Join-Path $root 'scripts/build_admin_conten
 if ($build -notmatch "PackagePrefix = 'PicoRadar-staging-hostinger'") {
     throw 'The accepted B06 package name is no longer the default.'
 }
+if ($build -notmatch 'Add-Type -AssemblyName System\.IO\.Compression') {
+    throw 'The package builder does not load ZipArchive on Windows PowerShell.'
+}
 if ($build -notmatch '\$zipName = "\$PackagePrefix-\$releaseId\.zip"') {
     throw 'The package builder does not use its validated prefix.'
 }

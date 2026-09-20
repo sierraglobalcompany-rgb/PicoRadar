@@ -7,6 +7,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $serverRoot = Join-Path $root 'server'
 $outputRoot = if ($OutputDirectory) {
