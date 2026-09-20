@@ -18,14 +18,25 @@ $privateRoot = Join-Path $packageRoot 'picoradar_app/current'
 $publicRoot = Join-Path $packageRoot 'public_html/picoradar'
 
 function Invoke-Checked([string] $Command, [string[]] $Arguments, [string] $WorkingDirectory) {
-    $process = Start-Process -FilePath $Command -ArgumentList $Arguments -WorkingDirectory $WorkingDirectory -NoNewWindow -Wait -PassThru
-    if ($process.ExitCode -ne 0) {
-        throw "$Command failed with exit code $($process.ExitCode)."
+    Push-Location $WorkingDirectory
+    try {
+        & $Command @Arguments
+        $exitCode = $LASTEXITCODE
+    } finally {
+        Pop-Location
+    }
+    if ($exitCode -ne 0) {
+        throw "$Command failed with exit code $exitCode."
     }
 }
 
 function Get-RelativeUnixPath([string] $Base, [string] $Path) {
-    return [System.IO.Path]::GetRelativePath($Base, $Path).Replace('\', '/')
+    $basePath = [System.IO.Path]::GetFullPath($Base).TrimEnd('\', '/') + [System.IO.Path]::DirectorySeparatorChar
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    if (-not $fullPath.StartsWith($basePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Path is outside the package root: $fullPath"
+    }
+    return $fullPath.Substring($basePath.Length).Replace('\', '/')
 }
 
 function Get-FileHashHex([string] $Path) {
@@ -88,11 +99,19 @@ try {
     $installerDirectory = Join-Path $privateRoot 'storage/app/installer'
     New-Item -ItemType Directory -Path $installerDirectory -Force | Out-Null
     $tokenBytes = New-Object byte[] 32
-    [System.Security.Cryptography.RandomNumberGenerator]::Fill($tokenBytes)
+    $random = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $random.GetBytes($tokenBytes)
+    } finally {
+        $random.Dispose()
+    }
     $token = [Convert]::ToBase64String($tokenBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')
     $env:PICORADAR_INSTALL_TOKEN = $token
     try {
-        $tokenHash = (& $PhpPath -r 'echo password_hash(getenv("PICORADAR_INSTALL_TOKEN"), PASSWORD_ARGON2ID);').Trim()
+        $hashScript = Join-Path $scratch 'hash-install-token.php'
+        Write-Utf8NoBom $hashScript '<?php echo password_hash(getenv(''PICORADAR_INSTALL_TOKEN''), PASSWORD_ARGON2ID);'
+        $tokenHash = (& $PhpPath $hashScript).Trim()
+        if ($LASTEXITCODE -ne 0) { throw 'PHP failed while hashing the installation token.' }
     } finally {
         Remove-Item Env:PICORADAR_INSTALL_TOKEN -ErrorAction SilentlyContinue
     }

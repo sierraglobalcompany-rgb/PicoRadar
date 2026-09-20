@@ -7,6 +7,8 @@ use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Contracts\Http\Kernel as HttpKernel;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
+use Illuminate\Support\ViewErrorBag;
+use Illuminate\View\Factory as ViewFactory;
 use RuntimeException;
 
 class LaravelInstallationRunner
@@ -52,6 +54,7 @@ class LaravelInstallationRunner
                 && ($payload['service'] ?? null) === 'picoradar-control-plane'
                 && ($payload['apiVersion'] ?? null) === 'v1';
         });
+        $this->boot()->make(ViewFactory::class)->share('errors', new ViewErrorBag);
         $this->verifyHttpContract('/login', fn (int $status): bool => $status === 200);
     }
 

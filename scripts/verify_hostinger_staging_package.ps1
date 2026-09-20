@@ -4,6 +4,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 $artifacts = (Resolve-Path -LiteralPath $ArtifactDirectory).Path
 $zip = @(Get-ChildItem -LiteralPath $artifacts -Filter 'PicoRadar-staging-hostinger-*.zip' -File)
 if ($zip.Count -ne 1) { throw 'Exactly one Hostinger staging ZIP is required.' }
