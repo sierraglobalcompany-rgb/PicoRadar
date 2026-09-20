@@ -89,7 +89,10 @@ try {
     }
     if (-not $ready) { throw 'MariaDB did not start.' }
     $sql = "CREATE DATABASE ``$database`` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE DATABASE ``$restoreDatabase`` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER '$dbUser'@'127.0.0.1' IDENTIFIED BY '$dbPassword'; GRANT ALL PRIVILEGES ON ``$database``.* TO '$dbUser'@'127.0.0.1'; GRANT ALL PRIVILEGES ON ``$restoreDatabase``.* TO '$dbUser'@'127.0.0.1'; FLUSH PRIVILEGES;"
-    & $client --protocol=tcp --host=127.0.0.1 "--port=$dbPort" --user=root "--password=$rootPassword" --execute=$sql
+    $provisionSqlPath = Join-Path $scratch 'provision.sql'
+    [System.IO.File]::WriteAllText($provisionSqlPath, $sql, [System.Text.UTF8Encoding]::new($false))
+    $provisionSqlUnix = $provisionSqlPath.Replace('\', '/')
+    & $client --protocol=tcp --host=127.0.0.1 "--port=$dbPort" --user=root "--password=$rootPassword" "--execute=source $provisionSqlUnix"
     if ($LASTEXITCODE -ne 0) { throw 'Disposable browser database provisioning failed.' }
 
     $cert = Join-Path $scratch 'localhost.crt'

@@ -77,7 +77,10 @@ GRANT ALL PRIVILEGES ON ``$database``.* TO '$dbUser'@'127.0.0.1';
 GRANT ALL PRIVILEGES ON ``$restoreDatabase``.* TO '$dbUser'@'127.0.0.1';
 FLUSH PRIVILEGES;
 "@
-    & $client --protocol=tcp --host=127.0.0.1 "--port=$port" --user=root "--password=$rootPassword" --execute=$sql
+    $provisionSqlPath = Join-Path $scratch 'provision.sql'
+    [System.IO.File]::WriteAllText($provisionSqlPath, $sql, [System.Text.UTF8Encoding]::new($false))
+    $provisionSqlUnix = $provisionSqlPath.Replace('\', '/')
+    & $client --protocol=tcp --host=127.0.0.1 "--port=$port" --user=root "--password=$rootPassword" "--execute=source $provisionSqlUnix"
     if ($LASTEXITCODE -ne 0) { throw 'Disposable database provisioning failed.' }
 
     $env:PICORADAR_TEST_DB_USER = $dbUser
