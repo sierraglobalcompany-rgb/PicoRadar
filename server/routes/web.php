@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\JurisdictionController;
 use App\Http\Controllers\Admin\OperatorController;
 use App\Http\Controllers\Admin\PartnerInquiryController;
 use App\Http\Controllers\Admin\ProfileController;
+use App\Http\Controllers\Admin\RestrictionRuleController;
 use App\Http\Controllers\Admin\SponsorController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Middleware\EnsureActiveOperator;
@@ -34,6 +35,24 @@ Route::middleware(['auth', EnsureActiveOperator::class, SecurityHeaders::class])
     Route::get('/admin/operators', [OperatorController::class, 'index'])->name('admin.operators.index');
     Route::post('/admin/operators', [OperatorController::class, 'store'])->name('admin.operators.store');
     Route::put('/admin/operators/{operator}', [OperatorController::class, 'update'])->name('admin.operators.update');
+    Route::get('/admin/restrictions', [RestrictionRuleController::class, 'index'])->name('admin.restrictions.index');
+    Route::get('/admin/restrictions/create', [RestrictionRuleController::class, 'create'])->name('admin.restrictions.create');
+    Route::post('/admin/restrictions', [RestrictionRuleController::class, 'store'])->name('admin.restrictions.store');
+    Route::get('/admin/restrictions/import', [RestrictionRuleController::class, 'importForm'])->name('admin.restrictions.import');
+    Route::post('/admin/restrictions/imports', [RestrictionRuleController::class, 'analyzeImport'])->name('admin.restrictions.imports.analyze');
+    Route::get('/admin/restrictions/imports/{import}', [RestrictionRuleController::class, 'reviewImport'])->name('admin.restrictions.imports.review');
+    Route::post('/admin/restrictions/imports/{import}/confirm', [RestrictionRuleController::class, 'confirmImport'])->name('admin.restrictions.imports.confirm');
+    Route::get('/admin/restrictions/imports/{import}/report', [RestrictionRuleController::class, 'report'])->name('admin.restrictions.imports.report');
+    Route::get('/admin/restrictions/template', [RestrictionRuleController::class, 'template'])->name('admin.restrictions.template');
+    Route::get('/admin/restrictions/publish', [RestrictionRuleController::class, 'publicationPreview'])->name('admin.restrictions.publish.preview');
+    Route::post('/admin/restrictions/publish', [RestrictionRuleController::class, 'publish'])->name('admin.restrictions.publish');
+    Route::get('/admin/restrictions/history', [RestrictionRuleController::class, 'history'])->name('admin.restrictions.history');
+    Route::get('/admin/restrictions/{version}/edit', [RestrictionRuleController::class, 'edit'])->name('admin.restrictions.edit');
+    Route::put('/admin/restrictions/{version}', [RestrictionRuleController::class, 'update'])->name('admin.restrictions.update');
+    Route::post('/admin/restrictions/{version}/duplicate', [RestrictionRuleController::class, 'duplicate'])->name('admin.restrictions.duplicate');
+    Route::post('/admin/restrictions/{version}/validate', [RestrictionRuleController::class, 'validateVersion'])->name('admin.restrictions.validate');
+    Route::post('/admin/restrictions/{version}/archive', [RestrictionRuleController::class, 'archive'])->name('admin.restrictions.archive');
+    Route::post('/admin/restrictions/{version}/rollback', [RestrictionRuleController::class, 'rollback'])->name('admin.restrictions.rollback');
     Route::resource('/admin/sponsors', SponsorController::class)
         ->except(['destroy'])
         ->names('admin.sponsors');

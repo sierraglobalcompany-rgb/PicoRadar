@@ -48,6 +48,7 @@
         <h2 id="tools-title" class="text-xl font-semibold">Herramientas disponibles</h2>
         <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             @can('datasets.view')
+                <a class="min-h-12 rounded-lg border border-slate-200 bg-white p-4 font-medium hover:border-teal-500" href="{{ route('admin.restrictions.index') }}">Reglas por ciudad</a>
                 <a class="min-h-12 rounded-lg border border-slate-200 bg-white p-4 font-medium hover:border-teal-500" href="{{ route('admin.datasets.index') }}">Datasets y publicaciones</a>
                 <a class="min-h-12 rounded-lg border border-slate-200 bg-white p-4 font-medium hover:border-teal-500" href="{{ route('admin.cameras.index') }}">Cámaras y fuentes</a>
                 <a class="min-h-12 rounded-lg border border-slate-200 bg-white p-4 font-medium hover:border-teal-500" href="{{ route('admin.audit.index') }}">Auditoría</a>
