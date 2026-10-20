@@ -7,6 +7,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'package_scratch_cleanup.ps1')
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -55,6 +56,7 @@ function Write-Utf8NoBom([string] $Path, [string] $Content) {
     [System.IO.File]::WriteAllText($Path, $Content, [System.Text.UTF8Encoding]::new($false))
 }
 
+$packageError = $null
 try {
     $head = (git -C $root rev-parse HEAD).Trim()
     if ($LASTEXITCODE -ne 0 -or -not $head) { throw 'Cannot resolve the Git HEAD.' }
@@ -66,7 +68,7 @@ try {
         throw 'Packaging stopped because mobile/ contains changes.'
     }
 
-    if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force }
+    if (Test-Path -LiteralPath $scratch) { Remove-PackageScratchDirectory -Path $scratch -ScratchRoot $scratch }
     New-Item -ItemType Directory -Path $privateRoot -Force | Out-Null
     New-Item -ItemType Directory -Path $publicRoot -Force | Out-Null
 
@@ -109,8 +111,8 @@ try {
     Invoke-Checked 'npm' @('ci', '--no-audit', '--no-fund') $privateRoot
     Invoke-Checked 'npm' @('run', 'build') $privateRoot
     Copy-Item -LiteralPath (Join-Path $privateRoot 'public/build') -Destination (Join-Path $publicRoot 'build') -Recurse -Force
-    Remove-Item -LiteralPath (Join-Path $privateRoot 'node_modules') -Recurse -Force
-    Remove-Item -LiteralPath (Join-Path $privateRoot 'public') -Recurse -Force
+    Remove-PackageScratchDirectory -Path (Join-Path $privateRoot 'node_modules') -ScratchRoot $scratch
+    Remove-PackageScratchDirectory -Path (Join-Path $privateRoot 'public') -ScratchRoot $scratch
 
     $installerDirectory = Join-Path $privateRoot 'storage/app/installer'
     New-Item -ItemType Directory -Path $installerDirectory -Force | Out-Null
@@ -247,7 +249,22 @@ Keep this file only on the owner's computer. It is not included in the ZIP.
         zip = $zipPath
         zipSha256 = Get-FileHashHex $zipPath
     } | ConvertTo-Json -Depth 4)
+} catch {
+    $packageError = $_
+    throw
 } finally {
-    Remove-Item Env:PICORADAR_INSTALL_TOKEN -ErrorAction SilentlyContinue
-    if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force }
+    $cleanupErrors = @()
+    try {
+        if (Test-Path Env:PICORADAR_INSTALL_TOKEN) { Remove-Item Env:PICORADAR_INSTALL_TOKEN }
+    } catch { $cleanupErrors += $_ }
+    try {
+        Remove-PackageScratchDirectory -Path $scratch -ScratchRoot $scratch
+    } catch { $cleanupErrors += $_ }
+    foreach ($cleanupError in $cleanupErrors) {
+        $detail = $cleanupError.Exception.GetBaseException()
+        $type = $detail.GetType().FullName
+        $code = $detail.HResult.ToString('X8')
+        Write-Warning "Package cleanup failed [$($cleanupError.FullyQualifiedErrorId)] $type HRESULT=0x$code; scratch=$scratch."
+    }
+    if ($null -eq $packageError -and $cleanupErrors.Count -gt 0) { throw $cleanupErrors[0] }
 }
