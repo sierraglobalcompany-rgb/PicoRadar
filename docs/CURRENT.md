@@ -10,6 +10,7 @@ Actualizado: 2026-10-20. Estado único para continuidad. Baseline, Arquitectura 
 - Canónico: `D:/Dev/PicoRadar` sobre exFAT. Clon independiente: `D:/Verification/PicoRadar`.
 - Originales C: preservados. No retomarlos como checkout activo ni restaurar desde el main histórico `e9ef375`.
 - Gates, SHA, PR y NEXT: `PicoRadar_RECOVERY_HANDOFF.md`. Las pruebas históricas no certifican el HEAD recuperado.
+- Rescate **PARTIAL**: fuente moderna publicada, APK dev, servidor e instalable B07 reconstruidos desde GitHub; verificador del paquete PASS con exit0; suite móvil aún fallida, instalador MariaDB bloqueado por enlaces públicos en Windows/exFAT, CI bloqueada por facturación y test de navegador bloqueado por archivo denegado en Windows. No equivale a release ni QA física aprobadas.
 
 ## Producto conservado
 

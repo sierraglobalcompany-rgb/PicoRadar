@@ -22,7 +22,8 @@ git rev-parse HEAD
 ## Requisitos
 
 - Flutter **3.47.1**, Dart **3.13.1**, Java **17**, Android compile API **37**, target **36**, min **24** y componentes definidos por Gradle.
-- PHP **8.3–8.5**, Composer 2 y extensiones del lockfile. Pruebas SQLite: `pdo_sqlite`, `sqlite3`; XLSX/paquete: `zip`, `SimpleXML`, `libxml`; imágenes: `gd`.
+- PHP **8.3–8.5**, Composer 2 y extensiones del lockfile. Pruebas SQLite: `pdo_sqlite`, `sqlite3`; XLSX/paquete: `zip`, `SimpleXML`, `libxml`; imágenes: `gd`. B06/B07 requiere `argon2id` en `password_algos()`; no sustituirlo por un algoritmo más débil.
+- Clean-room B06/B07: MariaDB **11.8.8** instalado como herramienta local. El test acepta `-MariaDbRoot`; su default de esta máquina es `C:/codex/_tool-cache/mariadb-11.8.8-winx64`. Usa una instancia y datadir sintéticos nuevos en TEMP, no una base existente. En esta reconstrucción Windows/exFAT creó la base pero no los enlaces públicos obligatorios: instalación clean-room bloqueada, no aprobada. No se cambió D: ni se sustituyeron los enlaces por copias.
 - Node 22 o 24 y npm. Conservar los tres lockfiles; instalar dependencias sin actualizarlas.
 - Git; GitHub CLI `gh` con acceso autorizado al repositorio privado para recuperar el insumo OSRM opcional.
 - SDK/JDK y cachés pueden estar fuera del checkout. No depender de archivos fuente de otro worktree en C:.
@@ -57,7 +58,7 @@ flutter pub get
 dart format --output=none --set-exit-if-changed .
 flutter analyze
 flutter test
-flutter build apk --debug --flavor dev --dart-define=APP_ENV=dev
+# Build Android: ejecutar el bloque verificado para Windows/exFAT siguiente.
 ```
 
 Codegen: según SOP-07, ejecutar `dart run build_runner build --delete-conflicting-outputs` solo si cambiaron sus entradas o faltan los archivos generados. Esta recuperación conserva entradas y generados rastreados: `CODEGEN_NOT_REQUIRED`.
@@ -100,6 +101,8 @@ Si SQLite ya está habilitado, omitir los dos argumentos `-d`. Para comprobar mi
 ## Panel y fuentes
 
 B06 y B07 están en la fuente moderna recuperada. Operación: `docs/operations/PicoRadar_GUIA_PANEL_ADMIN_CONTENIDOS.md`. Los builders/verificadores existentes en `scripts/` generan instalables locales; los paquetes privados permanecen fuera de Git. No desplegar en Hostinger.
+
+Windows: `pwsh -NoProfile -File scripts/tests/test_package_scratch_cleanup.ps1` comprueba límites de borrado y handles temporales. El builder y el verificador usan .NET para limpiar únicamente su scratch generado, con intentos IO acotados; fallos persistentes se propagan. El fixture de junction requiere NTFS y figura como SKIP en exFAT. Los comandos y layout del instalable se conservan.
 
 Fuentes, contratos y fixtures: `data/`, `contracts/`, `mobile/assets/`. El grafo pesado OSRM es externo y opcional; `data/sources/osrm/source.json` conserva URL, imagen, hash y atribución históricos. La URL del PBF fechado respondió **404** al HEAD del 2026-10-20. Se recuperó el PBF original de hash coincidente y se conservó como asset del borrador GitHub **`recovery-osrm-input-20260907`** (329.060.219 bytes), con atribución OpenStreetMap/Geofabrik y [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/). No sustituirlo por datos actuales y afirmar identidad.
 
