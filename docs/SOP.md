@@ -146,7 +146,7 @@ Antes de correr `build_runner`, revisar si cambiaron entradas de generacion: tab
 - The recording is public road geometry, not a stored user journey. Source URLs and OpenStreetMap attribution are inside the fixture. No account, permission, dependency or public service was added.
 - Capture both directions with the simulation label, a camera episode if encountered, and manual stop. Whole-route offline tests exercise the complete geometry; short physical captures do not certify camera coverage, field GPS accuracy, Bluetooth or legal road suitability.
 
-## SOP-08 Recuperación y continuidad en D:
+## SOP-10 Recuperación y continuidad en D:
 
 - Entrada única: README → CURRENT → handoff de recuperación → lote. Documentos antiguos de consolidación y estados GSD se consultan como historial.
 - Desarrollo en `D:/Dev/PicoRadar` directamente en exFAT. No reformatear ni mover originales C:. Trust Git de proceso por ruta exacta; `core.autocrlf=false`, `core.longpaths=true`, `core.filemode=false` y checkout paralelo para clones nuevos.

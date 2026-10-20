@@ -44,14 +44,15 @@ No usar `safe.directory=*`. En otro equipo elegir su destino y temporal disponib
 Set-Location mobile
 flutter --version
 flutter pub get
-dart run build_runner build --delete-conflicting-outputs
 dart format --output=none --set-exit-if-changed .
 flutter analyze
 flutter test
 flutter build apk --debug --flavor dev --dart-define=APP_ENV=dev
 ```
 
-APK: `mobile/build/app/outputs/flutter-apk/app-dev-debug.apk`. No instalar ni conectar el teléfono durante el rescate. QA física pendiente no se aprueba mediante estas suites.
+Codegen: según SOP-07, ejecutar `dart run build_runner build --delete-conflicting-outputs` solo si cambiaron sus entradas o faltan los archivos generados. Esta recuperación conserva entradas y generados rastreados: `CODEGEN_NOT_REQUIRED`.
+
+APK: `mobile/build/app/outputs/flutter-apk/app-dev-debug.apk`. No instalar ni conectar el teléfono durante el rescate. QA física pendiente no se aprueba mediante estas suites. La configuración release aún usa firma debug: deuda histórica, no autorización de publicación.
 
 ## Reconstruir servidor
 
@@ -63,9 +64,14 @@ npm run build
 php vendor/bin/pint --test
 ```
 
-Para tests, configurar `APP_ENV=testing`, una `APP_KEY` aleatoria solo para el proceso, `DB_CONNECTION=sqlite` y `DB_DATABASE=:memory:`. Ejecutar:
+Para tests, usar configuración sintética solo en el proceso y crear `.env` desde el ejemplo únicamente si no existe:
 
 ```powershell
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+$env:APP_ENV = 'testing'
+$env:APP_KEY = php -r 'echo "base64:".base64_encode(random_bytes(32));'
+$env:DB_CONNECTION = 'sqlite'
+$env:DB_DATABASE = ':memory:'
 php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit --colors=never
 ```
 

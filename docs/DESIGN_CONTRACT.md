@@ -506,7 +506,7 @@ Inicio/Pico:
 - Pico Detail debe ser util con ciudad/vehiculo configurados y tener estado claro cuando falten datos.
 
 Garaje:
-- Vehiculo activo visible y facil de cambiar.
+- Favorito visible y facil de cambiar, conforme a la decision owner posterior. El foco visual del carrusel no cambia esa preferencia por si solo.
 - Obligaciones/estado integral deben usar componentes compartidos y jerarquia escaneable.
 - R02B Garage V2 usa `docs/design/GARAGE_OWNER_V1.json` y `docs/design/reference/garage_owner_v1.png` como autoridad visual owner-selected.
 - La raiz de Garaje no lleva titulo grande; usa header PicoRadar, filtros compactos, carrusel PageView, panel de informacion real, tarjeta punteada de agregar vehiculo y acciones rapidas.
@@ -561,7 +561,9 @@ No se requieren cientos de goldens. El set canonico debe cubrir raiz, densidad, 
 
 `VISUAL_FIDELITY=PASS` exige 0 Critical mismatches, 0 High mismatches, 0 overflow, 0 clipping y 0 labels ilegibles, truncados o cortados.
 
-## Mismatch ledger R00
+## Mismatch ledger R00 (historico)
+
+Diagnostico de la etapa R00, no inventario de defectos vigentes. El shell actual usa `AppBottomNav`; las decisiones owner posteriores de este contrato prevalecen sobre las descripciones antiguas de la columna Actual. Contrastar con codigo/tests antes de reabrir un hallazgo.
 
 | Finding | Esperado | Actual | Severidad | Impacto | Fix phase |
 |---|---|---|---|---|---|

@@ -21,6 +21,8 @@ Corte inicial: 2026-10-20. Resultados finales en `PicoRadar_RECOVERY_HANDOFF.md`
 
 El inventario registra 21 tips locales distintos no cubiertos por el ancestro moderno ni las refs origin inspeccionadas. Incluyen variantes antiguas, checkpoints y handoffs, no 21 funciones faltantes. Sus objetos, refs, reflogs e índices se preservan privados. B04 comparador permanece pendiente. Checkpoints QA incluyen copias históricas de código, patches y evidencia: conservación no implica integración ni permiso de publicación.
 
+La comparación del reflog con las refs identifica cinco commits adicionales, todos anteriores al moderno B07 del 2026-09-20. Están preservados mediante el almacén Git completo; no se presupone que el bundle los incluya. Ninguno acredita un estado posterior al seleccionado. No se ejecutó fsck costoso al no quedar un hueco de objetos conocidos.
+
 ## KISS / anti-parse
 
 Se conservan fuentes → importador/validador del dominio → dataset versionado → consumidor. JSON/CSV/XLSX son entradas existentes B07; no se añadió parser de recuperación. No se borraron duplicados. Graphify local es histórico (2026-08-27: 1.306 nodos / 1.731 aristas), contrastado con Git, no prueba suficiente del estado actual.

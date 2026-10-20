@@ -34,7 +34,7 @@ Drift conserva schema v9 y pruebas de migración. El rescate no agrega tablas ni
 - Patrocinado no equivale a oficial/acreditado. Defensa no promete anulación de multas.
 - Sin merge, despliegue ni acceso a Hostinger o Mi A3 durante el rescate.
 - Instalación C11 histórica del 2026-09-19 y apertura confirmada del scanner no acreditan captura, autenticación, guardado y reapertura completos.
-- Comparador B04 `fe0d8d4` sigue fuera del runtime moderno. Variantes y fuentes QA históricas se preservan sin aplicarlas ciegamente.
+- Comparador B04 `fe0d8d4` sigue fuera del runtime moderno y esta recuperado en GitHub como `recovery/20261019-pending-b04`. Variantes y fuentes QA históricas se preservan sin aplicarlas ciegamente.
 - Planes GSD previos y `docs/WORKSPACE_CONSOLIDATION.md` son antecedentes; sus paths e instrucciones de limpieza no gobiernan el rescate.
 - Handoffs funcionales: `codex/`; autoridad visual: `docs/DESIGN_CONTRACT.md`; operación: `docs/SOP.md` y guía B07.
 
