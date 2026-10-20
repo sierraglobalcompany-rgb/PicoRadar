@@ -16,10 +16,15 @@ public static class PackageCleanupFixture {
 
 $scratchRoot = Join-Path ([IO.Path]::GetTempPath()) ('picoradar-hostinger-package-' + [guid]::NewGuid().ToString('N'))
 $outsideRoot = Join-Path ([IO.Path]::GetTempPath()) ('picoradar-hostinger-package-' + [guid]::NewGuid().ToString('N'))
+$verifyRoot = Join-Path ([IO.Path]::GetTempPath()) ('picoradar-hostinger-verify-' + [guid]::NewGuid().ToString('N'))
 $held = $null
 $junctions = @()
 try {
     New-Item -ItemType Directory -Path $scratchRoot, $outsideRoot | Out-Null
+    New-Item -ItemType Directory -Path $verifyRoot | Out-Null
+    [IO.File]::WriteAllText((Join-Path $verifyRoot 'fixture.txt'), 'synthetic verifier fixture')
+    Remove-PackageScratchDirectory -Path $verifyRoot -ScratchRoot $verifyRoot
+    if (Test-Path -LiteralPath $verifyRoot) { throw 'FAIL: generated verification scratch remains.' }
     $sentinel = Join-Path $outsideRoot 'sentinel.txt'
     [IO.File]::WriteAllText($sentinel, 'synthetic boundary fixture')
     $rejected = $false
@@ -83,4 +88,5 @@ try {
     }
     Remove-PackageScratchDirectory -Path $scratchRoot -ScratchRoot $scratchRoot
     Remove-PackageScratchDirectory -Path $outsideRoot -ScratchRoot $outsideRoot
+    if (Test-Path -LiteralPath $verifyRoot) { [IO.Directory]::Delete($verifyRoot, $true) }
 }

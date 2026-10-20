@@ -10,8 +10,8 @@ function Remove-PackageScratchDirectory {
     $parentPath = [IO.Path]::GetDirectoryName($rootPath)
     $comparison = if ([IO.Path]::DirectorySeparatorChar -eq '\') { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
     if (-not [string]::Equals($parentPath, $tempPath, $comparison) -or
-        [IO.Path]::GetFileName($rootPath) -cnotmatch '^picoradar-hostinger-package-[0-9a-f]{32}$') {
-        throw [ArgumentException]::new('Cleanup requires the generated package scratch directory directly inside TEMP.')
+        [IO.Path]::GetFileName($rootPath) -cnotmatch '^picoradar-hostinger-(package|verify)-[0-9a-f]{32}$') {
+        throw [ArgumentException]::new('Cleanup requires the generated package or verification scratch directory directly inside TEMP.')
     }
     $prefix = $rootPath + [IO.Path]::DirectorySeparatorChar
     if (-not $targetPath.Equals($rootPath, $comparison) -and -not $targetPath.StartsWith($prefix, $comparison)) {

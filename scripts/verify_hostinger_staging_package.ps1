@@ -5,6 +5,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'package_scratch_cleanup.ps1')
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $artifacts = (Resolve-Path -LiteralPath $ArtifactDirectory).Path
 $zip = @(Get-ChildItem -LiteralPath $artifacts -Filter $ZipPattern -File)
@@ -19,6 +20,7 @@ foreach ($required in @($tokenFile, $hashFile, $manifestFile, $guideFile)) {
 }
 
 $scratch = Join-Path ([System.IO.Path]::GetTempPath()) ('picoradar-hostinger-verify-' + [guid]::NewGuid().ToString('N'))
+$verificationError = $null
 try {
     $archive = $null
     $zipStream = [System.IO.File]::OpenRead($zip[0].FullName)
@@ -89,6 +91,14 @@ try {
     }
 
     Write-Output 'PASS: Hostinger staging package structure, manifest, token separation, exclusions, and hashes are valid.'
+} catch {
+    $verificationError = $_
+    throw
 } finally {
-    if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force }
+    try {
+        Remove-PackageScratchDirectory -Path $scratch -ScratchRoot $scratch
+    } catch {
+        if ($null -eq $verificationError) { throw }
+        Write-Warning 'Verification scratch cleanup also failed; original verification error retained.'
+    }
 }
