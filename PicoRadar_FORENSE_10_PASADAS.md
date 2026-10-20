@@ -1,6 +1,6 @@
 # PicoRadar: diez pasadas forenses V2
 
-Corte inicial: 2026-10-20. Resultados finales en `PicoRadar_RECOVERY_HANDOFF.md`. Detalle privado: `D:/PicoRadar_Rescue/manifests/`; no publicar sus archivos por referencia.
+Corte inicial: 2026-10-20. Resultados observados y límites en `PicoRadar_RECOVERY_HANDOFF.md`. Detalle privado: `D:/PicoRadar_Rescue/manifests/`; no publicar sus archivos por referencia.
 
 | # | Pasada / evidencia | Resultado y límite |
 | --- | --- | --- |
@@ -17,6 +17,8 @@ Corte inicial: 2026-10-20. Resultados finales en `PicoRadar_RECOVERY_HANDOFF.md`
 
 ## Historias y selección
 
+Clasificación de las diez pasadas: **1 GAP** (originales artísticos no localizados), **2 PASS**, **3 PASS**, **4 PASS** para inventario/publicación (CI bloqueada), **5 GAP** (chats antiguos no accesibles), **6 PASS** para fuentes/contratos (QA física pendiente), **7 GAP** por originales editables desconocidos, **8 PASS** dentro del alcance escaneado, **9 PASS** para checkout/build real en exFAT con excepción de archivo denegado, **10 GAP** por suite móvil fallida y gates bloqueados. PASS no acredita datos o dispositivos fuera del alcance. Ninguna incógnita autoriza descartar las variantes preservadas.
+
 `ffe0cbd` contiene por ancestry `d26ba84`, `13190d0`, `2e8f2ed`, `e6406f2` y `c9dbaf1`. Se conserva esa evolución sin restaurar layouts anteriores. Cambios auxiliares owner A/B/D/EF y funciones principales B07 reglas/campañas tienen cherry-picks equivalentes; mantenimiento y fallback de campañas incluyen correcciones posteriores.
 
 El inventario registra 21 tips locales distintos no cubiertos por el ancestro moderno ni las refs origin inspeccionadas. Incluyen variantes antiguas, checkpoints y handoffs, no 21 funciones faltantes. Sus objetos, refs, reflogs e índices se preservan privados. B04 comparador permanece pendiente. Checkpoints QA incluyen copias históricas de código, patches y evidencia: conservación no implica integración ni permiso de publicación.
@@ -29,4 +31,6 @@ Se conservan fuentes → importador/validador del dominio → dataset versionado
 
 ## Incógnitas
 
-No se localizaron las carpetas artísticas históricas `PicoRadar_Vehiculos_3D` en el Escritorio actual ni un proyecto Word3D/World3D dentro de la cobertura. Assets consumidos por la app están versionados; no se afirma recuperación de originales editables no localizados. Grafo pesado OSRM externo: URL, imagen y hash en `data/sources/osrm/source.json`.
+No se localizaron las carpetas artísticas históricas `PicoRadar_Vehiculos_3D` en el Escritorio actual ni un proyecto Word3D/World3D dentro de la cobertura. Assets consumidos por la app están versionados; no se afirma recuperación de originales editables no localizados.
+
+OSRM: el HEAD de la URL histórica del PBF respondió 404 el 2026-10-20. El inventario sí encontró el PBF original en el árbol C: preservado; su copia verificada coincide con `a71df1f2064d0536c053aa4bcd872e6aa0a4fa3e7b35964dd03de59793370a70`. Se conservó como asset en el borrador privado GitHub `recovery-osrm-input-20260907`, con licencia/atribución y digest remoto coincidente. README explica recuperación autenticada sin depender de C:/D:. Se preserva el input; no se declara regenerado el grafo ni activado el proveedor. No es entrada del build móvil con fixtures.

@@ -38,24 +38,66 @@ Los pipelines y lockfiles se conservan; no se añadieron dependencias, parsers, 
 | Snapshot WIP / Git common-dir | PASS, cifras anteriores |
 | Selección por ancestry y diffs | PASS; B07 contiene ancestros modernos |
 | `git diff --check` documental | PASS antes del commit inicial |
-| Escaneo historia moderna | Gitleaks 8.30.1; 1 falso positivo revisado en URL pública Power BI; sin credencial reproducida |
+| Escaneo historia publicable | Gitleaks 8.30.1: rango ampliado main..ae93533, 207 commits / 71,38 MB; tres alertas revisadas: URL pública Power BI y dos apariciones del identificador público ledgerKey del dataset. Cero alertas pendientes en ese alcance; sin valores reproducidos. Cambios documentales preparados escaneados aparte |
 | Clon exclusivo GitHub | PASS: SHA/tree anteriores, inicialmente limpio, sin alternates |
 | `flutter pub get` | PASS, lockfile conservado |
 | `dart format --output=none --set-exit-if-changed .` | PASS |
 | `flutter analyze --no-pub` | PASS, sin issues |
 | Codegen | CODEGEN_NOT_REQUIRED según SOP-07; entradas y generados rastreados conservados |
-| Suite móvil completa | IN_PROGRESS, concurrency=2; al menos ocho fallos de esperas/timeout/archivos observados; no se declara PASS |
-| Simulación/APK/tests nativos | Pendientes de finalizar la suite en ejecución |
-| Laravel/Pint/migraciones/assets | Composer validate PASS; 108 dependencias del lockfile en instalación, sin updates; resto pendiente |
-| B06/B07 paquete y navegador desde clon remoto | NOT_RUN; denegación local de archivo señalada abajo |
+| Suite móvil completa | FAIL: 3.233 PASS / 11 SKIP / 12 FAIL, concurrency=2; repetición selectiva serial: 7 PASS / 5 FAIL, sin modificar código ni aserciones |
+| Simulación | PASS, 11 tests con PICORADAR_DRIVING_SIMULATION=true |
+| APK dev APP_ENV=dev | PASS desde clon remoto, opciones explícitas Kotlin incremental=false / in-process; comando reproducible en README |
+| Tests Android nativos | PASS, :app:testDevDebugUnitTest con las mismas opciones de proceso |
+| Laravel/Pint/migraciones/assets | PASS: 108 paquetes Composer desde lockfile, npm ci/build, Pint; PHPUnit 602 tests / 2.778 aserciones / cero fallos / una omisión por symlink en Windows; migraciones SQLite nuevas, rutas, contrato B06/B07 y cobertura nacional |
+| B06/B07 paquete desde clon remoto | IN_PROGRESS: builder existente, dependencias de producción desde lockfile; verificación e instalación MariaDB locales aún sin resultado final |
+| B06/B07 navegador | BLOCKED_FILE_UNAVAILABLE por denegación local del PS1; no ejecutado |
 | CI de `21be9d9` | CI_INFRA_BLOCKED_GITHUB_BILLING; cinco jobs fallaron sin iniciar steps por pagos/límite de gasto |
 | Revisión de continuidad independiente | PASS de reanudación desde GitHub, exclusivamente lecturas remotas; no certifica reconstrucción. Contradicciones documentales de codegen/SOP/antecedentes visuales corregidas |
 
 ## Bloqueos, QA y deuda
 
+Comandos ejecutados en el clon remoto, con versiones y preparación descritas en README:
+
+```powershell
+# mobile
+Set-Location (git rev-parse --show-toplevel)
+Push-Location mobile
+flutter pub get
+dart format --output=none --set-exit-if-changed .
+flutter analyze --no-pub
+flutter test --no-pub --reporter=expanded --concurrency=2
+flutter test --no-pub --dart-define=PICORADAR_DRIVING_SIMULATION=true test/features/driving/application/driving_regional_session_test.dart --reporter=expanded
+flutter build apk --debug --flavor dev --dart-define=APP_ENV=dev --no-pub --no-android-gradle-daemon --android-project-arg=kotlin.incremental=false --android-project-arg=kotlin.compiler.execution.strategy=in-process --verbose
+# mobile/android
+Push-Location android
+./gradlew.bat :app:testDevDebugUnitTest -Pkotlin.incremental=false -Pkotlin.compiler.execution.strategy=in-process --no-daemon --console=plain
+Pop-Location
+Pop-Location
+# server; variables sintéticas de proceso según README
+Push-Location server
+composer validate --no-check-publish
+composer install --no-interaction --prefer-dist --no-progress
+npm ci --no-audit --no-fund
+npm run build
+php vendor/bin/pint --test
+php vendor/bin/phpunit --colors=never --log-junit D:/PicoRadar_Rescue/logs/cold-server-junit.xml
+php artisan migrate --env=testing --no-interaction
+php artisan route:list --json
+Pop-Location
+# raíz
+pwsh -NoProfile -File scripts/tests/test_admin_content_package_contract.ps1
+python scripts/validate_national_coverage.py
+```
+
+APK reconstruido: 210.851.084 bytes; SHA-256 `ce882ee133f10ac26a74f3373487d4354ae3b679753f0a36def82b28cd10e673`. Artefacto privado de prueba, no instalado ni publicado como release.
+
 Windows deniega recrear `scripts/tests/test_hostinger_installer_browser.ps1` en D:. `git restore --source=HEAD -- <archivo>` devolvió `Permission denied`. El archivo apareció inicialmente en el clon independiente y luego dejó de estar presente también allí. Permanece intacto en Git y no se incluye su eliminación en ningún commit. SHA-256 del contenido remoto: `a0b9b1d43b60402e6635b710212085168d16e8c230badee641c736d3f3656f2d`. Causa no confirmada; no se desactiva seguridad ni se evade el bloqueo. Ambos checkouts pueden mostrar su ausencia.
 
-Pruebas móviles: se observaron esperas propias de fixtures de aproximadamente un segundo y timeouts generales de 30 segundos durante operaciones de archivo, además de un error de teardown por archivo abierto. Hipótesis pendiente de aislar: carga de E/S durante la instalación concurrente. No se debilitaron aserciones, omitieron pruebas ni cambiaron privacidad/runtime. Los contadores finales y las reproducciones aisladas siguen pendientes.
+Pruebas móviles: se observaron esperas propias de fixtures de aproximadamente un segundo y timeouts generales de 30 segundos durante operaciones de archivo, además de un error de teardown por archivo abierto. Hipótesis pendiente de aislar: carga de E/S durante la instalación concurrente. No se debilitaron aserciones, omitieron pruebas ni cambiaron privacidad/runtime. La suite completa falló; una repetición selectiva no la convierte en PASS.
+
+Repetición de los doce casos, `--no-pub --concurrency=1 --reporter=expanded`, mismos timeouts y temporales en D:, terminó con 7 PASS / 5 FAIL. Persisten: selector tardío en `purchase_documents_screen_test.dart`; escaneo frente/reverso en `wallet_two_sides_flow_test.dart`; enlaces/resultados sin hora en `trip_screen_test.dart`; round-trip cifrado en `private_vehicle_document_store_test.dart` (timeout de 30 s); limpieza de caché SOAT en `vehicle_status_screen_test.dart`. Los otros siete casos pasaron. La repetición serial no resolvió cinco fallos; causa raíz funcional/E/S aún no certificada. Logs y selección exacta privados: `D:/PicoRadar_Rescue/logs/cold-mobile-failure-recheck.log` y `tools/recheck_mobile_failures.ps1`.
+
+Android: el primer build falló por caché incremental Kotlin entre C: y D:. Los flags explícitos del README permitieron compilar APK y ejecutar tests nativos sin mover fuentes, borrar cachés ni modificar herramientas globales. Se conserva D: exFAT.
 
 Firma release debug y su TODO son deuda histórica explícita; no se autoriza publicar una release con esa configuración.
 
@@ -63,4 +105,4 @@ QA física scanner, autenticación, notificaciones, Conducir y rendimiento hered
 
 ## NEXT
 
-Completar Gate C del clon GitHub `D:/Verification/PicoRadar`: consultar primero `D:/PicoRadar_Rescue/manifests/recovery-progress.md` y `*-gates.json` para no duplicar procesos en ejecución; recoger resultados, aislar fallos móviles una vez finalice la instalación y ejecutar los gates restantes. En otra máquina, crear un clon nuevo y seguir README. Cerrar con SHA/tree remoto, tests y blockers exactos; no iniciar una función nueva.
+Completar Gate C desde `recovery/20261019-modern`: partir del SHA del PR, clonar según README y registrar los gates todavía abiertos de la tabla. En esta máquina, consultar opcionalmente el ledger privado para no duplicar el paquete en ejecución; los documentos remotos son suficientes para un clon distinto. No iniciar una función nueva ni atribuir PASS a un gate pendiente.
