@@ -1,162 +1,45 @@
 # PicoRadar: estado vigente
 
-Actualizado: 2026-09-19. Sustituye el diario de versiones intermedias anterior,
-recuperable en Git (5958f42:docs/CURRENT.md). Baseline, Arquitectura, contratos
-funcionales y DESIGN_CONTRACT conservan su precedencia. Consolidar carpetas
-no modifica aprobaciones del producto.
+Actualizado: 2026-10-20. Estado único para continuidad. Baseline, Arquitectura y contratos conservan su precedencia. Recuperar no cambia aprobaciones del producto.
 
-## Base de trabajo unica
-- Raiz: C:/Users/felip/Documents/ChatGPT/PicoRadar_ Pico y Placa.
-- Base efectiva: fix/C11-home-sponsor-carousel en 2e8f2ed, descendiente de
-  13190d0 y con las correcciones C11 posteriores conservadas.
-- Rama de cierre de coherencia actual: chore/C11-post-coherence.
-- Checkpoint de seguridad: codex/checkpoint-before-post-c11-server-modes en
-  2e8f2ed.
-- Estado heredado: mejoras del propietario integradas y APK C11 previamente
-  instalada. Este lote no instala otra APK ni modifica datos del telefono;
-  permanece sin merge ni publicacion.
-- No trabajar en temp/VIAJE-R1-real-planner ni en B03/B04.
-- Checkpoints y recuperacion: docs/WORKSPACE_CONSOLIDATION.md.
-- GSD: .planning/.continue-here.md y .planning/HANDOFF.json.
+## Punto de entrada
 
-## Version instalada
-APK: artifacts/current/apk/PicoRadar-dev-release-home-carousel-20260919.apk.
-SHA256: B1CA1EE0762252E476A9CA8C068A752B4F2B6DF7C460F1B8490E99DAB2E0E907.
-Build dev release con APP_ENV=dev. Instalacion -r correcta en Mi A3 API30 el
-2026-09-19 a las 17:32:32 (Bogota), sin borrar datos. El usuario ya habia
-confirmado que el escaner ML Kit abre. La captura guiada frente/reverso esta
-implementada y cubierta por pruebas; su ciclo fisico final con tarjeta ficticia
-sigue pendiente de confirmacion.
-No continuar la limpieza durante este lote.
+- Rama moderna: `recovery/20261019-modern`, repositorio `sierraglobalcompany-rgb/PicoRadar`. Confirmar HEAD remoto.
+- Fuente: B07 administrativo `ffe0cbd194310e004b20abd97fcd10e685c7df88`.
+- Cadena comprobada: original `d26ba84` → integración owner `13190d0` → C11 `2e8f2ed` → coherencia `e6406f2` → B06 `c9dbaf1` → B07 `ffe0cbd`.
+- Canónico: `D:/Dev/PicoRadar` sobre exFAT. Clon independiente: `D:/Verification/PicoRadar`.
+- Originales C: preservados. No retomarlos como checkout activo ni restaurar desde el main histórico `e9ef375`.
+- Gates, SHA, PR y NEXT: `PicoRadar_RECOVERY_HANDOFF.md`. Las pruebas históricas no certifican el HEAD recuperado.
 
-## Mejoras del propietario integradas
-- Conducir: Atrás confirma el cierre de una sesion activa y vuelve a Inicio;
-  GPS abre diagnostico y recuperacion, Voz es alternable y persistente, y el
-  velocimetro usa escala visual de 160 km/h sin ocultar velocidades superiores.
-- Documentos: Cedula, Licencia de conduccion y Licencia de transito admiten
-  frente y reverso, guardado de solo frente y reemplazo atomico por lado o PDF.
-- Apps/Mas: se conserva el origen al volver. Talleres incorpora selector de
-  vehiculo, proximos/vencidos, historial, costos, busqueda GPS/ciudad y
-  recordatorios honestos por fecha o kilometraje actualizado.
-  Los avisos por fecha ahora requieren opt-in explicito por vehiculo, quedan
-  desactivados por defecto y no muestran placa ni detalle privado en bloqueo.
-- Inicio: carrusel manual superior de cuatro campanas locales, borde a borde en
-  telefonos y sin mostrar la lamina siguiente. La navegacion vive dentro de la
-  imagen mediante flechas transparentes en las esquinas y cuatro circulos, sin
-  capsula ni contador visible. El carrusel del vehiculo absorbe todo el alto
-  restante entre 168 y 360 dp y ensancha su tarjeta central del 64% al 78%,
-  manteniendo foco, placa e imagen completa. SOAT y Tecnomecanica quedan
-  completos sobre la navegacion sin scroll normal.
-  No existe el antiguo banner inferior. Tres campanas son demos y la cuarta invita a ser
-  aliado. El formulario real permanece cerrado hasta cumplir HTTPS, privacidad
-  versionada y bandeja administrativa.
-- Tramites y cobertura: catalogos versionados con estado y evidencia. No se
-  presenta como nacional lo pendiente o vencido.
+## Producto conservado
 
-## Funcionalidad y aceptacion
-La base incluye las mejoras actuales de Inicio/Garaje/Pico, Viaje/Conducir,
-Documentos, CDA, Servicios, Seguro y Compra/Venta. No recuperar layouts antiguos
-ni activar cambios pendientes de otras ramas como parte de la limpieza.
+| Área | Implementación / aceptación pendiente |
+| --- | --- |
+| Shell | Inicio · Garaje · Apps · Viaje · Conducir; Apps central; sin cuenta obligatoria |
+| Inicio/C11 | Carrusel manual superior de cuatro campañas, borde a borde, flechas ligeras e indicadores; vehículo adaptable; sin banner inferior antiguo |
+| Campañas B07 | Catálogo opcional versionado, validación, territorio/vigencia y fallback C11; publicidad comercial no activada |
+| Garaje/documentos | Frente/reverso y reemplazo por lado/PDF; cifrado privado local; ciclo físico final pendiente |
+| Mantenimiento | Historial, costos y búsqueda; recordatorios por vehículo con opt-in, OFF por defecto; callback serializado y ligado al vehículo original |
+| Viaje/Conducir | Motores/datasets conservados; OSRM externo opcional; QA física y objetivo de rendimiento pendientes |
+| B06 | Instalador local de primera instalación, locks, manifiesto y regresiones; hosting real no intervenido |
+| B07 | Reglas por ciudad, importación JSON/CSV/XLSX, publicación/restauración selectiva, campañas, operadores y auditoría; sin despliegue |
+| Cobertura | Datasets con vigencias y límites editoriales; el rescate no completa cobertura nacional |
 
-- Preparar compra: seis revisiones sin candidato, autoridades independientes,
-  borrador v4 y documentos privados por preparacion. Portada conservada.
-  Ver codex/PURCHASE_FUNCTIONAL_HANDOFF_20260915.md y
-  codex/PURCHASE_LAYOUT_HANDOFF_20260915.md.
-- Drift de la APK instalada: schema v9, agrega ajustes de alertas por
-  vehiculo/categoria. Propietario documental exclusivo driver/vehicle/preparation,
-  cifrado y no-backup conservados. Migracion aditiva 8 a 9 y conservacion de datos
-  cubiertas en la suite; la app instalada abre con los vehiculos existentes.
-- Documentos: reglas y pendientes en codex/C15_DOCUMENTS_OWNER_HANDOFF.md y
-  codex/C15_DOCUMENTS_COMPACT_HANDOFF.md; sin fallback externo inseguro.
-- Seguro: canales con evidencia y limites; ver
-  codex/C13_INSURANCE_POLICY_HANDOFF.md y codex/C13_INSURANCE_DIRECTORY_AUDIT.md.
-- CDA: universo operativo aprobado de 866; historico RUNT de 964 conservado.
-  Geocodificacion aproximada no equivale a sede confirmada fisicamente.
-  Ver codex/C24_CDA_OWNER_HANDOFF.md y codex/C24_CDA_GEODATA_AUDIT.md.
-- Directorios: cobertura y pendientes en
-  codex/PURCHASE_DIRECTORY_AUDIT_20260915.md; no inventar canales.
-- Conducir: .planning/CONDUCIR_OWNER_CONSOLIDATED.md y
-  artifacts/current/driving/INFORME_OWNER_CONSOLIDADO.md. El ultimo perfil
-  documentado no alcanzo el objetivo de 95%; no cerrado por esta limpieza.
-- Viaje: piloto OSRM local detenido. La procedencia permanece en
-  data/sources/osrm/source.json, pero el grafo pesado ignorado no esta presente
-  en los worktrees comprobados. No descargarlo ni reconstruirlo por rutina.
+Drift conserva schema v9 y pruebas de migración. El rescate no agrega tablas ni cambia datos del usuario; conserva las migraciones B07 existentes.
 
-## Pendientes en reposo
-- Completar en Mi A3 el ciclo fisico frente/reverso con tarjeta ficticia,
-  autenticacion, guardado y reapertura. La apertura del escaner fue confirmada;
-  tests no sustituyen este gate fisico.
-- B04 comparador: fe0d8d4, codex/pending-B04-before-consolidation. No incorporado.
-- Auditoria fresca de 82ce6b8: 2959 pruebas moviles pasan, 11 omitidas; analisis
-  limpio. Las 87 fallas historicas ya no se reproducen. Simulacion Conducir:
-  11 pasan al habilitarla. Servidor: 493 pasan / 1993 assertions con SQLite
-  habilitado solo en el proceso de pruebas. Esto no certifica cambios posteriores.
-- Cobertura editorial, rendimiento y QA fisica de lotes previos siguen sujetos
-  a sus contratos. No abrir esos trabajos automaticamente.
+## Decisiones y pendientes
 
-## Verificacion historica de la consolidacion
-Desde la raiz: flutter analyze --no-pub limpio; 625 tests focalizados passed;
-flutter build apk --flavor dev --release --no-pub correcto (100.7 MB).
-Logs: artifacts/current/consolidation. Runtime, assets y configuracion movil
-identicos al checkpoint instalado. Sin dependencias nuevas.
+- Free 1.0 antes de monetizar. Lite/Completo/Pro siguen siendo planificación; ads, pagos, nube y WhatsApp OFF.
+- Sin GPS continuo al servidor ni historial por defecto; documentos sin nube por defecto; sin scraping/CAPTCHA bypass de SIMIT/RUNT.
+- Patrocinado no equivale a oficial/acreditado. Defensa no promete anulación de multas.
+- Sin merge, despliegue ni acceso a Hostinger o Mi A3 durante el rescate.
+- Instalación C11 histórica del 2026-09-19 y apertura confirmada del scanner no acreditan captura, autenticación, guardado y reapertura completos.
+- Comparador B04 `fe0d8d4` sigue fuera del runtime moderno. Variantes y fuentes QA históricas se preservan sin aplicarlas ciegamente.
+- Planes GSD previos y `docs/WORKSPACE_CONSOLIDATION.md` son antecedentes; sus paths e instrucciones de limpieza no gobiernan el rescate.
+- Handoffs funcionales: `codex/`; autoridad visual: `docs/DESIGN_CONTRACT.md`; operación: `docs/SOP.md` y guía B07.
 
-APK reconstruido: mobile/build/app/outputs/flutter-apk/app-dev-release.apk.
-SHA256: 362608E545676E67A8BC3AAA33407E7846158E356D7AD3665942EFE76C99CBFF.
-No instalado durante la consolidacion. Detalles, limites de limpieza y pendientes
-reabribles en docs/WORKSPACE_CONSOLIDATION.md y .planning/PENDING.md.
+Cobertura declarada al cierre de coherencia, sujeta a la fecha de cada fuente: Pico 73 municipios (6 verificados, 36 condicionales, 2 vencidos, 29 pendientes); fotomultas 360 registros; peajes 184 estaciones; trámites 769 autoridades. No equivale a operación nacional completa ni vigencia actual confirmada.
 
-## Reparacion activa
-Plan, hallazgos y gates en .planning/FORENSIC_REPAIR.md. Ampliacion de Alertas
-documentada en docs/ADR_ALERTS_ANDROID.md. Las reparaciones llevan checkpoints
-por alcance. No se cierran escaneo, autenticacion ni alarmas por pruebas unitarias.
-La APK dev nueva debe incluir APP_ENV=dev para mostrar Seguro demostrativo;
-produccion mantiene la promocion oculta. No alterar vigencia editorial de datasets.
+## Continuación exacta
 
-## Preparacion posterior a C11
-- C11 permanece protegido: no se modificaron sus carruseles de patrocinador o
-  vehiculo ni sus pruebas visuales.
-- El slot comercial inferior anterior no existe en Inicio. La configuracion
-  compartida que permanece se conserva porque SOAT/RTM aun la consumen.
-- Registro, Lite, Pro, anuncios reales y WhatsApp continúan desactivados.
-- El servidor dispone de un preflight de solo lectura y una configuracion de
-  staging sin secretos. Laravel y OSRM se evalúan con perfiles separados; un
-  resultado local o sintetico no acredita el host objetivo. No hay staging
-  desplegado ni hosting modificado.
-- Contratos y decision de staging: docs/post_c11/.
-- La matriz conserva 189 acciones e identifica por separado acceso Lite,
-  Completo, Pro, administrador y endpoint. Los modos siguen siendo propuesta:
-  ningun gate fue activado.
-- La evidencia C11 distingue capturas historicas con capsula y capturas finales
-  con controles ligeros. Sus hashes y limitaciones estan documentados en
-  docs/post_c11/EVIDENCIA_C11_CLASIFICACION.md.
-- La prueba puntual del callback de mantenimiento reprodujo una lectura de
-  Riverpod despues de desmontar la pantalla y una vista obsoleta al cambiar de
-  vehiculo. El guardado ahora queda serializado, ligado al vehiculo original,
-  informa fallos y refresca el valor persistido sin tocar el schema.
-
-Verificacion de este lote: formato limpio en los archivos Dart modificados,
-analisis limpio, 3238 pruebas moviles pasan y 10 quedan omitidas por condiciones
-de plataforma/simulacion. Las 192 pruebas protegidas de Inicio pasan y los cuatro
-archivos criticos de C11 conservan sus hashes. La suite Laravel termina sin
-fallos al habilitar SQLite y una clave de pruebas solo para el proceso; reporta
-166 pruebas aprobadas, 2373 aserciones y 337 advertencias del entorno. El APK dev
-compila, pero no se instala ni se publica.
-Servidor: 503 pruebas y 2373 assertions pasan con SQLite habilitado solo para el
-proceso. El validador nacional pasa. Los 87 fallos historicos no se reproducen.
-Handoff principal: codex/OWNER_IMPROVEMENTS_INTEGRATION_HANDOFF.md.
-
-Cobertura vigente declarada: Pico y placa contiene 73 municipios (6 verificados,
-36 condicionales, 2 vencidos y 29 pendientes); solo cinco paquetes afirmativos
-existentes estan habilitados en motor. Fotomultas contiene 360 registros, 67 sin
-velocidad y 13 departamentos/unidades territoriales. Peajes contiene 184
-estaciones y no publica tarifas no comprobadas. Tramites contiene 769 autoridades
-y 1003 filas fuente; solo Bogota y Medellin tienen enlaces directos verificados,
-con 767 entradas pendientes. Estos conteos no equivalen a cobertura nacional
-completa ni a operacion actual confirmada.
-
-## Invariantes
-Sin cuenta obligatoria; Android primero; Inicio/Garaje/Apps/Viaje/Conducir con
-Apps central. GPS sin historial por defecto ni envio continuo. Documentos sin
-nube por defecto; no secretos en Git/APK. Demos no son patrocinio real ni leads.
-Free 1.0 antes de monetizacion; sin pagos, reservas o PDF contractual nuevos.
-No scraping/CAPTCHA de SIMIT/RUNT. Sin merge ni declaracion release-ready.
+Seguir el campo NEXT del handoff de recuperación. Cerrar primero sus gaps de reconstrucción; no abrir funcionalidades ni QA física automáticamente. Todo lote futuro debe leer su contrato.

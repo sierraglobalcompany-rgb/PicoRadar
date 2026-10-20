@@ -145,3 +145,13 @@ Antes de correr `build_runner`, revisar si cambiaron entradas de generacion: tab
 - The route runs locally without the device location gateway or per-position backend calls. The existing camera dataset, matcher, alert settings and feedback remain authoritative; cameras are not invented to force an alert.
 - The recording is public road geometry, not a stored user journey. Source URLs and OpenStreetMap attribution are inside the fixture. No account, permission, dependency or public service was added.
 - Capture both directions with the simulation label, a camera episode if encountered, and manual stop. Whole-route offline tests exercise the complete geometry; short physical captures do not certify camera coverage, field GPS accuracy, Bluetooth or legal road suitability.
+
+## SOP-08 Recuperación y continuidad en D:
+
+- Entrada única: README → CURRENT → handoff de recuperación → lote. Documentos antiguos de consolidación y estados GSD se consultan como historial.
+- Desarrollo en `D:/Dev/PicoRadar` directamente en exFAT. No reformatear ni mover originales C:. Trust Git de proceso por ruta exacta; `core.autocrlf=false`, `core.longpaths=true`, `core.filemode=false` y checkout paralelo para clones nuevos.
+- Los SDK y cachés son dependencias instaladas legítimas; no son fuente de proyecto. Temporales voluminosos se dirigen a D: mediante variables del proceso.
+- Reconstrucción independiente: clonar solo GitHub sin alternates; fijar SHA/tree y ejecutar comandos del README. No copiar `.env`, código, vendor ni assets desde el checkout original para certificarla.
+- Servidor: pruebas SQLite y migraciones en archivos nuevos sintéticos; MariaDB solo instancias locales efímeras de los scripts. Nunca usar bases reales ni consultar Hostinger.
+- Bundles, copia verificada de gitdir/common-dir, WIP y privados quedan en `D:/PicoRadar_Rescue`, fuera de Git. Esa unidad no constituye respaldo físico independiente. Los manifiestos privados contienen la correspondencia source/backup/hash; no publicarlos.
+- Logs completos privados; resumen sanitizado en handoff. CI solo acredita el SHA exacto ejecutado; filtros o billing bloqueados se registran sin evadirlos. QA física heredada permanece pendiente.

@@ -1,5 +1,12 @@
 # AGENTS.md - PicoRadar: Pico y Placa
 
+## Recuperación vigente (2026-10-20)
+
+La rama moderna es `recovery/20261019-modern`, fuente B07 `ffe0cbd`. Leer primero `docs/CURRENT.md` y el handoff de recuperación de la raíz para HEAD, gates y NEXT. El main histórico no sustituye esa fuente. Checkout canónico `D:/Dev/PicoRadar` sobre exFAT; originales C: preservados. Los planes y paths de workspaces anteriores son antecedentes, no instrucciones activas.
+
+Este rescate autorizado consolida historias existentes; la regla de un lote por rama vuelve a aplicar a desarrollos futuros. Sin merge automático, force-push, Hostinger, Mi A3 ni activaciones comerciales. No convertir una prueba sintética en aprobación física. Git en exFAT usa confianza de proceso para rutas exactas, nunca comodín global.
+
+
 Estas instrucciones son obligatorias para cualquier agente/Codex que trabaje en este repositorio.
 
 ## 1. Fuente de verdad

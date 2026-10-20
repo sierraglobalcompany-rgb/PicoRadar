@@ -573,3 +573,7 @@ No se requieren cientos de goldens. El set canonico debe cubrir raiz, densidad, 
 | Loading | Skeletons estables | `CircularProgressIndicator` repetido | Medium | Sensacion generica y saltos visuales | R01/R02 |
 | Componentes | Shared cards/chips/tiles | Widgets privados `_StatusCard`, `_VehicleCard`, `_ModuleTile`, etc. | Medium | Duplica decisiones visuales | R01 |
 | Apps grid | Sin overflow | Mi A3 fisico muestra `BOTTOM OVERFLOWED BY 14 PIXELS` | Critical | UI rota en dispositivo real | R02 |
+
+## Recuperación 2026-10-20
+
+La recuperación parte de B07 `ffe0cbd`, descendiente de C11 `2e8f2ed`. Conserva el carrusel manual, flechas ligeras, indicadores y composición del vehículo. B07 incorpora el catálogo remoto opcional con fallback local C11; no activa campañas reales ni cambia aprobaciones visuales. No recuperar el banner inferior ni imágenes antiguas desde main. Este rescate documental no acredita QA visual/física nueva.
