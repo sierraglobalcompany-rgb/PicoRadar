@@ -225,7 +225,7 @@ Keep this file only on the owner's computer. It is not included in the ZIP.
     $provenance = [ordered]@{
         releaseId = $releaseId
         gitHead = $head
-        branch = (git -C $root branch --show-current).Trim()
+        branch = (git -C $root rev-parse --abbrev-ref HEAD).Trim()
         generatedAt = (Get-Date).ToUniversalTime().ToString('o')
         php = (& $PhpPath -r 'echo PHP_VERSION;').Trim()
         composer = (composer --version --no-ansi | Select-Object -First 1)
