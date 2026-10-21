@@ -270,9 +270,21 @@ final class CameraCsvImportService
             $source->updated_at?->toISOString(),
             $jurisdiction->id,
             $jurisdiction->key,
+            $jurisdiction->name,
             $jurisdiction->kind->value,
+            $jurisdiction->primary_geographic_unit_id,
+            $jurisdiction->timezone,
+            $jurisdiction->metadata,
             (bool) $jurisdiction->enabled,
             $jurisdiction->updated_at?->toISOString(),
+            // Pivot attach/detach does not necessarily bump jurisdictions.updated_at.
+            // Keep a bounded, canonical snapshot of every mapped municipality,
+            // including activation. JurisdictionService locks this row for edits.
+            $jurisdiction->geographicUnits()
+                ->orderBy('geographic_units.id')
+                ->get(['geographic_units.id', 'geographic_units.is_active'])
+                ->map(static fn ($unit): array => [$unit->id, (bool) $unit->is_active])
+                ->all(),
         ], JSON_THROW_ON_ERROR));
     }
 }

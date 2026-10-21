@@ -413,6 +413,45 @@ class CameraCsvImportTest extends TestCase
         self::assertSame('review', $batch->fresh()->status);
     }
 
+    public function test_coverage_attached_after_preview_invalidates_the_older_review(): void
+    {
+        $batch = $this->upload();
+        $otherUnit = \App\Models\GeographicUnit::query()
+            ->where('level', 'municipality')
+            ->whereKeyNot($this->jurisdiction->primary_geographic_unit_id)
+            ->firstOrFail();
+
+        app(\App\Services\JurisdictionService::class)
+            ->attachCoverage($this->jurisdiction, $otherUnit, $this->admin);
+
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), [
+            'analysis_sha256' => $batch->analysis_sha256,
+            'records' => ['2'],
+        ])->assertStatus(409);
+
+        self::assertSame(0, Camera::count());
+        self::assertSame('review', $batch->fresh()->status);
+    }
+
+    public function test_jurisdiction_rename_is_stale_even_if_timestamp_is_unchanged(): void
+    {
+        $batch = $this->upload();
+        $stamp = $this->jurisdiction->updated_at;
+        $this->jurisdiction->name = 'Renamed without timestamp advancement';
+        $this->jurisdiction->timestamps = false;
+        $this->jurisdiction->save();
+        $this->jurisdiction->timestamps = true;
+        self::assertSame($stamp->toISOString(), $this->jurisdiction->fresh()->updated_at->toISOString());
+
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), [
+            'analysis_sha256' => $batch->analysis_sha256,
+            'records' => ['2'],
+        ])->assertStatus(409);
+
+        self::assertSame(0, Camera::count());
+        self::assertSame('review', $batch->fresh()->status);
+    }
+
     private function upload(?string $body = null): CameraCsvImport
     {
         $csv = "external_id,municipality_code,lat,lon,type,name\n".
