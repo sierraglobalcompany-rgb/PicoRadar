@@ -94,7 +94,7 @@ final class CameraCsvImportController extends Controller
                 'new' => $a->keys()->diff($z->keys())->count(),
                 'missing_advisory' => $z->keys()->diff($a->keys())->count(),
                 'changed' => $a->keys()->intersect($z->keys())->filter(
-                    fn (string $key): bool => $a[$key] !== $z[$key]
+                    fn ($key): bool => $a[$key] !== $z[$key]
                 )->count(),
             ];
         }
@@ -159,7 +159,7 @@ final class CameraCsvImportController extends Controller
                 (string) $row['record'],
                 $row['status'],
                 $values['external_id'] ?? '',
-                $values['municipality_code'] ?? '',
+                isset($values['municipality_code']) ? "'".$values['municipality_code'] : '',
                 $values['lat'] ?? '',
                 $values['lon'] ?? '',
                 $values['type'] ?? '',

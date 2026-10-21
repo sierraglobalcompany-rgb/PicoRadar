@@ -173,7 +173,7 @@ class CameraCsvImportTest extends TestCase
         );
         $report = $this->actingAs($this->admin)->get(route('admin.camera-csv-imports.report', $batch));
         $report->assertOk();
-        self::assertStringContainsString("'=HYPERLINK", $report->streamedContent() ?: $report->getContent());
+        self::assertStringContainsString("'=HYPERLINK", $report->getContent());
     }
 
     private function upload(?string $body = null): CameraCsvImport
