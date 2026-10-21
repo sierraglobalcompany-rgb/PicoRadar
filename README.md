@@ -78,11 +78,14 @@ En Windows con proyecto en D: y caché pública Kotlin/Flutter en C:, el build v
 
 ```powershell
 flutter build apk --debug --flavor dev --dart-define=APP_ENV=dev --no-pub --no-android-gradle-daemon --android-project-arg=kotlin.incremental=false --android-project-arg=kotlin.compiler.execution.strategy=in-process
+if (-not (Test-Path -LiteralPath 'android/gradlew.bat')) { throw 'No existe gradlew.bat después del build Flutter; no copiar archivos desde otro checkout' }
+if (-not (Test-Path -LiteralPath 'android/gradle/wrapper/gradle-wrapper.jar')) { throw 'No existe gradle-wrapper.jar después del build Flutter; falta bootstrap Gradle' }
 Push-Location android
-if (-not (Test-Path -LiteralPath './gradlew.bat')) { throw 'No existe gradlew.bat después del build Flutter; no copiar archivos desde otro checkout' }
-if (-not (Test-Path -LiteralPath './gradle/wrapper/gradle-wrapper.jar')) { throw 'No existe gradle-wrapper.jar después del build Flutter; falta bootstrap Gradle' }
-./gradlew.bat :app:testDevDebugUnitTest -Pkotlin.incremental=false -Pkotlin.compiler.execution.strategy=in-process --no-daemon --console=plain
-Pop-Location
+try {
+    ./gradlew.bat :app:testDevDebugUnitTest -Pkotlin.incremental=false -Pkotlin.compiler.execution.strategy=in-process --no-daemon --console=plain
+} finally {
+    Pop-Location
+}
 ```
 
 **Gradle/Android:** `mobile/android/.gitignore` excluye `gradlew`, `gradlew.bat` y `gradle-wrapper.jar`. En la reconstrucción histórica, primero se completó el build Android de Flutter y después se ejecutaron tests Gradle. En un clon nuevo hay que **comprobar que Flutter generó/restableció el wrapper**; si faltan esos archivos, registrar bloqueo y revisar el bootstrap con el SDK fijado, nunca copiarlos desde C:/D: ni declarar `PASS` de Gradle. La presencia de lockfiles en GitHub no certifica ese paso en el equipo nuevo.
