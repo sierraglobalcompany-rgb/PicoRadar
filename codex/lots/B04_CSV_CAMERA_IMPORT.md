@@ -1,6 +1,6 @@
 # B04-CSV-KISS — Importación revisable de cámaras (plan único)
 
-**Estado:** PLAN_READY / IMPLEMENTATION_NOT_VERIFIED / QA_NEW_NOT_RUN.
+**Estado:** IMPLEMENTED_DRAFT_PR75 / RUNTIME_QA_NOT_RUN / NO_MERGE. El contrato no certifica la corrección del código.
 **Fecha:** 2026-10-21. **Base autorizada:** `recovery/20261019-modern`; fotografía al planificar `0d3a6a2a32bff8bd27dbdd92f88433dd8ab3e47a`.
 **Alcance:** un lote Laravel administrativo, CSV solamente. Nuevo PR **Draft** hacia la rama moderna, **sin merge ni deploy**. Este archivo consolida el contrato B04 CSV V5 y la auditoría de seguridad V5.1, que eran adjuntos externos al repositorio. No es evidencia de código ejecutado.
 

@@ -25,7 +25,7 @@ git branch -r # Debe listar las ramas remotas, no solo la rama moderna
 
 **Importante:** no usar `--single-branch` para este procedimiento de continuidad. Codex podría necesitar inspeccionar otras ramas/PR y una clonación limitada cambia el refspec habitual de `origin`. Clonar `--branch` sin `--single-branch` activa la rama moderna y conserva el seguimiento de las demás ramas remotas. Un PR nuevo que aparezca después requiere `git fetch origin` antes de consultarlo.
 
-Para **continuar en un checkout existente**, ANTES de editar o crear ramas inspeccionar `git status --porcelain=v1 -uall`, `git branch -vv`, `git worktree list --porcelain`, `git log -1` y comparar contra `origin/recovery/20261019-modern`. No sobrescribir ni eliminar cambios no publicados. El contrato próximo B04 está en [`codex/lots/B04_CSV_CAMERA_IMPORT.md`](codex/lots/B04_CSV_CAMERA_IMPORT.md); la implementación no está terminada.
+Para **continuar en un checkout existente**, ANTES de editar o crear ramas inspeccionar `git status --porcelain=v1 -uall`, `git branch -vv`, `git worktree list --porcelain`, `git log -1` y comparar contra `origin/recovery/20261019-modern`. No sobrescribir ni eliminar cambios no publicados. El contrato próximo B04 está en [`codex/lots/B04_CSV_CAMERA_IMPORT.md`](codex/lots/B04_CSV_CAMERA_IMPORT.md); el código de la implementación está en el PR funcional #75 (Draft), sin QA de runtime ni merge.
 
 ## Requisitos
 
