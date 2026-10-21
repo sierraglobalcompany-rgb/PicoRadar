@@ -1505,7 +1505,8 @@ Future<void> _finishWalletIo(
   bool Function()? until,
 }) async {
   final container = ProviderScope.containerOf(
-    tester.element(find.byType(VehicleStatusScreen)),
+    // The root viewer can leave the owner route mounted but offstage.
+    tester.element(find.byType(VehicleStatusScreen, skipOffstage: false)),
   );
   await pumpUntilRealIo(
     tester,
