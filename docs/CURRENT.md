@@ -43,4 +43,8 @@ Cobertura declarada al cierre de coherencia, sujeta a la fecha de cada fuente: P
 
 ## Continuación exacta
 
-La estabilización V4 del 2026-10-21 está registrada en PicoRadar_STABILIZATION_HANDOFF.md y PR #72. La suite móvil completa pasó localmente en SHA de código e5aeda06787eeec2e90fb6a7aa239a95516d6227; revisar el handoff para tree, conteos, límites y siguiente acción. La siguiente acción es revisión humana del PR draft; sin merge automático, funcionalidades nuevas ni QA física automática.
+**Integración completada (2026-10-21):** PR #72 fusionado mediante merge normal en `recovery/20261019-modern`, commit `9d7c1b3b863a72a43ef0e2820f3e51b5392c80bd`. Los diez commits se conservaron. El código que obtuvo `FULL_MOBILE_QA_PASS_LOCAL` es `e5aeda06787eeec2e90fb6a7aa239a95516d6227`: **3.253 PASS / 11 SKIP / 0 FAIL**, exit 0. El commit documental de PR #72 `99cbf0ce2d210d5c374c8a29b47f604a5bc30f7c` es ancestro del merge. No repetir esta suite para fuentes móviles idénticas.
+
+**Estado de ramas:** PR #72 MERGED; PR #71 sigue abierto en borrador contra `main` histórico, que NO se fusionó ni se modificó. No declarar CI verde, QA física o publicación: Actions sigue bloqueado por cuota; instalación MariaDB B06/B07 y prueba de navegador tienen los bloqueos históricos del handoff de recuperación; QA Android física permanece pendiente.
+
+**NEXT:** elegir y delimitar un único lote nuevo desde el HEAD moderno, no desde `main`. `integration/VIAJE-R1-real-planner` (#55) y `codex/app-performance-kiss` (#64) son ancestros de la rama moderna y no deben reintegrarse. `fix/DRIVE-speed-audio-reliability` (#56) y `recovery/20261019-pending-b04` son divergentes: auditar cambios contra la implementación moderna, sin cherry-pick o merge ciego. Priorizar revisión del contrato funcional y evidencia antes de autorizar cualquier cambio. Conservar KISS, ley antirruido, antiparches y fidelidad UX/UI Pro; sin Hostinger, teléfono, release ni merges no previstos.
