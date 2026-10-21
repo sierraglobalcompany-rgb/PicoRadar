@@ -47,10 +47,15 @@ try {
         throw 'PHP CLI is unavailable. Do not claim runtime QA.'
     }
     Require-ExitZero 'PHP version' { php --version }
+    $phpVersionId = [int]((& php -r 'echo PHP_VERSION_ID;').Trim())
+    if ($LASTEXITCODE -ne 0 -or $phpVersionId -lt 80300 -or $phpVersionId -ge 80600) {
+        throw "Unsupported PHP version ID: $phpVersionId. This project targets 8.3-8.5."
+    }
 
     $extensions = @(& php -m)
     if ($LASTEXITCODE -ne 0) { throw 'Could not inspect PHP extensions.' }
-    foreach ($needed in @('mbstring', 'pdo_sqlite', 'sqlite3', 'fileinfo')) {
+    # Laravel's SQLite connection uses PDO; ext-sqlite3 is not required.
+    foreach ($needed in @('mbstring', 'pdo_sqlite', 'fileinfo')) {
         if (@($extensions | Where-Object { $_ -ieq $needed }).Count -ne 1) {
             throw "Missing required PHP extension: $needed"
         }
