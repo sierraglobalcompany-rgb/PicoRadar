@@ -10,6 +10,7 @@ use App\Models\CameraCsvImport;
 use App\Models\CameraSource;
 use App\Models\Jurisdiction;
 use App\Models\User;
+use DomainException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
@@ -231,6 +232,11 @@ final class CameraCsvImportService
                 abort(409, 'Camera identity or concurrent transaction changed; no CSV batch rows were committed.');
             }
             throw $error;
+        } catch (DomainException $error) {
+            // CameraRegistryService rechecks lifecycle and geographic coverage
+            // under row locks. A conflicting manual change must not become a
+            // partial CSV batch or an opaque HTTP 500.
+            abort(409, 'The camera changed during application; the CSV transaction was rolled back.');
         }
     }
 }
