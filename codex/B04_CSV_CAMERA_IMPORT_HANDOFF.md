@@ -13,7 +13,7 @@
 3. Persistencia de lote nuevo aislado: camera_csv_imports; archivos privados en el disco local, rutas aleatorias y hash SHA256 original/análisis, auditoría, estado review/applied. No crear otras tablas ni índices de cámaras: migración histórica ya declara UNIQUE(source_id,external_id); falta comprobar el índice del motor real.
 4. Panel admin con tres vistas (batches, upload, review); GET template/report; comparación solo misma source/jurisdiction. Report neutraliza fórmulas; DANE conserva ceros iniciales para hojas de cálculo.
 5. POST Apply exige Gate cameras.edit **y** cameras.review. Selección explícita, SHA de revisión, nueva clasificación dentro de DB transaction y locks; valida todas las seleccionadas antes de mutación, después crea por CameraRegistryService::create con lista cerrada sin campos de ciclo de vida, actualiza solo draft/rejected por updateDraft. 409 ante stale; idempotencia si lote ya aplicado; rollback de DB si falla una fila/auditoría. NO verifica, activa, retira ni publica cámaras.
-6. 11 unit parser, 8 preview Feature y 18 import Feature: **37 métodos B04 escritos pero aún NO EJECUTADOS**... Casos adicionales: identidad case-fold, bytes originales únicos, controles en ID, cámara en revisión posterior al preview, selección parcial, reintento con selección distinta. No CI verde: Actions tiene bloqueo de cuota con zero steps.
+6. 12 unit parser, 8 preview Feature y 18 import Feature: **38 métodos B04 escritos pero aún NO EJECUTADOS**... Casos adicionales: identidad case-fold, bytes originales únicos, controles en ID, cámara en revisión posterior al preview, selección parcial, reintento con selección distinta. No CI verde: Actions tiene bloqueo de cuota con zero steps.
 
 ## Gates y bloqueos reales
 
@@ -46,7 +46,7 @@ Si las pruebas revelan fallos: reparar **origen y consumidores**, no añadir par
 - Importador oficial ANSV **requiere** `camera_id=cam_` seguido de los primeros 26 hex de `source_row_identity`. Se conserva mediante el **tercer argumento interno** `create($attributes, null, $trustedId)`; no debe exponerse como campo HTTP. El método valida `^cam_[0-9a-f]{26}$`. La prueba histórica `AnsvRichCameraImportTest::test_idempotent_reimport_keeps_b03_master_and_provenance_stable` comprueba la identidad determinista y DEBE pasar con la suite global.
 - Para evitar altas manuales entre Preview y Apply, creación y modificación de cámaras adquieren locks en **orden fijo**: fuentes por ID, jurisdicciones por ID, luego cámara. Apply ya bloquea fuente y jurisdicción; también cubre fuentes diferentes que reportan cámaras cercanas en la misma jurisdicción. Probar dos conexiones MariaDB: source-source, intersource same-jurisdiction, source move, manual create vs CSV apply, estatus transition y ANSV import. Las pruebas SQLite no certifican locking.
 - Preview compara proximidad dentro de la misma jurisdicción aunque los códigos de municipio difieran (municipios fronterizos de una cobertura). Se añadió la prueba de regresión.
-- Las 11 + 8 + 18 = **37 pruebas B04** son nuevas; hay **3 regresiones adicionales** en `CameraRegistryTest` sobre rechazo de campos reservados, autoría y preservación ANSV: **40 pruebas nuevas de esta implementación** (además de 33 métodos históricos en `AnsvRichCameraImportTest`). No se ha ejecutado ninguna de estas pruebas en este chat.
+- Las 12 + 8 + 18 = **38 pruebas B04** son nuevas; hay **3 regresiones adicionales** en `CameraRegistryTest` sobre rechazo de campos reservados, autoría y preservación ANSV: **41 pruebas nuevas de esta implementación** (además de 33 métodos históricos en `AnsvRichCameraImportTest`). No se ha ejecutado ninguna de estas pruebas en este chat.
 
 ## QA pendiente innegociable
 
@@ -57,5 +57,11 @@ En el MISMO clon QA aislado de Codex, ejecutar el script `scripts/qa_b04_csv.ps1
 - Rendimiento SQL: Preview conserva `LOWER(external_id)` con parámetros para SQLite, y emplea `whereIn(external_id)` indexable en MariaDB/MySQL bajo el `utf8mb4_unicode_ci` configurado. La semántica de collation **real** todavía debe validarse en MariaDB aislada; no asumir índice o cobertura Unicode sin EXPLAIN y pruebas.
 - Conflictos: Apply traduce SQLSTATE de unicidad/deadlock y los errores de transición de CameraRegistryService a `409`; toda mutación ocurre bajo `DB::transaction`. Las condiciones de carrera deben certificarse mediante conexiones reales.
 - Integridad histórica: la repetición idempotente de un lote ya aplicado **también** verifica original y análisis privados contra SHA-256 antes de informar éxito. Un archivo alterado responde `409`; se agregó prueba de regresión.
-- **Inventario exacto:** 11 Unit Parser + 8 Feature Preview + 18 Feature Import = 37 métodos B04; más 3 nuevas regresiones dentro de CameraRegistryTest = **40 métodos de prueba nuevos**, todavía no ejecutados. La suite global también debe incluir AnsvRichCameraImportTest, sin cambiar identidad determinista.
+- **Inventario exacto:** 12 Unit Parser + 8 Feature Preview + 18 Feature Import = 37 métodos B04; más 3 nuevas regresiones dentro de CameraRegistryTest = **41 métodos de prueba nuevos**, todavía no ejecutados. La suite global también debe incluir AnsvRichCameraImportTest, sin cambiar identidad determinista.
 - **Estado:** GitHub/static verificado, ejecución PHP/Laravel, rollback MariaDB y QA de UI reales **pendientes**. No CI PASS, no merge, no despliegue.
+
+## Última corrección de identidad y verificación de CI
+
+- El parser de `external_id` ahora rechaza espacios externos e invisibles Unicode `\p{Cc}\p{Cf}` **antes de convertir o normalizar la identidad**. No se altera texto descriptivo. Regresión sintética en `CameraCsvParserTest`, prueba directa de PCRE en PHP 8.4 (rechazos esperados para 5 casos + 1 admisible); **no equivale a PHPUnit**.
+- Inventario reconciliado: 12 pruebas de parser + 8 de preview + 18 de importación = 38 B04; 3 pruebas nuevas en Registry = **41 pruebas nuevas**. Ninguna ejecutada en Laravel.
+- Actions `39645490050` (HEAD `5b87a27943f3059e1b5fbed6c7ae21b0407bd4de`) falló con **0 steps** en cada PHP 8.3/8.4/8.5 y MariaDB: fallo de infraestructura/cuota, no de código. No reintentar CI manualmente.
