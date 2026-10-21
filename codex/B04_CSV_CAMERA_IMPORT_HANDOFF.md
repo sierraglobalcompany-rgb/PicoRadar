@@ -1,83 +1,36 @@
-# PicoRadar B04-CSV — único checkpoint de implementación (2026-10-21)
+# PicoRadar — B04 CSV de cámaras | checkpoint único (2026-10-21)
 
-**Estado: IMPLEMENTED_DRAFT / REMOTE_STATIC_REVIEWED / LOCAL_QA_BLOCKED / RUNTIME_QA_NOT_RUN / NO_MERGE.**
+**Estado: IMPLEMENTED_DRAFT / PARTIAL_QA / NO_MERGE / NO_DEPLOY.**
+**Fuente de verdad:** [PR #75](https://github.com/sierraglobalcompany-rgb/PicoRadar/pull/75), rama `feat/B04-csv-safe-parser` → `recovery/20261019-modern`. Resolver **HEAD actual desde GitHub**, no copiar SHA de documentación histórica.
+**Base congelada:** `recovery/20261019-modern@0d3a6a2a32bff8bd27dbdd92f88433dd8ab3e47a`. PR #74 Draft de contrato/portabilidad: [B04 especificación](https://github.com/sierraglobalcompany-rgb/PicoRadar/pull/74); no hay dependencia de merge. `main` histórico y PR #71 intactos.
 
-- Repositorio: sierraglobalcompany-rgb/PicoRadar, base recovery/20261019-modern @ 0d3a6a2a32bff8bd27dbdd92f88433dd8ab3e47a.
-- PR funcional: #75 Draft a recovery/20261019-modern. PR de contrato/portabilidad: #74 Draft, separado (no dependencias de runtime). NO trabajar desde main histórico.
-- Únicamente cambios Laravel: un servicio parser, un preview, un servicio de importación, un controlador admin, un modelo y una migración de lote, tres Blade, link de cámaras, rutas web, pruebas; cero dependencias, Flutter/Hostinger/cámaras en producción intocados.
+## Contrato funcional que existe en el PR #75
 
-## Función B04 escrita (todavía no validada con PHP/Laravel)
+- **Carga y análisis:** CSV privado UTF-8/BOM RFC4180; encabezados exactos (`external_id,municipality_code,lat,lon,type` obligatorios; `name,direction,bearing,corridor,speed_limit,notes` opcionales), máximo 5 MiB / 2.000 filas, DANE de 5 dígitos textual, WGS84, enums actuales; no campos de ciclo de vida, caracteres de control/invisibles ni normalización silenciosa de identidad. `CameraCsvParser::parseBytes` analiza exactamente el mismo blob guardado y hasheado.
+- **Preview de solo lectura:** `create_ready/update_ready/noop/invalid/blocked/duplicate`, identidad por fuente, fuente activa/verificada, jurisdicción habilitada, municipio incluido y activo, edición solo de draft/rejected; campos opcionales vacíos no borran datos; detector de proximidad `scanCapped` fail-closed dentro de jurisdicción, incluso entre municipios, y colisiones entre filas. Comparación exclusivamente de lotes misma fuente/jurisdicción. Snapshot ausente solo *advisory* (no bajas).
+- **Persistencia:** una tabla nueva `camera_csv_imports`, un modelo, original/preview en `Storage::disk('local')` con rutas opacas y SHA-256, eventos de auditoría; una sola migración del módulo. Existe UNIQUE(source_id, external_id) en migración histórica de `cameras`; **falta comprobar índice real en MariaDB**. No asumir atomicidad de filesystem junto con DB.
+- **Apply:** requiere simultáneamente `cameras.edit` y `cameras.review`. El operador selecciona filas y huella SHA. Valida hashes incluso al reintentar un lote ya aplicado, huella de selección ordenada (idempotencia exacta, 409 con selección distinta), y `context_sha256` del origen, jurisdicción y **cobertura de municipios**; comprueba bajo bloqueos fuente→jurisdicción→cámara y repite preview. Si una seleccionada cambió, HTTP 409 + rollback DB completo. Alta/edición exclusivamente por `CameraRegistryService`, siempre draft, jamás verify/activate/retire/publish, sin mutar datasets/releases ni móvil. Se reconocen SQLSTATE de unicidad y deadlock.
+- **Integración del registro y ANSV:** `CameraRegistryService::create` rechaza campos de servidor y genera estado, ID y autoría. Se preserva la ID ANSV determinística mediante tercer parámetro **solo interno** `create($data, null, $trustedId)` validado; mantener regresión ANSV histórica. Orden de locks compartido con alta/edición manual. La fuente de creación ANSV es `AnsvRichCameraImporter`, no una ruta HTTP.
+- **UI:** tres vistas Blade admin (lista, carga, revisión), plantilla, reporte CSV anti-formulas y DANE textual, selección explícita. Rutas literales antes de `/admin/cameras/{camera}`. Upload `throttle:6,1` = 6/min; Apply `throttle:30,1` = 30/min (segundo argumento en **minutos**, no segundos).
 
-1. Carga CSV UTF-8/BOM RFC4180, 5 MiB/2000 filas, encabezados estrictos; municipio 5 dígitos textuales, WGS84, tipos actuales y lista blanca de columnas.
-2. Preview clasificado: create_ready, update_ready, noop, invalid, blocked, duplicate; fuentes verificadas, cobertura municipal, snapshots ausentes advisory, duplicado en cámara existente y entre filas; scanCapped fail-closed.
-3. Persistencia de lote nuevo aislado: camera_csv_imports; archivos privados en el disco local, rutas aleatorias y hash SHA256 original/análisis, auditoría, estado review/applied. No crear otras tablas ni índices de cámaras: migración histórica ya declara UNIQUE(source_id,external_id); falta comprobar el índice del motor real.
-4. Panel admin con tres vistas (batches, upload, review); GET template/report; comparación solo misma source/jurisdiction. Report neutraliza fórmulas; DANE conserva ceros iniciales para hojas de cálculo.
-5. POST Apply exige Gate cameras.edit **y** cameras.review. Selección explícita, SHA de revisión, nueva clasificación dentro de DB transaction y locks; valida todas las seleccionadas antes de mutación, después crea por CameraRegistryService::create con lista cerrada sin campos de ciclo de vida, actualiza solo draft/rejected por updateDraft. 409 ante stale; idempotencia si lote ya aplicado; rollback de DB si falla una fila/auditoría. NO verifica, activa, retira ni publica cámaras.
-6. 12 unit parser, 8 preview Feature y 22 import Feature: **42 métodos B04 escritos pero aún NO EJECUTADOS**... Casos adicionales: identidad case-fold, bytes originales únicos, controles en ID, cámara en revisión posterior al preview, selección parcial, reintento con selección distinta. No CI verde: Actions tiene bloqueo de cuota con zero steps.
+## Evidencia y límites (no confundir con certificación)
 
-## Gates y bloqueos reales
+- **48 métodos de prueba NUEVOS escritos, aún NO ejecutados con PHPUnit**: 12 `CameraCsvParserTest`, 8 `CameraCsvPreviewTest`, 25 `CameraCsvImportTest`, 3 añadidos a `CameraRegistryTest`. Las 33 pruebas ANSV históricas (no nuevas) también deben pasar en suite global.
+- Regresiones clave: privacidad/SHA, CSV control/inyección/Unicode, identidad case-fold, fuente reverificada, fuente o jurisdicción modificadas, cobertura vinculada/desvinculada, cambio de nombre sin avance de `updated_at`, optativos vacíos, selección en diferente orden, filas stale, rollback de auditoría, roles, ANSV ID estable, rate limits por minuto.
+- **Evidencia PHP parcial anterior:** `CameraCsvParser.php` blob Git `48cb9e5d9c1e25a8a25458730b6850e21f66a23d`; `php -l` PASS y smoke autónomo 22/22 PASS usando suplentes temporales de `mb_check_encoding` y `mb_strlen` porque el entorno carece de `mbstring`. No representa pruebas del parser con extensiones nativas ni de los cambios posteriores en otros archivos.
+- GitHub Actions run `39645490050` terminó FAIL con **0 pasos** en los cuatro jobs (PHP 8.3, 8.4, 8.5, MariaDB): bloqueo de ejecución/infraestructura; **no declarar CI verde ni inferir error de código**.
+- Aquí no hay Composer, `vendor`, `mbstring` ni `pdo_sqlite`: **Laravel, Blade, Pint, migración, MySQL/MariaDB y concurrencia no certificados**. Falta validar el índice operativo, collation y `EXPLAIN` de consulta de identidad en MariaDB.
 
-- **Correcciones P0 incorporadas al PR #75:** parseBytes del mismo blob guardado/hasheado (sin segundo read); bloqueo conservador de external_id duplicados con diferencias de mayúsculas según collation MariaDB; huella aplicada de selección ordenada para idempotencia exacta y 409 con selección distinta.
-- **Verificador local único:** scripts/qa_b04_csv.ps1 en la propia rama. Debe ejecutarse solo en un clon limpio aislado y con dependencias instaladas, nunca en C:/D: en uso; realiza preflight read-only, php -l, rutas, Pint, tests B04 focales y suite Laravel global. Un PASS solo certifica SQLite/PHP de ese clon, no MariaDB ni Android. No se ejecutó aquí porque faltan Composer, mbstring y pdo_sqlite.
-- **P0 QA requerido antes de merge/despliegue:** php -l de archivos nuevos/modificados PHP; php artisan route:list y Blade compile; php artisan test --filter=CameraCsv; Pint; full php artisan test UNA vez; fresh migration/rollback sobre DB sintética; MariaDB 11.8.8 isolated, controles sobre índice UNIQUE, bloqueo en concurrencia, roles, stale-409, rollback inducido, archivos privados, CSV malformado, comparación/report.
-- No afirmar atomicidad de filesystem (archivos primero, DB después, limpieza solo de folder propio). Transacción garantizable exclusivamente para mutaciones DB.
-- **Concurrencia residual a examinar:** dos importadores usan locks de lotes/fuente/jurisdicción y UNIQUE de identidad, pero creación manual simultánea fuera de este servicio requiere verificar comportamiento del detector de proximidad. No certificar ese escenario hasta prueba en MariaDB; si falla, corregir origen común en Registry, no parche en importador.
-- CI remota no gastable mientras cuota siga agotada. El bloqueo local Windows exFAT/symlinks de B06/B07 es separado; no sustituir con copia ni alterar worktrees.
-- Sin alterar usuario Android, datasets/releases o camera status activo, sin despliegue Hostinger ni main, sin merges automáticos ni exportar archivos privados a git.
+## QA siguiente — una sola intervención final y acotada
 
-## NEXT único
+1. **No tocar C:/D: ni worktrees existentes.** En una ruta distinta de disco compatible y con WIP previo inventariado solo lectura, clonar `feat/B04-csv-safe-parser`, registrar HEAD real, comprobar `git status` limpio. Nunca `reset`, `clean`, `stash`, rebase o checkout en worktree ajeno.
+2. Instalar PHP 8.3–8.5 con `mbstring/pdo_sqlite/sqlite3/fileinfo` y Composer; instalar exactamente `server/composer.lock` en el clon, sin update de dependencias ni despliegue. Leer `AGENTS.md`, `docs/SOP.md` y especificación del PR #74.
+3. Ejecutar **una vez** `pwsh -File scripts/qa_b04_csv.ps1` desde el clon. Verifica checkout, PHP, extensiones, lint de servicios B04/Registry/ANSV, rutas, Pint, pruebas focales `CameraCsv*` y la suite Laravel completa (incluye regresiones Registry y ANSV). Capturar comandos, salida, exit codes y HEAD; nunca reportar PASS antes de verlos. Validar también Blade/Vite en contexto de app y flujo UI real (escritorio/móvil).
+4. MariaDB 11.8.8 **sintética aislada**, nunca producción: migrate:fresh/rollback de prueba, UNIQUE/collation, EXPLAIN, fuente/jurisdicción/cobertura stale, 409, aborto completo de lote, roles, doble clic, 2 conexiones simultáneas, creación manual frente a CSV y 2 fuentes de una jurisdicción. Si falla un caso, corregir **origen y consumidores** en **este PR #75**, volver a ejecutar únicamente lo afectado y una suite final; no crear PRs paralelos.
+5. Entregar **un informe** con matriz PASS/FAIL/BLOCKED y SHA final; si algo no pudo ejecutarse, estado `PARTIAL`. Sin merges automáticos, despliegues, publicación de cámaras, móvil, teléfono, Hostinger ni consumo innecesario de CI bloqueada.
 
-**Ejecutar validación local restringida del PR #75 en clon seguro**, comprobar sintaxis y runtime; corregir solo fallos evidenciados en el MISMO PR; completar verificación de MariaDB y auditoría de seguridad antes de cualquier merge. Evitar volver a construir documentación en paralelo o reejecutar suite Flutter sin cambios móviles. Si no hay entorno, estado PARTIAL y no declarar funcionalmente listo.
+## Cuatro leyes y límites
 
+**KISS:** solución mínima, simple, eficiente, auditable. **Antirruido:** mejorar/unir/eliminar redundancias con evidencia, no duplicar checkpoints ni capas. **Antiparches:** corregir causa y todos los consumidores, sin bypass ni `sleep` que esconda carreras. **Diseño UX:** respetar `docs/DESIGN_CONTRACT.md` y el patrón admin, sin introducir un rediseño Flutter/B07. Mantener `main` y `recovery/20261019-modern` intactos. Bloqueos exFAT/symlink Windows B06/B07 y QA Android son independientes de este B04.
 
-## Una sola intervención local en Codex (cuando se autorice ejecutar QA)
-
-Objetivo: certificar PR #75 sin ping-pong y sin tocar worktrees históricos. Codex debe clonar `feat/B04-csv-safe-parser` a una carpeta nueva disponible en disco compatible, SIN `reset`, `clean`, `stash` ni sobreescribir C:/D:. Antes de instalar, inventariar read-only el WIP y worktrees previos y preservar hallazgos. Leer este handoff, `AGENTS.md`, `docs/SOP.md`, contrato B04 del PR #74, `README.md`.
-
-Aprovisionar PHP 8.3–8.5, extensiones y Composer sin actualizar lockfiles; en el **nuevo clon únicamente**, instalar dependencias del `server/composer.lock`. Ejecutar `pwsh -File scripts/qa_b04_csv.ps1` con salida, código de retorno y rutas registradas. El script ya verifica lint, rutas, Pint, B04 focal y suite Laravel completa; no repetir suites innecesariamente. Completar en MariaDB 11.8.8 **sintética y aislada** pruebas de migración+rollback, UNIQUE fuente/external_id, permisos, 409, rollback de doble operación y carrera de dos operadores (también versus alta manual). Nunca usar DB real/Hostinger.
-
-Si las pruebas revelan fallos: reparar **origen y consumidores**, no añadir parches ni permisos falsos; actualizar el **mismo PR #75**, sin merge, recoger SHA final y dar un **único informe** con comandos, PASS/FAIL, defectos corregidos, evidencias, bloqueo real y NEXT. Si hay bloqueo de ambiente no eludirlo ni certificar PASS. Sin tocar Android, main o PR #71.
-
-
-## Hallazgos centrales y compatibilidad ANSV (última auditoría)
-
-**P0 resuelto en código, no certificado en runtime:**
-- `CameraRegistryService::create()` rechazaba antes indirectamente cero campos de ciclo de vida: el operador PHP `$data + [...]` permitía que `status`, `camera_id` y autorías del llamador ganaran. Ahora verifica `Camera::getFillable()`, rechaza cualquier campo ajeno y aplica obligatoriamente `status=draft`, `camera_id` e IDs de auditoría desde el servidor.
-- Importador oficial ANSV **requiere** `camera_id=cam_` seguido de los primeros 26 hex de `source_row_identity`. Se conserva mediante el **tercer argumento interno** `create($attributes, null, $trustedId)`; no debe exponerse como campo HTTP. El método valida `^cam_[0-9a-f]{26}$`. La prueba histórica `AnsvRichCameraImportTest::test_idempotent_reimport_keeps_b03_master_and_provenance_stable` comprueba la identidad determinista y DEBE pasar con la suite global.
-- Para evitar altas manuales entre Preview y Apply, creación y modificación de cámaras adquieren locks en **orden fijo**: fuentes por ID, jurisdicciones por ID, luego cámara. Apply ya bloquea fuente y jurisdicción; también cubre fuentes diferentes que reportan cámaras cercanas en la misma jurisdicción. Probar dos conexiones MariaDB: source-source, intersource same-jurisdiction, source move, manual create vs CSV apply, estatus transition y ANSV import. Las pruebas SQLite no certifican locking.
-- Preview compara proximidad dentro de la misma jurisdicción aunque los códigos de municipio difieran (municipios fronterizos de una cobertura). Se añadió la prueba de regresión.
-- Las 12 + 8 + 22 = **42 pruebas B04** son nuevas; hay **3 regresiones adicionales** en `CameraRegistryTest` sobre rechazo de campos reservados, autoría y preservación ANSV: **45 pruebas nuevas de esta implementación** (además de 33 métodos históricos en `AnsvRichCameraImportTest`). No se ha ejecutado ninguna de estas pruebas en este chat.
-
-## QA pendiente innegociable
-
-En el MISMO clon QA aislado de Codex, ejecutar el script `scripts/qa_b04_csv.ps1` (incluye lint de Registry y CameraRegistryTest), y la suite Laravel completa que **también cubre ANSV**. Hacer las carreras de MariaDB en dos conexiones reales sobre datos sintéticos y confirmar bloqueo de filas/orden, unicidad y rollback. Si aparecen errores de deadlock/locking, reparar la causa y consumidores en este PR antes de declarar cualquier PASS. No aprobar ni fusionar PR #74/#75 de forma automática.
-
-## Auditoría de ejecución y seguridad — último avance
-
-- Rendimiento SQL: Preview conserva `LOWER(external_id)` con parámetros para SQLite, y emplea `whereIn(external_id)` indexable en MariaDB/MySQL bajo el `utf8mb4_unicode_ci` configurado. La semántica de collation **real** todavía debe validarse en MariaDB aislada; no asumir índice o cobertura Unicode sin EXPLAIN y pruebas.
-- Conflictos: Apply traduce SQLSTATE de unicidad/deadlock y los errores de transición de CameraRegistryService a `409`; toda mutación ocurre bajo `DB::transaction`. Las condiciones de carrera deben certificarse mediante conexiones reales.
-- Integridad histórica: la repetición idempotente de un lote ya aplicado **también** verifica original y análisis privados contra SHA-256 antes de informar éxito. Un archivo alterado responde `409`; se agregó prueba de regresión.
-- **Inventario exacto:** 12 Unit Parser + 8 Feature Preview + 22 Feature Import = 42 métodos B04; más 3 nuevas regresiones dentro de CameraRegistryTest = **45 métodos de prueba nuevos**, todavía no ejecutados. La suite global también debe incluir AnsvRichCameraImportTest, sin cambiar identidad determinista.
-- **Estado:** GitHub/static verificado, ejecución PHP/Laravel, rollback MariaDB y QA de UI reales **pendientes**. No CI PASS, no merge, no despliegue.
-
-## Última corrección de identidad y verificación de CI
-
-- El parser de `external_id` ahora rechaza espacios externos e invisibles Unicode `\p{Cc}\p{Cf}` **antes de convertir o normalizar la identidad**. No se altera texto descriptivo. Regresión sintética en `CameraCsvParserTest`, prueba directa de PCRE en PHP 8.4 (rechazos esperados para 5 casos + 1 admisible); **no equivale a PHPUnit**.
-- Inventario reconciliado: 12 pruebas de parser + 8 de preview + 22 de importación = 42 B04; 3 pruebas nuevas en Registry = **45 pruebas nuevas**. Ninguna ejecutada en Laravel.
-- Actions `39645490050` (HEAD `5b87a27943f3059e1b5fbed6c7ae21b0407bd4de`) falló con **0 steps** en cada PHP 8.3/8.4/8.5 y MariaDB: fallo de infraestructura/cuota, no de código. No reintentar CI manualmente.
-
-## Evidencia PHP real — parser aislado (2026-10-21)
-
-- Obtenido `server/app/Services/CameraCsvParser.php` desde el PR #75. Copia temporal, **hash Git blob idéntico** al blob remoto: `48cb9e5d9c1e25a8a25458730b6850e21f66a23d`. El archivo del repositorio no fue modificado por esta prueba.
-- `php -l` usando PHP 8.4.24: **PASS, sin errores de sintaxis**.
-- Smoke independiente de 22 casos: **22 PASS / 0 FAIL**. Cubre simple, BOM/multiline/comas/UTF-8, enums, parse(path) vs parseBytes, cabeceras no permitidas/repetidas, comillas/trailing bytes/raw CR, UTF-8 inválido/NUL, límite 5 MiB/2000 filas, lat fuera de rango/NaN, caracteres invisibles Unicode/bidi/espacios de identidad, velocidad fuera de rango y salida anti-formula.
-- **Limitación crucial**: el entorno de ejecución no tiene `mbstring`, `pdo_sqlite`, Composer ni dependencias Laravel. Para el smoke **solo**, `mb_check_encoding()` usó `preg_match('//u', ...)` y `mb_strlen()` usó `iconv_strlen()`. Por tanto este resultado **no** demuestra la ejecución con las extensiones nativas, no ejecuta PHPUnit ni habilita aprobación del flujo B04. No se debe convertir 22/22 en 45/45 ni en full QA PASS.
-- CI GitHub sigue bloqueada (jobs PHP+MariaDB: 0 steps). NEXT sigue siendo **una sesión local de QA con Codex en clon limpio**, usando las dependencias reales y MariaDB aislada. Ni merge ni deploy.
-
-## QA adicional B04 — integridad de revisión por fuente y jurisdicción (2026-10-21)
-
-- **Hallazgo y reparación:** una fuente podía cambiar autoridad/URL, quedar verificada otra vez y seguir siendo apta para aplicar un CSV analizado con la identidad anterior. El archivo `analysis.json` ahora contiene `context_sha256`, calculado con la identidad y metadatos críticos de `CameraSource` y `Jurisdiction` (incluye verificación y actualización). Tras bloquear fuente/jurisdicción, Apply vuelve a calcularlo y exige igualdad; si cambió: `409` con **cero mutaciones** y obligación de crear un lote nuevo. El contexto se guarda **solo como hash** dentro del análisis privado; no hay columnas, tablas ni dependencias nuevas.
-- **Pruebas incorporadas:** fuente modificada y reverificada, jurisdicción renombrada después del análisis, preservación de opcionales vacíos sin borrar datos, y repetición idempotente de la misma selección en orden diferente. Estas pruebas **están escritas y no han sido ejecutadas con PHPUnit**.
-- **Inventario actual:** **12 parser + 8 preview + 22 import = 42 pruebas B04**; más 3 regresiones nuevas de CameraRegistry = **45 pruebas nuevas**. La suite ANSV histórica sigue siendo un gate obligatorio y no cuenta como prueba nueva.
-- El script `scripts/qa_b04_csv.ps1` incluye ahora `php -l` de `AnsvRichCameraImporter.php` y `AnsvRichCameraImportTest.php`. Falta el QA auténtico de Laravel/Pint/MariaDB/Blade y concurrencia; tampoco se verificó el nuevo `context_sha256` en runtime.
-- **No repetir recuentos anteriores:** este bloque sustituye los inventarios históricos del mismo archivo. Mantener el PR #75 en Draft, sin merge ni despliegue y sin tocar WIP Windows.
+**NEXT único: QA local integral y corrección demostrada en PR #75. No solicitar más prompts intermedios a Codex.**
