@@ -176,6 +176,35 @@ class CameraCsvImportTest extends TestCase
         self::assertStringContainsString("'=HYPERLINK", $report->getContent());
     }
 
+    public function test_existing_draft_is_updated_without_verification_or_new_camera(): void
+    {
+        $unit = $this->jurisdiction->geographicUnits->first();
+        $camera = app(CameraRegistryService::class)->create([
+            'source_id' => $this->source->id, 'jurisdiction_id' => $this->jurisdiction->id,
+            'geographic_unit_id' => $unit->id, 'external_id' => 'QA-001',
+            'lat' => '4.7110000', 'lon' => '-74.0721000', 'type' => 'other', 'name' => 'Before',
+        ], $this->admin);
+        $batch = $this->upload("QA-001,{$this->municipalityCode},4.7110,-74.0721,other,After\n");
+        self::assertSame('update_ready', app(CameraCsvImportService::class)->load($batch)['preview']['rows'][0]['status']);
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), [
+            'analysis_sha256' => $batch->analysis_sha256, 'records' => ['2'],
+        ])->assertRedirect();
+        self::assertSame('After', $camera->fresh()->name);
+        self::assertSame(CameraStatus::Draft, $camera->fresh()->status);
+        self::assertFalse($camera->fresh()->speed_limit_verified);
+        self::assertSame(1, Camera::count());
+    }
+
+    public function test_wrong_analysis_fingerprint_fails_with_http_409(): void
+    {
+        $batch = $this->upload();
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), [
+            'analysis_sha256' => str_repeat('a', 64), 'records' => ['2'],
+        ])->assertStatus(409);
+        self::assertSame('review', $batch->fresh()->status);
+        self::assertSame(0, Camera::count());
+    }
+
     private function upload(?string $body = null): CameraCsvImport
     {
         $csv = "external_id,municipality_code,lat,lon,type,name\n".
