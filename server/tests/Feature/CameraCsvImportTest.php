@@ -247,6 +247,47 @@ class CameraCsvImportTest extends TestCase
         self::assertSame(1, Camera::count());
     }
 
+    public function test_review_lock_prevents_editing_camera_submitted_after_analysis(): void
+    {
+        $unit = $this->jurisdiction->geographicUnits->first();
+        $camera = app(CameraRegistryService::class)->create([
+            'source_id' => $this->source->id,
+            'jurisdiction_id' => $this->jurisdiction->id,
+            'geographic_unit_id' => $unit->id,
+            'external_id' => 'QA-001', 'lat' => '4.7110000',
+            'lon' => '-74.0721000', 'type' => 'other', 'name' => 'Before',
+        ], $this->admin);
+
+        $batch = $this->upload("QA-001,{$this->municipalityCode},4.711,-74.0721,other,After\n");
+        self::assertSame('update_ready', app(CameraCsvImportService::class)->load($batch)['preview']['rows'][0]['status']);
+        app(CameraRegistryService::class)->submit($camera, $this->admin);
+
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), [
+            'analysis_sha256' => $batch->analysis_sha256,
+            'records' => ['2'],
+        ])->assertStatus(409);
+
+        self::assertSame(CameraStatus::InReview, $camera->fresh()->status);
+        self::assertSame('Before', $camera->fresh()->name);
+        self::assertSame('review', $batch->fresh()->status);
+    }
+
+    public function test_only_explicitly_selected_rows_are_applied(): void
+    {
+        $batch = $this->upload(
+            "QA-001,{$this->municipalityCode},4.711,-74.0721,other,First\n".
+            "QA-002,{$this->municipalityCode},4.720,-74.0900,other,Second\n"
+        );
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), [
+            'analysis_sha256' => $batch->analysis_sha256,
+            'records' => ['2'],
+        ])->assertRedirect();
+
+        self::assertSame(1, Camera::count());
+        self::assertDatabaseHas('cameras', ['external_id' => 'QA-001', 'status' => 'draft']);
+        self::assertDatabaseMissing('cameras', ['external_id' => 'QA-002']);
+    }
+
     private function upload(?string $body = null): CameraCsvImport
     {
         $csv = "external_id,municipality_code,lat,lon,type,name\n".
