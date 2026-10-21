@@ -85,6 +85,15 @@ final class CameraCsvParserTest extends TestCase
         $this->expectInvalid(str_repeat('x', CameraCsvParser::MAX_BYTES + 1));
     }
 
+    public function test_bytes_input_matches_file_input_without_reading_it_twice(): void
+    {
+        $csv = "external_id,municipality_code,lat,lon,type\n".
+            "QA-001,05001,6.2518,-75.5636,other\n";
+        $fromBytes = (new CameraCsvParser)->parseBytes($csv);
+        self::assertSame($this->parseCsv($csv), $fromBytes);
+        self::assertSame(1, $fromBytes['valid_count']);
+    }
+
     public function test_formula_escapes_for_output_only(): void
     {
         foreach (['=SUM(1,2)', '+cmd', '-cmd', '@cmd', " \t=cmd", "\u{200B}=cmd"] as $s) {

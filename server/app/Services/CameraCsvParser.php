@@ -27,7 +27,25 @@ final class CameraCsvParser
             throw new InvalidArgumentException('CSV is unreadable or exceeds 5 MiB.');
         }
         $bytes = file_get_contents($path);
-        if ($bytes === false || ! mb_check_encoding($bytes, 'UTF-8')) {
+        if ($bytes === false) {
+            throw new InvalidArgumentException('CSV is unreadable.');
+        }
+
+        return $this->parseBytes($bytes);
+    }
+
+    /**
+     * Parse exactly the bytes that will be stored and hashed for this batch.
+     * Never re-read an uploaded path between analysis and persistence.
+     *
+     * @return array{header:list<string>,rows:list<array{record:int,values:array<string,mixed>,errors:list<string>}>,valid_count:int,invalid_count:int}
+     */
+    public function parseBytes(string $bytes): array
+    {
+        if (strlen($bytes) > self::MAX_BYTES) {
+            throw new InvalidArgumentException('CSV exceeds 5 MiB.');
+        }
+        if (! mb_check_encoding($bytes, 'UTF-8')) {
             throw new InvalidArgumentException('CSV must be valid UTF-8.');
         }
         if (preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', $bytes)) {

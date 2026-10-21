@@ -40,12 +40,12 @@ final class CameraCsvImportService
         if ($realPath === false) {
             throw new RuntimeException('Uploaded CSV is unavailable.');
         }
-        $parsed = $this->parser->parse($realPath);
-        $preview = $this->preview->preview($parsed, $source, $jurisdiction, $mode);
         $bytes = file_get_contents($realPath);
-        if ($bytes === false || strlen($bytes) > CameraCsvParser::MAX_BYTES) {
-            throw new RuntimeException('CSV changed during validation.');
+        if ($bytes === false) {
+            throw new RuntimeException('Uploaded CSV could not be read.');
         }
+        $parsed = $this->parser->parseBytes($bytes);
+        $preview = $this->preview->preview($parsed, $source, $jurisdiction, $mode);
         $analysis = json_encode(['parsed' => $parsed, 'preview' => $preview], JSON_THROW_ON_ERROR);
         $directory = 'camera-csv-imports/'.Str::uuid();
         $original = $directory.'/original.csv';
