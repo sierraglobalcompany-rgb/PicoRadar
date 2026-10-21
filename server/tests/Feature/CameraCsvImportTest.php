@@ -399,6 +399,20 @@ class CameraCsvImportTest extends TestCase
         self::assertSame('review', $batch->fresh()->status);
     }
 
+    public function test_changed_jurisdiction_metadata_stales_the_analyzed_batch(): void
+    {
+        $batch = $this->upload();
+        $this->jurisdiction->update(['name' => 'Renamed synthetic jurisdiction']);
+
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), [
+            'analysis_sha256' => $batch->analysis_sha256,
+            'records' => ['2'],
+        ])->assertStatus(409);
+
+        self::assertSame(0, Camera::count());
+        self::assertSame('review', $batch->fresh()->status);
+    }
+
     private function upload(?string $body = null): CameraCsvImport
     {
         $csv = "external_id,municipality_code,lat,lon,type,name\n".

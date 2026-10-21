@@ -63,6 +63,7 @@ try {
     $sources = @(
         'app/Services/CameraCsvParser.php',
         'app/Services/CameraRegistryService.php',
+        'app/Services/AnsvRichCameraImporter.php',
         'app/Services/CameraCsvPreviewService.php',
         'app/Services/CameraCsvImportService.php',
         'app/Models/CameraCsvImport.php',
@@ -72,6 +73,7 @@ try {
         'tests/Feature/CameraCsvPreviewTest.php',
         'tests/Feature/CameraCsvImportTest.php',
         'tests/Feature/CameraRegistryTest.php',
+        'tests/Feature/AnsvRichCameraImportTest.php',
         'routes/web.php'
     )
     foreach ($source in $sources) {
