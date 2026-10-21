@@ -1,107 +1,73 @@
-# PicoRadar — handoff único de estabilización
+# PicoRadar — handoff único de estabilización V4
 
-## Status
-**PARTIAL. Cinco de cinco objetivos corregidos y PASS en focales y en la última regresión completa.** Gate global FAIL por11 casos adicionales; los nueve nuevos pasan en recheck serial. Chunked falla también aislado y compilador pasa aislado pero falla bajo carga. No release ni aceptación física.
+Actualizado: 2026-10-21. Registro vigente del lote; sustituye los resultados anteriores de estabilización que figuran en este archivo.
 
-## Lot
-Estabilización consolidada de cinco fallos móviles, por orden del propietario de 20-10-2026. Sustituye el NEXT exclusivo del selector tardío. Un lote y un PR, sin rescate forense repetido ni features nuevas.
+## Estado
 
-## Git
-- Branch: `codex/picoradar-mobile-stabilization-20261020`.
-- Código publicado local/remoto: `161ceb6410a16aa0e0267be41489a5426e22d752`; tree `c55e47d0d75298e2c77f1a45b11cedbec127dae7`.
-- Base: `recovery/20261019-modern`, SHA `5f59a7f75f907d9fefa80103eaf230524805f464`, recuperado en PR #71. No se volvió al main antiguo.
-- PR draft único: https://github.com/sierraglobalcompany-rgb/PicoRadar/pull/72 . Sin merge.
-- Worktree canónico: `D:/Dev/PicoRadar`, exFAT. Original C: preservado; no se movieron sus worktrees.
-- El commit documental que contiene este handoff puede ser posterior al SHA de código probado; obtener HEAD final con `git rev-parse HEAD` y cotejar PR. No se introduce un hash autorreferente en este archivo.
+**FULL_MOBILE_QA_PASS (local).** Los cinco problemas móviles originales de PR #72 permanecen corregidos. La regresión completa pasó en el SHA de código registrado abajo: 3.253 PASS / 11 SKIP / 0 FAIL / 0 errores, exit 0. Los 11 skips son los existentes; no se añadieron skips en este lote.
 
-## Outcome y ledger único
-Baseline full anterior: **3233 PASS / 11 SKIP / 12 FAIL**. Recheck anterior: **7 PASS / 5 FAIL**. Los doce no eran doce defectos persistentes acreditados.
+No significa CI verde, aceptación física, release ni aprobación para merge. GitHub Actions no se ejecutó por cuota agotada. El visor/cleaner no requirieron cambio de producto; el caso del cleaner no reprodujo en las tandas controladas y queda INTERMITTENT_NOT_PROVEN.
 
-| Caso | Reproducción actual | Causa acreditada | Corrección mínima | Evidencia posterior | Global |
-|---|---|---|---|---|---|
-| Selector tardío | FAIL, 7,86s | Espera nominal ~1s abandona I/O/cleanup activo | Predicado real acotado y refuerzo de sesión bloqueada/original conservado | Focal PASS; archivo 20 PASS | PASS en full-2 |
-| Scanner frente/reverso | FAIL, 11,66s; después Guardando activo al salir de espera3s | Dos esperas cortas en validación y guardado | Sincroniza validación/cierre/mutex; comprueba nombres y rutas cifradas distintas | Archivo 6 PASS | PASS en full-2 |
-| Viaje sin hora/ETA | FAIL, 6,57s | Reloj real contra fixture staleAfter 01-10-2026 | Fecha sintética vigente, sin tocar tests de caducidad | Focal PASS; archivo 95 PASS | PASS en full-2 |
-| Round-trip cifrado | Timeout30s, 33,55s con teardown | Siete tipos y escrituras durables acumulados en un presupuesto | Siete tests independientes con timeout original; índice mixto cifrado adicional | Siete tipos e índice PASS dos veces | PASS siete tipos e índice en full-2; archivo28/28 también cubierto entre full-1 y reanudación |
-| Caché SOAT | FAIL, 9,45s; teardown Error32. Más tarde No element en global | Espera silenciosa corta; close SQLite no esperado; lookup onstage falla si visor deja owner offstage | Predicado explícito, await close y lookup de owner montado incluyendo offstage | Focal final 2/2 y archivo final 100/100 PASS | PASS en full-2 después del fix; sin No element |
+## Rama, PR y evidencia Git
 
-El helper amplía su presupuesto de pared de1–3s a30s, con evidencia de I/O aún activo; termina al satisfacer el predicado o falla explícitamente. No cambia timeout del runner ni demuestra un defecto de FakeAsync. No hay pausas incondicionales largas, skips nuevos, aserciones debilitadas ni cambios de cifrado/flush/guards/privacidad.
+- Repositorio: sierraglobalcompany-rgb/PicoRadar.
+- Rama: codex/picoradar-mobile-stabilization-20261020.
+- PR draft: https://github.com/sierraglobalcompany-rgb/PicoRadar/pull/72
+- Base: recovery/20261019-modern, SHA 5f59a7f75f907d9fefa80103eaf230524805f464.
+- SHA de código probado: e5aeda06787eeec2e90fb6a7aa239a95516d6227.
+- Tree probado: 2093c608196ae70eee9b5ea5dbafd7024d0c383f.
+- La regresión global registró iguales SHA y tree antes/después.
+- La documentación de cierre se agregará en un commit posterior, sin cambios móviles. Consultar HEAD remoto del PR para el SHA de publicación final.
+- Canónico: D:/Dev/PicoRadar sobre exFAT. Originales C: preservados. Clon independiente: D:/Verification/PicoRadar.
+- No merge, force-push, cambio de main, Hostinger ni teléfono.
 
-El índice mixto prueba lectura de siete entradas; no equivale a siete importaciones acumulativas. Se mantienen tests de importaciones concurrentes y preservación de entradas. Los timeouts variables en otros tests compuestos de almacenamiento tienen causa UNKNOWN; no se atribuyen automáticamente al entorno.
+## Cambios y ledger de causas
 
-## Files / areas changed
-Solo seis archivos de tests en mobile: `test_app_harness.dart`, `purchase_documents_screen_test.dart`, `wallet_two_sides_flow_test.dart`, `trip_screen_test.dart`, `private_vehicle_document_store_test.dart`, `vehicle_status_screen_test.dart`. Documentación: este handoff y puntero mínimo en `docs/CURRENT.md`.
-Commits: `1755dcc` reloj; `c76562d` sincronización/teardown; `c9e38b6` cifrado por tipo; `161ceb6` owner offstage y limpieza de import innecesario.
-Sin producción, paquetes, lockfiles, plataforma, servidor, esquema, pipeline ni cambios C11/B06/B07.
-
-## Tests executed
-Desde `D:/Dev/PicoRadar/mobile`, Flutter3.47.1 / Dart3.13.1. TEMP/TMP de proceso: `D:/PicoRadar_Rescue/logs/stabilization-20261020/temp`. Fuentes/temporales de proyecto en D:; SDK y caché pública instalada en C: son dependencias legítimas, no fuentes prestadas.
-
-| Comando / ejecución | Resultado |
-|---|---|
-| `flutter pub get --offline` | PASS; lockfile sin cambios |
-| `dart format --output=none --set-exit-if-changed .` | PASS; 387 archivos, 0 cambios; final15,23s |
-| `flutter analyze --no-pub` | PASS sin incidencias; final17s |
-| Focal red cinco casos | 0 PASS / 5 FAIL;429,6s |
-| Primera focal corregida | 11 PASS /1 FAIL; scanner mostró segundo corte corto, corregido |
-| Cinco archivos completos seriales | 248 PASS /1 FAIL;893,4s; timeout auxiliar almacenamiento |
-| Diagnóstico reemplazo con60s | PASS en ~17s; aumento retirado: no demostró necesidad |
-| Archivo almacenamiento repetido con30s | 27 PASS /1 FAIL distinto;422,1s; causa UNKNOWN |
-| `flutter test --no-pub --reporter=expanded --concurrency=2` full-1 | Interrumpido sin done/result;2877 PASS /10 SKIP /2 FAIL |
-| Reanudación de12 casos almacenamiento pendientes | 12 PASS;98s; no repite16 terminados |
-| Reanudación20 archivos pendientes/incompletos | 359 PASS /1 SKIP /2 FAIL; ambos lookup del visor |
-| Cobertura completa por particiones antes del último fix | **3248 PASS /11 SKIP /4 FAIL**;3263 casos únicos, +7 respecto baseline por parametrización y nuevo índice |
-| Recheck serial compilador Python | PASS,26s; no borra su timeout previo bajo carga |
-| Recheck serial chunked sin Content-Length | FAIL: chunksSent17, esperaba<17; se conserva aserción |
-| Focal final SOAT + visor offstage | 2 PASS;14s de test |
-| Archivo final vehicle_status_screen_test | **100 PASS**,136s; sustituye archivo previo98 PASS /2 FAIL para evidencia posterior al fix |
-| Recheck posterior solo nueve casos nuevos, concurrency1 | **9 PASS /0 FAIL /0 SKIP**,47s de tests; no cambia el resultado de full-2 |
-| Última global full-2, mismo comando | **3241 PASS /11 SKIP /11 FAIL**, exit1,3802,46s (63,4min), SHA/tree de inicio y fin idénticos a161ceb6/c55e47d; no tercera global en esta ejecución |
-
-Focal exacta: `flutter test --no-pub <archivo> --plain-name '<nombre del caso>' --concurrency=1 --reporter=expanded`. Archivos completos: mismo comando sin `--plain-name`. Los cinco archivos de lote y los nombres figuran en ledger; rutas completas en eventos nativos privados.
-Logs/eventos/resultados únicos: `D:/PicoRadar_Rescue/logs/stabilization-20261020/`. No se publica contenido sensible de logs ni se añade parser al producto. Checkpoint privado único: `D:/PicoRadar_Rescue/manifests/PicoRadar_STABILIZATION_CHECKPOINT.md`.
-
-Delta frente al baseline: PASS+8, FAIL-1, SKIP0, casos+7; los conjuntos de fallos cambiaron. Los cinco persistentes ahora PASS; de los otros siete casos históricos, seis PASS y revocación de preparación volvió a fallar por timeout. Diez fallos finales son distintos de los doce originales. El recuento global no equivale a once defectos independientes de producto.
-
-La primera ejecución terminó sin proceso Dart activo y sin resumen del runner. No se declara exit0 ni se suma un recheck a sus PASS para fingir verde. La selección de pendientes usa suites/grupos/testDone del reporter JSON nativo; full-2 se lanzó independiente de la sesión del chat tras nueva corrección acreditada.
-
-Preparación SQLite: primer intento no ejecutó casos por descarga bloqueada. Se reutilizó solo DLL pública sqlite3-3.5.2 de caché D:, SHA `2bf39f2aadafdc59a90b260f582a8fccebc5b89eb94175fdbaa9148c1e1f084d`, manteniendo comprobación estándar del hook. Sin prestar fuentes, alterar TLS o cambiar dependencias.
-
-## Fallos residuales exactos y rechecks
-
-No confundir11 test cases con11 causas ni convertir recheck en PASS global. Se mantienen todos en el ledger, aunque su reproducción aislada pase.
-
-| Archivo dentro de mobile/test | Casos exactos | Full-2 / recheck |
+| Familia | Evidencia y cambio mínimo | Estado |
 |---|---|---|
-| core/sync/dataset_sync_hardening_test.dart | `Python compiler bytes reach the engine through HTTP and Drift` | Timeout30s; PermissionError posterior; serial anterior PASS26s, repite FAIL bajo carga |
-| core/sync/dataset_sync_hardening_test.dart | `caps a chunked dataset without Content-Length` | FAIL y serial FAIL;17 enviados frente a<17 |
-| features/documents/data/wallet_preparation_store_test.dart | `all six preparation types roundtrip without a vehicle across restart`; `unknown preparation and invalid types cannot write documents`; `vehicle cleanup cannot affect preparation even with the same ID`; `replacement and preparation deletion clean only their own files`; `revoked authorization rolls back creation, replacement and deletion`; `encrypted preparation and document identities reject relabeling`; `preparation deletion journals cleanup failure and retries on reopen` | Siete timeout30s con errores posteriores de base ya cerrada; siete PASS serial después |
-| features/documents/presentation/wallet_viewer_test.dart | `new restricted preview rejects over-two-page PDF without save` | Helper no alcanza estado observable; PASS serial después |
-| features/garage/application/vehicle_associated_data_cleaner_test.dart | `deleteForVehicle cleans vehicle data without deleting other drafts` | Timeout30s y acceso posterior a temporal borrado; PASS serial después |
+| Cinco objetivos originales | Selector tardío, scanner frente/reverso, Viaje sin hora/ETA, round-trip cifrado y caché SOAT: permanecen con sus aserciones de comportamiento y pasan en la suite completa final. | 5/5 PASS |
+| A — descarga chunked | Se quitó solo la métrica del servidor chunksSent, que mide escritura/flush del servidor y no consumo del cliente. La prueba unitaria del stream confirma BoundedStreamException, cancelación del productor, menos de 17 bloques entregados y archivo parcial de máximo 48 bytes. El E2E HTTP sin Content-Length confirma sin versión instalada, sin llamada al importador y temporales limpios al resolver sync(). | PASS |
+| B — compilador Python | Medición del fallo anterior mostró el timeout de 30 s bajo carga antes de que Process.run y el test terminasen; se observó acceso al JSON temporal durante el teardown. Dos procesos medidos bajo prueba terminaron con exit 0 en aprox. 2,5–2,7 s cada uno. Se conserva Process.run, las dos compilaciones deterministas y el contrato HTTP/Drift; timeout de 90 s aplicado solo a este test de integración. | PASS bajo la regresión |
+| C — preparación / SQLite | Los seis tests que no verifican reinicio usan NativeDatabase.memory(); los tres tests que comprueban identidad estable, persistencia/reapertura y journal de limpieza mantienen SQLite en archivo, creado antes de escribir. Sin cambio de producto, cifrado, IDs, migración ni aserciones. | Archivo 9/9 PASS |
+| D — visor PDF | El rechazo del PDF de más de dos páginas reutiliza pumpUntilRealIo y mantiene verificaciones de error, cierre, cero render/pageCounts/guardado, sesión y limpieza, archivo original intacto. | Archivo 31/31 PASS |
+| Cleaner | Se conservaron doble eliminación e invariantes de no borrar datos/documentos/borradores ajenos. No reprodujo el fallo en las dos tandas agrupadas ni en la suite global; no se fabricó una corrección. | INTERMITTENT_NOT_PROVEN |
 
-Reproducción mínima por caso: usar el comando focal anterior y estos nombres, sin ampliar presupuestos ni quitar flush/aserciones. El recheck posterior se ejecutó una sola vez, agrupando los nueve casos por regex exacta de nombres y tres archivos, serial. El compilador y chunked no se repitieron otra vez; ya tenían evidencia aislada.
+Commits de este cierre de cuatro causas: 4f21a15 (chunked y cancelación), 0be1dd3 (timeout acotado del compilador), bf55cde (SQLite de test), e5aeda0 (espera real del visor). La historia previa del mismo PR conserva los cinco objetivos originales.
 
-## Manual QA / Physical Android QA
-No ejecutada. Sin teléfono, Mi A3, instalación APK ni Hostinger. QA física pendiente para aceptación de capacidades OS; tests locales no la sustituyen. No hay claim de release.
-Pruebas acreditadas sin cambios no repetidas: runtime21be9d9 APK dev y57 nativos PASS; Laravel602 tests/2778 aserciones/0FAIL/1SKIP; B07 buildbcdb1e7/verificador07c8962 PASS.
+Archivos móviles dentro del PR: mobile/test/core/sync/dataset_sync_hardening_test.dart; mobile/test/features/buy_sell/presentation/purchase_documents_screen_test.dart; mobile/test/features/documents/data/wallet_preparation_store_test.dart; mobile/test/features/documents/presentation/wallet_two_sides_flow_test.dart; mobile/test/features/documents/presentation/wallet_viewer_test.dart; mobile/test/features/trip/presentation/trip_screen_test.dart; mobile/test/features/vehicle_status/data/private_vehicle_document_store_test.dart; mobile/test/features/vehicle_status/presentation/vehicle_status_screen_test.dart; mobile/test/test_app_harness.dart. Sin cambios de runtime, UI, paquetes, lockfiles, plataforma, server, esquema, datasets o pipeline.
 
-## Data / migration impact y dependencias
-Ninguno. Sin cambios de esquema, migración, datasets, librerías o plataforma. Datos de tests sintéticos, raíces temporales propias.
+## QA local ejecutada
 
-## Security / privacy review
-Guards de sesión/epoch, owner, limpieza, cifrado y escritura durable preservados. Sin secretos, GPS/documentos privados reales, cambios de permisos o desactivación de controles. Gitleaks staged y diff --check PASS; escaneo final del rango nuevo (cuatro commits de código) y staged documental PASS, cero hallazgos. Revisión independiente previa sin bloqueos materiales; hallazgo posterior offstage respaldado por traza y pruebas.
-Publicación mediante Git Database API oficial con cuenta propietaria: trees y commits idénticos local/remoto; expected SHA y force=false. HTTPS Git local bloqueado por conectividad; no se cambió cuenta global ni se reescribió historia.
+Toolchain observada: Flutter 3.47.1 / Dart 3.13.1. Comandos desde D:/Dev/PicoRadar/mobile. TEMP/TMP y logs detallados apuntaron a D:/PicoRadar_Rescue/logs/stabilization-20261021-v4; los logs son privados y no están en Git.
 
-## Known risks / debt y stop conditions
-- **REMOTE_CI_BLOCKED_QUOTA**, confirmado por propietario; sin reruns/consultas Actions ni cambios de YAML/cuota.
-- **Chunked reproducible:** aserción servidor chunksSent<17 falla también aislada. Es distinto de demostrar que el consumidor exceda su límite. No debilitar la aserción ni inferir corrección del límite solo por una excepción genérica. Se necesita investigar evidencia causal fuera de los cinco originales.
-- **Compilador:** timeout30s primero; PermissionError posterior al leer JSON temporal. Recheck aislado PASS. Carrera con teardown plausible, causa exacta UNKNOWN. No cambiar ACL/timeouts por hipótesis.
-- **BLOCKED_FILESYSTEM:** única NTFS C: con109–163MB observados; datadir sintético superior ya157.750.948 bytes sin app/subdirectorios/margen. Requiere ubicación existente aislada con enlaces y espacio suficiente (margen recomendado>=1GiB). Sin mover proyecto, reformatear D: ni VHDX. No se rehízo paquete B07.
-- **BLOCKED_SECURITY_CONTROL:** `scripts/tests/test_hostinger_installer_browser.ps1` ausente desde antes; padre legible/ACL consultable, atribución exacta UNKNOWN. No se forzó restore, eludió control ni publicó borrado. JS existente necesita HTTPS/DB/fixtures del harness; browser NOT_RUN.
-- `git status` conserva únicamente al cerrar la excepción esperada ` D scripts/tests/test_hostinger_installer_browser.ps1`; documentos se publican explícitamente. No afirmar checkout limpio.
+| Comando / cobertura | Resultado |
+|---|---|
+| dart format --output=none --set-exit-if-changed . | PASS; 387 archivos inspeccionados, 0 cambios |
+| flutter analyze --no-pub | PASS; sin incidencias |
+| Cinco casos smoke originales | PASS 5/5 |
+| dataset_sync_hardening_test.dart, wallet_preparation_store_test.dart, wallet_viewer_test.dart y vehicle_associated_data_cleaner_test.dart agrupados, concurrency=2, pasada 1 | PASS 64/64; 0 fallos, errores o skips |
+| Mismos cuatro archivos, mismo comando, pasada 2 | PASS 64/64; 0 fallos, errores o skips |
+| Archivo sync completo | PASS 15/15 |
+| Archivo preparación completo | PASS 9/9 |
+| Archivo visor completo | PASS 31/31 |
+| Regresión completa congelada en SHA e5aeda0, flutter test --no-pub --concurrency=2 --reporter=expanded | PASS; 3.253 PASS / 11 SKIP / 0 FAIL / 0 errores; exit 0; 1.596,68 s (26 min 36,7 s); 3.264 resultados totales |
+| git diff --check y revisión acotada de secretos | PASS; sin hallazgos, resultado redactado en logs privados |
 
-## Next lot(s) unblocked / NEXT
-Full-2 y recheck serial posterior ya recogidos. No iniciar otra investigación dentro de este cierre. Ningún bloque funcional nuevo queda desbloqueado mientras falle el gate móvil. Siguiente tarea única posterior a este cierre: estabilizar el gate móvil residual de sincronización, preparación y limpieza en la misma rama/PR desde161ceb6 o su descendiente documental: acreditar el límite chunked sin depender del ritmo del servidor, esclarecer timeout del compilador y las operaciones que sobreviven al timeout y acceden a una base cerrada. Incluir los nueve casos nuevos según recheck; no repetir los cinco ya resueltos. Alcance tests/harness mínimo, sin modificar datasets, privacidad, CI o producto. Aceptación: causas demostradas, checks focales correspondientes PASS sin debilitar contrato y regresión global PASS; actualizar este único ledger. El resultado final añade el grupo de preparación/visor/limpieza al gate pendiente; no abrir un PR por error.
+CI remota: REMOTE_CI_BLOCKED_QUOTA; no se consultaron ni relanzaron workflows y no se alteró CI. No se repitió una suite ya aprobada para código sin cambios. No APK/build de server: este lote no cambia runtime. No QA física, instalación en dispositivo, Hostinger ni Mi A3.
 
-## Do not forget
-C: preservado; D: sigue exFAT; no merge, force-push, Hostinger, teléfono, instalación, features nuevas ni rescate repetido. No crear ZIP ni manual duplicado.
+## Seguridad, datos y estado del checkout
+
+- No se introdujeron secretos, datos personales ni archivos privados en el cambio publicado.
+- Se preservan cifrado, guardas de sesión, limpieza, escritura durable, límites de descarga y validaciones.
+- C: permanece intacto; D: sigue exFAT. Respaldos e inventario privados permanecen en D:/PicoRadar_Rescue.
+- La regresión final registró al inicio y al cierre un único cambio preexistente y ajeno al lote: D scripts/tests/test_hostinger_installer_browser.ps1. Se conservó sin stage, restore ni publicación.
+- Después del commit documental, verificar git status; el estado esperado conserva únicamente esa eliminación local.
+- Sin migraciones, datos reales, cambios de dependencias ni impacto en esquema.
+
+## NEXT
+
+Tarea única: revisión humana del PR draft #72 antes de habilitar el siguiente lote funcional.
+
+Punto de partida: rama codex/picoradar-mobile-stabilization-20261020, código probado e5aeda06787eeec2e90fb6a7aa239a95516d6227, base recovery/20261019-modern. Alcance: revisar el diff y evidencia local de este lote; el propietario decide si solicita cambios o aprueba y hace merge manual. Codex no hará merge. Criterio de aceptación: decisión humana registrada en PR #72 y, si se aprueba, el PR integrado sin cambiar la base moderna ni omitir la revisión. Después seleccionar un solo lote funcional según docs/CURRENT.md y su contrato; este prompt no inventa ni inicia esa funcionalidad.
+
+QA física y CI siguen pendientes por sus límites respectivos. No desplegar ni probar en teléfono como parte de esta tarea.
