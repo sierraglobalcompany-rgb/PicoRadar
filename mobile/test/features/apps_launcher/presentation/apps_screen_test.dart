@@ -26,8 +26,11 @@ import 'package:picoradar/features/tramites/presentation/tramites_screen.dart';
 import 'package:picoradar/features/trip/presentation/trip_screen.dart';
 
 import '../../../test_app_harness.dart';
+import '../../../plate_test_fonts.dart';
+import '../../home/presentation/v01b_test_font.dart';
 
 void main() {
+  setUpAll(loadV01bTestFont);
   late TestAppHarness harness;
 
   setUp(() {
@@ -239,10 +242,7 @@ void main() {
 
     expect(find.byKey(const ValueKey('apps-launcher-overlay')), findsNothing);
     expect(find.byKey(const ValueKey('trip-screen')), findsOneWidget);
-    expect(
-      find.text('PicoRadar no calcula rutas, ETA ni peajes en esta versión.'),
-      findsOneWidget,
-    );
+    expect(find.text('Ver plan de viaje'), findsOneWidget);
   });
 
   testWidgets('P02 Apps opens and closes repeatedly from main branches', (
@@ -382,7 +382,7 @@ void main() {
     await _openSecondaryModuleFromApps(tester, harness, 'talleres');
 
     expect(find.byType(MaintenanceScreen), findsOneWidget);
-    expect(find.text('Talleres y mantenimiento'), findsWidgets);
+    expect(find.text('Talleres'), findsWidgets);
     expect(
       find.byKey(const ValueKey('maintenance-missing-vehicle')),
       findsNothing,
@@ -390,6 +390,33 @@ void main() {
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
     expect(find.byType(DocumentsScreen), findsNothing);
   });
+
+  testWidgets(
+    'Back from Maintenance restores the Más launcher over its origin',
+    (tester) async {
+      await _createVehicle(harness, plate: 'TLL456');
+      await _openSecondaryModuleFromApps(tester, harness, 'talleres');
+
+      expect(find.byType(MaintenanceScreen), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MaintenanceScreen), findsNothing);
+      expect(
+        find.byKey(const ValueKey('apps-launcher-overlay')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('apps-launcher-more-list')),
+        findsOneWidget,
+      );
+      expect(_selectedBottomNavLabels(tester), contains('Apps'));
+      await tester.tap(find.byKey(const ValueKey('tab-apps')));
+      await tester.pumpAndSettle();
+      expect(_selectedBottomNavLabels(tester), contains('Inicio'));
+    },
+  );
 
   testWidgets('Apps Más opens Trip from Peajes y estado vial', (tester) async {
     await _openSecondaryModuleFromApps(tester, harness, 'peajes_estado_vial');
@@ -420,7 +447,7 @@ void main() {
     await _pumpRoute(tester);
 
     expect(find.byType(ComparendosScreen), findsOneWidget);
-    expect(find.text('CMP123'), findsOneWidget);
+    expect(findPlateNumber('CMP123'), findsOneWidget);
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
   });
 
@@ -511,36 +538,42 @@ void main() {
   });
 
   testWidgets('C13 vehicle status modules open real screens', (tester) async {
-    await _createVehicle(harness, plate: 'AAA111');
+    final vehicle = await _createVehicle(harness, plate: 'AAA111');
 
-    await _openModuleFromApps(tester, harness, 'soat');
+    await _openModuleFromApps(tester, harness, 'soat', settle: false);
+    await _pumpUntil(tester, find.byKey(const ValueKey('owner-primary-soat')));
     expect(find.text('SOAT'), findsWidgets);
     expect(find.text('SOAT SIN CONFIGURAR'), findsOneWidget);
     expect(find.text('Configura tu SOAT'), findsOneWidget);
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
 
-    await _openModuleFromApps(tester, harness, 'tecnomecanica');
+    await _openModuleFromApps(tester, harness, 'tecnomecanica', settle: false);
+    await _pumpUntil(tester, find.byKey(const ValueKey('owner-primary-rtm')));
     expect(find.text('Tecnomecánica / RTM'), findsOneWidget);
     expect(find.byKey(const ValueKey('owner-primary-rtm')), findsOneWidget);
     expect(find.text('BUSCAR CDA'), findsOneWidget);
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
 
-    await _openModuleFromApps(tester, harness, 'seguro_asistencia');
-    expect(find.text('Seguro y asistencia'), findsWidgets);
+    await _openModuleFromApps(
+      tester,
+      harness,
+      'seguro_asistencia',
+      settle: false,
+    );
+    await _pumpUntil(
+      tester,
+      find.byKey(const ValueKey('insurance-owner-content')),
+    );
     expect(
-      find.text('Disponible según las coberturas y condiciones de tu póliza.'),
+      find.byKey(const ValueKey('insurance-owner-content')),
       findsOneWidget,
     );
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
 
-    await _openModuleFromApps(tester, harness, 'impuestos');
+    await _openModuleFromApps(tester, harness, 'impuestos', settle: false);
+    await _pumpUntil(tester, find.byKey(ValueKey('tax-owner-${vehicle.id}')));
     expect(find.text('Impuestos'), findsWidgets);
-    expect(
-      find.text(
-        'PicoRadar no calcula el impuesto, no consulta deuda y no confirma si está pagado.',
-      ),
-      findsOneWidget,
-    );
+    expect(find.byKey(ValueKey('tax-owner-${vehicle.id}')), findsOneWidget);
     expect(find.byType(ModulePlaceholderScreen), findsNothing);
   });
 
@@ -635,7 +668,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('vehicle-guard-add')));
     await _pumpRoute(tester);
 
-    expect(find.text('Agregar vehículo'), findsOneWidget);
+    expect(find.text('¿Qué conduces?'), findsOneWidget);
   });
 
   testWidgets(

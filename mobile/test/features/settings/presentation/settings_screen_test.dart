@@ -11,6 +11,9 @@ import 'package:picoradar/features/comparendos/presentation/comparendos_screen.d
 import 'package:picoradar/features/defense/application/defense_case_providers.dart';
 import 'package:picoradar/features/defense/data/defense_case.dart';
 import 'package:picoradar/features/defense/data/defense_case_store.dart';
+import 'package:picoradar/features/documents/application/wallet_providers.dart';
+import 'package:picoradar/features/documents/application/wallet_session.dart';
+import 'package:picoradar/features/documents/data/wallet_store.dart';
 import 'package:picoradar/features/documents/presentation/documents_screen.dart';
 import 'package:picoradar/features/garage/application/vehicle_associated_data_cleaner.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
@@ -62,7 +65,7 @@ void main() {
     expect(find.text('Soporte'), findsOneWidget);
     expect(find.text('Borrar todo'), findsNothing);
     expect(
-      find.text('Borrar archivos y expedientes del vehículo activo'),
+      find.text('Borrar archivos y expedientes del vehículo favorito'),
       findsOneWidget,
     );
 
@@ -261,6 +264,10 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(documentStore.purgeViewerCacheCalls, 1);
+    final wallet = ProviderScope.containerOf(
+      tester.element(find.byType(SettingsScreen)),
+    ).read(walletStoreProvider) as _SettingsWalletStore;
+    expect(wallet.purgeCalls, 1);
 
     await _tapVisible(
       tester,
@@ -329,7 +336,7 @@ void main() {
     await tester.tap(find.text('Eliminar'));
     await tester.pumpAndSettle();
 
-    expect(find.text('No hay vehículo activo para limpiar.'), findsOneWidget);
+    expect(find.text('No hay vehículo favorito para limpiar.'), findsOneWidget);
   });
 
   testWidgets('cleans active vehicle private data only after confirmation', (
@@ -355,7 +362,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(
-      find.text('Borrar archivos y expedientes del vehículo activo'),
+      find.text('Borrar archivos y expedientes del vehículo favorito'),
       findsWidgets,
     );
     expect(find.textContaining('No se borrará el vehículo'), findsOneWidget);
@@ -373,11 +380,138 @@ void main() {
 
     expect(cleaner.deletedVehicleIds, ['vehicle-1']);
     expect(
-      find.text('Archivos y expedientes del vehículo activo eliminados.'),
+      find.text('Archivos y expedientes del vehículo favorito eliminados.'),
       findsOneWidget,
     );
     expect(find.textContaining('ABC123'), findsNothing);
   });
+
+  for (final result in [
+    WalletAuthenticationResult.cancelled,
+    WalletAuthenticationResult.failed,
+    WalletAuthenticationResult.success,
+  ]) {
+    testWidgets('protected Settings deletion requires auth: $result', (
+      tester,
+    ) async {
+      final authenticator = _SettingsAuthenticator()..result = result;
+      final session = _settingsSession(
+        authenticator: authenticator,
+        protectionEnabled: true,
+      );
+      final wallet = _SettingsWalletStore(documentStore);
+      final defense = _MemoryDefenseCaseStore();
+      documentStore.putDocument(
+        vehicleId: 'vehicle-1',
+        documentType: PrivateVehicleDocumentType.soat,
+        originalName: 'private.pdf',
+      );
+      await defense.createCase(
+        DefenseCaseDraft(
+          vehicleId: 'vehicle-1',
+          authority: 'Authority',
+          incidentDate: DateTime.utc(2026, 9, 3),
+          facts: 'Private notes',
+        ),
+      );
+      preferences.values['comparendos.last_checked.vehicle-1'] = '2026-09-03';
+      final cleaner = VehicleAssociatedDataCleaner(
+        walletStore: wallet,
+        defenseCaseStore: defense,
+        peritajesDraftStore: PeritajesDraftStore(preferences),
+        preferences: preferences,
+      );
+      await _pumpSettings(
+        tester,
+        preferences: preferences,
+        scheduler: scheduler,
+        launcher: launcher,
+        documentStore: documentStore,
+        walletSession: session,
+        vehicleAssociatedDataCleaner: cleaner,
+        activeVehicle: _vehicle(id: 'vehicle-1', plate: 'ABC123'),
+        onChangeAvatar: () {},
+      );
+      await _tapVisible(
+        tester,
+        find.byKey(
+          const ValueKey('settings-delete-active-vehicle-private-data'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(authenticator.calls, 0);
+      expect(wallet.initializations, 0);
+      await tester.tap(find.text('Eliminar'));
+      await tester.pumpAndSettle();
+
+      final allowed = result == WalletAuthenticationResult.success;
+      expect(authenticator.calls, 1);
+      expect(wallet.initializations, allowed ? 1 : 0);
+      expect(wallet.authorizedDeletion, allowed);
+      expect(
+        await documentStore.listForVehicle('vehicle-1'),
+        hasLength(allowed ? 0 : 1),
+      );
+      expect(
+        await defense.listForVehicle('vehicle-1'),
+        hasLength(allowed ? 0 : 1),
+      );
+      expect(
+        preferences.values['comparendos.last_checked.vehicle-1'],
+        allowed ? isNull : '2026-09-03',
+      );
+      expect(session.accessAllowed, isFalse);
+      expect(find.textContaining('private.pdf'), findsNothing);
+      expect(
+        find.textContaining('eliminados.'),
+        allowed ? findsOneWidget : findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets(
+    'Settings does not delete after auth completes in a locked epoch',
+    (tester) async {
+      final pending = Completer<WalletAuthenticationResult>();
+      final authenticator = _SettingsAuthenticator()..pending = pending;
+      final session = _settingsSession(
+        authenticator: authenticator,
+        protectionEnabled: true,
+      );
+      final cleaner = _FakeVehicleDataCleaner();
+      await _pumpSettings(
+        tester,
+        preferences: preferences,
+        scheduler: scheduler,
+        launcher: launcher,
+        documentStore: documentStore,
+        walletSession: session,
+        vehicleAssociatedDataCleaner: cleaner,
+        activeVehicle: _vehicle(id: 'vehicle-1', plate: 'ABC123'),
+        onChangeAvatar: () {},
+      );
+      await _tapVisible(
+        tester,
+        find.byKey(
+          const ValueKey('settings-delete-active-vehicle-private-data'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Eliminar'));
+      for (var frame = 0; frame < 30 && authenticator.calls == 0; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(authenticator.calls, 1);
+      session.lock();
+      pending.complete(WalletAuthenticationResult.success);
+      await tester.pumpAndSettle();
+      expect(cleaner.deletedVehicleIds, isEmpty);
+      expect(session.accessAllowed, isFalse);
+      expect(find.textContaining('eliminados.'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('active vehicle private data cleanup handles missing vehicle', (
     tester,
@@ -404,7 +538,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(cleaner.deletedVehicleIds, isEmpty);
-    expect(find.text('No hay vehículo activo para limpiar.'), findsOneWidget);
+    expect(find.text('No hay vehículo favorito para limpiar.'), findsOneWidget);
   });
 
   testWidgets('active vehicle private data cleanup failure is visible', (
@@ -462,8 +596,27 @@ void main() {
       );
       preferences.values['comparendos.last_checked.${activeVehicle.id}'] =
           '2026-09-03';
+      var walletReads = 0;
+      final walletList = walletDocumentsProvider(
+        WalletOwner.vehicle(activeVehicle.id),
+      );
       final container = ProviderContainer(
         overrides: [
+          walletSessionProvider.overrideWithValue(_settingsSession()),
+          walletList.overrideWith((ref) async {
+            walletReads++;
+            return [
+              for (final old in await documentStore.listForVehicle(
+                activeVehicle.id,
+              ))
+                WalletDocument(
+                  id: old.documentId,
+                  owner: WalletOwner.vehicle(activeVehicle.id),
+                  type: WalletDocumentType.soat,
+                  importedAt: old.importedAt,
+                ),
+            ];
+          }),
           appPreferencesProvider.overrideWithValue(preferences),
           picoNotificationSchedulerProvider.overrideWithValue(scheduler),
           externalLauncherProvider.overrideWithValue(launcher),
@@ -481,6 +634,11 @@ void main() {
         ],
       );
       addTearDown(container.dispose);
+
+      final subscription = container.listen(walletList, (_, _) {});
+      addTearDown(subscription.close);
+      expect(await container.read(walletList.future), hasLength(1));
+      expect(walletReads, 1);
 
       expect(
         await container.read(vehicleDocumentsProvider(activeVehicle.id).future),
@@ -526,6 +684,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(cleaner.deletedVehicleIds, [activeVehicle.id]);
+      expect(await container.read(walletList.future), isEmpty);
+      expect(walletReads, 2);
       expect(
         await container.read(vehicleDocumentsProvider(activeVehicle.id).future),
         isEmpty,
@@ -581,6 +741,7 @@ void main() {
       );
       final container = ProviderContainer(
         overrides: [
+          walletSessionProvider.overrideWithValue(_settingsSession()),
           appPreferencesProvider.overrideWithValue(preferences),
           picoNotificationSchedulerProvider.overrideWithValue(scheduler),
           externalLauncherProvider.overrideWithValue(launcher),
@@ -814,7 +975,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('settings-copy-diagnostic')));
     await tester.pumpAndSettle();
 
-    expect(clipboardText, contains('schemaVersion=5'));
+    expect(clipboardText, contains('schemaVersion=9'));
     expect(clipboardText, contains('cameraDatasetVersion=2026.08.31-ansv'));
     expect(clipboardText, contains('cameraDatasetCount=360'));
     expect(clipboardText, isNot(contains('ABC123')));
@@ -992,6 +1153,7 @@ Future<void> _pumpSettings(
   required VoidCallback onChangeAvatar,
   VoidCallback? onConfigureNotifications,
   VehicleAssociatedDataCleaner? vehicleAssociatedDataCleaner,
+  WalletSession? walletSession,
   VehicleProfile? activeVehicle,
   Future<VehicleProfile?>? activeVehicleFuture,
   CameraDatasetDiagnostic cameraDatasetDiagnostic =
@@ -1009,10 +1171,16 @@ Future<void> _pumpSettings(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        walletSessionProvider.overrideWithValue(
+          walletSession ?? _settingsSession(),
+        ),
         appPreferencesProvider.overrideWithValue(preferences),
         picoNotificationSchedulerProvider.overrideWithValue(scheduler),
         externalLauncherProvider.overrideWithValue(launcher),
         privateVehicleDocumentStoreProvider.overrideWithValue(documentStore),
+        walletStoreProvider.overrideWithValue(
+          _SettingsWalletStore(documentStore),
+        ),
         vehicleAssociatedDataCleanerProvider.overrideWithValue(
           vehicleAssociatedDataCleaner ?? _FakeVehicleDataCleaner(),
         ),
@@ -1101,6 +1269,15 @@ class _FakeVehicleDataCleaner extends VehicleAssociatedDataCleaner {
 
   final deletedVehicleIds = <String>[];
   var fail = false;
+
+  @override
+  Future<void> deletePrivateDataForVehicle(
+    String vehicleId, {
+    required bool Function() isAuthorized,
+  }) async {
+    if (!isAuthorized()) throw StateError('Not authorized');
+    await deleteForVehicle(vehicleId);
+  }
 
   @override
   Future<void> deleteForVehicle(String vehicleId) async {
@@ -1204,6 +1381,39 @@ class _FakeDocumentStore extends PrivateVehicleDocumentStore {
   }
 }
 
+class _SettingsWalletStore implements WalletStore {
+  _SettingsWalletStore(this.legacy);
+  final _FakeDocumentStore legacy;
+  int purgeCalls = 0;
+  int initializations = 0;
+  bool authorizedDeletion = false;
+
+  @override
+  Future<WalletMigrationReport> initialize() async {
+    initializations++;
+    return const WalletMigrationReport();
+  }
+
+  @override
+  Future<void> deleteForVehicle(
+    String id, {
+    bool Function()? isAuthorized,
+  }) async {
+    if (isAuthorized?.call() != true) throw StateError('Not authorized');
+    authorizedDeletion = true;
+    await legacy.deleteForVehicle(id);
+  }
+
+  @override
+  Future<void> purgeViewerCache() async {
+    purgeCalls++;
+    await legacy.purgeViewerCache();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _DeletingVehicleDataCleaner extends VehicleAssociatedDataCleaner {
   _DeletingVehicleDataCleaner({
     required _FakeDocumentStore documentStore,
@@ -1217,6 +1427,18 @@ class _DeletingVehicleDataCleaner extends VehicleAssociatedDataCleaner {
        );
 
   final deletedVehicleIds = <String>[];
+
+  @override
+  Future<void> deletePrivateDataForVehicle(
+    String vehicleId, {
+    required bool Function() isAuthorized,
+  }) async {
+    deletedVehicleIds.add(vehicleId);
+    await super.deletePrivateDataForVehicle(
+      vehicleId,
+      isAuthorized: isAuthorized,
+    );
+  }
 
   @override
   Future<void> deleteForVehicle(String vehicleId) async {
@@ -1234,6 +1456,18 @@ class _DelayedDeletingVehicleDataCleaner extends _DeletingVehicleDataCleaner {
   });
 
   final Future<void> delay;
+
+  @override
+  Future<void> deletePrivateDataForVehicle(
+    String vehicleId, {
+    required bool Function() isAuthorized,
+  }) async {
+    await delay;
+    await super.deletePrivateDataForVehicle(
+      vehicleId,
+      isAuthorized: isAuthorized,
+    );
+  }
 
   @override
   Future<void> deleteForVehicle(String vehicleId) async {
@@ -1275,5 +1509,44 @@ class _MemoryDefenseCaseStore extends DefenseCaseStore {
   @override
   Future<void> deleteForVehicle(String vehicleId) async {
     _items.removeWhere((item) => item.vehicleId == vehicleId.trim());
+  }
+}
+
+WalletSession _settingsSession({
+  _SettingsAuthenticator? authenticator,
+  bool protectionEnabled = false,
+}) {
+  final session = WalletSession(
+    authenticator: authenticator ?? _SettingsAuthenticator(),
+    preferences: _SettingsSecurityPreferences(protectionEnabled),
+  );
+  addTearDown(session.dispose);
+  return session;
+}
+
+class _SettingsSecurityPreferences implements WalletSecurityPreferencesStore {
+  _SettingsSecurityPreferences(this.enabled);
+  final bool enabled;
+
+  @override
+  Future<WalletSecurityPreferences> read() async =>
+      WalletSecurityPreferences(protectionEnabled: enabled, offerSeen: true);
+
+  @override
+  Future<void> write(WalletSecurityPreferences preferences) async {}
+}
+
+class _SettingsAuthenticator implements WalletDeviceAuthenticator {
+  int calls = 0;
+  WalletAuthenticationResult result = WalletAuthenticationResult.success;
+  Completer<WalletAuthenticationResult>? pending;
+
+  @override
+  Future<bool> canAuthenticate() async => true;
+
+  @override
+  Future<WalletAuthenticationResult> authenticate() async {
+    calls++;
+    return pending == null ? result : await pending!.future;
   }
 }

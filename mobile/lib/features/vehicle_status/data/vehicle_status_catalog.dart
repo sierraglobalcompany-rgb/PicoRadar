@@ -23,45 +23,6 @@ class OfficialVehicleLink {
   }
 }
 
-class ImportantDate {
-  const ImportantDate({
-    required this.date,
-    required this.label,
-    required this.kind,
-  });
-
-  final DateTime date;
-  final String label;
-  final String kind;
-}
-
-class VehicleTaxCalendar {
-  const VehicleTaxCalendar({
-    required this.authorityId,
-    required this.authorityName,
-    required this.year,
-    required this.verifiedAt,
-    required this.staleAfter,
-    required this.portalLink,
-    required this.importantDates,
-  });
-
-  final String authorityId;
-  final String authorityName;
-  final int year;
-  final DateTime verifiedAt;
-  final DateTime staleAfter;
-  final OfficialVehicleLink portalLink;
-  final List<ImportantDate> importantDates;
-
-  bool isCurrent(DateTime nowBogota) {
-    if (nowBogota.year != year) {
-      return false;
-    }
-    return nowBogota.toUtc().isBefore(staleAfter.toUtc());
-  }
-}
-
 final runtVehicleByPlateLink = OfficialVehicleLink(
   id: 'runt-vehicle-by-plate',
   title: 'Verificar en RUNT',
@@ -78,24 +39,6 @@ final fasecoldaAutomovilesLink = OfficialVehicleLink(
   verifiedAt: DateTime.utc(2026, 8, 27),
   sourceName: 'Fasecolda',
   allowedHost: 'www.fasecolda.com',
-);
-
-final bogotaTaxPortalLink = OfficialVehicleLink(
-  id: 'bogota-tax-vehicles',
-  title: 'Portal impuesto vehicular Bogotá',
-  uri: 'https://www.haciendabogota.gov.co/es/impuestos/impuesto-sobre-vehiculos-automotores',
-  verifiedAt: DateTime.utc(2026, 9, 3),
-  sourceName: 'Secretaría Distrital de Hacienda',
-  allowedHost: 'www.haciendabogota.gov.co',
-);
-
-final antioquiaTaxPortalLink = OfficialVehicleLink(
-  id: 'antioquia-tax-vehicles',
-  title: 'Portal impuesto vehicular Antioquia',
-  uri: 'https://www.vehiculosantioquia.com.co/impuestosweb/',
-  verifiedAt: DateTime.utc(2026, 9, 3),
-  sourceName: 'Gobernación de Antioquia',
-  allowedHost: 'www.vehiculosantioquia.com.co',
 );
 
 const insuranceProviderOptions = [
@@ -118,83 +61,11 @@ const insuranceProviderOptions = [
   'Otra / no aparece',
 ];
 
-final vehicleTaxCalendars = [
-  VehicleTaxCalendar(
-    authorityId: 'bogota',
-    authorityName: 'Bogotá - Secretaría Distrital de Hacienda',
-    year: 2026,
-    verifiedAt: DateTime.utc(2026, 9, 3),
-    staleAfter: DateTime.utc(2027),
-    portalLink: bogotaTaxPortalLink,
-    importantDates: [
-      ImportantDate(
-        date: DateTime(2026, 5, 15),
-        label: 'Pronto pago 10%',
-        kind: 'discountDeadline',
-      ),
-      ImportantDate(
-        date: DateTime(2026, 6, 12),
-        label: 'SPAC: declaración inicial, solo si elige pago por cuotas',
-        kind: 'installmentInfo',
-      ),
-      ImportantDate(
-        date: DateTime(2026, 7, 3),
-        label: 'SPAC: cuota 1, si se acogió',
-        kind: 'installmentInfo',
-      ),
-      ImportantDate(
-        date: DateTime(2026, 7, 24),
-        label: 'Fecha límite ordinaria',
-        kind: 'ordinaryDeadline',
-      ),
-      ImportantDate(
-        date: DateTime(2026, 9, 4),
-        label: 'SPAC: cuota 2, si se acogió',
-        kind: 'installmentInfo',
-      ),
-    ],
-  ),
-  VehicleTaxCalendar(
-    authorityId: 'antioquia',
-    authorityName: 'Antioquia - Gobernación de Antioquia',
-    year: 2026,
-    verifiedAt: DateTime.utc(2026, 9, 3),
-    staleAfter: DateTime.utc(2027),
-    portalLink: antioquiaTaxPortalLink,
-    importantDates: [
-      ImportantDate(
-        date: DateTime(2026, 4, 30),
-        label: 'Pronto pago; descuento según tipo de vehículo',
-        kind: 'discountDeadline',
-      ),
-      ImportantDate(
-        date: DateTime(2026, 7, 31),
-        label: 'Fecha límite ordinaria',
-        kind: 'ordinaryDeadline',
-      ),
-    ],
-  ),
-];
-
-VehicleTaxCalendar? taxCalendarByAuthority(String? authorityId) {
-  if (authorityId == null) {
-    return null;
-  }
-  for (final calendar in vehicleTaxCalendars) {
-    if (calendar.authorityId == authorityId) {
-      return calendar;
-    }
-  }
-  return null;
-}
-
-VehicleTaxCalendar? suggestTaxCalendar(String? registrationCity) {
+String? suggestTaxAuthorityId(String? registrationCity) {
   final normalized = _normalizeTaxAuthorityHint(registrationCity);
   return switch (normalized) {
-    'bogota' ||
-    'bogota dc' ||
-    'bogota bogota dc' => taxCalendarByAuthority('bogota'),
-    'medellin' || 'medellin antioquia' => taxCalendarByAuthority('antioquia'),
+    'bogota' || 'bogota dc' || 'bogota bogota dc' => 'bogota',
+    'medellin' || 'medellin antioquia' => 'antioquia',
     _ => null,
   };
 }

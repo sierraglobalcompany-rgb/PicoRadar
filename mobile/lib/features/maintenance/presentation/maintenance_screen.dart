@@ -5,72 +5,249 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/app_providers.dart';
 import '../../../app/theme/app_tokens.dart';
+import '../../garage/data/vehicle_profile.dart';
+import '../../location/application/location_controller.dart';
+import '../../location/platform/device_location_gateway.dart';
+import '../../onboarding/data/registration_city_catalog.dart';
+import '../../services/data/google_maps_service_search.dart';
+import '../../vehicle_status/platform/external_launcher.dart';
 import '../data/maintenance_record.dart';
 
-class MaintenanceScreen extends ConsumerWidget {
+class MaintenanceScreen extends ConsumerStatefulWidget {
   const MaintenanceScreen({required this.vehicleId, super.key});
 
   final String? vehicleId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final normalizedVehicleId = vehicleId?.trim();
-    if (normalizedVehicleId == null || normalizedVehicleId.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Talleres y mantenimiento')),
-        body: const SafeArea(child: _MissingMaintenanceVehicleState()),
-      );
-    }
+  ConsumerState<MaintenanceScreen> createState() => _MaintenanceScreenState();
+}
 
+class _MaintenanceScreenState extends ConsumerState<MaintenanceScreen> {
+  String? _selectedVehicleId;
+  var _findingWorkshop = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.vehicleId?.trim();
+    _selectedVehicleId = initial == null || initial.isEmpty ? null : initial;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final vehicles = ref.watch(vehicleListProvider);
+    final availableVehicles =
+        vehicles.asData?.value ?? const <VehicleProfile>[];
+    final selectedVehicleId = _resolveVehicleId(availableVehicles);
     return Scaffold(
-      appBar: AppBar(title: const Text('Talleres y mantenimiento')),
-      floatingActionButton: vehicles.maybeWhen(
-        data: (items) =>
-            items.any((vehicle) => vehicle.id == normalizedVehicleId)
-            ? FloatingActionButton.extended(
-                key: const ValueKey('maintenance-add'),
-                onPressed: () => _openEditor(context, ref, normalizedVehicleId),
-                icon: const Icon(Icons.add),
-                label: const Text('Agregar'),
-              )
-            : null,
-        orElse: () => null,
+      appBar: AppBar(
+        title: const Text('Talleres'),
+        actions: [
+          IconButton(
+            key: const ValueKey('maintenance-find-workshop'),
+            tooltip: 'Buscar taller cerca de mí',
+            onPressed: _findingWorkshop ? null : _findWorkshop,
+            icon: _findingWorkshop
+                ? const SizedBox.square(
+                    dimension: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.near_me_outlined),
+          ),
+        ],
       ),
+      floatingActionButton: selectedVehicleId == null
+          ? null
+          : FloatingActionButton.extended(
+              key: const ValueKey('maintenance-add'),
+              onPressed: () => _openEditor(context, ref, selectedVehicleId),
+              icon: const Icon(Icons.add),
+              label: const Text('Agregar'),
+            ),
       body: SafeArea(
         child: vehicles.when(
           data: (items) {
-            final vehicleExists = items.any(
-              (vehicle) => vehicle.id == normalizedVehicleId,
-            );
-            if (!vehicleExists) {
+            final effectiveVehicleId = _resolveVehicleId(items);
+            if (effectiveVehicleId == null) {
               return const _MissingMaintenanceVehicleState();
             }
-
+            final selectedVehicle = items.firstWhere(
+              (vehicle) => vehicle.id == effectiveVehicleId,
+            );
             final records = ref.watch(
-              maintenanceRecordsProvider(normalizedVehicleId),
+              maintenanceRecordsProvider(effectiveVehicleId),
             );
             return records.when(
-              data: (items) => _MaintenanceList(
-                records: items,
-                onEdit: (record) => _openEditor(
-                  context,
-                  ref,
-                  normalizedVehicleId,
-                  record: record,
-                ),
-                onDelete: (record) =>
-                    _deleteRecord(context, ref, normalizedVehicleId, record),
+              data: (records) => Column(
+                children: [
+                  _MaintenanceHeader(
+                    vehicles: items,
+                    selectedVehicle: selectedVehicle,
+                    records: records,
+                    onVehicleSelected: (vehicleId) {
+                      setState(() => _selectedVehicleId = vehicleId);
+                    },
+                    onFindWorkshop: _findingWorkshop ? null : _findWorkshop,
+                  ),
+                  Expanded(
+                    child: _MaintenanceList(
+                      records: records,
+                      onEdit: (record) => _openEditor(
+                        context,
+                        ref,
+                        effectiveVehicleId,
+                        record: record,
+                      ),
+                      onDelete: (record) => _deleteRecord(
+                        context,
+                        ref,
+                        effectiveVehicleId,
+                        record,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stackTrace) => _MaintenanceError(error: error),
+              error: (error, stackTrace) => _MaintenanceError(
+                error: error,
+                onRetry: () => ref.invalidate(
+                  maintenanceRecordsProvider(effectiveVehicleId),
+                ),
+              ),
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stackTrace) => _MaintenanceError(error: error),
+          error: (error, stackTrace) => _MaintenanceError(
+            error: error,
+            onRetry: () => ref.invalidate(vehicleListProvider),
+          ),
         ),
       ),
     );
+  }
+
+  String? _resolveVehicleId(List<VehicleProfile> vehicles) {
+    if (vehicles.isEmpty) return null;
+    final selected = _selectedVehicleId;
+    if (selected != null && vehicles.any((vehicle) => vehicle.id == selected)) {
+      return selected;
+    }
+    final explicit = widget.vehicleId?.trim();
+    if (explicit != null &&
+        explicit.isNotEmpty &&
+        vehicles.any((vehicle) => vehicle.id == explicit)) {
+      return explicit;
+    }
+    if (explicit != null && explicit.isNotEmpty) return null;
+    return vehicles.first.id;
+  }
+
+  Future<void> _findWorkshop() async {
+    if (_findingWorkshop) return;
+    setState(() => _findingWorkshop = true);
+    try {
+      final gateway = ref.read(deviceLocationGatewayProvider);
+      if (!await gateway.isLocationServiceEnabled()) {
+        await _recoverWorkshopSearch(DeviceLocationFailure.serviceDisabled);
+        return;
+      }
+      var permission = await gateway.checkPermission();
+      if (permission == DeviceLocationPermission.denied ||
+          permission == DeviceLocationPermission.notRequested) {
+        permission = await gateway.requestPermission();
+      }
+      if (permission != DeviceLocationPermission.granted) {
+        await _recoverWorkshopSearch(
+          permission == DeviceLocationPermission.deniedForever
+              ? DeviceLocationFailure.permissionDeniedForever
+              : DeviceLocationFailure.permissionDenied,
+        );
+        return;
+      }
+      final result = await gateway.getCurrentPosition();
+      if (!mounted) return;
+      if (result case DeviceLocationSuccess(:final point)
+          when _validLocation(point)) {
+        await _openWorkshopUri(
+          googleMapsNearbyServiceSearchUri(
+            category: GoogleMapsServiceCategory.mechanic,
+            latitude: point.latitude,
+            longitude: point.longitude,
+          ),
+        );
+      } else {
+        await _recoverWorkshopSearch(DeviceLocationFailure.positionUnavailable);
+      }
+    } catch (_) {
+      if (mounted) {
+        await _recoverWorkshopSearch(DeviceLocationFailure.positionUnavailable);
+      }
+    } finally {
+      if (mounted) setState(() => _findingWorkshop = false);
+    }
+  }
+
+  bool _validLocation(DeviceLocationPoint point) =>
+      point.latitude.isFinite &&
+      point.longitude.isFinite &&
+      point.accuracyMeters.isFinite &&
+      point.latitude >= -90 &&
+      point.latitude <= 90 &&
+      point.longitude >= -180 &&
+      point.longitude <= 180;
+
+  Future<void> _recoverWorkshopSearch(DeviceLocationFailure failure) async {
+    if (!mounted) return;
+    final choice = await showModalBottomSheet<_WorkshopRecoveryChoice>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => _WorkshopRecoverySheet(failure: failure),
+    );
+    if (!mounted || choice == null) return;
+    switch (choice) {
+      case _WorkshopRecoveryChoice.retry:
+        if (mounted) setState(() => _findingWorkshop = false);
+        await _findWorkshop();
+        return;
+      case _WorkshopRecoveryChoice.settings:
+        final gateway = ref.read(deviceLocationGatewayProvider);
+        if (failure == DeviceLocationFailure.serviceDisabled) {
+          await gateway.openLocationSettings();
+        } else {
+          await gateway.openAppSettings();
+        }
+        return;
+      case _WorkshopRecoveryChoice.city:
+        final catalog = await ref.read(registrationCityCatalogProvider.future);
+        if (!mounted) return;
+        final city = await showModalBottomSheet<RegistrationCity>(
+          context: context,
+          isScrollControlled: true,
+          showDragHandle: true,
+          builder: (context) => _MaintenanceCitySheet(catalog: catalog),
+        );
+        if (city != null) {
+          await _openWorkshopUri(
+            googleMapsCityServiceSearchUri(
+              category: GoogleMapsServiceCategory.mechanic,
+              city: city.displayName,
+            ),
+          );
+        }
+        return;
+    }
+  }
+
+  Future<void> _openWorkshopUri(Uri uri) async {
+    final opened = await ref
+        .read(externalLauncherProvider)
+        .openExternal(uri.toString());
+    if (mounted && !opened) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No pudimos abrir Google Maps.')),
+      );
+    }
   }
 
   Future<void> _openEditor(
@@ -93,6 +270,7 @@ class MaintenanceScreen extends ConsumerWidget {
     }
     if (saved == true) {
       ref.invalidate(maintenanceRecordsProvider(vehicleId));
+      ref.invalidate(maintenanceNotificationSyncProvider);
     }
   }
 
@@ -146,7 +324,287 @@ class MaintenanceScreen extends ConsumerWidget {
       return;
     }
     ref.invalidate(maintenanceRecordsProvider(vehicleId));
+    ref.invalidate(maintenanceNotificationSyncProvider);
   }
+}
+
+class _MaintenanceHeader extends StatelessWidget {
+  const _MaintenanceHeader({
+    required this.vehicles,
+    required this.selectedVehicle,
+    required this.records,
+    required this.onVehicleSelected,
+    required this.onFindWorkshop,
+  });
+
+  final List<VehicleProfile> vehicles;
+  final VehicleProfile selectedVehicle;
+  final List<MaintenanceRecord> records;
+  final ValueChanged<String> onVehicleSelected;
+  final VoidCallback? onFindWorkshop;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.l,
+        AppSpacing.s,
+        AppSpacing.l,
+        0,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PopupMenuButton<String>(
+            key: const ValueKey('maintenance-vehicle-selector'),
+            onSelected: onVehicleSelected,
+            itemBuilder: (context) => [
+              for (final vehicle in vehicles)
+                PopupMenuItem(
+                  value: vehicle.id,
+                  child: Text(_vehicleLabel(vehicle)),
+                ),
+            ],
+            child: InputDecorator(
+              decoration: const InputDecoration(
+                labelText: 'Vehículo',
+                prefixIcon: Icon(Icons.directions_car_outlined),
+                suffixIcon: Icon(Icons.expand_more),
+              ),
+              child: Text(
+                _vehicleLabel(selectedVehicle),
+                style: AppTextStyles.bodyStrong,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.s),
+          _MaintenanceSummary(records: records),
+          const SizedBox(height: AppSpacing.s),
+          _MaintenanceReminderToggle(vehicleId: selectedVehicle.id),
+          const SizedBox(height: AppSpacing.s),
+          OutlinedButton.icon(
+            key: const ValueKey('maintenance-find-workshop-inline'),
+            onPressed: onFindWorkshop,
+            icon: const Icon(Icons.near_me_outlined),
+            label: const Text('Buscar taller mecánico cerca de mí'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MaintenanceReminderToggle extends ConsumerStatefulWidget {
+  const _MaintenanceReminderToggle({required this.vehicleId});
+
+  final String vehicleId;
+
+  @override
+  ConsumerState<_MaintenanceReminderToggle> createState() =>
+      _MaintenanceReminderToggleState();
+}
+
+class _MaintenanceReminderToggleState
+    extends ConsumerState<_MaintenanceReminderToggle> {
+  var _saving = false;
+
+  Future<void> _setEnabled(bool value) async {
+    if (_saving) {
+      return;
+    }
+    setState(() => _saving = true);
+    final vehicleId = widget.vehicleId;
+    final preferences = ref.read(maintenanceNotificationPreferencesProvider);
+    try {
+      await preferences.setEnabled(vehicleId, value);
+      if (!mounted) {
+        return;
+      }
+      final refreshedPreference = ref.refresh(
+        maintenanceDateRemindersEnabledProvider(vehicleId).future,
+      );
+      await refreshedPreference;
+      if (!mounted) {
+        return;
+      }
+      ref.invalidate(maintenanceNotificationSyncProvider);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No pudimos cambiar el recordatorio. Intenta de nuevo.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = ref.watch(
+      maintenanceDateRemindersEnabledProvider(widget.vehicleId),
+    );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadius.input),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(
+          left: AppSpacing.m,
+          right: AppSpacing.xs,
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.notifications_outlined, color: AppColors.teal),
+            const SizedBox(width: AppSpacing.s),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Recordatorios por fecha',
+                    style: AppTextStyles.bodyStrong,
+                  ),
+                  Text(
+                    'Opcional para este vehículo',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.navy.withValues(alpha: 0.68),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              key: const ValueKey('maintenance-date-reminders-toggle'),
+              value: enabled.value ?? false,
+              onChanged: enabled.isLoading || _saving ? null : _setEnabled,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MaintenanceSummary extends StatelessWidget {
+  const _MaintenanceSummary({required this.records});
+
+  final List<MaintenanceRecord> records;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalCents = records.fold<int>(
+      0,
+      (total, record) => total + (record.costCents ?? 0),
+    );
+    final latestOdometer = records
+        .map((record) => record.odometer)
+        .whereType<int>()
+        .fold<int?>(null, (latest, value) {
+          if (latest == null || value > latest) return value;
+          return latest;
+        });
+    final today = DateTime.now();
+    final overdue = records.where((record) {
+      final dateDue =
+          record.nextServiceDate != null &&
+          record.nextServiceDate!.isBefore(
+            DateTime(today.year, today.month, today.day),
+          );
+      final distanceDue =
+          latestOdometer != null &&
+          record.nextOdometer != null &&
+          latestOdometer >= record.nextOdometer!;
+      return dateDue || distanceDue;
+    }).length;
+    return Semantics(
+      container: true,
+      label:
+          '${records.length} mantenimientos, $overdue vencidos, costo ${_formatCurrency(totalCents)}',
+      child: DecoratedBox(
+        key: const ValueKey('maintenance-summary'),
+        decoration: BoxDecoration(
+          color: AppColors.teal.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(AppRadius.input),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.m,
+            vertical: AppSpacing.s,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _SummaryValue(
+                  value: '${records.length}',
+                  label: 'Servicios',
+                ),
+              ),
+              Expanded(
+                child: _SummaryValue(
+                  value: '$overdue',
+                  label: 'Vencidos',
+                  alert: overdue > 0,
+                ),
+              ),
+              Expanded(
+                child: _SummaryValue(
+                  value: 'Total ${_formatCurrency(totalCents)}',
+                  label: 'Invertido',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryValue extends StatelessWidget {
+  const _SummaryValue({
+    required this.value,
+    required this.label,
+    this.alert = false,
+  });
+
+  final String value;
+  final String label;
+  final bool alert;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = alert ? AppColors.red : AppColors.navy;
+    return Column(
+      children: [
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.bodyStrong.copyWith(color: color),
+        ),
+        Text(label, style: AppTextStyles.caption.copyWith(color: color)),
+      ],
+    );
+  }
+}
+
+String _vehicleLabel(VehicleProfile vehicle) {
+  final nickname = vehicle.nickname?.trim();
+  if (nickname != null && nickname.isNotEmpty) {
+    return '$nickname · ${vehicle.plate}';
+  }
+  return vehicle.plate;
 }
 
 class _MissingMaintenanceVehicleState extends StatelessWidget {
@@ -473,11 +931,42 @@ class _MaintenanceEditorSheetState
               key: const ValueKey('maintenance-type-field'),
               controller: _typeController,
               textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Tipo',
                 hintText: 'Cambio de aceite',
+                suffixIcon: PopupMenuButton<String>(
+                  key: const ValueKey('maintenance-category-menu'),
+                  tooltip: 'Elegir categoría',
+                  icon: const Icon(Icons.expand_more),
+                  onSelected: (category) {
+                    _typeController.text = category;
+                    setState(() {});
+                  },
+                  itemBuilder: (context) => [
+                    for (final category in const [
+                      'Aceite y filtros',
+                      'Frenos',
+                      'Llantas',
+                      'Batería',
+                      'Revisión general',
+                    ])
+                      PopupMenuItem(value: category, child: Text(category)),
+                  ],
+                ),
               ),
             ),
+            if (_nextServiceDate != null)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  key: const ValueKey('maintenance-clear-next-date'),
+                  onPressed: _saving
+                      ? null
+                      : () => setState(() => _nextServiceDate = null),
+                  icon: const Icon(Icons.close),
+                  label: const Text('Quitar próxima fecha'),
+                ),
+              ),
             const SizedBox(height: AppSpacing.s),
             TextField(
               key: const ValueKey('maintenance-description-field'),
@@ -519,9 +1008,18 @@ class _MaintenanceEditorSheetState
               controller: _nextOdometerController,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Próximo kilometraje',
+                suffixIcon: IconButton(
+                  key: const ValueKey('maintenance-clear-next-odometer'),
+                  tooltip: 'Quitar próximo kilometraje',
+                  onPressed: _saving
+                      ? null
+                      : () => _nextOdometerController.clear(),
+                  icon: const Icon(Icons.close),
+                ),
               ),
+              onTapOutside: (_) => FocusScope.of(context).unfocus(),
             ),
             const SizedBox(height: AppSpacing.l),
             FilledButton.icon(
@@ -586,6 +1084,7 @@ class _MaintenanceEditorSheetState
 
     final repository = ref.read(maintenanceRepositoryProvider);
     final record = widget.record;
+    final container = ProviderScope.containerOf(context, listen: false);
     setState(() => _saving = true);
     try {
       final odometer = _optionalInt(_odometerController.text);
@@ -628,6 +1127,11 @@ class _MaintenanceEditorSheetState
       );
       return;
     }
+    final recordsProvider = maintenanceRecordsProvider(widget.vehicleId);
+    if (container.exists(recordsProvider)) {
+      container.invalidate(recordsProvider);
+    }
+    container.invalidate(maintenanceNotificationSyncProvider);
     if (!mounted) {
       return;
     }
@@ -635,10 +1139,143 @@ class _MaintenanceEditorSheetState
   }
 }
 
+enum _WorkshopRecoveryChoice { retry, settings, city }
+
+class _WorkshopRecoverySheet extends StatelessWidget {
+  const _WorkshopRecoverySheet({required this.failure});
+
+  final DeviceLocationFailure failure;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = switch (failure) {
+      DeviceLocationFailure.serviceDisabled => 'GPS apagado',
+      DeviceLocationFailure.permissionDenied ||
+      DeviceLocationFailure.permissionDeniedForever =>
+        'Ubicación no disponible',
+      DeviceLocationFailure.positionUnavailable => 'Sin señal GPS',
+    };
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.l),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(title, style: AppTextStyles.h2),
+            const SizedBox(height: AppSpacing.s),
+            const Text(
+              'Puedes reintentar, abrir los ajustes o elegir una ciudad del catálogo local.',
+            ),
+            const SizedBox(height: AppSpacing.l),
+            FilledButton.icon(
+              onPressed: () =>
+                  Navigator.pop(context, _WorkshopRecoveryChoice.retry),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reintentar'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () =>
+                  Navigator.pop(context, _WorkshopRecoveryChoice.city),
+              icon: const Icon(Icons.location_city_outlined),
+              label: const Text('Elegir ciudad'),
+            ),
+            TextButton.icon(
+              onPressed: () =>
+                  Navigator.pop(context, _WorkshopRecoveryChoice.settings),
+              icon: const Icon(Icons.settings_outlined),
+              label: const Text('Abrir ajustes'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MaintenanceCitySheet extends StatefulWidget {
+  const _MaintenanceCitySheet({required this.catalog});
+
+  final RegistrationCityCatalog catalog;
+
+  @override
+  State<_MaintenanceCitySheet> createState() => _MaintenanceCitySheetState();
+}
+
+class _MaintenanceCitySheetState extends State<_MaintenanceCitySheet> {
+  final _queryController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _queryController.addListener(_refresh);
+  }
+
+  @override
+  void dispose() {
+    _queryController.removeListener(_refresh);
+    _queryController.dispose();
+    super.dispose();
+  }
+
+  void _refresh() => setState(() {});
+
+  @override
+  Widget build(BuildContext context) {
+    final results = widget.catalog.search(_queryController.text, limit: 40);
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.l,
+          AppSpacing.s,
+          AppSpacing.l,
+          AppSpacing.l + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Elegir ciudad', style: AppTextStyles.h2),
+            const SizedBox(height: AppSpacing.s),
+            TextField(
+              key: const ValueKey('maintenance-city-search'),
+              controller: _queryController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Buscar municipio o departamento',
+                prefixIcon: Icon(Icons.search),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final city in results)
+                    ListTile(
+                      title: Text(city.displayName),
+                      onTap: () => Navigator.pop(context, city),
+                    ),
+                  if (results.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: AppSpacing.l),
+                      child: Text('Sin resultados en el catálogo local.'),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _MaintenanceError extends StatelessWidget {
-  const _MaintenanceError({required this.error});
+  const _MaintenanceError({required this.error, required this.onRetry});
 
   final Object error;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -646,9 +1283,20 @@ class _MaintenanceError extends StatelessWidget {
       key: const ValueKey('maintenance-error'),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.l),
-        child: Text(
-          'No pudimos cargar los mantenimientos.',
-          style: AppTextStyles.body.copyWith(color: AppColors.red),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'No pudimos cargar los mantenimientos.',
+              style: AppTextStyles.body.copyWith(color: AppColors.red),
+            ),
+            const SizedBox(height: AppSpacing.s),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reintentar'),
+            ),
+          ],
         ),
       ),
     );

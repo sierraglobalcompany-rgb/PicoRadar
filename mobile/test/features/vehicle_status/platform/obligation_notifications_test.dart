@@ -1,5 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:picoradar/features/alerts/data/alert_settings.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
 import 'package:picoradar/features/vehicle_status/domain/vehicle_obligation.dart';
@@ -16,6 +17,205 @@ void main() {
   );
 
   group('obligation notifications', () {
+    test('original obligation alarm identity survives calendar rollover only until expiry', () {
+      for (final due in [
+        DateTime(2026, 9, 30),
+        DateTime(2026, 12, 31),
+        DateTime(2028, 2, 29),
+      ]) {
+        List<ObligationNotificationPlan> at(
+          DateTime now,
+        ) => planObligationNotifications(
+          obligations: [_obligation(VehicleObligationType.soat, dueDate: due)],
+          vehiclesById: {vehicle.id: vehicle},
+          nowBogota: now,
+          permissionGranted: true,
+          deliverySettings: [
+            VehicleAlertSettings(
+              vehicle.id,
+              AlertCategory.soat,
+              const AlertSettings(alarm: true, minute: 1439, offsetDays: [0]),
+            ),
+          ],
+          retainRecentAlarms: true,
+        );
+        final before = at(DateTime(due.year, due.month, due.day, 23, 58))
+            .single;
+        final after = at(DateTime(due.year, due.month, due.day + 1, 0, 2))
+            .single;
+        expect(after.id, before.id);
+        expect(after.scheduledAt, before.scheduledAt);
+        expect(at(DateTime(due.year, due.month, due.day + 1, 0, 14)), isEmpty);
+      }
+    });
+    test(
+      'only scheduler opt-in retains recent alarm identity, including midnight',
+      () {
+        for (final minute in [2, 15]) {
+          for (final retain in [false, true]) {
+            for (final alarm in [false, true]) {
+              final plans = planObligationNotifications(
+                obligations: [
+                  _obligation(
+                    VehicleObligationType.soat,
+                    dueDate: DateTime(2026, 9, 15),
+                  ),
+                ],
+                vehiclesById: {vehicle.id: vehicle},
+                nowBogota: DateTime(2026, 9, 15, 9, minute),
+                permissionGranted: true,
+                deliverySettings: [
+                  VehicleAlertSettings(
+                    vehicle.id,
+                    AlertCategory.soat,
+                    AlertSettings(
+                      alarm: alarm,
+                      minute: 540,
+                      offsetDays: const [0],
+                    ),
+                  ),
+                ],
+                retainRecentAlarms: retain,
+              );
+              expect(plans.isNotEmpty, retain && alarm && minute < 15);
+            }
+          }
+        }
+        final plans = planObligationNotifications(
+          obligations: [
+            _obligation(
+              VehicleObligationType.soat,
+              dueDate: DateTime(2026, 9, 15),
+            ),
+          ],
+          vehiclesById: {vehicle.id: vehicle},
+          nowBogota: DateTime(2026, 9, 16, 0, 2),
+          permissionGranted: true,
+          deliverySettings: [
+            VehicleAlertSettings(
+              vehicle.id,
+              AlertCategory.soat,
+              const AlertSettings(alarm: true, minute: 1439, offsetDays: [0]),
+            ),
+          ],
+          retainRecentAlarms: true,
+        );
+        expect(plans.single.dueDate, DateTime(2026, 9, 15));
+      },
+    );
+
+    test(
+      'recent alarm identity absent after delete disable or date change',
+      () {
+        for (final scenario in ['deleted', 'disabled', 'date']) {
+          final plans = planObligationNotifications(
+            obligations: [
+              _obligation(
+                VehicleObligationType.soat,
+                reminderEnabled: scenario != 'disabled',
+                dueDate: scenario == 'date'
+                    ? DateTime(2026, 9, 16)
+                    : DateTime(2026, 9, 15),
+              ),
+            ],
+            vehiclesById: scenario == 'deleted' ? {} : {vehicle.id: vehicle},
+            nowBogota: DateTime(2026, 9, 15, 9, 2),
+            permissionGranted: true,
+            deliverySettings: [
+              VehicleAlertSettings(
+                vehicle.id,
+                AlertCategory.soat,
+                const AlertSettings(alarm: true, offsetDays: [0]),
+              ),
+            ],
+            retainRecentAlarms: true,
+          );
+          expect(
+            plans.any((p) => p.dueDate == DateTime(2026, 9, 15)),
+            isFalse,
+            reason: scenario,
+          );
+        }
+      },
+    );
+    test('custom delivery affects only its vehicle and category', () {
+      final plans = planObligationNotifications(
+        obligations: [
+          _obligation(VehicleObligationType.soat),
+          _obligation(VehicleObligationType.rtm),
+        ],
+        vehiclesById: {vehicle.id: vehicle},
+        nowBogota: DateTime(2026, 7, 1),
+        permissionGranted: true,
+        deliverySettings: [
+          VehicleAlertSettings(
+            vehicle.id,
+            AlertCategory.soat,
+            const AlertSettings(
+              alarm: true,
+              enriched: true,
+              minute: 615,
+              offsetDays: [15, 0],
+            ),
+          ),
+          const VehicleAlertSettings(
+            'other',
+            AlertCategory.rtm,
+            AlertSettings(minute: 700, offsetDays: [2]),
+          ),
+        ],
+      );
+      final soat = plans
+          .where((p) => p.type == VehicleObligationType.soat)
+          .toList();
+      final rtm = plans
+          .where((p) => p.type == VehicleObligationType.rtm)
+          .toList();
+      expect(soat.map((p) => p.offsetDays), [15, 0]);
+      expect(
+        soat.every(
+          (p) => p.scheduledAt.hour == 10 && p.scheduledAt.minute == 15,
+        ),
+        isTrue,
+      );
+      expect(
+        soat.every(
+          (p) =>
+              p.delivery!.alarm &&
+              p.delivery!.enriched &&
+              p.plate == vehicle.plate,
+        ),
+        isTrue,
+      );
+      expect(rtm.map((p) => p.offsetDays), [30, 7, 1]);
+      expect(
+        rtm.every((p) => p.delivery == null && p.scheduledAt.hour == 9),
+        isTrue,
+      );
+    });
+
+    test(
+      'module reminder switch remains authoritative after a delivery override',
+      () {
+        final plans = planObligationNotifications(
+          obligations: [
+            _obligation(VehicleObligationType.soat, reminderEnabled: false),
+          ],
+          vehiclesById: {vehicle.id: vehicle},
+          nowBogota: DateTime(2026, 7, 1),
+          permissionGranted: true,
+          deliverySettings: [
+            VehicleAlertSettings(
+              vehicle.id,
+              AlertCategory.soat,
+              const AlertSettings(enabled: true, alarm: true),
+            ),
+          ],
+        );
+        expect(plans, isEmpty);
+      },
+    );
+
     test('schedules SOAT, RTM and insurance at 30, 7 and 1 days', () {
       final plans = planObligationNotifications(
         obligations: [

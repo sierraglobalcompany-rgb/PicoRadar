@@ -39,14 +39,22 @@ This matrix documents all current production launcher call sites after K7 integr
 | Call site | Surface | False result | Throw result | K7-C status |
 |---|---|---|---|---|
 | `lib/features/cda/presentation/cda_finder_screen.dart` | CDA details: Google Maps, Waze, official RUNT/MinTransporte source | Controlled visible snackbar | Controlled visible snackbar | PASS |
+| `lib/features/cda/presentation/cda_detail_sheet.dart` | CDA detail actions: phone, web, Google Maps and Waze | Inline retry message | Inline retry message | PASS |
+| `lib/features/cda/presentation/cda_map_view.dart` | CDA map OpenStreetMap attribution | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/comparendos/presentation/comparendos_screen.dart` | SIMIT and territorial comparendos links | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/defense/presentation/defense_screen.dart` | SIMIT, Corte C-038/20, Corte C-321/22 | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/fotomultas/presentation/fotomultas_screen.dart` | ANSV source from camera pack | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/driving/presentation/driving_screen.dart` | Camera Google Maps handoff | Controlled visible snackbar | Controlled visible snackbar | PASS |
+| `lib/features/maintenance/presentation/maintenance_screen.dart` | Taller mecánico cercano por GPS o ciudad seleccionada | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/services/presentation/services_screen.dart` | Google Maps service searches | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/vehicle_status/presentation/vehicle_status_screen.dart` | Phone actions, tax calendar portal, official status links | Controlled visible snackbar | Controlled visible snackbar | PASS |
+| `lib/features/vehicle_status/presentation/tax_owner_content.dart` | Tax authority portal and official source links | Controlled visible snackbar with retry/copy | Controlled visible snackbar with retry/copy | PASS |
+| `lib/features/vehicle_status/presentation/insurance_owner_sheets.dart` | Insurance phone, WhatsApp and official web handoffs | Controlled visible snackbar/copy fallback | Controlled visible snackbar/copy fallback | PASS |
 | `lib/features/trip/application/trip_services.dart` | Google Maps route, Waze route, INVÍAS road status | Controlled visible snackbar in presentation | Controlled visible snackbar in presentation | PASS |
+| `lib/features/trip/presentation/trip_screen.dart` | VIAJE-R1 addition (2026-09-05): restriction and tariff source links, validated HTTPS | Controlled visible snackbar | Controlled visible snackbar | Added after K7; verified in VIAJE-R1, not retroactive K7 approval |
 | `lib/features/peritajes/presentation/peritajes_screen.dart` | Google Maps peritaje search | Controlled visible snackbar | Controlled visible snackbar | PASS |
+| `lib/features/buy_sell/presentation/buy_sell_screen.dart` | Compra/Venta peritaje Google Maps search | Controlled visible snackbar | Controlled visible snackbar | PASS |
+| `lib/features/buy_sell/presentation/purchase_review_sheets.dart` | Compra/Venta review links to SIMIT and official portals | Inline sheet error message | Inline sheet error message | PASS |
 | `lib/features/vehicle_status/presentation/soat_rtm_owner_content.dart` | RUNT vehicle link and document/open-source handoffs | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/tramites/presentation/tramites_screen.dart` | Medellín/Bogotá official trámite portals | Controlled visible snackbar | Controlled visible snackbar | PASS |
 | `lib/features/settings/presentation/settings_screen.dart` | ANSV, SIMIT, INVÍAS, SIC links | Controlled visible snackbar | Controlled visible snackbar | PASS |

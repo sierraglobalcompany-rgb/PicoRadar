@@ -51,6 +51,8 @@ class DatasetPublisherTest extends TestCase
         $manifest = json_decode(Storage::disk('public')->get('manifest/v1/manifest.json'), true);
         $this->assertSame(['schemaVersion', 'generatedAt', 'minAppVersion', 'datasets', 'features'], array_keys($manifest));
         $this->assertSame($first->version, $manifest['datasets']['restrictions']['version']);
+        $this->assertSame(3, $manifest['datasets']['restrictions']['publicationRevision'] ?? null);
+        $this->assertSame(3, $dataset->refresh()->publication_revision);
         $this->assertSame('/storage/'.$first->asset_path, $manifest['datasets']['restrictions']['url']);
         $this->assertSame($first->sha256, $manifest['datasets']['restrictions']['sha256']);
         $this->assertFalse($manifest['features']['ads']);
@@ -76,6 +78,19 @@ class DatasetPublisherTest extends TestCase
         $this->expectException(\LogicException::class);
         $release->metadata = ['changed' => true];
         $release->save();
+    }
+
+    public function test_publish_can_guard_the_reviewed_publication_revision(): void
+    {
+        $operator = User::factory()->create(['role' => OperatorRole::Admin, 'is_active' => true]);
+        $dataset = Dataset::query()->create(['key' => 'restrictions', 'title' => 'Restrictions', 'schema_version' => 1, 'enabled' => true]);
+        $dataset->sources()->create(['title' => 'Official', 'authority' => 'Authority', 'url' => 'https://example.test/rules', 'verified_at' => now(), 'is_active' => true]);
+        $release = $this->draft($dataset, '2026.09.20-reviewed');
+        app(DatasetReleaseValidator::class)->validate($release, $operator);
+
+        $this->expectException(DomainException::class);
+        $this->expectExceptionMessage('The dataset changed after review; refresh the publication preview.');
+        app(DatasetPublisher::class)->publish($release, $operator, 9);
     }
 
     public function test_validation_requires_an_active_verified_source(): void

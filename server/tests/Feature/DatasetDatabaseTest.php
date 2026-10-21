@@ -15,6 +15,7 @@ class DatasetDatabaseTest extends TestCase
     public function test_dataset_and_release_constraints_are_enforced(): void
     {
         $dataset = Dataset::query()->create(['key' => 'restrictions', 'title' => 'Restrictions', 'schema_version' => 1, 'enabled' => true]);
+        $this->assertSame(0, $dataset->refresh()->publication_revision);
         $dataset->releases()->create(['version' => 'one', 'status' => 'draft']);
         $this->expectException(UniqueConstraintViolationException::class);
         $dataset->releases()->create(['version' => 'one', 'status' => 'draft']);
@@ -27,6 +28,25 @@ class DatasetDatabaseTest extends TestCase
         $this->expectException(\LogicException::class);
         $dataset->key = 'changed';
         $dataset->save();
+    }
+
+    public function test_publication_revision_migration_backfills_current_pointer(): void
+    {
+        $dataset = Dataset::query()->create([
+            'key' => 'cameras',
+            'title' => 'Cameras',
+            'schema_version' => 1,
+            'enabled' => true,
+            'current_version' => 'legacy-release',
+        ]);
+        $migration = require database_path(
+            'migrations/2026_09_06_000000_add_publication_revision_to_datasets_table.php'
+        );
+
+        $migration->down();
+        $migration->up();
+
+        $this->assertSame(1, $dataset->refresh()->publication_revision);
     }
 
     public function test_audit_logs_are_append_only(): void

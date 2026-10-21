@@ -1,1 +1,1934 @@
-{"schemaVersion":1,"catalogKey":"pico_jurisdictions","version":"2026.08.31-c10b-a","source":"docs/data/PICO_JURISDICTION_COVERAGE_AUDIT_20260830.md","records":[{"id":"co-dc-bogota","name":"Bogotá","department":"Bogotá D.C.","classification":"SUPPORTED_CURRENT","sourceDate":"2026-08-01"},{"id":"co-ant-medellin","name":"Medellín / Valle de Aburrá","department":"Antioquia","classification":"SUPPORTED_CURRENT","sourceDate":"2026-01-23"},{"id":"co-vac-cali","name":"Cali","department":"Valle del Cauca","classification":"SUPPORTED_CURRENT","sourceDate":"2026-07-01"},{"id":"co-bol-cartagena","name":"Cartagena","department":"Bolívar","classification":"SUPPORTED_CURRENT","sourceDate":"2026-06-26"},{"id":"co-san-bucaramanga","name":"Bucaramanga","department":"Santander","classification":"SUPPORTED_CURRENT","sourceDate":"2026-06-23"},{"id":"co-qui-armenia","name":"Armenia","department":"Quindío","classification":"PENDING_EXACT_RULES","sourceDate":"2026-08-11"},{"id":"co-tol-ibague","name":"Ibagué","department":"Tolima","classification":"PENDING_EXACT_RULES","sourceDate":"2026-06-18","pendingReason":"CONDITIONAL_REGISTRATION_CITY_WINDOW_UNSUPPORTED"},{"id":"co-nds-cucuta","name":"Cúcuta / área metropolitana","department":"Norte de Santander","classification":"VERIFIED_CANDIDATE","sourceDate":"2026-08-30"},{"id":"co-mag-santa-marta","name":"Santa Marta","department":"Magdalena","classification":"STALE_SOURCE","sourceDate":"2025-05-07"},{"id":"co-met-villavicencio","name":"Villavicencio","department":"Meta","classification":"PENDING_EXACT_RULES","sourceDate":"2026-01-23","pendingReason":"CONDITIONAL_REGISTRATION_MODEL_EXEMPTION_UNSUPPORTED"},{"id":"co-ris-pereira","name":"Pereira","department":"Risaralda","classification":"VERIFIED_CANDIDATE","sourceDate":"current-page"},{"id":"co-cal-manizales","name":"Manizales","department":"Caldas","classification":"TEMPORARY_EVENT","sourceDate":"2026-08-13"},{"id":"co-atl-barranquilla","name":"Barranquilla","department":"Atlántico","classification":"EVENT_ONLY","sourceDate":"2026-02-09"},{"id":"co-nar-pasto","name":"Pasto","department":"Nariño","classification":"VERIFIED_CANDIDATE","sourceDate":"2026-07-24"},{"id":"co-cor-monteria","name":"Montería","department":"Córdoba","classification":"NO_CURRENT_RULE_FOUND","sourceDate":"2026-08-30"},{"id":"co-cau-popayan","name":"Popayán","department":"Cauca","classification":"SUPPORTED_CURRENT","sourceDate":"2026-07-01"}]}
+{
+  "schemaVersion": 2,
+  "catalogKey": "pico_jurisdictions",
+  "version": "2026.09.19-operational-v1",
+  "asOfDate": "2026-09-19",
+  "sourceCutoff": "2026-09-10",
+  "source": {
+    "path": "data/sources/restrictions/PicoRadar_Pico_y_Placa_Colombia_CONSOLIDADO_2026-09-10.xlsx",
+    "sheet": "Estado_al_corte",
+    "sha256": "6ce34e9437138ec2585c0e27df7c30de56be31292b71763ca6dcceaf1c337d0e",
+    "categoryRows": 219
+  },
+  "statusPolicy": {
+    "verified": "At least one supported affirmative category remains within its documented coverage limit at the as-of date.",
+    "conditional": "At least one category is conditioned and no verified or expired status takes precedence.",
+    "expired": "Affirmative evidence is derogated or ended before the as-of date and no verified category remains.",
+    "pending": "No category is eligible for automatic documentary use.",
+    "engineEnabled": "Separate from documentary status; true only for five existing local rule packs with affirmative coverage on the as-of date."
+  },
+  "summary": {
+    "verified": 6,
+    "conditional": 36,
+    "expired": 2,
+    "pending": 29,
+    "engineEnabled": 5,
+    "municipalities": 73
+  },
+  "records": [
+    {
+      "id": "co-mun-05079",
+      "municipalityCode": "05079",
+      "name": "Barbosa",
+      "displayName": "Barbosa",
+      "department": "Antioquia",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-001-M",
+        "PY-001-P",
+        "PY-001-T"
+      ],
+      "sourceIds": [
+        "F01",
+        "F02"
+      ],
+      "sourceUrls": [
+        "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+        "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/"
+      ]
+    },
+    {
+      "id": "co-mun-05088",
+      "municipalityCode": "05088",
+      "name": "Bello",
+      "displayName": "Bello",
+      "department": "Antioquia",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-002-M",
+        "PY-002-P",
+        "PY-002-T"
+      ],
+      "sourceIds": [
+        "F01",
+        "F02"
+      ],
+      "sourceUrls": [
+        "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+        "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/"
+      ]
+    },
+    {
+      "id": "co-mun-05129",
+      "municipalityCode": "05129",
+      "name": "Caldas",
+      "displayName": "Caldas",
+      "department": "Antioquia",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-003-M",
+        "PY-003-P",
+        "PY-003-T"
+      ],
+      "sourceIds": [
+        "F01",
+        "F02"
+      ],
+      "sourceUrls": [
+        "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+        "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/"
+      ]
+    },
+    {
+      "id": "co-mun-05212",
+      "municipalityCode": "05212",
+      "name": "Copacabana",
+      "displayName": "Copacabana",
+      "department": "Antioquia",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-004-M",
+        "PY-004-P",
+        "PY-004-T"
+      ],
+      "sourceIds": [
+        "F01",
+        "F02"
+      ],
+      "sourceUrls": [
+        "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+        "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/"
+      ]
+    },
+    {
+      "id": "co-mun-05266",
+      "municipalityCode": "05266",
+      "name": "Envigado",
+      "displayName": "Envigado",
+      "department": "Antioquia",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-005-M",
+        "PY-005-P",
+        "PY-005-T"
+      ],
+      "sourceIds": [
+        "F01",
+        "F02",
+        "R217"
+      ],
+      "sourceUrls": [
+        "https://www.envigado.gov.co/noticias/asi-sera-la-rotacion-del-pico-y-placa-para-el-segundo",
+        "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+        "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/"
+      ]
+    },
+    {
+      "id": "co-mun-05308",
+      "municipalityCode": "05308",
+      "name": "Girardota",
+      "displayName": "Girardota",
+      "department": "Antioquia",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-006-M",
+        "PY-006-P",
+        "PY-006-T"
+      ],
+      "sourceIds": [
+        "F01",
+        "F02"
+      ],
+      "sourceUrls": [
+        "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+        "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/"
+      ]
+    },
+    {
+      "id": "co-mun-05360",
+      "municipalityCode": "05360",
+      "name": "Itagüí",
+      "displayName": "Itagüí",
+      "department": "Antioquia",
+      "operationalStatus": "verified",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "VERIFIED_SOURCE_ENGINE_DISABLED",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada contiene al menos una categoría respaldada para uso documental automático al corte.",
+      "evidenceRecordIds": [
+        "PY-007-M",
+        "PY-007-P",
+        "PY-007-T"
+      ],
+      "sourceIds": [
+        "F01",
+        "F02",
+        "R207",
+        "R208",
+        "R315",
+        "R406"
+      ],
+      "sourceUrls": [
+        "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+        "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+        "https://www.transitoitagui.gov.co/normatividad/",
+        "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf"
+      ]
+    },
+    {
+      "id": "co-mun-05380",
+      "municipalityCode": "05380",
+      "name": "La Estrella",
+      "displayName": "La Estrella",
+      "department": "Antioquia",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-008-M",
+        "PY-008-P",
+        "PY-008-T"
+      ],
+      "sourceIds": [
+        "F01",
+        "F02",
+        "R218"
+      ],
+      "sourceUrls": [
+        "https://www.laestrella.gov.co/sec-movilidad/la-estrella-inicia-la-nueva-rotacion-del-pico-y-placa",
+        "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+        "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/"
+      ]
+    },
+    {
+      "id": "co-ant-medellin",
+      "municipalityCode": "05001",
+      "name": "Medellín",
+      "displayName": "Medellín / Valle de Aburrá",
+      "department": "Antioquia",
+      "operationalStatus": "verified",
+      "engineEnabled": true,
+      "engineJurisdictionId": "co-ant-medellin",
+      "classification": "SUPPORTED_CURRENT",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada contiene al menos una categoría respaldada para uso documental automático al corte.",
+      "evidenceRecordIds": [
+        "PY-009-M",
+        "PY-009-P",
+        "PY-009-T"
+      ],
+      "sourceIds": [
+        "F01",
+        "F02",
+        "F42",
+        "R204",
+        "R316",
+        "R317",
+        "R404"
+      ],
+      "sourceUrls": [
+        "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+        "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+        "https://www.noticiascaracol.com/colombia/pico-y-placa-medellin-segundo-semestre-2026-rotacion-horarios-y-vias-exentas-segun-la-alcaldia-y-la-secretaria-de-movilidad-so35"
+      ]
+    },
+    {
+      "id": "co-mun-05615",
+      "municipalityCode": "05615",
+      "name": "Rionegro",
+      "displayName": "Rionegro",
+      "department": "Antioquia",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-010-M",
+        "PY-010-P",
+        "PY-010-T"
+      ],
+      "sourceIds": [
+        "F44"
+      ],
+      "sourceUrls": [
+        "https://telemedellin.tv/pico-y-placa-rionegro-alcaldia-desmiente-medida/"
+      ]
+    },
+    {
+      "id": "co-mun-05631",
+      "municipalityCode": "05631",
+      "name": "Sabaneta",
+      "displayName": "Sabaneta",
+      "department": "Antioquia",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-011-M",
+        "PY-011-P",
+        "PY-011-T"
+      ],
+      "sourceIds": [
+        "F01",
+        "F02",
+        "R216"
+      ],
+      "sourceUrls": [
+        "https://sabaneta.gov.co/files/normas/2026-07-30-06-43-12.pdf",
+        "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+        "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/"
+      ]
+    },
+    {
+      "id": "co-mun-08078",
+      "municipalityCode": "08078",
+      "name": "Baranoa",
+      "displayName": "Baranoa",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-012-M",
+        "PY-012-P",
+        "PY-012-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-atl-barranquilla",
+      "municipalityCode": "08001",
+      "name": "Barranquilla",
+      "displayName": "Barranquilla",
+      "department": "Atlántico",
+      "operationalStatus": "expired",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "EXPIRED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La evidencia afirmativa documentada fue derogada; no se presenta como regla vigente.",
+      "evidenceRecordIds": [
+        "PY-013-M",
+        "PY-013-P",
+        "PY-013-T"
+      ],
+      "sourceIds": [
+        "F46",
+        "R213",
+        "R219",
+        "R411"
+      ],
+      "sourceUrls": [
+        "https://barranquilla.gov.co/documento/gaceta-no-1190/?version=1",
+        "https://barranquilla.gov.co/mi-barranquilla/desde-este-jueves-se-levanta-pico-y-placa-para-particulares-en-la-via-40",
+        "https://www.ambq.gov.co/levantamos-el-pico-y-placa-en-barranquilla/"
+      ]
+    },
+    {
+      "id": "co-mun-08137",
+      "municipalityCode": "08137",
+      "name": "Campo de la Cruz",
+      "displayName": "Campo de la Cruz",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-014-M",
+        "PY-014-P",
+        "PY-014-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08141",
+      "municipalityCode": "08141",
+      "name": "Candelaria",
+      "displayName": "Candelaria",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-015-M",
+        "PY-015-P",
+        "PY-015-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08296",
+      "municipalityCode": "08296",
+      "name": "Galapa",
+      "displayName": "Galapa",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-016-M",
+        "PY-016-P",
+        "PY-016-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08372",
+      "municipalityCode": "08372",
+      "name": "Juan de Acosta",
+      "displayName": "Juan de Acosta",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-017-M",
+        "PY-017-P",
+        "PY-017-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08433",
+      "municipalityCode": "08433",
+      "name": "Malambo",
+      "displayName": "Malambo",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-018-M",
+        "PY-018-P",
+        "PY-018-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08436",
+      "municipalityCode": "08436",
+      "name": "Manatí",
+      "displayName": "Manatí",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-019-M",
+        "PY-019-P",
+        "PY-019-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08520",
+      "municipalityCode": "08520",
+      "name": "Palmar de Varela",
+      "displayName": "Palmar de Varela",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-020-M",
+        "PY-020-P",
+        "PY-020-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08549",
+      "municipalityCode": "08549",
+      "name": "Piojó",
+      "displayName": "Piojó",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-021-M",
+        "PY-021-P",
+        "PY-021-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08558",
+      "municipalityCode": "08558",
+      "name": "Polonuevo",
+      "displayName": "Polonuevo",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-022-M",
+        "PY-022-P",
+        "PY-022-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08560",
+      "municipalityCode": "08560",
+      "name": "Ponedera",
+      "displayName": "Ponedera",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-023-M",
+        "PY-023-P",
+        "PY-023-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08573",
+      "municipalityCode": "08573",
+      "name": "Puerto Colombia",
+      "displayName": "Puerto Colombia",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-024-M",
+        "PY-024-P",
+        "PY-024-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08606",
+      "municipalityCode": "08606",
+      "name": "Repelón",
+      "displayName": "Repelón",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-025-M",
+        "PY-025-P",
+        "PY-025-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08634",
+      "municipalityCode": "08634",
+      "name": "Sabanagrande",
+      "displayName": "Sabanagrande",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-026-M",
+        "PY-026-P",
+        "PY-026-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08638",
+      "municipalityCode": "08638",
+      "name": "Sabanalarga",
+      "displayName": "Sabanalarga",
+      "department": "Atlántico",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-027-M",
+        "PY-027-P",
+        "PY-027-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08675",
+      "municipalityCode": "08675",
+      "name": "Santa Lucía",
+      "displayName": "Santa Lucía",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-028-M",
+        "PY-028-P",
+        "PY-028-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08685",
+      "municipalityCode": "08685",
+      "name": "Santo Tomás",
+      "displayName": "Santo Tomás",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-029-M",
+        "PY-029-P",
+        "PY-029-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08758",
+      "municipalityCode": "08758",
+      "name": "Soledad",
+      "displayName": "Soledad",
+      "department": "Atlántico",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-030-M",
+        "PY-030-P",
+        "PY-030-T"
+      ],
+      "sourceIds": [
+        "F04",
+        "F43"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://x.com/soledadalcaldia/status/1952690752456171685"
+      ]
+    },
+    {
+      "id": "co-mun-08770",
+      "municipalityCode": "08770",
+      "name": "Suan",
+      "displayName": "Suan",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-031-M",
+        "PY-031-P",
+        "PY-031-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08832",
+      "municipalityCode": "08832",
+      "name": "Tubará",
+      "displayName": "Tubará",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-032-M",
+        "PY-032-P",
+        "PY-032-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-mun-08849",
+      "municipalityCode": "08849",
+      "name": "Usiacurí",
+      "displayName": "Usiacurí",
+      "department": "Atlántico",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-033-M",
+        "PY-033-P",
+        "PY-033-T"
+      ],
+      "sourceIds": [
+        "F03",
+        "F04",
+        "R212"
+      ],
+      "sourceUrls": [
+        "https://sites.google.com/transitodelatlantico.gov.co/picoyplacaatlantico2025?usp=sharing",
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ]
+    },
+    {
+      "id": "co-dc-bogota",
+      "municipalityCode": "11001",
+      "name": "Bogotá",
+      "displayName": "Bogotá",
+      "department": "Bogotá D.C.",
+      "operationalStatus": "verified",
+      "engineEnabled": true,
+      "engineJurisdictionId": "co-dc-bogota",
+      "classification": "SUPPORTED_CURRENT",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada contiene al menos una categoría respaldada para uso documental automático al corte.",
+      "evidenceRecordIds": [
+        "PY-034-M",
+        "PY-034-P",
+        "PY-034-T"
+      ],
+      "sourceIds": [
+        "F05",
+        "F06",
+        "F07",
+        "R206",
+        "R301",
+        "R302",
+        "R303",
+        "R304",
+        "R305",
+        "R306",
+        "R307",
+        "R308",
+        "R309",
+        "R403"
+      ],
+      "sourceUrls": [
+        "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-bogota-vehiculos-particulares-1-30-de-septiembre-2026",
+        "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-en-bogota-miercoles-9-de-septiembre-de-2026",
+        "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-en-bogota-semana-del-7-al-13-de-septiembre-de-2026",
+        "https://bogota.gov.co/mi-ciudad/movilidad/pico-y-placa-en-bogota-taxis-de-1-30-de-septiembre-de-2026",
+        "https://bogota.gov.co/mi-ciudad/movilidad/transito-motos-de-domicilio-en-dia-sin-carro-y-sin-moto-en-bogota",
+        "https://www.alcaldiabogota.gov.co/sisjur/normas/Norma1.jsp?i=132580",
+        "https://www.alcaldiabogota.gov.co/sisjur/normas/Norma1.jsp?i=191872",
+        "https://www.movilidadbogota.gov.co/sites/default/files/2026-08-31/calendario%20pico%20y%20placa%20septiembre%202026%20(1).pdf"
+      ]
+    },
+    {
+      "id": "co-bol-cartagena",
+      "municipalityCode": "13001",
+      "name": "Cartagena",
+      "displayName": "Cartagena",
+      "department": "Bolívar",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-035-M",
+        "PY-035-P",
+        "PY-035-T"
+      ],
+      "sourceIds": [
+        "F08",
+        "F09",
+        "F10",
+        "F11"
+      ],
+      "sourceUrls": [
+        "https://www.cartagena.gov.co/noticias/conozca-el-nuevo-pico-placa-para-particulares-sus-rotaciones-durante-el-2026",
+        "https://www.cartagena.gov.co/noticias/nuevo-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena",
+        "https://www.eluniversal.com.co/cartagena/2026/08/31/pico-y-placa-para-taxis-en-cartagena-asi-quedo-la-nueva-rotacion/",
+        "https://www.facebook.com/transitodecartagena/posts/nueva-rotaci%C3%B3n-de-pico-y-placa-para-taxis-en-cartagenadel-31-de-agosto-al-25-de-/1454405946882086/"
+      ]
+    },
+    {
+      "id": "co-mun-13836",
+      "municipalityCode": "13836",
+      "name": "Turbaco",
+      "displayName": "Turbaco",
+      "department": "Bolívar",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-036-M",
+        "PY-036-P",
+        "PY-036-T"
+      ],
+      "sourceIds": [],
+      "sourceUrls": []
+    },
+    {
+      "id": "co-mun-15238",
+      "municipalityCode": "15238",
+      "name": "Duitama",
+      "displayName": "Duitama",
+      "department": "Boyacá",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-037-M",
+        "PY-037-P",
+        "PY-037-T"
+      ],
+      "sourceIds": [
+        "F48"
+      ],
+      "sourceUrls": [
+        "https://www.facebook.com/municipiodeduitama/posts/as%C3%AD-inicia-duitama-la-jornada-del-d%C3%ADa-sin-carro-y-sin-moto-2026-desde-las-700-am/1571879921007675/"
+      ]
+    },
+    {
+      "id": "co-mun-15001",
+      "municipalityCode": "15001",
+      "name": "Tunja",
+      "displayName": "Tunja",
+      "department": "Boyacá",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-038-M",
+        "PY-038-P",
+        "PY-038-T"
+      ],
+      "sourceIds": [
+        "F36"
+      ],
+      "sourceUrls": [
+        "https://www.tunja-boyaca.gov.co/noticias/desde-el-13-de-enero-vuelve-el-pico-y-placa-en-tunja"
+      ]
+    },
+    {
+      "id": "co-cal-manizales",
+      "municipalityCode": "17001",
+      "name": "Manizales",
+      "displayName": "Manizales",
+      "department": "Caldas",
+      "operationalStatus": "expired",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "EXPIRED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La regla temporal documentada terminó antes de la fecha de corte; no se presenta como vigente.",
+      "evidenceRecordIds": [
+        "PY-039-M",
+        "PY-039-P",
+        "PY-039-T"
+      ],
+      "sourceIds": [
+        "F12",
+        "F13",
+        "F41",
+        "R210",
+        "R318",
+        "R401"
+      ],
+      "sourceUrls": [
+        "https://centrodeinformacion.manizales.gov.co/pico-y-placa-temporal-programacion-del-7-al-15-de-septiembre/",
+        "https://centrodeinformacion.manizales.gov.co/por-que-continua-el-pico-y-placa-en-manizales-estas-son-las-respuestas-a-las-principales-dudas-sobre-la-medida/",
+        "https://www.taxislibres.com.co/blog/pico-y-placa-taxis"
+      ]
+    },
+    {
+      "id": "co-mun-18001",
+      "municipalityCode": "18001",
+      "name": "Florencia",
+      "displayName": "Florencia",
+      "department": "Caquetá",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-040-M",
+        "PY-040-P",
+        "PY-040-T"
+      ],
+      "sourceIds": [],
+      "sourceUrls": []
+    },
+    {
+      "id": "co-mun-85001",
+      "municipalityCode": "85001",
+      "name": "Yopal",
+      "displayName": "Yopal",
+      "department": "Casanare",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-041-M",
+        "PY-041-P",
+        "PY-041-T"
+      ],
+      "sourceIds": [
+        "F47"
+      ],
+      "sourceUrls": [
+        "https://www.facebook.com/alcaldiadeyopal/posts/-recuerde-hay-restricci%C3%B3n-para-la-circulaci%C3%B3n-de-motocicletas-en-yopalel-decreto/1513832807451930/"
+      ]
+    },
+    {
+      "id": "co-cau-popayan",
+      "municipalityCode": "19001",
+      "name": "Popayán",
+      "displayName": "Popayán",
+      "department": "Cauca",
+      "operationalStatus": "verified",
+      "engineEnabled": true,
+      "engineJurisdictionId": "co-cau-popayan",
+      "classification": "SUPPORTED_CURRENT",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada contiene al menos una categoría respaldada para uso documental automático al corte.",
+      "evidenceRecordIds": [
+        "PY-042-M",
+        "PY-042-P",
+        "PY-042-T"
+      ],
+      "sourceIds": [
+        "F14",
+        "R222"
+      ],
+      "sourceUrls": [
+        "https://www.popayan.gov.co/NuestraAlcaldia/Normatividad/Decreto_20261000000355_del_09_de_enero_2026.pdf"
+      ]
+    },
+    {
+      "id": "co-mun-20001",
+      "municipalityCode": "20001",
+      "name": "Valledupar",
+      "displayName": "Valledupar",
+      "department": "Cesar",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-043-M",
+        "PY-043-P",
+        "PY-043-T"
+      ],
+      "sourceIds": [
+        "F45"
+      ],
+      "sourceUrls": [
+        "https://radioguatapuri.com/noticias/pico-placa-falso-valledupar"
+      ]
+    },
+    {
+      "id": "co-mun-27001",
+      "municipalityCode": "27001",
+      "name": "Quibdó",
+      "displayName": "Quibdó",
+      "department": "Chocó",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-044-M",
+        "PY-044-P",
+        "PY-044-T"
+      ],
+      "sourceIds": [
+        "F37"
+      ],
+      "sourceUrls": [
+        "https://www.facebook.com/AlDiaConLaAlcaldiaQuibdo/posts/informaci%C3%B3n-oficial-pico-y-placa-2026-iila-administraci%C3%B3n-municipal-de-quibd%C3%B3-a-/1495515202592807/"
+      ]
+    },
+    {
+      "id": "co-mun-25290",
+      "municipalityCode": "25290",
+      "name": "Fusagasugá",
+      "displayName": "Fusagasugá",
+      "department": "Cundinamarca",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-045-M",
+        "PY-045-P",
+        "PY-045-T"
+      ],
+      "sourceIds": [],
+      "sourceUrls": []
+    },
+    {
+      "id": "co-mun-25754",
+      "municipalityCode": "25754",
+      "name": "Soacha",
+      "displayName": "Soacha",
+      "department": "Cundinamarca",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-046-M",
+        "PY-046-P",
+        "PY-046-T"
+      ],
+      "sourceIds": [],
+      "sourceUrls": []
+    },
+    {
+      "id": "co-cor-monteria",
+      "municipalityCode": "23001",
+      "name": "Montería",
+      "displayName": "Montería",
+      "department": "Córdoba",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-047-M",
+        "PY-047-P",
+        "PY-047-T"
+      ],
+      "sourceIds": [],
+      "sourceUrls": []
+    },
+    {
+      "id": "co-mun-23417",
+      "municipalityCode": "23417",
+      "name": "Santa Cruz de Lorica",
+      "displayName": "Santa Cruz de Lorica",
+      "department": "Córdoba",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-048-M",
+        "PY-048-P",
+        "PY-048-T"
+      ],
+      "sourceIds": [],
+      "sourceUrls": []
+    },
+    {
+      "id": "co-mun-41001",
+      "municipalityCode": "41001",
+      "name": "Neiva",
+      "displayName": "Neiva",
+      "department": "Huila",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-049-M",
+        "PY-049-P",
+        "PY-049-T"
+      ],
+      "sourceIds": [],
+      "sourceUrls": []
+    },
+    {
+      "id": "co-mun-41551",
+      "municipalityCode": "41551",
+      "name": "Pitalito",
+      "displayName": "Pitalito",
+      "department": "Huila",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-050-M",
+        "PY-050-P",
+        "PY-050-T"
+      ],
+      "sourceIds": [],
+      "sourceUrls": []
+    },
+    {
+      "id": "co-mag-santa-marta",
+      "municipalityCode": "47001",
+      "name": "Santa Marta",
+      "displayName": "Santa Marta",
+      "department": "Magdalena",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-051-M",
+        "PY-051-P",
+        "PY-051-T"
+      ],
+      "sourceIds": [
+        "F16",
+        "F17",
+        "R214",
+        "R409"
+      ],
+      "sourceUrls": [
+        "https://www.santamarta.gov.co/documentos/decretos-no-213-del-08-de-mayo-de-2026",
+        "https://www.santamarta.gov.co/sites/default/files/decreto_no._453_1_0.pdf",
+        "https://www.santamarta.gov.co/sites/default/files/decretos_no._213_del_08_de_mayo_de_2026.pdf"
+      ]
+    },
+    {
+      "id": "co-met-villavicencio",
+      "municipalityCode": "50001",
+      "name": "Villavicencio",
+      "displayName": "Villavicencio",
+      "department": "Meta",
+      "operationalStatus": "verified",
+      "engineEnabled": true,
+      "engineJurisdictionId": "co-met-villavicencio",
+      "classification": "SUPPORTED_CURRENT",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada contiene al menos una categoría respaldada para uso documental automático al corte.",
+      "evidenceRecordIds": [
+        "PY-052-M",
+        "PY-052-P",
+        "PY-052-T"
+      ],
+      "sourceIds": [
+        "F20",
+        "R223"
+      ],
+      "sourceUrls": [
+        "https://villavicencio.gov.co/con-jornadas-pedagogicas-inicio-el-pico-y-placa-2026-para-vehiculos-particulares-en-villavicencio/"
+      ]
+    },
+    {
+      "id": "co-mun-52356",
+      "municipalityCode": "52356",
+      "name": "Ipiales",
+      "displayName": "Ipiales",
+      "department": "Nariño",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-053-M",
+        "PY-053-P",
+        "PY-053-T"
+      ],
+      "sourceIds": [],
+      "sourceUrls": []
+    },
+    {
+      "id": "co-nar-pasto",
+      "municipalityCode": "52001",
+      "name": "Pasto",
+      "displayName": "Pasto",
+      "department": "Nariño",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-054-M",
+        "PY-054-P",
+        "PY-054-T"
+      ],
+      "sourceIds": [
+        "F15",
+        "R211",
+        "R408"
+      ],
+      "sourceUrls": [
+        "https://www.pasto.gov.co/index.php/decretos-2026?download=3115701%3Adec-0122-24-jul-2026"
+      ]
+    },
+    {
+      "id": "co-nds-cucuta",
+      "municipalityCode": "54001",
+      "name": "Cúcuta",
+      "displayName": "Cúcuta / área metropolitana",
+      "department": "Norte de Santander",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-055-M",
+        "PY-055-P",
+        "PY-055-T"
+      ],
+      "sourceIds": [
+        "F22",
+        "F23",
+        "F41",
+        "R224",
+        "R225"
+      ],
+      "sourceUrls": [
+        "https://cucuta.gov.co/",
+        "https://cucuta.gov.co/comenzo-a-regir-nuevo-decreto-que-regula-el-pico-y-placa-y-placa-dia-en-cucuta/",
+        "https://www.taxislibres.com.co/blog/pico-y-placa-taxis"
+      ]
+    },
+    {
+      "id": "co-mun-54261",
+      "municipalityCode": "54261",
+      "name": "El Zulia",
+      "displayName": "El Zulia",
+      "department": "Norte de Santander",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-056-M",
+        "PY-056-P",
+        "PY-056-T"
+      ],
+      "sourceIds": [
+        "F22"
+      ],
+      "sourceUrls": [
+        "https://cucuta.gov.co/comenzo-a-regir-nuevo-decreto-que-regula-el-pico-y-placa-y-placa-dia-en-cucuta/"
+      ]
+    },
+    {
+      "id": "co-mun-54405",
+      "municipalityCode": "54405",
+      "name": "Los Patios",
+      "displayName": "Los Patios",
+      "department": "Norte de Santander",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-057-M",
+        "PY-057-P",
+        "PY-057-T"
+      ],
+      "sourceIds": [
+        "F22"
+      ],
+      "sourceUrls": [
+        "https://cucuta.gov.co/comenzo-a-regir-nuevo-decreto-que-regula-el-pico-y-placa-y-placa-dia-en-cucuta/"
+      ]
+    },
+    {
+      "id": "co-mun-54498",
+      "municipalityCode": "54498",
+      "name": "Ocaña",
+      "displayName": "Ocaña",
+      "department": "Norte de Santander",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-058-M",
+        "PY-058-P",
+        "PY-058-T"
+      ],
+      "sourceIds": [
+        "F38"
+      ],
+      "sourceUrls": [
+        "https://www.facebook.com/GobiernoMunicipalOcana/posts/la-alcald%C3%ADa-de-oca%C3%B1a-informa-que-mediante-el-decreto-n049-del-nueve-de-abril-se-/1126788259488538/"
+      ]
+    },
+    {
+      "id": "co-mun-54518",
+      "municipalityCode": "54518",
+      "name": "Pamplona",
+      "displayName": "Pamplona",
+      "department": "Norte de Santander",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-059-M",
+        "PY-059-P",
+        "PY-059-T"
+      ],
+      "sourceIds": [
+        "R226"
+      ],
+      "sourceUrls": [
+        "https://www.pamplona-nortedesantander.gov.co/Transparencia/Normatividad/DECRETO%20052%20DE%202026.pdf"
+      ]
+    },
+    {
+      "id": "co-mun-54874",
+      "municipalityCode": "54874",
+      "name": "Villa del Rosario",
+      "displayName": "Villa del Rosario",
+      "department": "Norte de Santander",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-060-M",
+        "PY-060-P",
+        "PY-060-T"
+      ],
+      "sourceIds": [
+        "F22"
+      ],
+      "sourceUrls": [
+        "https://cucuta.gov.co/comenzo-a-regir-nuevo-decreto-que-regula-el-pico-y-placa-y-placa-dia-en-cucuta/"
+      ]
+    },
+    {
+      "id": "co-qui-armenia",
+      "municipalityCode": "63001",
+      "name": "Armenia",
+      "displayName": "Armenia",
+      "department": "Quindío",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-061-M",
+        "PY-061-P",
+        "PY-061-T"
+      ],
+      "sourceIds": [
+        "F34",
+        "F35",
+        "R330"
+      ],
+      "sourceUrls": [
+        "https://caracol.com.co/2026/05/28/pico-y-placa-para-carros-y-motos-se-mantiene-en-toda-la-ciudad-de-armenia-por-seis-meses-mas/",
+        "https://www.armenia.gov.co/",
+        "https://www.armenia.gov.co/se-extiende-por-6-meses-medida-de-pico-y-placa-para-mitigar-impactos-de-obras-y-mejorar-la-movilidad"
+      ]
+    },
+    {
+      "id": "co-mun-66170",
+      "municipalityCode": "66170",
+      "name": "Dosquebradas",
+      "displayName": "Dosquebradas",
+      "department": "Risaralda",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-062-M",
+        "PY-062-P",
+        "PY-062-T"
+      ],
+      "sourceIds": [
+        "F24",
+        "F25",
+        "F26",
+        "R201",
+        "R202",
+        "R402",
+        "R410"
+      ],
+      "sourceUrls": [
+        "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/9987-dosquebradas-implementa-este-martes-18-nuevo-pico-y-placa",
+        "https://www.dosquebradas.gov.co/web/gaceta/decretos/send/1055-vigencia-2026/13957-decreto-n-356-de-septiembre-04-de-2026",
+        "https://www.dosquebradas.gov.co/web/gaceta/decretos/send/1055-vigencia-2026/13970-decreto-n-360-de-septiembre-08-de-2026",
+        "https://www.dosquebradas.gov.co/web/repositorio/send/1055-vigencia-2026/13957-decreto-n-356-de-septiembre-04-de-2026",
+        "https://www.facebook.com/AlcaldiadeDosquebradas/videos/dosquebradas-modifica-el-pico-y-placaa-partir-de-ma%C3%B1ana-5-de-septiembre-se-elimi/2067814917162132/"
+      ]
+    },
+    {
+      "id": "co-ris-pereira",
+      "municipalityCode": "66001",
+      "name": "Pereira",
+      "displayName": "Pereira",
+      "department": "Risaralda",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-063-M",
+        "PY-063-P",
+        "PY-063-T"
+      ],
+      "sourceIds": [
+        "F27",
+        "F28",
+        "F29",
+        "R335",
+        "R336"
+      ],
+      "sourceUrls": [
+        "https://movilidadpereira.gov.co/PicoyPlaca.html",
+        "https://movilidadpereira.gov.co/prensa/pereira-ajusta-el-pico-y-placa-ya-no-habr-restricci-n-los-s-bados-a-partir-de-este-5-de-septiembre",
+        "https://www.facebook.com/AlcaldiaDePereira/posts/cambia-el-pico-y-placa-en-pereira-desde-ma%C3%B1ana-s%C3%A1bado-5-de-septiembre-los-s%C3%A1bado/1522574806576831/",
+        "https://www.facebook.com/AlcaldiaDePereira/posts/nuevo-pico-y-placa-temporal-en-pereiraa-partir-del-martes-18-de-agosto-entra-en-/1505845361583109/"
+      ]
+    },
+    {
+      "id": "co-san-bucaramanga",
+      "municipalityCode": "68001",
+      "name": "Bucaramanga",
+      "displayName": "Bucaramanga",
+      "department": "Santander",
+      "operationalStatus": "verified",
+      "engineEnabled": true,
+      "engineJurisdictionId": "co-san-bucaramanga",
+      "classification": "SUPPORTED_CURRENT",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada contiene al menos una categoría respaldada para uso documental automático al corte.",
+      "evidenceRecordIds": [
+        "PY-064-M",
+        "PY-064-P",
+        "PY-064-T"
+      ],
+      "sourceIds": [
+        "F18",
+        "F41",
+        "R221",
+        "R407"
+      ],
+      "sourceUrls": [
+        "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+        "https://www.taxislibres.com.co/blog/pico-y-placa-taxis"
+      ]
+    },
+    {
+      "id": "co-mun-68276",
+      "municipalityCode": "68276",
+      "name": "Floridablanca",
+      "displayName": "Floridablanca",
+      "department": "Santander",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-065-M",
+        "PY-065-P",
+        "PY-065-T"
+      ],
+      "sourceIds": [
+        "F19",
+        "R209"
+      ],
+      "sourceUrls": [
+        "https://transitofloridablanca.gov.co/2026/07/01/rotacion-de-pico-y-placa-en-floridablanca/"
+      ]
+    },
+    {
+      "id": "co-mun-68307",
+      "municipalityCode": "68307",
+      "name": "Girón",
+      "displayName": "Girón",
+      "department": "Santander",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-066-M",
+        "PY-066-P",
+        "PY-066-T"
+      ],
+      "sourceIds": [
+        "F18",
+        "F39",
+        "R227"
+      ],
+      "sourceUrls": [
+        "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+        "https://www.giron-santander.gov.co/NuestraAlcaldia/SaladePrensa/Paginas/EL-PICO-Y-PLACA-METROPOLITANO-PERMANECE-VIGENTE-EN-GIRON.aspx"
+      ]
+    },
+    {
+      "id": "co-mun-68547",
+      "municipalityCode": "68547",
+      "name": "Piedecuesta",
+      "displayName": "Piedecuesta",
+      "department": "Santander",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-067-M",
+        "PY-067-P",
+        "PY-067-T"
+      ],
+      "sourceIds": [
+        "F18",
+        "F40"
+      ],
+      "sourceUrls": [
+        "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+        "https://www.alcaldiadepiedecuesta.gov.co/documentos/168/decretos/"
+      ]
+    },
+    {
+      "id": "co-mun-70001",
+      "municipalityCode": "70001",
+      "name": "Sincelejo",
+      "displayName": "Sincelejo",
+      "department": "Sucre",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-068-M",
+        "PY-068-P",
+        "PY-068-T"
+      ],
+      "sourceIds": [],
+      "sourceUrls": []
+    },
+    {
+      "id": "co-tol-ibague",
+      "municipalityCode": "73001",
+      "name": "Ibagué",
+      "displayName": "Ibagué",
+      "department": "Tolima",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-069-M",
+        "PY-069-P",
+        "PY-069-T"
+      ],
+      "sourceIds": [
+        "F32",
+        "F33",
+        "R310",
+        "R311",
+        "R312",
+        "R314"
+      ],
+      "sourceUrls": [
+        "https://enfoqueteve.com/asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague/",
+        "https://www.ibague.gov.co/portal/noticias/21420-atencion-este-martes-13-de-enero-se-reanuda-el-pico-y-placa-para-taxis-en-ibague",
+        "https://www.ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+        "https://www.ibague.gov.co/portal/noticias/22670-desde-este-miercoles-8-de-julio-inician-sanciones-economicas-por-incumplir-pico"
+      ]
+    },
+    {
+      "id": "co-mun-76109",
+      "municipalityCode": "76109",
+      "name": "Buenaventura",
+      "displayName": "Buenaventura",
+      "department": "Valle del Cauca",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-070-M",
+        "PY-070-P",
+        "PY-070-T"
+      ],
+      "sourceIds": [
+        "F30",
+        "F31",
+        "R215"
+      ],
+      "sourceUrls": [
+        "https://www.buenaventura.gov.co/articulos/buenaventura-implementa-fase-pedagogica-del-pico-y-placa-para-el-segundo-semestre",
+        "https://www.buenaventura.gov.co/articulos/pico-y-placa"
+      ]
+    },
+    {
+      "id": "co-vac-cali",
+      "municipalityCode": "76001",
+      "name": "Cali",
+      "displayName": "Cali",
+      "department": "Valle del Cauca",
+      "operationalStatus": "conditional",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "CONDITIONED_SOURCE",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada condiciona al menos una categoría; requiere validación local antes de uso automático.",
+      "evidenceRecordIds": [
+        "PY-071-M",
+        "PY-071-P",
+        "PY-071-T"
+      ],
+      "sourceIds": [
+        "F21",
+        "R203",
+        "R220",
+        "R405"
+      ],
+      "sourceUrls": [
+        "https://intranet.cali.gov.co/2026/07/01/pico-y-placa-rota-en-cali-para-el-segundo-semestre-de-2026-nueva-medida-rige-desde-el-1-de-julio/",
+        "https://www.cali.gov.co/boletines/publicaciones/193096/pico-y-placa-rota-en-cali-para-el-segundo-semestre-de-2026-nueva-medida-rige-desde-el-1-de-julio/",
+        "https://www.cali.gov.co/boletines/publicaciones/194052/cali-retoma-el-pico-y-placa-habitual-desde-el-1-de-septiembre-se-mantienen-recomendaciones-de-movilidad-en-zonas-de-emergencia/"
+      ]
+    },
+    {
+      "id": "co-mun-76520",
+      "municipalityCode": "76520",
+      "name": "Palmira",
+      "displayName": "Palmira",
+      "department": "Valle del Cauca",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-072-M",
+        "PY-072-P",
+        "PY-072-T"
+      ],
+      "sourceIds": [],
+      "sourceUrls": []
+    },
+    {
+      "id": "co-mun-76834",
+      "municipalityCode": "76834",
+      "name": "Tuluá",
+      "displayName": "Tuluá",
+      "department": "Valle del Cauca",
+      "operationalStatus": "pending",
+      "engineEnabled": false,
+      "engineJurisdictionId": null,
+      "classification": "PENDING_EXACT_RULES",
+      "sourceDate": "2026-09-10",
+      "evidenceSummary": "La fuente consolidada no aporta evidencia suficiente para uso automático al corte.",
+      "evidenceRecordIds": [
+        "PY-073-M",
+        "PY-073-P",
+        "PY-073-T"
+      ],
+      "sourceIds": [],
+      "sourceUrls": []
+    }
+  ]
+}

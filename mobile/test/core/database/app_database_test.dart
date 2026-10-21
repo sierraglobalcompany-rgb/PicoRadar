@@ -23,7 +23,7 @@ void main() {
       await db.close();
     });
 
-    test('creates schema version 5 with maintenance records', () async {
+    test('creates schema v7 with publication revisions and wallet', () async {
       expect(db.schemaVersion, AppDatabase.currentSchemaVersion);
 
       await db
@@ -88,12 +88,16 @@ void main() {
       expect(await db.select(db.vehicles).get(), hasLength(1));
       expect(await db.select(db.notificationPreferences).get(), hasLength(1));
       expect(await db.select(db.datasetVersions).get(), hasLength(1));
+      final datasetVersion = await db
+          .customSelect('SELECT publication_revision FROM dataset_versions')
+          .getSingle();
+      expect(datasetVersion.read<int>('publication_revision'), 0);
       expect(await db.select(db.vehicleObligations).get(), hasLength(1));
       expect(await db.select(db.maintenanceRecords).get(), hasLength(1));
       expect(await db.select(db.restrictionCoverages).get(), isEmpty);
     });
 
-    test('migrates schema v1 to v5 preserving existing vehicles', () async {
+    test('migrates schema v1 to v6 preserving existing vehicles', () async {
       final tempDir = await Directory.systemTemp.createTemp(
         'picoradar_migration_',
       );
@@ -109,7 +113,10 @@ void main() {
             .get();
         await migrated.close();
 
-        expect(version.single.data['user_version'], 5);
+        expect(
+          version.single.data['user_version'],
+          AppDatabase.currentSchemaVersion,
+        );
         expect(vehicles, hasLength(1));
         expect(vehicles.single.id, 'vehicle-1');
         expect(vehicles.single.plate, 'ABC123');
@@ -127,7 +134,7 @@ void main() {
     });
 
     test(
-      'migrates schema v2 to v5 preserving vehicles and adding coverages',
+      'migrates schema v2 to v6 preserving vehicles and adding coverages',
       () async {
         final tempDir = await Directory.systemTemp.createTemp(
           'picoradar_migration_v2_',
@@ -147,7 +154,10 @@ void main() {
               .get();
           await migrated.close();
 
-          expect(version.single.data['user_version'], 5);
+          expect(
+            version.single.data['user_version'],
+            AppDatabase.currentSchemaVersion,
+          );
           expect(vehicles, hasLength(1));
           expect(vehicles.single.id, 'vehicle-1');
           expect(vehicles.single.plate, 'ABC123');
@@ -159,7 +169,7 @@ void main() {
     );
 
     test(
-      'migrates schema v3 to v5 preserving local data and defaults',
+      'migrates schema v3 to v6 preserving local data and defaults',
       () async {
         final tempDir = await Directory.systemTemp.createTemp(
           'picoradar_migration_v3_',
@@ -182,7 +192,10 @@ void main() {
               .get();
           await migrated.close();
 
-          expect(version.single.data['user_version'], 5);
+          expect(
+            version.single.data['user_version'],
+            AppDatabase.currentSchemaVersion,
+          );
           expect(vehicles, hasLength(1));
           expect(vehicles.single.plate, 'ABC123');
           expect(coverages, hasLength(1));
@@ -200,7 +213,7 @@ void main() {
     );
 
     test(
-      'migrates schema v4 to v5 preserving vehicles and obligations',
+      'migrates schema v4 to v6 preserving vehicles and obligations',
       () async {
         final tempDir = await Directory.systemTemp.createTemp(
           'picoradar_migration_v4_',
@@ -223,7 +236,10 @@ void main() {
               .get();
           await migrated.close();
 
-          expect(version.single.data['user_version'], 5);
+          expect(
+            version.single.data['user_version'],
+            AppDatabase.currentSchemaVersion,
+          );
           expect(vehicles, hasLength(1));
           expect(vehicles.single.plate, 'ABC123');
           expect(obligations, hasLength(1));
@@ -301,7 +317,7 @@ void main() {
       expect(await db.select(db.maintenanceRecords).get(), isEmpty);
     });
 
-    test('reopens schema 5 without destroying existing local data', () async {
+    test('reopens schema 7 without destroying existing local data', () async {
       final tempDir = await Directory.systemTemp.createTemp('picoradar_db_');
       final dbPath = '${tempDir.path}${Platform.pathSeparator}app.sqlite';
 
@@ -322,7 +338,128 @@ void main() {
         await tempDir.delete(recursive: true);
       }
     });
+
+    test('migrates schema v5 to v6 preserving dataset selection', () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'picoradar_migration_v5_',
+      );
+      final dbPath = '${tempDir.path}${Platform.pathSeparator}app.sqlite';
+
+      try {
+        _createLegacyV5Database(dbPath);
+
+        final migrated = AppDatabase(NativeDatabase(File(dbPath)));
+        final selected = await migrated
+            .customSelect(
+              'SELECT version, sha256, publication_revision '
+              'FROM dataset_versions WHERE dataset_key = ?',
+              variables: [Variable.withString('tolls_inventory')],
+            )
+            .getSingle();
+        final version = await migrated
+            .customSelect('PRAGMA user_version')
+            .get();
+        await migrated.close();
+
+        expect(
+          version.single.data['user_version'],
+          AppDatabase.currentSchemaVersion,
+        );
+        expect(selected.read<String>('version'), 'opaque-v1');
+        expect(selected.read<String>('sha256'), 'a' * 64);
+        expect(selected.read<int>('publication_revision'), 0);
+      } finally {
+        await _deleteTempDir(tempDir);
+      }
+    });
+
+    test(
+      'recovers schema v5 with preexisting publication revision column',
+      () async {
+        final tempDir = await Directory.systemTemp.createTemp(
+          'picoradar_migration_v5_partial_',
+        );
+        final dbPath = '${tempDir.path}${Platform.pathSeparator}app.sqlite';
+
+        try {
+          _createLegacyV5Database(dbPath);
+          final sqlite = sqlite3.open(dbPath);
+          try {
+            sqlite.execute(
+              'ALTER TABLE dataset_versions '
+              'ADD COLUMN publication_revision INTEGER NOT NULL DEFAULT 0',
+            );
+            sqlite.execute('PRAGMA user_version = 5');
+          } finally {
+            sqlite.close();
+          }
+
+          final migrated = AppDatabase(NativeDatabase(File(dbPath)));
+          final selected = await migrated
+              .customSelect(
+                'SELECT version, sha256, publication_revision '
+                'FROM dataset_versions WHERE dataset_key = ?',
+                variables: [Variable.withString('tolls_inventory')],
+              )
+              .getSingle();
+          final version = await migrated
+              .customSelect('PRAGMA user_version')
+              .get();
+          await migrated.close();
+
+          expect(
+            version.single.data['user_version'],
+            AppDatabase.currentSchemaVersion,
+          );
+          expect(selected.read<String>('version'), 'opaque-v1');
+          expect(selected.read<String>('sha256'), 'a' * 64);
+          expect(selected.read<int>('publication_revision'), 0);
+        } finally {
+          await _deleteTempDir(tempDir);
+        }
+      },
+    );
   });
+}
+
+void _createLegacyV5Database(String path) {
+  _createLegacyV4Database(path);
+  final sqlite = sqlite3.open(path);
+
+  try {
+    sqlite.execute('''
+CREATE TABLE maintenance_records (
+  id TEXT NOT NULL PRIMARY KEY,
+  vehicle_id TEXT NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+  service_date INTEGER NOT NULL,
+  odometer INTEGER NULL,
+  type TEXT NOT NULL,
+  description TEXT NOT NULL,
+  cost_cents INTEGER NULL,
+  next_service_date INTEGER NULL,
+  next_odometer INTEGER NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+)
+''');
+    sqlite.execute(
+      'CREATE INDEX maintenance_records_vehicle_id_idx '
+      'ON maintenance_records (vehicle_id)',
+    );
+    sqlite.execute(
+      'CREATE INDEX maintenance_records_service_date_idx '
+      'ON maintenance_records (service_date)',
+    );
+    sqlite.execute(
+      "INSERT INTO dataset_versions "
+      "(id, dataset_key, version, sha256, status, applied_at) "
+      "VALUES ('tolls_inventory', 'tolls_inventory', 'opaque-v1', "
+      "'${'a' * 64}', 'installed', 0)",
+    );
+    sqlite.execute('PRAGMA user_version = 5');
+  } finally {
+    sqlite.close();
+  }
 }
 
 void _createLegacyV4Database(String path) {

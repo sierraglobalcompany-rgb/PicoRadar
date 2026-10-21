@@ -1,5 +1,6 @@
 import '../../garage/data/vehicle_profile.dart';
 import '../data/restriction_store.dart';
+import 'bogota_time.dart';
 import 'colombia_holiday_calendar.dart';
 import 'restriction_day_evaluation.dart';
 import 'restriction_rule.dart';
@@ -124,7 +125,7 @@ CityRestrictionDaySummary summarizeCityRestrictionDay({
       verifiedAt: ruleSet.verifiedAt,
     );
   }
-  if (ruleSet.dataIsStale) {
+  if (_coverageStaleOnDay(ruleSet, date)) {
     return CityRestrictionDaySummary(
       date: _day(date),
       status: RestrictionDayStatus.stale,
@@ -234,7 +235,7 @@ CityRestrictionRuleSummary summarizeCityRestrictionRules({
     validUntil: _maxValidUntil(rules),
     hasUniformSchedule: _hasUniformWeeklySchedule(rules),
     coverageKnown: ruleSet.coverageKnown,
-    dataIsStale: ruleSet.dataIsStale,
+    dataIsStale: _coverageStaleOnDay(ruleSet, date),
   );
 }
 
@@ -251,7 +252,11 @@ CityRestrictionRotationSummary summarizeCityRestrictionRotation({
     category: category,
     date: date,
   );
-  if (_hasUniformWeeklySchedule(rules)) {
+  if (_hasUniformWeeklySchedule(rules) &&
+      !_coverageStaleOnDay(
+        ruleSet,
+        DateTime(date.year, date.month, date.day + 6),
+      )) {
     return CityRestrictionRotationSummary(
       title: 'Rotación vigente',
       isWeekly: true,
@@ -362,7 +367,7 @@ List<RestrictionRule> _currentRestrictRules(
   required PicoVehicleCategory category,
   required DateTime date,
 }) {
-  if (!ruleSet.coverageKnown || ruleSet.dataIsStale) {
+  if (!ruleSet.coverageKnown || _coverageStaleOnDay(ruleSet, date)) {
     return const [];
   }
   final day = _day(date);
@@ -568,6 +573,12 @@ String _weekdayName(int weekday) {
     DateTime.saturday => 'Sábado',
     _ => 'Domingo',
   };
+}
+
+bool _coverageStaleOnDay(RestrictionRuleSet ruleSet, DateTime date) {
+  final staleAfter = ruleSet.staleAfter;
+  return ruleSet.dataIsStale ||
+      (staleAfter != null && !staleAfterCoversBogotaDate(staleAfter, date));
 }
 
 DateTime _day(DateTime date) => DateTime(date.year, date.month, date.day);

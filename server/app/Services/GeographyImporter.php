@@ -74,12 +74,17 @@ class GeographyImporter
                 if (count($coverage) !== count($mapping['coverageDivipolaCodes'])) {
                     throw new DomainException('Pico jurisdiction coverage cannot be reconciled.');
                 }
-                $metadata = ['picoClassification' => $record['classification'], 'sourceDate' => $record['sourceDate']];
+                $metadata = [
+                    'picoClassification' => $record['classification'],
+                    'operationalStatus' => $record['operationalStatus'],
+                    'engineEnabled' => $record['engineEnabled'],
+                    'sourceDate' => $record['sourceDate'],
+                ];
                 if (($mapping['coverageStatus'] ?? null) === 'reference_only') {
                     $metadata['coverageStatus'] = 'reference_only';
                 }
                 $jurisdiction = Jurisdiction::query()->where('key', $record['id'])->first();
-                $attributes = ['name' => $record['name'], 'kind' => JurisdictionKind::from($mapping['kind']), 'primary_geographic_unit_id' => $primary->id, 'enabled' => $record['classification'] === 'SUPPORTED_CURRENT', 'timezone' => 'America/Bogota', 'metadata' => $metadata];
+                $attributes = ['name' => $record['name'], 'kind' => JurisdictionKind::from($mapping['kind']), 'primary_geographic_unit_id' => $primary->id, 'enabled' => $record['engineEnabled'], 'timezone' => 'America/Bogota', 'metadata' => $metadata];
                 if ($jurisdiction) {
                     $jurisdiction = $this->jurisdictions->syncFromCanonicalMapping($jurisdiction, $attributes, $coverage);
                 } else {
@@ -109,7 +114,10 @@ class GeographyImporter
     {
         $fixture = $this->readJson($this->fixturePath ?? database_path('data/colombia_divipola_mgn_2025.json'));
         $aliases = $this->readJson($this->aliasPath ?? database_path('data/registration_city_divipola_aliases_v1.json'));
-        $picoCatalog = $this->readJson($this->picoCatalogPath ?? base_path('../mobile/assets/catalogs/pico_jurisdiction_catalog_v1.json'));
+        $picoCatalog = $this->readJson($this->picoCatalogPath ?? $this->bundledFixture(
+            'pico_jurisdiction_catalog_v1.json',
+            'assets'.DIRECTORY_SEPARATOR.'catalogs'.DIRECTORY_SEPARATOR.'pico_jurisdiction_catalog_v1.json',
+        ));
         $picoMappingFixture = $this->readJson($this->picoMappingPath ?? database_path('data/pico_jurisdiction_divipola_v1.json'));
         if (($fixture['schemaVersion'] ?? null) !== 1 || ($fixture['source']['authority'] ?? null) !== 'DANE' || ($fixture['source']['version'] ?? null) !== '2025') {
             throw new DomainException('DANE fixture provenance is invalid.');
@@ -133,7 +141,10 @@ class GeographyImporter
             }
             $municipalityCodes[$municipality['code']] = $municipality;
         }
-        $registration = $this->readJson($this->registrationCatalogPath ?? base_path('../mobile/assets/catalogs/colombia_registration_cities_v1.json'));
+        $registration = $this->readJson($this->registrationCatalogPath ?? $this->bundledFixture(
+            'colombia_registration_cities_v1.json',
+            'assets'.DIRECTORY_SEPARATOR.'catalogs'.DIRECTORY_SEPARATOR.'colombia_registration_cities_v1.json',
+        ));
         $registrationRecords = $registration['records'] ?? null;
         if (! is_array($registrationRecords) || ! array_is_list($registrationRecords)) {
             throw new DomainException('Registration city catalog is invalid.');
@@ -211,7 +222,7 @@ class GeographyImporter
         }
         $catalogKeys = [];
         foreach ($records as $record) {
-            if (! is_array($record) || ! is_string($record['id'] ?? null) || ! is_string($record['classification'] ?? null) || ! is_string($record['sourceDate'] ?? null) || isset($catalogKeys[$record['id']])) {
+            if (! is_array($record) || ! is_string($record['id'] ?? null) || ! is_string($record['classification'] ?? null) || ! is_string($record['operationalStatus'] ?? null) || ! is_bool($record['engineEnabled'] ?? null) || ! is_string($record['sourceDate'] ?? null) || isset($catalogKeys[$record['id']])) {
                 throw new DomainException('Pico jurisdiction catalog is invalid.');
             }
             $catalogKeys[$record['id']] = true;
@@ -276,6 +287,15 @@ class GeographyImporter
         }
 
         return $decoded;
+    }
+
+    private function bundledFixture(string $name, string $mobileRelativePath): string
+    {
+        $serverPath = database_path('data'.DIRECTORY_SEPARATOR.$name);
+
+        return is_file($serverPath)
+            ? $serverPath
+            : base_path('..'.DIRECTORY_SEPARATOR.'mobile'.DIRECTORY_SEPARATOR.$mobileRelativePath);
     }
 
     private function pair(string $municipality, string $department): string

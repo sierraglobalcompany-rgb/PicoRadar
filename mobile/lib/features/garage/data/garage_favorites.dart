@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../../core/storage/app_preferences.dart';
 
 const garageFavoriteVehicleIdsPreferenceKey = 'garage_favorite_vehicle_ids_v1';
+final _favoriteUpdates = Expando<Future<Object?>>();
 
 Future<Set<String>> loadGarageFavoriteVehicleIds(
   AppPreferences preferences,
@@ -13,33 +14,29 @@ Future<Set<String>> loadGarageFavoriteVehicleIds(
   if (raw == null || raw.trim().isEmpty) {
     return {};
   }
-  final decoded = jsonDecode(raw);
+  final Object? decoded;
+  try {
+    decoded = jsonDecode(raw);
+  } on FormatException {
+    // Corrupt legacy data cannot nominate a favorite; storage errors propagate.
+    return {};
+  }
   if (decoded is! List) {
     return {};
   }
   return decoded.whereType<String>().toSet();
 }
 
-Future<void> saveGarageFavoriteVehicleIds(
+Future<T> serializeGarageFavoriteMutation<T>(
   AppPreferences preferences,
-  Set<String> vehicleIds,
+  Future<T> Function() mutation,
 ) {
-  final sorted = vehicleIds.toList()..sort();
-  return preferences.setString(
-    garageFavoriteVehicleIdsPreferenceKey,
-    jsonEncode(sorted),
+  final previous = _favoriteUpdates[preferences] ?? Future<Object?>.value();
+  // Include deletion/rollback in the same queue. Errors still reach each caller.
+  final update = previous.then<T>(
+    (_) => mutation(),
+    onError: (Object error, StackTrace stack) => mutation(),
   );
-}
-
-Future<Set<String>> toggleGarageFavoriteVehicleId(
-  AppPreferences preferences,
-  String vehicleId,
-) async {
-  final current = await loadGarageFavoriteVehicleIds(preferences);
-  final next = {...current};
-  if (!next.add(vehicleId)) {
-    next.remove(vehicleId);
-  }
-  await saveGarageFavoriteVehicleIds(preferences, next);
-  return next;
+  _favoriteUpdates[preferences] = update;
+  return update;
 }

@@ -1,0 +1,14 @@
+{
+  "verifiedAt": "2026-09-13",
+  "sourceUrl": "https://www.medellin.gov.co/es/pag-movilidad/",
+  "method": "Read anchor href from official HTML; fetch exact HTTPS destination without submitting any form",
+  "anchorText": "Ingresa a movilidad en línea",
+  "href": "https://www.medellin.gov.co/portal-movilidad/#/public",
+  "responseStatus": 200,
+  "requestUri": "https://www.medellin.gov.co/portal-movilidad/#/public",
+  "responseLength": 12143,
+  "responseTitle": "Movilidad en Línea",
+  "responseKind": "JavaScript application shell",
+  "personalConsultationPerformed": false,
+  "note": "The web reader omitted the fragment in its clicked URL. The original HTML preserves #/public; the catalog uses that exact href."
+}

@@ -3,21 +3,656 @@
   "sourceSystem": "pico_jurisdiction_catalog_v1",
   "targetSystem": "dane_divipola",
   "records": [
-    { "key": "co-dc-bogota", "primaryDivipolaCode": "11001", "kind": "district", "coverageDivipolaCodes": ["11001"] },
-    { "key": "co-ant-medellin", "primaryDivipolaCode": "05001", "kind": "metro_area", "coverageDivipolaCodes": ["05079", "05088", "05129", "05212", "05266", "05308", "05360", "05380", "05001", "05631"] },
-    { "key": "co-vac-cali", "primaryDivipolaCode": "76001", "kind": "city", "coverageDivipolaCodes": ["76001"] },
-    { "key": "co-bol-cartagena", "primaryDivipolaCode": "13001", "kind": "city", "coverageDivipolaCodes": ["13001"] },
-    { "key": "co-san-bucaramanga", "primaryDivipolaCode": "68001", "kind": "city", "coverageDivipolaCodes": ["68001"] },
-    { "key": "co-qui-armenia", "primaryDivipolaCode": "63001", "kind": "city", "coverageDivipolaCodes": ["63001"] },
-    { "key": "co-tol-ibague", "primaryDivipolaCode": "73001", "kind": "city", "coverageDivipolaCodes": ["73001"] },
-    { "key": "co-nds-cucuta", "primaryDivipolaCode": "54001", "kind": "metro_area", "coverageDivipolaCodes": ["54001"], "coverageStatus": "reference_only" },
-    { "key": "co-mag-santa-marta", "primaryDivipolaCode": "47001", "kind": "city", "coverageDivipolaCodes": ["47001"] },
-    { "key": "co-met-villavicencio", "primaryDivipolaCode": "50001", "kind": "city", "coverageDivipolaCodes": ["50001"] },
-    { "key": "co-ris-pereira", "primaryDivipolaCode": "66001", "kind": "city", "coverageDivipolaCodes": ["66001"] },
-    { "key": "co-cal-manizales", "primaryDivipolaCode": "17001", "kind": "city", "coverageDivipolaCodes": ["17001"] },
-    { "key": "co-atl-barranquilla", "primaryDivipolaCode": "08001", "kind": "city", "coverageDivipolaCodes": ["08001"] },
-    { "key": "co-nar-pasto", "primaryDivipolaCode": "52001", "kind": "city", "coverageDivipolaCodes": ["52001"] },
-    { "key": "co-cor-monteria", "primaryDivipolaCode": "23001", "kind": "city", "coverageDivipolaCodes": ["23001"] },
-    { "key": "co-cau-popayan", "primaryDivipolaCode": "19001", "kind": "city", "coverageDivipolaCodes": ["19001"] }
+    {
+      "key": "co-mun-05079",
+      "primaryDivipolaCode": "05079",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "05079"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-05088",
+      "primaryDivipolaCode": "05088",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "05088"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-05129",
+      "primaryDivipolaCode": "05129",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "05129"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-05212",
+      "primaryDivipolaCode": "05212",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "05212"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-05266",
+      "primaryDivipolaCode": "05266",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "05266"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-05308",
+      "primaryDivipolaCode": "05308",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "05308"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-05360",
+      "primaryDivipolaCode": "05360",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "05360"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-05380",
+      "primaryDivipolaCode": "05380",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "05380"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-ant-medellin",
+      "primaryDivipolaCode": "05001",
+      "kind": "metro_area",
+      "coverageDivipolaCodes": [
+        "05079",
+        "05088",
+        "05129",
+        "05212",
+        "05266",
+        "05308",
+        "05360",
+        "05380",
+        "05001",
+        "05631"
+      ]
+    },
+    {
+      "key": "co-mun-05615",
+      "primaryDivipolaCode": "05615",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "05615"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-05631",
+      "primaryDivipolaCode": "05631",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "05631"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08078",
+      "primaryDivipolaCode": "08078",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08078"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-atl-barranquilla",
+      "primaryDivipolaCode": "08001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08001"
+      ]
+    },
+    {
+      "key": "co-mun-08137",
+      "primaryDivipolaCode": "08137",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08137"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08141",
+      "primaryDivipolaCode": "08141",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08141"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08296",
+      "primaryDivipolaCode": "08296",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08296"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08372",
+      "primaryDivipolaCode": "08372",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08372"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08433",
+      "primaryDivipolaCode": "08433",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08433"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08436",
+      "primaryDivipolaCode": "08436",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08436"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08520",
+      "primaryDivipolaCode": "08520",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08520"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08549",
+      "primaryDivipolaCode": "08549",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08549"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08558",
+      "primaryDivipolaCode": "08558",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08558"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08560",
+      "primaryDivipolaCode": "08560",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08560"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08573",
+      "primaryDivipolaCode": "08573",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08573"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08606",
+      "primaryDivipolaCode": "08606",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08606"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08634",
+      "primaryDivipolaCode": "08634",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08634"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08638",
+      "primaryDivipolaCode": "08638",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08638"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08675",
+      "primaryDivipolaCode": "08675",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08675"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08685",
+      "primaryDivipolaCode": "08685",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08685"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08758",
+      "primaryDivipolaCode": "08758",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08758"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08770",
+      "primaryDivipolaCode": "08770",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08770"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08832",
+      "primaryDivipolaCode": "08832",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08832"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-08849",
+      "primaryDivipolaCode": "08849",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "08849"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-dc-bogota",
+      "primaryDivipolaCode": "11001",
+      "kind": "district",
+      "coverageDivipolaCodes": [
+        "11001"
+      ]
+    },
+    {
+      "key": "co-bol-cartagena",
+      "primaryDivipolaCode": "13001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "13001"
+      ]
+    },
+    {
+      "key": "co-mun-13836",
+      "primaryDivipolaCode": "13836",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "13836"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-15238",
+      "primaryDivipolaCode": "15238",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "15238"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-15001",
+      "primaryDivipolaCode": "15001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "15001"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-cal-manizales",
+      "primaryDivipolaCode": "17001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "17001"
+      ]
+    },
+    {
+      "key": "co-mun-18001",
+      "primaryDivipolaCode": "18001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "18001"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-85001",
+      "primaryDivipolaCode": "85001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "85001"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-cau-popayan",
+      "primaryDivipolaCode": "19001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "19001"
+      ]
+    },
+    {
+      "key": "co-mun-20001",
+      "primaryDivipolaCode": "20001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "20001"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-27001",
+      "primaryDivipolaCode": "27001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "27001"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-25290",
+      "primaryDivipolaCode": "25290",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "25290"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-25754",
+      "primaryDivipolaCode": "25754",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "25754"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-cor-monteria",
+      "primaryDivipolaCode": "23001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "23001"
+      ]
+    },
+    {
+      "key": "co-mun-23417",
+      "primaryDivipolaCode": "23417",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "23417"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-41001",
+      "primaryDivipolaCode": "41001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "41001"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-41551",
+      "primaryDivipolaCode": "41551",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "41551"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mag-santa-marta",
+      "primaryDivipolaCode": "47001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "47001"
+      ]
+    },
+    {
+      "key": "co-met-villavicencio",
+      "primaryDivipolaCode": "50001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "50001"
+      ]
+    },
+    {
+      "key": "co-mun-52356",
+      "primaryDivipolaCode": "52356",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "52356"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-nar-pasto",
+      "primaryDivipolaCode": "52001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "52001"
+      ]
+    },
+    {
+      "key": "co-nds-cucuta",
+      "primaryDivipolaCode": "54001",
+      "kind": "metro_area",
+      "coverageDivipolaCodes": [
+        "54001"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-54261",
+      "primaryDivipolaCode": "54261",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "54261"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-54405",
+      "primaryDivipolaCode": "54405",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "54405"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-54498",
+      "primaryDivipolaCode": "54498",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "54498"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-54518",
+      "primaryDivipolaCode": "54518",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "54518"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-54874",
+      "primaryDivipolaCode": "54874",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "54874"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-qui-armenia",
+      "primaryDivipolaCode": "63001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "63001"
+      ]
+    },
+    {
+      "key": "co-mun-66170",
+      "primaryDivipolaCode": "66170",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "66170"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-ris-pereira",
+      "primaryDivipolaCode": "66001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "66001"
+      ]
+    },
+    {
+      "key": "co-san-bucaramanga",
+      "primaryDivipolaCode": "68001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "68001"
+      ]
+    },
+    {
+      "key": "co-mun-68276",
+      "primaryDivipolaCode": "68276",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "68276"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-68307",
+      "primaryDivipolaCode": "68307",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "68307"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-68547",
+      "primaryDivipolaCode": "68547",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "68547"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-70001",
+      "primaryDivipolaCode": "70001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "70001"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-tol-ibague",
+      "primaryDivipolaCode": "73001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "73001"
+      ]
+    },
+    {
+      "key": "co-mun-76109",
+      "primaryDivipolaCode": "76109",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "76109"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-vac-cali",
+      "primaryDivipolaCode": "76001",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "76001"
+      ]
+    },
+    {
+      "key": "co-mun-76520",
+      "primaryDivipolaCode": "76520",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "76520"
+      ],
+      "coverageStatus": "reference_only"
+    },
+    {
+      "key": "co-mun-76834",
+      "primaryDivipolaCode": "76834",
+      "kind": "city",
+      "coverageDivipolaCodes": [
+        "76834"
+      ],
+      "coverageStatus": "reference_only"
+    }
   ]
 }

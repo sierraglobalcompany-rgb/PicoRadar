@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -16,13 +15,20 @@ import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/core/storage/app_preferences.dart';
 import 'package:picoradar/features/apps_launcher/data/module_registry.dart';
 import 'package:picoradar/features/defense/data/defense_case_store.dart';
+import 'package:picoradar/features/documents/application/wallet_providers.dart';
+import 'package:picoradar/features/documents/application/wallet_session.dart';
+import 'package:picoradar/features/documents/data/wallet_store.dart';
+import 'package:picoradar/features/documents/platform/wallet_platform.dart';
 import 'package:picoradar/features/garage/application/vehicle_associated_data_cleaner.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/garage/data/vehicle_repository.dart';
 import 'package:picoradar/features/home/data/home_banner_config.dart';
 import 'package:picoradar/features/location/application/location_controller.dart';
 import 'package:picoradar/features/location/platform/device_location_gateway.dart';
+import 'package:picoradar/features/maintenance/application/maintenance_reminders.dart';
 import 'package:picoradar/features/peritajes/data/peritajes_draft_store.dart';
+import 'package:picoradar/features/onboarding/data/registration_city_catalog.dart';
+import 'package:picoradar/features/pico_placa/domain/bogota_time.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
 import 'package:picoradar/features/trip/data/trip_municipality_catalog.dart';
 import 'package:picoradar/features/vehicle_status/data/private_vehicle_document_store.dart';
@@ -30,7 +36,58 @@ import 'package:picoradar/features/vehicle_status/platform/obligation_notificati
 import 'package:picoradar/features/vehicle_status/platform/vehicle_document_gateway.dart';
 import 'package:picoradar/features/vehicle_status/presentation/vehicle_status_screen.dart';
 
+class _HarnessWalletPlatform extends WalletPlatform {
+  _HarnessWalletPlatform(this.root);
+  final Directory root;
+  @override
+  Future<void> setSecure(bool enabled) async {}
+  @override
+  Future<String> noBackupDirectory() async => root.path;
+}
+
+class _HarnessWalletAuthenticator implements WalletDeviceAuthenticator {
+  @override
+  Future<bool> canAuthenticate() async => true;
+  @override
+  Future<WalletAuthenticationResult> authenticate() async =>
+      WalletAuthenticationResult.success;
+}
+
+class _HarnessWalletPreferences implements WalletSecurityPreferencesStore {
+  WalletSecurityPreferences value = const WalletSecurityPreferences(
+    offerSeen: true,
+  );
+  @override
+  Future<WalletSecurityPreferences> read() async => value;
+  @override
+  Future<void> write(WalletSecurityPreferences preferences) async {
+    value = preferences;
+  }
+}
+
+class _NoDeviceLocationGateway implements DeviceLocationGateway {
+  @override
+  Future<bool> isLocationServiceEnabled() async => false;
+  @override
+  Future<DeviceLocationPermission> checkPermission() async =>
+      DeviceLocationPermission.notRequested;
+  @override
+  Future<DeviceLocationPermission> requestPermission() async =>
+      DeviceLocationPermission.denied;
+  @override
+  Future<DeviceLocationResult> getCurrentPosition() async =>
+      const DeviceLocationError(DeviceLocationFailure.serviceDisabled);
+  @override
+  Future<bool> openAppSettings() async => false;
+  @override
+  Future<bool> openLocationSettings() async => false;
+}
+
 class TestAppHarness {
+  static final registrationCatalog = RegistrationCityCatalog.fromJson(
+    jsonDecode(File(registrationCityCatalogAssetPath).readAsStringSync())
+        as Map<String, Object?>,
+  );
   // Load the real asset outside rootBundle's isolate work in fake-async tests.
   static final tripCatalog = TripMunicipalityCatalog.fromJson(
     jsonDecode(File(tripMunicipalityCatalogAssetPath).readAsStringSync())
@@ -49,12 +106,20 @@ class TestAppHarness {
       masterKey: () async => SecretKey(List<int>.filled(32, 7)),
       idGenerator: _nextDocumentId,
     );
+    walletStore = WalletStore(
+      db: database,
+      legacyStore: documentStore,
+      rootDirectory: () async => documentRoot,
+      cacheDirectory: () async => documentRoot,
+      masterKey: () async => SecretKey(List<int>.filled(32, 7)),
+    );
   }
 
   final AppDatabase database;
   final MemoryPreferences preferences;
   final Directory documentRoot;
   late final PrivateVehicleDocumentStore documentStore;
+  late final WalletStore walletStore;
   DateTime now = DateTime(2026, 8, 27, 22);
   int _vehicleIdSequence = 0;
   int _documentIdSequence = 0;
@@ -113,10 +178,31 @@ class TestAppHarness {
     await tester.pump();
     final app = ProviderScope(
       overrides: [
+        walletStoreProvider.overrideWithValue(walletStore),
+        walletPlatformProvider.overrideWithValue(
+          _HarnessWalletPlatform(documentRoot),
+        ),
+        walletFileKeyProvider.overrideWithValue(
+          () async => SecretKey(List<int>.filled(32, 7)),
+        ),
+        walletSessionProvider.overrideWith((ref) {
+          final session = WalletSession(
+            authenticator: _HarnessWalletAuthenticator(),
+            preferences: _HarnessWalletPreferences(),
+          );
+          ref.onDispose(session.dispose);
+          return session;
+        }),
         appDatabaseProvider.overrideWithValue(database),
+        datasetSnapshotsDirectoryProvider.overrideWith(
+          (ref) async => documentRoot,
+        ),
         appPreferencesProvider.overrideWithValue(preferences),
         tripMunicipalityCatalogProvider.overrideWithValue(
           AsyncValue.data(tripCatalog),
+        ),
+        registrationCityCatalogProvider.overrideWithValue(
+          AsyncValue.data(registrationCatalog),
         ),
         picoNotificationSchedulerProvider.overrideWithValue(
           _FakePicoNotificationScheduler(),
@@ -133,10 +219,9 @@ class TestAppHarness {
         vehicleDocumentGatewayProvider.overrideWithValue(
           documentGateway ?? _FakeVehicleDocumentGateway(),
         ),
-        if (deviceLocationGateway != null)
-          deviceLocationGatewayProvider.overrideWithValue(
-            deviceLocationGateway,
-          ),
+        deviceLocationGatewayProvider.overrideWithValue(
+          deviceLocationGateway ?? _NoDeviceLocationGateway(),
+        ),
         if (vehicleListOverride != null)
           vehicleListProvider.overrideWithValue(
             AsyncValue.data(vehicleListOverride),
@@ -153,6 +238,18 @@ class TestAppHarness {
             documentTypeOverride,
           )).overrideWithValue(AsyncValue.data(documentMetadataOverride)),
         bogotaNowProvider.overrideWithValue(now),
+        currentInstantProvider.overrideWithValue(
+          bogotaScheduledTime(
+            date: now,
+            minuteOfDay: now.hour * 60 + now.minute,
+          ).toUtc().add(
+            Duration(
+              seconds: now.second,
+              milliseconds: now.millisecond,
+              microseconds: now.microsecond,
+            ),
+          ),
+        ),
         startupReadinessProvider.overrideWith(
           (ref) async => const StartupReadiness(
             imageAssets: [],
@@ -174,6 +271,7 @@ class TestAppHarness {
     for (var i = 0; i < 5; i += 1) {
       await tester.pump(const Duration(seconds: 1));
     }
+    await tester.pump();
   }
 
   String _nextDocumentId() {
@@ -182,11 +280,29 @@ class TestAppHarness {
   }
 
   Future<void> dispose() async {
-    unawaited(database.close());
+    await database.close();
     if (documentRoot.existsSync()) {
       documentRoot.deleteSync(recursive: true);
     }
   }
+}
+
+// File futures and image decoding are not settled by fake frame time. Wait for
+// the observed state while yielding real I/O, with a bounded wall-clock budget.
+// The old 1–3 second frame loops expired while durable writes were still active.
+Future<void> pumpUntilRealIo(
+  WidgetTester tester,
+  bool Function() condition, {
+  required String reason,
+}) async {
+  final elapsed = Stopwatch()..start();
+  while (!condition() && elapsed.elapsed < const Duration(seconds: 30)) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pump(const Duration(milliseconds: 16));
+  }
+  expect(condition(), isTrue, reason: '$reason (${elapsed.elapsed})');
 }
 
 class _NoOpVehicleAssociatedDataCleaner extends VehicleAssociatedDataCleaner {
@@ -200,6 +316,14 @@ class _NoOpVehicleAssociatedDataCleaner extends VehicleAssociatedDataCleaner {
 
   @override
   Future<void> deleteForVehicle(String vehicleId) async {}
+
+  @override
+  Future<void> deletePrivateDataForVehicle(
+    String vehicleId, {
+    required bool Function() isAuthorized,
+  }) async {
+    if (!isAuthorized()) throw StateError('Wallet authorization expired.');
+  }
 }
 
 class _FakePicoNotificationScheduler extends PicoNotificationScheduler {
@@ -225,6 +349,15 @@ class _FakePicoNotificationScheduler extends PicoNotificationScheduler {
 
   @override
   Future<void> cancelObligationNotifications() async {}
+
+  @override
+  Future<void> rescheduleMaintenanceNotifications(
+    List<MaintenanceReminder> reminders, {
+    required Map<String, String> platesByVehicleId,
+  }) async {}
+
+  @override
+  Future<void> cancelMaintenanceNotifications() async {}
 }
 
 class _FakeExternalLauncher implements ExternalLauncher {

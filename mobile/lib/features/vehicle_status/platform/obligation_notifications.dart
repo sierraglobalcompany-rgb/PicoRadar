@@ -2,6 +2,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as timezone;
 
 import '../../garage/data/vehicle_profile.dart';
+import '../../alerts/data/alert_settings.dart';
 import '../domain/vehicle_obligation.dart';
 import '../../pico_placa/domain/bogota_time.dart';
 
@@ -27,6 +28,8 @@ class ObligationNotificationPlan {
     required this.title,
     required this.body,
     required this.payload,
+    this.delivery,
+    this.plate,
   });
 
   final int id;
@@ -38,6 +41,8 @@ class ObligationNotificationPlan {
   final String title;
   final String body;
   final String payload;
+  final AlertSettings? delivery;
+  final String? plate;
 }
 
 List<ObligationNotificationPlan> planObligationNotifications({
@@ -45,6 +50,9 @@ List<ObligationNotificationPlan> planObligationNotifications({
   required Map<String, VehicleProfile> vehiclesById,
   required DateTime nowBogota,
   required bool permissionGranted,
+  List<VehicleAlertSettings> deliverySettings = const [],
+  // UI keeps the future-only default; reconciliation may retain an active alarm.
+  bool retainRecentAlarms = false,
 }) {
   if (!permissionGranted) {
     return const [];
@@ -52,6 +60,14 @@ List<ObligationNotificationPlan> planObligationNotifications({
 
   final plans = <ObligationNotificationPlan>[];
   for (final obligation in obligations) {
+    final selected = deliverySettings
+        .where(
+          (s) =>
+              s.vehicleId == obligation.vehicleId &&
+              s.category.name == obligation.type.value,
+        )
+        .firstOrNull
+        ?.settings;
     if (!obligation.reminderEnabled ||
         obligation.dueDate == null ||
         obligation.type == VehicleObligationType.tax) {
@@ -62,16 +78,19 @@ List<ObligationNotificationPlan> planObligationNotifications({
       obligation.dueDate!.month,
       obligation.dueDate!.day,
     );
-    if (dueDate.isBefore(
-      DateTime(nowBogota.year, nowBogota.month, nowBogota.day),
-    )) {
+    final retain = retainRecentAlarms && selected?.alarm == true;
+    if (!retain &&
+        dueDate.isBefore(
+          DateTime(nowBogota.year, nowBogota.month, nowBogota.day),
+        )) {
       continue;
     }
     final vehicle = vehiclesById[obligation.vehicleId];
     if (vehicle == null) {
       continue;
     }
-    for (final offsetDays in obligationReminderOffsets) {
+    for (final offsetDays
+        in selected?.offsetDays ?? obligationReminderOffsets) {
       final scheduledDate = DateTime(
         dueDate.year,
         dueDate.month,
@@ -79,7 +98,7 @@ List<ObligationNotificationPlan> planObligationNotifications({
       );
       final scheduledAt = bogotaScheduledTime(
         date: scheduledDate,
-        minuteOfDay: obligationReminderMinuteOfDay,
+        minuteOfDay: selected?.minute ?? obligationReminderMinuteOfDay,
       );
       final now = timezone.TZDateTime(
         scheduledAt.location,
@@ -90,7 +109,9 @@ List<ObligationNotificationPlan> planObligationNotifications({
         nowBogota.minute,
         nowBogota.second,
       );
-      if (!scheduledAt.isAfter(now)) {
+      if (!scheduledAt.isAfter(now) &&
+          (!retain ||
+              !scheduledAt.add(const Duration(minutes: 15)).isAfter(now))) {
         continue;
       }
       plans.add(
@@ -108,6 +129,8 @@ List<ObligationNotificationPlan> planObligationNotifications({
           scheduledAt: scheduledAt,
           title: _notificationTitle(obligation.type),
           body: '${vehicle.plate} · vence el ${formatShortDate(dueDate)}',
+          delivery: selected,
+          plate: vehicle.plate,
           payload: obligationReminderPayload(
             type: obligation.type,
             vehicleId: obligation.vehicleId,

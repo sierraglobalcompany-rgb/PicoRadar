@@ -26,6 +26,7 @@ import '../../features/visual_assets/presentation/visual_asset_widgets.dart';
 import '../../features/vehicle_status/presentation/vehicle_status_screen.dart';
 import 'app_routes.dart';
 import 'immersive_placeholder_screen.dart';
+import '../../features/alerts/presentation/alerts_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -69,7 +70,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => Consumer(
           builder: (context, widgetRef, child) => SettingsScreen(
             onChangeAvatar: () => showAvatarPicker(context, widgetRef),
-            onConfigureNotifications: () => context.go(AppRoute.home.path),
+            onConfigureNotifications: () =>
+                context.go('${AppRoute.home.path}/alerts'),
           ),
         ),
       ),
@@ -161,12 +163,6 @@ List<RouteBase> _tabRoutes(AppTab tab) {
                 ).toString(),
               ),
               onOpenTramites: (_) => context.push('/apps/module/tramites'),
-              onOpenPeritajes: (vehicle) => context.push(
-                Uri(
-                  path: '/apps/module/peritajes',
-                  queryParameters: {'vehicleId': vehicle.id},
-                ).toString(),
-              ),
               onOpenDocuments: (vehicle) => context.push(
                 Uri(
                   path: '/apps/module/documentos',
@@ -196,7 +192,13 @@ List<RouteBase> _tabRoutes(AppTab tab) {
         },
       ),
     ],
-    AppTab.home => [_picoRoute()],
+    AppTab.home => [
+      _picoRoute(),
+      GoRoute(
+        path: 'alerts',
+        builder: (context, state) => const AlertsScreen(),
+      ),
+    ],
     _ => const [],
   };
 }

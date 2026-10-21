@@ -12,6 +12,7 @@ class PicoRadarAppHeader extends StatelessWidget {
   const PicoRadarAppHeader({
     required this.alertPreferences,
     required this.onNotificationsPressed,
+    this.trailingControl,
     this.headerKey = const ValueKey('picoradar-app-header'),
     this.brandKey = const ValueKey('picoradar-brand-lockup'),
     this.capsuleKey = const ValueKey('picoradar-user-controls-capsule'),
@@ -21,6 +22,7 @@ class PicoRadarAppHeader extends StatelessWidget {
 
   final PicoAlertPreferences alertPreferences;
   final VoidCallback onNotificationsPressed;
+  final Widget? trailingControl;
   final Key headerKey;
   final Key brandKey;
   final Key capsuleKey;
@@ -49,6 +51,7 @@ class PicoRadarAppHeader extends StatelessWidget {
             alertPreferences: alertPreferences,
             bellKey: bellKey,
             onNotificationsPressed: onNotificationsPressed,
+            trailingControl: trailingControl,
           ),
         ],
       ),
@@ -61,12 +64,14 @@ class _UserControls extends ConsumerWidget {
     required this.alertPreferences,
     required this.bellKey,
     required this.onNotificationsPressed,
+    this.trailingControl,
     super.key,
   });
 
   final PicoAlertPreferences alertPreferences;
   final Key bellKey;
   final VoidCallback onNotificationsPressed;
+  final Widget? trailingControl;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -77,11 +82,15 @@ class _UserControls extends ConsumerWidget {
           key: ValueKey('picoradar-avatar-control'),
           child: HomeAvatarButton(
             embedded: true,
-            visualSize: 40,
+            visualSize: 36,
             semanticsLabel: 'Abrir avatar y ajustes',
             onTap: () => _showUserMenu(context, ref),
           ),
         ),
+        if (trailingControl != null) ...[
+          const SizedBox(width: AppSpacing.s),
+          trailingControl!,
+        ],
         const SizedBox(width: AppSpacing.s),
         _CircularHeaderControl(
           key: const ValueKey('picoradar-bell-control'),
@@ -149,13 +158,18 @@ class _CircularHeaderControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      elevation: 3,
-      shadowColor: AppColors.navy.withValues(alpha: 0.14),
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: SizedBox.square(dimension: 52, child: Center(child: child)),
+    return SizedBox.square(
+      dimension: 48,
+      child: Center(
+        child: Material(
+          color: AppColors.surface,
+          elevation: 3,
+          shadowColor: AppColors.navy.withValues(alpha: 0.14),
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: SizedBox.square(dimension: 42, child: Center(child: child)),
+        ),
+      ),
     );
   }
 }
@@ -175,34 +189,29 @@ class _NotificationBellButton extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'Abrir notificaciones',
-      child: SizedBox(
-        width: 48,
-        height: 48,
-        child: IconButton(
-          onPressed: onPressed,
-          icon: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              const Icon(
-                Icons.notifications_none_rounded,
-                color: AppColors.navy,
-              ),
-              if (alertPreferences.permissionGranted &&
-                  alertPreferences.enabled)
-                Positioned(
-                  right: -1,
-                  top: -1,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: AppColors.teal,
-                      shape: BoxShape.circle,
-                    ),
+      child: IconButton(
+        constraints: const BoxConstraints.tightFor(width: 42, height: 42),
+        padding: EdgeInsets.zero,
+        iconSize: 24,
+        onPressed: onPressed,
+        icon: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Icon(Icons.notifications_none_rounded, color: AppColors.navy),
+            if (alertPreferences.permissionGranted && alertPreferences.enabled)
+              Positioned(
+                right: -1,
+                top: -1,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppColors.teal,
+                    shape: BoxShape.circle,
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );

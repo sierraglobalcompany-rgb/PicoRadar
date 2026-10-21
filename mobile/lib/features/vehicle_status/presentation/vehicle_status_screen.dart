@@ -10,6 +10,8 @@ import '../data/vehicle_status_catalog.dart';
 import '../domain/vehicle_obligation.dart';
 import '../platform/external_launcher.dart';
 import 'soat_rtm_owner_content.dart';
+import 'tax_owner_content.dart';
+import 'insurance_owner_content.dart';
 
 export '../platform/external_launcher.dart';
 
@@ -51,11 +53,21 @@ class _VehicleStatusScreenState extends ConsumerState<VehicleStatusScreen> {
     if (type == null) {
       return const _MissingStatusModule();
     }
+    if (type == VehicleObligationType.insurance) {
+      return InsuranceOwnerScreen(vehicleId: widget.vehicleId);
+    }
     final vehicles = ref.watch(vehicleListProvider);
     final active = ref.watch(activeVehicleProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(_screenTitle(type))),
+      appBar: AppBar(
+        title: Text(
+          _screenTitle(type),
+          style: type == VehicleObligationType.tax
+              ? const TextStyle(fontSize: 20)
+              : null,
+        ),
+      ),
       body: SafeArea(
         child: vehicles.when(
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -65,8 +77,29 @@ class _VehicleStatusScreenState extends ConsumerState<VehicleStatusScreen> {
               items,
               active.asData?.value,
               _selectedVehicleId,
+              fallbackForMissingId: false,
             );
             if (vehicle == null) {
+              if (_selectedVehicleId != null) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.l),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Este vehículo ya no está disponible.'),
+                        const SizedBox(height: AppSpacing.m),
+                        TextButton.icon(
+                          key: ValueKey('${type.value}-missing-vehicle-garage'),
+                          onPressed: () => context.go('/garage'),
+                          icon: const Icon(Icons.garage_outlined),
+                          label: const Text('Ir a Garaje'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
               return const Center(
                 child: Text('Agrega un vehículo para usar esta función.'),
               );
@@ -79,6 +112,13 @@ class _VehicleStatusScreenState extends ConsumerState<VehicleStatusScreen> {
               error: (error, stackTrace) =>
                   _ErrorText(message: error.toString()),
               data: (value) {
+                if (type == VehicleObligationType.tax) {
+                  return TaxOwnerContent(
+                    key: ValueKey('tax-owner-${vehicle.id}'),
+                    vehicle: vehicle,
+                    obligation: value,
+                  );
+                }
                 if (type == VehicleObligationType.soat ||
                     type == VehicleObligationType.rtm) {
                   return SoatRtmOwnerContent(
@@ -139,36 +179,23 @@ class _VehicleStatusContent extends ConsumerWidget {
               children: [
                 _VehicleHeader(vehicle: vehicle),
                 const SizedBox(height: AppSpacing.xl),
-                if (type == VehicleObligationType.tax)
-                  _TaxPanel(vehicle: vehicle, obligation: obligation)
-                else ...[
-                  _StatusPanel(
-                    type: type,
-                    obligation: obligation,
-                    state: state,
-                  ),
-                  const SizedBox(height: AppSpacing.l),
-                  _DetailPanel(type: type, details: details),
-                  const SizedBox(height: AppSpacing.l),
-                  _ReminderPanel(
-                    type: type,
-                    vehicleId: vehicle.id,
-                    obligation: obligation,
-                  ),
-                  const SizedBox(height: AppSpacing.l),
-                  FilledButton.icon(
-                    key: const ValueKey('vehicle-status-edit'),
-                    onPressed: () => _editObligation(
-                      context,
-                      ref,
-                      vehicle,
-                      type,
-                      obligation,
-                    ),
-                    icon: const Icon(Icons.edit),
-                    label: const Text('Editar / guardar'),
-                  ),
-                ],
+                _StatusPanel(type: type, obligation: obligation, state: state),
+                const SizedBox(height: AppSpacing.l),
+                _DetailPanel(type: type, details: details),
+                const SizedBox(height: AppSpacing.l),
+                _ReminderPanel(
+                  type: type,
+                  vehicleId: vehicle.id,
+                  obligation: obligation,
+                ),
+                const SizedBox(height: AppSpacing.l),
+                FilledButton.icon(
+                  key: const ValueKey('vehicle-status-edit'),
+                  onPressed: () =>
+                      _editObligation(context, ref, vehicle, type, obligation),
+                  icon: const Icon(Icons.edit),
+                  label: const Text('Editar / guardar'),
+                ),
                 const SizedBox(height: AppSpacing.l),
                 _OfficialActions(type: type),
               ],
@@ -340,118 +367,6 @@ class _ReminderPanel extends ConsumerWidget {
                 'Activa las notificaciones desde Inicio para recibir recordatorios.',
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TaxPanel extends ConsumerWidget {
-  const _TaxPanel({required this.vehicle, required this.obligation});
-
-  final VehicleProfile vehicle;
-  final VehicleObligation? obligation;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final nowBogota = ref.watch(bogotaNowProvider);
-    final authorityId =
-        obligation?.details['authorityId'] ??
-        suggestTaxCalendar(vehicle.registrationCity)?.authorityId;
-    final calendar = taxCalendarByAuthority(authorityId);
-    final current = calendar?.isCurrent(nowBogota) ?? false;
-    return _Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'PicoRadar no calcula el impuesto, no consulta deuda y no confirma si está pagado.',
-          ),
-          const SizedBox(height: AppSpacing.m),
-          DropdownButtonFormField<String>(
-            key: const ValueKey('tax-authority-field'),
-            initialValue: calendar?.authorityId,
-            isExpanded: true,
-            isDense: false,
-            itemHeight: null,
-            decoration: const InputDecoration(labelText: 'Entidad tributaria'),
-            items: [
-              for (final item in vehicleTaxCalendars)
-                DropdownMenuItem(
-                  value: item.authorityId,
-                  child: Text(item.authorityName),
-                ),
-            ],
-            onChanged: (value) async {
-              if (value == null) {
-                return;
-              }
-              final store = ref.read(vehicleObligationStoreProvider);
-              final currentObligation = obligation;
-              final details = Map<String, String>.of(
-                currentObligation?.details ?? const {},
-              );
-              details['authorityId'] = value;
-              await store.upsert(
-                vehicleId: vehicle.id,
-                type: VehicleObligationType.tax,
-                startDate: currentObligation?.startDate,
-                dueDate: currentObligation?.dueDate,
-                details: details,
-                reminderEnabled: currentObligation?.reminderEnabled ?? false,
-              );
-              if (!context.mounted) {
-                return;
-              }
-              ref.invalidate(
-                vehicleObligationProvider((
-                  vehicle.id,
-                  VehicleObligationType.tax,
-                )),
-              );
-              ref.invalidate(vehicleObligationsProvider(vehicle.id));
-            },
-          ),
-          const SizedBox(height: AppSpacing.m),
-          if (calendar == null)
-            const Text(
-              'Selecciona la entidad tributaria correspondiente a la matrícula.',
-            )
-          else ...[
-            Text(
-              calendar.authorityName,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: AppSpacing.s),
-            Text('Fuente: ${calendar.portalLink.sourceName}'),
-            Text('Calendario: ${calendar.year}'),
-            Text('Revisado: ${_formatReviewDate(calendar.verifiedAt)}'),
-            if (!current)
-              const Text(
-                'Calendario pendiente de actualización. Verifica el portal oficial.',
-              ),
-            const SizedBox(height: AppSpacing.m),
-            for (final date in calendar.importantDates)
-              _TextLine(
-                label:
-                    '${_taxDateStatus(date.date, nowBogota)} · ${date.label}',
-                value: formatFullDate(date.date),
-              ),
-            const SizedBox(height: AppSpacing.m),
-            OutlinedButton.icon(
-              key: ValueKey('official-link-${calendar.portalLink.id}'),
-              onPressed: () => _openStatusExternal(
-                context,
-                ref,
-                calendar.portalLink.uri,
-                'No pudimos abrir el portal oficial.',
-              ),
-              icon: const Icon(Icons.open_in_new),
-              label: Text(
-                'Abrir portal oficial de ${_taxPortalName(calendar)}',
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -652,6 +567,7 @@ Future<void> _editObligation(
     text: details['designatedDriverPhone'] ?? '',
   );
   var selectedProvider = _insuranceInitialProvider(details);
+  String? validationError;
 
   await showDialog<void>(
     context: context,
@@ -664,6 +580,11 @@ Future<void> _editObligation(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (validationError != null)
+                    Text(
+                      validationError!,
+                      key: const ValueKey('status-date-error'),
+                    ),
                   TextField(
                     key: const ValueKey('status-start-date-field'),
                     controller: startController,
@@ -765,23 +686,29 @@ Future<void> _editObligation(
               FilledButton(
                 key: const ValueKey('status-save-button'),
                 onPressed: () async {
-                  await _saveObligation(
-                    ref,
-                    vehicle.id,
-                    type,
-                    startController.text,
-                    dueController.text,
-                    firstController.text,
-                    selectedProvider,
-                    policyController.text,
-                    certificateController.text,
-                    assistanceController.text,
-                    towController.text,
-                    driverController.text,
-                    obligation?.reminderEnabled ?? true,
-                  );
-                  if (context.mounted) {
-                    Navigator.of(context).pop();
+                  try {
+                    await _saveObligation(
+                      ref,
+                      vehicle.id,
+                      type,
+                      startController.text,
+                      dueController.text,
+                      firstController.text,
+                      selectedProvider,
+                      policyController.text,
+                      certificateController.text,
+                      assistanceController.text,
+                      towController.text,
+                      driverController.text,
+                      obligation?.reminderEnabled ?? true,
+                    );
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  } on FormatException catch (error) {
+                    if (context.mounted) {
+                      setState(() => validationError = error.message);
+                    }
                   }
                 },
                 child: const Text('Guardar'),
@@ -819,6 +746,15 @@ Future<void> _saveObligation(
   String driverPhone,
   bool reminderEnabled,
 ) async {
+  final parsedStart = _parseInputDate(startDate);
+  final parsedDue = _parseInputDate(dueDate);
+  if (parsedStart != null &&
+      parsedDue != null &&
+      parsedDue.isBefore(parsedStart)) {
+    throw const FormatException(
+      'El vencimiento no puede ser anterior al inicio.',
+    );
+  }
   final details = <String, String>{};
   switch (type) {
     case VehicleObligationType.soat:
@@ -843,8 +779,8 @@ Future<void> _saveObligation(
       .upsert(
         vehicleId: vehicleId,
         type: type,
-        startDate: _parseInputDate(startDate),
-        dueDate: _parseInputDate(dueDate),
+        startDate: parsedStart,
+        dueDate: parsedDue,
         details: details,
         reminderEnabled: reminderEnabled,
       );
@@ -878,14 +814,16 @@ Future<void> _saveReminderOnly(
 VehicleProfile? _resolveVehicle(
   List<VehicleProfile> vehicles,
   VehicleProfile? active,
-  String? vehicleId,
-) {
+  String? vehicleId, {
+  bool fallbackForMissingId = true,
+}) {
   if (vehicleId != null) {
     for (final vehicle in vehicles) {
       if (vehicle.id == vehicleId) {
         return vehicle;
       }
     }
+    if (!fallbackForMissingId) return null;
   }
   return active ?? (vehicles.isEmpty ? null : vehicles.first);
 }
@@ -973,17 +911,18 @@ DateTime? _parseInputDate(String value) {
   if (trimmed.isEmpty) {
     return null;
   }
-  final parts = trimmed.split('-');
-  if (parts.length != 3) {
-    return null;
+  final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(trimmed);
+  if (match == null) {
+    throw const FormatException('Usa una fecha válida con formato AAAA-MM-DD.');
   }
-  final year = int.tryParse(parts[0]);
-  final month = int.tryParse(parts[1]);
-  final day = int.tryParse(parts[2]);
-  if (year == null || month == null || day == null) {
-    return null;
+  final year = int.parse(match[1]!);
+  final month = int.parse(match[2]!);
+  final day = int.parse(match[3]!);
+  final date = DateTime(year, month, day);
+  if (date.year != year || date.month != month || date.day != day) {
+    throw const FormatException('Usa una fecha válida con formato AAAA-MM-DD.');
   }
-  return DateTime(year, month, day);
+  return date;
 }
 
 String _inputDate(DateTime? date) {
@@ -1011,42 +950,4 @@ String formatFullDate(DateTime date) {
     'diciembre',
   ];
   return '${date.day} de ${months[date.month - 1]} de ${date.year}';
-}
-
-String _formatReviewDate(DateTime date) {
-  const months = [
-    'ene',
-    'feb',
-    'mar',
-    'abr',
-    'may',
-    'jun',
-    'jul',
-    'ago',
-    'sep',
-    'oct',
-    'nov',
-    'dic',
-  ];
-  return '${date.day} ${months[date.month - 1]} ${date.year}';
-}
-
-String _taxDateStatus(DateTime date, DateTime nowBogota) {
-  final target = DateTime(date.year, date.month, date.day);
-  final today = DateTime(nowBogota.year, nowBogota.month, nowBogota.day);
-  if (target == today) {
-    return 'Hoy';
-  }
-  if (target.isBefore(today)) {
-    return 'Ya pasó';
-  }
-  return 'Próxima';
-}
-
-String _taxPortalName(VehicleTaxCalendar calendar) {
-  return switch (calendar.authorityId) {
-    'bogota' => 'Bogotá',
-    'antioquia' => 'Antioquia',
-    _ => calendar.authorityName,
-  };
 }

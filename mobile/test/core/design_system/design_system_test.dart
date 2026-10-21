@@ -1,6 +1,9 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/shell/app_shell.dart';
 import 'package:picoradar/app/theme/app_theme.dart';
@@ -8,6 +11,125 @@ import 'package:picoradar/app/theme/app_tokens.dart';
 import 'package:picoradar/core/design_system/app_components.dart';
 
 void main() {
+  const evidenceDirectory = String.fromEnvironment('HOME_EVIDENCE');
+  if (evidenceDirectory.isNotEmpty) {
+    testWidgets('ColombianPlateBadge exports automated plate variants', (
+      tester,
+    ) async {
+      const monoFontPath = String.fromEnvironment('HOME_EVIDENCE_MONO_FONT');
+      await tester.runAsync(() async {
+        final artifacts = File(Platform.resolvedExecutable)
+            .parent
+            .parent
+            .parent;
+        final regular = FontLoader('Roboto');
+        for (final weight in ['Regular', 'Bold']) {
+          final file = File(
+            '${artifacts.path}/material_fonts/Roboto-$weight.ttf',
+          );
+          regular.addFont(file.readAsBytes().then(ByteData.sublistView));
+        }
+        await regular.load();
+        expect(
+          monoFontPath,
+          isNotEmpty,
+          reason: 'HOME_EVIDENCE_MONO_FONT must name a local monospace font.',
+        );
+        final mono = FontLoader(
+          'monospace',
+        )..addFont(File(monoFontPath).readAsBytes().then(ByteData.sublistView));
+        await mono.load();
+      });
+      const surfaceKey = ValueKey('automated-plate-evidence');
+      await _pumpComponent(
+        tester,
+        RepaintBoundary(
+          key: surfaceKey,
+          child: ColoredBox(
+            color: Colors.white,
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('PicoRadar | Placas', style: AppTextStyles.h1),
+                  const SizedBox(height: 8),
+                  const Text('AUTOMATED · Flutter widget test'),
+                  const Text('Datos ficticios · No es evidencia física'),
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final sample in [
+                        (
+                          title: 'Particular',
+                          plate: 'ABC123',
+                          city: 'Bogotá D.C.',
+                          taxi: false,
+                        ),
+                        (
+                          title: 'Taxi',
+                          plate: 'WXY456',
+                          city: 'Medellín',
+                          taxi: true,
+                        ),
+                        (
+                          title: 'Moto',
+                          plate: 'ABC12D',
+                          city: 'COLOMBIA',
+                          taxi: false,
+                        ),
+                      ])
+                        SizedBox(
+                          width: 200,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(sample.title, style: AppTextStyles.body),
+                              const SizedBox(height: 12),
+                              ColombianPlateBadge(
+                                plate: sample.plate,
+                                registrationLabel: sample.city,
+                                publicService: sample.taxi,
+                                compact: true,
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        size: const Size(760, 380),
+      );
+      expect(find.byType(ColombianPlateBadge), findsNWidgets(3));
+      expect(tester.takeException(), isNull);
+      final boundary = tester.renderObject<RenderRepaintBoundary>(
+        find.byKey(surfaceKey),
+      );
+      await tester.runAsync(() async {
+        final image = await boundary.toImage(pixelRatio: 2);
+        try {
+          final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+          expect(bytes, isNotNull);
+          final directory = Directory(evidenceDirectory);
+          await directory.create(recursive: true);
+          final output = File(
+            '${directory.path}/20-plate-variants-automated.png',
+          );
+          await output.writeAsBytes(bytes!.buffer.asUint8List(), flush: true);
+          expect(await output.length(), greaterThan(0));
+        } finally {
+          image.dispose();
+        }
+      });
+    });
+  }
+
   test('R01 spacing includes approved 3XL token', () {
     expect(AppSpacing.xxxl, 48);
   });
@@ -333,6 +455,458 @@ void main() {
       expect(tester.takeException(), isNull);
     }
   });
+
+  testWidgets(
+    'ColombianPlateBadge preserves legacy layout without registration',
+    (tester) async {
+      for (final compact in [false, true]) {
+        for (final scale in [1.0, 2.0]) {
+          await _pumpComponent(
+            tester,
+            ColombianPlateBadge(plate: 'ABC123', compact: compact),
+            textScale: scale,
+          );
+          final badgeFinder = find.byKey(
+            const ValueKey('colombian-plate-badge'),
+          );
+          final originalSize = tester.getSize(badgeFinder);
+          final badge = tester.widget<Container>(badgeFinder);
+          expect(
+            badge.constraints,
+            BoxConstraints(
+              minWidth: compact ? 82 : 104,
+              minHeight: compact ? 32 : 40,
+              maxWidth: compact ? 116 : 148,
+            ),
+          );
+          expect(
+            find.text('COLOMBIA'),
+            !compact && scale <= 1.6 ? findsOneWidget : findsNothing,
+          );
+          expect(
+            find.byKey(const ValueKey('colombian-plate-registration-label')),
+            findsNothing,
+          );
+          await _pumpComponent(
+            tester,
+            ColombianPlateBadge(
+              plate: 'ABC123',
+              compact: compact,
+              registrationLabel: '   ',
+            ),
+            textScale: scale,
+          );
+          expect(tester.getSize(badgeFinder), originalSize);
+          expect(
+            find.byKey(const ValueKey('colombian-plate-registration-label')),
+            findsNothing,
+          );
+          expect(tester.takeException(), isNull);
+        }
+      }
+    },
+  );
+
+  testWidgets(
+    'ColombianPlateBadge puts registration inside yellow below full plate',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        for (final compact in [false, true]) {
+          await _pumpComponent(
+            tester,
+            ColombianPlateBadge(
+              plate: 'ABC1234',
+              compact: compact,
+              registrationLabel: '  Medellín  ',
+            ),
+          );
+          final badge = find.byKey(const ValueKey('colombian-plate-badge'));
+          final registration = find.byKey(
+            const ValueKey('colombian-plate-registration-label'),
+          );
+          expect(
+            find.descendant(of: badge, matching: registration),
+            findsOneWidget,
+          );
+          expect(find.text('ABC1234'), findsOneWidget);
+          expect(find.text('Medellín'), findsOneWidget);
+          expect(find.text('COLOMBIA'), findsNothing);
+          expect(
+            tester.getTopLeft(registration).dy,
+            greaterThanOrEqualTo(tester.getBottomLeft(find.text('ABC1234')).dy),
+          );
+          expect(tester.getSize(badge).width, inInclusiveRange(96, 180));
+          expect(
+            (tester.widget<Container>(badge).decoration! as BoxDecoration)
+                .color,
+            AppColors.plateYellow,
+          );
+          expect(
+            find.bySemanticsLabel('Placa ABC1234, Medellín'),
+            findsOneWidget,
+          );
+          expect(tester.takeException(), isNull);
+        }
+      } finally {
+        semantics.dispose();
+      }
+    },
+  );
+
+  testWidgets('ColombianPlateBadge motorcycle country appears only once', (
+    tester,
+  ) async {
+    for (final compact in [false, true]) {
+      for (final scale in [1.0, 2.0]) {
+        await _pumpComponent(
+          tester,
+          ColombianPlateBadge(
+            plate: 'ABC12D',
+            compact: compact,
+            registrationLabel: 'COLOMBIA',
+          ),
+          textScale: scale,
+        );
+        expect(find.text('ABC'), findsOneWidget);
+        expect(find.text('12D'), findsOneWidget);
+        expect(find.text('COLOMBIA'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+    }
+  });
+
+  testWidgets(
+    'ColombianPlateBadge wraps long registration without shrinking or clipping',
+    (tester) async {
+      const city = 'San Sebastián de Mariquita';
+      for (final compact in [false, true]) {
+        for (final scale in [1.0, 1.5, 2.0]) {
+          await _pumpComponent(
+            tester,
+            SizedBox(
+              width: 116,
+              child: ColombianPlateBadge(
+                plate: 'ABC123',
+                compact: compact,
+                registrationLabel: city,
+              ),
+            ),
+            textScale: scale,
+          );
+          final registration = find.byKey(
+            const ValueKey('colombian-plate-registration-label'),
+          );
+          final text = tester.widget<Text>(registration);
+          expect(text.data, city);
+          expect(text.style!.fontSize, compact ? 10 : 11);
+          expect(text.softWrap, isTrue);
+          expect(text.maxLines, isNull);
+          expect(text.overflow, isNot(TextOverflow.ellipsis));
+          expect(
+            find.ancestor(of: registration, matching: find.byType(FittedBox)),
+            findsNothing,
+          );
+          expect(
+            tester.getSize(registration).height,
+            greaterThan((compact ? 10 : 11) * scale),
+          );
+          final badgeRect = tester.getRect(
+            find.byKey(const ValueKey('colombian-plate-badge')),
+          );
+          final textRect = tester.getRect(registration);
+          expect(textRect.left, greaterThanOrEqualTo(badgeRect.left));
+          expect(textRect.right, lessThanOrEqualTo(badgeRect.right));
+          expect(textRect.bottom, lessThanOrEqualTo(badgeRect.bottom));
+          expect(find.text('ABC'), findsOneWidget);
+          expect(find.text('123'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        }
+      }
+    },
+  );
+
+  testWidgets(
+    'ColombianPlateBadge opt-in uses vehicle plate colors and inset border',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        for (final sample in [
+          (
+            plate: 'ABC123',
+            label: 'Bogotá D.C.',
+            publicService: false,
+            number: 'ABC 123',
+          ),
+          (
+            plate: 'WXY456',
+            label: 'Medellín',
+            publicService: true,
+            number: 'WXY 456',
+          ),
+          (
+            plate: 'ABC12D',
+            label: 'COLOMBIA',
+            publicService: false,
+            number: 'ABC 12D',
+          ),
+        ]) {
+          await _pumpComponent(
+            tester,
+            ColombianPlateBadge(
+              plate: sample.plate,
+              compact: true,
+              registrationLabel: sample.label,
+              publicService: sample.publicService,
+            ),
+          );
+          final badge = find.byKey(const ValueKey('colombian-plate-badge'));
+          final inset = find.byKey(
+            const ValueKey('colombian-plate-inner-border'),
+          );
+          final outerDecoration =
+              tester.widget<Container>(badge).decoration! as BoxDecoration;
+          final innerDecoration =
+              tester.widget<Container>(inset).decoration! as BoxDecoration;
+          expect(
+            outerDecoration.color,
+            sample.publicService ? Colors.white : AppColors.plateYellow,
+          );
+          expect(
+            innerDecoration.border,
+            Border.all(color: Colors.black, width: 1.2),
+          );
+          expect(innerDecoration.borderRadius, BorderRadius.circular(5));
+          expect(outerDecoration.border, isNull);
+          expect(
+            tester.getRect(inset).left,
+            greaterThan(tester.getRect(badge).left),
+          );
+          expect(
+            tester.getRect(inset).right,
+            lessThan(tester.getRect(badge).right),
+          );
+          expect(
+            tester
+                .widget<Text>(find.text(sample.plate.substring(0, 3)))
+                .style!
+                .color,
+            Colors.black,
+          );
+          expect(find.text(sample.label), findsOneWidget);
+          expect(
+            find.bySemanticsLabel('Placa ${sample.plate}, ${sample.label}'),
+            findsOneWidget,
+          );
+          expect(
+            tester
+                .widget<ColombianPlateBadge>(find.byType(ColombianPlateBadge))
+                .plate,
+            sample.plate,
+          );
+          expect(tester.takeException(), isNull);
+        }
+      } finally {
+        semantics.dispose();
+      }
+    },
+  );
+
+  testWidgets('ColombianPlateBadge public style requires registration opt-in', (
+    tester,
+  ) async {
+    await _pumpComponent(
+      tester,
+      const ColombianPlateBadge(plate: 'ABC123', publicService: true),
+    );
+    final decoration =
+        tester
+                .widget<Container>(
+                  find.byKey(const ValueKey('colombian-plate-badge')),
+                )
+                .decoration!
+            as BoxDecoration;
+    expect(decoration.color, AppColors.plateYellow);
+    expect(find.text('ABC123'), findsOneWidget);
+    expect(find.text('COLOMBIA'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('colombian-plate-inner-border')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('colombian-plate-separator')),
+      findsNothing,
+    );
+    for (final corner in [
+      'top-left',
+      'top-right',
+      'bottom-left',
+      'bottom-right',
+    ]) {
+      expect(
+        find.byKey(ValueKey('colombian-plate-fixing-$corner')),
+        findsNothing,
+      );
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'ColombianPlateBadge opt-in has four inset slots and an illustrated emblem',
+    (tester) async {
+      await _pumpComponent(
+        tester,
+        const ColombianPlateBadge(
+          plate: 'ABC123',
+          registrationLabel: 'Bogotá D.C.',
+        ),
+      );
+      final inset = tester.getRect(
+        find.byKey(const ValueKey('colombian-plate-inner-border')),
+      );
+      final number = tester
+          .getRect(find.text('ABC'))
+          .expandToInclude(tester.getRect(find.text('123')));
+      final label = tester.getRect(find.text('Bogotá D.C.'));
+      for (final corner in [
+        'top-left',
+        'top-right',
+        'bottom-left',
+        'bottom-right',
+      ]) {
+        final fixing = find.byKey(ValueKey('colombian-plate-fixing-$corner'));
+        expect(fixing, findsOneWidget);
+        final rect = tester.getRect(fixing);
+        final decoration =
+            tester.widget<Container>(fixing).decoration! as BoxDecoration;
+        expect(decoration.shape, BoxShape.rectangle);
+        expect(decoration.color, Colors.black);
+        expect(rect.size, const Size(6, 3));
+        expect(inset.contains(rect.topLeft), isTrue);
+        expect(inset.contains(rect.bottomRight), isTrue);
+        expect(rect.overlaps(number), isFalse);
+        expect(rect.overlaps(label), isFalse);
+        expect(rect.center.dx < inset.center.dx, corner.endsWith('left'));
+        expect(rect.center.dy < inset.center.dy, corner.startsWith('top'));
+      }
+      final separator = find.byKey(const ValueKey('colombian-plate-separator'));
+      expect(
+        find.descendant(of: separator, matching: find.byType(CustomPaint)),
+        findsOneWidget,
+      );
+      expect(find.byType(Image), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'ColombianPlateBadge car motorcycle taxi stay legible in compact widths',
+    (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        for (final sample in [
+          (plate: 'ABC123', label: 'Bogotá D.C.', publicService: false),
+          (
+            plate: 'WXY456',
+            label: 'San Sebastián de Mariquita',
+            publicService: true,
+          ),
+          (plate: 'ABC12D', label: 'COLOMBIA', publicService: false),
+        ]) {
+          for (final compact in [true, false]) {
+            for (final width in [116.0, 160.0]) {
+              for (final scale in [1.0, 2.0]) {
+                await _pumpComponent(
+                  tester,
+                  SizedBox(
+                    width: width,
+                    child: ColombianPlateBadge(
+                      plate: sample.plate,
+                      registrationLabel: sample.label,
+                      publicService: sample.publicService,
+                      compact: compact,
+                    ),
+                  ),
+                  textScale: scale,
+                );
+                final number = find.text(sample.plate.substring(0, 3));
+                final lastGroup = find.text(sample.plate.substring(3));
+                expect(lastGroup, findsOneWidget);
+                final numberText = tester.widget<Text>(number);
+                expect(numberText.style!.fontSize, compact ? 20 : 32);
+                expect(numberText.style!.fontFamily, 'sans-serif-condensed');
+                final numberBox = tester.renderObject<RenderBox>(number);
+                final numberRect = Rect.fromPoints(
+                  numberBox.localToGlobal(Offset.zero),
+                  numberBox.localToGlobal(
+                    numberBox.size.bottomRight(Offset.zero),
+                  ),
+                ).expandToInclude(tester.getRect(lastGroup));
+                final separatorBox = tester.renderObject<RenderBox>(
+                  find.byKey(const ValueKey('colombian-plate-separator')),
+                );
+                final separatorRect = Rect.fromPoints(
+                  separatorBox.localToGlobal(Offset.zero),
+                  separatorBox.localToGlobal(
+                    separatorBox.size.bottomRight(Offset.zero),
+                  ),
+                );
+                expect(
+                  separatorRect.center.dx,
+                  closeTo(
+                    tester
+                        .getCenter(
+                          find.byKey(const ValueKey('colombian-plate-badge')),
+                        )
+                        .dx,
+                    0.01,
+                  ),
+                );
+                expect(separatorRect.width, lessThan(numberRect.width / 7));
+                expect(numberRect.height, greaterThanOrEqualTo(12));
+                final label = find.text(sample.label);
+                final labelText = tester.widget<Text>(label);
+                expect(labelText.style!.fontSize, compact ? 10 : 11);
+                expect(labelText.maxLines, isNull);
+                expect(
+                  find.ancestor(of: label, matching: find.byType(FittedBox)),
+                  findsNothing,
+                );
+                final labelRect = tester.getRect(label);
+                final badgeFinder = find.byKey(
+                  const ValueKey('colombian-plate-badge'),
+                );
+                final badgeRect = tester.getRect(badgeFinder);
+                expect(badgeRect.width, width);
+                expect(numberRect.left, greaterThan(badgeRect.left));
+                expect(numberRect.right, lessThan(badgeRect.right));
+                expect(numberRect.bottom, lessThanOrEqualTo(labelRect.top));
+                expect(labelRect.bottom, lessThan(badgeRect.bottom));
+                expect(labelRect.left, greaterThan(badgeRect.left));
+                expect(labelRect.right, lessThan(badgeRect.right));
+                expect(
+                  (tester.widget<Container>(badgeFinder).decoration
+                          as BoxDecoration)
+                      .color,
+                  sample.publicService ? Colors.white : AppColors.plateYellow,
+                );
+                expect(
+                  find.bySemanticsLabel(
+                    'Placa ${sample.plate}, ${sample.label}',
+                  ),
+                  findsOneWidget,
+                );
+                expect(find.text(sample.label), findsOneWidget);
+                expect(tester.takeException(), isNull);
+              }
+            }
+          }
+        }
+      } finally {
+        semantics.dispose();
+      }
+    },
+  );
 
   test('R01-FIX Android launcher resources exist', () {
     final expectedPaths = [

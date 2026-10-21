@@ -47,6 +47,27 @@ void main() {
   });
 
   test(
+    'uncertain GPS cannot replace a manually selected jurisdiction',
+    () async {
+      final ref = container();
+      addTearDown(ref.dispose);
+      final controller = ref.read(locationStateProvider.notifier);
+      await controller.selectManual(_jurisdictions.first);
+      gateway.point = const DeviceLocationPoint(
+        latitude: 6.2442,
+        longitude: -75.5812,
+        accuracyMeters: 5000,
+      );
+      final result = await controller.enableGpsAuto();
+      expect(result, LocationRefreshStatus.positionUnavailable);
+      expect(
+        await preferences.getString(picoJurisdictionPreferenceKey),
+        'co-dc-bogota',
+      );
+    },
+  );
+
+  test(
     'manual selection persists as the effective Pico jurisdiction',
     () async {
       final ref = container();
@@ -97,6 +118,37 @@ void main() {
         'co-dc-bogota',
       );
       expect(await preferences.getString(locationModePreferenceKey), 'gpsAuto');
+    },
+  );
+
+  test(
+    'GPS auto updates the effective city when the vehicle moves cities',
+    () async {
+      await preferences.setString(locationModePreferenceKey, 'gpsAuto');
+      await preferences.setString(
+        picoJurisdictionPreferenceKey,
+        'co-dc-bogota',
+      );
+      final ref = container();
+      addTearDown(ref.dispose);
+      gateway.point = const DeviceLocationPoint(
+        latitude: 6.2442,
+        longitude: -75.5812,
+        accuracyMeters: 35,
+      );
+
+      final result = await ref
+          .read(locationStateProvider.notifier)
+          .refreshGps(requestPermission: false, force: true);
+
+      final state = await ref.read(locationStateProvider.future);
+      expect(result, LocationRefreshStatus.detected);
+      expect(state.mode, LocationMode.gpsAuto);
+      expect(state.effectiveJurisdictionId, 'co-ant-medellin');
+      expect(
+        await preferences.getString(picoJurisdictionPreferenceKey),
+        'co-ant-medellin',
+      );
     },
   );
 

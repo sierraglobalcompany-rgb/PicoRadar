@@ -161,6 +161,32 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'saving an edit returns to its existing origin instead of fallback',
+    (tester) async {
+      final vehicle = await harness.repository.createVehicle(
+        plate: 'RET123',
+        kind: VehicleKind.car,
+        registrationCity: 'Bogota',
+      );
+      final router = await _openVehicleEdit(
+        tester,
+        harness,
+        vehicle.id,
+        preserveStack: true,
+      );
+      expect(router.canPop(), isTrue);
+      await _tapSave(tester);
+      expect(router.routeInformationProvider.value.uri.path, '/detail-origin');
+      expect(find.text('Detalle conservado'), findsOneWidget);
+      expect(
+        (await harness.repository.getVehicle(vehicle.id))?.plate,
+        'RET123',
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('selecting private car creates car private vehicle', (
     tester,
   ) async {
@@ -312,6 +338,31 @@ void main() {
         await harness.preferences.getString(locationModePreferenceKey),
         'manual',
       );
+    },
+  );
+
+  testWidgets(
+    'additional vehicle preserves favorite changed during onboarding',
+    (tester) async {
+      await harness.repository.createVehicle(
+        plate: 'AAA111',
+        kind: VehicleKind.car,
+        serviceType: VehicleServiceType.private,
+      );
+      final favorite = await harness.repository.createVehicle(
+        plate: 'BBB222',
+        kind: VehicleKind.car,
+        serviceType: VehicleServiceType.private,
+      );
+      await _openOnboarding(tester, harness);
+      await harness.repository.setActiveVehicle(favorite.id);
+      await _completeOnboarding(
+        tester,
+        choiceKey: 'vehicle-choice-privateCar',
+        plate: 'CCC333',
+      );
+      expect(await harness.repository.listVehicles(), hasLength(3));
+      expect((await harness.repository.getActiveVehicle())?.id, favorite.id);
     },
   );
 
@@ -478,14 +529,21 @@ Future<void> _openOnboarding(
   await tester.pumpAndSettle();
 }
 
-Future<void> _openVehicleEdit(
+Future<GoRouter> _openVehicleEdit(
   WidgetTester tester,
   TestAppHarness harness,
-  String vehicleId,
-) async {
+  String vehicleId, {
+  bool preserveStack = false,
+}) async {
   final router = GoRouter(
-    initialLocation: '/vehicle-edit/$vehicleId',
+    initialLocation: preserveStack
+        ? '/detail-origin'
+        : '/vehicle-edit/$vehicleId',
     routes: [
+      GoRoute(
+        path: '/detail-origin',
+        builder: (_, _) => const Scaffold(body: Text('Detalle conservado')),
+      ),
       GoRoute(
         path: '/',
         builder: (context, state) =>
@@ -513,7 +571,11 @@ Future<void> _openVehicleEdit(
       child: MaterialApp.router(routerConfig: router),
     ),
   );
+  if (preserveStack) {
+    router.push('/vehicle-edit/$vehicleId');
+  }
   await tester.pumpAndSettle();
+  return router;
 }
 
 Future<void> _openOnboardingWithReturnPath(

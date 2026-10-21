@@ -5,6 +5,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/features/onboarding/data/registration_city_catalog.dart';
 
 void main() {
+  test('plate caption resolves municipality without rewriting free text', () {
+    final catalog = _loadCatalog();
+    expect(catalog.plateMunicipality('Medellín - Antioquia'), 'Medellín');
+    expect(catalog.plateMunicipality('  medellin - antioquia  '), 'Medellín');
+    expect(
+      catalog.plateMunicipality('San Juan - Registro antiguo'),
+      'San Juan - Registro antiguo',
+    );
+    expect(catalog.plateMunicipality('Bogotá'), 'Bogotá');
+    expect(catalog.plateMunicipality('  '), 'COLOMBIA');
+  });
   test('catalog parses official OT city records uniquely', () {
     final catalog = _loadCatalog();
     final keys = <String>{};

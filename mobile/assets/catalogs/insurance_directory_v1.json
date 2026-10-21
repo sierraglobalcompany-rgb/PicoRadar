@@ -1,0 +1,1363 @@
+{
+  "schemaVersion": 1,
+  "version": "2026-09-14.1",
+  "reviewedAt": "2026-09-14",
+  "referenceSourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+  "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+  "sfcPublicationModifiedAt": "2026-09-01",
+  "coverage": "16 referencias Fasecolda auditadas; servicios y canales parcialmente verificados. No implica exhaustividad nacional, cobertura de la póliza ni disponibilidad operativa.",
+  "entries": [
+    {
+      "id": "allianz",
+      "name": "Allianz",
+      "legalName": "Allianz Seguros S.A.",
+      "aliases": [
+        "Allianz Colombia",
+        "Allianz Seguros S.A."
+      ],
+      "website": "https://www.allianz.co/",
+      "sourceUrl": "https://www.allianz.co/contacto/lineas-de-atencion.html",
+      "reviewedAt": "2026-09-14",
+      "categories": [
+        "car"
+      ],
+      "channels": [
+        {
+          "id": "allianz-mobile",
+          "label": "Asistencia de autos desde celular",
+          "kind": "phone",
+          "value": "#265",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.allianz.co/seguros/vehiculos/Autos/llave-en-mano.html",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Según la póliza y el plan contratado. Servicios publicados para Llave en Mano; confirmar elegibilidad del vehículo."
+        },
+        {
+          "id": "allianz-bogota",
+          "label": "Atención clientes autos · Bogotá",
+          "kind": "phone",
+          "value": "6015941133",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.allianz.co/contacto/lineas-de-atencion.html",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": []
+        },
+        {
+          "id": "allianz-national",
+          "label": "Atención clientes autos · nacional",
+          "kind": "phone",
+          "value": "018000513500",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.allianz.co/contacto/lineas-de-atencion.html",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": []
+        }
+      ],
+      "reference": {
+        "sourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+        "name": "Allianz Colombia",
+        "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+        "sfcCode": "13-1"
+      },
+      "categoryEvidence": {
+        "car": "https://www.allianz.co/seguros/vehiculos/Autos.html"
+      },
+      "pending": [
+        "No se verificó WhatsApp de atención/asistencia vehicular en el sitio colombiano. No usar números de otros países.",
+        "Moto y taxi no confirmados en esta revisión."
+      ]
+    },
+    {
+      "id": "solidaria",
+      "name": "Aseguradora Solidaria",
+      "legalName": "Aseguradora Solidaria de Colombia Entidad Cooperativa",
+      "aliases": [
+        "Aseguradora Solidaria de Colombia Entidad Cooperativa",
+        "Solidaria",
+        "Aseguradora Solidaria"
+      ],
+      "website": "https://aseguradorasolidaria.com.co/",
+      "sourceUrl": "https://aseguradorasolidaria.com.co/",
+      "reviewedAt": "2026-09-14",
+      "categories": [
+        "car"
+      ],
+      "channels": [
+        {
+          "id": "solidaria-voice",
+          "label": "Línea de voz Solidaria",
+          "kind": "phone",
+          "value": "3232641770",
+          "purpose": "customerService",
+          "sourceUrl": "https://aseguradorasolidaria.com.co/",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": []
+        },
+        {
+          "id": "solidaria-cami",
+          "label": "CAMI · solicitudes y asistencias",
+          "kind": "whatsapp",
+          "value": "573142034106",
+          "purpose": "assistance",
+          "sourceUrl": "https://aseguradorasolidaria.com.co/",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance"
+          ],
+          "conditions": "CAMI recibe solicitudes de asistencia; confirmar el servicio disponible y las condiciones de la póliza."
+        },
+        {
+          "id": "solidaria-legacy-national",
+          "label": "Número anterior · vigencia por confirmar",
+          "kind": "phone",
+          "value": "018000512021",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.solidaria.com.co/WAPQRRadicacion/ConsultarEstadoPQRS",
+          "reviewedAt": "2026-09-13",
+          "verified": false,
+          "services": [],
+          "conditions": "Número anterior · vigencia por confirmar"
+        },
+        {
+          "id": "solidaria-legacy-mobile",
+          "label": "Numeral anterior · vigencia por confirmar",
+          "kind": "phone",
+          "value": "#789",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.solidaria.com.co/WAPQRRadicacion/ConsultarEstadoPQRS",
+          "reviewedAt": "2026-09-13",
+          "verified": false,
+          "services": [],
+          "conditions": "Numeral anterior · vigencia por confirmar"
+        }
+      ],
+      "reference": {
+        "sourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+        "name": "Aseguradora Solidaria de Colombia Entidad Cooperativa",
+        "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+        "sfcCode": "15-2"
+      },
+      "categoryEvidence": {
+        "car": "https://aseguradorasolidaria.com.co/"
+      },
+      "pending": [
+        "La portada redirigida publica nuevos contactos; los antiguos siguen en portales secundarios. Se preservan inactivos hasta aclarar su convivencia.",
+        "Moto/taxi no confirmados; CAMI no implica cobertura contratada."
+      ]
+    },
+    {
+      "id": "axa",
+      "name": "AXA Colpatria",
+      "legalName": "AXA Colpatria Seguros S.A.",
+      "aliases": [
+        "Axa Colpatria Seguros S.A.",
+        "AXA",
+        "AXA Colpatria"
+      ],
+      "website": "https://www.axacolpatria.co/",
+      "sourceUrl": "https://www.axacolpatria.co/seguro-de-auto",
+      "reviewedAt": "2026-09-14",
+      "categories": [
+        "car",
+        "motorcycle",
+        "taxi"
+      ],
+      "channels": [
+        {
+          "id": "axa-mobile",
+          "label": "Asistencia · opción 1-1",
+          "kind": "phone",
+          "value": "#247",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.axacolpatria.co/seguro-de-auto",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver"
+          ],
+          "conditions": "Según el plan de asistencia contratado. Para asistencia por celular, opción 1-1."
+        },
+        {
+          "id": "axa-national",
+          "label": "Asistencia · línea nacional",
+          "kind": "phone",
+          "value": "018000512620",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.axacolpatria.co/seguro-de-auto",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver"
+          ],
+          "conditions": "Según el plan de asistencia contratado. Para asistencia por celular, opción 1-1."
+        },
+        {
+          "id": "axa-bogota",
+          "label": "Asistencia · Bogotá",
+          "kind": "phone",
+          "value": "6014235757",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.axacolpatria.co/seguro-de-auto",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver"
+          ],
+          "conditions": "Según el plan de asistencia contratado. Para asistencia por celular, opción 1-1."
+        },
+        {
+          "id": "axa-informational-only",
+          "label": "Solo mensajes informativos de renovación · no habilitado para consulta",
+          "kind": "whatsapp",
+          "value": "573124457921",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.axacolpatria.co/es/-/actualidad-axa-colpatria-evita-caer-en-estafas-al-renovar-tu-seguro-de-autos",
+          "reviewedAt": "2026-09-14",
+          "verified": false,
+          "services": [],
+          "conditions": "Solo mensajes informativos de renovación · no habilitado para consulta"
+        }
+      ],
+      "reference": {
+        "sourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+        "name": "Axa Colpatria Seguros S.A.",
+        "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+        "sfcCode": "13-6"
+      },
+      "categoryEvidence": {
+        "car": "https://www.axacolpatria.co/seguro-de-auto",
+        "motorcycle": "https://www.axacolpatria.co/es/seguro-de-moto",
+        "taxi": "https://www.axacolpatria.co/seguro-de-taxi"
+      },
+      "pending": [
+        "El WhatsApp publicado para autos es únicamente informativo saliente, no atención ni asistencia. Se conserva inactivo; no sustituir por la línea SOAT."
+      ]
+    },
+    {
+      "id": "bbva",
+      "name": "BBVA Seguros",
+      "legalName": "BBVA Seguros Colombia S.A.",
+      "aliases": [
+        "BBVA Seguros Colombia S.A.",
+        "BBVA Seguros"
+      ],
+      "website": "https://www.bbvaseguros.com.co/",
+      "sourceUrl": "https://www.bbvaseguros.com.co/seguros-autos/",
+      "reviewedAt": "2026-09-14",
+      "categories": [
+        "car"
+      ],
+      "channels": [
+        {
+          "id": "bbva-bogota",
+          "label": "Atención al cliente · Bogotá",
+          "kind": "phone",
+          "value": "6013078080",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.bbvaseguros.com.co/seguros-autos/",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": []
+        },
+        {
+          "id": "bbva-national",
+          "label": "Atención al cliente · nacional",
+          "kind": "phone",
+          "value": "018000934020",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.bbvaseguros.com.co/seguros-autos/",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": []
+        },
+        {
+          "id": "bbva-claims",
+          "label": "Reporte de siniestros · no asistencia vial",
+          "kind": "phone",
+          "value": "6013077121",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.bbvaseguros.com.co/seguros-autos/",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": []
+        }
+      ],
+      "reference": {
+        "sourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+        "name": "BBVA Seguros Colombia S.A.",
+        "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+        "sfcCode": "13-41"
+      },
+      "categoryEvidence": {
+        "car": "https://www.bbvaseguros.com.co/seguros-autos/"
+      },
+      "pending": [
+        "No se verificó un WhatsApp ni canal de asistencia vial general propio aplicable a todos los autos BBVA. Confirmar emisor y canal en la póliza; Zurich publica también productos en alianza con BBVA.",
+        "No reutilizar #370 de productos de salud/vida ni deducir el asegurador por el banco.",
+        "Revisión 2026-09-14: la página /asistencias describe hogar y vida; no se reutiliza para servicios vehiculares."
+      ]
+    },
+    {
+      "id": "equidad",
+      "name": "La Equidad",
+      "legalName": "La Equidad Seguros Generales Organismo Cooperativo",
+      "aliases": [
+        "La Equidad Seguros Generales Organismo Cooperativo",
+        "La Equidad",
+        "Equidad Seguros"
+      ],
+      "website": "https://www.laequidadseguros.coop/",
+      "sourceUrl": "https://www.laequidadseguros.coop/contacto/que-hacer-en-caso-de-siniestros/",
+      "reviewedAt": "2026-09-14",
+      "categories": [
+        "car",
+        "motorcycle"
+      ],
+      "channels": [
+        {
+          "id": "equidad-mobile",
+          "label": "Reporte de siniestros · Claro, Movistar y Tigo",
+          "kind": "phone",
+          "value": "#324",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.laequidadseguros.coop/contacto/que-hacer-en-caso-de-siniestros/",
+          "reviewedAt": "2026-09-13",
+          "verified": true,
+          "services": []
+        },
+        {
+          "id": "equidad-national",
+          "label": "Reporte de siniestros · nacional",
+          "kind": "phone",
+          "value": "018000919538",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.laequidadseguros.coop/contacto/que-hacer-en-caso-de-siniestros/",
+          "reviewedAt": "2026-09-13",
+          "verified": true,
+          "services": []
+        },
+        {
+          "id": "equidad-bogota",
+          "label": "Reporte de siniestros · Bogotá",
+          "kind": "phone",
+          "value": "6017460392",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.laequidadseguros.coop/contacto/que-hacer-en-caso-de-siniestros/",
+          "reviewedAt": "2026-09-13",
+          "verified": true,
+          "services": []
+        },
+        {
+          "id": "equidad-claims",
+          "label": "Siniestros autos livianos · daños y hurto",
+          "kind": "whatsapp",
+          "value": "573185884515",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.laequidadseguros.coop/contacto/que-hacer-en-caso-de-siniestros/",
+          "reviewedAt": "2026-09-13",
+          "verified": true,
+          "services": []
+        }
+      ],
+      "reference": {
+        "sourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+        "name": "La Equidad Seguros Generales Organismo Cooperativo",
+        "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+        "sfcCode": "15-1"
+      },
+      "categoryEvidence": {
+        "car": "https://www.laequidadseguros.coop/productos/seguros-generales/seguros-de-autos-y-rc/",
+        "motorcycle": "https://www.laequidadseguros.coop/productos/seguros-generales/seguros-de-autos-y-rc/motos/"
+      },
+      "pending": [
+        "La página mezcla el título de asistencia con descripción limitada a radicar/seguir daños y hurto. Se clasifica como atención de siniestros, no grúa inmediata.",
+        "Taxi no inferido a partir de transporte público genérico.",
+        "Revisión 2026-09-14: contacto devuelve 403; el producto Auto Protegido enumera grúa/conductor, pero no resuelve el alcance del canal. No se promueven contactos de siniestros."
+      ]
+    },
+    {
+      "id": "hdi",
+      "name": "HDI Seguros",
+      "legalName": "HDI Seguros Colombia S.A.",
+      "aliases": [
+        "HDI Seguros Colombia S.A.",
+        "HDI"
+      ],
+      "website": "https://www.hdiseguros.com.co/",
+      "sourceUrl": "https://www.hdiseguros.com.co/asistencias",
+      "reviewedAt": "2026-09-14",
+      "categories": [
+        "car",
+        "motorcycle"
+      ],
+      "channels": [
+        {
+          "id": "hdi-mobile",
+          "label": "Asistencia · desde cualquier operador",
+          "kind": "phone",
+          "value": "#224",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.hdiseguros.com.co/asistencias",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance"
+          ],
+          "conditions": "Disponibilidad según la póliza. Líneas generales de asistencia; confirmar el servicio solicitado."
+        },
+        {
+          "id": "hdi-bogota",
+          "label": "Asistencia · Bogotá",
+          "kind": "phone",
+          "value": "6013077050",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.hdiseguros.com.co/asistencias",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance"
+          ],
+          "conditions": "Disponibilidad según la póliza. Líneas generales de asistencia; confirmar el servicio solicitado."
+        },
+        {
+          "id": "hdi-national",
+          "label": "Asistencia · resto del país",
+          "kind": "phone",
+          "value": "018000113390",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.hdiseguros.com.co/asistencias",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance"
+          ],
+          "conditions": "Disponibilidad según la póliza. Líneas generales de asistencia; confirmar el servicio solicitado."
+        },
+        {
+          "id": "hdi-whatsapp",
+          "label": "Conductor elegido y carro taller · según póliza",
+          "kind": "whatsapp",
+          "value": "573164821802",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.hdiseguros.com.co/asistencias",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Solo conductor elegido y carro taller. Conductor: reservar al menos 2 horas antes; espera máxima 15 minutos y radio de 40 km desde el centro de las ciudades indicadas. Carro taller: ciudades publicadas y hasta 40 km fuera del perímetro urbano por carretera pavimentada. Consultar las listas de ciudades y la póliza."
+        },
+        {
+          "id": "hdi-disability-legacy",
+          "label": "Número en sección accesibilidad · discrepancia pendiente",
+          "kind": "phone",
+          "value": "018000115569",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.hdiseguros.com.co/centro-de-informacion-y-contacto",
+          "reviewedAt": "2026-09-14",
+          "verified": false,
+          "services": [],
+          "conditions": "Número en sección accesibilidad · discrepancia pendiente"
+        }
+      ],
+      "reference": {
+        "sourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+        "name": "HDI Seguros Colombia S.A.",
+        "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+        "sfcCode": "13-33"
+      },
+      "categoryEvidence": {
+        "car": "https://www.hdiseguros.com.co/personas/mi-carro",
+        "motorcycle": "https://www.hdiseguros.com.co/noticias/autos"
+      },
+      "pending": [
+        "La sección de discapacidad conserva 115569 y la sección principal/footer 113390. El primero permanece inactivo.",
+        "No asignar automáticamente Liberty Colombia: SFC aún lista una entidad separada 13-45. No se añade alias Liberty."
+      ]
+    },
+    {
+      "id": "mapfre",
+      "name": "MAPFRE",
+      "legalName": "Mapfre Seguros Generales de Colombia S.A.",
+      "aliases": [
+        "Mapfre Seguros Generales de Colombia S.A.",
+        "MAPFRE"
+      ],
+      "website": "https://www.mapfre.com.co/",
+      "sourceUrl": "https://www.mapfre.com.co/contacto/",
+      "reviewedAt": "2026-09-14",
+      "categories": [
+        "car"
+      ],
+      "channels": [
+        {
+          "id": "mapfre-mobile",
+          "label": "Emergencias y asistencia · disponibilidad según operador",
+          "kind": "phone",
+          "value": "#624",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.mapfre.com.co/contacto/red-oficinas/",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance"
+          ],
+          "conditions": "Disponibilidad y límites según la póliza. No implica cobertura contratada. Disponibilidad según operador; usar la línea nacional si el numeral no funciona."
+        },
+        {
+          "id": "mapfre-national",
+          "label": "SI 24 · asistencia nacional",
+          "kind": "phone",
+          "value": "018000519991",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.mapfre.com.co/contacto/mapfre-si-24/",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance"
+          ],
+          "conditions": "Disponibilidad y límites según la póliza. No implica cobertura contratada."
+        },
+        {
+          "id": "mapfre-bogota",
+          "label": "SI 24 · Bogotá",
+          "kind": "phone",
+          "value": "6013077024",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.mapfre.com.co/contacto/",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": []
+        },
+        {
+          "id": "mapfre-whatsapp",
+          "label": "Asistencias y consultas",
+          "kind": "whatsapp",
+          "value": "573188030276",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.mapfre.com.co/contacto/",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Disponibilidad y límites según la póliza. No implica cobertura contratada."
+        },
+        {
+          "id": "mapfre-disputed-national",
+          "label": "Número discrepante en bloque SI24 · por confirmar",
+          "kind": "phone",
+          "value": "018000516991",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.mapfre.com.co/contacto/",
+          "reviewedAt": "2026-09-14",
+          "verified": false,
+          "services": [],
+          "conditions": "Número discrepante en bloque SI24 · por confirmar"
+        }
+      ],
+      "reference": {
+        "sourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+        "name": "Mapfre Seguros Generales de Colombia S.A.",
+        "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+        "sfcCode": "13-26"
+      },
+      "categoryEvidence": {
+        "car": "https://www.mapfre.com.co/"
+      },
+      "pending": [
+        "La página de contacto contiene 516991, mientras SI24, portada y oficinas publican 519991. 516991 queda inactivo.",
+        "#624 no está disponible para Uff, Virgin y Avantel según la página SI24. Preferir fijo/nacional si no funciona.",
+        "Moto/taxi no confirmados."
+      ]
+    },
+    {
+      "id": "qualitas",
+      "name": "Quálitas",
+      "legalName": "Quálitas Compañía de Seguros Colombia S.A.",
+      "aliases": [
+        "Quálitas Compañía de Seguros Colombia S.A.",
+        "Quálitas",
+        "Qualitas"
+      ],
+      "website": "https://www.qualitascolombia.com.co/",
+      "sourceUrl": "https://www.qualitascolombia.com.co/web/qco/inicio",
+      "reviewedAt": "2026-09-14",
+      "categories": [
+        "car"
+      ],
+      "channels": [
+        {
+          "id": "qualitas-mobile",
+          "label": "Asistencia · numeral celular",
+          "kind": "phone",
+          "value": "#963",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.qualitascolombia.com.co/web/qco/inicio",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Según la póliza de autos y pickups de uso personal y las ciudades habilitadas; confirmar límites y disponibilidad."
+        },
+        {
+          "id": "qualitas-bogota",
+          "label": "Asistencia · Bogotá",
+          "kind": "phone",
+          "value": "6016579650",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.qualitascolombia.com.co/web/qco/inicio",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Según la póliza de autos y pickups de uso personal y las ciudades habilitadas; confirmar límites y disponibilidad."
+        },
+        {
+          "id": "qualitas-national",
+          "label": "Asistencia · nacional",
+          "kind": "phone",
+          "value": "018000189873",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.qualitascolombia.com.co/web/qco/inicio",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Según la póliza de autos y pickups de uso personal y las ciudades habilitadas; confirmar límites y disponibilidad."
+        }
+      ],
+      "reference": {
+        "sourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+        "name": "Quálitas Compañía de Seguros Colombia S.A.",
+        "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+        "sfcCode": "13-52"
+      },
+      "categoryEvidence": {
+        "car": "https://www.qualitascolombia.com.co/web/qco/livianos"
+      },
+      "pending": [
+        "Servicios contrastados con la póliza oficial de autos y pickups de uso personal; confirmar plan, ciudades y límites. El catálogo no acredita cobertura individual.",
+        "No se verificó WhatsApp colombiano. No usar números de México.",
+        "Moto/taxi no confirmados."
+      ]
+    },
+    {
+      "id": "previsora",
+      "name": "La Previsora",
+      "legalName": "La Previsora S.A. Compañía de Seguros",
+      "aliases": [
+        "La Previsora S.A. Compañía de Seguros",
+        "Previsora",
+        "La Previsora"
+      ],
+      "website": "https://previsora.gov.co/",
+      "sourceUrl": "https://previsora.gov.co/web/personas/automoviles-siniestros",
+      "reviewedAt": "2026-09-14",
+      "categories": [
+        "car",
+        "motorcycle"
+      ],
+      "channels": [
+        {
+          "id": "previsora-mobile",
+          "label": "Asistencia · opción 1",
+          "kind": "phone",
+          "value": "#345",
+          "purpose": "assistance",
+          "sourceUrl": "https://previsora.gov.co/web/personas/automoviles-siniestros",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Servicios publicados para autos livianos; disponibilidad y límites según la póliza. Numeral publicado para Tigo y Claro."
+        },
+        {
+          "id": "previsora-bogota",
+          "label": "Asistencia · Bogotá",
+          "kind": "phone",
+          "value": "6013487555",
+          "purpose": "assistance",
+          "sourceUrl": "https://previsora.gov.co/web/personas/automoviles-siniestros",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Servicios publicados para autos livianos; disponibilidad y límites según la póliza."
+        },
+        {
+          "id": "previsora-national",
+          "label": "Asistencia · nacional",
+          "kind": "phone",
+          "value": "018000910554",
+          "purpose": "assistance",
+          "sourceUrl": "https://previsora.gov.co/web/personas/automoviles-siniestros",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Servicios publicados para autos livianos; disponibilidad y límites según la póliza."
+        }
+      ],
+      "reference": {
+        "sourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+        "name": "La Previsora S.A. Compañía de Seguros",
+        "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+        "sfcCode": "13-24"
+      },
+      "categoryEvidence": {
+        "car": "https://www.previsora.gov.co/web/personas/automoviles",
+        "motorcycle": "https://previsora.gov.co/web/entidades-estatales/seguro-de-automovil"
+      },
+      "pending": [
+        "WhatsApp en documentación institucional no acredita despacho vehicular. No se habilita; confirmar alcance y discrepancias de números en documentos secundarios.",
+        "Moto existe en portafolio oficial; confirmar contratación particular con entidad. Taxi no confirmado."
+      ]
+    },
+    {
+      "id": "sbs",
+      "name": "SBS Seguros",
+      "legalName": "SBS Seguros Colombia S.A.",
+      "aliases": [
+        "SBS Seguros Colombia S.A",
+        "SBS",
+        "SBS Seguros Colombia S.A."
+      ],
+      "website": "https://www.sbseguros.co/",
+      "sourceUrl": "https://www.sbseguros.co/",
+      "reviewedAt": "2026-09-14",
+      "categories": [
+        "car",
+        "motorcycle"
+      ],
+      "channels": [
+        {
+          "id": "sbs-mobile",
+          "label": "Atención · celular",
+          "kind": "phone",
+          "value": "#360",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.sbseguros.co/",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": []
+        },
+        {
+          "id": "sbs-national",
+          "label": "Atención · nacional",
+          "kind": "phone",
+          "value": "018000911360",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.sbseguros.co/",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": []
+        },
+        {
+          "id": "sbs-ese",
+          "label": "ESE · atención al cliente",
+          "kind": "whatsapp",
+          "value": "573228861010",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.sbseguros.co/",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": []
+        }
+      ],
+      "reference": {
+        "sourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+        "name": "SBS Seguros Colombia S.A",
+        "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+        "sfcCode": "13-22"
+      },
+      "categoryEvidence": {
+        "car": "https://www.sbseguros.co/",
+        "motorcycle": "https://www.sbseguros.co/"
+      },
+      "pending": [
+        "La ruta /indemnizaciones/asistencias muestra solo la navegación al extractor. Los canales de portada sí están publicados, pero su alcance vial específico no se verificó; se clasifican como atención.",
+        "Taxi no confirmado."
+      ]
+    },
+    {
+      "id": "alfa",
+      "name": "Seguros Alfa",
+      "legalName": "Seguros Alfa S.A.",
+      "aliases": [
+        "Seguros Alfa",
+        "Alfa"
+      ],
+      "website": "https://www.segurosalfa.com.co/",
+      "sourceUrl": "https://www.segurosalfa.com.co/lineas-de-atencion",
+      "reviewedAt": "2026-09-14",
+      "categories": [],
+      "channels": [
+        {
+          "id": "alfa-bogota",
+          "label": "Atención general · Bogotá",
+          "kind": "phone",
+          "value": "6013077032",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.segurosalfa.com.co/lineas-de-atencion",
+          "reviewedAt": "2026-09-13",
+          "verified": true,
+          "services": []
+        },
+        {
+          "id": "alfa-national",
+          "label": "Atención general · resto del país",
+          "kind": "phone",
+          "value": "018000122532",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.segurosalfa.com.co/lineas-de-atencion",
+          "reviewedAt": "2026-09-13",
+          "verified": true,
+          "services": []
+        }
+      ],
+      "reference": {
+        "sourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+        "name": "Seguros Alfa",
+        "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+        "sfcCode": "13-25"
+      },
+      "categoryEvidence": {},
+      "pending": [
+        "Incluida por referencia Fasecolda y cruce SFC, pero sin oferta voluntaria car/motorcycle/taxi comprobada en las páginas revisadas: categories vacío, no exclusión del directorio general.",
+        "Los WhatsApp publicados son por banco adquirente; no existe evidencia de uno universal de autos. No se promueven a asistencia ni se elige banco por defecto.",
+        "Revisión 2026-09-14: extracción de líneas/asistencias incompleta; documentos recuperados corresponden a vida/AP. Se conserva la fecha previa del contacto sin acreditar asistencia vehicular."
+      ]
+    },
+    {
+      "id": "mundial",
+      "name": "Seguros Mundial",
+      "legalName": "Compañía Mundial de Seguros S.A.",
+      "aliases": [
+        "Seguros Mundial",
+        "Mundial"
+      ],
+      "website": "https://www.segurosmundial.com.co/",
+      "sourceUrl": "https://www.segurosmundial.com.co/seguros-mundial-v2/atencion-al-cliente/",
+      "reviewedAt": "2026-09-14",
+      "categories": [
+        "car"
+      ],
+      "channels": [
+        {
+          "id": "mundial-mobile",
+          "label": "Asistencia · Tigo, Claro y Movistar",
+          "kind": "phone",
+          "value": "#935",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.segurosmundial.com.co/",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Servicios publicados para Rodando Contigo; dependen del plan Esencial o Plus contratado."
+        },
+        {
+          "id": "mundial-bogota",
+          "label": "Asistencia · Bogotá",
+          "kind": "phone",
+          "value": "6013274712",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.segurosmundial.com.co/",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Servicios publicados para Rodando Contigo; dependen del plan Esencial o Plus contratado."
+        },
+        {
+          "id": "mundial-bogota-alt",
+          "label": "Asistencia · Bogotá, alternativa",
+          "kind": "phone",
+          "value": "6013274713",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.segurosmundial.com.co/",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Servicios publicados para Rodando Contigo; dependen del plan Esencial o Plus contratado."
+        },
+        {
+          "id": "mundial-national",
+          "label": "Asistencia · fijo fuera de Bogotá, no celular",
+          "kind": "phone",
+          "value": "018000111935",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.segurosmundial.com.co/seguros-mundial-v2/atencion-al-cliente/",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Servicios publicados para Rodando Contigo; dependen del plan Esencial o Plus contratado. Línea desde teléfono fijo fuera de Bogotá, no celular."
+        },
+        {
+          "id": "mundial-whatsapp",
+          "label": "Orientación y consultas · incluye movilidad",
+          "kind": "whatsapp",
+          "value": "573228484007",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.segurosmundial.com.co/seguros-mundial-v2/atencion-al-cliente/",
+          "reviewedAt": "2026-09-13",
+          "verified": true,
+          "services": []
+        }
+      ],
+      "reference": {
+        "sourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+        "name": "Seguros Mundial",
+        "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+        "sfcCode": "13-17"
+      },
+      "categoryEvidence": {
+        "car": "https://www.segurosmundial.com.co/"
+      },
+      "pending": [
+        "El sitio ofrece Seguro Amarillo, pero su texto extraído no permitió confirmar taxi explícitamente. No asignar taxi por el nombre/color del producto.",
+        "WhatsApp es orientación/consultas de movilidad, no se presenta como despacho inmediato de grúa."
+      ]
+    },
+    {
+      "id": "bolivar",
+      "name": "Seguros Bolívar",
+      "legalName": "Seguros Comerciales Bolívar S.A.",
+      "aliases": [
+        "Seguros Bolívar S.A.",
+        "Bolívar",
+        "Seguros Comerciales Bolívar S.A."
+      ],
+      "website": "https://www.segurosbolivar.com/",
+      "sourceUrl": "https://digital.experienciasbolivar.segurosbolivar.com/recorrido-seguro-autos-basico",
+      "reviewedAt": "2026-09-14",
+      "categories": [
+        "car"
+      ],
+      "channels": [
+        {
+          "id": "bolivar-mobile",
+          "label": "Asistencia · celular",
+          "kind": "phone",
+          "value": "#322",
+          "purpose": "assistance",
+          "sourceUrl": "https://digital.experienciasbolivar.segurosbolivar.com/recorrido-seguro-autos-basico",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Grúa y carro taller: Asistencia Básica. Conductor elegido: Asistencia Full, hasta 4 servicios al mes en el producto publicado; confirmar la póliza."
+        },
+        {
+          "id": "bolivar-national",
+          "label": "Asistencia · desde teléfono fijo",
+          "kind": "phone",
+          "value": "018000123322",
+          "purpose": "assistance",
+          "sourceUrl": "https://digital.experienciasbolivar.segurosbolivar.com/recorrido-seguro-autos-basico",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Grúa y carro taller: Asistencia Básica. Conductor elegido: Asistencia Full, hasta 4 servicios al mes en el producto publicado; confirmar la póliza. Desde teléfono fijo."
+        },
+        {
+          "id": "bolivar-bogota",
+          "label": "Emergencias y atención · Bogotá",
+          "kind": "phone",
+          "value": "6013122122",
+          "purpose": "assistance",
+          "sourceUrl": "https://wpclientes.segurosbolivar.com/canales-de-atencion",
+          "reviewedAt": "2026-09-13",
+          "verified": true,
+          "services": [],
+          "conditions": "Contacto de revisión previa; fuente no disponible el 2026-09-14. Confirmar el servicio y la póliza."
+        },
+        {
+          "id": "bolivar-whatsapp",
+          "label": "Asistencia de autos",
+          "kind": "whatsapp",
+          "value": "573223322322",
+          "purpose": "assistance",
+          "sourceUrl": "https://digital.experienciasbolivar.segurosbolivar.com/recorrido-seguro-autos-basico",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Grúa y carro taller: Asistencia Básica. Conductor elegido: Asistencia Full, hasta 4 servicios al mes en el producto publicado; confirmar la póliza."
+        }
+      ],
+      "reference": {
+        "sourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+        "name": "Seguros Bolívar S.A.",
+        "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+        "sfcCode": "13-27"
+      },
+      "categoryEvidence": {
+        "car": "https://digital.experienciasbolivar.segurosbolivar.com/recorrido-seguro-autos-basico"
+      },
+      "pending": [
+        "La etiqueta heredada/Fasecolda Seguros Bolívar S.A. se conserva como alias comercial. La entidad para seguros generales es Seguros Comerciales Bolívar S.A. (13-27), distinta a Compañía de Seguros Bolívar S.A. (vida). No modificar pólizas del usuario.",
+        "Moto/taxi no confirmados en esta revisión."
+      ]
+    },
+    {
+      "id": "estado",
+      "name": "Seguros del Estado",
+      "legalName": "Seguros del Estado S.A.",
+      "aliases": [
+        "Seguros del Estado",
+        "Seguros del Estado S.A."
+      ],
+      "website": "https://www.segurosdelestado.com/",
+      "sourceUrl": "https://www.segurosdelestado.com/",
+      "reviewedAt": "2026-09-14",
+      "categories": [
+        "car"
+      ],
+      "channels": [
+        {
+          "id": "estado-mobile",
+          "label": "Asistencia · celular",
+          "kind": "phone",
+          "value": "#388",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.segurosdelestado.com/productos/productos/1114",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Servicios publicados para FamiEstado; confirmar el plan, los amparos y límites contratados."
+        },
+        {
+          "id": "estado-bogota",
+          "label": "Asistencia · Bogotá",
+          "kind": "phone",
+          "value": "6017443900",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.segurosdelestado.com/productos/productos/1114",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Servicios publicados para FamiEstado; confirmar el plan, los amparos y límites contratados."
+        },
+        {
+          "id": "estado-national",
+          "label": "Asistencia · nacional",
+          "kind": "phone",
+          "value": "018000123010",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.segurosdelestado.com/productos/productos/1114",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Servicios publicados para FamiEstado; confirmar el plan, los amparos y límites contratados."
+        }
+      ],
+      "reference": {
+        "sourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+        "name": "Seguros del Estado",
+        "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+        "sfcCode": "13-29"
+      },
+      "categoryEvidence": {
+        "car": "https://www.segurosdelestado.com/"
+      },
+      "pending": [
+        "No se verificó WhatsApp oficial de asistencia de autos; no generar uno a partir del fijo.",
+        "Transporte público no se convierte automáticamente en categoría taxi; moto/taxi pendientes."
+      ]
+    },
+    {
+      "id": "sura",
+      "name": "SURA",
+      "legalName": "Seguros Generales Suramericana S.A.",
+      "aliases": [
+        "Seguros Generales Suramericana S.A.",
+        "Seguros SURA",
+        "Suramericana",
+        "Seguros Generales SURA"
+      ],
+      "website": "https://www.sura.co/seguros",
+      "sourceUrl": "https://www.sura.co/seguros/centro-de-ayuda/asistencias/choque-simple",
+      "reviewedAt": "2026-09-14",
+      "categories": [
+        "car",
+        "motorcycle"
+      ],
+      "channels": [
+        {
+          "id": "sura-mobile",
+          "label": "Asistencia y siniestros · opción 1",
+          "kind": "phone",
+          "value": "#888",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.sura.co/documents/d/seguros/condicionado-seguro-de-autos",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Según el plan y la póliza de autos. Conductor elegido por teléfono: solicitar con 4 horas de anticipación; confirmar disponibilidad."
+        },
+        {
+          "id": "sura-national",
+          "label": "Asistencia y siniestros · nacional",
+          "kind": "phone",
+          "value": "018000518888",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.sura.co/documents/d/seguros/condicionado-seguro-de-autos",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Según el plan y la póliza de autos. Conductor elegido por teléfono: solicitar con 4 horas de anticipación; confirmar disponibilidad."
+        },
+        {
+          "id": "sura-bogota",
+          "label": "Atención seguros · Bogotá",
+          "kind": "phone",
+          "value": "6014378888",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.sura.co/documents/d/seguros/condicionado-seguro-de-autos",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Según el plan y la póliza de autos. Conductor elegido por teléfono: solicitar con 4 horas de anticipación; confirmar disponibilidad."
+        },
+        {
+          "id": "sura-medellin",
+          "label": "Atención seguros · Medellín",
+          "kind": "phone",
+          "value": "6044378888",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.sura.co/documents/d/seguros/condicionado-seguro-de-autos",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Según el plan y la póliza de autos. Conductor elegido por teléfono: solicitar con 4 horas de anticipación; confirmar disponibilidad."
+        },
+        {
+          "id": "sura-cali",
+          "label": "Atención seguros · Cali",
+          "kind": "phone",
+          "value": "6024378888",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.sura.co/documents/d/seguros/condicionado-seguro-de-autos",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Según el plan y la póliza de autos. Conductor elegido por teléfono: solicitar con 4 horas de anticipación; confirmar disponibilidad."
+        },
+        {
+          "id": "sura-whatsapp",
+          "label": "Asistencia y siniestros de autos",
+          "kind": "whatsapp",
+          "value": "573152757888",
+          "purpose": "assistance",
+          "sourceUrl": "https://www.sura.co/documents/d/seguros/condicionado-seguro-de-autos",
+          "reviewedAt": "2026-09-14",
+          "verified": true,
+          "services": [
+            "generalAssistance",
+            "towing",
+            "designatedDriver",
+            "roadsideRepair"
+          ],
+          "conditions": "Según el plan y la póliza de autos; confirmar disponibilidad, límites y anticipación del conductor elegido."
+        }
+      ],
+      "reference": {
+        "sourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+        "name": "Seguros Generales Suramericana S.A.",
+        "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+        "sfcCode": "13-18"
+      },
+      "categoryEvidence": {
+        "car": "https://www.sura.co/seguros",
+        "motorcycle": "https://www.sura.co/seguros"
+      },
+      "pending": [
+        "Canales de Seguros SURA, no EPS ni ARL. No se asigna taxi sin evidencia de producto específica."
+      ]
+    },
+    {
+      "id": "zurich",
+      "name": "Zurich",
+      "legalName": "Zurich Colombia Seguros S.A.",
+      "aliases": [
+        "Zurich Colombia Seguros S.A.",
+        "Zurich"
+      ],
+      "website": "https://www.zurichseguros.com.co/",
+      "sourceUrl": "https://www.zurichseguros.com.co/lineas-personales/movilidad",
+      "reviewedAt": "2026-09-14",
+      "categories": [
+        "car"
+      ],
+      "channels": [
+        {
+          "id": "zurich-pbx",
+          "label": "Atención general · PBX",
+          "kind": "phone",
+          "value": "6013190730",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.zurichseguros.com.co/lineas-personales/movilidad",
+          "reviewedAt": "2026-09-13",
+          "verified": true,
+          "services": []
+        },
+        {
+          "id": "zurich-national",
+          "label": "Atención general · nacional",
+          "kind": "phone",
+          "value": "018000112723",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.zurichseguros.com.co/lineas-personales/movilidad",
+          "reviewedAt": "2026-09-13",
+          "verified": true,
+          "services": []
+        },
+        {
+          "id": "zurich-unresolved-whatsapp",
+          "label": "Publicado en producto Carnaval · alcance autos por confirmar",
+          "kind": "whatsapp",
+          "value": "573173643185",
+          "purpose": "customerService",
+          "sourceUrl": "https://www.zurichseguros.com.co/zurich-carnaval/accidentes-personales",
+          "reviewedAt": "2026-09-13",
+          "verified": false,
+          "services": [],
+          "conditions": "Publicado en producto Carnaval · alcance autos por confirmar"
+        }
+      ],
+      "reference": {
+        "sourceUrl": "https://www.fasecolda.com/ramos/automoviles/companias-autorizadas/",
+        "name": "Zurich Colombia Seguros S.A.",
+        "sfcSourceUrl": "https://www.superfinanciera.gov.co/loader.php?idFile=1004011&lFuncion=descargar&lServicio=Tools2&lTipo=descargas",
+        "sfcCode": "13-9"
+      },
+      "categoryEvidence": {
+        "car": "https://www.zurichseguros.com.co/lineas-personales/movilidad"
+      },
+      "pending": [
+        "WhatsApp hallado en producto de accidentes personales; no habilitado para consulta de autos sin confirmar alcance. La página de contacto no pudo extraerse.",
+        "La oferta de movilidad no prueba un teléfono de despacho de asistencia universal. Mantener canales generales; producto BBVA no transforma BBVA en alias Zurich.",
+        "Moto/taxi no confirmados.",
+        "Revisión 2026-09-14: movilidad y artículos describen servicios, pero no prueban que los contactos generales despachen autos; #723 publicado para ecomovilidad no se extiende a grúa de autos."
+      ]
+    }
+  ]
+}

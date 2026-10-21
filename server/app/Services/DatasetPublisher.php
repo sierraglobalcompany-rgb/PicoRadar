@@ -6,6 +6,7 @@ use App\Enums\DatasetReleaseStatus;
 use App\Models\Dataset;
 use App\Models\DatasetRelease;
 use App\Models\User;
+use Closure;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -14,14 +15,17 @@ class DatasetPublisher
 {
     public function __construct(private readonly ManifestPublisher $manifest, private readonly DatasetAuditLogger $audit) {}
 
-    public function publish(DatasetRelease $release, User $actor): DatasetRelease
+    public function publish(DatasetRelease $release, User $actor, ?int $expectedPublicationRevision = null, ?Closure $afterPublish = null): DatasetRelease
     {
-        return $this->manifest->mutateAndRegenerate(function () use ($release, $actor): DatasetRelease {
-            return DB::transaction(function () use ($release, $actor): DatasetRelease {
+        return $this->manifest->mutateAndRegenerate(function () use ($release, $actor, $expectedPublicationRevision, $afterPublish): DatasetRelease {
+            return DB::transaction(function () use ($release, $actor, $expectedPublicationRevision, $afterPublish): DatasetRelease {
                 $dataset = Dataset::query()->lockForUpdate()->findOrFail($release->dataset_id);
                 $locked = DatasetRelease::query()->whereKey($release->id)->lockForUpdate()->firstOrFail();
                 if ($locked->dataset_id !== $dataset->id) {
                     throw new DomainException('Release does not belong to the dataset.');
+                }
+                if ($expectedPublicationRevision !== null && $dataset->publication_revision !== $expectedPublicationRevision) {
+                    throw new DomainException('The dataset changed after review; refresh the publication preview.');
                 }
                 if ($locked->status === DatasetReleaseStatus::Published) {
                     return $locked;
@@ -49,8 +53,14 @@ class DatasetPublisher
                 }
                 $previous = $dataset->current_version;
                 $locked->forceFill(['status' => DatasetReleaseStatus::Published, 'asset_path' => $path, 'content_encoding' => null, 'published_at' => now()])->save();
-                $dataset->forceFill(['current_version' => $locked->version])->save();
+                $dataset->forceFill([
+                    'current_version' => $locked->version,
+                    'publication_revision' => $dataset->publication_revision + 1,
+                ])->save();
                 $this->audit->log($actor, 'release.published', $locked, ['datasetKey' => $dataset->key, 'version' => $locked->version, 'sha256' => $sha, 'previousVersion' => $previous]);
+                if ($afterPublish !== null) {
+                    $afterPublish($locked, $dataset, $previous);
+                }
 
                 return $locked->refresh();
             });
@@ -74,7 +84,10 @@ class DatasetPublisher
                     return;
                 }
                 $previous = $locked->current_version;
-                $locked->forceFill(['current_version' => $release->version])->save();
+                $locked->forceFill([
+                    'current_version' => $release->version,
+                    'publication_revision' => $locked->publication_revision + 1,
+                ])->save();
                 $this->audit->log($actor, 'dataset.rollback', $locked, ['datasetKey' => $locked->key, 'previousVersion' => $previous, 'newVersion' => $release->version]);
             });
         });

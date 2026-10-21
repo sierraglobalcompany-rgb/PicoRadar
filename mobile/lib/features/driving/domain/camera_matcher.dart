@@ -65,11 +65,11 @@ CameraMatch? matchNearestCamera({
       continue;
     }
 
-    final courseDegrees = _reliableCourseDegrees(
+    final courseDegrees = reliableDrivingCourseDegrees(
       current: current,
       previous: previous,
     );
-    if (courseDegrees == null) {
+    if (courseDegrees == null && coneDegrees != 360) {
       continue;
     }
 
@@ -82,23 +82,28 @@ CameraMatch? matchNearestCamera({
       toLatitude: camera.latitude,
       toLongitude: camera.longitude,
     );
-    relativeBearing = signedAngleDeltaDegrees(courseDegrees, bearing);
-    headingDiff = relativeBearing.abs();
+    relativeBearing = courseDegrees == null
+        ? null
+        : signedAngleDeltaDegrees(courseDegrees, bearing);
+    headingDiff = relativeBearing?.abs();
     if (!isRelativeBearingInsideTargetingCone(
-      relativeBearingDegrees: relativeBearing,
+      relativeBearingDegrees: relativeBearing ?? 0,
       targetingConeDegrees: coneDegrees,
     )) {
       continue;
     }
-    crossTrack = distance * math.sin(headingDiff * math.pi / 180).abs();
+    crossTrack = headingDiff == null
+        ? null
+        : distance * math.sin(headingDiff * math.pi / 180).abs();
     final corridorFactor = coneDegrees <= 45 ? 0.38 : 0.68;
     final dynamicCorridor = math.max(70.0, distance * corridorFactor);
     final maxCorridor = math.min(cameraMaxCrossTrackMeters, dynamicCorridor);
-    if (crossTrack > maxCorridor) {
+    if (coneDegrees != 360 && (crossTrack ?? 0) > maxCorridor) {
       continue;
     }
 
-    var approaching = distance <= cameraNearRadiusMeters && headingDiff <= 90.0;
+    final ahead = headingDiff != null && headingDiff <= 90;
+    var approaching = distance <= cameraNearRadiusMeters && ahead;
     if (previous != null) {
       final previousDistance = distanceMeters(
         fromLatitude: previous.latitude,
@@ -108,18 +113,26 @@ CameraMatch? matchNearestCamera({
       );
       final distanceDelta = previousDistance - distance;
       if (distanceDelta < -cameraRecedingOverrideMeters) {
+        if (coneDegrees != 360) continue;
+        approaching = false;
+      } else {
+        approaching = ahead && (approaching || distanceDelta > 3);
+      }
+      if (coneDegrees != 360 &&
+          !approaching &&
+          distance > cameraNearRadiusMeters) {
         continue;
       }
-      approaching = approaching || distanceDelta > 3;
-      if (!approaching && distance > cameraNearRadiusMeters) {
-        continue;
-      }
-    } else if (!approaching) {
+    } else if (coneDegrees != 360 && !approaching) {
       continue;
     }
 
-    final score =
-        distance + headingDiff * 4 + crossTrack * 1.2 + (approaching ? 0 : 120);
+    final score = distance + (headingDiff ?? 180) * 4 + (crossTrack ?? 0) * 1.2;
+    // Approaching targets always win over purely visual all-around targets.
+    if (best != null && best.approaching && !approaching) continue;
+    if (best != null && !best.approaching && approaching) {
+      bestScore = double.infinity;
+    }
     if (score < bestScore) {
       bestScore = score;
       best = CameraMatch(
@@ -135,15 +148,24 @@ CameraMatch? matchNearestCamera({
   return best;
 }
 
-double? _reliableCourseDegrees({
+double? reliableDrivingCourseDegrees({
   required DrivingPoint current,
   required DrivingPoint? previous,
 }) {
   final heading = current.headingDegrees;
-  if (heading != null && heading.isFinite && current.speedKmh >= 8) {
+  if (!current.accuracyMeters.isFinite || current.accuracyMeters > 60) {
+    return null;
+  }
+  if (heading != null &&
+      heading.isFinite &&
+      heading >= 0 &&
+      heading < 360 &&
+      current.speedKmh >= 8) {
     return heading;
   }
-  if (previous == null || !current.recordedAt.isAfter(previous.recordedAt)) {
+  if (previous == null ||
+      previous.accuracyMeters > 60 ||
+      !current.recordedAt.isAfter(previous.recordedAt)) {
     return null;
   }
   final movementMeters = distanceMeters(

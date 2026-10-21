@@ -23,8 +23,10 @@ import 'package:picoradar/features/trip/data/trip_draft_store.dart';
 import 'package:picoradar/features/vehicle_status/platform/obligation_notifications.dart';
 
 import '../test_app_harness.dart';
+import '../features/home/presentation/v01b_test_font.dart';
 
 void main() {
+  setUpAll(loadV01bTestFont);
   group('K7-C functional audit documentation gate', () {
     test('records required source coverage and launcher matrix', () {
       final report = File('../docs/qa/K7_FUNCTIONAL_AUDIT.md');
@@ -54,14 +56,14 @@ void main() {
   });
 
   group('K7-C local preferences fail closed', () {
-    test('corrupt AppPreferences JSON payloads are discarded', () async {
+    test('corrupt preferences fail closed and preserve purchase ownership for recovery', () async {
       final preferences = MemoryPreferences()
         ..values[tripDraftPreferenceKey] = '{broken trip'
         ..values[buySellDraftPreferenceKey] = '{"version":1,"mode":7}'
         ..values[peritajesDraftPreferenceKey('vehicle-a')] = '[bad]';
 
       expect(await TripDraftStore(preferences).loadDraft(), isNull);
-      expect(await loadBuySellDraft(preferences), isNull);
+      await expectLater(loadBuySellDraft(preferences), throwsFormatException);
       expect(
         await PeritajesDraftStore(preferences).loadDraft('vehicle-a'),
         isNull,
@@ -69,8 +71,8 @@ void main() {
 
       expect(preferences.values.containsKey(tripDraftPreferenceKey), isFalse);
       expect(
-        preferences.values.containsKey(buySellDraftPreferenceKey),
-        isFalse,
+        preferences.values[buySellDraftPreferenceKey],
+        '{"version":1,"mode":7}',
       );
       expect(
         preferences.values.containsKey(
@@ -208,6 +210,10 @@ void main() {
     testWidgets('visible launcher modules do not route to placeholders', (
       tester,
     ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       final vehicle = await harness.repository.createVehicle(
         plate: 'KTC123',
         kind: VehicleKind.car,

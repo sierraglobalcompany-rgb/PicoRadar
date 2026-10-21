@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,153 +10,240 @@ import '../../../app/router/app_routes.dart';
 import '../../../app/theme/app_tokens.dart';
 import '../../garage/data/vehicle_profile.dart';
 import '../../garage/presentation/vehicle_display.dart';
+import '../../garage/presentation/vehicle_plate_badge.dart';
+import '../../onboarding/data/registration_city_catalog.dart';
+import '../../trip/data/trip_municipality_catalog.dart';
 import '../../vehicle_status/platform/external_launcher.dart';
+import '../../visual_assets/presentation/visual_asset_widgets.dart';
+import '../data/territorial_catalog.dart';
 
-const _simitUrl = 'https://www.simit.org.co/';
-const _medellinUrl =
-    'https://www.medellin.gov.co/es/tramites-y-servicios/consulta-de-comparendos-electronicos/';
-const _bogotaUrl = 'https://www.movilidadbogota.gov.co/node/15670';
+part 'comparendos_widgets.dart';
+part 'comparendos_selectors.dart';
 
-final comparendosLastCheckedProvider = FutureProvider.family<String?, String>((
-  ref,
-  vehicleId,
-) {
-  return ref
-      .watch(appPreferencesProvider)
-      .getString(_lastCheckedKey(vehicleId));
-});
+final comparendosLastCheckedProvider = FutureProvider.family<String?, String>(
+  (ref, vehicleId) =>
+      ref.watch(appPreferencesProvider).getString(_lastCheckedKey(vehicleId)),
+);
 
-class ComparendosScreen extends ConsumerWidget {
+class ComparendosScreen extends ConsumerStatefulWidget {
   const ComparendosScreen({this.vehicleId, super.key});
-
   final String? vehicleId;
+  @override
+  ConsumerState<ComparendosScreen> createState() => _ComparendosScreenState();
+}
+
+class _ComparendosScreenState extends ConsumerState<ComparendosScreen> {
+  String? _vehicleId;
+  TripMunicipality? _chosenCity;
+  bool _territorialManuallyChosen = false;
+  String? _authorityId;
+  String? _entryJurisdiction;
+  bool _entryCityResolved = false;
+  final _savingIds = <String>{};
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final vehicles = ref.watch(vehicleListProvider);
-    final active = ref.watch(activeVehicleProvider);
+  void initState() {
+    super.initState();
+    _vehicleId = _nonEmpty(widget.vehicleId);
+    ref.listenManual(selectedPicoJurisdictionIdProvider, (_, next) {
+      if (!_entryCityResolved && next.hasValue) {
+        setState(() {
+          _entryJurisdiction = next.value;
+          _entryCityResolved = true;
+        });
+      }
+    }, fireImmediately: true);
+  }
 
+  @override
+  void didUpdateWidget(covariant ComparendosScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.vehicleId != oldWidget.vehicleId) {
+      _vehicleId = _nonEmpty(widget.vehicleId);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final vehicles = ref.watch(vehicleListProvider);
+    final favorite = _vehicleId != null
+        ? const AsyncValue<VehicleProfile?>.data(null)
+        : ref.watch(activeVehicleProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Comparendos')),
+      appBar: AppBar(
+        foregroundColor: AppColors.navy,
+        backgroundColor: AppColors.background,
+        leading: IconButton(
+          tooltip: 'Volver',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(AppRoute.apps.path);
+            }
+          },
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: const Text(
+          'Comparendos',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+        ),
+      ),
       body: SafeArea(
+        top: false,
         child: vehicles.when(
-          data: (items) => active.when(
-            data: (activeVehicle) {
-              final vehicle = _resolveVehicle(
-                vehicles: items,
-                activeVehicle: activeVehicle,
-                vehicleId: vehicleId,
-              );
-              if (vehicle == null) {
-                return const _NoVehiclePane();
-              }
-              return _ComparendosContent(vehicle: vehicle);
-            },
-            loading: () => const _LoadingPane(),
-            error: (error, stackTrace) => _ErrorPane(message: error.toString()),
-          ),
           loading: () => const _LoadingPane(),
-          error: (error, stackTrace) => _ErrorPane(message: error.toString()),
+          error: (_, _) => _LoadError(
+            message: 'No pudimos cargar tus vehículos.',
+            onRetry: () => ref.invalidate(vehicleListProvider),
+          ),
+          data: (items) => favorite.when(
+            loading: () => const _LoadingPane(),
+            error: (_, _) => _LoadError(
+              message: 'No pudimos cargar el vehículo favorito.',
+              onRetry: () => ref.invalidate(activeVehicleProvider),
+              onChoose: items.isEmpty ? null : _chooseVehicle,
+            ),
+            data: (active) {
+              // Freeze the initial vehicle for this visit, without changing favorite.
+              _vehicleId ??= active?.id;
+              final vehicle = items
+                  .where((v) => v.id == _vehicleId)
+                  .firstOrNull;
+              if (vehicle == null) {
+                return _NoVehiclePane(
+                  hasVehicles: items.isNotEmpty,
+                  onChoose: _chooseVehicle,
+                );
+              }
+              return _content(vehicle);
+            },
+          ),
         ),
       ),
     );
   }
-}
 
-class _ComparendosContent extends ConsumerWidget {
-  const _ComparendosContent({required this.vehicle});
-
-  final VehicleProfile vehicle;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget _content(VehicleProfile vehicle) {
+    final municipalities = ref.watch(tripMunicipalityCatalogProvider);
+    final authorities = ref.watch(territorialCatalogProvider);
+    final cityContext = ref.watch(selectedPicoJurisdictionIdProvider);
     final lastChecked = ref.watch(comparendosLastCheckedProvider(vehicle.id));
-    final cityLink = _territorialLink(vehicle.registrationCity);
-
+    final date = _formatBogotaDate(ref.watch(bogotaNowProvider));
+    final city = _territorialManuallyChosen
+        ? _chosenCity
+        : municipalities.asData?.value.records
+              .where((m) => m.code == _entryCityCodes[_entryJurisdiction])
+              .firstOrNull;
+    final cityAuthorities = city == null
+        ? <TerritorialAuthority>[]
+        : authorities.asData?.value.forMunicipality(city.code) ??
+              <TerritorialAuthority>[];
+    final authority =
+        authorities.asData?.value.authorities
+            .where((a) => a.id == _authorityId)
+            .firstOrNull ??
+        (cityAuthorities.length == 1 ? cityAuthorities.single : null);
+    final loadingCity =
+        !_territorialManuallyChosen &&
+        (municipalities.isLoading ||
+            (!_entryCityResolved && cityContext.isLoading));
+    final cityError =
+        !_territorialManuallyChosen &&
+        (municipalities.hasError ||
+            (!_entryCityResolved && cityContext.hasError));
     return SingleChildScrollView(
       key: const ValueKey('comparendos-screen'),
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.l,
-        AppSpacing.l,
-        AppSpacing.l,
-        96,
-      ),
-      child: Align(
-        alignment: Alignment.topCenter,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _VehicleSummary(vehicle: vehicle),
-              const SizedBox(height: AppSpacing.l),
-              const _OfficialNotice(),
-              const SizedBox(height: AppSpacing.l),
-              OutlinedButton.icon(
-                key: const ValueKey('comparendos-copy-plate'),
-                onPressed: () => _copyPlate(context, vehicle.plate),
-                icon: const Icon(Icons.copy_outlined),
-                label: const Text('Copiar placa'),
+              _VehicleSummary(
+                vehicle: vehicle,
+                onCopyPlate: () => _copyPlate(vehicle.plate),
+                onChoose: _chooseVehicle,
               ),
-              const SizedBox(height: AppSpacing.s),
-              FilledButton.icon(
-                key: const ValueKey('comparendos-open-simit'),
-                onPressed: () => _openExternal(
-                  context,
-                  ref,
-                  _simitUrl,
+              const SizedBox(height: 12),
+              _SimitAction(
+                onTap: () => _openExternal(
+                  simitConsultationUrl,
                   'No pudimos abrir SIMIT.',
                 ),
-                icon: const Icon(Icons.open_in_new),
-                label: const Text('Consultar en SIMIT'),
               ),
-              const SizedBox(height: AppSpacing.s),
-              if (cityLink == null)
-                Text(
-                  'Usa SIMIT para la consulta nacional.',
-                  key: const ValueKey('comparendos-unsupported-city'),
-                  style: AppTextStyles.body.copyWith(
-                    color: AppColors.navy.withValues(alpha: 0.72),
-                  ),
-                )
-              else
-                OutlinedButton.icon(
-                  key: const ValueKey('comparendos-open-territorial'),
-                  onPressed: () => _openExternal(
-                    context,
-                    ref,
-                    cityLink.url,
-                    'No pudimos abrir la autoridad de tránsito.',
-                  ),
-                  icon: const Icon(Icons.account_balance_outlined),
-                  label: Text(cityLink.label),
+              const SizedBox(height: 12),
+              _TerritorialConsultation(
+                city: city,
+                authority: authority,
+                multipleAuthorities: cityAuthorities.length > 1,
+                temporary: _territorialManuallyChosen,
+                loading: loadingCity || authorities.isLoading,
+                error: cityError || authorities.hasError,
+                onRetry: () {
+                  ref.invalidate(tripMunicipalityCatalogProvider);
+                  ref.invalidate(territorialCatalogProvider);
+                  if (!_entryCityResolved) {
+                    ref.invalidate(selectedPicoJurisdictionIdProvider);
+                  }
+                },
+                onChoose: _chooseCity,
+                onChooseAuthority: () => _chooseAuthority(cityAuthorities),
+                onOpen: (url) => _openExternal(
+                  url,
+                  'No pudimos abrir la autoridad de tránsito.',
                 ),
-              const SizedBox(height: AppSpacing.l),
-              FilledButton.tonalIcon(
-                key: const ValueKey('comparendos-mark-checked'),
-                onPressed: () => _markCheckedToday(context, ref, vehicle.id),
-                icon: const Icon(Icons.today_outlined),
-                label: const Text('Marcar que consulté hoy'),
               ),
-              const SizedBox(height: AppSpacing.s),
+              const SizedBox(height: 16),
+              const Text(
+                'Registro personal',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                ),
+              ),
+              const SizedBox(height: 8),
               lastChecked.when(
-                data: (date) => date == null
-                    ? const SizedBox.shrink()
-                    : Text(
-                        'Última consulta anotada: $date',
-                        key: const ValueKey('comparendos-last-checked'),
-                        style: AppTextStyles.bodyStrong,
-                      ),
-                loading: () => const SizedBox.shrink(),
-                error: (error, stackTrace) => Text(error.toString()),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Esta fecha es una nota local. No guarda ni confirma el resultado oficial.',
-                key: const ValueKey('comparendos-local-note'),
-                style: AppTextStyles.caption.copyWith(
-                  color: AppColors.navy.withValues(alpha: 0.66),
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text('Cargando registro personal…'),
                 ),
+                error: (_, _) => _LoadError(
+                  message: 'No pudimos leer tu anotación.',
+                  onRetry: () => ref.invalidate(
+                    comparendosLastCheckedProvider(vehicle.id),
+                  ),
+                ),
+                data: (checked) => _CheckedAction(
+                  checked: checked == date,
+                  saving: _savingIds.contains(vehicle.id),
+                  onTap: () => _markCheckedToday(vehicle.id),
+                ),
+              ),
+              if (lastChecked.asData?.value case final checked?) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Última consulta anotada: $checked',
+                  key: const ValueKey('comparendos-last-checked'),
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
+              const SizedBox(height: 12),
+              const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, size: 22, color: AppColors.blue),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Los resultados se consultan en el portal oficial. PicoRadar no obtiene tus resultados.',
+                      key: ValueKey('comparendos-local-note'),
+                      style: TextStyle(fontSize: 14, color: AppColors.navy),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -163,256 +252,141 @@ class _ComparendosContent extends ConsumerWidget {
     );
   }
 
-  Future<void> _copyPlate(BuildContext context, String plate) async {
-    await Clipboard.setData(ClipboardData(text: plate));
-    if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Placa copiada.')));
+  Future<void> _chooseVehicle() async {
+    final id = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      useRootNavigator: true,
+      builder: (_) => const _VehicleChooser(),
+    );
+    if (mounted && id != null) setState(() => _vehicleId = id);
+  }
+
+  Future<void> _chooseCity() async {
+    final result = await showModalBottomSheet<_TerritorialSelection>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      useRootNavigator: true,
+      builder: (_) => const _CityChooser(),
+    );
+    if (mounted && result != null) {
+      setState(() {
+        _chosenCity = result.city;
+        _authorityId = result.authorityId;
+        _territorialManuallyChosen = true;
+      });
     }
   }
 
-  Future<void> _openExternal(
-    BuildContext context,
-    WidgetRef ref,
-    String url,
-    String failureMessage,
-  ) async {
-    final launcher = ref.read(externalLauncherProvider);
-    var opened = false;
+  Future<void> _chooseAuthority(List<TerritorialAuthority> authorities) async {
+    final id = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      useRootNavigator: true,
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Seleccionar autoridad', style: AppTextStyles.h2),
+              for (final authority in authorities)
+                ListTile(
+                  title: Text(authority.name),
+                  subtitle: Text(authority.platformName),
+                  minVerticalPadding: 12,
+                  onTap: () => Navigator.pop(context, authority.id),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (mounted && id != null) setState(() => _authorityId = id);
+  }
+
+  Future<void> _copyPlate(String plate) async {
     try {
-      opened = await launcher.openExternal(url);
-    } catch (_) {
-      opened = false;
-    }
-    if (!context.mounted || opened) {
-      return;
-    }
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(failureMessage)));
-  }
-
-  Future<void> _markCheckedToday(
-    BuildContext context,
-    WidgetRef ref,
-    String vehicleId,
-  ) async {
-    final date = _formatBogotaDate(ref.read(bogotaNowProvider));
-    final preferences = ref.read(appPreferencesProvider);
-    await preferences.setString(_lastCheckedKey(vehicleId), date);
-    if (!context.mounted) {
-      return;
-    }
-    ref.invalidate(comparendosLastCheckedProvider(vehicleId));
-  }
-}
-
-class _VehicleSummary extends StatelessWidget {
-  const _VehicleSummary({required this.vehicle});
-
-  final VehicleProfile vehicle;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.l),
-        child: Row(
-          children: [
-            Icon(
-              vehicleIcon(vehicle),
-              size: AppIconSize.l,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(width: AppSpacing.m),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    vehicle.plate,
-                    key: const ValueKey('comparendos-plate'),
-                    style: AppTextStyles.h2,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    _vehicleType(vehicle),
-                    key: const ValueKey('comparendos-vehicle-type'),
-                    style: AppTextStyles.body,
-                  ),
-                  if (_hasText(vehicle.registrationCity)) ...[
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      vehicle.registrationCity!.trim(),
-                      key: const ValueKey('comparendos-registration-city'),
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.navy.withValues(alpha: 0.72),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _OfficialNotice extends StatelessWidget {
-  const _OfficialNotice();
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.l),
-        child: Text(
-          'PicoRadar no consulta ni almacena el resultado de comparendos.\n'
-          'La información oficial se consulta en SIMIT o en la autoridad de tránsito.',
-          key: const ValueKey('comparendos-official-notice'),
-          style: AppTextStyles.body,
-        ),
-      ),
-    );
-  }
-}
-
-class _NoVehiclePane extends StatelessWidget {
-  const _NoVehiclePane();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      key: const ValueKey('comparendos-no-vehicle'),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.directions_car_outlined, size: 48),
-            const SizedBox(height: AppSpacing.m),
-            Text('Agrega un vehículo', style: AppTextStyles.h2),
-            const SizedBox(height: AppSpacing.s),
-            Text(
-              'Necesitas una placa local para consultar en los canales oficiales.',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.body,
-            ),
-            const SizedBox(height: AppSpacing.l),
-            FilledButton(
-              key: const ValueKey('comparendos-go-garage'),
-              onPressed: () => context.go(AppRoute.garage.path),
-              child: const Text('Ir a Garaje'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LoadingPane extends StatelessWidget {
-  const _LoadingPane();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      key: ValueKey('comparendos-loading'),
-      child: CircularProgressIndicator(),
-    );
-  }
-}
-
-class _ErrorPane extends StatelessWidget {
-  const _ErrorPane({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Text(message),
-    );
-  }
-}
-
-VehicleProfile? _resolveVehicle({
-  required List<VehicleProfile> vehicles,
-  required VehicleProfile? activeVehicle,
-  required String? vehicleId,
-}) {
-  final requestedId = vehicleId?.trim();
-  if (requestedId != null && requestedId.isNotEmpty) {
-    for (final vehicle in vehicles) {
-      if (vehicle.id == requestedId) {
-        return vehicle;
+      await Clipboard.setData(ClipboardData(text: plate));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Placa copiada.')));
       }
+    } catch (_) {
+      _failure('No pudimos copiar la placa.', () => _copyPlate(plate));
     }
-    return null;
   }
-  return activeVehicle ?? (vehicles.isEmpty ? null : vehicles.first);
-}
 
-String _vehicleType(VehicleProfile vehicle) {
-  if (vehicle.kind == VehicleKind.motorcycle) {
-    return 'Moto';
+  Future<void> _openExternal(String url, String message) async {
+    try {
+      if (isSafeOfficialPortalUrl(url) &&
+          await ref.read(externalLauncherProvider).openExternal(url)) {
+        return;
+      }
+    } catch (_) {
+      // The visible retry below also handles platform launcher failures.
+    }
+    _failure(message, () => _openExternal(url, message));
   }
-  return switch (vehicle.serviceType) {
-    VehicleServiceType.taxi => 'Taxi',
-    VehicleServiceType.private => 'Particular',
-  };
-}
 
-_TerritorialLink? _territorialLink(String? registrationCity) {
-  final normalized = _normalizeCity(registrationCity);
-  if (normalized.contains('medellin')) {
-    return const _TerritorialLink('Consultar en Medellín', _medellinUrl);
+  Future<void> _markCheckedToday(String id) async {
+    if (_savingIds.contains(id)) return;
+    final today = _formatBogotaDate(ref.read(bogotaNowProvider));
+    if (ref.read(comparendosLastCheckedProvider(id)).asData?.value == today) {
+      return;
+    }
+    setState(() => _savingIds.add(id));
+    try {
+      await ref
+          .read(appPreferencesProvider)
+          .setString(_lastCheckedKey(id), today);
+      if (mounted) ref.invalidate(comparendosLastCheckedProvider(id));
+    } catch (_) {
+      _failure('No pudimos guardar tu anotación.', () => _markCheckedToday(id));
+    } finally {
+      if (mounted) setState(() => _savingIds.remove(id));
+    }
   }
-  if (normalized.contains('bogota')) {
-    return const _TerritorialLink('Consultar en Bogotá', _bogotaUrl);
+
+  void _failure(String message, VoidCallback retry) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        action: SnackBarAction(label: 'Reintentar', onPressed: retry),
+      ),
+    );
   }
-  return null;
 }
 
-String _normalizeCity(String? value) {
-  final lower = value?.trim().toLowerCase() ?? '';
-  return lower
-      .replaceAll('á', 'a')
-      .replaceAll('é', 'e')
-      .replaceAll('í', 'i')
-      .replaceAll('ó', 'o')
-      .replaceAll('ú', 'u');
-}
-
-String _lastCheckedKey(String vehicleId) {
-  return 'comparendos.last_checked.$vehicleId';
-}
-
-String _formatBogotaDate(DateTime date) {
-  final month = date.month.toString().padLeft(2, '0');
-  final day = date.day.toString().padLeft(2, '0');
-  return '${date.year}-$month-$day';
-}
-
-bool _hasText(String? value) {
-  return value != null && value.trim().isNotEmpty;
-}
-
-class _TerritorialLink {
-  const _TerritorialLink(this.label, this.url);
-
-  final String label;
-  final String url;
-}
+// Suggestions from the saved consultation context, NOT territorial jurisdiction.
+const _entryCityCodes = {
+  'co-ant-medellin': '05001',
+  'co-dc-bogota': '11001',
+  'co-vac-cali': '76001',
+  'co-cal-manizales': '17001',
+  'co-san-bucaramanga': '68001',
+  'co-met-villavicencio': '50001',
+  'co-bol-cartagena': '13001',
+  'co-qui-armenia': '63001',
+  'co-tol-ibague': '73001',
+  'co-nds-cucuta': '54001',
+  'co-mag-santa-marta': '47001',
+  'co-ris-pereira': '66001',
+  'co-atl-barranquilla': '08001',
+  'co-nar-pasto': '52001',
+  'co-cor-monteria': '23001',
+  'co-cau-popayan': '19001',
+};
+String? _nonEmpty(String? value) =>
+    value?.trim().isNotEmpty == true ? value!.trim() : null;
+String _lastCheckedKey(String id) => 'comparendos.last_checked.$id';
+String _formatBogotaDate(DateTime date) =>
+    '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+String _vehicleDisplayName(VehicleProfile vehicle) =>
+    _nonEmpty(vehicle.nickname) ??
+    _nonEmpty(vehicleMakeModel(vehicle)) ??
+    'Mi vehículo';

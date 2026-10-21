@@ -13,24 +13,26 @@ class AppsLauncherPanel extends ConsumerStatefulWidget {
     required this.vehicleId,
     required this.onDismiss,
     required this.onNavigate,
+    required this.mode,
+    required this.onModeChanged,
     super.key,
   });
 
   final String? vehicleId;
   final VoidCallback onDismiss;
   final void Function(String location) onNavigate;
+  final AppsLauncherMode mode;
+  final ValueChanged<AppsLauncherMode> onModeChanged;
 
   @override
   ConsumerState<AppsLauncherPanel> createState() => _AppsLauncherPanelState();
 }
 
 class _AppsLauncherPanelState extends ConsumerState<AppsLauncherPanel> {
-  AppsLauncherMode _mode = AppsLauncherMode.primary;
-
   @override
   Widget build(BuildContext context) {
     final flags = ref.watch(moduleFeatureFlagsProvider);
-    final modules = switch (_mode) {
+    final modules = switch (widget.mode) {
       AppsLauncherMode.primary => visibleModules(primaryModules, flags),
       AppsLauncherMode.more => visibleModules(secondaryModules, flags),
     };
@@ -61,14 +63,14 @@ class _AppsLauncherPanelState extends ConsumerState<AppsLauncherPanel> {
                 const Text('Apps', style: AppTextStyles.h1),
                 const SizedBox(height: AppSpacing.m),
                 _ModeSelector(
-                  mode: _mode,
-                  onChanged: (mode) => setState(() => _mode = mode),
+                  mode: widget.mode,
+                  onChanged: widget.onModeChanged,
                 ),
                 const SizedBox(height: AppSpacing.m),
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: AppMotion.fade,
-                    child: _mode == AppsLauncherMode.primary
+                    child: widget.mode == AppsLauncherMode.primary
                         ? _PrimaryLauncherGrid(
                             modules: modules,
                             vehicleId: widget.vehicleId,

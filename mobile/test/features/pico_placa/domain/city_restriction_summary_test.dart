@@ -6,6 +6,46 @@ import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.
 import 'package:picoradar/features/pico_placa/domain/restriction_rule.dart';
 
 void main() {
+  test(
+    'cached city coverage cannot outlive its timestamp or future horizon',
+    () {
+      final cached = _ruleSet(
+        staleAfter: DateTime.utc(2026, 9, 10, 17),
+        rules: [_rule()],
+      );
+      for (final hour in [11, 12, 13]) {
+        final date = DateTime(2026, 9, 10, hour);
+        final day = summarizeCityRestrictionDay(
+          ruleSet: cached,
+          jurisdictionId: 'co-dc-bogota',
+          category: PicoVehicleCategory.cars,
+          date: date,
+        );
+        expect(day.status, RestrictionDayStatus.stale);
+        final rules = summarizeCityRestrictionRules(
+          ruleSet: cached,
+          jurisdictionId: 'co-dc-bogota',
+          category: PicoVehicleCategory.cars,
+          date: date,
+        );
+        expect(rules.dataIsStale, isTrue);
+        expect(rules.generalWindows, isEmpty);
+      }
+      final rotation = summarizeCityRestrictionRotation(
+        ruleSet: cached,
+        jurisdictionId: 'co-dc-bogota',
+        category: PicoVehicleCategory.cars,
+        date: DateTime(2026, 9, 9),
+      );
+      expect(rotation.isWeekly, isFalse);
+      expect(rotation.rows.first.status, RestrictionDayStatus.allowed);
+      expect(
+        rotation.rows.skip(1).map((row) => row.status),
+        everyElement(RestrictionDayStatus.stale),
+      );
+    },
+  );
+
   group('summarizeCityRestrictionDay', () {
     test('reports restricted digits and time windows from real rules', () {
       final summary = summarizeCityRestrictionDay(
@@ -238,11 +278,13 @@ void main() {
 
 RestrictionRuleSet _ruleSet({
   bool dataIsStale = false,
+  DateTime? staleAfter,
   List<RestrictionRule> rules = const [],
 }) {
   return RestrictionRuleSet(
     coverageKnown: true,
     dataIsStale: dataIsStale,
+    staleAfter: staleAfter,
     rules: rules,
     verifiedAt: DateTime(2026, 8),
     sourceUrls: const ['https://bogota.gov.co/source'],

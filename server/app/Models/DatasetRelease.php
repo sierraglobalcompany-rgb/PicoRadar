@@ -6,6 +6,7 @@ use App\Enums\DatasetReleaseStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use LogicException;
 
 #[Fillable(['dataset_id', 'version', 'status', 'draft_path', 'asset_path', 'sha256', 'content_encoding', 'generated_at', 'verified_at', 'expires_at', 'validated_at', 'published_at', 'retired_at', 'metadata'])]
@@ -19,6 +20,11 @@ class DatasetRelease extends Model
     public function dataset(): BelongsTo
     {
         return $this->belongsTo(Dataset::class);
+    }
+
+    public function restrictionPublication(): HasOne
+    {
+        return $this->hasOne(RestrictionPublication::class);
     }
 
     protected static function booted(): void

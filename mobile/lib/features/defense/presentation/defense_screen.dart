@@ -25,7 +25,9 @@ class DefenseScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final vehicles = ref.watch(vehicleListProvider);
-    final active = ref.watch(activeVehicleProvider);
+    final active = vehicleId?.trim().isNotEmpty == true
+        ? const AsyncValue<VehicleProfile?>.data(null)
+        : ref.watch(activeVehicleProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Defensa')),
@@ -45,7 +47,7 @@ class DefenseScreen extends ConsumerWidget {
             },
             loading: () => const _LoadingPane(),
             error: (error, stackTrace) => const _ErrorPane(
-              message: 'No pudimos cargar el vehiculo activo.',
+              message: 'No pudimos cargar el vehiculo favorito.',
             ),
           ),
           loading: () => const _LoadingPane(),

@@ -5,10 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../../app/app_providers.dart';
 import '../../../app/theme/app_tokens.dart';
 import '../../../core/design_system/branding.dart';
+import '../../documents/application/wallet_providers.dart';
+import '../../documents/data/wallet_models.dart';
+import '../../documents/presentation/documents_sheets.dart';
+import '../../documents/presentation/wallet_actions.dart';
 import '../../garage/data/vehicle_profile.dart';
 import '../../garage/presentation/vehicle_display.dart';
 import '../../home/data/home_banner_config.dart';
-import '../data/private_vehicle_document_store.dart';
 import '../data/vehicle_status_catalog.dart';
 import '../domain/vehicle_obligation.dart';
 import '../platform/external_launcher.dart';
@@ -36,86 +39,102 @@ class SoatRtmOwnerContent extends ConsumerWidget {
     final nowBogota = ref.watch(bogotaNowProvider);
     final documentType = _documentType(type);
     final document = ref.watch(
-      privateVehicleDocumentProvider((vehicle.id, documentType)),
+      vehicleWalletDocumentProvider((vehicle.id, documentType)),
     );
-    final metadata = document.asData?.value;
-    final visualState = _visualState(
-      obligation: obligation,
-      hasDocument: metadata != null,
-      nowBogota: nowBogota,
-    );
+    final session = ref.watch(walletSessionProvider);
+    return ListenableBuilder(
+      listenable: session,
+      builder: (context, _) {
+        final locked = !session.accessAllowed;
+        final metadata = locked ? null : document.asData?.value;
+        final visualState = _visualState(
+          obligation: obligation,
+          hasDocument: metadata != null,
+          nowBogota: nowBogota,
+        );
 
-    return ListView(
-      key: ValueKey('owner-status-${type.value}'),
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.m,
-        AppSpacing.m,
-        AppSpacing.m,
-        AppSpacing.xxl,
-      ),
-      children: [
-        Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 540),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _VehicleSelectorCard(
-                  vehicle: vehicle,
-                  onTap: () => _showVehicleSelector(context),
-                ),
-                const SizedBox(height: AppSpacing.m),
-                _StatusHero(
-                  vehicle: vehicle,
-                  type: type,
-                  obligation: obligation,
-                  visualState: visualState,
-                ),
-                const SizedBox(height: AppSpacing.m),
-                _PrimaryAction(
-                  type: type,
-                  visualState: visualState,
-                  hasDocument: metadata != null,
-                  onEdit: onEdit,
-                  onAttach: () => _attachDocument(context, ref),
-                  onView: metadata == null
-                      ? null
-                      : () => _viewDocument(context, ref, metadata),
-                  onFindCda: () => context.push('/apps/cda'),
-                ),
-                const SizedBox(height: AppSpacing.m),
-                _DocumentCard(
-                  type: type,
-                  metadata: metadata,
-                  errorMessage: document.error?.toString(),
-                  onAttach: () => _attachDocument(context, ref),
-                  onView: metadata == null
-                      ? null
-                      : () => _viewDocument(context, ref, metadata),
-                  onDelete: metadata == null
-                      ? null
-                      : () => _deleteDocument(context, ref, metadata),
-                ),
-                const SizedBox(height: AppSpacing.m),
-                _ReminderCard(
-                  type: type,
-                  vehicleId: vehicle.id,
-                  obligation: obligation,
-                ),
-                const SizedBox(height: AppSpacing.m),
-                _HistoryCard(type: type),
-                const SizedBox(height: AppSpacing.m),
-                _OfficialCheckCard(type: type),
-                const SizedBox(height: AppSpacing.m),
-                _EducationCard(type: type),
-                const SizedBox(height: AppSpacing.m),
-                _CommercialBanner(type: type),
-              ],
-            ),
+        return ListView(
+          key: ValueKey('owner-status-${type.value}'),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.m,
+            AppSpacing.m,
+            AppSpacing.m,
+            AppSpacing.xxl,
           ),
-        ),
-      ],
+          children: [
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 540),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _VehicleSelectorCard(
+                      vehicle: vehicle,
+                      onTap: () => _showVehicleSelector(context),
+                    ),
+                    const SizedBox(height: AppSpacing.m),
+                    _StatusHero(
+                      vehicle: vehicle,
+                      type: type,
+                      obligation: obligation,
+                      visualState: visualState,
+                    ),
+                    const SizedBox(height: AppSpacing.m),
+                    _PrimaryAction(
+                      type: type,
+                      visualState: visualState,
+                      hasDocument: metadata != null,
+                      documentsLocked: locked,
+                      onEdit: onEdit,
+                      onAttach: () => locked
+                          ? _openDocuments(context, ref)
+                          : _attachDocument(context, ref),
+                      onView: metadata == null
+                          ? null
+                          : () => _viewDocument(context, ref, metadata),
+                      onFindCda: () => context.push('/apps/cda'),
+                    ),
+                    const SizedBox(height: AppSpacing.m),
+                    _DocumentCard(
+                      type: type,
+                      metadata: metadata,
+                      locked: locked,
+                      busy: session.busy,
+                      errorMessage: document.hasError
+                          ? 'No se pudo leer la copia local.'
+                          : null,
+                      onAttach: () => locked
+                          ? _openDocuments(context, ref)
+                          : _attachDocument(context, ref),
+                      onView: metadata == null
+                          ? null
+                          : () => _viewDocument(context, ref, metadata),
+                      onDelete: metadata == null
+                          ? null
+                          : () => _deleteDocument(context, ref, metadata),
+                    ),
+                    const SizedBox(height: AppSpacing.m),
+                    _ReminderCard(
+                      type: type,
+                      vehicleId: vehicle.id,
+                      obligation: obligation,
+                    ),
+                    const SizedBox(height: AppSpacing.m),
+                    _HistoryCard(type: type),
+                    const SizedBox(height: AppSpacing.m),
+                    _OfficialCheckCard(type: type),
+                    const SizedBox(height: AppSpacing.m),
+                    _EducationCard(type: type),
+                    const SizedBox(height: AppSpacing.m),
+                    _CommercialBanner(type: type),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -158,88 +177,79 @@ class SoatRtmOwnerContent extends ConsumerWidget {
   }
 
   Future<void> _attachDocument(BuildContext context, WidgetRef ref) async {
-    final documentGateway = ref.read(vehicleDocumentGatewayProvider);
-    final picked = await documentGateway.pickDocument();
-    if (picked == null) {
-      return;
-    }
-    try {
-      await ref
-          .read(privateVehicleDocumentStoreProvider)
-          .importDocument(
-            vehicleId: vehicle.id,
-            documentType: _documentType(type),
-            source: picked.file,
-            originalName: picked.originalName,
-            mimeType: picked.mimeType,
-          );
-    } finally {
-      await documentGateway.clearTemporaryFiles();
-    }
-    ref.invalidate(
-      privateVehicleDocumentProvider((vehicle.id, _documentType(type))),
+    await WalletActions(context, ref).add(
+      WalletOwner.vehicle(vehicle.id),
+      _documentType(type),
+      ownerLabel: _vehicleTitle(vehicle),
     );
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${_documentLabel(type)} guardado localmente.')),
+  }
+
+  Future<void> _openDocuments(BuildContext context, WidgetRef ref) async {
+    final session = ref.read(walletSessionProvider);
+    if (session.busy) return;
+    final security = ref.read(walletScreenSecurityProvider);
+    final secureOwner = Object();
+    var acquired = false;
+    try {
+      if (!await session.unlock() || !context.mounted) {
+        if (context.mounted && session.failureMessage != null) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(session.failureMessage!)));
+        }
+        return;
+      }
+      final epoch = session.epoch;
+      if (session.protectionEnabled) {
+        acquired = true;
+        await security.acquire(secureOwner);
+      }
+      if (!context.mounted || !session.isAuthorizedEpoch(epoch)) return;
+      await showWalletVehicleDocuments(
+        context,
+        ref,
+        vehicle,
+        initialType: _documentType(type),
       );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo abrir la billetera. Intenta de nuevo.'),
+          ),
+        );
+      }
+    } finally {
+      session.lock();
+      if (acquired) {
+        try {
+          await security.release(secureOwner);
+        } catch (_) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No se pudo actualizar la pantalla protegida.'),
+              ),
+            );
+          }
+        }
+      }
     }
   }
 
   Future<void> _viewDocument(
     BuildContext context,
     WidgetRef ref,
-    PrivateVehicleDocumentMetadata metadata,
+    WalletDocument metadata,
   ) async {
-    final file = await ref
-        .read(privateVehicleDocumentStoreProvider)
-        .decryptForView(metadata);
-    final opened = await ref
-        .read(vehicleDocumentGatewayProvider)
-        .openDocument(file);
-    if (!opened) {
-      await ref
-          .read(privateVehicleDocumentStoreProvider)
-          .purgeViewerCache(metadata: metadata);
-    }
-    if (context.mounted && !opened) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo abrir el documento.')),
-      );
-    }
+    await WalletActions(context, ref).view(metadata);
   }
 
   Future<void> _deleteDocument(
     BuildContext context,
     WidgetRef ref,
-    PrivateVehicleDocumentMetadata metadata,
+    WalletDocument metadata,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Eliminar copia local'),
-        content: const Text(
-          'Se eliminará solo la copia guardada en este dispositivo.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) {
-      return;
-    }
-    await ref.read(privateVehicleDocumentStoreProvider).delete(metadata);
-    ref.invalidate(
-      privateVehicleDocumentProvider((vehicle.id, _documentType(type))),
-    );
+    await WalletActions(context, ref).delete(metadata);
   }
 }
 
@@ -394,6 +404,7 @@ class _PrimaryAction extends StatelessWidget {
     required this.type,
     required this.visualState,
     required this.hasDocument,
+    required this.documentsLocked,
     required this.onEdit,
     required this.onAttach,
     required this.onFindCda,
@@ -403,6 +414,7 @@ class _PrimaryAction extends StatelessWidget {
   final VehicleObligationType type;
   final _OwnerVisualState visualState;
   final bool hasDocument;
+  final bool documentsLocked;
   final VoidCallback onEdit;
   final VoidCallback onAttach;
   final VoidCallback? onView;
@@ -413,6 +425,8 @@ class _PrimaryAction extends StatelessWidget {
     final isRtm = type == VehicleObligationType.rtm;
     final label = isRtm
         ? 'BUSCAR CDA'
+        : documentsLocked && visualState == _OwnerVisualState.active
+        ? 'Ver documentos'
         : _soatPrimaryLabel(visualState, hasDocument);
     final action = isRtm
         ? onFindCda
@@ -426,7 +440,13 @@ class _PrimaryAction extends StatelessWidget {
         textStyle: const TextStyle(fontWeight: FontWeight.w800),
       ),
       onPressed: action,
-      icon: Icon(isRtm ? Icons.location_on_outlined : Icons.shield_outlined),
+      icon: Icon(
+        isRtm
+            ? Icons.location_on_outlined
+            : documentsLocked && visualState == _OwnerVisualState.active
+            ? Icons.lock_outline
+            : Icons.shield_outlined,
+      ),
       label: Text(label),
     );
   }
@@ -449,6 +469,8 @@ class _DocumentCard extends StatelessWidget {
   const _DocumentCard({
     required this.type,
     required this.metadata,
+    required this.locked,
+    required this.busy,
     required this.errorMessage,
     required this.onAttach,
     this.onView,
@@ -456,7 +478,9 @@ class _DocumentCard extends StatelessWidget {
   });
 
   final VehicleObligationType type;
-  final PrivateVehicleDocumentMetadata? metadata;
+  final WalletDocument? metadata;
+  final bool locked;
+  final bool busy;
   final String? errorMessage;
   final VoidCallback onAttach;
   final VoidCallback? onView;
@@ -466,7 +490,9 @@ class _DocumentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isSoat = type == VehicleObligationType.soat;
     final hasDocument = metadata != null;
-    final body = errorMessage != null
+    final body = locked
+        ? 'Desbloquea la billetera para consultar tus documentos.'
+        : errorMessage != null
         ? 'No se pudo leer la copia local.'
         : hasDocument
         ? (isSoat ? 'Póliza guardada' : 'Tu certificado está cargado.')
@@ -475,7 +501,11 @@ class _DocumentCard extends StatelessWidget {
               : 'Aún no has cargado tu certificado.');
     return _SoftCard(
       keyName: 'owner-document-${type.value}',
-      icon: isSoat ? Icons.description_outlined : Icons.fact_check_outlined,
+      icon: locked
+          ? Icons.lock_outline
+          : isSoat
+          ? Icons.description_outlined
+          : Icons.fact_check_outlined,
       iconColor: AppColors.teal,
       title: isSoat ? 'Documento SOAT' : 'Mi certificado RTM',
       body: body,
@@ -484,11 +514,17 @@ class _DocumentCard extends StatelessWidget {
         children: [
           FilledButton.tonal(
             key: ValueKey('owner-document-action-${type.value}'),
-            onPressed: hasDocument ? onView : onAttach,
+            onPressed: busy
+                ? null
+                : hasDocument
+                ? onView
+                : onAttach,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.s),
               child: Text(
-                hasDocument
+                locked
+                    ? 'Ver documentos'
+                    : hasDocument
                     ? (isSoat ? 'Ver SOAT' : 'Ver certificado')
                     : (isSoat ? 'Adjuntar SOAT' : 'Cargar certificado'),
               ),
@@ -981,10 +1017,10 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-PrivateVehicleDocumentType _documentType(VehicleObligationType type) {
+WalletDocumentType _documentType(VehicleObligationType type) {
   return switch (type) {
-    VehicleObligationType.soat => PrivateVehicleDocumentType.soat,
-    VehicleObligationType.rtm => PrivateVehicleDocumentType.rtm,
+    VehicleObligationType.soat => WalletDocumentType.soat,
+    VehicleObligationType.rtm => WalletDocumentType.rtm,
     _ => throw ArgumentError.value(type, 'type', 'Unsupported owner screen.'),
   };
 }
@@ -1152,10 +1188,6 @@ String _houseSubtitle(VehicleObligationType type) {
   return type == VehicleObligationType.soat
       ? 'Sin subir documentos a la nube.'
       : 'Tu certificado queda privado en este dispositivo.';
-}
-
-String _documentLabel(VehicleObligationType type) {
-  return type == VehicleObligationType.soat ? 'SOAT' : 'Certificado RTM';
 }
 
 String _formatHeroDate(DateTime date) {
