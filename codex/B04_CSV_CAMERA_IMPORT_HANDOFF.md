@@ -36,6 +36,8 @@
 - GitHub Actions más reciente comprobada: run `39664045453` sobre HEAD funcional `471df2074be2de7179688a8fa501a88f5a6c984d` (**FAIL con 0 pasos** en PHP 8.3, 8.4, 8.5 y MariaDB; 21-oct-2026). Estado bloqueado por la ejecución/infraestructura, sin evidencia de fallo del código ni de CI PASS. No forzar reintentos.
 - Aquí no hay Composer, `vendor`, `mbstring` ni `pdo_sqlite`: **Laravel, Blade, Pint, migración, MySQL/MariaDB y concurrencia no certificados**. Falta validar el índice operativo, collation y `EXPLAIN` de consulta de identidad en MariaDB.
 
+- **Seguridad del QA local (último cambio):** antes del primer comando Artisan, `scripts/qa_b04_csv.ps1` rechaza `server/bootstrap/cache/config.php`, cualquier `server/bootstrap/cache/routes-*.php` y un `APP_CONFIG_CACHE` heredado que redirija la configuración fuera del clon. Laravel puede usar configuraciones cacheadas por encima de `DB_CONNECTION=sqlite`; sin la guarda, `RefreshDatabase` podría operar contra una DB persistente. **Fail-closed**, sin borrar archivos ni modificar el entorno ajeno; se validó por lectura estática y GitHub, **PowerShell no fue ejecutado aquí porque no hay pwsh**. Se mantiene el requisito de clon disposable, DB SQLite `:memory:` y MariaDB sintética separada.
+
 ## QA siguiente — una sola intervención final y acotada
 
 1. **No tocar C:/D: ni worktrees existentes.** En una ruta distinta de disco compatible y con WIP previo inventariado solo lectura, clonar `feat/B04-csv-safe-parser`, registrar HEAD real, comprobar `git status` limpio. Nunca `reset`, `clean`, `stash`, rebase o checkout en worktree ajeno.
