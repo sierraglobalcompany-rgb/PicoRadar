@@ -106,6 +106,22 @@ class CameraCsvPreviewTest extends TestCase
         self::assertSame(0, $review['counts']['create_ready']);
     }
 
+    public function test_nearby_rows_in_distinct_municipalities_of_one_jurisdiction_are_blocked(): void
+    {
+        [$source, $jurisdiction, $unit] = $this->domain();
+        $other = \App\Models\GeographicUnit::query()
+            ->where('level', 'municipality')->whereKeyNot($unit->id)->firstOrFail();
+        $jurisdiction->geographicUnits()->syncWithoutDetaching([$other->id]);
+
+        $first = $this->row(2, $unit->code);
+        $second = $this->row(3, $other->code);
+        $second['values']['external_id'] = 'EX-2';
+        $review = $this->review([$first, $second]);
+
+        self::assertSame(2, $review['counts']['blocked']);
+        self::assertSame(0, $review['counts']['create_ready']);
+    }
+
     private function domain(): array
     {
         $jurisdiction = Jurisdiction::query()->where('enabled', true)->with('geographicUnits')->firstOrFail();

@@ -62,6 +62,7 @@ try {
     Set-Location -LiteralPath (Join-Path $root 'server')
     $sources = @(
         'app/Services/CameraCsvParser.php',
+        'app/Services/CameraRegistryService.php',
         'app/Services/CameraCsvPreviewService.php',
         'app/Services/CameraCsvImportService.php',
         'app/Models/CameraCsvImport.php',
@@ -70,6 +71,7 @@ try {
         'tests/Unit/CameraCsvParserTest.php',
         'tests/Feature/CameraCsvPreviewTest.php',
         'tests/Feature/CameraCsvImportTest.php',
+        'tests/Feature/CameraRegistryTest.php',
         'routes/web.php'
     )
     foreach ($source in $sources) {

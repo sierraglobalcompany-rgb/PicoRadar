@@ -146,8 +146,9 @@ final class CameraCsvPreviewService
             }
             for ($j = $i + 1; $j < $len; $j++) {
                 $right = $result[$j];
-                if (! in_array($right['status'], ['create_ready', 'update_ready', 'noop'], true)
-                    || $left['values']['municipality_code'] !== $right['values']['municipality_code']) {
+                // One jurisdiction may cover multiple municipalities: a pair
+                // across their boundary is still a possible duplicate.
+                if (! in_array($right['status'], ['create_ready', 'update_ready', 'noop'], true)) {
                     continue;
                 }
                 if (self::distanceMeters((float) $left['values']['lat'], (float) $left['values']['lon'], (float) $right['values']['lat'], (float) $right['values']['lon']) <= 25) {
