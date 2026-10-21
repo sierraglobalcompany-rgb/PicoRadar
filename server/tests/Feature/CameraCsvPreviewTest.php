@@ -122,6 +122,30 @@ class CameraCsvPreviewTest extends TestCase
         self::assertSame(0, $review['counts']['create_ready']);
     }
 
+    public function test_snapshot_large_file_advisory_avoids_database_placeholder_limit(): void
+    {
+        [$source, $jurisdiction, $unit] = $this->domain();
+        app(CameraRegistryService::class)->create([
+            'source_id' => $source->id, 'jurisdiction_id' => $jurisdiction->id,
+            'geographic_unit_id' => $unit->id, 'external_id' => 'KNOWN',
+            'lat' => 4.711, 'lon' => -74.0721, 'type' => 'other',
+        ]);
+
+        // Rows refer to an uncovered municipality. They have valid source
+        // identities but are blocked before the costly spatial scan.
+        $rows = [];
+        for ($i = 0; $i < 1100; $i++) {
+            $row = $this->row($i + 2, '99999');
+            $row['values']['external_id'] = sprintf('CSV-%04d', $i);
+            $rows[] = $row;
+        }
+        $review = app(CameraCsvPreviewService::class)->preview(
+            ['rows' => $rows], $source, $jurisdiction, 'snapshot'
+        );
+        self::assertSame(1100, $review['counts']['blocked']);
+        self::assertSame(1, $review['missing_advisory']);
+    }
+
     private function domain(): array
     {
         $jurisdiction = Jurisdiction::query()->where('enabled', true)->with('geographicUnits')->firstOrFail();

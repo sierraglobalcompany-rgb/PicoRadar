@@ -174,12 +174,21 @@ final class CameraCsvPreviewService
 
         $missing = 0;
         if ($mode === 'snapshot' && $available) {
-            $missing = Camera::query()
+            // Avoid up to 2000 bound placeholders in a WHERE NOT IN query:
+            // older SQLite engines cap host variables below the file limit.
+            // Compare bounded input keys against a lazy, ID-paginated scan.
+            $inFile = array_fill_keys(array_keys($foldedIdentities), true);
+            Camera::query()
+                ->select(['id', 'external_id'])
                 ->where('source_id', $source->id)
                 ->where('jurisdiction_id', $jurisdiction->id)
                 ->whereNotNull('external_id')
-                ->whereNotIn('external_id', array_keys($identities))
-                ->count();
+                ->lazyById(500)
+                ->each(static function (Camera $existing) use ($inFile, &$missing): void {
+                    if (! isset($inFile[mb_strtolower((string) $existing->external_id, 'UTF-8')])) {
+                        $missing++;
+                    }
+                });
         }
 
         return ['rows' => $result, 'counts' => $counts, 'missing_advisory' => $missing];
