@@ -13,7 +13,7 @@
 3. Persistencia de lote nuevo aislado: camera_csv_imports; archivos privados en el disco local, rutas aleatorias y hash SHA256 original/análisis, auditoría, estado review/applied. No crear otras tablas ni índices de cámaras: migración histórica ya declara UNIQUE(source_id,external_id); falta comprobar el índice del motor real.
 4. Panel admin con tres vistas (batches, upload, review); GET template/report; comparación solo misma source/jurisdiction. Report neutraliza fórmulas; DANE conserva ceros iniciales para hojas de cálculo.
 5. POST Apply exige Gate cameras.edit **y** cameras.review. Selección explícita, SHA de revisión, nueva clasificación dentro de DB transaction y locks; valida todas las seleccionadas antes de mutación, después crea por CameraRegistryService::create con lista cerrada sin campos de ciclo de vida, actualiza solo draft/rejected por updateDraft. 409 ante stale; idempotencia si lote ya aplicado; rollback de DB si falla una fila/auditoría. NO verifica, activa, retira ni publica cámaras.
-6. 8 unit parser, 5 preview Feature, 11 import Feature: **24 métodos de prueba escritos pero aún NO EJECUTADOS**. No CI verde: Actions tiene bloqueo de cuota con zero steps.
+6. 8 unit parser, 5 preview Feature, 13 import Feature: **26 métodos de prueba escritos pero aún NO EJECUTADOS**. No CI verde: Actions tiene bloqueo de cuota con zero steps.
 
 ## Gates y bloqueos reales
 
