@@ -9,6 +9,7 @@ use App\Enums\GeographicUnitLevel;
 use App\Models\Camera;
 use App\Models\CameraSource;
 use App\Models\Jurisdiction;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 final class CameraCsvPreviewService
@@ -49,15 +50,22 @@ final class CameraCsvPreviewService
         }
 
         $existing = collect();
+        $usesCaseInsensitiveIndex = in_array(DB::getDriverName(), ['mysql', 'mariadb'], true);
         foreach (array_chunk(array_keys($identities), 400) as $chunk) {
-            // Use the same case-folded comparison across SQLite and MariaDB.
-            // Placeholder bindings make this safe for arbitrary external IDs.
-            $folded = array_map(static fn (string $id): string => mb_strtolower($id, 'UTF-8'), $chunk);
-            $placeholders = implode(',', array_fill(0, count($folded), '?'));
-            $existing = $existing->merge(Camera::query()
-                ->where('source_id', $source->id)
-                ->whereRaw('LOWER(external_id) IN ('.$placeholders.')', $folded)
-                ->get());
+            $query = Camera::query()->where('source_id', $source->id);
+            if ($usesCaseInsensitiveIndex) {
+                // The existing source_id/external_id UNIQUE index is case-insensitive
+                // under the configured MariaDB/MySQL utf8mb4_unicode_ci collation.
+                $query->whereIn('external_id', $chunk);
+            } else {
+                // SQLite is case-sensitive by default. Its LOWER() supports
+                // ASCII identifiers; unusual Unicode collisions still fail
+                // closed at database UNIQUE/identity gates on MariaDB.
+                $folded = array_map(static fn (string $id): string => mb_strtolower($id, 'UTF-8'), $chunk);
+                $placeholders = implode(',', array_fill(0, count($folded), '?'));
+                $query->whereRaw('LOWER(external_id) IN ('.$placeholders.')', $folded);
+            }
+            $existing = $existing->merge($query->get());
         }
         $byExternalId = $existing->keyBy('external_id');
         $byFoldedId = $existing->keyBy(static fn (Camera $camera): string => mb_strtolower($camera->external_id, 'UTF-8'));
