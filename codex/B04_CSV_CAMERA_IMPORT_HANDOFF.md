@@ -15,7 +15,10 @@
 
 ## Evidencia y límites (no confundir con certificación)
 
-- **50 métodos de prueba NUEVOS escritos, aún NO ejecutados con PHPUnit**: 12 `CameraCsvParserTest`, 9 `CameraCsvPreviewTest`, 26 `CameraCsvImportTest`, 3 añadidos a `CameraRegistryTest`. Las 33 pruebas ANSV históricas (no nuevas) también deben pasar en suite global.
+- **Identidades externas numéricas:** PHP convierte las claves `"123"` de arreglos asociativos en enteros. El preview convierte nuevamente todos los IDs a `string` antes de incluirlos como bindings de `external_id` VARCHAR para evitar coerción numérica SQL en MariaDB; conserva explícitamente los ceros iniciales de `"00123"`. Nueva prueba de integración con `00123`, `123` y `123ABC` (escrita, todavía NO ejecutada con Laravel). Verificación directa en PHP 8.4 del comportamiento de las claves y conversión **PASS**; no certifica PDO/MariaDB.
+
+
+- **51 métodos de prueba NUEVOS escritos, aún NO ejecutados con PHPUnit**: 12 `CameraCsvParserTest`, 9 `CameraCsvPreviewTest`, 27 `CameraCsvImportTest`, 3 añadidos a `CameraRegistryTest`. Las 33 pruebas ANSV históricas (no nuevas) también deben pasar en suite global.
 - Regresiones clave: privacidad/SHA, CSV control/inyección/Unicode, identidad case-fold, fuente reverificada, fuente o jurisdicción modificadas, cobertura vinculada/desvinculada, cambio de nombre sin avance de `updated_at`, optativos vacíos, selección en diferente orden, filas stale, rollback de auditoría, roles, ANSV ID estable, rate limits por minuto.
 - **Exportación CSV de coordenadas:** lat/lon de formato validado `-?\\d+\\.\\d{7}` permanecen numéricas; las celdas de identidad y texto que aparentan fórmulas continúan escapadas. Regresión Feature escrita. Smoke focal de este predicado con PHP 8.4: 6 casos mostraron las 2 coordenadas válidas sin prefijo y 4 cargas sospechosas prefijadas. Esto NO es PHPUnit.
 - **QA de rutas:** verificador `scripts/qa_b04_csv.ps1` ahora comprueba nombres y métodos de las 7 rutas B04 mediante `route:list --json`; el código de retorno 0 sin rutas ya no basta para aprobar.
