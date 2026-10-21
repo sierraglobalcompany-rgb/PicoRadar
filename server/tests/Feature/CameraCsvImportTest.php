@@ -288,6 +288,27 @@ class CameraCsvImportTest extends TestCase
         self::assertDatabaseMissing('cameras', ['external_id' => 'QA-002']);
     }
 
+    public function test_repeating_applied_batch_with_different_selection_returns_409(): void
+    {
+        $batch = $this->upload(
+            "QA-001,{$this->municipalityCode},4.711,-74.0721,other,First\n".
+            "QA-002,{$this->municipalityCode},4.720,-74.0900,other,Second\n"
+        );
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), [
+            'analysis_sha256' => $batch->analysis_sha256,
+            'records' => ['2'],
+        ])->assertRedirect();
+
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), [
+            'analysis_sha256' => $batch->analysis_sha256,
+            'records' => ['3'],
+        ])->assertStatus(409);
+
+        self::assertSame(1, Camera::count());
+        self::assertDatabaseMissing('cameras', ['external_id' => 'QA-002']);
+        self::assertSame(64, strlen($batch->fresh()->applied_selection_sha256));
+    }
+
     private function upload(?string $body = null): CameraCsvImport
     {
         $csv = "external_id,municipality_code,lat,lon,type,name\n".

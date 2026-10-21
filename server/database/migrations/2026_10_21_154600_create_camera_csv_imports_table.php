@@ -20,6 +20,7 @@ return new class extends Migration
             $table->char('original_sha256', 64);
             $table->string('analysis_path', 255);
             $table->char('analysis_sha256', 64);
+            $table->char('applied_selection_sha256', 64)->nullable();
             $table->json('counts');
             $table->unsignedInteger('row_count');
             $table->timestamp('applied_at')->nullable();

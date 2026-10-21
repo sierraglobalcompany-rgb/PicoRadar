@@ -12,7 +12,8 @@ final class CameraCsvImport extends Model
     protected $fillable = [
         'source_id', 'jurisdiction_id', 'created_by_id', 'applied_by_id',
         'mode', 'status', 'original_path', 'original_sha256',
-        'analysis_path', 'analysis_sha256', 'counts', 'row_count', 'applied_at',
+        'analysis_path', 'analysis_sha256', 'applied_selection_sha256',
+        'counts', 'row_count', 'applied_at',
     ];
 
     protected function casts(): array

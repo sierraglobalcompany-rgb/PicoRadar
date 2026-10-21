@@ -128,11 +128,20 @@ final class CameraCsvImportService
             }
             $keys[$key] = true;
         }
+        $selected = array_keys($keys);
+        sort($selected, SORT_NUMERIC);
+        $selectionSha = hash('sha256', json_encode($selected, JSON_THROW_ON_ERROR));
 
         try {
-            return DB::transaction(function () use ($batch, $keys, $analysisSha, $actor): array {
+            return DB::transaction(function () use ($batch, $keys, $analysisSha, $selectionSha, $actor): array {
                 $current = CameraCsvImport::query()->lockForUpdate()->findOrFail($batch->id);
                 if ($current->status === 'applied') {
+                    if (! hash_equals($current->analysis_sha256, $analysisSha)
+                        || $current->applied_selection_sha256 === null
+                        || ! hash_equals($current->applied_selection_sha256, $selectionSha)) {
+                        abort(409, 'This batch was already applied with a different row selection or review version.');
+                    }
+
                     return ['already_applied' => true, 'created' => 0, 'updated' => 0];
                 }
                 if ($current->status !== 'review' || ! hash_equals($current->analysis_sha256, $analysisSha)) {
@@ -199,6 +208,7 @@ final class CameraCsvImportService
                     'status' => 'applied',
                     'applied_by_id' => $actor->id,
                     'applied_at' => now(),
+                    'applied_selection_sha256' => $selectionSha,
                 ])->save();
                 $this->audit->log($actor, 'camera_csv_import.applied', $current, [
                     'created' => $created, 'updated' => $updated, 'sha256' => $current->original_sha256,
