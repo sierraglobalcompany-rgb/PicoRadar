@@ -43,4 +43,4 @@ Cobertura declarada al cierre de coherencia, sujeta a la fecha de cada fuente: P
 
 ## Continuación exacta
 
-Seguir el campo NEXT del handoff de recuperación. Cerrar primero sus gaps de reconstrucción; no abrir funcionalidades ni QA física automáticamente. Todo lote futuro debe leer su contrato.
+La orden consolidada del 2026-10-20 sustituye el NEXT exclusivo del selector tardío. Seguir `PicoRadar_STABILIZATION_HANDOFF.md` y PR #72 para los cinco casos y QA local; no repetir rescate ni pruebas de código sin cambios. Cinco originales PASS en full final; gate global PARTIAL (3241 PASS / 11 SKIP / 11 FAIL; nueve nuevos PASS serial). CI remota bloqueada por cuota. No abrir funcionalidades ni QA física automáticamente.
