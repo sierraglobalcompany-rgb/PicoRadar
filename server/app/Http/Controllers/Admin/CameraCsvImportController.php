@@ -165,10 +165,20 @@ final class CameraCsvImportController extends Controller
                 $values['type'] ?? '',
                 implode('; ', $row['errors']),
             ];
-            fputcsv($stream, array_map(
+            $safeCells = array_map(
                 static fn ($v): string => CameraCsvParser::spreadsheetSafe((string) $v),
                 $cells
-            ), ',', '"', '');
+            );
+            // Latitude and longitude are already validated and normalized by
+            // CameraCsvParser. Preserve canonical signed decimals as numbers
+            // while still escaping formula-looking free-text/identity cells.
+            foreach ([4, 5] as $coordinateIndex) {
+                $coordinate = (string) $cells[$coordinateIndex];
+                if (preg_match('/^-?\\d+\\.\\d{7}$/D', $coordinate)) {
+                    $safeCells[$coordinateIndex] = $coordinate;
+                }
+            }
+            fputcsv($stream, $safeCells, ',', '"', '');
         }
         rewind($stream);
         $csv = stream_get_contents($stream);

@@ -176,6 +176,18 @@ class CameraCsvImportTest extends TestCase
         self::assertStringContainsString("'=HYPERLINK", $report->getContent());
     }
 
+    public function test_report_retains_normalized_negative_longitudes_as_numeric_csv_cells(): void
+    {
+        $batch = $this->upload();
+        $response = $this->actingAs($this->admin)->get(
+            route('admin.camera-csv-imports.report', $batch)
+        );
+        $response->assertOk();
+        $csv = $response->getContent();
+        self::assertStringContainsString(',4.7110000,-74.0721000,', $csv);
+        self::assertStringNotContainsString("'-74.0721000", $csv);
+    }
+
     public function test_existing_draft_is_updated_without_verification_or_new_camera(): void
     {
         $unit = $this->jurisdiction->geographicUnits->first();
