@@ -309,6 +309,21 @@ class CameraCsvImportTest extends TestCase
         self::assertSame(64, strlen($batch->fresh()->applied_selection_sha256));
     }
 
+    public function test_deleted_private_analysis_returns_conflict_without_mutating_cameras(): void
+    {
+        $batch = $this->upload();
+        Storage::disk('local')->delete($batch->analysis_path);
+        $this->actingAs($this->admin)->get(route('admin.camera-csv-imports.show', $batch))
+            ->assertStatus(409);
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), [
+            'analysis_sha256' => $batch->analysis_sha256,
+            'records' => ['2'],
+        ])->assertStatus(409);
+
+        self::assertSame('review', $batch->fresh()->status);
+        self::assertSame(0, Camera::count());
+    }
+
     private function upload(?string $body = null): CameraCsvImport
     {
         $csv = "external_id,municipality_code,lat,lon,type,name\n".

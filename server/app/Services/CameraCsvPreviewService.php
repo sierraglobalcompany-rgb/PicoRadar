@@ -50,9 +50,13 @@ final class CameraCsvPreviewService
 
         $existing = collect();
         foreach (array_chunk(array_keys($identities), 400) as $chunk) {
+            // Use the same case-folded comparison across SQLite and MariaDB.
+            // Placeholder bindings make this safe for arbitrary external IDs.
+            $folded = array_map(static fn (string $id): string => mb_strtolower($id, 'UTF-8'), $chunk);
+            $placeholders = implode(',', array_fill(0, count($folded), '?'));
             $existing = $existing->merge(Camera::query()
                 ->where('source_id', $source->id)
-                ->whereIn('external_id', $chunk)
+                ->whereRaw('LOWER(external_id) IN ('.$placeholders.')', $folded)
                 ->get());
         }
         $byExternalId = $existing->keyBy('external_id');

@@ -92,6 +92,9 @@ final class CameraCsvImportService
     public function load(CameraCsvImport $batch): array
     {
         $disk = Storage::disk('local');
+        if (! $disk->exists($batch->original_path) || ! $disk->exists($batch->analysis_path)) {
+            abort(409, 'Private CSV or its analysis is missing.');
+        }
         $original = $disk->get($batch->original_path);
         $analysis = $disk->get($batch->analysis_path);
         if (! is_string($original) || ! is_string($analysis)

@@ -86,6 +86,26 @@ class CameraCsvPreviewTest extends TestCase
         self::assertSame(0, $review['counts']['create_ready']);
     }
 
+    public function test_existing_identity_with_different_letter_case_is_blocked_before_apply(): void
+    {
+        [$source, $jurisdiction, $unit] = $this->domain();
+        app(CameraRegistryService::class)->create([
+            'source_id' => $source->id,
+            'jurisdiction_id' => $jurisdiction->id,
+            'geographic_unit_id' => $unit->id,
+            'external_id' => 'EX-1',
+            'lat' => '4.7500000',
+            'lon' => '-74.0500000',
+            'type' => 'other',
+        ]);
+
+        $row = $this->row(2, $unit->code);
+        $row['values']['external_id'] = 'ex-1';
+        $review = $this->review([$row]);
+        self::assertSame('blocked', $review['rows'][0]['status']);
+        self::assertSame(0, $review['counts']['create_ready']);
+    }
+
     private function domain(): array
     {
         $jurisdiction = Jurisdiction::query()->where('enabled', true)->with('geographicUnits')->firstOrFail();
