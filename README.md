@@ -7,17 +7,22 @@ App Android-first en Flutter y control plane Laravel. Funciona sin cuenta. Inici
 1. Clonar `https://github.com/sierraglobalcompany-rgb/PicoRadar.git` con acceso autorizado y seleccionar **`recovery/20261019-modern`**. El `main` histórico no representa el estado moderno.
 2. Leer `AGENTS.md`, `docs/CURRENT.md`, Baseline y Arquitectura en `docs/baseline/`, después el contrato del lote. UI: `docs/DESIGN_CONTRACT.md`; procedimientos: `docs/SOP.md`.
 3. Consultar `PicoRadar_RECOVERY_HANDOFF.md` para evidencias y NEXT, y `PicoRadar_FORENSE_10_PASADAS.md` para procedencia. Confirmar HEAD antes de trabajar.
-4. Reconstruir con los lockfiles. Secretos, claves de firma y datos privados se aprovisionan aparte; no son necesarios para las suites sintéticas.
+4. Reconstruir con los lockfiles. Secretos, claves de firma y datos privados se aprovisionan aparte; no son necesarios para las suites sintéticas. El código reconstruible no equivale a restaurar una base privada o disponer de claves de publicación. Consultar el NEXT canónico en `docs/CURRENT.md` y su contrato antes de programar.
 
 Checkout canónico de esta máquina: `D:/Dev/PicoRadar`, directamente en exFAT. Reconstrucción independiente: `D:/Verification/PicoRadar`. Los originales de C: permanecen preservados.
 
-En un equipo o destino nuevo, clonar directamente la rama moderna, sin pasar por main. No sobrescribir un checkout existente:
+En otro PC/disco, elegir una **carpeta nueva que todavía no exista**; nunca clonar encima del checkout ni importar WIP automáticamente. El ejemplo usa una variable, no una ruta obligatoria:
 
 ```powershell
-git -c checkout.workers=8 -c core.autocrlf=false -c core.longpaths=true clone --branch recovery/20261019-modern --single-branch https://github.com/sierraglobalcompany-rgb/PicoRadar.git D:/Dev/PicoRadar
-Set-Location D:/Dev/PicoRadar
+$destino = 'E:/Proyectos/PicoRadar' # Cambiar por una ruta NUEVA del equipo
+if (Test-Path -LiteralPath $destino) { throw 'La carpeta ya existe: elige otra para el clon limpio' }
+git -c checkout.workers=8 -c core.autocrlf=false -c core.longpaths=true clone --branch recovery/20261019-modern --single-branch https://github.com/sierraglobalcompany-rgb/PicoRadar.git $destino
+Set-Location -LiteralPath $destino
 git rev-parse HEAD
+git status --porcelain=v1 -uall
 ```
+
+Para **continuar en un checkout existente**, ANTES de editar o crear ramas inspeccionar `git status --porcelain=v1 -uall`, `git branch -vv`, `git worktree list --porcelain`, `git log -1` y comparar contra `origin/recovery/20261019-modern`. No sobrescribir ni eliminar cambios no publicados. El contrato próximo B04 está en [`codex/lots/B04_CSV_CAMERA_IMPORT.md`](codex/lots/B04_CSV_CAMERA_IMPORT.md); la implementación no está terminada.
 
 ## Requisitos
 
@@ -41,12 +46,13 @@ git config core.autocrlf false
 git config core.longpaths true
 git config core.filemode false
 git config checkout.workers 8
-New-Item -ItemType Directory -Path D:/PicoRadar_Rescue/scratch -Force | Out-Null
-$env:TEMP = 'D:/PicoRadar_Rescue/scratch'
-$env:TMP = $env:TEMP
+$scratch = Join-Path (Split-Path -Parent (Get-Location).Path) 'PicoRadar-temp'
+New-Item -ItemType Directory -Path $scratch -Force | Out-Null
+$env:TEMP = $scratch
+$env:TMP = $scratch
 ```
 
-No usar `safe.directory=*`. En otro equipo elegir su destino y temporal disponibles.
+No usar `safe.directory=*`. En otro equipo elegir su destino y temporal disponibles. El volumen exFAT de la máquina histórica impidió crear enlaces exigidos por B06/B07: para probar **esa instalación** se necesita un volumen compatible (por ejemplo NTFS en Windows), sin reformatear ni modificar C:/D: existentes. No certificar instalación MariaDB ni producción hasta ejecutar smoke real en entorno aislado.
 
 ## Reconstruir móvil
 

@@ -1,0 +1,3 @@
+external_id,municipality_code,lat,lon,type,name,direction,bearing,corridor,speed_limit,notes
+SINT-A001,05001,6.2518,-75.5636,speed,"Cámara sintética, punto A",N,0,Corredor de prueba,60,Solo QA no es ubicación real
+SINT-A002,05001,6.2571,-75.5781,other,Cámara sintética punto B,,,,,Solo QA no es ubicación real
