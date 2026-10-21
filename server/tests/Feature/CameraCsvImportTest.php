@@ -360,9 +360,15 @@ class CameraCsvImportTest extends TestCase
             "QA-002,{$this->municipalityCode},4.720,-74.0900,other,Second\n"
         );
 
-        $first = ['analysis_sha256' => $batch->analysis_sha256, 'records' => ['2', '3']];
-        $second = ['analysis_sha256' => $batch->analysis_sha256, 'records' => ['3', '2']];
+        // Deliberately send reverse order on the FIRST apply. The service
+        // must persist and audit in canonical CSV record order.
+        $first = ['analysis_sha256' => $batch->analysis_sha256, 'records' => ['3', '2']];
+        $second = ['analysis_sha256' => $batch->analysis_sha256, 'records' => ['2', '3']];
         $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), $first)->assertRedirect();
+        self::assertSame(
+            ['QA-001', 'QA-002'],
+            Camera::query()->orderBy('id')->pluck('external_id')->all()
+        );
         $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), $second)->assertRedirect();
 
         self::assertSame(2, Camera::count());

@@ -139,9 +139,10 @@ final class CameraCsvImportService
             }
             $keys[$key] = true;
         }
-        $selected = array_keys($keys);
-        sort($selected, SORT_NUMERIC);
-        $selectionSha = hash('sha256', json_encode($selected, JSON_THROW_ON_ERROR));
+        // Use one canonical order for the idempotency hash, DB locks and
+        // mutations, regardless of the incoming HTTP checkbox order.
+        ksort($keys, SORT_NUMERIC);
+        $selectionSha = hash('sha256', json_encode(array_keys($keys), JSON_THROW_ON_ERROR));
 
         try {
             return DB::transaction(function () use ($batch, $keys, $analysisSha, $selectionSha, $actor): array {
