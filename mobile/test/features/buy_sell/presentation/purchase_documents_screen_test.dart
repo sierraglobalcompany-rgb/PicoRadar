@@ -17,6 +17,8 @@ import 'package:picoradar/features/documents/platform/wallet_platform.dart';
 import 'package:picoradar/features/documents/presentation/wallet_viewer.dart';
 import 'package:picoradar/features/vehicle_status/platform/vehicle_document_gateway.dart';
 
+import '../../../test_app_harness.dart' show pumpUntilRealIo;
+
 const _owner = WalletOwner.preparation('purchase-fixture');
 const _ownerLabel = 'Preparaci\u00f3n de prueba';
 const _unlock = ValueKey('wallet-unlock');
@@ -465,6 +467,8 @@ void main() {
             io: true,
           );
           expect(find.byType(WalletViewer, skipOffstage: false), findsNothing);
+          expect(harness.session.accessAllowed, isFalse);
+          expect(original.existsSync(), isTrue);
           expect(harness.store.savedOwner, isNull);
           expect(harness.store.documents, isEmpty);
           expect(Directory('${root.path}/wallet_pending').listSync(), isEmpty);
@@ -539,12 +543,15 @@ Future<void> _until(
   bool Function() condition, {
   bool io = false,
 }) async {
+  if (io) {
+    await pumpUntilRealIo(
+      tester,
+      condition,
+      reason: 'Document operation did not finish its real I/O',
+    );
+    return;
+  }
   for (var frame = 0; frame < 100 && !condition(); frame++) {
-    if (io) {
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 10)),
-      );
-    }
     await tester.pump(const Duration(milliseconds: 16));
   }
   expect(

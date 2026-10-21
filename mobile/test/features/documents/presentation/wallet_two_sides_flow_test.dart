@@ -55,6 +55,17 @@ void main() {
       await _untilGone(tester, find.byType(WalletViewer));
       await _untilWalletIdle(tester);
       expect(scanner.deletedPaths, hasLength(2));
+      await tester.runAsync(() async {
+        final document = (await harness.walletStore.listDocuments(
+          owner: const WalletOwner.driver('principal'),
+        )).single;
+        expect(document.front!.originalName, 'front.png');
+        expect(document.back!.originalName, 'back.png');
+        expect(
+          document.front!.encryptedRelativePath,
+          isNot(document.back!.encryptedRelativePath),
+        );
+      });
     },
   );
 
@@ -245,20 +256,11 @@ Future<File> _png(Directory root, String name) async {
 }
 
 Future<void> _until(WidgetTester tester, Finder target) async {
-  for (var attempt = 0; attempt < 300 && target.evaluate().isEmpty; attempt++) {
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 10)),
-    );
-    await tester.pump(const Duration(milliseconds: 50));
-  }
-  if (target.evaluate().isEmpty) {
-    final texts = tester
-        .widgetList<Text>(find.byType(Text))
-        .map((widget) => widget.data)
-        .whereType<String>()
-        .toList();
-    fail('Target not found. Visible text: $texts');
-  }
+  await pumpUntilRealIo(
+    tester,
+    () => target.evaluate().isNotEmpty,
+    reason: 'Document flow target did not appear: $target',
+  );
   await tester.pump(const Duration(milliseconds: 200));
 }
 
@@ -266,53 +268,29 @@ Future<void> _untilWalletIdle(WidgetTester tester) async {
   final container = ProviderScope.containerOf(
     tester.element(find.text('Agregar documento')),
   );
-  for (
-    var attempt = 0;
-    attempt < 100 && container.read(walletOperationProvider).busy;
-    attempt++
-  ) {
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 10)),
-    );
-    await tester.pump(const Duration(milliseconds: 50));
-  }
-  expect(container.read(walletOperationProvider).busy, isFalse);
+  await pumpUntilRealIo(
+    tester,
+    () => !container.read(walletOperationProvider).busy,
+    reason: 'Wallet action must finish cleanup before teardown',
+  );
 }
 
 Future<void> _untilEnabled(WidgetTester tester, Finder target) async {
-  for (var attempt = 0; attempt < 100; attempt++) {
-    final widgets = target.evaluate();
-    if (widgets.isNotEmpty &&
-        tester.widget<FilledButton>(target).onPressed != null) {
-      return;
-    }
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 10)),
-    );
-    await tester.pump(const Duration(milliseconds: 50));
-  }
-  fail('Save action did not become available.');
+  await pumpUntilRealIo(
+    tester,
+    () =>
+        target.evaluate().isNotEmpty &&
+        tester.widget<FilledButton>(target).onPressed != null,
+    reason: 'Both captured sides must validate before saving',
+  );
 }
 
 Future<void> _untilGone(WidgetTester tester, Finder target) async {
-  for (
-    var attempt = 0;
-    attempt < 300 && target.evaluate().isNotEmpty;
-    attempt++
-  ) {
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 10)),
-    );
-    await tester.pump(const Duration(milliseconds: 50));
-  }
-  if (target.evaluate().isNotEmpty) {
-    final texts = tester
-        .widgetList<Text>(find.byType(Text))
-        .map((widget) => widget.data)
-        .whereType<String>()
-        .toList();
-    fail('Target remained visible. Visible text: $texts');
-  }
+  await pumpUntilRealIo(
+    tester,
+    () => target.evaluate().isEmpty,
+    reason: 'Viewer must finish saving before it closes',
+  );
   await tester.pump(const Duration(milliseconds: 200));
 }
 

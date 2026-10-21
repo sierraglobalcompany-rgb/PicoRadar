@@ -281,11 +281,29 @@ class TestAppHarness {
   }
 
   Future<void> dispose() async {
-    unawaited(database.close());
+    await database.close();
     if (documentRoot.existsSync()) {
       documentRoot.deleteSync(recursive: true);
     }
   }
+}
+
+// File futures and image decoding are not settled by fake frame time. Wait for
+// the observed state while yielding real I/O, with a bounded wall-clock budget.
+// The old 1–3 second frame loops expired while durable writes were still active.
+Future<void> pumpUntilRealIo(
+  WidgetTester tester,
+  bool Function() condition, {
+  required String reason,
+}) async {
+  final elapsed = Stopwatch()..start();
+  while (!condition() && elapsed.elapsed < const Duration(seconds: 30)) {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+    );
+    await tester.pump(const Duration(milliseconds: 16));
+  }
+  expect(condition(), isTrue, reason: '$reason (${elapsed.elapsed})');
 }
 
 class _NoOpVehicleAssociatedDataCleaner extends VehicleAssociatedDataCleaner {
