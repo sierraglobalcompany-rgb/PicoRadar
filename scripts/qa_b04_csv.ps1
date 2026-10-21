@@ -87,6 +87,21 @@ try {
         Require-ExitZero "php -l $source" { php -l $source }
     }
 
+    # Laravel prefers bootstrap/cache/config.php over all process env vars.
+    # A stale ignored production config could make RefreshDatabase migrate a
+    # persistent database despite DB_CONNECTION=sqlite. Abort fail-closed;
+    # never clear cached files automatically or operate outside this clone.
+    $bootstrapCache = Join-Path $root 'server/bootstrap/cache'
+    $cachedConfig = Join-Path $bootstrapCache 'config.php'
+    if (Test-Path -LiteralPath $cachedConfig -PathType Leaf) {
+        throw 'Unsafe Laravel config cache present; use a fresh QA clone without bootstrap/cache/config.php.'
+    }
+    $cachedRoutes = @(Get-ChildItem -LiteralPath $bootstrapCache -Filter 'routes-*.php' -File -ErrorAction SilentlyContinue)
+    if ($cachedRoutes.Count -gt 0) {
+        throw 'Stale Laravel route cache present; use a fresh QA clone without bootstrap/cache/routes-*.php.'
+    }
+    $checks += 'no cached Laravel production config or routes'
+
     # Tests use the repository phpunit.xml in-memory SQLite database.
     # Never run artisan migrate here against a configured persistent database.
     # In this child process only: prevent an inherited production key,
