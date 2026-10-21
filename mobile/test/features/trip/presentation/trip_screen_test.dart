@@ -1346,6 +1346,7 @@ void main() {
         vehicles: [vehicle],
         restrictionStore: store,
         size: const Size(390, 1000),
+        restrictionClock: () => DateTime.utc(2026, 9, 5, 5),
       );
 
       await tester.enterText(
