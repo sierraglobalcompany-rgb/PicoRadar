@@ -83,7 +83,15 @@ try {
 
     # Tests use the repository phpunit.xml in-memory SQLite database.
     # Never run artisan migrate here against a configured persistent database.
+    # In this child process only: prevent an inherited production key,
+    # connection, or cache from affecting QA. No .env writes or persisted key.
     $env:APP_ENV = 'testing'
+    $env:APP_KEY = 'base64:' + [Convert]::ToBase64String(
+        [System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32)
+    )
+    $env:CACHE_STORE = 'array'
+    $env:SESSION_DRIVER = 'array'
+    $env:QUEUE_CONNECTION = 'sync'
     $env:DB_CONNECTION = 'sqlite'
     $env:DB_DATABASE = ':memory:'
     $env:DB_URL = ''
@@ -98,7 +106,9 @@ try {
     Write-Host 'B04_OVERALL_STATUS=PARTIAL: separate MariaDB concurrency/unique-index tests and Windows browser QA still required.'
     exit 0
 } catch {
-    Write-Error "B04_LOCAL_QA_BLOCKED_OR_FAIL: $($_.Exception.Message)"
+    # Write-Error is terminating under ErrorActionPreference=Stop;
+    # use the error stream directly so exit 1 is deterministic.
+    [Console]::Error.WriteLine("B04_LOCAL_QA_BLOCKED_OR_FAIL: $($_.Exception.Message)")
     Write-Host "Checks completed before failure: $($checks.Count)"
     exit 1
 } finally {
