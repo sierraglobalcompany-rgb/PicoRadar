@@ -205,6 +205,48 @@ class CameraCsvImportTest extends TestCase
         self::assertSame(0, Camera::count());
     }
 
+    public function test_comparison_rejects_a_batch_from_another_source(): void
+    {
+        $first = $this->upload();
+        $otherSource = CameraSource::factory()->create();
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.store'), [
+            'source_id' => $otherSource->id,
+            'jurisdiction_id' => $this->jurisdiction->id,
+            'mode' => 'delta',
+            'csv' => UploadedFile::fake()->createWithContent('other.csv',
+                "external_id,municipality_code,lat,lon,type,name\n". 
+                "QA-002,{$this->municipalityCode},4.715,-74.075,other,Second\n"),
+        ])->assertRedirect();
+        $second = CameraCsvImport::query()->latest('id')->firstOrFail();
+
+        $this->actingAs($this->admin)->get(
+            route('admin.camera-csv-imports.show', $first).'?compare='.$second->id
+        )->assertNotFound();
+    }
+
+    public function test_snapshot_missing_rows_are_only_advisory(): void
+    {
+        $unit = $this->jurisdiction->geographicUnits->first();
+        $existing = app(CameraRegistryService::class)->create([
+            'source_id' => $this->source->id, 'jurisdiction_id' => $this->jurisdiction->id,
+            'geographic_unit_id' => $unit->id, 'external_id' => 'OLDER',
+            'lat' => '4.7900000', 'lon' => '-74.1500000', 'type' => 'other',
+        ], $this->admin);
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.store'), [
+            'source_id' => $this->source->id,
+            'jurisdiction_id' => $this->jurisdiction->id,
+            'mode' => 'snapshot',
+            'csv' => UploadedFile::fake()->createWithContent('snapshot.csv',
+                "external_id,municipality_code,lat,lon,type,name\n".
+                "QA-001,{$this->municipalityCode},4.7110,-74.0721,other,New\n"),
+        ])->assertRedirect();
+        $batch = CameraCsvImport::query()->latest('id')->firstOrFail();
+        $preview = app(CameraCsvImportService::class)->load($batch)['preview'];
+        self::assertSame(1, $preview['missing_advisory']);
+        self::assertSame(CameraStatus::Draft, $existing->fresh()->status);
+        self::assertSame(1, Camera::count());
+    }
+
     private function upload(?string $body = null): CameraCsvImport
     {
         $csv = "external_id,municipality_code,lat,lon,type,name\n".
