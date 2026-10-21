@@ -122,7 +122,7 @@ try {
     }
     foreach ($routeName in $expectedRoutes.Keys) {
         if (-not $actual.ContainsKey($routeName) -or
-            $actual[$routeName] -notmatch ('(^|\\|)' + $expectedRoutes[$routeName] + '(\\||$)')) {
+            @($actual[$routeName] -split '\\|') -notcontains $expectedRoutes[$routeName]) {
             throw "B04 missing or wrong HTTP method: $routeName"
         }
     }
