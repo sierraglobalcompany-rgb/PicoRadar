@@ -96,6 +96,39 @@ try {
     $env:DB_DATABASE = ':memory:'
     $env:DB_URL = ''
     Require-ExitZero 'Laravel B04 routes' { php artisan route:list --path=admin/cameras/imports }
+    # Laravel route:list exits 0 for an empty result. Verify the exact contract,
+    # not only the command exit status; no assumptions about display columns.
+    $routeJson = & php artisan route:list --json --path=admin/cameras/imports
+    if ($LASTEXITCODE -ne 0) { throw 'Could not inspect B04 routes as JSON.' }
+    $routes = @($routeJson | ConvertFrom-Json)
+    $expectedRoutes = @{
+        'admin.camera-csv-imports.index' = 'GET'
+        'admin.camera-csv-imports.create' = 'GET'
+        'admin.camera-csv-imports.template' = 'GET'
+        'admin.camera-csv-imports.store' = 'POST'
+        'admin.camera-csv-imports.show' = 'GET'
+        'admin.camera-csv-imports.report' = 'GET'
+        'admin.camera-csv-imports.apply' = 'POST'
+    }
+    $actual = @{}
+    foreach ($route in $routes) {
+        if ($route.name -like 'admin.camera-csv-imports.*') {
+            if ($actual.ContainsKey($route.name)) { throw "Duplicate route name: $($route.name)" }
+            $actual[$route.name] = $route.method
+        }
+    }
+    if ($actual.Count -ne $expectedRoutes.Count) {
+        throw "B04 route count mismatch: expected $($expectedRoutes.Count), found $($actual.Count)."
+    }
+    foreach ($routeName in $expectedRoutes.Keys) {
+        if (-not $actual.ContainsKey($routeName) -or
+            $actual[$routeName] -notmatch ('(^|\\|)' + $expectedRoutes[$routeName] + '(\\||$)')) {
+            throw "B04 missing or wrong HTTP method: $routeName"
+        }
+    }
+    Write-Host 'B04 QA: all seven named routes and HTTP methods verified.'
+    $checks += 'seven B04 route contracts'
+
     Require-ExitZero 'PHP Pint (test only)' { php vendor/bin/pint --test }
     Require-ExitZero 'B04 focal Laravel tests' { php artisan test --filter=CameraCsv }
     Require-ExitZero 'Laravel full suite (once)' { php artisan test }
