@@ -17,14 +17,23 @@ class CameraRegistryService
     /** The optional hook is a test-only transaction seam; no request can set it. */
     public function __construct(private readonly DatasetAuditLogger $audit, private readonly ?\Closure $failureHook = null) {}
 
-    public function create(array $data, ?User $actor = null): Camera
+    /**
+     * $internalCameraId is reserved for trusted, server-computed identities
+     * (the ANSV importer uses a fixed SHA-256-derived value). Never bind it
+     * to a request field. Ordinary callers receive a server-generated ULID.
+     */
+    public function create(array $data, ?User $actor = null, ?string $internalCameraId = null): Camera
     {
-        return DB::transaction(function () use ($data, $actor): Camera {
+        return DB::transaction(function () use ($data, $actor, $internalCameraId): Camera {
             $camera = new Camera;
             // Accept only fields declared as editable camera master data.
             // Never allow a caller to provide lifecycle, verification or audit fields.
             if (array_diff(array_keys($data), $camera->getFillable()) !== []) {
                 throw new DomainException('Camera creation contains server-controlled fields.');
+            }
+
+            if ($internalCameraId !== null && ! preg_match('/^cam_[0-9a-f]{26}$/D', $internalCameraId)) {
+                throw new DomainException('Trusted camera identity has an invalid format.');
             }
 
             // Serialize manual and CSV creates for this source. CSV Apply already
@@ -33,7 +42,7 @@ class CameraRegistryService
 
             $camera->fill($data);
             $camera->forceFill([
-                'camera_id' => 'cam_'.strtolower((string) Str::ulid()),
+                'camera_id' => $internalCameraId ?? 'cam_'.strtolower((string) Str::ulid()),
                 'status' => CameraStatus::Draft,
                 'created_by_id' => $actor?->id,
                 'updated_by_id' => $actor?->id,

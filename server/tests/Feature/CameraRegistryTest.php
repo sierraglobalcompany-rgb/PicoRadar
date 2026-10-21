@@ -489,6 +489,35 @@ class CameraRegistryTest extends TestCase
         $this->assertFalse($camera->speed_limit_verified);
     }
 
+    public function test_server_supports_trusted_ansv_identity_without_accepting_it_in_data(): void
+    {
+        $jurisdiction = Jurisdiction::query()->where('enabled', true)->with('geographicUnits')->firstOrFail();
+        $source = CameraSource::factory()->create();
+        $data = [
+            'jurisdiction_id' => $jurisdiction->id,
+            'geographic_unit_id' => $jurisdiction->geographicUnits->first()->id,
+            'source_id' => $source->id,
+            'external_id' => str_repeat('f', 64),
+            'lat' => 4.711, 'lon' => -74.0721,
+            'type' => CameraType::Other,
+        ];
+        $trustedId = 'cam_'.str_repeat('f', 26);
+        $camera = app(CameraRegistryService::class)->create($data, null, $trustedId);
+        $this->assertSame($trustedId, $camera->camera_id);
+        $this->assertSame(CameraStatus::Draft, $camera->status);
+
+        $this->assertDomainException(
+            fn () => app(CameraRegistryService::class)->create(
+                $data + ['camera_id' => $trustedId], null, $trustedId
+            )
+        );
+        $this->assertDomainException(
+            fn () => app(CameraRegistryService::class)->create(
+                $data + ['external_id' => 'OTHER'], null, 'cam_untrusted-id'
+            )
+        );
+    }
+
     private function draft(?User $actor = null, array $overrides = []): Camera
     {
         $jurisdiction = Jurisdiction::query()->where('enabled', true)->with('geographicUnits')->firstOrFail();
