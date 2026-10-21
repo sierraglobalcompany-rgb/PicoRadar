@@ -28,7 +28,7 @@
 @else<div class="mt-5">@endif
 <div class="max-h-[680px] overflow-auto rounded border bg-white">
 <table class="w-full text-left text-sm">
-<thead class="sticky top-0 bg-slate-100"><tr><th class="p-3">Select</th><th class="p-3">Record</th><th class="p-3">External ID</th><th class="p-3">Municipality</th><th class="p-3">Status</th><th class="p-3">Details</th></tr></thead>
+<thead class="sticky top-0 bg-slate-100"><tr><th class="p-3">Select</th><th class="p-3">Record</th><th class="p-3">External ID</th><th class="p-3">Municipality</th><th class="p-3">Status</th><th class="p-3">Details</th><th class="p-3">Before / after</th></tr></thead>
 <tbody>@forelse($analysis['rows'] as $row)
 <tr class="border-t"><td class="p-3">
 @if($mayApply && in_array($row['status'],['create_ready','update_ready'],true))
@@ -36,8 +36,14 @@
 @endif</td>
 <td class="p-3">{{ $row['record'] }}</td><td class="p-3">{{ $row['values']['external_id'] ?? '—' }}</td>
 <td class="p-3">{{ $row['values']['municipality_code'] ?? '—' }}</td>
-<td class="p-3">{{ $row['status'] }}</td><td class="p-3">{{ implode('; ',$row['errors']) ?: 'No errors' }}</td></tr>
-@empty<tr><td class="p-4" colspan="6">No data rows found.</td></tr>@endforelse</tbody></table></div>
+<td class="p-3">{{ $row['status'] }}</td><td class="p-3">{{ implode('; ',$row['errors']) ?: 'No errors' }}</td>
+<td class="p-3"><details><summary class="cursor-pointer underline">Inspect values</summary>
+<strong>Before (existing record)</strong>
+<pre class="max-w-xs overflow-auto whitespace-pre-wrap text-xs">{{ json_encode($row['previous_values'] ?? null, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+<strong>After (CSV proposal)</strong>
+<pre class="max-w-xs overflow-auto whitespace-pre-wrap text-xs">{{ json_encode($row['values'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+</details></td></tr>
+@empty<tr><td class="p-4" colspan="7">No data rows found.</td></tr>@endforelse</tbody></table></div>
 @if($mayApply)
 <button type="submit" class="mt-5 rounded bg-slate-900 px-4 py-3 font-semibold text-white">Apply selected safe rows as draft only</button>
 <p class="mt-2 text-xs text-slate-600">Requires both editor and reviewer permissions. No publish or verify operations are run.</p>

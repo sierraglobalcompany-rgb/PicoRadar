@@ -113,6 +113,10 @@ final class CameraCsvPreviewService
                 'record' => $row['record'], 'status' => $status,
                 'values' => $values, 'errors' => $errors,
                 'camera_id' => $camera?->id, 'expected_fingerprint' => $fingerprint,
+                'previous_values' => $camera ? array_intersect_key(
+                    $camera->getAttributes(),
+                    array_flip(['external_id', 'name', 'lat', 'lon', 'type', 'direction', 'bearing', 'corridor', 'speed_limit', 'notes'])
+                ) : null,
             ];
         }
 
