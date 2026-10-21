@@ -146,6 +146,28 @@ class CameraCsvPreviewTest extends TestCase
         self::assertSame(1, $review['missing_advisory']);
     }
 
+    public function test_duplicate_scan_includes_a_camera_at_24_99m_near_bounding_edge(): void
+    {
+        [$source, $jurisdiction, $unit] = $this->domain();
+        app(CameraRegistryService::class)->create([
+            'source_id' => $source->id,
+            'jurisdiction_id' => $jurisdiction->id,
+            'geographic_unit_id' => $unit->id,
+            'external_id' => 'EX-EDGE',
+            'lat' => '4.7112247',
+            'lon' => '-74.0721000',
+            'type' => 'other',
+        ]);
+
+        // Haversine distance is approximately 24.986 m. The former
+        // $meters / 111_320 latitude bound excluded this legitimate match.
+        $row = $this->row(2, $unit->code);
+        $review = $this->review([$row]);
+
+        self::assertSame('blocked', $review['rows'][0]['status']);
+        self::assertSame(0, $review['counts']['create_ready']);
+    }
+
     private function domain(): array
     {
         $jurisdiction = Jurisdiction::query()->where('enabled', true)->with('geographicUnits')->firstOrFail();

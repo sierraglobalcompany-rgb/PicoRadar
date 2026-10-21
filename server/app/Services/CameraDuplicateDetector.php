@@ -23,8 +23,13 @@ class CameraDuplicateDetector
     {
         $latitude = (float) $camera->lat;
         $longitude = (float) $camera->lon;
-        $latitudeDelta = $meters / 111_320;
-        $longitudeDelta = $meters / (111_320 * max(0.01, cos(deg2rad($latitude))));
+        // Match the sphere radius used by haversine(). 111_320 m/degree
+        // is larger than the spherical value (~111_195) and silently omits
+        // true <=25m neighbours close to the bounding-box edge.
+        $latitudeDelta = rad2deg($meters / 6_371_000);
+        $longitudeDelta = $latitudeDelta / max(0.01, cos(deg2rad(
+            min(90.0, abs($latitude) + $latitudeDelta)
+        )));
         $scanCap = max(1, $candidateScanCap);
         $rawBoundingRows = Camera::query()
             ->with(['source', 'jurisdiction', 'geographicUnit'])
