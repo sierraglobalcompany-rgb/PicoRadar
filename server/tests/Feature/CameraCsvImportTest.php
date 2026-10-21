@@ -416,9 +416,11 @@ class CameraCsvImportTest extends TestCase
     public function test_coverage_attached_after_preview_invalidates_the_older_review(): void
     {
         $batch = $this->upload();
+        $existingCoverageIds = $this->jurisdiction->geographicUnits()
+            ->pluck('geographic_units.id')->all();
         $otherUnit = \App\Models\GeographicUnit::query()
             ->where('level', 'municipality')
-            ->whereKeyNot($this->jurisdiction->primary_geographic_unit_id)
+            ->whereNotIn('id', $existingCoverageIds)
             ->firstOrFail();
 
         app(\App\Services\JurisdictionService::class)
