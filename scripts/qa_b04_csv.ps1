@@ -33,7 +33,7 @@ try {
         throw "Wrong local branch ($actualBranch). Do not test a different checkout."
     }
     $dirty = @(& git status --porcelain=v1 -uall)
-    if ($LASTEXITCODE -ne 0 -or ($dirty | Where-Object { $_.Length -gt 0 }).Count -gt 0) {
+    if ($LASTEXITCODE -ne 0 -or @($dirty | Where-Object { $_.Length -gt 0 }).Count -gt 0) {
         throw 'The QA checkout has local/untracked changes. Preserve them and use another clean clone.'
     }
     $worktree = @(& git worktree list --porcelain)
