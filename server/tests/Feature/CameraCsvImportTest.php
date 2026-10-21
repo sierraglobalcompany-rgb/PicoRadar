@@ -341,6 +341,46 @@ class CameraCsvImportTest extends TestCase
         self::assertSame('applied', $batch->fresh()->status);
     }
 
+    public function test_reversed_selected_row_order_is_an_idempotent_replay(): void
+    {
+        $batch = $this->upload(
+            "QA-001,{$this->municipalityCode},4.711,-74.0721,other,First\n".
+            "QA-002,{$this->municipalityCode},4.720,-74.0900,other,Second\n"
+        );
+
+        $first = ['analysis_sha256' => $batch->analysis_sha256, 'records' => ['2', '3']];
+        $second = ['analysis_sha256' => $batch->analysis_sha256, 'records' => ['3', '2']];
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), $first)->assertRedirect();
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), $second)->assertRedirect();
+
+        self::assertSame(2, Camera::count());
+        self::assertSame(2, AuditLog::query()->where('action', 'camera.created')->count());
+        self::assertSame('applied', $batch->fresh()->status);
+    }
+
+    public function test_empty_optional_cell_does_not_clear_a_draft_camera_field(): void
+    {
+        $unit = $this->jurisdiction->geographicUnits->first();
+        $camera = app(CameraRegistryService::class)->create([
+            'source_id' => $this->source->id,
+            'jurisdiction_id' => $this->jurisdiction->id,
+            'geographic_unit_id' => $unit->id,
+            'external_id' => 'QA-001',
+            'lat' => '4.7110000', 'lon' => '-74.0721000',
+            'type' => 'other', 'name' => 'Must stay',
+        ], $this->admin);
+        $batch = $this->upload("QA-001,{$this->municipalityCode},4.711,-74.0721,other,\n");
+        $preview = app(CameraCsvImportService::class)->load($batch)['preview'];
+        self::assertSame('noop', $preview['rows'][0]['status']);
+        self::assertSame(1, $preview['counts']['noop']);
+
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), [
+            'analysis_sha256' => $batch->analysis_sha256, 'records' => ['2'],
+        ])->assertStatus(409);
+        self::assertSame('Must stay', $camera->fresh()->name);
+        self::assertSame('review', $batch->fresh()->status);
+    }
+
     private function upload(?string $body = null): CameraCsvImport
     {
         $csv = "external_id,municipality_code,lat,lon,type,name\n".
