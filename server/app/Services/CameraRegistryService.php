@@ -7,6 +7,7 @@ use App\Enums\GeographicUnitLevel;
 use App\Models\Camera;
 use App\Models\CameraSource;
 use App\Models\GeographicUnit;
+use App\Models\Jurisdiction;
 use App\Models\User;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +40,9 @@ class CameraRegistryService
             // Serialize manual and CSV creates for this source. CSV Apply already
             // holds this source lock, so nested calls reuse the same transaction.
             CameraSource::query()->whereKey($data['source_id'] ?? null)->lockForUpdate()->firstOrFail();
+            // Spatial duplicates are scoped to a jurisdiction, not a source.
+            // Locking the jurisdiction serializes edits from other sources too.
+            Jurisdiction::query()->whereKey($data['jurisdiction_id'] ?? null)->lockForUpdate()->firstOrFail();
 
             $camera->fill($data);
             $camera->forceFill([
@@ -68,6 +72,12 @@ class CameraRegistryService
             $sourceIds = array_unique([(int) $camera->source_id, (int) ($attributes['source_id'] ?? $camera->source_id)]);
             sort($sourceIds, SORT_NUMERIC);
             CameraSource::query()->whereKey($sourceIds)->orderBy('id')->lockForUpdate()->get();
+            $jurisdictionIds = array_unique([
+                (int) $camera->jurisdiction_id,
+                (int) ($attributes['jurisdiction_id'] ?? $camera->jurisdiction_id),
+            ]);
+            sort($jurisdictionIds, SORT_NUMERIC);
+            Jurisdiction::query()->whereKey($jurisdictionIds)->orderBy('id')->lockForUpdate()->get();
             $current = Camera::lockForUpdate()->findOrFail($camera->id);
             if (! in_array($current->status, [CameraStatus::Draft, CameraStatus::Rejected], true)) {
                 throw new DomainException('Only draft or rejected cameras can edit master data. Reopen for correction first.');
