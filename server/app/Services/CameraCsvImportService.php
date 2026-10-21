@@ -220,9 +220,15 @@ final class CameraCsvImportService
                 return ['already_applied' => false, 'created' => $created, 'updated' => $updated];
             });
         } catch (QueryException $error) {
-            // Unique-key races should be 409, never partial success.
-            if (in_array((string) $error->getCode(), ['23000', '23505'], true)) {
-                abort(409, 'Concurrent camera identity conflict.');
+            // Atomic DB rollback has already happened. Expose known identity
+            // and transactional contention as 409, not a misleading 500.
+            // MariaDB/MySQL: 1062 duplicate, 1205 lock wait, 1213 deadlock;
+            // SQLSTATE 40001 denotes serialization/deadlock contention.
+            $sqlState = (string) $error->getCode();
+            $driverCode = (int) ($error->errorInfo[1] ?? 0);
+            if (in_array($sqlState, ['23000', '23505', '40001', '40P01'], true)
+                || in_array($driverCode, [1062, 1205, 1213], true)) {
+                abort(409, 'Camera identity or concurrent transaction changed; no CSV batch rows were committed.');
             }
             throw $error;
         }
