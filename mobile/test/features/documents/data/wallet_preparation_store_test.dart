@@ -47,7 +47,7 @@ void main() {
 
   setUp(() async {
     root = await Directory.systemTemp.createTemp('wallet-preparation-store-');
-    db = AppDatabase(NativeDatabase(File('${root.path}/wallet.sqlite')));
+    db = AppDatabase(NativeDatabase.memory());
     legacy = PrivateVehicleDocumentStore(
       rootDirectory: () async => root,
       cacheDirectory: () async => root,
@@ -55,6 +55,12 @@ void main() {
     );
     store = createStore();
   });
+
+  Future<void> useFileDatabase() async {
+    await db.close();
+    db = AppDatabase(NativeDatabase(File('${root.path}/wallet.sqlite')));
+    store = createStore();
+  }
 
   tearDown(() async {
     await db.close();
@@ -64,6 +70,7 @@ void main() {
   test(
     'preparation owner has independent identity and stable encrypted row',
     () async {
+      await useFileDatabase();
       expect(owner.id, 'preparation-stable-id');
       expect(owner.isDriver, isFalse);
       expect(owner.isPreparation, isTrue);
@@ -107,6 +114,7 @@ void main() {
   test(
     'all six preparation types roundtrip without a vehicle across restart',
     () async {
+      await useFileDatabase();
       await store.ensurePreparation(owner.id);
       const types = [
         WalletDocumentType.trafficLicense,
@@ -360,6 +368,7 @@ void main() {
   test(
     'preparation deletion journals cleanup failure and retries on reopen',
     () async {
+      await useFileDatabase();
       var unavailable = false;
       store = createStore(rootUnavailable: () => unavailable);
       await store.ensurePreparation(owner.id);
