@@ -479,6 +479,36 @@ class CameraCsvImportTest extends TestCase
         self::assertContains('throttle:30,1', $apply->gatherMiddleware());
     }
 
+    public function test_numeric_external_id_stays_distinct_from_leading_zero_id(): void
+    {
+        $unit = $this->jurisdiction->geographicUnits->first();
+        app(CameraRegistryService::class)->create([
+            'source_id' => $this->source->id,
+            'jurisdiction_id' => $this->jurisdiction->id,
+            'geographic_unit_id' => $unit->id,
+            'external_id' => '00123',
+            'lat' => '4.9000000', 'lon' => '-74.1000000',
+            'type' => 'other',
+        ], $this->admin);
+
+        $batch = $this->upload(
+            "123,{$this->municipalityCode},4.7110,-74.0721,other,Numeric\n".
+            "123ABC,{$this->municipalityCode},4.7400,-74.1000,other,Alphanumeric\n"
+        );
+        $preview = app(CameraCsvImportService::class)->load($batch)['preview'];
+        self::assertSame(2, $preview['counts']['create_ready']);
+
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), [
+            'analysis_sha256' => $batch->analysis_sha256, 'records' => ['2', '3'],
+        ])->assertRedirect();
+
+        self::assertSame(3, Camera::count());
+        foreach (['00123', '123', '123ABC'] as $identity) {
+            self::assertSame(1, Camera::query()->where('source_id', $this->source->id)
+                ->where('external_id', $identity)->count());
+        }
+    }
+
     private function upload(?string $body = null): CameraCsvImport
     {
         $csv = "external_id,municipality_code,lat,lon,type,name\n".

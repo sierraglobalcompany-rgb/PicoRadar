@@ -51,7 +51,11 @@ final class CameraCsvPreviewService
 
         $existing = collect();
         $usesCaseInsensitiveIndex = in_array(DB::getDriverName(), ['mysql', 'mariadb'], true);
-        foreach (array_chunk(array_keys($identities), 400) as $chunk) {
+        foreach (array_chunk(array_keys($identities), 400) as $keys) {
+            // PHP converts canonical numeric array keys to integers. Always
+            // bind camera identities as text: MariaDB could otherwise apply
+            // numeric comparison to a VARCHAR external_id column.
+            $chunk = array_map(static fn (int|string $key): string => (string) $key, $keys);
             $query = Camera::query()->where('source_id', $source->id);
             if ($usesCaseInsensitiveIndex) {
                 // The existing source_id/external_id UNIQUE index is case-insensitive
