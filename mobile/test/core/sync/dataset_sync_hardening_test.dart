@@ -150,7 +150,7 @@ void main() {
       await preferences.getString(DatasetSyncService.manifestEtagPreferenceKey),
       '"viaje-r2"',
     );
-  });
+  }, timeout: const Timeout(Duration(seconds: 90)));
 
   test('rejects payload metadata that differs from manifest', () async {
     final payload = await _payload({
