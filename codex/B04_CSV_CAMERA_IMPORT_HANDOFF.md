@@ -13,7 +13,7 @@
 3. Persistencia de lote nuevo aislado: camera_csv_imports; archivos privados en el disco local, rutas aleatorias y hash SHA256 original/análisis, auditoría, estado review/applied. No crear otras tablas ni índices de cámaras: migración histórica ya declara UNIQUE(source_id,external_id); falta comprobar el índice del motor real.
 4. Panel admin con tres vistas (batches, upload, review); GET template/report; comparación solo misma source/jurisdiction. Report neutraliza fórmulas; DANE conserva ceros iniciales para hojas de cálculo.
 5. POST Apply exige Gate cameras.edit **y** cameras.review. Selección explícita, SHA de revisión, nueva clasificación dentro de DB transaction y locks; valida todas las seleccionadas antes de mutación, después crea por CameraRegistryService::create con lista cerrada sin campos de ciclo de vida, actualiza solo draft/rejected por updateDraft. 409 ante stale; idempotencia si lote ya aplicado; rollback de DB si falla una fila/auditoría. NO verifica, activa, retira ni publica cámaras.
-6. 10 unit parser, 6 preview Feature y 16 import Feature: **32 métodos de prueba escritos pero aún NO EJECUTADOS**. Casos adicionales: identidad case-fold, bytes originales únicos, controles en ID, cámara en revisión posterior al preview, selección parcial, reintento con selección distinta. No CI verde: Actions tiene bloqueo de cuota con zero steps.
+6. 11 unit parser, 7 preview Feature y 17 import Feature: **35 métodos de prueba escritos pero aún NO EJECUTADOS**. Casos adicionales: identidad case-fold, bytes originales únicos, controles en ID, cámara en revisión posterior al preview, selección parcial, reintento con selección distinta. No CI verde: Actions tiene bloqueo de cuota con zero steps.
 
 ## Gates y bloqueos reales
 
@@ -28,3 +28,12 @@
 ## NEXT único
 
 **Ejecutar validación local restringida del PR #75 en clon seguro**, comprobar sintaxis y runtime; corregir solo fallos evidenciados en el MISMO PR; completar verificación de MariaDB y auditoría de seguridad antes de cualquier merge. Evitar volver a construir documentación en paralelo o reejecutar suite Flutter sin cambios móviles. Si no hay entorno, estado PARTIAL y no declarar funcionalmente listo.
+
+
+## Una sola intervención local en Codex (cuando se autorice ejecutar QA)
+
+Objetivo: certificar PR #75 sin ping-pong y sin tocar worktrees históricos. Codex debe clonar `feat/B04-csv-safe-parser` a una carpeta nueva disponible en disco compatible, SIN `reset`, `clean`, `stash` ni sobreescribir C:/D:. Antes de instalar, inventariar read-only el WIP y worktrees previos y preservar hallazgos. Leer este handoff, `AGENTS.md`, `docs/SOP.md`, contrato B04 del PR #74, `README.md`.
+
+Aprovisionar PHP 8.3–8.5, extensiones y Composer sin actualizar lockfiles; en el **nuevo clon únicamente**, instalar dependencias del `server/composer.lock`. Ejecutar `pwsh -File scripts/qa_b04_csv.ps1` con salida, código de retorno y rutas registradas. El script ya verifica lint, rutas, Pint, B04 focal y suite Laravel completa; no repetir suites innecesariamente. Completar en MariaDB 11.8.8 **sintética y aislada** pruebas de migración+rollback, UNIQUE fuente/external_id, permisos, 409, rollback de doble operación y carrera de dos operadores (también versus alta manual). Nunca usar DB real/Hostinger.
+
+Si las pruebas revelan fallos: reparar **origen y consumidores**, no añadir parches ni permisos falsos; actualizar el **mismo PR #75**, sin merge, recoger SHA final y dar un **único informe** con comandos, PASS/FAIL, defectos corregidos, evidencias, bloqueo real y NEXT. Si hay bloqueo de ambiente no eludirlo ni certificar PASS. Sin tocar Android, main o PR #71.
