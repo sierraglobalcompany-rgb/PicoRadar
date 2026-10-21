@@ -25,6 +25,16 @@ final class CameraCsvParserTest extends TestCase
         self::assertArrayNotHasKey('name', $parsed['rows'][1]['values']);
     }
 
+    public function test_header_only_or_blank_rows_are_rejected(): void
+    {
+        foreach ([
+            "external_id,municipality_code,lat,lon,type\n",
+            "external_id,municipality_code,lat,lon,type\n\n\n",
+        ] as $emptyCsv) {
+            $this->expectInvalid($emptyCsv);
+        }
+    }
+
     public function test_row_error_reporting_and_valid_types(): void
     {
         $data = $this->parseCsv("external_id,municipality_code,lat,lon,type,bearing,speed_limit\n".

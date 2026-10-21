@@ -96,6 +96,10 @@ final class CameraCsvParser
                 $rows[] = ['record' => $number, 'values' => $values, 'errors' => $errors];
             }
 
+            if ($rows === []) {
+                throw new InvalidArgumentException('CSV must contain at least one camera row.');
+            }
+
             return ['header' => $header, 'rows' => $rows, 'valid_count' => $valid, 'invalid_count' => $invalid];
         } finally {
             fclose($stream);

@@ -44,6 +44,22 @@ class CameraCsvImportTest extends TestCase
         $this->admin = User::factory()->create(['role' => OperatorRole::Admin]);
     }
 
+    public function test_header_only_upload_does_not_store_an_unusable_batch(): void
+    {
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.store'), [
+            'source_id' => $this->source->id,
+            'jurisdiction_id' => $this->jurisdiction->id,
+            'mode' => 'delta',
+            'csv' => UploadedFile::fake()->createWithContent(
+                'empty.csv', "external_id,municipality_code,lat,lon,type\n"
+            ),
+        ])->assertRedirect()->assertSessionHasErrors('csv');
+
+        self::assertSame(0, CameraCsvImport::count());
+        self::assertSame(0, AuditLog::query()
+            ->where('action', 'camera_csv_import.analyzed')->count());
+    }
+
     public function test_upload_is_private_and_only_previews_rows_without_creating_cameras(): void
     {
         $batch = $this->upload();
