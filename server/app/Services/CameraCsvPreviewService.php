@@ -119,6 +119,7 @@ final class CameraCsvPreviewService
         // Compare file entries with each other. A bounded O(n^2) check of at
         // most 2000 rows prevents a second near-identical CSV row becoming safe.
         $len = count($result);
+        $collisions = [];
         for ($i = 0; $i < $len; $i++) {
             $left = $result[$i];
             if (! in_array($left['status'], ['create_ready', 'update_ready', 'noop'], true)) {
@@ -126,23 +127,21 @@ final class CameraCsvPreviewService
             }
             for ($j = $i + 1; $j < $len; $j++) {
                 $right = $result[$j];
-                if (! in_array($right['status'], ['create_ready', 'update_ready', 'noop'], true)) {
+                if (! in_array($right['status'], ['create_ready', 'update_ready', 'noop'], true)
+                    || $left['values']['municipality_code'] !== $right['values']['municipality_code']) {
                     continue;
                 }
-                if ($left['values']['municipality_code'] !== $right['values']['municipality_code']) {
-                    continue;
+                if (self::distanceMeters((float) $left['values']['lat'], (float) $left['values']['lon'], (float) $right['values']['lat'], (float) $right['values']['lon']) <= 25) {
+                    $collisions[$i] = true;
+                    $collisions[$j] = true;
                 }
-                if (self::distanceMeters((float) $left['values']['lat'], (float) $left['values']['lon'], (float) $right['values']['lat'], (float) $right['values']['lon']) > 25) {
-                    continue;
-                }
-                foreach ([$i, $j] as $index) {
-                    $counts[$result[$index]['status']]--;
-                    $result[$index]['status'] = 'blocked';
-                    $result[$index]['errors'][] = 'Nearby CSV rows conflict; manual review required.';
-                    $counts['blocked']++;
-                }
-                break;
             }
+        }
+        foreach (array_keys($collisions) as $index) {
+            $counts[$result[$index]['status']]--;
+            $result[$index]['status'] = 'blocked';
+            $result[$index]['errors'][] = 'Nearby CSV rows conflict; manual review required.';
+            $counts['blocked']++;
         }
 
         $missing = 0;
