@@ -15,8 +15,9 @@
 
 ## Evidencia y límites (no confundir con certificación)
 
-- **48 métodos de prueba NUEVOS escritos, aún NO ejecutados con PHPUnit**: 12 `CameraCsvParserTest`, 8 `CameraCsvPreviewTest`, 25 `CameraCsvImportTest`, 3 añadidos a `CameraRegistryTest`. Las 33 pruebas ANSV históricas (no nuevas) también deben pasar en suite global.
+- **49 métodos de prueba NUEVOS escritos, aún NO ejecutados con PHPUnit**: 12 `CameraCsvParserTest`, 9 `CameraCsvPreviewTest`, 25 `CameraCsvImportTest`, 3 añadidos a `CameraRegistryTest`. Las 33 pruebas ANSV históricas (no nuevas) también deben pasar en suite global.
 - Regresiones clave: privacidad/SHA, CSV control/inyección/Unicode, identidad case-fold, fuente reverificada, fuente o jurisdicción modificadas, cobertura vinculada/desvinculada, cambio de nombre sin avance de `updated_at`, optativos vacíos, selección en diferente orden, filas stale, rollback de auditoría, roles, ANSV ID estable, rate limits por minuto.
+- **Último endurecimiento:** verificador `scripts/qa_b04_csv.ps1` crea APP_KEY aleatoria efímera exclusiva del proceso, fuerza cache/sesión de pruebas y produce exit code de error determinista. El preview snapshot usa lectura paginada por ID en lugar de `WHERE NOT IN` con hasta 2.000 placeholders SQL; regresión de 1.100 identidades escrita, no ejecutada. Sin migración adicional.
 - **Evidencia PHP parcial anterior:** `CameraCsvParser.php` blob Git `48cb9e5d9c1e25a8a25458730b6850e21f66a23d`; `php -l` PASS y smoke autónomo 22/22 PASS usando suplentes temporales de `mb_check_encoding` y `mb_strlen` porque el entorno carece de `mbstring`. No representa pruebas del parser con extensiones nativas ni de los cambios posteriores en otros archivos.
 - GitHub Actions run `39645490050` terminó FAIL con **0 pasos** en los cuatro jobs (PHP 8.3, 8.4, 8.5, MariaDB): bloqueo de ejecución/infraestructura; **no declarar CI verde ni inferir error de código**.
 - Aquí no hay Composer, `vendor`, `mbstring` ni `pdo_sqlite`: **Laravel, Blade, Pint, migración, MySQL/MariaDB y concurrencia no certificados**. Falta validar el índice operativo, collation y `EXPLAIN` de consulta de identidad en MariaDB.
