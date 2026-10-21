@@ -27,10 +27,12 @@
 ## QA siguiente — una sola intervención final y acotada
 
 1. **No tocar C:/D: ni worktrees existentes.** En una ruta distinta de disco compatible y con WIP previo inventariado solo lectura, clonar `feat/B04-csv-safe-parser`, registrar HEAD real, comprobar `git status` limpio. Nunca `reset`, `clean`, `stash`, rebase o checkout en worktree ajeno.
-2. Instalar PHP 8.3–8.5 con `mbstring/pdo_sqlite/sqlite3/fileinfo` y Composer; instalar exactamente `server/composer.lock` en el clon, sin update de dependencias ni despliegue. Leer `AGENTS.md`, `docs/SOP.md` y especificación del PR #74.
+2. Instalar PHP 8.3–8.5 con `mbstring/pdo_sqlite/fileinfo` y Composer; instalar exactamente `server/composer.lock` en el clon, sin update de dependencias ni despliegue. Leer `AGENTS.md`, `docs/SOP.md` y especificación del PR #74.
 3. Ejecutar **una vez** `pwsh -File scripts/qa_b04_csv.ps1` desde el clon. Verifica checkout, PHP, extensiones, lint de servicios B04/Registry/ANSV, rutas, Pint, pruebas focales `CameraCsv*` y la suite Laravel completa (incluye regresiones Registry y ANSV). Capturar comandos, salida, exit codes y HEAD; nunca reportar PASS antes de verlos. Validar también Blade/Vite en contexto de app y flujo UI real (escritorio/móvil).
 4. MariaDB 11.8.8 **sintética aislada**, nunca producción: migrate:fresh/rollback de prueba, UNIQUE/collation, EXPLAIN, fuente/jurisdicción/cobertura stale, 409, aborto completo de lote, roles, doble clic, 2 conexiones simultáneas, creación manual frente a CSV y 2 fuentes de una jurisdicción. Si falla un caso, corregir **origen y consumidores** en **este PR #75**, volver a ejecutar únicamente lo afectado y una suite final; no crear PRs paralelos.
 5. Entregar **un informe** con matriz PASS/FAIL/BLOCKED y SHA final; si algo no pudo ejecutarse, estado `PARTIAL`. Sin merges automáticos, despliegues, publicación de cámaras, móvil, teléfono, Hostinger ni consumo innecesario de CI bloqueada.
+
+**Último gate ajustado:** `qa_b04_csv.ps1` valida explícitamente PHP 8.3–8.5 y las extensiones `mbstring`, `pdo_sqlite` y `fileinfo`. Quitada la exigencia redundante de `sqlite3` separada del controlador PDO; evita un falso bloqueo en instalaciones con PDO SQLite funcional. Quedan obligatorios tests Laravel y MariaDB real aislada.
 
 ## Cuatro leyes y límites
 
