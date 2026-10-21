@@ -324,6 +324,23 @@ class CameraCsvImportTest extends TestCase
         self::assertSame(0, Camera::count());
     }
 
+    public function test_applied_batch_replay_rechecks_private_checksums_before_idempotent_ack(): void
+    {
+        $batch = $this->upload();
+        $request = ['analysis_sha256' => $batch->analysis_sha256, 'records' => ['2']];
+        $this->actingAs($this->admin)->post(
+            route('admin.camera-csv-imports.apply', $batch), $request
+        )->assertRedirect();
+        self::assertSame(1, Camera::count());
+
+        Storage::disk('local')->put($batch->original_path, 'tampered after apply');
+        $this->actingAs($this->admin)->post(
+            route('admin.camera-csv-imports.apply', $batch), $request
+        )->assertStatus(409);
+        self::assertSame(1, Camera::count());
+        self::assertSame('applied', $batch->fresh()->status);
+    }
+
     private function upload(?string $body = null): CameraCsvImport
     {
         $csv = "external_id,municipality_code,lat,lon,type,name\n".

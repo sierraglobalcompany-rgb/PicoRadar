@@ -139,6 +139,9 @@ final class CameraCsvImportService
         try {
             return DB::transaction(function () use ($batch, $keys, $analysisSha, $selectionSha, $actor): array {
                 $current = CameraCsvImport::query()->lockForUpdate()->findOrFail($batch->id);
+                // Even an idempotent replay must verify the immutable original
+                // and analysis files before reporting the batch as applied.
+                $data = $this->load($current);
                 if ($current->status === 'applied') {
                     if (! hash_equals($current->analysis_sha256, $analysisSha)
                         || $current->applied_selection_sha256 === null
@@ -151,7 +154,6 @@ final class CameraCsvImportService
                 if ($current->status !== 'review' || ! hash_equals($current->analysis_sha256, $analysisSha)) {
                     abort(409, 'Import review version is stale.');
                 }
-                $data = $this->load($current);
                 $source = CameraSource::query()->lockForUpdate()->findOrFail($current->source_id);
                 $jurisdiction = Jurisdiction::query()->lockForUpdate()->findOrFail($current->jurisdiction_id);
                 $newPreview = $this->preview->preview($data['parsed'], $source, $jurisdiction, $current->mode);
