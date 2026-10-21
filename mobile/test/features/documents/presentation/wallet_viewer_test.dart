@@ -12,6 +12,8 @@ import 'package:picoradar/features/documents/application/wallet_session.dart';
 import 'package:picoradar/features/documents/platform/wallet_platform.dart';
 import 'package:picoradar/features/documents/presentation/wallet_viewer.dart';
 
+import '../../../test_app_harness.dart' show pumpUntilRealIo;
+
 const _title = 'Conductor privado';
 final _saveFinder = find.byKey(const ValueKey('wallet-viewer-save'));
 
@@ -356,9 +358,10 @@ void main() {
         saves++;
       },
     );
-    await _until(
+    await pumpUntilRealIo(
       tester,
       () => find.textContaining('No se pudo leer').evaluate().isNotEmpty,
+      reason: 'over-two-page PDF rejection is visible',
     );
     expect(platform.closed, ['pdf-1']);
     expect(platform.rendered, isEmpty);

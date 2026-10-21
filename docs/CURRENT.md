@@ -1,16 +1,16 @@
 # PicoRadar: estado vigente
 
-Actualizado: 2026-10-20. Estado único para continuidad. Baseline, Arquitectura y contratos conservan su precedencia. Recuperar no cambia aprobaciones del producto.
+Actualizado: 2026-10-21. Estado único para continuidad. Baseline, Arquitectura y contratos conservan su precedencia. Recuperar no cambia aprobaciones del producto.
 
 ## Punto de entrada
 
-- Rama moderna: `recovery/20261019-modern`, repositorio `sierraglobalcompany-rgb/PicoRadar`. Confirmar HEAD remoto.
-- Fuente: B07 administrativo `ffe0cbd194310e004b20abd97fcd10e685c7df88`.
-- Cadena comprobada: original `d26ba84` → integración owner `13190d0` → C11 `2e8f2ed` → coherencia `e6406f2` → B06 `c9dbaf1` → B07 `ffe0cbd`.
-- Canónico: `D:/Dev/PicoRadar` sobre exFAT. Clon independiente: `D:/Verification/PicoRadar`.
-- Originales C: preservados. No retomarlos como checkout activo ni restaurar desde el main histórico `e9ef375`.
-- Gates, SHA, PR y NEXT: `PicoRadar_RECOVERY_HANDOFF.md`. Las pruebas históricas no certifican el HEAD recuperado.
-- Rescate **PARTIAL**: fuente moderna publicada, APK dev, servidor e instalable B07 reconstruidos desde GitHub; verificador del paquete PASS con exit0; suite móvil aún fallida, instalador MariaDB bloqueado por enlaces públicos en Windows/exFAT, CI bloqueada por facturación y test de navegador bloqueado por archivo denegado en Windows. No equivale a release ni QA física aprobadas.
+- Rama moderna: recovery/20261019-modern, repositorio sierraglobalcompany-rgb/PicoRadar. Confirmar HEAD remoto.
+- Fuente: B07 administrativo ffe0cbd194310e004b20abd97fcd10e685c7df88.
+- Cadena comprobada: original d26ba84 → integración owner 13190d0 → C11 2e8f2ed → coherencia e6406f2 → B06 c9dbaf1 → B07 ffe0cbd.
+- Canónico: D:/Dev/PicoRadar sobre exFAT. Clon independiente: D:/Verification/PicoRadar.
+- Originales C: preservados. No retomarlos como checkout activo ni restaurar desde el main histórico e9ef375.
+- Gates, SHA, PR y NEXT: PicoRadar_RECOVERY_HANDOFF.md para el rescate y PicoRadar_STABILIZATION_HANDOFF.md para PR #72 y estabilización actual.
+- El rescate de fuentes moderno sigue PARTIAL en los gates que constan en su handoff. La estabilización móvil PR #72 alcanzó FULL_MOBILE_QA_PASS local en SHA de código e5aeda06787eeec2e90fb6a7aa239a95516d6227: 3.253 PASS / 11 SKIP / 0 FAIL, exit 0. CI remota sigue bloqueada por cuota. Esto no equivale a aceptación física ni release.
 
 ## Producto conservado
 
@@ -35,12 +35,12 @@ Drift conserva schema v9 y pruebas de migración. El rescate no agrega tablas ni
 - Patrocinado no equivale a oficial/acreditado. Defensa no promete anulación de multas.
 - Sin merge, despliegue ni acceso a Hostinger o Mi A3 durante el rescate.
 - Instalación C11 histórica del 2026-09-19 y apertura confirmada del scanner no acreditan captura, autenticación, guardado y reapertura completos.
-- Comparador B04 `fe0d8d4` sigue fuera del runtime moderno y esta recuperado en GitHub como `recovery/20261019-pending-b04`. Variantes y fuentes QA históricas se preservan sin aplicarlas ciegamente.
-- Planes GSD previos y `docs/WORKSPACE_CONSOLIDATION.md` son antecedentes; sus paths e instrucciones de limpieza no gobiernan el rescate.
-- Handoffs funcionales: `codex/`; autoridad visual: `docs/DESIGN_CONTRACT.md`; operación: `docs/SOP.md` y guía B07.
+- Comparador B04 fe0d8d4 sigue fuera del runtime moderno y esta recuperado en GitHub como recovery/20261019-pending-b04. Variantes y fuentes QA históricas se preservan sin aplicarlas ciegamente.
+- Planes GSD previos y docs/WORKSPACE_CONSOLIDATION.md son antecedentes; sus paths e instrucciones de limpieza no gobiernan el rescate.
+- Handoffs funcionales: codex/; autoridad visual: docs/DESIGN_CONTRACT.md; operación: docs/SOP.md y guía B07.
 
 Cobertura declarada al cierre de coherencia, sujeta a la fecha de cada fuente: Pico 73 municipios (6 verificados, 36 condicionales, 2 vencidos, 29 pendientes); fotomultas 360 registros; peajes 184 estaciones; trámites 769 autoridades. No equivale a operación nacional completa ni vigencia actual confirmada.
 
 ## Continuación exacta
 
-Seguir el campo NEXT del handoff de recuperación. Cerrar primero sus gaps de reconstrucción; no abrir funcionalidades ni QA física automáticamente. Todo lote futuro debe leer su contrato.
+La estabilización V4 del 2026-10-21 está registrada en PicoRadar_STABILIZATION_HANDOFF.md y PR #72. La suite móvil completa pasó localmente en SHA de código e5aeda06787eeec2e90fb6a7aa239a95516d6227; revisar el handoff para tree, conteos, límites y siguiente acción. La siguiente acción es revisión humana del PR draft; sin merge automático, funcionalidades nuevas ni QA física automática.

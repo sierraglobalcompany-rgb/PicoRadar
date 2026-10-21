@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/core/config/app_config.dart';
 import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/core/storage/app_preferences.dart';
+import 'package:picoradar/core/sync/bounded_stream.dart';
 import 'package:picoradar/core/sync/dataset_sync_service.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_dataset.dart';
@@ -149,7 +150,7 @@ void main() {
       await preferences.getString(DatasetSyncService.manifestEtagPreferenceKey),
       '"viaje-r2"',
     );
-  });
+  }, timeout: const Timeout(Duration(seconds: 90)));
 
   test('rejects payload metadata that differs from manifest', () async {
     final payload = await _payload({
@@ -364,9 +365,40 @@ void main() {
     },
   );
 
+  test('bounded file writes cancel an oversized producer and close the partial file', () async {
+    final destination = File('${tempDirectory.path}/bounded.bin');
+    var delivered = 0;
+    var producerFinalized = false;
+
+    Stream<List<int>> oversizedChunks() async* {
+      try {
+        for (var index = 0; index < 17; index++) {
+          yield List<int>.filled(13, index);
+          delivered++;
+        }
+      } finally {
+        producerFinalized = true;
+      }
+    }
+
+    await expectLater(
+      writeBoundedStream(
+        oversizedChunks(),
+        destination,
+        maxBytes: 48,
+        label: 'Test dataset',
+      ),
+      throwsA(isA<BoundedStreamException>()),
+    );
+
+    expect(producerFinalized, isTrue);
+    expect(delivered, lessThan(17));
+    expect(await destination.length(), lessThanOrEqualTo(48));
+  });
+
   test('caps a chunked dataset without Content-Length', () async {
     final oversized = await _payload({'rows': 'x' * 200});
-    var chunksSent = 0;
+    var importCalls = 0;
     _serveManifest(server, {
       'restrictions': _entry(
         version: '2.0',
@@ -380,7 +412,6 @@ void main() {
       oversized.bytes,
       chunkSize: 13,
       chunkDelay: const Duration(milliseconds: 3),
-      onChunkSent: () => chunksSent += 1,
     );
     await expectLater(
       _service(
@@ -388,14 +419,19 @@ void main() {
         preferences,
         tempDirectory,
         server,
-        importers: {'restrictions': (_, _) async {}},
+        importers: {
+          'restrictions': (_, _) async {
+            importCalls++;
+          },
+        },
         maxDownloadBytes: 48,
       ).sync(),
       throwsA(isA<DatasetSyncException>()),
     );
 
     expect(await db.select(db.datasetVersions).get(), isEmpty);
-    expect(chunksSent, lessThan((oversized.bytes.length / 13).ceil()));
+    expect(importCalls, 0);
+    expect(await tempDirectory.list().toList(), isEmpty);
   });
 
   test('caps high-expansion gzip while decoding its stream', () async {
@@ -826,7 +862,6 @@ void _serveChunked(
   List<int> bytes, {
   required int chunkSize,
   Duration chunkDelay = Duration.zero,
-  void Function()? onChunkSent,
 }) {
   server.handlers[path] = (request) async {
     request.response.headers.contentType = ContentType.binary;
@@ -837,7 +872,6 @@ void _serveChunked(
           : bytes.length;
       request.response.add(bytes.sublist(offset, end));
       await request.response.flush();
-      onChunkSent?.call();
       if (chunkDelay > Duration.zero) {
         await Future<void>.delayed(chunkDelay);
       }

@@ -812,7 +812,13 @@ void main() {
         documentMetadataOverride: metadata,
       );
       await tester.tap(find.byKey(const ValueKey('owner-primary-soat')));
-      await _finishWalletIo(tester);
+      await _finishWalletIo(
+        tester,
+        until: () =>
+            find.byType(WalletViewer).evaluate().isNotEmpty &&
+            store.viewerFile != null &&
+            !store.viewerFile!.existsSync(),
+      );
       expect(find.byType(WalletViewer), findsOneWidget);
       expect(gateway.openedFiles, isEmpty);
       expect(store.decryptCalls, 1);
@@ -1498,13 +1504,15 @@ Future<void> _finishWalletIo(
   WidgetTester tester, {
   bool Function()? until,
 }) async {
-  for (var i = 0; i < (until == null ? 30 : 100); i++) {
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 30)),
-    );
-    await tester.pump(const Duration(milliseconds: 100));
-    if (until?.call() ?? false) return;
-  }
+  final container = ProviderScope.containerOf(
+    // The root viewer can leave the owner route mounted but offstage.
+    tester.element(find.byType(VehicleStatusScreen, skipOffstage: false)),
+  );
+  await pumpUntilRealIo(
+    tester,
+    until ?? () => !container.read(walletOperationProvider).busy,
+    reason: 'Wallet import/view/cleanup did not reach its required state',
+  );
 }
 
 class _OwnerWalletPlatform extends WalletPlatform {
