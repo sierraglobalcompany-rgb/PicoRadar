@@ -91,6 +91,13 @@ try {
     # A stale ignored production config could make RefreshDatabase migrate a
     # persistent database despite DB_CONNECTION=sqlite. Abort fail-closed;
     # never clear cached files automatically or operate outside this clone.
+    # APP_CONFIG_CACHE can redirect Laravel outside the clone; the normal
+    # bootstrap/cache/config.php check alone cannot protect that override.
+    if (-not [string]::IsNullOrEmpty(
+        [Environment]::GetEnvironmentVariable('APP_CONFIG_CACHE')
+    )) {
+        throw 'Unsafe inherited APP_CONFIG_CACHE override. Run QA in a clean isolated process.'
+    }
     $bootstrapCache = Join-Path $root 'server/bootstrap/cache'
     $cachedConfig = Join-Path $bootstrapCache 'config.php'
     if (Test-Path -LiteralPath $cachedConfig -PathType Leaf) {
