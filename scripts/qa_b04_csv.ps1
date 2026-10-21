@@ -121,8 +121,10 @@ try {
         throw "B04 route count mismatch: expected $($expectedRoutes.Count), found $($actual.Count)."
     }
     foreach ($routeName in $expectedRoutes.Keys) {
-        if (-not $actual.ContainsKey($routeName) -or
-            @($actual[$routeName] -split '\\|') -notcontains $expectedRoutes[$routeName]) {
+        $foundMethods = if ($actual.ContainsKey($routeName)) {
+            @(([string]$actual[$routeName]).Split([char]'|'))
+        } else { @() }
+        if ($foundMethods -notcontains $expectedRoutes[$routeName]) {
             throw "B04 missing or wrong HTTP method: $routeName"
         }
     }
