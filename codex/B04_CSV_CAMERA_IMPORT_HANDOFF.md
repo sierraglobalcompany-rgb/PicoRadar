@@ -65,3 +65,11 @@ En el MISMO clon QA aislado de Codex, ejecutar el script `scripts/qa_b04_csv.ps1
 - El parser de `external_id` ahora rechaza espacios externos e invisibles Unicode `\p{Cc}\p{Cf}` **antes de convertir o normalizar la identidad**. No se altera texto descriptivo. Regresión sintética en `CameraCsvParserTest`, prueba directa de PCRE en PHP 8.4 (rechazos esperados para 5 casos + 1 admisible); **no equivale a PHPUnit**.
 - Inventario reconciliado: 12 pruebas de parser + 8 de preview + 18 de importación = 38 B04; 3 pruebas nuevas en Registry = **41 pruebas nuevas**. Ninguna ejecutada en Laravel.
 - Actions `39645490050` (HEAD `5b87a27943f3059e1b5fbed6c7ae21b0407bd4de`) falló con **0 steps** en cada PHP 8.3/8.4/8.5 y MariaDB: fallo de infraestructura/cuota, no de código. No reintentar CI manualmente.
+
+## Evidencia PHP real — parser aislado (2026-10-21)
+
+- Obtenido `server/app/Services/CameraCsvParser.php` desde el PR #75. Copia temporal, **hash Git blob idéntico** al blob remoto: `48cb9e5d9c1e25a8a25458730b6850e21f66a23d`. El archivo del repositorio no fue modificado por esta prueba.
+- `php -l` usando PHP 8.4.24: **PASS, sin errores de sintaxis**.
+- Smoke independiente de 22 casos: **22 PASS / 0 FAIL**. Cubre simple, BOM/multiline/comas/UTF-8, enums, parse(path) vs parseBytes, cabeceras no permitidas/repetidas, comillas/trailing bytes/raw CR, UTF-8 inválido/NUL, límite 5 MiB/2000 filas, lat fuera de rango/NaN, caracteres invisibles Unicode/bidi/espacios de identidad, velocidad fuera de rango y salida anti-formula.
+- **Limitación crucial**: el entorno de ejecución no tiene `mbstring`, `pdo_sqlite`, Composer ni dependencias Laravel. Para el smoke **solo**, `mb_check_encoding()` usó `preg_match('//u', ...)` y `mb_strlen()` usó `iconv_strlen()`. Por tanto este resultado **no** demuestra la ejecución con las extensiones nativas, no ejecuta PHPUnit ni habilita aprobación del flujo B04. No se debe convertir 22/22 en 41/41 ni en full QA PASS.
+- CI GitHub sigue bloqueada (jobs PHP+MariaDB: 0 steps). NEXT sigue siendo **una sesión local de QA con Codex en clon limpio**, usando las dependencias reales y MariaDB aislada. Ni merge ni deploy.
