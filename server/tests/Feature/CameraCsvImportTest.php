@@ -381,6 +381,24 @@ class CameraCsvImportTest extends TestCase
         self::assertSame('review', $batch->fresh()->status);
     }
 
+    public function test_reverified_source_with_changed_authority_stales_original_review(): void
+    {
+        $batch = $this->upload();
+        $this->source->update([
+            'authority' => 'Different synthetic authority',
+            'verified_at' => now(),
+        ]);
+        self::assertTrue($this->source->fresh()->is_active);
+        self::assertNotNull($this->source->fresh()->verified_at);
+
+        $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), [
+            'analysis_sha256' => $batch->analysis_sha256,
+            'records' => ['2'],
+        ])->assertStatus(409);
+        self::assertSame(0, Camera::count());
+        self::assertSame('review', $batch->fresh()->status);
+    }
+
     private function upload(?string $body = null): CameraCsvImport
     {
         $csv = "external_id,municipality_code,lat,lon,type,name\n".

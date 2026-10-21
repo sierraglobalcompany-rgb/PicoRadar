@@ -47,7 +47,11 @@ final class CameraCsvImportService
         }
         $parsed = $this->parser->parseBytes($bytes);
         $preview = $this->preview->preview($parsed, $source, $jurisdiction, $mode);
-        $analysis = json_encode(['parsed' => $parsed, 'preview' => $preview], JSON_THROW_ON_ERROR);
+        $analysis = json_encode([
+            'parsed' => $parsed,
+            'preview' => $preview,
+            'context_sha256' => self::contextFingerprint($source, $jurisdiction),
+        ], JSON_THROW_ON_ERROR);
         $directory = 'camera-csv-imports/'.Str::uuid();
         $original = $directory.'/original.csv';
         $snapshot = $directory.'/analysis.json';
@@ -89,7 +93,7 @@ final class CameraCsvImportService
         }
     }
 
-    /** @return array{parsed:array<string,mixed>,preview:array<string,mixed>} */
+    /** @return array{parsed:array<string,mixed>,preview:array<string,mixed>,context_sha256:string} */
     public function load(CameraCsvImport $batch): array
     {
         $disk = Storage::disk('local');
@@ -104,7 +108,10 @@ final class CameraCsvImportService
             abort(409, 'Private CSV or its analysis is missing or has changed.');
         }
         $data = json_decode($analysis, true, 512, JSON_THROW_ON_ERROR);
-        if (! is_array($data) || ! isset($data['parsed']['rows'], $data['preview']['rows'])) {
+        if (! is_array($data)
+            || ! isset($data['parsed']['rows'], $data['preview']['rows'], $data['context_sha256'])
+            || ! is_string($data['context_sha256'])
+            || ! preg_match('/^[a-f0-9]{64}$/D', $data['context_sha256'])) {
             abort(409, 'This CSV analysis is invalid.');
         }
 
@@ -156,6 +163,9 @@ final class CameraCsvImportService
                 }
                 $source = CameraSource::query()->lockForUpdate()->findOrFail($current->source_id);
                 $jurisdiction = Jurisdiction::query()->lockForUpdate()->findOrFail($current->jurisdiction_id);
+                if (! hash_equals($data['context_sha256'], self::contextFingerprint($source, $jurisdiction))) {
+                    abort(409, 'Camera source or jurisdiction changed since CSV analysis; upload a new batch.');
+                }
                 $newPreview = $this->preview->preview($data['parsed'], $source, $jurisdiction, $current->mode);
                 $old = collect($data['preview']['rows'])->keyBy('record');
                 $new = collect($newPreview['rows'])->keyBy('record');
@@ -240,5 +250,29 @@ final class CameraCsvImportService
             // partial CSV batch or an opaque HTTP 500.
             abort(409, 'The camera changed during application; the CSV transaction was rolled back.');
         }
+    }
+
+    /**
+     * Invalidate an unpublished analysis if the authority or jurisdiction
+     * is edited and reverified between review and application.
+     */
+    private static function contextFingerprint(CameraSource $source, Jurisdiction $jurisdiction): string
+    {
+        return hash('sha256', json_encode([
+            $source->id,
+            $source->key,
+            $source->title,
+            $source->authority,
+            $source->url,
+            $source->source_type->value,
+            (bool) $source->is_active,
+            $source->verified_at?->toISOString(),
+            $source->updated_at?->toISOString(),
+            $jurisdiction->id,
+            $jurisdiction->key,
+            $jurisdiction->kind->value,
+            (bool) $jurisdiction->enabled,
+            $jurisdiction->updated_at?->toISOString(),
+        ], JSON_THROW_ON_ERROR));
     }
 }
