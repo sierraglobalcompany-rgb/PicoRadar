@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\CameraStatus;
 use App\Enums\GeographicUnitLevel;
 use App\Models\Camera;
+use App\Models\CameraSource;
 use App\Models\GeographicUnit;
 use App\Models\User;
 use DomainException;
@@ -20,7 +21,23 @@ class CameraRegistryService
     {
         return DB::transaction(function () use ($data, $actor): Camera {
             $camera = new Camera;
-            $camera->forceFill($data + ['camera_id' => 'cam_'.strtolower((string) Str::ulid()), 'status' => CameraStatus::Draft, 'created_by_id' => $actor?->id, 'updated_by_id' => $actor?->id])->save();
+            // Accept only fields declared as editable camera master data.
+            // Never allow a caller to provide lifecycle, verification or audit fields.
+            if (array_diff(array_keys($data), $camera->getFillable()) !== []) {
+                throw new DomainException('Camera creation contains server-controlled fields.');
+            }
+
+            // Serialize manual and CSV creates for this source. CSV Apply already
+            // holds this source lock, so nested calls reuse the same transaction.
+            CameraSource::query()->whereKey($data['source_id'] ?? null)->lockForUpdate()->firstOrFail();
+
+            $camera->fill($data);
+            $camera->forceFill([
+                'camera_id' => 'cam_'.strtolower((string) Str::ulid()),
+                'status' => CameraStatus::Draft,
+                'created_by_id' => $actor?->id,
+                'updated_by_id' => $actor?->id,
+            ])->save();
             $this->assertCoverage($camera);
             $this->audit->log($actor, 'camera.created', $camera, $this->meta($camera));
 
@@ -36,6 +53,12 @@ class CameraRegistryService
     public function updateDraft(Camera $camera, array $attributes, ?User $actor = null): Camera
     {
         return DB::transaction(function () use ($camera, $attributes, $actor): Camera {
+            // Source-first lock order matches CSV Apply, including moves to a
+            // different source from the manual editor. This also serializes
+            // manual updates against the import preview/apply window.
+            $sourceIds = array_unique([(int) $camera->source_id, (int) ($attributes['source_id'] ?? $camera->source_id)]);
+            sort($sourceIds, SORT_NUMERIC);
+            CameraSource::query()->whereKey($sourceIds)->orderBy('id')->lockForUpdate()->get();
             $current = Camera::lockForUpdate()->findOrFail($camera->id);
             if (! in_array($current->status, [CameraStatus::Draft, CameraStatus::Rejected], true)) {
                 throw new DomainException('Only draft or rejected cameras can edit master data. Reopen for correction first.');

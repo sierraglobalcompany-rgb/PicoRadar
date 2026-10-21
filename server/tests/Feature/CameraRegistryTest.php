@@ -444,6 +444,51 @@ class CameraRegistryTest extends TestCase
         }
     }
 
+    public function test_camera_creation_rejects_caller_supplied_lifecycle_and_authority_fields(): void
+    {
+        $editor = User::factory()->create(['role' => OperatorRole::Editor]);
+        $jurisdiction = Jurisdiction::query()->where('enabled', true)->with('geographicUnits')->firstOrFail();
+        $source = CameraSource::factory()->create();
+        $base = [
+            'jurisdiction_id' => $jurisdiction->id,
+            'geographic_unit_id' => $jurisdiction->geographicUnits->first()->id,
+            'source_id' => $source->id,
+            'external_id' => 'QA-INTERNAL-FIELDS',
+            'lat' => 4.711,
+            'lon' => -74.0721,
+            'type' => CameraType::Other,
+        ];
+
+        foreach ([
+            ['status' => CameraStatus::Active],
+            ['camera_id' => 'cam_attacker'],
+            ['verified_at' => now()],
+            ['verified_by_id' => $editor->id],
+            ['speed_limit_verified' => true],
+            ['created_by_id' => $editor->id],
+            ['updated_by_id' => $editor->id],
+            ['retired_at' => now()],
+        ] as $malicious) {
+            $this->assertDomainException(
+                fn () => app(CameraRegistryService::class)->create($base + $malicious, $editor)
+            );
+        }
+
+        $this->assertDatabaseMissing('cameras', ['external_id' => 'QA-INTERNAL-FIELDS']);
+    }
+
+    public function test_server_assigns_draft_identity_and_actor_when_creating_camera(): void
+    {
+        $editor = User::factory()->create(['role' => OperatorRole::Editor]);
+        $camera = $this->draft($editor, ['external_id' => 'QA-SERVER-FIELDS']);
+        $this->assertSame(CameraStatus::Draft, $camera->status);
+        $this->assertSame($editor->id, $camera->created_by_id);
+        $this->assertSame($editor->id, $camera->updated_by_id);
+        $this->assertStringStartsWith('cam_', $camera->camera_id);
+        $this->assertNull($camera->verified_at);
+        $this->assertFalse($camera->speed_limit_verified);
+    }
+
     private function draft(?User $actor = null, array $overrides = []): Camera
     {
         $jurisdiction = Jurisdiction::query()->where('enabled', true)->with('geographicUnits')->firstOrFail();
