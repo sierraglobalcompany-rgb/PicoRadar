@@ -68,6 +68,7 @@ try {
     $sources = @(
         'app/Services/CameraCsvParser.php',
         'app/Services/CameraRegistryService.php',
+        'app/Services/CameraDuplicateDetector.php',
         'app/Services/AnsvRichCameraImporter.php',
         'app/Services/CameraCsvPreviewService.php',
         'app/Services/CameraCsvImportService.php',
