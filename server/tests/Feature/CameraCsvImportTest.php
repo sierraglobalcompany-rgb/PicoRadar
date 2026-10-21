@@ -454,6 +454,19 @@ class CameraCsvImportTest extends TestCase
         self::assertSame('review', $batch->fresh()->status);
     }
 
+    public function test_csv_mutation_routes_are_throttled_per_minute_not_per_hour(): void
+    {
+        $upload = \Illuminate\Support\Facades\Route::getRoutes()
+            ->getByName('admin.camera-csv-imports.store');
+        $apply = \Illuminate\Support\Facades\Route::getRoutes()
+            ->getByName('admin.camera-csv-imports.apply');
+
+        self::assertNotNull($upload);
+        self::assertNotNull($apply);
+        self::assertContains('throttle:6,1', $upload->gatherMiddleware());
+        self::assertContains('throttle:30,1', $apply->gatherMiddleware());
+    }
+
     private function upload(?string $body = null): CameraCsvImport
     {
         $csv = "external_id,municipality_code,lat,lon,type,name\n".
