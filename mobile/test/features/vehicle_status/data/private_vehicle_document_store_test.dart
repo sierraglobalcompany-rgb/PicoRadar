@@ -112,40 +112,68 @@ void main() {
     ]);
   });
 
-  test(
-    'round-trips every vehicle document type with encrypted bytes',
-    () async {
-      for (final type in PrivateVehicleDocumentType.values) {
-        final source = File('${root.path}/${type.value}.pdf');
-        final bytes = [type.index + 1, type.index + 2, type.index + 3];
-        await source.writeAsBytes(bytes);
+  for (final type in PrivateVehicleDocumentType.values) {
+    test('round-trips ${type.value} with encrypted bytes', () async {
+      final source = File('${root.path}/${type.value}.pdf');
+      final bytes = [type.index + 1, type.index + 2, type.index + 3];
+      await source.writeAsBytes(bytes);
 
-        final metadata = await store.importDocument(
-          vehicleId: 'vehicle-${type.index}',
-          documentType: type,
-          source: source,
-          originalName: '${type.value}.pdf',
-          mimeType: '',
-        );
+      final metadata = await store.importDocument(
+        vehicleId: 'vehicle-${type.index}',
+        documentType: type,
+        source: source,
+        originalName: '${type.value}.pdf',
+        mimeType: '',
+      );
 
-        final encrypted = File(
-          '${root.path}/vehicle_documents/${metadata.encryptedRelativePath}',
-        );
-        expect(await encrypted.exists(), isTrue);
-        expect(await encrypted.readAsBytes(), isNot(bytes));
-        expect(
-          await (await store.decryptForView(metadata)).readAsBytes(),
-          bytes,
-        );
-        expect(
-          (await store.listForVehicle('vehicle-${type.index}'))
-              .single
-              .documentType,
-          type,
-        );
-      }
-    },
-  );
+      final encrypted = File(
+        '${root.path}/vehicle_documents/${metadata.encryptedRelativePath}',
+      );
+      expect(await encrypted.exists(), isTrue);
+      expect(await encrypted.readAsBytes(), isNot(bytes));
+      expect(await (await store.decryptForView(metadata)).readAsBytes(), bytes);
+      expect(
+        (await store.listForVehicle('vehicle-${type.index}'))
+            .single
+            .documentType,
+        type,
+      );
+    });
+  }
+
+  test('reads all seven document types from one encrypted index', () async {
+    final index = File('${root.path}/vehicle_documents/index_v1.prcf');
+    await index.parent.create(recursive: true);
+    await index.writeAsBytes(
+      await FileCrypto().encryptBytes(
+        utf8.encode(
+          jsonEncode([
+            for (final type in PrivateVehicleDocumentType.values)
+              PrivateVehicleDocumentMetadata(
+                documentId: 'mixed-${type.value}',
+                vehicleId: 'vehicle-${type.index}',
+                documentType: type,
+                originalName: '${type.value}.pdf',
+                mimeType: 'application/pdf',
+                importedAt: DateTime.utc(2026, 8, 30),
+                encryptedRelativePath: 'docs/${type.value}/mixed.prcf',
+              ).toJson(),
+          ]),
+        ),
+        SecretKey(List<int>.filled(32, 9)),
+      ),
+      flush: true,
+    );
+    final documents = await store.listAllForMigration();
+    expect(
+      documents.map((document) => document.documentType),
+      PrivateVehicleDocumentType.values,
+    );
+    expect(
+      documents.map((document) => document.vehicleId).toSet(),
+      hasLength(PrivateVehicleDocumentType.values.length),
+    );
+  });
 
   test(
     'replaces and deletes image documents without keeping old files',
