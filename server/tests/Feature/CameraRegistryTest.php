@@ -513,7 +513,7 @@ class CameraRegistryTest extends TestCase
         );
         $this->assertDomainException(
             fn () => app(CameraRegistryService::class)->create(
-                $data + ['external_id' => 'OTHER'], null, 'cam_untrusted-id'
+                array_replace($data, ['external_id' => 'OTHER']), null, 'cam_untrusted-id'
             )
         );
     }
