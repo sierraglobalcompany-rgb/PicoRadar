@@ -169,6 +169,11 @@ final class CameraCsvImportController extends Controller
                 static fn ($v): string => CameraCsvParser::spreadsheetSafe((string) $v),
                 $cells
             );
+            // Numeric-only external IDs are TEXTUAL identities. Preserve
+            // leading zeroes and long IDs in spreadsheet applications.
+            if (preg_match('/^\\d+$/D', (string) $cells[2])) {
+                $safeCells[2] = "'".$cells[2];
+            }
             // Latitude and longitude are already validated and normalized by
             // CameraCsvParser. Preserve canonical signed decimals as numbers
             // while still escaping formula-looking free-text/identity cells.

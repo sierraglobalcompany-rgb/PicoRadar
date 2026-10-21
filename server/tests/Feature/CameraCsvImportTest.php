@@ -204,6 +204,25 @@ class CameraCsvImportTest extends TestCase
         self::assertStringNotContainsString("'-74.0721000", $csv);
     }
 
+    public function test_report_preserves_numeric_external_ids_as_text_without_changing_coordinates(): void
+    {
+        $batch = $this->upload(
+            "00123,{$this->municipalityCode},4.711,-74.0721,other,Leading zeros\n".
+            "123,{$this->municipalityCode},4.720,-74.0900,other,Digits only\n".
+            "QA-001,{$this->municipalityCode},4.740,-74.1000,other,Alphanumeric\n"
+        );
+        $report = $this->actingAs($this->admin)->get(
+            route('admin.camera-csv-imports.report', $batch)
+        );
+        $report->assertOk();
+        $csv = $report->getContent();
+
+        self::assertStringContainsString(",'00123,", $csv);
+        self::assertStringContainsString(",'123,", $csv);
+        self::assertStringContainsString(',QA-001,', $csv);
+        self::assertStringContainsString(',4.7110000,-74.0721000,', $csv);
+    }
+
     public function test_existing_draft_is_updated_without_verification_or_new_camera(): void
     {
         $unit = $this->jurisdiction->geographicUnits->first();
