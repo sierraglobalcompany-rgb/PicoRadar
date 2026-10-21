@@ -114,7 +114,7 @@ final class CameraCsvParser
         $errors = [];
         foreach (['external_id', 'municipality_code', 'type'] as $field) {
             $s = trim((string) ($raw[$field] ?? ''));
-            if ($field === 'external_id' && ($s === '' || mb_strlen($s) > 255)) {
+            if ($field === 'external_id' && ($s === '' || mb_strlen($s) > 255 || preg_match('/[\r\n\t]/', $s))) {
                 $errors[] = 'external_id length is invalid.';
             } elseif ($field === 'municipality_code' && ! preg_match('/^\d{5}$/D', $s)) {
                 $errors[] = 'municipality_code must be 5 digits.';

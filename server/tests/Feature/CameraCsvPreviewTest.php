@@ -73,6 +73,19 @@ class CameraCsvPreviewTest extends TestCase
         self::assertSame(2, $review['counts']['blocked']);
     }
 
+    public function test_external_ids_that_differ_only_by_letter_case_are_duplicate(): void
+    {
+        [$source, $jurisdiction, $unit] = $this->domain();
+        $first = $this->row(2, $unit->code);
+        $second = $this->row(3, $unit->code);
+        $second['values']['external_id'] = 'ex-1';
+        $second['values']['lat'] = '4.7500000';
+        $second['values']['lon'] = '-74.0500000';
+        $review = $this->review([$first, $second]);
+        self::assertSame(2, $review['counts']['duplicate']);
+        self::assertSame(0, $review['counts']['create_ready']);
+    }
+
     private function domain(): array
     {
         $jurisdiction = Jurisdiction::query()->where('enabled', true)->with('geographicUnits')->firstOrFail();

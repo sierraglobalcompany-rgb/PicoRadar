@@ -36,10 +36,15 @@ final class CameraCsvPreviewService
             ->keyBy('code');
 
         $identities = [];
+        $foldedIdentities = [];
         foreach ($parsed['rows'] as $row) {
             if ($row['errors'] === [] && isset($row['values']['external_id'])) {
                 $key = $row['values']['external_id'];
                 $identities[$key] = ($identities[$key] ?? 0) + 1;
+                // MariaDB's default utf8mb4_unicode_ci UNIQUE index is case-insensitive.
+                // Conservative case-folding prevents false "create_ready" rows on imports.
+                $fold = mb_strtolower($key, 'UTF-8');
+                $foldedIdentities[$fold] = ($foldedIdentities[$fold] ?? 0) + 1;
             }
         }
 
@@ -51,6 +56,7 @@ final class CameraCsvPreviewService
                 ->get());
         }
         $byExternalId = $existing->keyBy('external_id');
+        $byFoldedId = $existing->keyBy(static fn (Camera $camera): string => mb_strtolower($camera->external_id, 'UTF-8'));
         $available = $source->is_active && $source->verified_at !== null && $jurisdiction->enabled;
 
         $result = [];
@@ -65,9 +71,14 @@ final class CameraCsvPreviewService
                 $key = $values['external_id'];
                 $unit = $coverage->get($values['municipality_code']);
                 $camera = $byExternalId->get($key);
-                if (($identities[$key] ?? 0) > 1) {
+                $fold = mb_strtolower($key, 'UTF-8');
+                $caseInsensitiveMatch = $byFoldedId->get($fold);
+                if (($foldedIdentities[$fold] ?? 0) > 1) {
                     $status = 'duplicate';
-                    $errors[] = 'external_id is repeated in this file.';
+                    $errors[] = 'external_id conflicts with another row ignoring letter case.';
+                } elseif ($caseInsensitiveMatch !== null && $caseInsensitiveMatch->external_id !== $key) {
+                    $status = 'blocked';
+                    $errors[] = 'external_id conflicts with an existing source identity ignoring letter case.';
                 } elseif (! $available) {
                     $status = 'blocked';
                     $errors[] = 'Source must be active and verified; jurisdiction must be enabled.';

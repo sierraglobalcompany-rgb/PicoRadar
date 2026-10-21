@@ -94,6 +94,16 @@ final class CameraCsvParserTest extends TestCase
         self::assertSame(1, $fromBytes['valid_count']);
     }
 
+    public function test_external_id_with_tab_or_newline_is_rejected(): void
+    {
+        foreach (["QA\\t01", "QA\\n01", "QA\\r01"] as $id) {
+            $csv = "external_id,municipality_code,lat,lon,type\\n".
+                '"'.str_replace('"', '""', $id).'",05001,6,-75,other'."\\n";
+            $data = (new CameraCsvParser)->parseBytes($csv);
+            self::assertSame(1, $data['invalid_count']);
+        }
+    }
+
     public function test_formula_escapes_for_output_only(): void
     {
         foreach (['=SUM(1,2)', '+cmd', '-cmd', '@cmd', " \t=cmd", "\u{200B}=cmd"] as $s) {
