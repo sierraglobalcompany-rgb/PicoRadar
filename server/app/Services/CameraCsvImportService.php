@@ -119,7 +119,7 @@ final class CameraCsvImportService
     }
 
     /**
-     * @param list<int|string> $records
+     * @param  list<int|string>  $records
      * @return array{already_applied:bool,created:int,updated:int}
      */
     public function apply(CameraCsvImport $batch, array $records, string $analysisSha, User $actor): array

@@ -106,7 +106,7 @@ final class CameraCsvParserTest extends TestCase
 
     public function test_external_id_with_tab_or_newline_is_rejected(): void
     {
-        foreach (["QA".chr(9)."01", "QA".chr(10)."01", "QA".chr(13)."01"] as $id) {
+        foreach (['QA'.chr(9).'01', 'QA'.chr(10).'01', 'QA'.chr(13).'01'] as $id) {
             $csv = "external_id,municipality_code,lat,lon,type\n".
                 '"'.$id.'",05001,6,-75,other'."\n";
             $data = (new CameraCsvParser)->parseBytes($csv);
@@ -163,6 +163,7 @@ final class CameraCsvParserTest extends TestCase
         }
         try {
             file_put_contents($tmp, $csv);
+
             return (new CameraCsvParser)->parse($tmp);
         } finally {
             unlink($tmp);

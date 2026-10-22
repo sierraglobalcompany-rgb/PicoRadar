@@ -10,15 +10,18 @@ use App\Models\AuditLog;
 use App\Models\Camera;
 use App\Models\CameraCsvImport;
 use App\Models\CameraSource;
+use App\Models\GeographicUnit;
 use App\Models\Jurisdiction;
 use App\Models\User;
 use App\Services\CameraCsvImportService;
 use App\Services\CameraRegistryService;
 use App\Services\DatasetAuditLogger;
 use App\Services\GeographyImporter;
+use App\Services\JurisdictionService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Tests\TestCase;
@@ -28,8 +31,11 @@ class CameraCsvImportTest extends TestCase
     use RefreshDatabase;
 
     private CameraSource $source;
+
     private Jurisdiction $jurisdiction;
+
     private string $municipalityCode;
+
     private User $admin;
 
     protected function setUp(): void
@@ -261,7 +267,7 @@ class CameraCsvImportTest extends TestCase
             'jurisdiction_id' => $this->jurisdiction->id,
             'mode' => 'delta',
             'csv' => UploadedFile::fake()->createWithContent('other.csv',
-                "external_id,municipality_code,lat,lon,type,name\n". 
+                "external_id,municipality_code,lat,lon,type,name\n".
                 "QA-002,{$this->municipalityCode},4.715,-74.075,other,Second\n"),
         ])->assertRedirect();
         $second = CameraCsvImport::query()->latest('id')->firstOrFail();
@@ -471,12 +477,12 @@ class CameraCsvImportTest extends TestCase
         $batch = $this->upload();
         $existingCoverageIds = $this->jurisdiction->geographicUnits()
             ->pluck('geographic_units.id')->all();
-        $otherUnit = \App\Models\GeographicUnit::query()
+        $otherUnit = GeographicUnit::query()
             ->where('level', 'municipality')
             ->whereNotIn('id', $existingCoverageIds)
             ->firstOrFail();
 
-        app(\App\Services\JurisdictionService::class)
+        app(JurisdictionService::class)
             ->attachCoverage($this->jurisdiction, $otherUnit, $this->admin);
 
         $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), [
@@ -509,9 +515,9 @@ class CameraCsvImportTest extends TestCase
 
     public function test_csv_mutation_routes_are_throttled_per_minute_not_per_hour(): void
     {
-        $upload = \Illuminate\Support\Facades\Route::getRoutes()
+        $upload = Route::getRoutes()
             ->getByName('admin.camera-csv-imports.store');
-        $apply = \Illuminate\Support\Facades\Route::getRoutes()
+        $apply = Route::getRoutes()
             ->getByName('admin.camera-csv-imports.apply');
 
         self::assertNotNull($upload);

@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Enums\CameraStatus;
 use App\Models\Camera;
 use App\Models\CameraSource;
+use App\Models\GeographicUnit;
 use App\Models\Jurisdiction;
 use App\Services\CameraCsvPreviewService;
 use App\Services\CameraRegistryService;
@@ -109,7 +110,7 @@ class CameraCsvPreviewTest extends TestCase
     public function test_nearby_rows_in_distinct_municipalities_of_one_jurisdiction_are_blocked(): void
     {
         [$source, $jurisdiction, $unit] = $this->domain();
-        $other = \App\Models\GeographicUnit::query()
+        $other = GeographicUnit::query()
             ->where('level', 'municipality')->whereKeyNot($unit->id)->firstOrFail();
         $jurisdiction->geographicUnits()->syncWithoutDetaching([$other->id]);
 

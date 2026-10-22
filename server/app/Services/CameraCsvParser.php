@@ -10,9 +10,11 @@ use InvalidArgumentException;
 final class CameraCsvParser
 {
     public const MAX_BYTES = 5 * 1024 * 1024;
+
     public const MAX_ROWS = 2000;
 
     private const REQUIRED = ['external_id', 'municipality_code', 'lat', 'lon', 'type'];
+
     private const OPTIONAL = ['name', 'direction', 'bearing', 'corridor', 'speed_limit', 'notes'];
 
     /**
@@ -184,6 +186,7 @@ final class CameraCsvParser
                         $closedQuote = true;
                     }
                 }
+
                 continue;
             }
             if ($ch === ',' || $ch === "\n" || ($ch === "\r" && $next === "\n")) {
@@ -192,6 +195,7 @@ final class CameraCsvParser
                 }
                 $atStart = true;
                 $closedQuote = false;
+
                 continue;
             }
             if ($closedQuote || $ch === "\r") {

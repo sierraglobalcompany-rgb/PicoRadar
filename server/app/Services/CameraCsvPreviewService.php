@@ -22,7 +22,7 @@ final class CameraCsvPreviewService
      * Read-only assessment. Classification is not authority to mutate:
      * re-run all conditions with DB locks at apply time.
      *
-     * @param array{rows:list<array{record:int,values:array<string,mixed>,errors:list<string>}>} $parsed
+     * @param  array{rows:list<array{record:int,values:array<string,mixed>,errors:list<string>}>}  $parsed
      * @return array{rows:list<array<string,mixed>>,counts:array<string,int>,missing_advisory:int}
      */
     public function preview(array $parsed, CameraSource $source, Jurisdiction $jurisdiction, string $mode): array
