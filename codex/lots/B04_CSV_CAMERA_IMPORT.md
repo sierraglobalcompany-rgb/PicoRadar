@@ -1,15 +1,15 @@
 # B04-CSV-KISS — Importación revisable de cámaras (plan único)
 
-**Estado:** IMPLEMENTED_DRAFT_PR75 / RUNTIME_QA_NOT_RUN / NO_MERGE. El contrato no certifica la corrección del código.
+**Estado vigente (2026-10-22):** PR funcional #75 IMPLEMENTED_DRAFT / QA_LOCAL_REPORTADA / REMOTE_CI_NO_VERDE / NO_MERGE. Este documento es el contrato funcional histórico, **no una orden para crear otro PR**; la QA reportada por Codex no certifica por sí sola integración, UI visual ni producción.
 **Fecha:** 2026-10-21. **Base autorizada:** `recovery/20261019-modern`; fotografía al planificar `0d3a6a2a32bff8bd27dbdd92f88433dd8ab3e47a`.
-**Alcance:** un lote Laravel administrativo, CSV solamente. Nuevo PR **Draft** hacia la rama moderna, **sin merge ni deploy**. Este archivo consolida el contrato B04 CSV V5 y la auditoría de seguridad V5.1, que eran adjuntos externos al repositorio. No es evidencia de código ejecutado.
+**Alcance:** un lote Laravel administrativo, CSV solamente, ya implementado separadamente en [PR #75](https://github.com/sierraglobalcompany-rgb/PicoRadar/pull/75) Draft hacia la rama moderna, **sin merge ni deploy**. Este documento conserva el contrato B04 CSV V5 y auditoría de seguridad V5.1; el estado de implementación y su QA se consultan en el PR #75 y su handoff. Sin abrir segundo PR ni repetir implementación.
 
 ## 1. Preflight y fuente de verdad
 
 1. Leer `AGENTS.md`, baselines 11 y 12 de `docs/baseline/`, `docs/CURRENT.md`, `docs/DESIGN_CONTRACT.md`, `docs/SOP.md`, y servicios reales de cámaras. Las reglas de precedencia de AGENTS prevalecen sobre este lote.
 2. Verificar HEAD remoto moderno, PR #71 y posibles ramas/PR B04 CSV creados desde esta fotografía; si existen, inspeccionar delta y continuar, sin duplicar PR. **Nunca** partir de `main` histórico ni integrar masivamente `recovery/20261019-pending-b04` (divergente, 43 archivos de diferencia al corte).
-3. Antes de modificar el PC: `git status --porcelain=v1 -uall`, `git branch -vv`, `git worktree list --porcelain`, `git log -1`, fetch y comparación contra HEAD remoto. No suponer ausencia de WIP. C: y los 13 worktrees históricos se preservan; D: actual es exFAT. No `reset --hard`, `clean`, `stash` ni `git add -A`. Respetar el archivo PS1 denegado.
-4. Usar checkout aislado seguro para el nuevo lote. Una rama `feat/B04-CSV-camera-import-kiss`, **un PR Draft** a `recovery/20261019-modern`. Si el checkout tiene WIP, no sobrescribir ni restaurar archivos ajenos.
+3. **Antecedente de preflight (no ejecutar de nuevo por esta nota):** comprobar `git status --porcelain=v1 -uall`, `git branch -vv`, `git worktree list --porcelain`, `git log -1` antes de nuevas escrituras y comparar con HEAD remoto. Los originales de C: y sus 12 worktrees vinculados están preservados; **checkout principal actual `D:/codex/PicoRadar` en NTFS**. G0–G1C y rescate reflog ya ejecutados. No `reset --hard`, `clean`, `stash` ni `git add -A`. Respetar cualquier bloqueo real del archivo PS1.
+4. **Lote ya abierto:** usar la rama existente `feat/B04-csv-safe-parser` y [PR #75](https://github.com/sierraglobalcompany-rgb/PicoRadar/pull/75), sin crear otra rama ni PR por este contrato; el checkout principal de recuperación no debe cambiarse de rama automáticamente. Verificar el delta remoto y preservar cualquier WIP antes de futuras modificaciones autorizadas.
 5. Prohibido tocar Hostinger, teléfono físico, `main`, despliegue, Actions con cuota agotada, Flutter/C11, ANSV/B07, publicador, datos reales o secretos. Si un paso está bloqueado, documentar `PARTIAL` y continuar solo partes seguras.
 
 ## 2. Contrato CSV v1 cerrado
@@ -58,5 +58,5 @@
 
 - **KISS:** eficaz y simple, modular monolith; no capas redundantes. **Antirruido:** evidencia de consumidores antes de unir/eliminar, una sola fuente del contrato. **Antiparches:** solucionar origen/consumidores, no bypass, `sleep`, catches silenciosos, skips. **Diseño UX/UI Pro:** `docs/DESIGN_CONTRACT.md` y layout admin; sin skill no comprobada ni cambios owner/Flutter.
 - Stop: índice/schema productivo de riesgo, ampliación de gates, pérdida de WIP, activación/publicación, integración histórica masiva, cambios C11/Flutter, dinero/CI, Hostinger, teléfono o modificación de `main`. Avanzar partes seguras y declarar bloqueos separados.
-- Bloqueos heredados no incluidos: `REMOTE_CI_BLOCKED_QUOTA`; B06/B07 MariaDB/symlinks exFAT; archivo PS1 de navegador denegado; Android físico; #71 draft hacia main; WIP Windows desconocido.
-- Resultado: **un solo PR Draft** nuevo hacia la rama moderna, un único `codex/B04_CSV_CAMERA_IMPORT_HANDOFF.md` con SHA/tree, permisos, cambios, tests, motor DB, bloqueos y NEXT. Ningún merge/deploy. **No afirmar código B04 terminado hasta tener commit y QA.**
+- Bloqueos independientes y de alcance histórico: CI #193 sin steps/logs útiles (no CI verde); instalación B06/B07 bloqueada históricamente en exFAT, sin revalidación en NTFS; archivo PS1 navegador denegado históricamente; Android físico pendiente; #71 Draft hacia main. WIP G1A y Git G1B respaldados, pero activos *ignored* posiblemente únicos de C: todavía sin clasificar. Ninguno autoriza merge/deploy.
+- Resultado actual: **PR #75 Draft existente** con handoff en `codex/B04_CSV_CAMERA_IMPORT_HANDOFF.md` **en la rama de #75**; no está todavía en esta rama documental ni en la moderna. QA local **reportada** en #75: Laravel 220 PASS/1 SKIP con 436 avisos Dotenv; MariaDB 103 PASS y concurrencia M1–M7; CI #193 sin prueba ejecutada observable. Revisión humana, CI observable y aceptación de merge pendientes. Ningún merge/deploy.
