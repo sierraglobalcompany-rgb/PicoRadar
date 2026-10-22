@@ -189,7 +189,7 @@ class AnsvRichCameraImporter
             ];
         }
         if ($camera === null) {
-            $camera = $this->registry->create($attributes + ['camera_id' => 'cam_'.substr($row['source_row_identity'], 0, 26)]);
+            $camera = $this->registry->create($attributes, null, 'cam_'.substr($row['source_row_identity'], 0, 26));
         } elseif (in_array($camera->status, [CameraStatus::Draft, CameraStatus::Rejected], true)) {
             $camera = $this->registry->updateDraft($camera, $attributes);
         }

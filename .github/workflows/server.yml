@@ -130,7 +130,7 @@ jobs:
           php -r "file_exists('.env') || copy('.env.example', '.env');"
           php artisan key:generate --no-interaction
           php artisan migrate:fresh --force --no-interaction
-          ./vendor/bin/phpunit --configuration=phpunit.mariadb.xml --filter='Dataset(Publisher|Database)Test|GeographyJurisdictionTest|CameraRegistryTest|AnsvRichCameraImportTest|CameraDatasetPublicationTest'
+          ./vendor/bin/phpunit --configuration=phpunit.mariadb.xml --filter='Dataset(Publisher|Database)Test|GeographyJurisdictionTest|CameraRegistryTest|AnsvRichCameraImportTest|CameraDatasetPublicationTest|CameraCsv(Import|Preview)Test'
           php artisan tinker --execute="\$operator = \App\Models\User::query()->create(['name' => 'CI Operator', 'email' => 'ci-operator@example.test', 'password' => bcrypt(\Illuminate\Support\Str::random(48)), 'role' => \App\Enums\OperatorRole::Admin, 'is_active' => true]); if (\$operator->role !== \App\Enums\OperatorRole::Admin || ! \$operator->isActive()) { throw new \RuntimeException('Operator migration assertion failed.'); }"
           php artisan migrate:rollback --step=1 --force --no-interaction
           php artisan migrate --force --no-interaction
