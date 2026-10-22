@@ -1,10 +1,10 @@
 # AGENTS.md - PicoRadar: Pico y Placa
 
-## Recuperación vigente (2026-10-20)
+## Recuperación vigente (2026-10-21; actualización de portabilidad)
 
-La rama moderna es `recovery/20261019-modern`, fuente B07 `ffe0cbd`. Leer primero `docs/CURRENT.md` y el handoff de recuperación de la raíz para HEAD, gates y NEXT. El main histórico no sustituye esa fuente. Checkout canónico `D:/Dev/PicoRadar` sobre exFAT; originales C: preservados. Los planes y paths de workspaces anteriores son antecedentes, no instrucciones activas.
+La rama moderna es `recovery/20261019-modern`, HEAD remoto verificado `0d3a6a2a32bff8bd27dbdd92f88433dd8ab3e47a`, fuente B07 `ffe0cbd`. Leer primero `docs/CURRENT.md` y el handoff de recuperación para gates y NEXT. `main` es histórico. Checkout principal **reportado localmente** por MIG-G1C: `D:/codex/PicoRadar` sobre NTFS, autónomo de C:. `D:/Dev/PicoRadar` y `D:/Verification/PicoRadar` son copias heredadas; originales C: preservados. No crear worktrees nuevos sin necesidad comprobada ni reutilizar rutas históricas como autoridad.
 
-Este rescate autorizado consolida historias existentes; la regla de un lote por rama vuelve a aplicar a desarrollos futuros. Sin merge automático, force-push, Hostinger, Mi A3 ni activaciones comerciales. No convertir una prueba sintética en aprobación física. Git en exFAT usa confianza de proceso para rutas exactas, nunca comodín global.
+Este rescate conserva la regla un lote por rama. Sin merge automático, force-push, Hostinger, Mi A3 ni activaciones comerciales. No convertir una prueba sintética en aprobación física. Usar confianza Git por ruta exacta, nunca comodín global. Los 720 archivos WIP y el bundle histórico de 196 ramas/13 HEAD están respaldados en carpeta privada de D:, **no en GitHub**; no incorporarlos masivamente, borrarlos ni declarar que se recuperan con `git clone`. PR #74 y PR #75 siguen Draft separados del runtime moderno.
 
 
 Estas instrucciones son obligatorias para cualquier agente/Codex que trabaje en este repositorio.
