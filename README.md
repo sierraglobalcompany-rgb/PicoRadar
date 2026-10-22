@@ -9,7 +9,7 @@ App Android-first en Flutter y control plane Laravel. Funciona sin cuenta. Inici
 3. Consultar `PicoRadar_RECOVERY_HANDOFF.md` para evidencias y NEXT, y `PicoRadar_FORENSE_10_PASADAS.md` para procedencia. Confirmar HEAD antes de trabajar.
 4. Reconstruir con los lockfiles. Secretos, claves de firma y datos privados se aprovisionan aparte; no son necesarios para las suites sintéticas. El código reconstruible no equivale a restaurar una base privada o disponer de claves de publicación. Consultar el NEXT canónico en `docs/CURRENT.md` y su contrato antes de programar.
 
-Checkout canónico de esta máquina: `D:/Dev/PicoRadar`, directamente en exFAT. Reconstrucción independiente: `D:/Verification/PicoRadar`. Los originales de C: permanecen preservados.
+**Equipo actual (MIG-G1C, reportado por Codex 2026-10-21):** checkout principal `D:/codex/PicoRadar` en NTFS, rama `recovery/20261019-modern`, HEAD `0d3a6a2a32bff8bd27dbdd92f88433dd8ab3e47a`, tree `04a01f15475dd25fbcd40597120e6e44722b0504`. GitHub confirma estos SHA; la inspección física del checkout se basa en el reporte local MIG-G1C. `D:/Dev/PicoRadar` y `D:/Verification/PicoRadar` son clones heredados, preservados, NO el checkout canónico. Originales y 12 worktrees enlazados en C: siguen preservados. WIP privado (720 archivos) y bundle de 196 ramas/13 HEAD tienen copias verificadas en `D:/codex/PicoRadar-migration-private/`, fuera de GitHub. La unidad D: USB no constituye por sí sola una segunda copia independiente.
 
 En otro PC/disco, elegir una **carpeta nueva que todavía no exista**; nunca clonar encima del checkout ni importar WIP automáticamente. El ejemplo usa una variable, no una ruta obligatoria:
 
@@ -25,7 +25,7 @@ git branch -r # Debe listar las ramas remotas, no solo la rama moderna
 
 **Importante:** no usar `--single-branch` para este procedimiento de continuidad. Codex podría necesitar inspeccionar otras ramas/PR y una clonación limitada cambia el refspec habitual de `origin`. Clonar `--branch` sin `--single-branch` activa la rama moderna y conserva el seguimiento de las demás ramas remotas. Un PR nuevo que aparezca después requiere `git fetch origin` antes de consultarlo.
 
-Para **continuar en un checkout existente**, ANTES de editar o crear ramas inspeccionar `git status --porcelain=v1 -uall`, `git branch -vv`, `git worktree list --porcelain`, `git log -1` y comparar contra `origin/recovery/20261019-modern`. No sobrescribir ni eliminar cambios no publicados. El contrato próximo B04 está en [`codex/lots/B04_CSV_CAMERA_IMPORT.md`](codex/lots/B04_CSV_CAMERA_IMPORT.md); el código de la implementación está en el PR funcional #75 (Draft), sin QA de runtime ni merge.
+Para **continuar en un checkout existente**, ANTES de editar o crear ramas inspeccionar `git status --porcelain=v1 -uall`, `git branch -vv`, `git worktree list --porcelain`, `git log -1` y comparar contra `origin/recovery/20261019-modern`. No sobrescribir ni eliminar cambios no publicados. No reconstruir los 12 worktrees antiguos de C: por costumbre: abrir solo los realmente necesarios y fuera del checkout principal, por ejemplo bajo `D:/codex/PicoRadar-worktrees/`. El contrato B04 está en [`codex/lots/B04_CSV_CAMERA_IMPORT.md`](codex/lots/B04_CSV_CAMERA_IMPORT.md). El código de B04 está en el PR #75 (Draft, sin merge): QA **local reportado** por Codex (Laravel 220 PASS, 1 SKIP, 436 avisos Dotenv; MariaDB 103 PASS; concurrencia M1–M7); CI remoto #193 sin pasos verificables y revisión humana pendientes. No declarar CI verde ni fidelidad visual pixel-perfect: el QA visual carece de mockup admin aprobado y capturas exportadas.
 
 ## Requisitos
 
@@ -33,10 +33,10 @@ Para **continuar en un checkout existente**, ANTES de editar o crear ramas inspe
 - PHP **8.3–8.5**, Composer 2 y extensiones del lockfile. Pruebas SQLite: `pdo_sqlite`, `sqlite3`; XLSX/paquete: `zip`, `SimpleXML`, `libxml`; imágenes: `gd`. B06/B07 requiere `argon2id` en `password_algos()`; no sustituirlo por un algoritmo más débil.
 - Clean-room B06/B07: MariaDB **11.8.8** instalado como herramienta local. El test acepta `-MariaDbRoot`; su default de esta máquina es `C:/codex/_tool-cache/mariadb-11.8.8-winx64`. Usa una instancia y datadir sintéticos nuevos en TEMP, no una base existente. En esta reconstrucción Windows/exFAT creó la base pero no los enlaces públicos obligatorios: instalación clean-room bloqueada, no aprobada. No se cambió D: ni se sustituyeron los enlaces por copias.
 - Node 22 o 24 y npm. Conservar los tres lockfiles; instalar dependencias sin actualizarlas.
-- Git; GitHub CLI `gh` con acceso autorizado al repositorio privado para recuperar el insumo OSRM opcional.
+- Git autenticado para clonar. GitHub CLI `gh` es independiente de las credenciales HTTPS de Git: MIG-G1C reportó clone/ls-remote PASS pero `gh auth status` FAIL. La recuperación opcional del insumo OSRM mediante `gh` sigue sin acreditarse hasta verificar ese acceso; no incluir el PBF privado en Git ni copiarlo de C: para simular reconstrucción.
 - SDK/JDK y cachés pueden estar fuera del checkout. No depender de archivos fuente de otro worktree en C:.
 
-## Windows / exFAT
+## Windows / NTFS (antecedente exFAT)
 
 Herramientas en PATH y `JAVA_HOME` apuntando a Java 17. Desde la raíz del checkout, aplicar confianza solo a esa ruta en la terminal actual:
 
@@ -55,7 +55,7 @@ $env:TEMP = $scratch
 $env:TMP = $scratch
 ```
 
-No usar `safe.directory=*`. En otro equipo elegir su destino y temporal disponibles. El volumen exFAT de la máquina histórica impidió crear enlaces exigidos por B06/B07: para probar **esa instalación** se necesita un volumen compatible (por ejemplo NTFS en Windows), sin reformatear ni modificar C:/D: existentes. No certificar instalación MariaDB ni producción hasta ejecutar smoke real en entorno aislado.
+No usar `safe.directory=*`. En otro equipo elegir su destino y temporal disponibles. El bloqueo de enlaces de B06/B07 se observó **históricamente en exFAT**; el destino actual es NTFS, pero ello **no demuestra** que el instalador ya pase. Revalidar únicamente en entorno local sintético y seguro antes de certificar instalación; nunca operar contra producción ni bases existentes.
 
 ## Reconstruir móvil
 
@@ -67,7 +67,7 @@ flutter pub get
 dart format --output=none --set-exit-if-changed .
 flutter analyze
 flutter test
-# Build Android: ejecutar el bloque verificado para Windows/exFAT siguiente.
+# Build Android: el bloque siguiente fue verificado históricamente; validar de nuevo en NTFS.
 ```
 
 Codegen: según SOP-07, ejecutar `dart run build_runner build --delete-conflicting-outputs` solo si cambiaron sus entradas o faltan los archivos generados. Esta recuperación conserva entradas y generados rastreados: `CODEGEN_NOT_REQUIRED`.
@@ -118,7 +118,7 @@ Si SQLite ya está habilitado, omitir los dos argumentos `-d`. Para comprobar mi
 
 B06 y B07 están en la fuente moderna recuperada. Operación: `docs/operations/PicoRadar_GUIA_PANEL_ADMIN_CONTENIDOS.md`. Los builders/verificadores existentes en `scripts/` generan instalables locales; los paquetes privados permanecen fuera de Git. No desplegar en Hostinger.
 
-Windows: `pwsh -NoProfile -File scripts/tests/test_package_scratch_cleanup.ps1` comprueba límites de borrado y handles temporales. El builder y el verificador usan .NET para limpiar únicamente su scratch generado, con intentos IO acotados; fallos persistentes se propagan. El fixture de junction requiere NTFS y figura como SKIP en exFAT. Los comandos y layout del instalable se conservan.
+Windows: `pwsh -NoProfile -File scripts/tests/test_package_scratch_cleanup.ps1` comprueba límites de borrado y handles temporales. El builder y el verificador usan .NET para limpiar únicamente su scratch generado, con intentos IO acotados; fallos persistentes se propagan. El fixture de junction se omitió históricamente en exFAT y aún requiere repetición en NTFS para declarar PASS. Los comandos y layout del instalable se conservan.
 
 Fuentes, contratos y fixtures: `data/`, `contracts/`, `mobile/assets/`. El grafo pesado OSRM es externo y opcional; `data/sources/osrm/source.json` conserva URL, imagen, hash y atribución históricos. La URL del PBF fechado respondió **404** al HEAD del 2026-10-20. Se recuperó el PBF original de hash coincidente y se conservó como asset del borrador GitHub **`recovery-osrm-input-20260907`** (329.060.219 bytes), con atribución OpenStreetMap/Geofabrik y [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/). No sustituirlo por datos actuales y afirmar identidad.
 
