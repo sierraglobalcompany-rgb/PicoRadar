@@ -48,6 +48,7 @@ class CameraRegistryService
             $camera->forceFill([
                 'camera_id' => $internalCameraId ?? 'cam_'.strtolower((string) Str::ulid()),
                 'status' => CameraStatus::Draft,
+                'speed_limit_verified' => false,
                 'created_by_id' => $actor?->id,
                 'updated_by_id' => $actor?->id,
             ])->save();
