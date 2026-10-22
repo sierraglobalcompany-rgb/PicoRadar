@@ -11,10 +11,12 @@ use App\Models\Jurisdiction;
 use App\Services\CameraCsvImportService;
 use App\Services\CameraCsvParser;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 final class CameraCsvImportController extends Controller
 {
@@ -112,7 +114,7 @@ final class CameraCsvImportController extends Controller
         ]);
     }
 
-    public function apply(Request $request, CameraCsvImport $batch, CameraCsvImportService $imports): RedirectResponse
+    public function apply(Request $request, CameraCsvImport $batch, CameraCsvImportService $imports): RedirectResponse|Response
     {
         Gate::authorize('cameras.edit');
         Gate::authorize('cameras.review');
@@ -122,7 +124,18 @@ final class CameraCsvImportController extends Controller
             'records.*' => ['required', 'integer', 'min:2'],
         ]);
 
-        $outcome = $imports->apply($batch, $validated['records'], $validated['analysis_sha256'], $request->user());
+        try {
+            $outcome = $imports->apply($batch, $validated['records'], $validated['analysis_sha256'], $request->user());
+        } catch (HttpException $exception) {
+            if ($exception->getStatusCode() !== 409) {
+                throw $exception;
+            }
+
+            return response()->view('admin.camera-imports.conflict', [
+                'operator' => $request->user(),
+                'batch' => $batch,
+            ], 409);
+        }
 
         return redirect()->route('admin.camera-csv-imports.show', $batch)->with(
             'status',

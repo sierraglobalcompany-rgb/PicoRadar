@@ -112,7 +112,9 @@ class CameraCsvImportTest extends TestCase
         $this->source->update(['verified_at' => null]);
         $this->actingAs($this->admin)->post(route('admin.camera-csv-imports.apply', $batch), [
             'analysis_sha256' => $batch->analysis_sha256, 'records' => ['2'],
-        ])->assertStatus(409);
+        ])->assertStatus(409)
+            ->assertSee('This review is no longer current or could not be verified.')
+            ->assertSee('No camera changes were made by this request.');
         self::assertSame(0, Camera::query()->count());
         self::assertSame('review', $batch->fresh()->status);
     }
