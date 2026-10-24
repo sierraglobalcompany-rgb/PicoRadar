@@ -2,7 +2,7 @@
 
 ## Recuperación vigente (2026-10-21; actualización de portabilidad)
 
-La rama moderna es `recovery/20261019-modern`, HEAD remoto verificado `0d3a6a2a32bff8bd27dbdd92f88433dd8ab3e47a`, fuente B07 `ffe0cbd`. Leer primero `docs/CURRENT.md` y el handoff de recuperación para gates y NEXT. `main` es histórico. Checkout principal **reportado localmente** por MIG-G1C: `D:/codex/PicoRadar` sobre NTFS, autónomo de C:. `D:/Dev/PicoRadar` y `D:/Verification/PicoRadar` son copias heredadas; originales C: preservados. No crear worktrees nuevos sin necesidad comprobada ni reutilizar rutas históricas como autoridad.
+La rama moderna es `recovery/20261019-modern`, HEAD remoto verificado `0d3a6a2a32bff8bd27dbdd92f88433dd8ab3e47a`, fuente B07 `ffe0cbd`. Leer primero `docs/CURRENT.md` y el handoff de recuperación para gates y NEXT. `main` es histórico. Checkout principal **reportado localmente** por MIG-G1C: `D:/codex/PicoRadar` sobre NTFS, autónomo de C:. `D:/Dev/PicoRadar` y `D:/Verification/PicoRadar` son copias heredadas. Las 13 carpetas históricas CAND-01…13 del rescate fueron enviadas de forma reversible a la Papelera, según el último informe de Codex; no hay autorización para vaciar/restaurar ni extender la limpieza. Los respaldos privados de D: permanecen fuera de Git. El checkout principal de D: conserva la eliminación rastreada preexistente del PS1, que no se debe restaurar automáticamente. No crear worktrees nuevos sin necesidad comprobada ni reutilizar rutas históricas como autoridad.
 
 Este rescate conserva la regla un lote por rama. Sin merge automático, force-push, Hostinger, Mi A3 ni activaciones comerciales. No convertir una prueba sintética en aprobación física. Usar confianza Git por ruta exacta, nunca comodín global. Los 720 archivos WIP y el bundle histórico de 196 ramas/13 HEAD están respaldados en carpeta privada de D:, **no en GitHub**; no incorporarlos masivamente, borrarlos ni declarar que se recuperan con `git clone`. PR #74 y PR #75 siguen Draft separados del runtime moderno.
 
@@ -181,3 +181,22 @@ No decir solo "todo funciona".
 - Git commit SHA, pull request y GitHub Actions son la evidencia canonica de cada lote.
 - `docs/CURRENT.md`, `docs/DESIGN_CONTRACT.md` y `docs/SOP.md` son documentos vivos. `codex/PROJECT_STATE.md` fue retirado para evitar duplicidad.
 - No generar ZIPs, carpetas de archivo ni manifiestos SHA del repositorio salvo solicitud explicita de export package.
+
+## 15. Seis leyes de implementación (L1–L6)
+
+**Canon único:** `docs/engineering/LEYES_IMPLEMENTACION_1_A_6.md` (Maestro Universal V2.0 y anexo PicoRadar). Este apartado es un **índice**, no una copia de las leyes. Mantener íntegramente las secciones 1–14 de este archivo, la precedencia Baseline/Arquitectura, `docs/DESIGN_CONTRACT.md` y las restricciones específicas del proyecto.
+
+**Fuente fijada:** [PingPongLaw@84e961cadf482d234f4c0ee2ca60e8c7e9b388e8](https://github.com/sierraglobalcompany-rgb/PingPongLaw/blob/84e961cadf482d234f4c0ee2ca60e8c7e9b388e8/docs/engineering/LEYES_IMPLEMENTACION_1_A_6.md), blob `0f6e7b4e62d8660c846f135e18dded629d29e0da`. Esta referencia no implica que PingPongLaw esté instalado en Codex ni que PicoRadar remoto ya contenga este WIP.
+
+**ANTES de cada tarea técnica:** identificar repo/ruta/branch/HEAD, estado WIP y permisos del lote; leer este `AGENTS.md` y localizar el canon. Confirmar L1–L6 y consultar solo las secciones pertinentes. Si hay `AGENTS.override.md` local o instrucciones anidadas, comprobar su precedencia y **abrir explícitamente este AGENTS.md**: no suponer carga automática. Si el canon no existe o no puede abrirse, informar `CANON=NO_VERIFICADO` sin inventar PASS.
+
+- **L1 KISS + PONYTAIL:** reutilizar antes de crear; preferir estándar/nativo y dependencia instalada; implementar el mínimo completo con pruebas sin recortar seguridad ni calidad.
+- **L2 ANTIRRUIDO:** confirmar equivalencia y consumidores antes de unir o retirar; proteger WIP, privados y reglas existentes.
+- **L3 ANTIPARCHES:** reproducir/delimitar, identificar causa raíz y reparar fuente y consumidores con regresión focal.
+- **L4 DISEÑO:** respetar Baseline, mockup aprobado y `docs/DESIGN_CONTRACT.md`; UI real, usable, responsive y accesible cuando aplique.
+- **L5 VERIFICACIÓN:** evidenciar pruebas del mismo SHA/build, separar PASS/FAIL/BLOCKED/NOT_RUN y la revisión propia de la independiente.
+- **L6 ANTIPING-PONG:** ChatGPT dirige y ejecuta lo que permiten sus herramientas; Codex recibe un lote completo, resuelve impedimentos locales seguros y evita microdelegaciones.
+
+**ANTES de cerrar:** registrar L1, L2, L3, L4, L5 y L6 con cumplimiento, evidencia/limitación y resultado; usar `codex/templates/HANDOFF_TEMPLATE.md` sin crear otro formato paralelo. Adjuntar al handoff la evaluación de las seis leyes, pruebas exactas, SHA, `git status`, bloqueos y `NEXT` único o `NINGUNO`. No declarar que Codex cargó las leyes sin comprobar una sesión nueva o su registro de lectura. No autocertificar L5 como auditoría independiente.
+
+**Compatibilidad:** siguen vigentes los límites de Git, secretos, QA y publicación anteriores, especialmente la sección 14: sin ZIP de repositorio ni manifiestos por rutina; solo export package solicitado expresamente. No crear commits/push/PR/merge/deploy ni modificar `AGENTS.override.md` por aplicar esta cláusula, salvo autorización separada.
