@@ -1,3 +1,5 @@
+> **HISTÓRICO — NO EJECUTAR COMO INSTRUCCIÓN ACTUAL (2026-10-21).** Este documento conserva el bootstrap C00/C01 para trazabilidad. El repositorio YA existe y su rama de desarrollo moderna es `recovery/20261019-modern`, **no `main`**. No recrear el repositorio ni sobrescribir/actualizar `main` siguiendo los pasos antiguos. Para trabajar desde otro PC o chat consultar [README.md](README.md), [docs/CURRENT.md](docs/CURRENT.md) y [AGENTS.md](AGENTS.md). Ningún merge/deploy está autorizado por esta nota.
+
 # GitHub Repository — PicoRadar
 
 **Canonical remote:** `https://github.com/sierraglobalcompany-rgb/PicoRadar.git`
