@@ -174,3 +174,6 @@ No decir solo "todo funciona".
 - Git commit SHA, pull request y GitHub Actions son la evidencia canonica de cada lote.
 - `docs/CURRENT.md`, `docs/DESIGN_CONTRACT.md` y `docs/SOP.md` son documentos vivos. `codex/PROJECT_STATE.md` fue retirado para evitar duplicidad.
 - No generar ZIPs, carpetas de archivo ni manifiestos SHA del repositorio salvo solicitud explicita de export package.
+
+## L1 — KISS + Ponytail
+Consultar `.agents/skills/kiss-ponytail/SKILL.md` antes de implementar o revisar código. Reutilización primero; funciones estándar/nativas; dependencias existentes; cambio mínimo completo. Preservar consumidores, contratos, seguridad, permisos, datos, accesibilidad, pruebas y leyes L2–L6. No ejecutar `ponytail-audit` por rutina. El plugin/hook global de Codex se instala y verifica de forma separada; este documento no afirma activación.
