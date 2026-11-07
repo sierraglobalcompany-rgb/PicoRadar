@@ -16,7 +16,7 @@
 
 ## 1. Insumos y SHA fuente que debes reconocer (NO RECONSTRUIR)
 
-**Fuente:** ZIP único de dirección que acompaña esta orden. Debe traer exactamente estos insumos (algunos vienen de los dos paquetes originales y otros del cruce del director):
+**Fuente:** ZIP único de dirección que acompaña esta orden. Debe traer estos insumos (algunos vienen de los dos paquetes originales y otros del cruce del director):
 
 - `M1_INTEGRATED_UNIVERSE_1104.csv`: DANE/MGN 2025 del repo, 1.104 únicos; campos adicionales `seed_73_member` con 73 YES y 1.031 NO; referencia `repository_mapping_member` y estado real de investigación M1A conservados.
 - `M1_INTEGRATED_DISCOVERY_QUEUE_1104.csv`: 1.104 filas; `NOT_SEARCHED` no implica que no exista la medida; Medellín y Cartagena son los dos investigados M1A, **parcialmente**, no reglas aprobadas.
@@ -71,8 +71,8 @@ Guardar **una fila por municipio y clase de vehículo / regla diferenciada**: c�
 
 Generar tres matrices como mínimo:
 
-- `M1B_SOURCE_REVIEW_93.csv`: exactamente 93 ID originales; estado local y remoto verificable, no sobrescribir el histórico. Una fuente puede aportar varias medidas, pero el link no certifica todas ellas.
-- `M1B_JURISDICTION_VEHICLE_CANDIDATES.csv`: filas únicamente para hallazgos con base concreta; ninguna fila ficticia para completar 219/1.104. Todos incluyen `source_id`, municipio, clase, vigencia/horario, estado, prueba y dudas.
+- `M1B_SOURCE_REVIEW_93.csv`: exactamente 93 ID originales; estado local y remoto verificable, no sobrescribir el histórico. Una fuente puede aportar varias medidas, pero el link no certifica todas ellas. Si se descubren URLs nuevas, crear `M1B_NEW_OFFICIAL_SOURCES.csv` con ID estable derivado de URL canónica (p. ej. prefijo `newsrc_` + 16 caracteres hex SHA-256), autoridad, dominio, fuente de descubrimiento, fecha, estado y SHA de captura si existe. Nunca asignar un `source_id` nuevo sin agregar su fila en esta tabla; evitar colisiones de IDs.
+- `M1B_JURISDICTION_VEHICLE_CANDIDATES.csv`: filas únicamente para hallazgos con base concreta; ninguna fila ficticia para completar 219/1.104. Todos incluyen `source_id` referencial a los 93 IDs originales o a `M1B_NEW_OFFICIAL_SOURCES.csv`, municipio, clase, vigencia/horario, estado, prueba y dudas.
 - `M1B_NATIONAL_DISCOVERY_QUEUE_1104.csv`: 1.104 filas con último estado **de esta investigación**, prioridad siguiente y referencia; mantener estados M1A de Medellín/Cartagena salvo nuevo resultado real, diferenciar histórico con observación nueva.
 
 Controles focales: (1) llaves 93 únicas y 1.104 únicas; (2) referencias fuente/territorio completas; (3) cero registros huérfanos; (4) nunca `OFFICIAL_NO_MEASURE` por HTTP 404/403/no resultado; (5) no afirmar `FULL` con vigencia/ámbito incompletos; (6) fechas horarios y zona Bogotá correctamente representados, incluidas madrugadas y festivos si aplica; (7) fuente multi-municipal no promovida sin cobertura literal; (8) datos válidos conservados al regenerar por segunda vez; (9) cero cambios a datasets productivos/servidor/Flutter; (10) cifrado/PII, claves y límites revisados. Las diez comprobaciones deben tener PASS/PARTIAL/BLOCKED, evidencia y localización exacta.
@@ -81,7 +81,7 @@ Controles focales: (1) llaves 93 únicas y 1.104 únicas; (2) referencias fuente
 
 ## 6. G4 — Preservación WIP (read-only, desacoplado de la investigación)
 
-El resumen de `git status` del WIP protegido de M1A (`68598761...`) difiere del preflight que Codex anotó (`ad7bb66f...`). R21 adjuntó 101 SHA individuales del checkpoint en `WIP_101_REVIEW.csv`. El director suministra una tabla focal `R21_WIP_101_EXPECTED_HASHES.csv` en el paquete cuando disponible. Si el checkout protegido sigue accesible, **solo calcular SHA256 de contenido de cada una de las 101 rutas (sin seguir symlink fuera del repo)** y comparar con `wip_checkpoint_blob_sha256` del R21; para rutas presentes en disco pero ausentes del index, tratar bytes como untracked según el estado previo. Guardar `M1B_WIP_CONTENT_DELTA.csv`: `MATCH`, `MISMATCH`, `MISSING`, `UNREADABLE`; incluye solo nombre y hashes, no contenido sensible. Si no hay acceso, `NOT_RUN`, no inferir `PASS`. Prohibido `git restore`, `checkout`, crear/editar archivos protegidos, cambios ACL, permisos o antivirus. **Este gate nunca impide investigación documental aislada, solo cualquier propuesta posterior de integración del WIP.**
+El resumen de `git status` del WIP protegido de M1A (`68598761...`) difiere del preflight que Codex anotó (`ad7bb66f...`). R21 adjuntó 101 SHA individuales del checkpoint en `WIP_101_REVIEW.csv`. El director suministra una tabla focal `R21_WIP_101_EXPECTED_HASHES.csv` en el paquete cuando disponible. Si el checkout protegido sigue accesible, **solo calcular SHA256 de contenido de cada una de las 101 rutas (sin seguir symlink fuera del repo)** y comparar con `r21_wip_checkpoint_blob_sha256` del CSV suministrado; para rutas presentes en disco pero ausentes del index, tratar bytes como untracked según el estado previo. Guardar `M1B_WIP_CONTENT_DELTA.csv`: `MATCH`, `MISMATCH`, `MISSING`, `UNREADABLE`; incluye solo nombre y hashes, no contenido sensible. Si no hay acceso, `NOT_RUN`, no inferir `PASS`. Prohibido `git restore`, `checkout`, crear/editar archivos protegidos, cambios ACL, permisos o antivirus. **Este gate nunca impide investigación documental aislada, solo cualquier propuesta posterior de integración del WIP.**
 
 ## 7. G5 — Entrega en un único ZIP, manifiesto y salida binaria
 
@@ -122,3 +122,5 @@ ZIP_SHA256=<hash real>
 - No actualizar GitHub automáticamente; el director actualizará PR documental #79 con el acta auditada tras recibir tu único ZIP. No pedir autorización para decisiones rutinarias ya especificadas; ante conflicto legal/material STOP la conclusión afectada y registra `UNKNOWN`.
 
 **FIN DE ORDEN — SIGUIENTE ACTOR AHORA: CODEX LUNA. DESPUÉS DE TU ZIP: CHATGPT DIRECTOR.**
+
+**Precisión de tipología territorial:** de los 1.104 códigos del snapshot, 1.103 tienen `territory_type=MUNICIPIO` y uno (`88001`, San Andrés) `ISLA`. Conservar el campo original y no forzar tipología MUNICIPIO sobre la isla.
