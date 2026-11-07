@@ -185,3 +185,12 @@ Auditoría forense de 10 controles: (1) ZIP previo SHA PASS; (2) CRC/manifiesto 
 **Invariantes para el siguiente lote:** investigación de alcaldías oficial/municipio×vehículo/fecha/territorio, documentación incremental y un ZIP único. No repetir AOT, JNI, R18–R21 ni G0 M1A; no revisar WIP en M1B; no modificar `AGENTS.md`, `main`, PR #71, Hostinger, teléfono ni datasets productivos. `NO_MEASURE` solo con evidencia oficial de ausencia: `NOT_SEARCHED` no equivale a permiso de circulación. `RELEASE=NOT_APPROVED`.
 
 **Tras la ejecución:** el director auditará SOLO los resultados reales M1B; actualizará este PR documental, contrato/ledger y el cursor. Después M1 continúa por ciudades/categorías; M2 motor/agente; M3 backend/Flutter; M4 integración CI/firma/QA físico. No hay necesidad de otro preflight general.
+
+
+## N. M1B V2 entregado: acta del director y siguiente gate M1C (2026-11-07)
+
+- M1B finalizó `PARTIAL`, `G0=PASS`: 8 jurisdicciones, 15 candidatas, 4 fuentes nuevas, 9 aperturas, 6 evidencias reutilizadas; 1096 sin investigación esta ejecución; 93 fuentes y 1104 DIVIPOLA preservados. ZIP SHA-256 `a7efa9a40bb2a273b2bd474e8166c5cae87ad297d85f51617897726464ecf991`. Ningún cambio runtime ni release.
+- Director comprobó campos núcleo oficiales de **ocho combinaciones** (Medellín 2, Bogotá 1, Cartagena 2, Dosquebradas 2, Villavicencio 1), sin aprobar publicación. Faltan excepciones/áreas y pruebas/representación; los otros siete casos permanecen parciales. **0 FULL no es 0 medidas oficiales.**
+- Error: la rotación II-2026 Medellín (lun 5/8 mar 1/4 mié 0/2 jue 3/6 vie 7/9) estaba publicada; M1B la dejó UNKNOWN. El FAQ inferior de la página incluye contenido histórico 2022. No extender `staleAfter=2026-11-10T05:00Z` sin decisión y pruebas focales.
+- Registros de continuidad `SRC-17..19`: sobrecriterio FULL, timestamps de fuentes reutilizadas, doble estado de cola. Acta única `docs/plans/PICORADAR_M1B_DIRECTOR_ACTA_POSTRUN_20261107.md`.
+- **Siguiente ejecución real:** M1C focal compara 8 núcleos con generador/motor en clon aislado, no reabre M1B, M1A ni AOT, no toca 101 WIP originales, no escribe GitHub, no publica. ZIP de entrada `PICORADAR_M1C_DIRECCION_Y_ENTRADA_UNICA_20261107.zip` SHA `f11c62efbac1913743ef17f66d1fa6cef0566cc914d94cdf2cce5f2548efd19a` contiene prompt Codex y ZIP M1B original con manifiesto. Tras M1C seguir cobertura nacional pendiente, agente, Laravel y QA/release según fases existentes. PR #79 documental Draft.
