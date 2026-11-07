@@ -164,3 +164,13 @@ Los nombres son **contratos conceptuales**, no órdenes de crear nuevas tablas. 
 - **NEXT:** `docs/plans/CODEX_LUNA_PICORADAR_M1B_FUENTES_20261107.md` con paquete físico de tablas adjunto. No se vuelve a pedir M1A G0/G2 ni AOT/QA repetidas. Mantener PR #79 en Draft y PR #71 intacto.
 
 Acta trazable: `docs/plans/PICORADAR_M1A_CIERRE_DIRECTOR_Y_M1B_20261107.md`. No hacer merge ni release sin autorización.
+
+## M. Dirección M1B V2, contrato del agente y registro de decisiones (2026-11-07)
+
+**Pre-ejecución:** La orden M1B V1 se sustituye por M1B V2 únicamente si Codex no comenzó M1B V1. No consta ejecución M1B; release NO APROBADO. La entrega de Codex será un único ZIP manifestado.
+
+**Estado del agente:** solo existe su contrato, NO hay agente de vigilancia automática implementado ni desplegado. El investigador tiene acceso de solo lectura a fuentes públicas y produce propuestas; Laravel existente seguirá siendo el único publicador con control humano y rollback. Flutter permanece sin cuenta obligatoria y local-first.
+
+**Correcciones principales:** (1) URL, HTTP 200/304 y fecha de consulta no equivalen a regla jurídica vigente; mantener fechas de publicación, revisión, inicio/fin y TTL editorial separadas. (2) No extrapolar reglas desde URLs asociadas a varios municipios. (3) 1.104 DIVIPOLA, 73 semilla, 219 categorías históricas, 93 fuentes y 174 relaciones son denominadores diferentes. (4) NOT_SEARCHED, 404 o URL rota no equivalen a sin medida. (5) SHA de captura solo con bytes archivados, no a partir de URL. (6) Cursor incremental y NO_CHANGE evitan reinvestigaciones. (7) Integridad de 101 WIP queda en gate previo a integración Git, no en el lote documental M1B. (8) No repetir AOT, H4 focal, AVD y suites R18–R21.
+
+**Documentación de autoridad secundaria:** docs/agents/PICORADAR_SOURCE_AGENT_OPERATING_CONTRACT_V1.md y docs/agents/PICORADAR_AGENT_ERRORS_DECISIONS_LEDGER_20261107.md. **Orden única canónica:** docs/plans/CODEX_LUNA_PICORADAR_M1B_FUENTES_20261107.md (contenido V2). Root AGENTS.md, baselines y seis leyes locales tienen precedencia. PR #79 permanece Draft, sin merge ni activación.
