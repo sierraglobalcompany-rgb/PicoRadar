@@ -37,6 +37,8 @@ Para `OFFICIAL_NO_MEASURE` registrar territorio, categoría, fecha, autoridad, U
 
 Solo fuentes públicas sin login ni bypass de CAPTCHA, robots, límites de acceso, paywall o credenciales privadas. Limitar páginas documentales por ejecución (M1B máximo 100, no objetivo). Ante cinco fallos de fuentes independientes parar solicitudes de red y conservar cola. Registrar URLs sin parámetros de sesión/PII; no guardar placas, documentos, geolocalización continua ni HTML autenticado. No modificar SSL ni desactivar antivirus. Guardar extractos mínimos y datos de procedencia; capturas crudas solo si son públicas y está permitido.
 
+**Entrega y entrada verificable:** ningún investigador, agente ni Codex debe dar por recibido un ZIP, CSV o evidencia a partir de un enlace Markdown, una ruta Windows supuesta o el nombre de archivo. Primero confirmar los bytes presentes en el adjunto/ruta real, validar SHA-256, CRC y manifiesto; buscar acotadamente solo si hace falta. Si no hay acceso, registrar `INPUT_ATTACHMENT_REQUIRED` sin simular que se investigaron ciudades, generar reglas ni reabrir pruebas de otras fases. El bloqueo de transferencia M1B del 2026-11-07 queda en `SRC-15` del registro de errores. **Esta regla es operativa para las tareas de investigación; el agente sigue sin implementar/desplegar.**
+
 ## Estados de operación y gates
 
 `DISCOVERED` → `OFFICIAL_PAGE_FOUND` → `OFFICIAL_PARTIAL` / `FULL_OFFICIAL_RULE_CANDIDATE` / `OFFICIAL_NO_MEASURE` / `CONFLICT` → `PROPOSAL_DRAFT` → `VALIDATED_BY_LARAVEL` → `PUBLISHED_BY_LARAVEL` / `REJECTED`. `INACCESSIBLE`, `STALE_REVIEW` y `NOT_SEARCHED` son observaciones independientes. Un agente lector **no** marca `PUBLISHED` por sí mismo.
