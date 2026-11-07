@@ -153,3 +153,14 @@ Los nombres son **contratos conceptuales**, no órdenes de crear nuevas tablas. 
 **Límites de ejecución:** generar la cola de investigación para el universo histórico completo, pero realizar una primera consulta acotada (máximo 33 portales de primer nivel + 25 jurisdicciones prioritarias); documentar `NOT_SEARCHED` sin interpretar como exención; conservar `source_checked_at` independiente de `snapshot_audited_at`. Ejecutar únicamente validaciones de datos del delta M1A, no repetir Gradle/Flutter/Laravel/JNI/CI R18–R21.
 
 **Orden canónica:** `docs/plans/CODEX_LUNA_PICORADAR_M1A_V2_ORDEN_20261107.md` en este mismo PR #79. Entregar un solo ZIP con fuente normalizada, inventario, cola, manifiesto y diez comprobaciones focales; `RELEASE=NOT_APPROVED`. PR #79 permanece Draft sin merge. Si Codex ya ejecuta M1A V1, no interrumpir: auditar el resultado contra estas correcciones antes de decidir el siguiente paso.
+
+
+## L. M1A postejecución: conciliación de fuentes sin repetir lote (2026-11-07)
+
+- **Informe Codex M1A:** `PARTIAL`, `RELEASE=NOT_APPROVED`; universo DANE/MGN2025 1.104, dos jurisdicciones investigadas parcialmente, cero reglas nuevas completas. Los insumos del ZIP anterior no estuvieron disponibles en el entorno Codex.
+- **Recuperación de dirección fuera de Codex:** ZIP M1A V2 histórico `e8191f71...d4173` presente e íntegro; reconciliados 73 semillas, 219 combinaciones históricas, 93 fuentes, 174 relaciones, 179 observaciones; 0 referencias huérfanas, 5 pares duplicados de historial preservados. No se activó ninguna regla. CSV enriquecidos y ZIP único están fuera de este PR documental, sin cambios de runtime.
+- **Riesgo de integridad WIP:** 101 rutas protegidas conservan conteo, pero hash resumido difiere del preflight; no declarar integridad byte-a-byte sin la comparación focal read-only de 101 SHA del checkpoint R21.
+- **Prioridad jurídica P0:** Medellín `staleAfter=2026-11-10T05:00Z`; tratar como TTL editorial, no fin legal; extraer norma oficial y prueba antes de ajustar código.
+- **NEXT:** `docs/plans/CODEX_LUNA_PICORADAR_M1B_FUENTES_20261107.md` con paquete físico de tablas adjunto. No se vuelve a pedir M1A G0/G2 ni AOT/QA repetidas. Mantener PR #79 en Draft y PR #71 intacto.
+
+Acta trazable: `docs/plans/PICORADAR_M1A_CIERRE_DIRECTOR_Y_M1B_20261107.md`. No hacer merge ni release sin autorización.
