@@ -1,5 +1,8 @@
 # CODEX LUNA — PicoRadar M1B V2 · INVESTIGACIÓN NACIONAL INCREMENTAL / CONTRATO DE AGENTE / UN SOLO ZIP
 
+> **RECTIFICACIÓN DE TRANSPORTE 2026-11-07 — PRIORIDAD MÁXIMA:** M1B V2 anterior terminó `G0_INPUT=BLOCKED` porque el ZIP real no estaba en la única ruta `C:\Users\felip\Downloads` comprobada; 0 consultas y 0 candidatos, por lo que no existe hallazgo negativo sobre fuentes. **No repetir este intento**. El director entregó un nuevo ZIP autocontenido `PICORADAR_M1B_V2_REANUDACION_ENTRADA_REAL_20261107.zip` (SHA-256 `3b63c4590097a59fe6072724befbd91e7471cdf0a3a670a664f1c09491223dee`) con el prompt `CODEX_LUNA_PICORADAR_M1B_V2_REANUDACION_TRANSFERENCIA_REAL_20261107.md` dentro. Debe **adjuntarse binariamente al Codex**, o guardarse físicamente en una ruta real que se le indique. NO mandar solo enlace o Markdown. Ejecutar **únicamente** el prompt nuevo dentro del ZIP; mismo TASK_ID M1B V2, `TRANSFER_ATTEMPT=1`. Este documento antiguo queda como registro histórico, no como orden ejecutable vigente.
+
+
 **TASK_ID:** `PICORADAR-M1B-V2-SOURCE-RESEARCH-20261107-DIRECTOR`  
 **Orden auditada V2:** 2026-11-07. **Sustituye M1B V1 únicamente si no comenzó; nunca ejecutar las dos versiones.** **Director y responsable de arquitectura/criterios:** ChatGPT. **Ejecutor limitado:** Codex Luna.  
 **Estado conocido:** `M1A_PARTIAL`, `M1A_G0_G2_RECOVERED_BY_DIRECTOR`, `RELEASE=NOT_APPROVED`.  
