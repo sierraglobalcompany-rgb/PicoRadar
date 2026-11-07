@@ -141,3 +141,15 @@ Los nombres son **contratos conceptuales**, no órdenes de crear nuevas tablas. 
 **M1A autorizado como diseño y colección aislada, no como código de aplicación:** normalizar semilla conservando 179 eventos históricos → 93 fuentes URL → 174 relaciones territorio/fuente; traer DIVIPOLA oficial vigente; crear lista nacional con estados `NOT_SEARCHED` / `NO_CONCLUSIVE_EVIDENCE` cuando proceda y cola priorizada para investigación. No convertir URL compartida en competencia municipal, ni afirmar `OFFICIAL_NO_MEASURE` por búsquedas vacías.
 
 **Cambios GitHub:** solo documentación en PR #79, `OPEN/DRAFT`; PR #71 no cambia, `main` y dispositivos intactos. Próximo gate ChatGPT: evaluar el ZIP único M1A y decidir lote de investigación o transformación sin auditorías globales repetitivas.
+
+## K. Rectificación forense de M1A V2 (2026-11-07)
+
+**Estado:** M1A V1 preparado pero sin reporte de ejecución; V2 lo sustituye solo si no comenzó. No se autoriza ninguna escritura a runtime, WIP, CI, producción, teléfono ni PR #71.
+
+**Hallazgo clave:** ya existe en GitHub el inventario DANE/MGN 2025 rastreado: `server/database/data/colombia_divipola_mgn_2025.json`, Git blob `e32d64d9bd08ad953c679041f22a2393cfc32831`, 1.104 municipios únicos/33 unidades de primer nivel (32 departamentos + Bogotá D.C.), 73/73 correspondencias `pico_jurisdiction_divipola_v1.json` presentes. M1A debe **reutilizar ese snapshot**, comprobar la actualidad del DANE mediante delta cuando sea viable, nunca reconstruir desde solo 73 por falta de Internet. 1.104 municipios inventariados NO equivalen a 1.104 municipios con medidas operativas.
+
+**Fuentes y riesgos:** 93 URL únicas; 174 pares municipio–URL; 179 filas históricas, 5 pares duplicados; 20 comprobaciones parciales sin captura hash y 159 candidatas históricas; 7 URL de Facebook; 8 fuentes asociadas a varios municipios (89 relaciones), sin prueba automática del ámbito. Preservar historiales, reconocer alias sospechosos sin fusionar, separar autoridad, territorio, vehículo, vigencia y regla completa.
+
+**Límites de ejecución:** generar la cola de investigación para el universo histórico completo, pero realizar una primera consulta acotada (máximo 33 portales de primer nivel + 25 jurisdicciones prioritarias); documentar `NOT_SEARCHED` sin interpretar como exención; conservar `source_checked_at` independiente de `snapshot_audited_at`. Ejecutar únicamente validaciones de datos del delta M1A, no repetir Gradle/Flutter/Laravel/JNI/CI R18–R21.
+
+**Orden canónica:** `docs/plans/CODEX_LUNA_PICORADAR_M1A_V2_ORDEN_20261107.md` en este mismo PR #79. Entregar un solo ZIP con fuente normalizada, inventario, cola, manifiesto y diez comprobaciones focales; `RELEASE=NOT_APPROVED`. PR #79 permanece Draft sin merge. Si Codex ya ejecuta M1A V1, no interrumpir: auditar el resultado contra estas correcciones antes de decidir el siguiente paso.
