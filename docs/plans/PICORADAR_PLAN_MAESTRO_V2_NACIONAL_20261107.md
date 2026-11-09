@@ -434,3 +434,40 @@ Se recibió un informe externo extenso que declara 1.103 municipios / 65 entrada
 **Cambio de prioridad tras cerrar M3-X01:** no repetir puente, instalaciones ni auditorías de auditorías; M1 pico y placa nacional vuelve al carril activo de dirección. El informe externo de 2026 (plan §AE) permanece **STAGING_ONLY** en `docs/data/external-research/`: 65 filas de catálogo con grupos territoriales, 31 filas de medidas, conflictos en Bogotá (paridad), Cartagena (temporadas), Soledad (medida retirada) y Quibdó (calendarios). No usar YAML directo ni activar reglas por la otra IA. Contrastar fuentes oficiales por autoridad/vehículo/ámbito y crear deltas en el compilador único solo después de validación legal/humana. M1 cinco filas críticas `READY=0/5` y conjunto nacional incompleto; mantener `UNKNOWN/STALE` seguro. **NEXT ÚNICO PARA NUEVO CHAT:** CHATGPT Director concilia evidencia disponible de M1 y planifica un bloque de cierre legal NACIONAL sin inventar normas ni duplicar trabajo; no enviar orden a Codex hasta definir alcance+fuentes y comprobar si otro agente ejecuta.
 
 **Plan/leyes inalterados:** M1 nacionales por autoridad y clase; M2 motor/agente lector-proponente, sin publicador alterno; M3 Laravel único publicador y Flutter offline; M4 admisión controlada del patch de test y C1/schema2, QA WIP/CI/Android físico JNI/firma/privacidad antes de GO humano. PR #79 es documental Draft contra `recovery/20261019-modern`, PR #71 código Draft contra `main`, sin merge ni despliegue. ZIP de Codex se conserva como evidencia adjunta al chat/recovery pack, **NO subido binario a GitHub**.
+
+## AG. Gate director M1, auditoria de continuidad y KISS (2026-11-09 COT)
+
+**Nuevo puntero vigente posterior a AF:** PR79 Draft docs contra recovery, SHA base `198b9b44012ca7f5440dae695157b9269f754a23`; PR71 Draft codigo contra main, SHA `0d3a6a2a32bff8bd27dbdd92f88433dd8ab3e47a`. Este cambio es SOLO documental. PC/101 WIP, CI verde, ADB, firma y release siguen NO_VERIFICADOS. Historicos anteriores que indiquen Codex M3-X01 activo son historia, NO el NEXT actual.
+
+**Hallazgo P1 SRC-43, riesgo estatico (NO prueba dinamica de defecto):** `RestrictionStore.loadCoverage` fija `coverageKnown=true` por presencia de fila `jurisdictionId+vehicleKind+serviceType`. `RestrictionEngine` retorna `allowedNoRestriction` cuando cobertura conocida y fresca carece de regla aplicable; el resumen UI puede mostrar `Puede circular`. El validador Laravel comprueba schema, URLs y fechas, NO exhaustividad juridica por regimen/ambito. La prueba `R4 empty known coverages stay known without inventing restrictions` exige ALLOWED para cobertura expresamente vacia y conocida. **NO cambiar globalmente ALLOWED a UNKNOWN** ni crear segundo motor; primero gate editorial/juridico antes de admitir como completa cualquier cobertura. `ENGINE_GAP` si la via/poligono no es representable. Cualquier correccion de codigo requiere reproduccion real y autorizacion, tests focales/vecinos y rollback.
+
+**Fuentes oficiales cotejadas, autorizacion de publicacion = NO:**
+- Bogota urbana SDM 16-oct: dia habil par restringe ultimo digito 1–5; impar 6–0; 06:00–21:00. Distinguir regimen regional acceso y excepciones art.230. https://www.movilidadbogota.gov.co/preguntas-frecuentes/en-que-consiste-la-restriccion-establecida-para-vehiculos-particulares
+- Medellin distrito decreto 1490/2026: L 5/8, Ma 1/4, Mi 0/2, J 3/6, V 7/9 de 05–20; ultimo digito carro, primero moto. No heredar excepciones ni ambitos a otros nueve municipios del valle. https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/
+- Cartagena DATT oct: L 1/2, Ma 3/4, Mi 5/6, J 7/8, V 9/0; 05-oct-2026 a 22-ene-2027; particulares 07–09/18–20; motos 05–23. Comunicado enero anuncio 24h dic-ene; comunicado junio desmintio SOLO temporada de mitad de ano: NO asumir que diciembre es vigente ni derogado sin acto/reconfirmacion. Moto nocturna 23–05, centro amurallado, exenciones y zonas son regimenes distintos. https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0 ; https://www.cartagena.gov.co/noticias/conozca-el-nuevo-pico-placa-para-particulares-sus-rotaciones-durante-el-2026
+- Manizales decreto 0357/2026: temporal 03–30-nov, 06–20 L-V, particulares vias municipales; corredores nacionales excluidos; excepciones por decreto, no extrapolar taxis ni perpetuar en diciembre. https://centrodeinformacion.manizales.gov.co/como-funciona-el-pico-y-placa-en-manizales-durante-noviembre-de-2026/
+- Soledad dia sin moto 30 derogado segun reportes periodisticos 2024, falta acto oficial completo. Quibdo 0245/2026 sin acto primario integro, terceros divergentes. `CONFLICT/SECONDARY_ONLY`, no inferir ausencia de restriccion.
+
+**10 pasadas adversariales (internas, no 10 ejecuciones independientes):**
+| ID | Que se contrasto | Resultado y decision |
+|---|---|---|
+| P01 | Identidad y precedencia AGENTS/baseline | PASS: foco pico nacional, camaras y UX historica preservadas |
+| P02 | Git SHA y PR79/PR71 | PASS_SCOPED remoto; no deducir WIP local limpio |
+| P03 | M3-X01 evidencia vs M1 | PASS_SCOPED schema1 cerrado; no repetir ni llamar M3 DONE |
+| P04 | Inventario M1/externo | 1122 unidades NO son normas; 65+31 staging con 0 publicadas |
+| P05 | Bogota paridad | ERROR en staging, fuente SDM corrige; admision PARTIAL |
+| P06 | Cartagena temporalidad | PARTIAL: ordinario/distinto 24h diciembre/moto noche/centro |
+| P07 | Medellin y territorios | PARTIAL: calendario cotejado; municipio y excepciones no heredables |
+| P08 | Soledad/Quibdo | BLOCKED_SCOPED en actos primarios; no usar agregadores para GO |
+| P09 | Coverage/false ALLOWED | P1 STATIC_RISK, prueba known-empty existente preservada; gate editorial KISS |
+| P10 | CI, seguridad y siguientes actores | PARTIAL: QA completa/WIP/Android pendientes; NEXT=CHATGPT |
+
+**Plan de finalizacion sin pingpong:**
+1. M1-A CHATGPT: cerrar matriz unica de cinco filas nucleo (Medellin auto/moto, Bogota auto, Cartagena auto/moto) con fuente oficial/acto, autoridad, DIVIPOLA, regimen, clase, digit/horario/dias, excepciones, zona, fecha, soporte del motor y estado campo a campo; Manizales 03–30-nov independiente por urgencia. `0/5 READY` hasta gate completo. No repetir capturas ni DANE/RUNT.
+2. M1-B CHATGPT: ampliar por autoridad/vehiculo solo donde hay evidencia, marcar `NOT_SEARCHED`, `OFFICIAL_PARTIAL` y `OFFICIAL_NO_MEASURE` solo con negacion expresa. Catalogo territorial no certifica medida. Sin importar YAML IA; nunca default nacional allowed.
+3. M2 CODIGO CONDICIONAL: solo si regla aprobada revela ENGINE_GAP indispensable; hacer minimo cambio con tests, reutilizar Flutter/Riverpod/Drift, compilador actual y Laravel unico publicador. No refactor general ni segundo motor.
+4. M3: datos aprobados => Laravel publicado/versionado => manifests => Flutter/Drift y last-good, pruebas sobre mismo SHA. M3-X01 sintetico ya cerrado, NO reejecutar.
+5. M4: admision del patch test-only pendiente y C1/schema2 separadamente, QA CI, WIP local preservado, Mi A3/firma/JNI/privacidad, rollback y GO humano. Prohibido publicar o merge automatico.
+
+**Transferencia:** `NEXT_ACTOR=CHATGPT_DIRECTOR`; `CODEX_NEW_TASK=NO`; `M1_CORE_5_READY=0/5`; `PUBLISH_ALLOWED=NO`; `RELEASE=NOT_APPROVED`. Si queda ejecucion verdaderamente local, UN prompt Markdown descargable comenzando `# CODEX LUNA`, rutas y SHA, WIP preflight sin borrados, criterios y UN ZIP de evidencias. No reiterar auditorias ni prompts sin cambio de insumo.
+
