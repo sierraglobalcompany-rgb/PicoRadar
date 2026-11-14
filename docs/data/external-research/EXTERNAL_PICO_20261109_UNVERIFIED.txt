@@ -1,0 +1,404 @@
+title
+:
+Informe Nacional Auditado de Pico y Placa y Restricciones Vehiculares en Colombia (Año Completo 2026)
+version
+:
+3.0 - Auditoría Exhaustiva Completa (Semestres I y II de 2026)
+fecha_corte_auditoria
+:
+2026-11-09
+alcance
+:
+Nacional (32 Departamentos + Bogotá D.C. / 1.103 Municipios)
+proposito
+:
+Base de conocimiento determinística en Markdown para ingesta directa por otra Inteligencia Artificial (LLM / RAG / Agentes)
+marco_legal_nacional
+:
+Ley 769 de 2002 (Código Nacional de Tránsito Terrestre, Art. 3 y Art. 119 - Infracción C.14: 15 SMLDV + Inmovilización)
+INFORME NACIONAL AUDITADO: PICO Y PLACA Y RESTRICCIONES VEHICULARES EN COLOMBIA (2026)
+
+IMPORTANT
+
+Reglas Determinísticas para Sistemas de Inteligencia Artificial (LLM / RAG):
+
+Autonomía Municipal/Departamental: En Colombia no existe un decreto único nacional de Pico y Placa urbano. Cada Alcaldía o Gobernación expide su propio acto administrativo.
+Posición del dígito en la placa:
+Carros particulares y Taxis: En el 100% de las ciudades donde aplica, se evalúa el ÚLTIMO dígito numérico de la placa.
+Motocicletas:
+Se evalúa el PRIMER dígito numérico de la placa en 13 municipios: los 10 municipios del Valle de Aburrá (Medellín, Bello, Itagüí, Envigado, Sabaneta, La Estrella, Caldas, Copacabana, Girardota y Barbosa), Pereira, Dosquebradas y Malambo (zona urbana).
+Se evalúa el ÚLTIMO dígito numérico de la placa en el resto de municipios donde aplica (Bucaramanga, Floridablanca, Girón, Piedecuesta, Cartagena, Santa Marta, Cúcuta, Los Patios, Villa del Rosario, El Zulia, San Cayetano, Puerto Santander, Ocaña, Pamplona, Armenia, Pasto, Popayán, Quibdó, Soledad y los 20 municipios en vías departamentales del Atlántico).
+Regla de Sábados, Domingos y Festivos:
+Sábados (Carros y Motos): Solo aplica Pico y Placa diurno por dígito en Bucaramanga, Floridablanca, Girón y Piedecuesta (09:00 a 13:00), en el Corredor Ambiental Manizales – Murillo PNN Los Nevados (05:00 a 16:00, par/impar) y para Camiones >20 años en Bogotá D.C. (05:00 a 21:00, par/impar). Adicionalmente, aplica restricción nocturna de motos (23:00 a 04:00/05:00) en Cartagena y en los 20 municipios del Decreto Departamental del Atlántico.
+Domingos y Festivos (Carros y Motos): El Pico y Placa urbano ordinario NO aplica en ninguna ciudad, EXCEPTO en tres regímenes especiales:
+Pico y Placa Regional de ingreso a Bogotá D.C. (9 corredores de Cundinamarca): Aplica los lunes festivos (y días de retorno de puente festivo) de 12:00 a 16:00 (solo ingresan placas pares) y de 16:00 a 20:00 (solo ingresan placas impares).
+Pico y Placa Ambiental Vía Manizales – Murillo (PNN Los Nevados): Aplica todos los sábados, domingos y festivos de 05:00 a 16:00 alternando placas pares e impares cada fin de semana.
+Salento (Quindío): Restricción estacional de acceso en puentes festivos, Semana Santa y fin de año.
+Sábados, Domingos y Festivos (Taxis):
+Lunes a Sábado (excluye domingos y festivos): Bogotá D.C., Santa Marta y Pasto.
+Lunes a Sábado (incluye festivos entre lunes y sábado): Pereira.
+Lunes a Domingo (365 días, incluye sábados, domingos y festivos): Ibagué, Villavicencio, Armenia y Manizales.
+1. AUDITORÍA DE VERIFICACIÓN NORMATIVA: 7 CORRECCIONES CRÍTICAS (2025–2026)
+
+Esta auditoría verificó directamente los decretos oficiales de las Alcaldías y Secretarías de Movilidad, corrigiendo errores frecuentes de portales web no oficiales:
+
+Barranquilla – Derogatoria del Pico y Placa de Taxis (Decreto Distrital 0450 de 2025): Se audita y confirma que mediante el Decreto Distrital 0450 de 2025 (avalado por el Área Metropolitana de Barranquilla – AMBQ) quedó derogado indefinidamente el Pico y Placa para taxis en Barranquilla (que regía bajo el antiguo Decreto 0205 de 2009). Hoy en Barranquilla ni carros particulares, ni motos, ni taxis tienen Pico y Placa permanente por dígito (solo hubo Pico y Placa temporal en la Vía 40 en febrero de 2026 por el Carnaval mediante Decreto 0036 de 2026, y se mantienen las zonas vedadas a motos en el Centro y restricciones de carga).
+Santiago de Cali – Taxis y Motos Exentos y Cierre a las 7:00 p.m.: En Cali, los decretos del Primer Semestre (05/01/2026 al 30/06/2026) y Segundo Semestre (01/07/2026 al 31/12/2026) aplican exclusivamente a carros particulares de 06:00 a.m. a 07:00 p.m. Los taxis y las motocicletas están exentos.
+Manizales – Activación de Pico y Placa Temporal en Noviembre de 2026 (Decreto 0357 de 2026): Aunque Manizales levantó la medida permanente para particulares, expidió el Decreto Municipal 0357 del 28 de octubre de 2026, activando Pico y Placa para carros particulares del 3 al 30 de noviembre de 2026 (06:00 a.m. a 08:00 p.m.) de lunes a viernes.
+Valle de Aburrá – Diferencias en Vías Exentas entre Medellín, Bello, Itagüí y Sabaneta: Aunque los 10 municipios comparten dígitos y horario (05:00 a.m. a 08:00 p.m.), Bello NO exime la Autopista Norte ni la Av. Regional (aplica comparendo en la glorieta de Niquía), mientras que Medellín, Itagüí y Sabaneta sí eximen el Sistema Vial del Río (Autopista Sur / Av. Regional).
+Cartagena – Doble Franja para Carros vs. Jornada Continua + Nocturna para Motos (Decreto 0015 de 2026): En Cartagena los carros particulares solo tienen restricción en dos franjas pico (07:00–09:00 y 18:00–20:00), mientras que las motos tienen restricción continua (05:00–23:00) más prohibición nocturna total (23:00–05:00).
+Quibdó – Esquema Asimétrico Carros (2 dígitos) vs. Motos (4 dígitos): En Quibdó los carros particulares restringen 2 dígitos por día (L: 1-2, M: 5-6, Mi: 9-0, J: 7-8, V: 3-4), mientras que las motos restringen 4 dígitos por día (L: 0-1-4-7, M: 2-3-5-6, Mi: 1-7-8-9, J: 0-2-3-6, V: 4-5-8-9).
+Tunja, Popayán y Quibdó – Exención Total a Taxis y Transporte Público: En estas tres capitales los taxis están 100% exentos de Pico y Placa.
+2. TABLA MAESTRA 1: PICO Y PLACA VIGENTE EN COLOMBIA – DÍA POR DÍA (SEGUNDO SEMESTRE / TRIMESTRE IV DE 2026)
+
+Esta tabla contiene la programación exacta de lunes a viernes, sábados, domingos y festivos, con hora de inicio, hora de fin, vigencia del decreto y zonas, vigente para el segundo semestre / último trimestre de 2026:
+
+Departamento	Ciudad / Municipio(s)	Decreto / Acto Administrativo	Fecha Inicio	Fecha Fin	Categoría Vehicular	Regla Dígito	Lunes	Martes	Miércoles	Jueves	Viernes	Sábados	Domingos	Festivos	Hora Inicio	Hora Fin	Zonas de Aplicación y Vías Exentas
+Distrito Capital	Bogotá D.C.	Decreto Distrital 652 de 2025	01/01/2026	31/12/2026 (Permanente)	Carros Particulares	Último	Día Impar: 1,2,3,4,5 Día Par: 6,7,8,9,0	Día Impar: 1,2,3,4,5 Día Par: 6,7,8,9,0	Día Impar: 1,2,3,4,5 Día Par: 6,7,8,9,0	Día Impar: 1,2,3,4,5 Día Par: 6,7,8,9,0	Día Impar: 1,2,3,4,5 Día Par: 6,7,8,9,0	No aplica	No aplica (Salvo retorno puente)	SÍ: Regional (12-16h: Impares / 16-20h: Pares)	06:00 (Reg: 12:00)	21:00 (Reg: 20:00)	100% del perímetro urbano de Bogotá. Sin vías exentas. Regional en los 9 accesos a la ciudad.
+Distrito Capital	Bogotá D.C.	Decreto Distrital 652 de 2025	01/01/2026	31/12/2026 (Permanente)	Taxis y Especial (4 pasaj.)	Último	Rotación móvil (2 dígitos: 1-2, 3-4, 5-6, 7-8, 9-0)	Rotación móvil (2 dígitos)	Rotación móvil (2 dígitos)	Rotación móvil (2 dígitos)	Rotación móvil (2 dígitos)	SÍ (2 dígitos móviles)	No aplica	No aplica	05:30	21:00	Todo el perímetro urbano de Bogotá D.C.
+Distrito Capital	Bogotá D.C.	Decreto Distrital 652 de 2025	01/01/2026	31/12/2026 (Permanente)	Carga (>20 años y >3.5 ton)	Último	Todos (sin importar placa)	Todos	Todos	Todos	Todos	SÍ (>20 años): Alterna Par/Impar	No aplica	No aplica (Salvo MinTransporte)	L-V: 06:00 y 17:00 Sáb: 05:00	L-V: 08:00 y 20:00 Sáb: 21:00	Todo el perímetro urbano y Zona de Baja Emisión.
+Antioquia	Medellín, Bello, Itagüí, Envigado, Sabaneta, La Estrella, Caldas, Copacabana, Girardota, Barbosa (10 municipios)	Decretos Metropolitanos 2.º Semestre 2026	03/08/2026	29/01/2027	Carros Particulares	Último	5 y 8	1 y 4	0 y 2	3 y 6	7 y 9	No aplica	No aplica	No aplica	05:00	20:00	Perímetro urbano de los 10 municipios. Exentas en Medellín, Itagüí y Sabaneta: Sistema Vial del Río (Autopista Sur / Av. Regional), Av. Las Palmas, Av. 33, Calle 10, La Iguaná y corregimientos. En Bello NO está exenta la Autopista Norte ni Regional.
+Antioquia	Medellín + 9 municipios Valle de Aburrá (10 municipios)	Decretos Metropolitanos 2.º Semestre 2026	03/08/2026	29/01/2027	Motos (2T y 4T), Mototriciclos y Ciclomotores	Primero	5 y 8	1 y 4	0 y 2	3 y 6	7 y 9	No aplica	No aplica	No aplica	05:00	20:00	Mismas zonas y vías exentas que carros particulares en los 10 municipios del Valle de Aburrá.
+Antioquia	Medellín + 9 municipios Valle de Aburrá	Decreto Taxis 2.º Semestre 2026	01/08/2026	31/01/2027	Taxis	Último	1 dígito (rotación quincenal días hábiles)	1 dígito	1 dígito	1 dígito	1 dígito	No aplica	No aplica	No aplica	06:00	20:00	Jurisdicción urbana del Valle de Aburrá.
+Valle del Cauca	Santiago de Cali	Decreto Distrital 2.º Semestre 2026	01/07/2026	31/12/2026	Carros Particulares (Motos y Taxis Exentos)	Último	9 y 0	1 y 2	3 y 4	5 y 6	7 y 8	No aplica	No aplica	No aplica	06:00	19:00	Todo el perímetro urbano de Cali (incluye ingresos desde Jamundí, Yumbo, Palmira y Candelaria).
+Valle del Cauca	Buenaventura	Decreto Distrital 2.º Semestre 2026	01/07/2026	31/12/2026	Carros Particulares y Taxis (Motos Exentas)	Último	1 y 2	3 y 4	5 y 6	7 y 8	9 y 0	No aplica (Part.)	No aplica	No aplica	07:00	19:00	Perímetro urbano de Buenaventura (Isla de Cascajal y continente).
+Santander	Bucaramanga, Floridablanca, Girón y Piedecuesta (4 municipios AMB)	Resolución DTB 854 de dic. 2025 (Trimestre IV)	05/10/2026	31/12/2026	Carros Particulares y Motocicletas	Último	5 y 6	7 y 8	9 y 0	1 y 2	3 y 4	SÍ (09:00 a 13:00): Rotación semanal (ver calendario)	No aplica	No aplica	L-V: 06:00 Sáb: 09:00	L-V: 20:00 Sáb: 13:00	Todo el perímetro urbano y autopistas metropolitanas de Bucaramanga, Floridablanca, Girón y Piedecuesta.
+Santander	Bucaramanga, Floridablanca, Girón y Piedecuesta	Resolución DTB Taxis 2026	01/01/2026	31/12/2026	Taxis	Último	1 y 2 (rotación semanal)	3 y 4	5 y 6	7 y 8	9 y 0	No aplica	No aplica	No aplica	07:00	21:00	Área Metropolitana de Bucaramanga.
+Bolívar	Cartagena de Indias	Decreto 0015 del 14/01/2026 (Rotación Trim. IV)	05/10/2026	22/01/2027	Carros Particulares	Último	1 y 2	3 y 4	5 y 6	7 y 8	9 y 0	No aplica	No aplica	No aplica	Franja 1: 07:00 Franja 2: 18:00	Franja 1: 09:00 Franja 2: 20:00	Avenidas principales y arteriales (Av. Pedro de Heredia, Santander, Blas de Lezo, Venezuela, Crisanto Luque, Consulado, Transv. 54, Corredor de Carga).
+Bolívar	Cartagena de Indias	Decreto 0015 del 14/01/2026	05/10/2026	22/01/2027	Motocicletas	Último	1 y 2	3 y 4	5 y 6	7 y 8	9 y 0	Nocturno: Todas (23:00–05:00)	Nocturno: Todas (23:00–05:00)	Nocturno: Todas (23:00–05:00)	Diurno: 05:00 Noct: 23:00	Diurno: 23:00 Noct: 05:00	Todo el perímetro urbano. Prohibición 24h de ingreso al Centro Amurallado (Centro, San Diego, Matuna, Getsemaní).
+Bolívar	Cartagena de Indias	Decreto 0004 de 2026 (Mes Nov.)	02/11/2026	27/11/2026	Taxis	Último	5 y 6	7 y 8	9 y 0	1 y 2	3 y 4	No aplica	No aplica	No aplica	06:00	06:00 (+1 día) (24 horas)	Todo el Distrito de Cartagena.
+Atlántico	Soledad	Decreto Municipal Imttrasol	01/01/2026	31/12/2026	Motos y Motocarros (Carros y Taxis Exentos)	Último	1 y 3	2 y 4	5 y 7	6 y 8	9 y 0	No aplica (Día 30 del mes: Sin Moto)	No aplica (Salvo día 30)	No aplica (Salvo día 30)	05:00	22:00	Todo el perímetro urbano de Soledad. Día 30 de cada mes: Prohibición total de motos.
+Atlántico	Malambo	Decreto Municipal + Dpto. 000362	01/01/2026	31/12/2026	Carros (Últ.) y Motos (1.er urbano / Últ. vial)	Último / 1.º	1 y 2	3 y 4	5 y 6	7 y 8	9 y 0	Nocturno motos: 23:00–04:00	Nocturno motos: 23:00–04:00	Nocturno motos: 23:00–04:00	Urb: 05:00 Vial: 08:00	Urb: 20:00 Vial: 23:59	Casco urbano de Malambo y vías departamentales.
+Atlántico	19 Municipios adicionales del Atlántico (Puerto Colombia, Galapa, Baranoa, Sabanalarga, etc.)	Decreto Departamental 000362	01/01/2026	31/12/2026 (Permanente)	Motos, Motocarros, Mototriciclos y Cuatrimotos	Último	1 y 2	3 y 4	5 y 6	7 y 8	9 y 0	SÍ: Nocturno (Todas 23:00–04:00)	SÍ: Nocturno (Todas 23:00–04:00)	SÍ: Nocturno (Todas 23:00–04:00)	Diurno: 08:00 Noct: 23:00	Diurno: 23:59 Noct: 04:00	Vías secundarias, terciarias y corredores departamentales en los 20 municipios bajo jurisdicción de Tránsito del Atlántico.
+N. de Santander	Cúcuta, Los Patios, Villa del Rosario, El Zulia, San Cayetano, Puerto Santander (6 municipios AMC)	Decreto 0212 / Vigente AMC	01/01/2026	31/12/2026	Carros Particulares, Motos y Taxis (1 dígito)	Último	1 y 2	3 y 4	5 y 6	7 y 8	9 y 0	No aplica	No aplica	No aplica	Local: 07:00, 11:30, 17:30 Foráneo/Motos: 07:00	Local: 08:30, 14:30, 19:30 Foráneo/Motos: 20:00	Locales AMC: Polígono central (Anillos Viales exentos). Placas nacionales/venezolanas ("Placa-Día"): Todo el perímetro y anillos viales de 07:00 a 20:00.
+N. de Santander	Ocaña	Decreto Municipal Ocaña	01/01/2026	31/12/2026	Carros Particulares y Motos	Último	1 y 2	3 y 4	5 y 6	7 y 8	9 y 0	No aplica	No aplica	No aplica	Local: 07:30, 11:30, 17:30 Foráneo: 07:00	Local: 08:30, 14:30, 19:00 Foráneo: 19:00	Centro Histórico y zona comercial de Ocaña (Placas foráneas en toda la jurisdicción urbana).
+N. de Santander	Pamplona	Decreto Municipal Pamplona	01/02/2026	15/12/2026	Carros Particulares y Motos (Taxis Exentos)	Último	1 y 2	3 y 4	5 y 6	7 y 8	9 y 0	No aplica	No aplica	No aplica	08:00	18:00	Centro Histórico de Pamplona.
+Risaralda	Pereira y Dosquebradas (2 municipios AMCO)	Decreto 0574/2022 y 000540/2024	01/01/2026	31/12/2026	Carros (Último), Motos (Primero) y Taxis (1 dígito)	Últ. / 1.º	0 y 1	2 y 3	4 y 5	6 y 7	8 y 9	SÍ: Solo Taxis (1 dígito)	No aplica	SÍ: Solo Taxis	Part/Motos: 06:00 Taxis: 07:00	Part/Motos: 20:00 Taxis: 03:00 (+1d)	Toda el área urbana de Pereira y Dosquebradas (incluye Viaducto). Exentas: Variante Condina, Variante La Romelia–El Pollo y Autopista del Café.
+Quindío	Armenia	Decreto 135 de 2026	01/01/2026	31/12/2026	Carros Particulares, Motos y Taxis	Último	5 y 6	7 y 8	9 y 0	1 y 2	3 y 4	SÍ: Solo Taxis (2 dígitos)	SÍ: Solo Taxis (2 dígitos)	SÍ: Solo Taxis (2 dígitos)	07:00	19:00 (Taxis: 24h)	Cuadrante del Centro (07:00–19:00 continuo) y resto del perímetro urbano en 3 franjas pico (07:00–09:00, 11:30–14:00, 17:30–19:00).
+Caldas	Manizales	Decreto 0357 del 28/10/2026	03/11/2026	30/11/2026	Carros Particulares (Temp.) y Taxis (Perm. L-D) (Motos Exentas)	Último	1 y 2	3 y 4	5 y 6	7 y 8	9 y 0	SÍ: Solo Taxis	SÍ: Solo Taxis	SÍ: Solo Taxis	Part: 06:00 Taxis: 04:00	Part: 20:00 Taxis: 04:00 (+1d)	Casco urbano y avenidas principales de Manizales (Av. Santander, Paralela, Kevin Ángel y Centro).
+Tolima	Ibagué	Decreto 0768 del 26/12/2025 (2.º Sem.)	01/07/2026	31/12/2026	Carros Particulares y Taxis (1 dígito L-D) (Motos Exentas)	Último	6 y 7	8 y 9	0 y 1	2 y 3	4 y 5	SÍ: Solo Taxis (1 dígito)	SÍ: Solo Taxis (1 dígito)	SÍ: Solo Taxis (1 dígito)	Part: 06:00 Taxis: 06:00	Part: 21:00 Taxis: 20:00	Polígono urbano de Ibagué. Hora Valle (solo matriculados en Ibagué): Libres de 09:00 a 11:00 y de 15:00 a 17:00.
+Magdalena	Santa Marta	Decreto Distrital 213 del 08/05/2026	08/05/2026	31/12/2026	Carros, Motos y Taxis	Último	1 y 2	3 y 4	5 y 6	7 y 8	9 y 0	SÍ: Solo Taxis (07:00–23:59)	No aplica	No aplica	Local: 07:00, 11:30, 17:00 Foráneo/Motos: 07:00	Local: 09:00, 14:00, 20:00 Foráneo: 20:00 Motos: 19:00	Perímetro urbano de Santa Marta, El Rodadero, Taganga y Gaira (Troncal del Caribe exenta solo para tránsito de paso externo).
+Meta	Villavicencio	Decreto 015 de 2026	26/01/2026	22/12/2026	Carros Particulares y Taxis (1 dígito L-D) (Motos Exentas)	Último	5 y 6	7 y 8	9 y 0	1 y 2	3 y 4	SÍ: Solo Taxis (06:00–24:00)	SÍ: Solo Taxis (06:00–24:00)	SÍ: Solo Taxis (06:00–24:00)	Franja 1: 06:30 Franja 2: 17:00	Franja 1: 09:30 Franja 2: 20:00	Polígono urbano central y comercial de Villavicencio.
+Nariño	San Juan de Pasto	Decreto 0122 del 24/07/2026	24/07/2026	31/12/2026	Carros Particulares, Motos y Taxis	Último	2 y 3 (Sem. ref. nov; rota 1 par/sem)	4 y 5	6 y 7	8 y 9	0 y 1	SÍ: Solo Taxis	No aplica	No aplica	07:30	19:00	Perímetro urbano de Pasto (excepto Variante Panamericana).
+Cauca	Popayán	Decreto 20261000000355 (2.º Sem.)	06/07/2026	31/12/2026	Carros Particulares y Motos (Taxis Exentos)	Último	9 y 0	1 y 2	3 y 4	5 y 6	7 y 8	No aplica	No aplica	No aplica	07:00	20:00	Perímetro urbano de Popayán (excepto Variante Panamericana).
+Boyacá	Tunja	Decreto Municipal Vigencia 2026	13/01/2026	31/12/2026	Carros Particulares (Motos y Taxis Exentos)	Último	3 y 4	5 y 6	7 y 8	9 y 0	1 y 2	No aplica	No aplica	No aplica	Centro: 06:00 Resto: 06:00, 12:00, 17:00	Centro: 20:00 Resto: 09:00, 14:00, 20:00	Centro Histórico: Continuo 06:00–20:00. Resto de la ciudad: 3 franjas pico.
+Chocó	Quibdó	Decreto 036 y Act. 2026	01/01/2026	31/12/2026	Carros Particulares (2 dígitos/día)	Último	1 y 2	5 y 6	9 y 0	7 y 8	3 y 4	No aplica	No aplica	No aplica	07:00	19:00	Perímetro urbano y centro de Quibdó. (Taxis exentos).
+Chocó	Quibdó	Decreto 036 y Act. 2026	01/01/2026	31/12/2026	Motocicletas (4 dígitos/día)	Último	0, 1, 4 y 7	2, 3, 5 y 6	1, 7, 8 y 9	0, 2, 3 y 6	4, 5, 8 y 9	No aplica	No aplica	No aplica	07:00	19:00	Perímetro urbano y centro de Quibdó.
+Tolima / Caldas	Corredor Ambiental Murillo – Manizales (PNN Los Nevados)	Sentencia Judicial / Decreto Ambiental	01/01/2026	31/12/2026 (Permanente)	Todo Vehículo Particular y Motos	Último	No aplica	No aplica	No aplica	No aplica	No aplica	SÍ: Alterna Par (0,2,4,6,8) / Impar (1,3,5,7,9)	SÍ: Alterna Par / Impar	SÍ: Alterna Par / Impar	05:00	16:00	Carretera Manizales (sector La Esperanza) – Murillo (Tolima) en zona amortiguadora del PNN Los Nevados.
+3. TABLA MAESTRA 2: HISTÓRICO PRIMER SEMESTRE / TRIMESTRE I DE 2026 (ENERO A JUNIO/JULIO 2026)
+
+Para que el sistema de IA pueda responder consultas sobre cualquier mes de 2026, a continuación se documentan las rotaciones de lunes a viernes que rigieron durante el Primer Semestre / Primer Trimestre de 2026 en las ciudades con rotación periódica:
+
+Ciudad / Área Metropolitana	Decreto / Periodo	Fecha Inicio	Fecha Fin	Tipo Vehículo	Lunes	Martes	Miércoles	Jueves	Viernes	Horario
+Medellín y 9 municipios del Valle de Aburrá	Decreto 1.er Semestre 2026	02/02/2026	31/07/2026	Carros (Último dígito) y Motos (Primer dígito)	6 y 9	5 y 7	1 y 8	0 y 2	3 y 4	L-V: 05:00 a 20:00
+Santiago de Cali	Decreto 1.er Semestre 2026	05/01/2026	30/06/2026	Carros Particulares (Último dígito)	1 y 2	3 y 4	5 y 6	7 y 8	9 y 0	L-V: 06:00 a 19:00
+Bucaramanga, Floridablanca, Girón y Piedecuesta	Resolución 854 (Trimestre I 2026)	13/01/2026	03/04/2026	Carros Particulares y Motos (Último dígito)	1 y 2	3 y 4	5 y 6	7 y 8	9 y 0	L-V: 06:00 a 20:00 / Sáb: 09:00 a 13:00
+Bucaramanga, Floridablanca, Girón y Piedecuesta	Resolución 854 (Trimestre II 2026)	06/04/2026	04/07/2026	Carros Particulares y Motos (Último dígito)	9 y 0	1 y 2	3 y 4	5 y 6	7 y 8	L-V: 06:00 a 20:00 / Sáb: 09:00 a 13:00
+Bucaramanga, Floridablanca, Girón y Piedecuesta	Resolución 854 (Trimestre III 2026)	06/07/2026	03/10/2026	Carros Particulares y Motos (Último dígito)	7 y 8	9 y 0	1 y 2	3 y 4	5 y 6	L-V: 06:00 a 20:00 / Sáb: 09:00 a 13:00
+Cartagena de Indias	Decreto 0015 (Rotación I 2026)	16/01/2026	27/03/2026	Carros Particulares y Motos (Último dígito)	5 y 6	7 y 8	9 y 0	1 y 2	3 y 4	Carros: 07:00–09:00 y 18:00–20:00 / Motos: 05:00–23:00
+Cartagena de Indias	Decreto 0015 (Rotación II 2026)	30/03/2026	03/07/2026	Carros Particulares y Motos (Último dígito)	7 y 8	9 y 0	1 y 2	3 y 4	5 y 6	Carros: 07:00–09:00 y 18:00–20:00 / Motos: 05:00–23:00
+Cartagena de Indias	Decreto 0015 (Rotación III 2026)	06/07/2026	02/10/2026	Carros Particulares y Motos (Último dígito)	9 y 0	1 y 2	3 y 4	5 y 6	7 y 8	Carros: 07:00–09:00 y 18:00–20:00 / Motos: 05:00–23:00
+Ibagué	Decreto 0768 (1.er Semestre 2026)	01/01/2026	30/06/2026	Carros Particulares (Último dígito)	8 y 9	0 y 1	2 y 3	4 y 5	6 y 7	L-V: 06:00 a 21:00 (Hora valle: 09:00–11:00 y 15:00–17:00)
+Popayán	Decreto 20261000000355 (1.er Sem.)	12/01/2026	26/06/2026	Carros Particulares y Motos (Último dígito)	1 y 2	3 y 4	5 y 6	7 y 8	9 y 0	L-V: 07:00 a 20:00
+4. CALENDARIO EXACTO DE SÁBADOS EN BUCARAMANGA Y ÁREA METROPOLITANA (TRIMESTRE IV: OCTUBRE – DICIEMBRE 2026)
+
+Aplica en Bucaramanga, Floridablanca, Girón y Piedecuesta para carros particulares y motocicletas (último dígito) de 09:00 a.m. a 01:00 p.m.:
+
+Mes	Fecha del Sábado	Dígitos Restringidos (Último número de placa)	Horario
+Octubre 2026	Sábado 3 de octubre de 2026	7 y 8	09:00 a.m. – 01:00 p.m.
+Octubre 2026	Sábado 10 de octubre de 2026	9 y 0	09:00 a.m. – 01:00 p.m.
+Octubre 2026	Sábado 17 de octubre de 2026	1 y 2	09:00 a.m. – 01:00 p.m.
+Octubre 2026	Sábado 24 de octubre de 2026	3 y 4	09:00 a.m. – 01:00 p.m.
+Octubre 2026	Sábado 31 de octubre de 2026	5 y 6	09:00 a.m. – 01:00 p.m.
+Noviembre 2026	Sábado 7 de noviembre de 2026	7 y 8	09:00 a.m. – 01:00 p.m.
+Noviembre 2026	Sábado 14 de noviembre de 2026	9 y 0	09:00 a.m. – 01:00 p.m.
+Noviembre 2026	Sábado 21 de noviembre de 2026	1 y 2	09:00 a.m. – 01:00 p.m.
+Noviembre 2026	Sábado 28 de noviembre de 2026	3 y 4	09:00 a.m. – 01:00 p.m.
+Diciembre 2026	Sábado 5 de diciembre de 2026	5 y 6	09:00 a.m. – 01:00 p.m.
+Diciembre 2026	Sábado 12 de diciembre de 2026	7 y 8	09:00 a.m. – 01:00 p.m.
+Diciembre 2026	Sábado 19 de diciembre de 2026	9 y 0	09:00 a.m. – 01:00 p.m.
+Diciembre 2026	Sábado 26 de diciembre de 2026	1 y 2	09:00 a.m. – 01:00 p.m.
+5. CATÁLOGO INDIVIDUALIZADO DE LOS 65 MUNICIPIOS Y DISTRITOS CON PICO Y PLACA EN COLOMBIA (1 A 65)
+
+Esta tabla desglosa uno por uno los 65 municipios/distritos de Colombia que tienen alguna modalidad de Pico y Placa activa en 2026, para que cualquier búsqueda por nombre de municipio o pueblo retorne su regla exacta:
+
+#	Departamento	Municipio / Distrito	Categoría Territorial	Carros Particulares	Motos	Taxis	Servicio Público Colectivo / Carga	Días y Horario Principal	Vías Exentas / Zonas Específicas del Municipio	Fuente Oficial
+1	Distrito Capital	Bogotá D.C.	Capital Nacional	SÍ (Par/Impar)	NO	SÍ (L-S)	Carga >20a y >3.5t	L-V: 06:00–21:00 / Fest: Regional	Todo el perímetro urbano sin vías exentas.	movilidadbogota.gov.co
+2	Antioquia	Medellín	Capital Dpto.	SÍ (Últ. díg.)	SÍ (1.er díg.)	SÍ (Quinc.)	Carga en horas pico	L-V: 05:00–20:00 (L:5-8, M:1-4, Mi:0-2, J:3-6, V:7-9)	Exentas: Autopista Sur, Av. Regional, Las Palmas, Av. 33, Calle 10, La Iguaná y 5 corregimientos.	medellin.gov.co
+3	Antioquia	Bello	Metropolitano	SÍ (Últ. díg.)	SÍ (1.er díg.)	SÍ (Quinc.)	Carga regulada	L-V: 05:00–20:00 (L:5-8, M:1-4, Mi:0-2, J:3-6, V:7-9)	SIN EXENCIÓN en Autopista Norte ni Av. Regional (Glorieta de Niquía sancionada).	bello.gov.co
+4	Antioquia	Itagüí	Metropolitano	SÍ (Últ. díg.)	SÍ (1.er díg.)	SÍ (Quinc.)	Carga regulada	L-V: 05:00–20:00 (L:5-8, M:1-4, Mi:0-2, J:3-6, V:7-9)	Exenta: Autopista Sur en su tramo por Itagüí. Resto del municipio restringido.	itagui.gov.co
+5	Antioquia	Envigado	Metropolitano	SÍ (Últ. díg.)	SÍ (1.er díg.)	SÍ (Quinc.)	Carga regulada	L-V: 05:00–20:00 (L:5-8, M:1-4, Mi:0-2, J:3-6, V:7-9)	Exentas: Av. Regional y Variante Las Palmas. Restringidas Av. Las Vegas y Av. El Poblado.	envigado.gov.co
+6	Antioquia	Sabaneta	Metropolitano	SÍ (Últ. díg.)	SÍ (1.er díg.)	SÍ (Quinc.)	Carga regulada	L-V: 05:00–20:00 (L:5-8, M:1-4, Mi:0-2, J:3-6, V:7-9)	Exentas: Av. Regional y Variante a Caldas. Restringidas Av. Las Vegas y Cra. 43A.	sabaneta.gov.co
+7	Antioquia	La Estrella	Metropolitano	SÍ (Últ. díg.)	SÍ (1.er díg.)	SÍ (Quinc.)	Carga regulada	L-V: 05:00–20:00 (L:5-8, M:1-4, Mi:0-2, J:3-6, V:7-9)	Exenta: Variante a Caldas / Troncal Occidental. Casco urbano restringido.	laestrella.gov.co
+8	Antioquia	Caldas	Metropolitano	SÍ (Últ. díg.)	SÍ (1.er díg.)	SÍ (Quinc.)	Carga regulada	L-V: 05:00–20:00 (L:5-8, M:1-4, Mi:0-2, J:3-6, V:7-9)	Exenta: Variante de Caldas (paso nacional). Casco urbano restringido.	caldasantioquia.gov.co
+9	Antioquia	Copacabana	Metropolitano	SÍ (Últ. díg.)	SÍ (1.er díg.)	SÍ (Quinc.)	Carga regulada	L-V: 05:00–20:00 (L:5-8, M:1-4, Mi:0-2, J:3-6, V:7-9)	Exenta: Autopista Norte (paso nacional externo). Casco urbano restringido.	copacabana.gov.co
+10	Antioquia	Girardota	Metropolitano	SÍ (Últ. díg.)	SÍ (1.er díg.)	SÍ (Quinc.)	Carga regulada	L-V: 05:00–20:00 (L:5-8, M:1-4, Mi:0-2, J:3-6, V:7-9)	Exenta: Autopista Norte (Doble Calzada Bello-Hatillo). Casco urbano restringido.	girardota.gov.co
+11	Antioquia	Barbosa	Metropolitano	SÍ (Últ. díg.)	SÍ (1.er díg.)	SÍ (Quinc.)	Carga regulada	L-V: 05:00–20:00 (L:5-8, M:1-4, Mi:0-2, J:3-6, V:7-9)	Exenta: Troncal Norte / Vías concesionadas nacionales. Casco urbano restringido.	barbosa.gov.co
+12	Valle del Cauca	Santiago de Cali	Capital Dpto.	SÍ (Últ. díg.)	NO	NO	Carga por tonelaje	L-V: 06:00–19:00 (L:9-0, M:1-2, Mi:3-4, J:5-6, V:7-8)	Todo el perímetro urbano de Cali.	cali.gov.co
+13	Valle del Cauca	Buenaventura	Distrito Especial	SÍ (Últ. díg.)	NO	SÍ (L-V)	Carga portuaria	L-V: 07:00–19:00 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0)	Isla de Cascajal y zona continental urbana.	buenaventura.gov.co
+14	Santander	Bucaramanga	Capital Dpto.	SÍ (L-S)	SÍ (L-S)	SÍ (L-V)	TPC y Carga	L-V: 06:00–20:00 / Sáb: 09:00–13:00 (L:5-6, M:7-8, Mi:9-0, J:1-2, V:3-4)	Todo el perímetro urbano de Bucaramanga.	transitobucaramanga.gov.co
+15	Santander	Floridablanca	Metropolitano	SÍ (L-S)	SÍ (L-S)	SÍ (L-V)	TPC y Carga	L-V: 06:00–20:00 / Sáb: 09:00–13:00 (L:5-6, M:7-8, Mi:9-0, J:1-2, V:3-4)	Todo el municipio y Autopista Bucaramanga–Floridablanca.	transitofloridablanca.gov.co
+16	Santander	Girón	Metropolitano	SÍ (L-S)	SÍ (L-S)	SÍ (L-V)	TPC y Carga	L-V: 06:00–20:00 / Sáb: 09:00–13:00 (L:5-6, M:7-8, Mi:9-0, J:1-2, V:3-4)	Casco urbano, Anillo Vial y vía a Lebrija/Aeropuerto.	giron-santander.gov.co
+17	Santander	Piedecuesta	Metropolitano	SÍ (L-S)	SÍ (L-S)	SÍ (L-V)	TPC y Carga	L-V: 06:00–20:00 / Sáb: 09:00–13:00 (L:5-6, M:7-8, Mi:9-0, J:1-2, V:3-4)	Casco urbano y Autopista Floridablanca–Piedecuesta.	alkaldiapiedecuesta.gov.co
+18	Bolívar	Cartagena de Indias	Capital Dpto.	SÍ (2 franjas)	SÍ (05-23h + Noct.)	SÍ (24h)	Carga en corredores	L-V (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0). Carros: 07-09h y 18-20h. Motos: 05-23h.	Avenidas arteriales (carros) y todo el perímetro (motos). Centro amurallado vedado a motos.	transitocartagena.gov.co
+19	Atlántico	Barranquilla	Capital Dpto.	NO (Solo Vía 40 Carnaval)	Restricción Centro/Noct.	Derogado (Dec. 0450/25)	SÍ (Carga en zonas/horas)	Carga en horas pico; Motos prohibidas en Centro y de 23:00 a 05:00.	Cuadrante del Centro y Paseo Bolívar prohibido a motos.	barranquilla.gov.co / ambq.gov.co
+20	Atlántico	Soledad	Metropolitano	NO	SÍ (Motos y Motocarros)	NO	Carga en centro	L-V: 05:00–22:00 (L:1-3, M:2-4, Mi:5-7, J:6-8, V:9-0) + Día 30 sin moto	Toda la jurisdicción urbana de Soledad.	transitosoledad.gov.co
+21	Atlántico	Malambo	Metropolitano	SÍ (Últ. díg.)	SÍ (1.er urb / Últ. vial)	NO	Carga regulada	Urbano: L-V 05:00–20:00 / Vial Dptal: L-V 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0)	Casco urbano de Malambo y vías secundarias/departamentales.	malambo-atlantico.gov.co
+22	Atlántico	Puerto Colombia	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+23	Atlántico	Galapa	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+24	Atlántico	Baranoa	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales + centro urbano.	baranoa-atlantico.gov.co
+25	Atlántico	Sabanalarga	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+26	Atlántico	Sabanagrande	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+27	Atlántico	Santo Tomás	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+28	Atlántico	Palmar de Varela	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+29	Atlántico	Ponedera	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+30	Atlántico	Polonuevo	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+31	Atlántico	Usiacurí	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+32	Atlántico	Juan de Acosta	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+33	Atlántico	Tubará	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+34	Atlántico	Piojó	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+35	Atlántico	Repelón	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+36	Atlántico	Manatí	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+37	Atlántico	Candelaria	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+38	Atlántico	Campo de la Cruz	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+39	Atlántico	Santa Lucía	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+40	Atlántico	Suan	Decreto Dptal.	NO	SÍ (Motos/Motocarros)	NO	Libre	L-V: 08:00–23:59 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + V-D/Fest: 23:00–04:00	Vías secundarias, terciarias y departamentales (Dec. 000362).	transitodelatlantico.gov.co
+41	N. de Santander	San José de Cúcuta	Capital Dpto.	SÍ (Local/Foráneo)	SÍ (07:00–20:00)	SÍ (1 díg.)	TPC y Carga en centro	L-V (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0). Local: 3 franjas / Foráneo: 07:00–20:00	Polígono central (locales) y todo el municipio (placas nacionales/venezolanas).	cucuta.gov.co
+42	N. de Santander	Los Patios	Metropolitano AMC	SÍ (Régimen AMC)	SÍ (Régimen AMC)	SÍ (AMC)	Carga regulada	L-V (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) integrado al Área Metropolitana de Cúcuta	Beneficio de matrícula metropolitana AMC; control en corredor vial metropolitano.	lospatios-nortedesantander.gov.co
+43	N. de Santander	Villa del Rosario	Metropolitano AMC	SÍ (Régimen AMC)	SÍ (Régimen AMC)	SÍ (AMC)	Carga fronteriza	L-V (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) integrado al Área Metropolitana de Cúcuta	Autopista Internacional hacia Puente Simón Bolívar y casco urbano metropolitano.	villadelrosario-nortedesantander.gov.co
+44	N. de Santander	El Zulia	Metropolitano AMC	SÍ (Régimen AMC)	SÍ (Régimen AMC)	SÍ (AMC)	Carga regulada	L-V (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) en conexión metropolitana con Cúcuta	Integrado al régimen de placas del Área Metropolitana de Cúcuta (Decreto 0212).	cucuta.gov.co
+45	N. de Santander	San Cayetano	Metropolitano AMC	SÍ (Régimen AMC)	SÍ (Régimen AMC)	SÍ (AMC)	Carga regulada	L-V (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) en conexión metropolitana con Cúcuta	Integrado al régimen de placas del Área Metropolitana de Cúcuta (Decreto 0212).	cucuta.gov.co
+46	N. de Santander	Puerto Santander	Metropolitano AMC	SÍ (Régimen AMC)	SÍ (Régimen AMC)	SÍ (AMC)	Carga fronteriza	L-V (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) en conexión metropolitana con Cúcuta	Integrado al régimen de placas del Área Metropolitana de Cúcuta (Decreto 0212).	cucuta.gov.co
+47	N. de Santander	Ocaña	Municipio Intermedio	SÍ (Local/Foráneo)	SÍ (Centro)	NO	Carga en centro	L-V (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0). Local: 3 franjas / Foráneo: 07:00–19:00	Centro Histórico y comercial de Ocaña (Placas foráneas en todo el casco urbano).	ocana-nortedesantander.gov.co
+48	N. de Santander	Pamplona	Municipio Intermedio	SÍ (Últ. díg.)	SÍ (Últ. díg.)	NO	Carga en centro	L-V: 08:00–18:00 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0)	Cuadrante del Centro Histórico de Pamplona.	pamplona-nortedesantander.gov.co
+49	Risaralda	Pereira	Capital Dpto.	SÍ (Últ. díg.)	SÍ (1.er díg.)	SÍ (L-S y Fest)	Carga en centro	L-V: 06:00–20:00 (L:0-1, M:2-3, Mi:4-5, J:6-7, V:8-9)	Toda el área urbana. Exentas: Variante Condina, Romelia–El Pollo y Autopista del Café.	movilidadpereira.gov.co
+50	Risaralda	Dosquebradas	Metropolitano	SÍ (Últ. díg.)	SÍ (1.er díg.)	SÍ (AMCO)	Carga en Av. Simón Bolívar	L-V: 06:00–20:00 (L:0-1, M:2-3, Mi:4-5, J:6-7, V:8-9)	Toda el área urbana de Dosquebradas y Viaducto. Exenta: Variante La Romelia–El Pollo.	dosquebradas.gov.co
+51	Quindío	Armenia	Capital Dpto.	SÍ (Últ. díg.)	SÍ (Últ. díg.)	SÍ (L-D)	TPC y Carga en centro	L-V: 07:00–19:00 (L:5-6, M:7-8, Mi:9-0, J:1-2, V:3-4)	Cuadrante céntrico (07:00–19:00) y toda la ciudad en 3 franjas pico.	armenia.gov.co
+52	Quindío	Salento	Municipio Turístico	SÍ (Estacional/Fest.)	SÍ (Estacional/Fest.)	Libre	Restricción buses/carga	Puentes festivos, Semana Santa y fin de año según aforo vial	Acceso urbano y corredor hacia el Valle de Cocora.	salento-quindio.gov.co
+53	Caldas	Manizales	Capital Dpto.	SÍ (Nov 2026 + PNN)	NO (Salvo PNN)	SÍ (L-D)	SÍ (Busetas TPC)	Nov 2026: L-V 06:00–20:00 (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0) + S-D-Fest PNN	Casco urbano (Nov 2026, Decreto 0357) y corredor hacia Murillo (fines de semana).	manizales.gov.co
+54	Tolima	Ibagué	Capital Dpto.	SÍ (Últ. díg.)	NO	SÍ (L-D 365d)	SÍ (Busetas TPC)	L-V: 06:00–21:00 (L:6-7, M:8-9, Mi:0-1, J:2-3, V:4-5)	Polígono urbano de Ibagué (Hora valle 09-11h y 15-17h solo para matriculados en Ibagué).	ibague.gov.co
+55	Tolima	Murillo	Corredor Ambiental	SÍ (Sáb, Dom y Fest)	SÍ (Sáb, Dom y Fest)	Libre	Prohibido camiones pesados	Sábados, Domingos y Festivos: 05:00–16:00 (Alterna Par/Impar cada fin de semana)	Vía Murillo (Tolima) – Manizales (Sector La Esperanza) por PNN Los Nevados.	tolima.gov.co
+56	Magdalena	Santa Marta	Capital Dpto.	SÍ (Local/Foráneo)	SÍ (07:00–19:00)	SÍ (L-S)	TPC y Carga portuaria	L-V (L:1-2, M:3-4, Mi:5-6, J:7-8, V:9-0). Local: 3 franjas / Foráneo: 07:00–20:00	Todo el perímetro urbano de Santa Marta, El Rodadero, Gaira y Taganga.	santamarta.gov.co
+57	Meta	Villavicencio	Capital Dpto.	SÍ (2 franjas)	NO	SÍ (L-D 365d)	Carga en centro	L-V: 06:30–09:30 y 17:00–20:00 (L:5-6, M:7-8, Mi:9-0, J:1-2, V:3-4)	Polígono central y comercial de Villavicencio.	villavicencio.gov.co
+58	Nariño	San Juan de Pasto	Capital Dpto.	SÍ (Ciclo móvil)	SÍ (Ciclo móvil)	SÍ (L-S)	Carga en centro	L-V: 07:30–19:00 (0-1, 2-3, 4-5, 6-7, 8-9 desplazando 1 día/semana)	Perímetro urbano de Pasto (exenta Variante Panamericana).	pasto.gov.co
+59	Cauca	Popayán	Capital Dpto.	SÍ (Últ. díg.)	SÍ (Últ. díg.)	NO	Carga liviana/pesada	L-V: 07:00–20:00 (L:9-0, M:1-2, Mi:3-4, J:5-6, V:7-8)	Perímetro urbano de Popayán (exenta Variante Panamericana).	popayan.gov.co
+60	Boyacá	Tunja	Capital Dpto.	SÍ (Últ. díg.)	NO	NO	Carga en Centro Hist.	L-V (L:3-4, M:5-6, Mi:7-8, J:9-0, V:1-2). Centro: 06-20h / Resto: 3 franjas	Centro Histórico (continuo) y resto del perímetro urbano (3 franjas).	tunja-boyaca.gov.co
+61	Chocó	Quibdó	Capital Dpto.	SÍ (2 díg./día)	SÍ (4 díg./día)	NO	Carga en centro	L-V: 07:00–19:00 (Carros: L:1-2, M:5-6, Mi:9-0, J:7-8, V:3-4)	Perímetro urbano y centro de Quibdó.	quibdo-choco.gov.co
+62	Cundinamarca	Soacha	Conurbado Bogotá	SÍ (Solo Lunes Festivo)	NO	NO	SÍ (TPC L-V y Carga)	TPC: L-V 05:00–20:00 / Particulares: Lunes Festivo 12:00–20:00 (Par/Impar)	Autopista Sur (Pico y Placa Regional en festivos y carga/TPC entre semana).	alcaldiasoacha.gov.co
+63	Cundinamarca	Chía	Sabana Norte	SÍ (Solo Lunes Festivo)	NO	NO	SÍ (Carga >3.4 ton L-S)	Carga Ambiental (>3.4t): 06:00–20:00 / Particulares: Lunes Festivo 12:00–20:00	Av. Pradilla y variante (Carga); Autopista Norte y Cra. 7 (Regional en festivos).	chia-cundinamarca.gov.co
+64	Cundinamarca	Cota, Cajicá, Funza, Mosquera y Madrid (Sabana Occidente/Norte)	Corredores Sabana	SÍ (En ingreso a Bogotá Lunes Festivo)	NO	NO	Restricción Carga Nal.	Lunes Festivos: 12:00–16:00 (solo pares) y 16:00–20:00 (solo impares) hacia Bogotá	Corredores Calle 13, Calle 80, Vía Suba-Cota y Autopista Norte hacia Bogotá.	movilidadbogota.gov.co
+65	Cundinamarca	La Calera, Chipaque y Choachí (Oriente Bogotá)	Corredores Oriente	SÍ (En ingreso a Bogotá Lunes Festivo)	NO	NO	Restricción Carga Nal.	Lunes Festivos: 12:00–16:00 (solo pares) y 16:00–20:00 (solo impares) hacia Bogotá	Peaje Patios / Vía La Calera, Vía Choachí y Vía al Llano en ingreso a Bogotá.	movilidadbogota.gov.co
+6. FICHAS TÉCNICAS EXHAUSTIVAS POR CIUDAD Y REGIÓN (PARA CONSULTA DETALLADA DE IA)
+6.1. BOGOTÁ D.C. Y CORREDORES DE CUNDINAMARCA
+Autoridad: Alcaldía Mayor de Bogotá – Secretaría Distrital de Movilidad (movilidadbogota.gov.co).
+Marco Normativo: Decreto Distrital 652 de 2025 (Decreto Único del Sector Movilidad).
+Vigencia: 01/01/2026 al 31/12/2026 (medida indefinida y permanente).
+Reglas por tipo de vehículo:
+Carros Particulares:
+Días que aplica: Lunes, Martes, Miércoles, Jueves y Viernes (días hábiles).
+Días que NO aplica: Sábados, Domingos y Festivos en el perímetro urbano ordinario (en lunes festivos aplica el Pico y Placa Regional en los 9 accesos).
+Asignación de números (Último dígito de la placa):
+Días calendario IMPARES (1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31): Tienen RESTRICCIÓN las placas terminadas en 1, 2, 3, 4 y 5. (Pueden circular: 6, 7, 8, 9 y 0).
+Días calendario PARES (2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30): Tienen RESTRICCIÓN las placas terminadas en 6, 7, 8, 9 y 0. (Pueden circular: 1, 2, 3, 4 y 5).
+Hora de inicio: 06:00 a.m. | Hora de fin: 09:00 p.m. (15 horas continuas).
+Zonas: 100% del perímetro urbano de Bogotá D.C. No existen vías exentas.
+Motocicletas:
+Estado: EXENTAS todos los días del año (lunes a domingo y festivos).
+Taxis y Transporte Especial (Automóviles/Camionetas placa blanca de 4 pasajeros):
+Días que aplica: Lunes a Sábado. (Domingos y Festivos NO aplica).
+Números: 2 dígitos por día que rotan cada semana entre las parejas (1-2), (3-4), (5-6), (7-8), (9-0).
+Hora de inicio: 05:30 a.m. | Hora de fin: 09:00 p.m.
+Transporte Público Colectivo (Buses):
+Buses de TransMilenio Troncal y SITP Zonal están EXENTOS.
+Transporte de Carga:
+Camiones con más de 20 años de antigüedad:
+Lunes a Viernes: Restringidos todos (sin importar placa) de 06:00 a.m. a 08:00 a.m. y de 05:00 p.m. a 08:00 p.m.
+Sábados: Restringidos de 05:00 a.m. a 09:00 p.m. alternando cada sábado entre placas pares (0, 2, 4, 6, 8) e impares (1, 3, 5, 7, 9).
+Camiones de más de 3.5 toneladas (3.500 kg) y más de 8.5 toneladas: Restricción en franjas pico (06:00–08:00 y 17:00–20:00) y polígonos ambientales.
+Pico y Placa Regional (Lunes Festivos – 9 Corredores de Bogotá y Sabana):
+Días que aplica: Todos los lunes festivos (y domingos cuando el puente termina en domingo).
+Franja 1 (12:00 m. a 04:00 p.m.): Tienen RESTRICCIÓN las placas terminadas en número IMPAR (1, 3, 5, 7, 9). Solo ingresan placas pares (0, 2, 4, 6, 8).
+Franja 2 (04:00 p.m. a 08:00 p.m.): Tienen RESTRICCIÓN las placas terminadas en número PAR (0, 2, 4, 6, 8). Solo ingresan placas impares (1, 3, 5, 7, 9).
+Tramos exactos de los 9 corredores:
+Autopista Norte: Peaje Andes hasta Calle 198 (Chía / Bogotá).
+Autopista Sur: Límite municipal de Soacha hasta Av. Boyacá (Soacha / Bogotá).
+Avenida Centenario (Calle 13): Río Bogotá hasta Av. Ciudad de Cali (Mosquera / Funza / Madrid / Bogotá).
+Avenida Calle 80: Puente de Guadua hasta Portal 80 (Cota / Funza / Bogotá).
+Avenida Carrera 7: Calle 245 hasta Calle 183 (Chía / La Calera / Bogotá).
+Avenida Boyacá – Vía al Llano: Túnel Argelino Durán Quintero hasta antigua vía al Llano (Chipaque / Bogotá).
+Vía Suba – Cota: Río Bogotá hasta Av. Calle 170 (Cota / Bogotá).
+Vía a La Calera: Peaje Patios hasta Av. Carrera 7 (La Calera / Bogotá).
+Vía a Choachí: Vía a Monserrate hasta Av. Circunvalar (Choachí / Bogotá).
+6.2. MEDELLÍN Y LOS 10 MUNICIPIOS DEL VALLE DE ABURRÁ (ANTIOQUIA)
+Municipios (10): Medellín, Bello, Itagüí, Envigado, Sabaneta, La Estrella, Caldas, Copacabana, Girardota y Barbosa.
+Autoridad: Área Metropolitana del Valle de Aburrá (metropol.gov.co) y las 10 Secretarías de Movilidad municipales (medellin.gov.co, bello.gov.co, itagui.gov.co, envigado.gov.co, sabaneta.gov.co).
+Vigencia:
+Primer Semestre 2026: Del 02/02/2026 al 31/07/2026 (L: 6-9, M: 5-7, Mi: 1-8, J: 0-2, V: 3-4).
+Segundo Semestre 2026 (Actual): Del 03/08/2026 al 29/01/2027 (sancionatorio desde el 10/08/2026).
+Días que aplica: Lunes a Viernes hábiles. (Sábados, Domingos y Festivos NO aplica).
+Hora de inicio: 05:00 a.m. | Hora de fin: 08:00 p.m. (15 horas continuas).
+Números por día (Segundo Semestre: 03/08/2026 al 29/01/2027):
+Lunes: 5 y 8 (Carros: último dígito / Motos 2T y 4T: primer dígito)
+Martes: 1 y 4 (Carros: último dígito / Motos 2T y 4T: primer dígito)
+Miércoles: 0 y 2 (Carros: último dígito / Motos 2T y 4T: primer dígito)
+Jueves: 3 y 6 (Carros: último dígito / Motos 2T y 4T: primer dígito)
+Viernes: 7 y 9 (Carros: último dígito / Motos 2T y 4T: primer dígito)
+Taxis: Lunes a viernes de 06:00 a.m. a 08:00 p.m. (1 dígito diario que rota quincenalmente en días hábiles).
+Auditoría de Vías Exentas por Municipio:
+En Medellín: Están exentas el Sistema Vial del Río (Autopista Sur y Av. Regional), Av. Las Palmas, Av. 33 (entre el Río y Las Palmas), Calle 10 (entre el Río y la Terminal del Sur), Laterales de la Quebrada La Iguaná (entre carreras 63 y 80), Puente Horacio Toro (calzada oriente-occidente) y los 5 corregimientos (Santa Elena, San Cristóbal, San Antonio de Prado, Altavista y San Sebastián de Palmitas).
+En Bello: NO están exentas la Autopista Norte ni la Av. Regional (aplica comparendo electrónico y operativo en el sector de Niquía y la Autopista Norte).
+En Itagüí: SÍ está exenta la Autopista Sur a su paso por el municipio.
+En Sabaneta y Envigado: SÍ están exentas la Av. Regional y la Variante a Caldas / Variante Las Palmas; aplica restricción en la Av. El Poblado, Av. Las Vegas y Cra. 43A.
+6.3. SANTIAGO DE CALI Y BUENAVENTURA (VALLE DEL CAUCA)
+En Santiago de Cali (cali.gov.co):
+Vigencia Primer Semestre: 05/01/2026 al 30/06/2026 (L: 1-2, M: 3-4, Mi: 5-6, J: 7-8, V: 9-0).
+Vigencia Segundo Semestre (Actual): 01/07/2026 al 31/12/2026:
+Lunes: 9 y 0 | Martes: 1 y 2 | Miércoles: 3 y 4 | Jueves: 5 y 6 | Viernes: 7 y 8.
+Días: Lunes a Viernes. (Sábados, Domingos y Festivos NO aplica).
+Horario: Inicia 06:00 a.m. – Termina 07:00 p.m.
+Vehículos: Exclusivamente Carros Particulares (último dígito). Motos y Taxis están EXENTOS.
+Zonas: Todo el perímetro urbano de Cali.
+En Buenaventura (buenaventura.gov.co):
+Vigencia Segundo Semestre: 01/07/2026 al 31/12/2026.
+Días: Lunes a Viernes. (Sábados, Domingos y Festivos NO aplica para particulares).
+Horario: Inicia 07:00 a.m. – Termina 07:00 p.m.
+Números por día (Carros Particulares y Taxis – Último dígito):
+Lunes: 1 y 2 | Martes: 3 y 4 | Miércoles: 5 y 6 | Jueves: 7 y 8 | Viernes: 9 y 0.
+Motos: EXENTAS en Buenaventura.
+6.4. BUCARAMANGA, FLORIDABLANCA, GIRÓN Y PIEDECUESTA (SANTANDER)
+Autoridad: Dirección de Tránsito de Bucaramanga (transitobucaramanga.gov.co) y Secretarías de Floridablanca, Girón y Piedecuesta.
+Normativa: Resolución 854 de diciembre de 2025 (establece las 4 rotaciones trimestrales del año 2026).
+Vigencia Trimestre IV (Actual): Del 05/10/2026 al 31/12/2026.
+Vehículos: Carros particulares y Motocicletas (ambos por el ÚLTIMO dígito de la placa).
+Días que aplica: Lunes a Viernes Y SÁBADOS. (Domingos y Festivos NO aplica).
+Números de Lunes a Viernes (05/10/2026 al 31/12/2026):
+Lunes: 5 y 6
+Martes: 7 y 8
+Miércoles: 9 y 0
+Jueves: 1 y 2
+Viernes: 3 y 4
+Horarios:
+Lunes a Viernes: Inicia 06:00 a.m. – Termina 08:00 p.m.
+Sábados: Inicia 09:00 a.m. – Termina 01:00 p.m. (Ver tabla de fechas exactas de sábados en la Sección 4).
+Taxis: Lunes a viernes de 07:00 a.m. a 09:00 p.m. (2 dígitos por día con rotación semanal).
+Zonas: Todo el perímetro urbano y autopistas de conexión entre Bucaramanga, Floridablanca, Girón y Piedecuesta.
+6.5. CARTAGENA DE INDIAS (BOLÍVAR)
+Autoridad: Departamento Administrativo de Tránsito y Transporte – DATT (transitocartagena.gov.co).
+Normativa y Vigencia: Decreto 0015 del 14 de enero de 2026 (Rotación vigente del 05/10/2026 al 22/01/2027).
+Números de Lunes a Viernes (Carros Particulares y Motos – Último dígito):
+Lunes: 1 y 2 | Martes: 3 y 4 | Miércoles: 5 y 6 | Jueves: 7 y 8 | Viernes: 9 y 0.
+Diferencia de Horarios y Zonas por Tipo de Vehículo:
+Carros Particulares:
+Días: Lunes a Viernes (Sábados, domingos y festivos no aplica).
+Horario (Doble franja): De 07:00 a.m. a 09:00 a.m. y de 06:00 p.m. a 08:00 p.m.
+Zonas: Avenidas y arterias principales (Av. Pedro de Heredia, Av. Santander, Av. Blas de Lezo, Av. Venezuela, Av. Crisanto Luque, Av. del Consulado, Transversal 54, Corredor de Carga).
+Motocicletas:
+Pico y Placa Diurno (Lunes a Viernes por dígito): De 05:00 a.m. a 11:00 p.m. en todas las vías de la ciudad.
+Restricción Nocturna General (Lunes a Domingo y Festivos – Todas las motos): De 11:00 p.m. a 05:00 a.m. del día siguiente.
+Zona Prohibida 24 horas: Prohibido el ingreso de motos al Centro Histórico Amurallado (Centro, San Diego, La Matuna y Getsemaní).
+Taxis (Decreto 0004 de 2026 – Rotación Noviembre: 02/11/2026 al 27/11/2026):
+Días: Lunes a Viernes (Sábados, domingos y festivos no aplica).
+Números (Noviembre 2026): Lunes: 5-6, Martes: 7-8, Miércoles: 9-0, Jueves: 1-2, Viernes: 3-4.
+Horario: 24 horas (Inicia 06:00 a.m. y termina 06:00 a.m. del día siguiente).
+7. RESUMEN ESTRUCTURADO EN YAML PARA INGESTA DIRECTA EN OTRA IA
+yaml
+auditoria_pico_y_placa_colombia_2026:
+  fecha_corte: "2026-11-09"
+  totales_nacionales:
+    departamentos_totales: 33 # 32 departamentos + Bogotá D.C.
+    departamentos_con_pico_y_placa_por_digito: 18
+    departamentos_con_restriccion_zonal_sin_digito: 4
+    departamentos_sin_restriccion: 11
+    municipios_y_distritos_con_pico_y_placa_total: 65
+  rotacion_vigente_noviembre_2026_lunes_a_viernes:
+    bogota_dc:
+      carros: {regla: "ultimo_digito", esquema: "dias_impares_restringe_1_2_3_4_5_dias_pares_restringe_6_7_8_9_0", inicio: "06:00", fin: "21:00", sabado: false, domingo: false, festivos: "Solo Pico y Placa Regional 12:00-20:00"}
+      motos: {aplica: false}
+      taxis: {aplica: true, dias: "Lunes a Sabado", inicio: "05:30", fin: "21:00", digitos_por_dia: 2}
+    medellin_y_valle_de_aburra_10_municipios:
+      vigencia: "2026-08-03 a 2027-01-29"
+      carros: {regla: "ultimo_digito", lunes: [5,8], martes: [1,4], miercoles: [0,2], jueves: [3,6], viernes: [7,9], inicio: "05:00", fin: "20:00", sabado: false, domingo: false, festivos: false}
+      motos: {regla: "primer_digito", lunes: [5,8], martes: [1,4], miercoles: [0,2], jueves: [3,6], viernes: [7,9], inicio: "05:00", fin: "20:00", sabado: false, domingo: false, festivos: false}
+      taxis: {aplica: true, regla: "ultimo_digito", esquema: "1_digito_quincenal_dias_habiles", inicio: "06:00", fin: "20:00"}
+    cali:
+      vigencia: "2026-07-01 a 2026-12-31"
+      carros: {regla: "ultimo_digito", lunes: [9,0], martes: [1,2], miercoles: [3,4], jueves: [5,6], viernes: [7,8], inicio: "06:00", fin: "19:00", sabado: false, domingo: false, festivos: false}
+      motos: {aplica: false}
+      taxis: {aplica: false}
+    buenaventura:
+      vigencia: "2026-07-01 a 2026-12-31"
+      carros: {regla: "ultimo_digito", lunes: [1,2], martes: [3,4], miercoles: [5,6], jueves: [7,8], viernes: [9,0], inicio: "07:00", fin: "19:00", sabado: false, domingo: false, festivos: false}
+      motos: {aplica: false}
+      taxis: {aplica: true, lunes: [1,2], martes: [3,4], miercoles: [5,6], jueves: [7,8], viernes: [9,0], inicio: "07:00", fin: "19:00"}
+    bucaramanga_y_area_metropolitana_4_municipios:
+      vigencia: "2026-10-05 a 2026-12-31 (Resolucion 854 DTB)"
+      carros_y_motos: {regla: "ultimo_digito", lunes: [5,6], martes: [7,8], miercoles: [9,0], jueves: [1,2], viernes: [3,4], inicio_lv: "06:00", fin_lv: "20:00", sabado: true, inicio_sab: "09:00", fin_sab: "13:00", domingo: false, festivos: false}
+      taxis: {aplica: true, dias: "Lunes a Viernes", inicio: "07:00", fin: "21:00", digitos_por_dia: 2}
+    cartagena:
+      vigencia: "2026-10-05 a 2027-01-22 (Decreto 0015 de 2026)"
+      carros: {regla: "ultimo_digito", lunes: [1,2], martes: [3,4], miercoles: [5,6], jueves: [7,8], viernes: [9,0], franjas: ["07:00-09:00", "18:00-20:00"], sabado: false, domingo: false, festivos: false}
+      motos: {regla: "ultimo_digito", lunes: [1,2], martes: [3,4], miercoles: [5,6], jueves: [7,8], viernes: [9,0], inicio: "05:00", fin: "23:00", restriccion_nocturna_diaria: "23:00-05:00"}
+      taxis: {vigencia: "2026-11-02 a 2026-11-27 (Decreto 0004)", lunes: [5,6], martes: [7,8], miercoles: [9,0], jueves: [1,2], viernes: [3,4], inicio: "06:00", fin: "06:00 (+1d)"}
+    barranquilla:
+      carros: {aplica: false}
+      motos: {aplica: false, restriccion_zonal: "Prohibido Centro y horario 23:00-05:00"}
+      taxis: {aplica: false, nota: "Derogado por Decreto Distrital 0450 de 2025"}
+    soledad_atlantico:
+      carros: {aplica: false}
+      motos: {regla: "ultimo_digito", lunes: [1,3], martes: [2,4], miercoles: [5,7], jueves: [6,8], viernes: [9,0], inicio: "05:00", fin: "22:00", dia_sin_moto: "Dia 30 de cada mes"}
+    atlantico_20_municipios_decreto_000362:
+      carros: {aplica: false, excepcion: "Malambo casco urbano aplica 05:00-20:00"}
+      motos_y_motocarros: {regla: "ultimo_digito", lunes: [1,2], martes: [3,4], miercoles: [5,6], jueves: [7,8], viernes: [9,0], inicio: "08:00", fin: "23:59", nocturno_fines_de_semana_y_festivos: "23:00-04:00"}
+    cucuta_y_area_metropolitana_6_municipios:
+      vigencia: "2026-01-01 a 2026-12-31 (Decreto 0212)"
+      carros_placa_local: {regla: "ultimo_digito", lunes: [1,2], martes: [3,4], miercoles: [5,6], jueves: [7,8], viernes: [9,0], franjas: ["07:00-08:30", "11:30-14:30", "17:30-19:30"]}
+      carros_placa_foranea_y_motos: {regla: "ultimo_digito", lunes: [1,2], martes: [3,4], miercoles: [5,6], jueves: [7,8], viernes: [9,0], inicio: "07:00", fin: "20:00"}
+    ocana:
+      carros_y_motos: {regla: "ultimo_digito", lunes: [1,2], martes: [3,4], miercoles: [5,6], jueves: [7,8], viernes: [9,0], franjas_local: ["07:30-08:30", "11:30-14:30", "17:30-19:00"], continuo_foraneo: "07:00-19:00"}
+    pamplona:
+      carros_y_motos: {regla: "ultimo_digito", lunes: [1,2], martes: [3,4], miercoles: [5,6], jueves: [7,8], viernes: [9,0], inicio: "08:00", fin: "18:00"}
+    pereira_y_dosquebradas:
+      vigencia: "2026-01-01 a 2026-12-31"
+      carros: {regla: "ultimo_digito", lunes: [0,1], martes: [2,3], miercoles: [4,5], jueves: [6,7], viernes: [8,9], inicio: "06:00", fin: "20:00"}
+      motos: {regla: "primer_digito", lunes: [0,1], martes: [2,3], miercoles: [4,5], jueves: [6,7], viernes: [8,9], inicio: "06:00", fin: "20:00"}
+      taxis: {aplica: true, dias: "Lunes a Sabado y Festivos", inicio: "07:00", fin: "03:00 (+1d)", digitos_por_dia: 1}
+    armenia:
+      vigencia: "2026-01-01 a 2026-12-31 (Decreto 135 de 2026)"
+      carros_y_motos: {regla: "ultimo_digito", lunes: [5,6], martes: [7,8], miercoles: [9,0], jueves: [1,2], viernes: [3,4], inicio: "07:00", fin: "19:00"}
+      taxis: {aplica: true, dias: "Lunes a Domingo y Festivos", digitos_por_dia: 2}
+    manizales:
+      vigencia: "2026-11-03 a 2026-11-30 (Decreto 0357 de 2026)"
+      carros: {regla: "ultimo_digito", lunes: [1,2], martes: [3,4], miercoles: [5,6], jueves: [7,8], viernes: [9,0], inicio: "06:00", fin: "20:00"}
+      motos: {aplica: false}
+      taxis: {aplica: true, dias: "Lunes a Domingo", inicio: "04:00", fin: "04:00 (+1d)"}
+    ibague:
+      vigencia: "2026-07-01 a 2026-12-31 (Decreto 0768)"
+      carros: {regla: "ultimo_digito", lunes: [6,7], martes: [8,9], miercoles: [0,1], jueves: [2,3], viernes: [4,5], inicio: "06:00", fin: "21:00", hora_valle_locales: ["09:00-11:00", "15:00-17:00"]}
+      motos: {aplica: false}
+      taxis: {aplica: true, dias: "Lunes a Domingo y Festivos (365 dias)", inicio: "06:00", fin: "20:00", digitos_por_dia: 1}
+    santa_marta:
+      vigencia: "2026-05-08 a 2026-12-31 (Decreto 213 de 2026)"
+      carros_y_motos: {regla: "ultimo_digito", lunes: [1,2], martes: [3,4], miercoles: [5,6], jueves: [7,8], viernes: [9,0], franjas_local: ["07:00-09:00", "11:30-14:00", "17:00-20:00"], continuo_foraneo: "07:00-20:00", motos_continuo: "07:00-19:00"}
+      taxis: {aplica: true, dias: "Lunes a Sabado", inicio: "07:00", fin: "23:59"}
+    villavicencio:
+      vigencia: "2026-01-26 a 2026-12-22 (Decreto 015 de 2026)"
+      carros: {regla: "ultimo_digito", lunes: [5,6], martes: [7,8], miercoles: [9,0], jueves: [1,2], viernes: [3,4], franjas: ["06:30-09:30", "17:00-20:00"]}
+      motos: {aplica: false}
+      taxis: {aplica: true, dias: "Lunes a Domingo y Festivos", inicio: "06:00", fin: "24:00", digitos_por_dia: 1}
+    pasto:
+      vigencia: "2026-07-24 a 2026-12-31 (Decreto 0122 de 2026)"
+      carros_motos_y_taxis: {regla: "ultimo_digito", esquema: "ciclo_movil_semanal", ref_noviembre_2026: {lunes: [2,3], martes: [4,5], miercoles: [6,7], jueves: [8,9], viernes: [0,1]}, inicio: "07:30", fin: "19:00"}
+    popayan:
+      vigencia: "2026-07-06 a 2026-12-31 (Decreto 20261000000355)"
+      carros_y_motos: {regla: "ultimo_digito", lunes: [9,0], martes: [1,2], miercoles: [3,4], jueves: [5,6], viernes: [7,8], inicio: "07:00", fin: "20:00"}
+      taxis: {aplica: false}
+    tunja:
+      vigencia: "2026-01-13 a 2026-12-31"
+      carros: {regla: "ultimo_digito", lunes: [3,4], martes: [5,6], miercoles: [7,8], jueves: [9,0], viernes: [1,2], centro_historico: "06:00-20:00", resto_ciudad: ["06:00-09:00", "12:00-14:00", "17:00-20:00"]}
+      motos: {aplica: false}
+      taxis: {aplica: false}
+    quibdo:
+      vigencia: "2026-01-01 a 2026-12-31 (Decreto 036)"
+      carros: {regla: "ultimo_digito", lunes: [1,2], martes: [5,6], miercoles: [9,0], jueves: [7,8], viernes: [3,4], inicio: "07:00", fin: "19:00"}
+      motos: {regla: "ultimo_digito", lunes: [0,1,4,7], martes: [2,3,5,6], miercoles: [1,7,8,9], jueves: [0,2,3,6], viernes: [4,5,8,9], inicio: "07:00", fin: "19:00"}
+      taxis: {aplica: false}
