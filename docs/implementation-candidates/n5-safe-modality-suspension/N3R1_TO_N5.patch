@@ -1,0 +1,194 @@
+diff --git a/server/app/Services/RestrictionFormPayloadBuilder.php b/server/app/Services/RestrictionFormPayloadBuilder.php
+index a0267a8..f8bfd2f 100644
+--- a/server/app/Services/RestrictionFormPayloadBuilder.php
++++ b/server/app/Services/RestrictionFormPayloadBuilder.php
+@@ -64,11 +64,22 @@ public function build(Jurisdiction $jurisdiction, array $input, int $schemaVersi
+                 throw new DomainException('No repitas la misma combinación de vehículo y servicio.');
+             }
+             $seen[$coverageKey] = true;
+-            $rules = $coverage['rules'] ?? [];
+-            if (! is_array($rules) || count($rules) > 1000) {
++            // Schema2: a safe, reversible *consultation* pause uses the existing
++            // partial+empty-rules contract. It is NOT evidence of free circulation.
++            // Preserve the coverage identity so publication cannot drop it.
++            $pauseConsultation = $this->truthy($coverage['suspend_consultation'] ?? false);
++            if ($pauseConsultation && ($schemaVersion !== 2 || ! array_key_exists("$vehicleKind|$serviceType", $existingCompleteness))) {
++                throw new DomainException('Solo se puede suspender una cobertura schema2 que ya existe en el borrador de origen.');
++            }
++            if ($pauseConsultation && $this->truthy($coverage['confirmed_no_rules'] ?? false)) {
++                throw new DomainException('Suspender consulta y confirmar ausencia de restricciones son decisiones distintas; elige solo una.');
++            }
++            $submittedRules = $coverage['rules'] ?? [];
++            if (! is_array($submittedRules) || count($submittedRules) > 1000) {
+                 throw new DomainException('Las reglas de la cobertura no tienen un formato válido.');
+             }
+-            if ($rules === [] && ! $this->truthy($coverage['confirmed_no_rules'] ?? false)) {
++            $rules = $pauseConsultation ? [] : $submittedRules;
++            if ($rules === [] && ! $pauseConsultation && ! $this->truthy($coverage['confirmed_no_rules'] ?? false)) {
+                 throw new DomainException('Una cobertura sin reglas exige confirmar explícitamente que la fuente no publica restricción.');
+             }
+ 
+@@ -95,7 +106,9 @@ public function build(Jurisdiction $jurisdiction, array $input, int $schemaVersi
+                 if (! in_array($completeness, ['complete', 'partial'], true)) {
+                     throw new DomainException('La cobertura existente tiene un estado de completitud no válido; no se modificó.');
+                 }
+-                $normalizedCoverage['coverageCompleteness'] = $completeness;
++                // Pausing must never preserve "complete": otherwise an empty
++                // coverage could be evaluated as ALLOWED by the client.
++                $normalizedCoverage['coverageCompleteness'] = $pauseConsultation ? 'partial' : $completeness;
+             }
+             $result[] = $normalizedCoverage;
+         }
+diff --git a/server/resources/views/admin/restrictions/form.blade.php b/server/resources/views/admin/restrictions/form.blade.php
+index cf0a3e7..f83e307 100644
+--- a/server/resources/views/admin/restrictions/form.blade.php
++++ b/server/resources/views/admin/restrictions/form.blade.php
+@@ -19,7 +19,9 @@
+             'verified_at' => $formatDate($coverage['verifiedAt'] ?? null),
+             'stale_after' => $formatDate($coverage['staleAfter'] ?? null),
+             'source_urls' => implode("\n", $coverage['sourceUrls'] ?? []),
+-            'confirmed_no_rules' => empty($coverage['rules']),
++            'confirmed_no_rules' => empty($coverage['rules']) && ($coverage['coverageCompleteness'] ?? 'legacy') !== 'partial',
++            // Partial without rules cannot establish circulation permission.
++            'suspend_consultation' => empty($coverage['rules']) && ($coverage['coverageCompleteness'] ?? null) === 'partial',
+             'rules' => collect($coverage['rules'] ?? [])->map(static fn ($rule): array => [
+                 'id' => $rule['id'] ?? '',
+                 'priority' => $rule['priority'] ?? 1000,
+@@ -47,7 +49,7 @@
+     ];
+     $defaultCoverage = [
+         'vehicle_kind' => 'car', 'service_type' => 'private', 'pair' => 'car|private', 'coverage_completeness' => 'partial', 'verified_at' => '', 'stale_after' => '',
+-        'source_urls' => '', 'confirmed_no_rules' => false, 'rules' => [$defaultRule],
++        'source_urls' => '', 'confirmed_no_rules' => false, 'suspend_consultation' => false, 'rules' => [$defaultRule],
+     ];
+     $templateCoverage = $defaultCoverage;
+     $templateCoverage['rules'] = [];
+diff --git a/server/resources/views/admin/restrictions/partials/coverage-fields.blade.php b/server/resources/views/admin/restrictions/partials/coverage-fields.blade.php
+index d97b83f..8942f60 100644
+--- a/server/resources/views/admin/restrictions/partials/coverage-fields.blade.php
++++ b/server/resources/views/admin/restrictions/partials/coverage-fields.blade.php
+@@ -40,5 +40,11 @@
+             @include('admin.restrictions.partials.rule-fields', ['coverageIndex' => $coverageIndex, 'ruleIndex' => $ruleIndex, 'rule' => $rule, 'schemaVersion' => $schemaVersion])
+         @endforeach
+     </div>
+-    <label class="mt-4 flex min-h-12 items-center gap-3 rounded-md bg-amber-50 px-3 text-sm text-amber-950"><input type="checkbox" name="coverages[{{ $coverageIndex }}][confirmed_no_rules]" value="1" @checked(!empty($coverage['confirmed_no_rules']))>Confirmo que la fuente revisada no publica restricciones para esta cobertura.</label>
++    @if($schemaVersion === 2)
++        <label class="mt-4 flex min-h-12 items-start gap-3 rounded-md bg-amber-50 px-3 py-3 text-sm text-amber-950">
++            <input type="checkbox" class="mt-1" name="coverages[{{ $coverageIndex }}][suspend_consultation]" value="1" @checked(!empty($coverage['suspend_consultation']))>
++            <span><strong>Suspender consulta de esta modalidad</strong> (solo cobertura ya existente). Publica <code>partial</code> sin reglas y la app responde <strong>desconocido</strong>, nunca “puede circular”. Requiere revisión independiente. Para reactivar, recupera o vuelve a cargar las reglas respaldadas por la fuente.</span>
++        </label>
++    @endif
++    <label class="mt-4 flex min-h-12 items-center gap-3 rounded-md bg-amber-50 px-3 text-sm text-amber-950"><input type="checkbox" name="coverages[{{ $coverageIndex }}][confirmed_no_rules]" value="1" @checked(!empty($coverage['confirmed_no_rules']))>Confirmo que la fuente revisada no publica restricciones para esta cobertura. No marques esta opción al suspender la consulta.</label>
+ </section>
+diff --git a/server/tests/Feature/RestrictionSchemaV2LabRoundTripTest.php b/server/tests/Feature/RestrictionSchemaV2LabRoundTripTest.php
+index 16284c6..a1d36be 100644
+--- a/server/tests/Feature/RestrictionSchemaV2LabRoundTripTest.php
++++ b/server/tests/Feature/RestrictionSchemaV2LabRoundTripTest.php
+@@ -411,6 +411,39 @@ public function test_schema2_form_edits_publish_a_complete_snapshot_and_preserve
+         $v4 = $this->readPublishedRestrictions();
+         self::assertTrue($this->city($v4, 'co-ant-medellin-form')['consultationEnabled']);
+         self::assertSame($this->canonical($cityB), $this->canonical($this->city($v4, 'co-ant-abejorral-form')));
++
++        // Pausing an individual modality must not delete its coverage, overwrite
++        // another jurisdiction, or claim that the vehicle can circulate.
++        $this->actingAs($editor)->post(route('admin.restrictions.duplicate', $a2))->assertRedirect();
++        $paused = RestrictionRuleVersion::query()->where('jurisdiction_id', $medellin->id)->latest('version')->firstOrFail();
++        $pauseInput = $a2Input;
++        $pauseInput['coverages'][1]['suspend_consultation'] = '1';
++        $this->actingAs($editor)->put(route('admin.restrictions.update', $paused), $pauseInput)
++            ->assertRedirect()->assertSessionHasNoErrors();
++        $paused->refresh();
++        self::assertCount(2, $paused->payload['coverages']);
++        self::assertSame('partial', $paused->payload['coverages'][1]['coverageCompleteness']);
++        self::assertSame([], $paused->payload['coverages'][1]['rules']);
++        $this->validateVersionAs($paused, $reviewer);
++        $this->actingAs($reviewer)->post(route('admin.restrictions.publish'), [
++            'versions' => [$paused->id], 'publication_revision' => 4,
++        ])->assertRedirect()->assertSessionHasErrors('publication');
++        self::assertSame(4, $this->dataset->refresh()->publication_revision);
++        $this->approveVersion($paused, 4, $source);
++        $this->publishAs($reviewer, [$paused], 4);
++        $v5 = $this->readPublishedRestrictions();
++        $cityA5 = $this->city($v5, 'co-ant-medellin-form');
++        self::assertCount(2, $cityA5['coverages']);
++        self::assertSame('partial', $cityA5['coverages'][1]['coverageCompleteness']);
++        self::assertSame([], $cityA5['coverages'][1]['rules']);
++        self::assertSame($this->canonical($cityB), $this->canonical($this->city($v5, 'co-ant-abejorral-form')));
++
++        $this->actingAs($reviewer)->post(route('admin.restrictions.rollback', $a2), [
++            'publication_revision' => 5,
++        ])->assertRedirect(route('admin.restrictions.history'))->assertSessionHasNoErrors();
++        $restored = $this->city($this->readPublishedRestrictions(), 'co-ant-medellin-form');
++        self::assertNotEmpty($restored['coverages'][1]['rules']);
++        self::assertSame($this->canonical($cityB), $this->canonical($this->city($this->readPublishedRestrictions(), 'co-ant-abejorral-form')));
+     }
+ 
+     public function test_material_rule_removal_requires_editorial_review_and_keeps_the_active_release(): void
+diff --git a/server/tests/Unit/RestrictionFormPayloadBuilderTest.php b/server/tests/Unit/RestrictionFormPayloadBuilderTest.php
+index 0816b31..3f0759a 100644
+--- a/server/tests/Unit/RestrictionFormPayloadBuilderTest.php
++++ b/server/tests/Unit/RestrictionFormPayloadBuilderTest.php
+@@ -183,6 +183,63 @@ public function test_it_builds_the_real_mobile_contract_from_human_fields(): voi
+         $this->assertStringContainsString('-05:00', $rule['validFrom']);
+     }
+ 
++    public function test_schema2_can_pause_one_existing_modality_without_dropping_its_identity_or_claiming_free_circulation(): void
++    {
++        $builder = new RestrictionFormPayloadBuilder;
++        $jurisdiction = new Jurisdiction(['key' => 'synthetic-city', 'name' => 'Ciudad sintética']);
++        $jurisdiction->setRelation('primaryGeographicUnit', new GeographicUnit(['code' => '05001']));
++        $car = $this->schema2Coverage('car|private', 'car-rule');
++        $taxi = $this->schema2Coverage('car|taxi', 'taxi-rule');
++        $active = $builder->build($jurisdiction, ['coverages' => [$car, $taxi]], 2);
++        $taxi['suspend_consultation'] = '1';
++        $paused = $builder->build($jurisdiction, ['coverages' => [$car, $taxi]], 2, $active);
++
++        $this->assertSame($active['coverages'][0], $paused['coverages'][0], 'Unrelated modality must not change.');
++        $this->assertSame('taxi', $paused['coverages'][1]['serviceType']);
++        $this->assertSame('partial', $paused['coverages'][1]['coverageCompleteness']);
++        $this->assertSame([], $paused['coverages'][1]['rules']);
++        $this->assertNotEmpty($active['coverages'][1]['rules'], 'Published history remains recoverable.');
++        $this->assertArrayNotHasKey('suspend_consultation', $paused['coverages'][1], 'Do not change the OTA contract.');
++
++        // Re-enabling by re-entering the official rules uses the same engine.
++        $resumed = $builder->build($jurisdiction, ['coverages' => [$car, $this->schema2Coverage('car|taxi', 'taxi-rule')]], 2, $paused);
++        $this->assertNotEmpty($resumed['coverages'][1]['rules']);
++    }
++
++    public function test_schema2_pause_rejects_a_new_coverage_or_legacy_schema(): void
++    {
++        $builder = new RestrictionFormPayloadBuilder;
++        $jurisdiction = new Jurisdiction(['key' => 'synthetic-city', 'name' => 'Ciudad sintética']);
++        $coverage = $this->schema2Coverage('car|taxi', 'taxi-rule');
++        $coverage['suspend_consultation'] = '1';
++        foreach ([1, 2] as $schemaVersion) {
++            $submitted = $coverage;
++            if ($schemaVersion === 1) {
++                $submitted['vehicle_kind'] = 'car';
++                $submitted['service_type'] = 'taxi';
++            }
++            try {
++                $builder->build($jurisdiction, ['coverages' => [$submitted]], $schemaVersion);
++                $this->fail('An unpublished or legacy coverage could be paused.');
++            } catch (DomainException $error) {
++                $this->assertStringContainsString('Solo se puede suspender una cobertura schema2', $error->getMessage());
++            }
++        }
++    }
++
++    public function test_schema2_pause_cannot_be_confused_with_no_official_restrictions(): void
++    {
++        $builder = new RestrictionFormPayloadBuilder;
++        $jurisdiction = new Jurisdiction(['key' => 'synthetic-city', 'name' => 'Ciudad sintética']);
++        $original = $builder->build($jurisdiction, ['coverages' => [$this->schema2Coverage('car|private', 'car-rule')]], 2);
++        $coverage = $this->schema2Coverage('car|private', 'car-rule');
++        $coverage['suspend_consultation'] = '1';
++        $coverage['confirmed_no_rules'] = '1';
++        $this->expectException(DomainException::class);
++        $this->expectExceptionMessage('decisiones distintas');
++        $builder->build($jurisdiction, ['coverages' => [$coverage]], 2, $original);
++    }
++
+     #[DataProvider('invalidInputs')]
+     public function test_it_rejects_ambiguous_or_unsafe_human_fields(array $data, string $message): void
+     {
