@@ -1,0 +1,437 @@
+diff --git a/mobile/lib/features/home/application/home_partner_catalog_provider.dart b/mobile/lib/features/home/application/home_partner_catalog_provider.dart
+index 33818c7..6ea1349 100644
+--- a/mobile/lib/features/home/application/home_partner_catalog_provider.dart
++++ b/mobile/lib/features/home/application/home_partner_catalog_provider.dart
+@@ -6,8 +6,15 @@ import 'package:path_provider/path_provider.dart';
+ 
+ import '../data/home_partner_catalog.dart';
+ 
++// Free 1.0 ships with sponsored content OFF; no remote request is made unless
++// commercial delivery has been explicitly enabled in the app build.
++final sponsoredCampaignDeliveryEnabledProvider = Provider<bool>((ref) {
++  return const bool.fromEnvironment('PICORADAR_SPONSORED_CAMPAIGNS_ENABLED');
++});
++
+ final campaignCatalogUriProvider = Provider<Uri?>((ref) {
+-  return resolveCampaignCatalogUri(
++  return resolveEnabledCampaignCatalogUri(
++    enabled: ref.watch(sponsoredCampaignDeliveryEnabledProvider),
+     campaignCatalogUrl: const String.fromEnvironment('CAMPAIGN_CATALOG_URL'),
+     cdnBaseUrl: const String.fromEnvironment('CDN_BASE_URL'),
+   );
+@@ -51,6 +58,18 @@ final homePartnerCampaignsProvider = FutureProvider.autoDispose
+       return repository.load(territory);
+     });
+ 
++Uri? resolveEnabledCampaignCatalogUri({
++  required bool enabled,
++  required String campaignCatalogUrl,
++  required String cdnBaseUrl,
++}) {
++  if (!enabled) return null;
++  return resolveCampaignCatalogUri(
++    campaignCatalogUrl: campaignCatalogUrl,
++    cdnBaseUrl: cdnBaseUrl,
++  );
++}
++
+ Uri? resolveCampaignCatalogUri({
+   required String campaignCatalogUrl,
+   required String cdnBaseUrl,
+diff --git a/mobile/lib/features/home/data/home_partner_catalog.dart b/mobile/lib/features/home/data/home_partner_catalog.dart
+index 015a69b..9415fc3 100644
+--- a/mobile/lib/features/home/data/home_partner_catalog.dart
++++ b/mobile/lib/features/home/data/home_partner_catalog.dart
+@@ -197,8 +197,11 @@ class HomePartnerCatalogRepository {
+     try {
+       final remote = await _loadRemote(territory);
+       if (remote.isNotEmpty) return remote;
++    } on _CampaignCatalogUnavailable {
++      // An explicit 404 disables commercial delivery, including stale cache.
++      return fallbackHomePartnerCampaigns;
+     } catch (_) {
+-      // Commercial content is optional; a verified cache or local C11 follows.
++      // Transient network failures may use a verified, unexpired cache.
+     }
+     try {
+       final cached = await _loadCache(territory);
+@@ -275,6 +278,9 @@ class HomePartnerCatalogRepository {
+         validateStatus: (status) => status != null,
+       ),
+     );
++    if (response.statusCode == HttpStatus.notFound && uri == manifestUri) {
++      throw const _CampaignCatalogUnavailable();
++    }
+     if (response.statusCode != HttpStatus.ok || response.data == null) {
+       throw FormatException(
+         'Campaign request failed with HTTP ${response.statusCode}.',
+@@ -349,6 +355,10 @@ class HomePartnerCatalogRepository {
+   }
+ }
+ 
++class _CampaignCatalogUnavailable implements Exception {
++  const _CampaignCatalogUnavailable();
++}
++
+ class _CampaignManifest {
+   const _CampaignManifest({
+     required this.version,
+diff --git a/mobile/test/features/home/application/home_partner_catalog_provider_test.dart b/mobile/test/features/home/application/home_partner_catalog_provider_test.dart
+index 0c4352d..e3c9a5c 100644
+--- a/mobile/test/features/home/application/home_partner_catalog_provider_test.dart
++++ b/mobile/test/features/home/application/home_partner_catalog_provider_test.dart
+@@ -4,6 +4,42 @@ import 'package:picoradar/features/home/application/home_partner_catalog_provide
+ import 'package:picoradar/features/home/data/home_partner_catalog.dart';
+ 
+ void main() {
++  test(
++    'Free 1.0 feature flag blocks remote sponsored catalog even if URI exists',
++    () async {
++      expect(
++        resolveEnabledCampaignCatalogUri(
++          enabled: false,
++          campaignCatalogUrl: 'https://cdn.picoradar.test/storage/campaigns/v1/catalog.json',
++          cdnBaseUrl: 'https://cdn.picoradar.test',
++        ),
++        isNull,
++      );
++      expect(
++        resolveEnabledCampaignCatalogUri(
++          enabled: true,
++          campaignCatalogUrl: 'https://cdn.picoradar.test/storage/campaigns/v1/catalog.json',
++          cdnBaseUrl: '',
++        )?.scheme,
++        'https',
++      );
++      final container = ProviderContainer(
++        overrides: [
++          sponsoredCampaignDeliveryEnabledProvider.overrideWithValue(false),
++        ],
++      );
++      addTearDown(container.dispose);
++
++      expect(container.read(campaignCatalogUriProvider), isNull);
++      expect(
++        await container.read(
++          homePartnerCampaignsProvider(const CampaignTerritoryContext()).future,
++        ),
++        same(fallbackHomePartnerCampaigns),
++      );
++    },
++  );
++
+   test(
+     'catalog URI requires HTTPS and supports explicit or CDN configuration',
+     () {
+diff --git a/mobile/test/features/home/data/home_partner_catalog_test.dart b/mobile/test/features/home/data/home_partner_catalog_test.dart
+index e8bed3c..e19527b 100644
+--- a/mobile/test/features/home/data/home_partner_catalog_test.dart
++++ b/mobile/test/features/home/data/home_partner_catalog_test.dart
+@@ -130,6 +130,37 @@ void main() {
+     ]);
+   });
+ 
++  test('HTTP 404 disables commercial cache while connection error may reuse it', () async {
++    final now = DateTime.utc(2026, 9, 20, 15);
++    final release = _catalogBytes(now, [_campaign('previous', priority: 10)]);
++    final cache = _MemoryCatalogCache();
++    await _repository(
++      _CatalogAdapter({
++        '/storage/campaigns/v1/catalog.json': _manifestBytes(now, await _sha256(release)),
++        '/storage/campaigns/v1/releases/catalog-7.json': release,
++      }),
++      cache,
++      () => now,
++    ).load(const CampaignTerritoryContext());
++
++    final disabled = await _repository(
++      _CatalogAdapter({}, notFoundPaths: {
++        '/storage/campaigns/v1/catalog.json',
++      }),
++      cache,
++      () => now,
++    ).load(const CampaignTerritoryContext());
++    expect(disabled, same(fallbackHomePartnerCampaigns));
++    expect(cache.entry, isNotNull); // No destructive cache wipe.
++
++    final transient = await _repository(
++      _CatalogAdapter({}),
++      cache,
++      () => now,
++    ).load(const CampaignTerritoryContext());
++    expect(transient.single.id, 'previous');
++  });
++
+   test(
+     'hash mismatch and unsafe image URL never escape or render remotely',
+     () async {
+@@ -244,9 +275,10 @@ class _MemoryCatalogCache implements CampaignCatalogCache {
+ }
+ 
+ class _CatalogAdapter implements HttpClientAdapter {
+-  _CatalogAdapter(this.responses);
++  _CatalogAdapter(this.responses, {this.notFoundPaths = const {}});
+ 
+   final Map<String, List<int>> responses;
++  final Set<String> notFoundPaths;
+   final paths = <String>[];
+ 
+   @override
+@@ -256,6 +288,9 @@ class _CatalogAdapter implements HttpClientAdapter {
+     Future<void>? cancelFuture,
+   ) async {
+     paths.add(options.uri.path);
++    if (notFoundPaths.contains(options.uri.path)) {
++      return ResponseBody.fromBytes(const [], 404);
++    }
+     final bytes = responses[options.uri.path];
+     if (bytes == null) {
+       throw DioException(
+diff --git a/server/.env.example b/server/.env.example
+index 09cab94..66e54fd 100644
+--- a/server/.env.example
++++ b/server/.env.example
+@@ -83,6 +83,12 @@ PRIVATE_OSRM_ACCESS_AUTHORIZED=false
+ PRIVATE_OSRM_SOURCE_AUTHORIZED=false
+ PRIVATE_OSRM_ATTRIBUTION="OSRM; OpenStreetMap contributors"
+ 
++# Sponsored campaigns (Free 1.0): do not publish commercial ads until approved.
++# Enabling requires an HTTPS public origin, a fresh published pointer, and an
++# explicitly approved client build with PICORADAR_SPONSORED_CAMPAIGNS_ENABLED.
++CAMPAIGN_PUBLIC_CATALOG_ENABLED=false
++CAMPAIGN_PUBLIC_BASE_URL=
++
+ # Partner inquiries fail closed until every control below is configured.
+ PARTNER_INQUIRIES_ENABLED=false
+ PARTNER_INQUIRIES_ADMIN_INBOX_ENABLED=false
+diff --git a/server/.env.staging.example b/server/.env.staging.example
+index 3f57854..6867a10 100644
+--- a/server/.env.staging.example
++++ b/server/.env.staging.example
+@@ -43,6 +43,9 @@ PRIVATE_OSRM_ENABLED=false
+ PRIVATE_OSRM_BASE_URL=
+ PRIVATE_OSRM_ACCESS_AUTHORIZED=false
+ PRIVATE_OSRM_SOURCE_AUTHORIZED=false
++# Commercial delivery remains OFF in staging until an approved QA exercise.
++CAMPAIGN_PUBLIC_CATALOG_ENABLED=false
++CAMPAIGN_PUBLIC_BASE_URL=
+ PARTNER_INQUIRIES_ENABLED=false
+ PARTNER_INQUIRIES_ADMIN_INBOX_ENABLED=false
+ PARTNER_INQUIRIES_PRIVACY_VERSION=
+diff --git a/server/app/Console/Commands/RefreshCampaignCatalogCommand.php b/server/app/Console/Commands/RefreshCampaignCatalogCommand.php
+index 62aa1e1..34db6b4 100644
+--- a/server/app/Console/Commands/RefreshCampaignCatalogCommand.php
++++ b/server/app/Console/Commands/RefreshCampaignCatalogCommand.php
+@@ -8,7 +8,7 @@
+ 
+ class RefreshCampaignCatalogCommand extends Command
+ {
+-    protected $signature = 'campaigns:refresh-catalog';
++    protected $signature = 'campaigns:refresh-catalog {--publish-now : Reissue the manifest after changing the delivery switch}';
+ 
+     protected $description = 'Refresh the public campaign catalog before its signed validity expires';
+ 
+@@ -17,7 +17,7 @@ public function handle(CampaignCatalogPublisher $publisher): int
+         $latest = CampaignCatalogRelease::query()->latest('version')->first();
+         $refreshBefore = now()->addSeconds(config('campaigns.catalog_refresh_before_seconds'));
+ 
+-        if ($latest?->expires_at?->isAfter($refreshBefore)) {
++        if (! $this->option('publish-now') && $latest?->expires_at?->isAfter($refreshBefore)) {
+             $this->components->info('SKIPPED_FRESH');
+ 
+             return self::SUCCESS;
+diff --git a/server/app/Http/Controllers/Admin/CampaignController.php b/server/app/Http/Controllers/Admin/CampaignController.php
+index bf98777..c71045b 100644
+--- a/server/app/Http/Controllers/Admin/CampaignController.php
++++ b/server/app/Http/Controllers/Admin/CampaignController.php
+@@ -114,7 +114,11 @@ public function activate(Request $request, Campaign $campaign, CampaignService $
+         $access->authorizePublish($request->user());
+         $service->activate($campaign, $request->user());
+ 
+-        return redirect()->route('admin.campaigns.show', $campaign)->with('status', 'Campana activada y catalogo publicado.');
++        $message = config('campaigns.public_catalog_enabled') === true
++            ? 'Campana activada y catalogo publicado.'
++            : 'Campana activada internamente. Difusion comercial publica desactivada.';
++
++        return redirect()->route('admin.campaigns.show', $campaign)->with('status', $message);
+     }
+ 
+     public function pause(Request $request, Campaign $campaign, CampaignService $service, CampaignAccess $access): RedirectResponse
+diff --git a/server/app/Http/Controllers/Api/CampaignCatalogController.php b/server/app/Http/Controllers/Api/CampaignCatalogController.php
+index 997aaa3..2022c77 100644
+--- a/server/app/Http/Controllers/Api/CampaignCatalogController.php
++++ b/server/app/Http/Controllers/Api/CampaignCatalogController.php
+@@ -11,6 +11,11 @@ class CampaignCatalogController extends Controller
+ {
+     public function __invoke(Request $request): Response
+     {
++        // API visibility is independent of staff access to drafts and history.
++        if (config('campaigns.public_catalog_enabled') !== true) {
++            return response(['message' => 'Campaign catalog is not available.'], 404);
++        }
++
+         $disk = Storage::disk(config('campaigns.public_disk'));
+         $path = config('campaigns.catalog_manifest_path');
+         if (! $disk->exists($path)) {
+diff --git a/server/app/Services/CampaignCatalogPublisher.php b/server/app/Services/CampaignCatalogPublisher.php
+index d79119a..d3040ce 100644
+--- a/server/app/Services/CampaignCatalogPublisher.php
++++ b/server/app/Services/CampaignCatalogPublisher.php
+@@ -31,15 +31,28 @@ private function publishLocked(?User $actor): CampaignCatalogRelease
+         $expiresAt = $generatedAt->copy()->addSeconds(config('campaigns.catalog_validity_seconds'));
+         $version = ((int) CampaignCatalogRelease::query()->max('version')) + 1;
+ 
+-        $campaigns = Campaign::query()
+-            ->with(['sponsor', 'geographicUnit'])
+-            ->where('status', CampaignStatus::Active->value)
+-            ->where('placement', config('campaigns.placement'))
+-            ->where('ends_at', '>', $generatedAt)
+-            ->whereHas('sponsor', fn ($query) => $query->where('status', SponsorStatus::Active->value))
+-            ->orderBy('priority')
+-            ->orderBy('public_id')
+-            ->get();
++        // Publish an empty, valid catalog when commercial delivery is disabled.
++        // The administrative drafts, approvals and partner inquiries remain intact.
++        $deliveryEnabled = config('campaigns.public_catalog_enabled') === true;
++        if ($deliveryEnabled) {
++            $base = parse_url((string) config('campaigns.public_base_url'));
++            if (! is_array($base) || ($base['scheme'] ?? null) !== 'https'
++                || empty($base['host']) || isset($base['user']) || isset($base['pass'])
++                || isset($base['query']) || isset($base['fragment'])) {
++                throw new DomainException('Campaign public base URL must use credential-free HTTPS.');
++            }
++        }
++        $campaigns = $deliveryEnabled
++            ? Campaign::query()
++                ->with(['sponsor', 'geographicUnit'])
++                ->where('status', CampaignStatus::Active->value)
++                ->where('placement', config('campaigns.placement'))
++                ->where('ends_at', '>', $generatedAt)
++                ->whereHas('sponsor', fn ($query) => $query->where('status', SponsorStatus::Active->value))
++                ->orderBy('priority')
++                ->orderBy('public_id')
++                ->get()
++            : collect();
+ 
+         $entries = $campaigns->map(function (Campaign $campaign) use ($disk): array {
+             if (! $campaign->public_image_path || ! $disk->exists($campaign->public_image_path)) {
+diff --git a/server/config/campaigns.php b/server/config/campaigns.php
+index 35d55e4..d5acba7 100644
+--- a/server/config/campaigns.php
++++ b/server/config/campaigns.php
+@@ -5,6 +5,8 @@
+     'public_disk' => env('CAMPAIGN_PUBLIC_DISK', 'public'),
+     'public_base_url' => env('CAMPAIGN_PUBLIC_BASE_URL', env('DATASET_PUBLIC_BASE_URL', '/storage')),
+     'placement' => 'home_c11',
++    // Free 1.0: real sponsored campaigns remain OFF until explicitly approved.
++    'public_catalog_enabled' => (bool) env('CAMPAIGN_PUBLIC_CATALOG_ENABLED', false),
+     'max_image_bytes' => (int) env('CAMPAIGN_MAX_IMAGE_BYTES', 2 * 1024 * 1024),
+     'min_image_width' => 720,
+     'min_image_height' => 180,
+diff --git a/server/resources/views/admin/campaigns/index.blade.php b/server/resources/views/admin/campaigns/index.blade.php
+index a636441..13bf0df 100644
+--- a/server/resources/views/admin/campaigns/index.blade.php
++++ b/server/resources/views/admin/campaigns/index.blade.php
+@@ -1,6 +1,9 @@
+ @extends('layouts.admin',['title'=>'Campanas | PicoRadar'])
+ @section('content')
+ <div class="flex items-center justify-between gap-4"><div><h1 class="text-3xl font-semibold">Campanas</h1><p class="mt-1 text-sm text-slate-600">Catalogo comercial de Inicio C11.</p></div><a class="rounded bg-slate-900 px-4 py-2 text-white" href="{{route('admin.campaigns.create')}}">Nueva campana</a></div>
++@if(config('campaigns.public_catalog_enabled') !== true)
++<div class="mt-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm" role="status">Difusion comercial desactivada (Free 1.0). Los borradores y las activaciones internas no se muestran como publicidad real en la app.</div>
++@endif
+ <form class="mt-5 flex gap-3" method="GET"><select name="status"><option value="">Todos los estados</option>@foreach(\App\Enums\CampaignStatus::cases() as $status)<option value="{{$status->value}}" @selected(request('status')===$status->value)>{{$status->value}}</option>@endforeach</select><button class="rounded border px-3 py-2">Filtrar</button></form>
+ <div class="mt-5 overflow-x-auto rounded border bg-white"><table class="w-full text-left text-sm"><thead class="bg-slate-50"><tr><th class="p-3">Prioridad</th><th class="p-3">Campana</th><th class="p-3">Patrocinador</th><th class="p-3">Estado</th><th class="p-3">Vigencia</th><th class="p-3">Accion</th></tr></thead><tbody>@forelse($campaigns as $campaign)<tr class="border-t"><td class="p-3">{{$campaign->priority}}</td><td class="p-3 font-medium">{{$campaign->title}}</td><td class="p-3">{{$campaign->sponsor->name}}</td><td class="p-3">{{$campaign->operationalStatus(now())}}</td><td class="p-3">{{$campaign->starts_at->format('Y-m-d H:i')}} / {{$campaign->ends_at->format('Y-m-d H:i')}}</td><td class="p-3"><a class="underline" href="{{route('admin.campaigns.show',$campaign)}}">Abrir</a></td></tr>@empty<tr><td class="p-6 text-slate-500" colspan="6">No hay campanas.</td></tr>@endforelse</tbody></table></div>
+ <div class="mt-4">{{$campaigns->links()}}</div>
+diff --git a/server/resources/views/admin/campaigns/show.blade.php b/server/resources/views/admin/campaigns/show.blade.php
+index 797df99..58aafa3 100644
+--- a/server/resources/views/admin/campaigns/show.blade.php
++++ b/server/resources/views/admin/campaigns/show.blade.php
+@@ -1,6 +1,9 @@
+ @extends('layouts.admin',['title'=>$campaign->title.' | PicoRadar'])
+ @section('content')
+ <div class="flex flex-wrap items-center justify-between gap-4"><div><h1 class="text-3xl font-semibold">{{$campaign->title}}</h1><p class="mt-1 text-sm text-slate-600">{{$campaign->sponsor->name}} · {{$campaign->operationalStatus(now())}} · prioridad {{$campaign->priority}}</p></div><div class="flex gap-2"><a class="rounded border px-4 py-2" href="{{route('admin.campaigns.preview',$campaign)}}">Vista previa</a>@if(in_array($campaign->status,[\App\Enums\CampaignStatus::Draft,\App\Enums\CampaignStatus::Paused],true))<a class="rounded border px-4 py-2" href="{{route('admin.campaigns.edit',$campaign)}}">Editar</a>@endif</div></div>
++@if(config('campaigns.public_catalog_enabled') !== true)
++<div class="mt-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm" role="status">Difusion comercial desactivada (Free 1.0). Esta campana no se publica como anuncio visible en la app.</div>
++@endif
+ <dl class="mt-6 grid max-w-4xl gap-3 rounded border bg-white p-5 text-sm"><div><dt class="font-semibold">Identificador</dt><dd>{{$campaign->public_id}}</dd></div><div><dt class="font-semibold">Ubicacion aprobada</dt><dd>{{$campaign->placement}}</dd></div><div><dt class="font-semibold">Alcance</dt><dd>{{$campaign->scope->value}}{{$campaign->geographicUnit?' · '.$campaign->geographicUnit->name:''}}</dd></div><div><dt class="font-semibold">Vigencia</dt><dd>{{$campaign->starts_at->toAtomString()}} / {{$campaign->ends_at->toAtomString()}}</dd></div><div><dt class="font-semibold">Destino</dt><dd class="break-all">{{$campaign->cta_url}}</dd></div><div><dt class="font-semibold">Revision</dt><dd>{{$campaign->content_revision}}</dd></div></dl>
+ @if($campaign->status===\App\Enums\CampaignStatus::Draft || $campaign->status===\App\Enums\CampaignStatus::Paused)<form class="mt-6 inline-block" method="POST" action="{{route('admin.campaigns.activate',$campaign)}}">@csrf<button class="rounded bg-emerald-700 px-4 py-2 text-white">Activar</button></form>@endif
+ @if($campaign->status===\App\Enums\CampaignStatus::Active)<form class="mt-6 inline-block" method="POST" action="{{route('admin.campaigns.pause',$campaign)}}">@csrf<button class="rounded border px-4 py-2">Pausar</button></form>@endif
+diff --git a/server/tests/Feature/CampaignAdminControllerTest.php b/server/tests/Feature/CampaignAdminControllerTest.php
+index f94c8d4..3f75b4b 100644
+--- a/server/tests/Feature/CampaignAdminControllerTest.php
++++ b/server/tests/Feature/CampaignAdminControllerTest.php
+@@ -83,6 +83,9 @@ public function test_admin_can_activate_pause_and_archive_through_module_control
+ 
+         $this->post(route('admin.campaigns.activate', $campaign))->assertRedirect();
+         $this->assertSame(CampaignStatus::Active, $campaign->refresh()->status);
++        $this->get(route('admin.campaigns.show', $campaign))
++            ->assertOk()
++            ->assertSee('Difusion comercial desactivada');
+         Storage::disk('public')->assertExists('campaigns/v1/catalog.json');
+ 
+         $this->post(route('admin.campaigns.pause', $campaign))->assertRedirect();
+diff --git a/server/tests/Feature/CampaignCatalogPublisherTest.php b/server/tests/Feature/CampaignCatalogPublisherTest.php
+index edf6790..b03fbf0 100644
+--- a/server/tests/Feature/CampaignCatalogPublisherTest.php
++++ b/server/tests/Feature/CampaignCatalogPublisherTest.php
+@@ -9,6 +9,7 @@
+ use App\Enums\SponsorStatus;
+ use App\Http\Controllers\Api\CampaignCatalogController;
+ use App\Models\Campaign;
++use App\Models\CampaignCatalogRelease;
+ use App\Models\GeographicUnit;
+ use App\Models\Sponsor;
+ use App\Models\User;
+@@ -30,6 +31,7 @@ protected function setUp(): void
+         config([
+             'campaigns.public_disk' => 'public',
+             'campaigns.public_base_url' => 'https://cdn.picoradar.test/storage',
++            'campaigns.public_catalog_enabled' => true,
+             'campaigns.catalog_manifest_path' => 'campaigns/v1/catalog.json',
+             'campaigns.catalog_release_directory' => 'campaigns/v1/releases',
+             'campaigns.cache_ttl_seconds' => 3600,
+@@ -39,6 +41,44 @@ protected function setUp(): void
+         $this->travelTo('2026-09-20 15:00:00');
+     }
+ 
++    public function test_delivery_enabled_requires_an_absolute_https_public_base_url(): void
++    {
++        config([
++            'campaigns.public_catalog_enabled' => true,
++            'campaigns.public_base_url' => '/storage',
++        ]);
++        $this->expectException(DomainException::class);
++        app(CampaignCatalogPublisher::class)->publish(null);
++    }
++
++    public function test_free_mode_publishes_no_sponsored_entries_until_explicitly_enabled(): void
++    {
++        $admin = User::factory()->create(['role' => OperatorRole::Admin]);
++        $sponsor = $this->sponsor('Aliado seguro', SponsorStatus::Active);
++        $this->campaign($sponsor, 'hidden', 5);
++        $publisher = app(CampaignCatalogPublisher::class);
++
++        config(['campaigns.public_catalog_enabled' => false]);
++        $disabled = $publisher->publish($admin);
++        $this->assertSame(0, $disabled->campaign_count);
++        $disabledBytes = Storage::disk('public')->get($disabled->asset_path);
++        $this->assertSame([], json_decode($disabledBytes, true, flags: JSON_THROW_ON_ERROR)['campaigns']);
++        $this->get(route('api.v1.campaign-catalog'))->assertNotFound();
++
++        config(['campaigns.public_catalog_enabled' => true]);
++        $this->artisan('campaigns:refresh-catalog --publish-now')
++            ->expectsOutputToContain('PUBLISHED 2')
++            ->assertSuccessful();
++        $enabled = CampaignCatalogRelease::query()->latest('version')->firstOrFail();
++        $this->assertSame(1, $enabled->campaign_count);
++        $this->assertSame(2, $enabled->version);
++        $this->get(route('api.v1.campaign-catalog'))->assertOk();
++        $enabledBytes = Storage::disk('public')->get($enabled->asset_path);
++        $this->assertSame(['hidden'], array_column(
++            json_decode($enabledBytes, true, flags: JSON_THROW_ON_ERROR)['campaigns'], 'id'
++        ));
++    }
++
+     public function test_catalog_is_versioned_sorted_sanitized_and_filters_unavailable_campaigns(): void
+     {
+         $admin = User::factory()->create(['role' => OperatorRole::Admin]);
