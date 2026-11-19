@@ -1,0 +1,558 @@
+diff --git a/server/app/Services/DatasetReleaseValidator.php b/server/app/Services/DatasetReleaseValidator.php
+index 8c1587b..3d4f8ca 100644
+--- a/server/app/Services/DatasetReleaseValidator.php
++++ b/server/app/Services/DatasetReleaseValidator.php
+@@ -70,6 +70,7 @@ private function validateEnvelope(array $payload, Dataset $dataset, DatasetRelea
+         match ($dataset->key) {
+             'restrictions' => $this->validateRestrictions($payload),
+             'tax_calendars' => (new TaxCalendarPayloadValidator)->validate((array) json_decode($bytes, false, 512, JSON_THROW_ON_ERROR)),
++            'cda_catalog', 'cda_geography', 'insurance_directory' => (new MobileCatalogPayloadValidator)->validate($payload, $dataset->key),
+             default => throw new DomainException("No approved validator exists for {$dataset->key}."),
+         };
+     }
+diff --git a/server/app/Services/MobileCatalogPayloadValidator.php b/server/app/Services/MobileCatalogPayloadValidator.php
+new file mode 100644
+index 0000000..907be27
+--- /dev/null
++++ b/server/app/Services/MobileCatalogPayloadValidator.php
+@@ -0,0 +1,327 @@
++<?php
++
++namespace App\Services;
++
++use DateTimeImmutable;
++use DomainException;
++
++/** Validation for existing Flutter catalog schema v1 before immutable publication. */
++final class MobileCatalogPayloadValidator
++{
++    /** @param array<string, mixed> $payload */
++    public function validate(array $payload, string $key): void
++    {
++        if (! in_array($key, ['cda_catalog', 'cda_geography', 'insurance_directory'], true) ||
++            ($payload['datasetKey'] ?? null) !== $key || ($payload['schemaVersion'] ?? null) !== 1) {
++            throw new DomainException('Unsupported mobile catalog contract.');
++        }
++        match ($key) {
++            'cda_catalog' => $this->cdaCatalog($payload),
++            'cda_geography' => $this->cdaGeography($payload),
++            'insurance_directory' => $this->insuranceDirectory($payload),
++        };
++    }
++
++    /** @param array<string,mixed> $payload */
++    private function cdaCatalog(array $payload): void
++    {
++        $source = $this->object($payload['source'] ?? null, 'source');
++        foreach (['provider', 'datasetId', 'datasetName', 'latestSourceMonthName'] as $field) {
++            $this->text($source[$field] ?? null, "source.$field");
++        }
++        $this->https($source['sourceUrl'] ?? null, 'source.sourceUrl');
++        $this->instant($source['sourceVerifiedAt'] ?? null, 'source.sourceVerifiedAt');
++        $this->year($source['latestSourceYear'] ?? null, 'source.latestSourceYear');
++        $this->month($source['latestSourceMonth'] ?? null, 'source.latestSourceMonth');
++
++        $metrics = $this->object($payload['metrics'] ?? null, 'metrics');
++        foreach (['sourceRows', 'cdaSourceRows', 'latestPeriodCdaRows', 'currentUniqueCdaCount', 'staleHistoricalCdaExcludedCount', 'certificoNotSiCount', 'unsafeNoveltyCount', 'ambiguousCurrentDuplicateCount', 'uniqueCdaCount', 'excludedCurrentStatusCount', 'municipalityCount', 'departmentCount', 'sponsoredCdaCount'] as $field) {
++            if (! is_int($metrics[$field] ?? null) || $metrics[$field] < 0) {
++                throw new DomainException("Invalid CDA metric: $field.");
++            }
++        }
++        foreach (['latestSourcePeriod', 'globalLatestSourcePeriod'] as $field) {
++            $this->text($metrics[$field] ?? null, "metrics.$field");
++        }
++        if (! is_bool($metrics['futureSourcePeriodsIgnored'] ?? null)) {
++            throw new DomainException('Invalid CDA futureSourcePeriodsIgnored flag.');
++        }
++        $seen = [];
++        foreach ($this->rows($payload['entries'] ?? null, 'entries') as $entry) {
++            $row = $this->object($entry, 'CDA entry');
++            $id = $this->text($row['id'] ?? null, 'CDA id');
++            $this->unique($seen, $id, 'CDA id');
++            foreach (['name', 'municipality', 'department', 'departmentCode', 'sourceMonthName', 'novelty'] as $field) {
++                $this->text($row[$field] ?? null, "CDA $field");
++            }
++            if (isset($row['nit']) && (! is_string($row['nit']) || trim($row['nit']) === '')) {
++                throw new DomainException('Invalid CDA NIT.');
++            }
++            $this->year($row['sourceYear'] ?? null, 'CDA sourceYear');
++            $this->month($row['sourceMonth'] ?? null, 'CDA sourceMonth');
++            foreach (['generatedAt', 'sourceVerifiedAt'] as $field) {
++                $this->instant($row[$field] ?? null, "CDA $field");
++            }
++            if (($row['certified'] ?? null) !== true) {
++                throw new DomainException('Uncertified CDA cannot enter the published current inventory.');
++            }
++        }
++        if (count($seen) !== $metrics['uniqueCdaCount']) {
++            throw new DomainException('CDA inventory count does not match its published metric.');
++        }
++    }
++
++    /** @param array<string,mixed> $payload */
++    private function cdaGeography(array $payload): void
++    {
++        $period = $this->text($payload['catalogPeriod'] ?? null, 'catalogPeriod');
++        if (! preg_match('/^\d{4}-(?:0[1-9]|1[0-2])$/D', $period) || ! is_bool($payload['approved'] ?? null)) {
++            throw new DomainException('Invalid CDA geographic publication period/approval.');
++        }
++        $seen = [];
++        foreach ($this->rows($payload['entries'] ?? null, 'entries') as $entry) {
++            $row = $this->object($entry, 'CDA site');
++            $this->unique($seen, $this->text($row['cdaId'] ?? null, 'CDA site id'), 'CDA site id');
++            foreach (['catalogName', 'municipality', 'departmentCode'] as $field) {
++                $this->text($row[$field] ?? null, "CDA site $field");
++            }
++            $status = $this->text($row['status'] ?? null, 'CDA site status');
++            if (! in_array($status, ['pending', 'address_verified', 'geocoded', 'verified', 'rejected'], true)) {
++                throw new DomainException('Unsupported CDA site status.');
++            }
++            $lat = $row['latitude'] ?? null;
++            $lon = $row['longitude'] ?? null;
++            if (($lat === null) !== ($lon === null) ||
++                ($lat !== null && ((! is_float($lat) && ! is_int($lat)) || ! is_finite((float) $lat) || (float) $lat < -5 || (float) $lat > 14)) ||
++                ($lon !== null && ((! is_float($lon) && ! is_int($lon)) || ! is_finite((float) $lon) || (float) $lon < -82 || (float) $lon > -66))) {
++                throw new DomainException('Invalid Colombian CDA coordinates.');
++            }
++            if (in_array($status, ['address_verified', 'geocoded', 'verified'], true) &&
++                (! is_string($row['address'] ?? null) || trim($row['address']) === '')) {
++                throw new DomainException('Verified CDA site requires address.');
++            }
++            if (in_array($status, ['geocoded', 'verified'], true) && $lat === null) {
++                throw new DomainException('Geocoded CDA site requires coordinates.');
++            }
++            foreach (['locationSources', 'compatibilitySources', 'contactSources'] as $field) {
++                $sources = $this->optionalRows($row, $field);
++                foreach ($sources as $source) {
++                    $evidence = $this->object($source, 'CDA site evidence');
++                    $this->https($evidence['url'] ?? null, 'CDA evidence.url');
++                    $this->date($evidence['reviewedAt'] ?? null, 'CDA evidence.reviewedAt');
++                }
++                if ($field === 'locationSources' && in_array($status, ['address_verified', 'geocoded', 'verified'], true) && $sources === []) {
++                    throw new DomainException('Verified CDA address requires location evidence.');
++                }
++            }
++            foreach ($this->optionalRows($row, 'vehicleTypes') as $type) {
++                if (! in_array($type, ['car', 'motorcycle'], true)) {
++                    throw new DomainException('Invalid CDA vehicle type.');
++                }
++            }
++            if (isset($row['web'])) {
++                $this->https($row['web'], 'CDA website');
++            }
++            if (isset($row['phone']) && (! is_string($row['phone']) || ! preg_match('/^\+?[0-9 ()-]{7,24}$/D', $row['phone']))) {
++                throw new DomainException('Invalid CDA telephone.');
++            }
++        }
++    }
++
++    /** @param array<string,mixed> $payload */
++    private function insuranceDirectory(array $payload): void
++    {
++        $this->date($payload['reviewedAt'] ?? null, 'reviewedAt');
++        $this->date($payload['sfcPublicationModifiedAt'] ?? null, 'sfcPublicationModifiedAt');
++        foreach (['referenceSourceUrl', 'sfcSourceUrl'] as $field) {
++            $this->https($payload[$field] ?? null, $field);
++        }
++        $this->text($payload['coverage'] ?? null, 'coverage');
++        $seen = [];
++        $nameOwner = [];
++        foreach ($this->rows($payload['entries'] ?? null, 'entries') as $entry) {
++            $row = $this->object($entry, 'insurer');
++            $id = $this->text($row['id'] ?? null, 'insurer.id');
++            $this->unique($seen, $id, 'insurer.id');
++            foreach (['name', 'legalName'] as $field) {
++                $this->text($row[$field] ?? null, "insurer.$field");
++            }
++            $this->date($row['reviewedAt'] ?? null, 'insurer.reviewedAt');
++            foreach (['website', 'sourceUrl'] as $field) {
++                $this->https($row[$field] ?? null, "insurer.$field");
++            }
++            foreach ([$row['name'], $row['legalName'], ...$this->optionalRows($row, 'aliases')] as $alias) {
++                $folded = $this->fold($this->text($alias, 'insurer.alias'));
++                if (isset($nameOwner[$folded]) && $nameOwner[$folded] !== $id) {
++                    throw new DomainException('Ambiguous insurer alias across companies.');
++                }
++                $nameOwner[$folded] = $id;
++            }
++            if (! array_key_exists('categories', $row) || ! array_key_exists('channels', $row) || ! array_key_exists('aliases', $row)) {
++                throw new DomainException('Insurer lists are required.');
++            }
++            $categories = $this->optionalRows($row, 'categories');
++            foreach ($categories as $category) {
++                if (! in_array($category, ['car', 'motorcycle', 'taxi'], true)) {
++                    throw new DomainException('Invalid insurer category.');
++                }
++            }
++            if (count(array_unique($categories)) !== count($categories)) {
++                throw new DomainException('Duplicate insurer categories.');
++            }
++            $channelIds = [];
++            $contactKeys = [];
++            foreach ($this->optionalRows($row, 'channels') as $channel) {
++                $item = $this->object($channel, 'insurer channel');
++                $this->unique($channelIds, $this->text($item['id'] ?? null, 'channel.id'), 'channel.id');
++                $kind = $this->text($item['kind'] ?? null, 'channel.kind');
++                $purpose = $this->text($item['purpose'] ?? null, 'channel.purpose');
++                $number = $this->text($item['value'] ?? null, 'channel.value');
++                if (! in_array($kind, ['phone', 'whatsapp'], true) || ! in_array($purpose, ['assistance', 'customerService'], true)) {
++                    throw new DomainException('Invalid insurer channel type/purpose.');
++                }
++                $pattern = $kind === 'whatsapp' ? '/^573\d{9}$/D' : '/^(?:\+?57[36]\d{9}|60[1-8]\d{7}|3\d{9}|018000\d{6}|#\d{3})$/D';
++                if (! preg_match($pattern, $number)) {
++                    throw new DomainException('Invalid insurer phone/WhatsApp destination.');
++                }
++                $normalized = ltrim($number, '+');
++                if (strlen($normalized) === 12 && str_starts_with($normalized, '57')) {
++                    $normalized = substr($normalized, 2);
++                }
++                $this->unique($contactKeys, $kind.':'.$normalized, 'insurer contact destination');
++                foreach (['label'] as $field) {
++                    $this->text($item[$field] ?? null, "channel.$field");
++                }
++                $this->https($item['sourceUrl'] ?? null, 'channel.sourceUrl');
++                $this->date($item['reviewedAt'] ?? null, 'channel.reviewedAt');
++                if (! is_bool($item['verified'] ?? null)) {
++                    throw new DomainException('Invalid insurer channel verification status.');
++                }
++                $services = $this->optionalRows($item, 'services');
++                if (count($services) !== count(array_unique($services, SORT_REGULAR))) {
++                    throw new DomainException('Duplicate insurer channel services.');
++                }
++                foreach ($services as $service) {
++                    if (! in_array($service, ['generalAssistance', 'towing', 'designatedDriver', 'roadsideRepair'], true) || $purpose !== 'assistance' || $item['verified'] !== true) {
++                        throw new DomainException('Unverified or invalid insurer channel service.');
++                    }
++                }
++            }
++        }
++    }
++
++    private function text(mixed $value, string $label): string
++    {
++        if (! is_string($value) || trim($value) === '') {
++            throw new DomainException("Missing or invalid $label.");
++        }
++
++        return trim($value);
++    }
++
++    private function https(mixed $value, string $label): void
++    {
++        $url = $this->text($value, $label);
++        $parts = parse_url($url);
++        if (! is_array($parts) || ($parts['scheme'] ?? null) !== 'https' || ! isset($parts['host']) ||
++            ! str_contains($parts['host'], '.') || isset($parts['user']) || isset($parts['pass']) ||
++            (isset($parts['port']) && $parts['port'] !== 443) || isset($parts['fragment'])) {
++            throw new DomainException("Invalid HTTPS URL: $label.");
++        }
++    }
++
++    private function date(mixed $value, string $label): void
++    {
++        if (! is_string($value) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/D', $value) ||
++            ! checkdate((int) substr($value, 5, 2), (int) substr($value, 8, 2), (int) substr($value, 0, 4))) {
++            throw new DomainException("Invalid date: $label.");
++        }
++    }
++
++    private function instant(mixed $value, string $label): void
++    {
++        if (! is_string($value) || ! preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/D', $value)) {
++            throw new DomainException("Invalid timestamp: $label.");
++        }
++        try {
++            new DateTimeImmutable($value);
++            $errors = DateTimeImmutable::getLastErrors();
++            if (is_array($errors) && ($errors['warning_count'] > 0 || $errors['error_count'] > 0)) {
++                throw new DomainException("Invalid timestamp: $label.");
++            }
++        } catch (\Throwable) {
++            throw new DomainException("Invalid timestamp: $label.");
++        }
++    }
++
++    /** @return array<string,mixed> */
++    private function object(mixed $value, string $label): array
++    {
++        if (! is_array($value) || array_is_list($value)) {
++            throw new DomainException("Invalid JSON object: $label.");
++        }
++
++        return $value;
++    }
++
++    /** @return list<mixed> */
++    private function rows(mixed $value, string $label): array
++    {
++        if (! is_array($value) || ! array_is_list($value) || $value === []) {
++            throw new DomainException("Expected nonempty JSON array: $label.");
++        }
++
++        return $value;
++    }
++
++    /** @param array<string,mixed> $parent @return list<mixed> */
++    private function optionalRows(array $parent, string $key): array
++    {
++        if (! array_key_exists($key, $parent)) {
++            return [];
++        }
++        $value = $parent[$key];
++        if (! is_array($value) || ! array_is_list($value)) {
++            throw new DomainException("Invalid JSON array: $key.");
++        }
++
++        return $value;
++    }
++
++    /** @param array<string,bool> $seen */
++    private function unique(array &$seen, string $value, string $label): void
++    {
++        if (isset($seen[$value])) {
++            throw new DomainException("Duplicate $label.");
++        }
++        $seen[$value] = true;
++    }
++
++    private function fold(string $value): string
++    {
++        $folded = strtr($value, [
++            'Á' => 'a', 'À' => 'a', 'Â' => 'a', 'Ä' => 'a', 'á' => 'a', 'à' => 'a', 'â' => 'a', 'ä' => 'a',
++            'É' => 'e', 'È' => 'e', 'Ê' => 'e', 'Ë' => 'e', 'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
++            'Í' => 'i', 'Ì' => 'i', 'Î' => 'i', 'Ï' => 'i', 'í' => 'i', 'ì' => 'i', 'î' => 'i', 'ï' => 'i',
++            'Ó' => 'o', 'Ò' => 'o', 'Ô' => 'o', 'Ö' => 'o', 'ó' => 'o', 'ò' => 'o', 'ô' => 'o', 'ö' => 'o',
++            'Ú' => 'u', 'Ù' => 'u', 'Û' => 'u', 'Ü' => 'u', 'ú' => 'u', 'ù' => 'u', 'û' => 'u', 'ü' => 'u',
++            'Ñ' => 'n', 'ñ' => 'n',
++        ]);
++
++        return strtolower(trim(preg_replace('/\s+/u', ' ', $folded) ?? $folded));
++    }
++
++    private function year(mixed $value, string $label): void
++    {
++        if (! is_int($value) || $value < 2000 || $value > 2200) {
++            throw new DomainException("Invalid $label.");
++        }
++    }
++
++    private function month(mixed $value, string $label): void
++    {
++        if (! is_int($value) || $value < 1 || $value > 12) {
++            throw new DomainException("Invalid $label.");
++        }
++    }
++}
+diff --git a/server/tests/Feature/MobileCatalogPublicationTest.php b/server/tests/Feature/MobileCatalogPublicationTest.php
+new file mode 100644
+index 0000000..ff73076
+--- /dev/null
++++ b/server/tests/Feature/MobileCatalogPublicationTest.php
+@@ -0,0 +1,104 @@
++<?php
++
++namespace Tests\Feature;
++
++use App\Enums\DatasetReleaseStatus;
++use App\Enums\OperatorRole;
++use App\Models\Dataset;
++use App\Models\DatasetRelease;
++use App\Models\User;
++use App\Services\DatasetPublisher;
++use App\Services\DatasetReleaseValidator;
++use DomainException;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Illuminate\Support\Facades\Storage;
++use Tests\TestCase;
++
++class MobileCatalogPublicationTest extends TestCase
++{
++    use RefreshDatabase;
++
++    protected function setUp(): void
++    {
++        parent::setUp();
++        Storage::fake('local');
++        Storage::fake('public');
++    }
++
++    public function test_three_catalogs_can_be_reviewed_published_and_rolled_back_without_rewriting_prior_assets(): void
++    {
++        $reviewer = User::factory()->create(['role' => OperatorRole::Reviewer, 'is_active' => true]);
++        $catalogs = ['cda_catalog', 'cda_geography', 'insurance_directory'];
++        $assets = [];
++        foreach ($catalogs as $key) {
++            $dataset = Dataset::query()->create(['key' => $key, 'title' => $key, 'schema_version' => 1, 'enabled' => true]);
++            $dataset->sources()->create(['title' => 'Official source', 'authority' => 'Verified catalog issuer', 'url' => 'https://example.org/catalogs', 'verified_at' => now(), 'is_active' => true]);
++            foreach (['first', 'second'] as $version) {
++                $release = $this->draft($dataset, $key, '2026.11.18-'.$version);
++                $sourceBytes = Storage::disk('local')->get($release->draft_path);
++                app(DatasetReleaseValidator::class)->validate($release, $reviewer);
++                app(DatasetPublisher::class)->publish($release, $reviewer);
++                $release->refresh();
++                $this->assertSame(DatasetReleaseStatus::Published, $release->status);
++                $this->assertSame(hash('sha256', $sourceBytes), $release->sha256);
++                $this->assertSame($sourceBytes, Storage::disk('public')->get($release->asset_path));
++                $assets[$key][$version] = $release;
++            }
++        }
++        $manifest = $this->manifest();
++        $this->assertCount(3, $manifest['datasets']);
++        foreach ($catalogs as $key) {
++            $this->assertSame($assets[$key]['second']->sha256, $manifest['datasets'][$key]['sha256']);
++            app(DatasetPublisher::class)->rollback($assets[$key]['first']->dataset, $assets[$key]['first'], $reviewer);
++            $this->assertSame($assets[$key]['first']->sha256, $this->manifest()['datasets'][$key]['sha256']);
++            Storage::disk('public')->assertExists($assets[$key]['second']->asset_path);
++        }
++    }
++
++    public function test_invalid_catalog_cannot_change_the_manifest_or_a_valid_release(): void
++    {
++        $reviewer = User::factory()->create(['role' => OperatorRole::Reviewer, 'is_active' => true]);
++        $dataset = Dataset::query()->create(['key' => 'insurance_directory', 'title' => 'Insurers', 'schema_version' => 1, 'enabled' => true]);
++        $dataset->sources()->create(['title' => 'Issuer', 'authority' => 'Issuer', 'url' => 'https://example.org/insurers', 'verified_at' => now(), 'is_active' => true]);
++        $first = $this->draft($dataset, 'insurance_directory', '2026.11.18-valid');
++        app(DatasetReleaseValidator::class)->validate($first, $reviewer);
++        app(DatasetPublisher::class)->publish($first, $reviewer);
++        $before = Storage::disk('public')->get('manifest/v1/manifest.json');
++        $bad = $this->draft($dataset, 'insurance_directory', '2026.11.18-bad', true);
++        try {
++            app(DatasetReleaseValidator::class)->validate($bad, $reviewer);
++            $this->fail('The unsafe insurance contact was validated.');
++        } catch (DomainException) {
++            $this->assertSame(DatasetReleaseStatus::Draft, $bad->refresh()->status);
++            $this->assertSame($first->version, $dataset->refresh()->current_version);
++            $this->assertSame($before, Storage::disk('public')->get('manifest/v1/manifest.json'));
++        }
++    }
++
++    private function draft(Dataset $dataset, string $key, string $version, bool $unsafe = false): DatasetRelease
++    {
++        $file = match ($key) {
++            'cda_catalog' => 'cda_catalog_v1.json',
++            'cda_geography' => 'cda_geography_v1.json',
++            'insurance_directory' => 'insurance_directory_v1.json',
++        };
++        $payload = json_decode(file_get_contents(dirname(base_path()).'/mobile/assets/catalogs/'.$file), true, 512, JSON_THROW_ON_ERROR);
++        $payload['schemaVersion'] = 1;
++        $payload['datasetKey'] = $key;
++        $payload['version'] = $version;
++        $payload['generatedAt'] = '2026-11-18T12:00:00Z';
++        if ($unsafe) {
++            $payload['entries'][0]['channels'][0]['value'] = 'https://bad.invalid/';
++        }
++        $path = "dataset-drafts/$key/$version.json";
++        Storage::disk('local')->put($path, json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
++
++        return $dataset->releases()->create(['version' => $version, 'status' => DatasetReleaseStatus::Draft, 'draft_path' => $path]);
++    }
++
++    /** @return array<string,mixed> */
++    private function manifest(): array
++    {
++        return json_decode(Storage::disk('public')->get('manifest/v1/manifest.json'), true, 512, JSON_THROW_ON_ERROR);
++    }
++}
+diff --git a/server/tests/Unit/MobileCatalogPayloadValidatorTest.php b/server/tests/Unit/MobileCatalogPayloadValidatorTest.php
+new file mode 100644
+index 0000000..9f4dce8
+--- /dev/null
++++ b/server/tests/Unit/MobileCatalogPayloadValidatorTest.php
+@@ -0,0 +1,97 @@
++<?php
++
++namespace Tests\Unit;
++
++use App\Services\MobileCatalogPayloadValidator;
++use DomainException;
++use PHPUnit\Framework\TestCase;
++
++class MobileCatalogPayloadValidatorTest extends TestCase
++{
++    public function test_the_three_real_bundled_catalogs_accept_the_server_publication_envelope(): void
++    {
++        foreach (['cda_catalog', 'cda_geography', 'insurance_directory'] as $key) {
++            (new MobileCatalogPayloadValidator)->validate($this->fixture($key), $key);
++            $this->addToAssertionCount(1);
++        }
++    }
++
++    public function test_edits_cannot_create_duplicate_records_or_cross_dataset_contracts(): void
++    {
++        foreach (['cda_catalog', 'cda_geography', 'insurance_directory'] as $key) {
++            $payload = $this->fixture($key);
++            $wrong = $payload;
++            $wrong['datasetKey'] = 'restrictions';
++            $this->rejects($wrong, $key);
++            $duplicate = $payload;
++            $duplicate['entries'][] = $duplicate['entries'][0];
++            $this->rejects($duplicate, $key);
++            $empty = $payload;
++            $empty['entries'] = [];
++            $this->rejects($empty, $key);
++        }
++    }
++
++    public function test_cda_catalog_rejects_unverified_inventory_and_unsafe_sources(): void
++    {
++        $catalog = $this->fixture('cda_catalog');
++        $catalog['entries'][0]['certified'] = false;
++        $this->rejects($catalog, 'cda_catalog');
++        $catalog = $this->fixture('cda_catalog');
++        $catalog['source']['sourceUrl'] = 'http://example.org/actors';
++        $this->rejects($catalog, 'cda_catalog');
++    }
++
++    public function test_geography_rejects_unverified_addresses_and_invalid_colombian_coordinates(): void
++    {
++        $catalog = $this->fixture('cda_geography');
++        $catalog['entries'][0]['latitude'] = 60;
++        $this->rejects($catalog, 'cda_geography');
++        $catalog = $this->fixture('cda_geography');
++        $catalog['entries'][0]['locationSources'] = [];
++        $this->rejects($catalog, 'cda_geography');
++        $catalog = $this->fixture('cda_geography');
++        $catalog['entries'][0]['locationSources'][0]['url'] = 'javascript:alert(1)';
++        $this->rejects($catalog, 'cda_geography');
++    }
++
++    public function test_insurance_catalog_rejects_unsafe_contacts_and_unverified_services(): void
++    {
++        $directory = $this->fixture('insurance_directory');
++        $directory['entries'][0]['channels'][0]['value'] = 'https://evil.test/';
++        $this->rejects($directory, 'insurance_directory');
++        $directory = $this->fixture('insurance_directory');
++        $directory['entries'][0]['channels'][0]['verified'] = false;
++        $this->rejects($directory, 'insurance_directory');
++        $directory = $this->fixture('insurance_directory');
++        $directory['entries'][0]['channels'][0]['sourceUrl'] = 'http://insecure.test/';
++        $this->rejects($directory, 'insurance_directory');
++    }
++
++    /** @return array<string,mixed> */
++    private function fixture(string $key): array
++    {
++        $file = match ($key) {
++            'cda_catalog' => 'cda_catalog_v1.json',
++            'cda_geography' => 'cda_geography_v1.json',
++            'insurance_directory' => 'insurance_directory_v1.json',
++        };
++        $payload = json_decode(file_get_contents(dirname(__DIR__, 3).'/mobile/assets/catalogs/'.$file), true, 512, JSON_THROW_ON_ERROR);
++        $payload['datasetKey'] = $key;
++        $payload['version'] ??= '2026.11.18-test';
++        $payload['generatedAt'] = '2026-11-18T12:00:00Z';
++
++        return $payload;
++    }
++
++    /** @param array<string,mixed> $payload */
++    private function rejects(array $payload, string $key): void
++    {
++        try {
++            (new MobileCatalogPayloadValidator)->validate($payload, $key);
++            $this->fail('An unsafe catalog update was accepted: '.$key);
++        } catch (DomainException) {
++            $this->addToAssertionCount(1);
++        }
++    }
++}
