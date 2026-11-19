@@ -1,0 +1,769 @@
+diff --git a/mobile/lib/app/app_providers.dart b/mobile/lib/app/app_providers.dart
+index bba6e43..09f1dea 100644
+--- a/mobile/lib/app/app_providers.dart
++++ b/mobile/lib/app/app_providers.dart
+@@ -1,3 +1,4 @@
++import 'dart:convert';
+ import 'dart:io';
+ 
+ import 'package:flutter/services.dart';
+@@ -9,6 +10,9 @@ import '../core/database/app_database.dart'
+     hide MaintenanceRecord, VehicleObligation;
+ import '../core/storage/app_preferences.dart';
+ import '../core/sync/dataset_sync_service.dart';
++import '../core/sync/published_catalog_store.dart';
++import '../features/cda/data/cda_catalog.dart';
++import '../features/cda/data/cda_geography.dart';
+ import '../features/defense/application/defense_case_providers.dart';
+ import '../features/documents/application/wallet_providers.dart'
+     show walletDocumentsProvider, walletSessionProvider, walletStoreProvider;
+@@ -22,6 +26,7 @@ import '../features/maintenance/data/maintenance_notification_preferences.dart';
+ import '../features/maintenance/data/maintenance_repository.dart';
+ import '../features/maintenance/application/maintenance_reminders.dart';
+ import '../features/vehicle_status/data/vehicle_obligation_store.dart';
++import '../features/vehicle_status/data/insurance_directory.dart';
+ import '../features/vehicle_status/data/tax_catalog.dart';
+ import '../features/vehicle_status/data/tax_catalog_store.dart';
+ import '../features/vehicle_status/data/private_vehicle_document_store.dart';
+@@ -119,6 +124,86 @@ final tollInventoryStoreProvider = FutureProvider<TollInventoryStore>((
+   );
+ });
+ 
++const cdaCatalogDatasetKey = 'cda_catalog';
++const cdaGeographyDatasetKey = 'cda_geography';
++const insuranceDirectoryDatasetKey = 'insurance_directory';
++
++// Use the same SHA-verified, transactional snapshot store for three independent
++// catalogs. The APK assets stay as an offline and corruption-safe fallback.
++final cdaCatalogStoreProvider = FutureProvider<PublishedCatalogStore<CdaCatalog>>((
++  ref,
++) async {
++  final directory = await ref.watch(datasetSnapshotsDirectoryProvider.future);
++  return PublishedCatalogStore<CdaCatalog>(
++    database: ref.watch(appDatabaseProvider),
++    datasetKey: cdaCatalogDatasetKey,
++    snapshotFile: File(
++      '${directory.path}${Platform.pathSeparator}cda_catalog.json',
++    ),
++    bundledLoader: () => rootBundle.loadString(cdaCatalogAssetPath),
++    parse: _parsePublishedCdaCatalog,
++  );
++});
++
++final cdaGeographyStoreProvider =
++    FutureProvider<PublishedCatalogStore<CdaGeography>>((ref) async {
++      final directory = await ref.watch(
++        datasetSnapshotsDirectoryProvider.future,
++      );
++      return PublishedCatalogStore<CdaGeography>(
++        database: ref.watch(appDatabaseProvider),
++        datasetKey: cdaGeographyDatasetKey,
++        snapshotFile: File(
++          '${directory.path}${Platform.pathSeparator}cda_geography.json',
++        ),
++        bundledLoader: () => rootBundle.loadString(cdaGeographyAssetPath),
++        parse: (source) => CdaGeography.fromJson(
++          Map<String, Object?>.from(jsonDecode(source) as Map),
++        ),
++      );
++    });
++
++final insuranceDirectoryStoreProvider =
++    FutureProvider<PublishedCatalogStore<InsuranceDirectory>>((ref) async {
++      final directory = await ref.watch(
++        datasetSnapshotsDirectoryProvider.future,
++      );
++      return PublishedCatalogStore<InsuranceDirectory>(
++        database: ref.watch(appDatabaseProvider),
++        datasetKey: insuranceDirectoryDatasetKey,
++        snapshotFile: File(
++          '${directory.path}${Platform.pathSeparator}insurance_directory.json',
++        ),
++        bundledLoader: () => rootBundle.loadString(insuranceDirectoryAsset),
++        parse: InsuranceDirectory.fromJsonString,
++      );
++    });
++
++final cdaCatalogProvider = FutureProvider<CdaCatalog>((ref) async {
++  if (ref.watch(datasetSyncConfigProvider) == null) {
++    return loadCdaCatalog(rootBundle);
++  }
++  return (await ref.watch(cdaCatalogStoreProvider.future)).load();
++});
++final cdaGeographyProvider = FutureProvider<CdaGeography>((ref) async {
++  if (ref.watch(datasetSyncConfigProvider) == null) {
++    return loadCdaGeography(rootBundle);
++  }
++  return (await ref.watch(cdaGeographyStoreProvider.future)).load();
++});
++
++CdaCatalog _parsePublishedCdaCatalog(String source) {
++  final catalog = CdaCatalog.fromJsonString(source);
++  final ids = catalog.entries.map((entry) => entry.id).toSet();
++  if (catalog.entries.isEmpty ||
++      ids.length != catalog.entries.length ||
++      catalog.metrics.uniqueCdaCount != catalog.entries.length ||
++      catalog.entries.any((entry) => !entry.certified || entry.novelty != 'NO')) {
++    throw const FormatException('Invalid published CDA inventory.');
++  }
++  return catalog;
++}
++
+ final datasetSyncCommitHandlerProvider =
+     Provider<void Function(String datasetKey)>((ref) {
+       return (datasetKey) {
+@@ -130,6 +215,12 @@ final datasetSyncCommitHandlerProvider =
+           ref.invalidate(tripTollInventoryProvider);
+         } else if (datasetKey == taxCalendarsDatasetKey) {
+           ref.invalidate(taxCatalogProvider);
++        } else if (datasetKey == cdaCatalogDatasetKey) {
++          ref.invalidate(cdaCatalogProvider);
++        } else if (datasetKey == cdaGeographyDatasetKey) {
++          ref.invalidate(cdaGeographyProvider);
++        } else if (datasetKey == insuranceDirectoryDatasetKey) {
++          ref.invalidate(insuranceDirectoryProvider);
+         }
+       };
+     });
+@@ -212,6 +303,9 @@ final datasetSyncServiceProvider = FutureProvider<DatasetSyncService?>((
+   _validateProductDatasetConfig(config);
+   final tollStore = await ref.watch(tollInventoryStoreProvider.future);
+   final taxStore = await ref.watch(taxCatalogStoreProvider.future);
++  final cdaStore = await ref.watch(cdaCatalogStoreProvider.future);
++  final geographyStore = await ref.watch(cdaGeographyStoreProvider.future);
++  final insurersStore = await ref.watch(insuranceDirectoryStoreProvider.future);
+   return DatasetSyncService(
+     database: ref.watch(appDatabaseProvider),
+     preferences: ref.watch(appPreferencesProvider),
+@@ -220,6 +314,9 @@ final datasetSyncServiceProvider = FutureProvider<DatasetSyncService?>((
+     transactionalImporters: {
+       tollInventoryDatasetKey: tollStore.transactionalImporter,
+       taxCalendarsDatasetKey: taxStore.transactionalImporter,
++      cdaCatalogDatasetKey: cdaStore.transactionalImporter,
++      cdaGeographyDatasetKey: geographyStore.transactionalImporter,
++      insuranceDirectoryDatasetKey: insurersStore.transactionalImporter,
+     },
+     onDatasetCommitted: ref.watch(datasetSyncCommitHandlerProvider),
+   );
+diff --git a/mobile/lib/core/sync/dataset_sync_service.dart b/mobile/lib/core/sync/dataset_sync_service.dart
+index 0cd1f46..5729491 100644
+--- a/mobile/lib/core/sync/dataset_sync_service.dart
++++ b/mobile/lib/core/sync/dataset_sync_service.dart
+@@ -95,6 +95,7 @@ class DatasetSyncService {
+   }
+ 
+   static const manifestEtagPreferenceKey = 'manifest_etag_v1';
++  static const manifestDatasetKeysPreferenceKey = 'manifest_dataset_keys_v1';
+ 
+   final AppDatabase database;
+   final AppPreferences preferences;
+@@ -154,6 +155,14 @@ class DatasetSyncService {
+       await _syncDataset(entry.key, entry.value, result, cancelToken);
+     }
+ 
++    // Remember only the keys actually published. Optional catalogs are not
++    // treated as missing on the next 304 when they were absent from manifest.
++    // Persist this BEFORE the new ETag; on a preferences failure the next
++    // request conservatively downloads the manifest again.
++    await preferences.setString(
++      manifestDatasetKeysPreferenceKey,
++      jsonEncode(manifest.datasets.keys.toList()),
++    );
+     final newEtag = manifestResponse.headers.value(HttpHeaders.etagHeader);
+     if (newEtag != null && newEtag.isNotEmpty) {
+       await preferences.setString(manifestEtagPreferenceKey, newEtag);
+@@ -179,7 +188,26 @@ class DatasetSyncService {
+   }
+ 
+   Future<bool> _installedDatasetsAreUsable() async {
+-    final datasetKeys = {...importers.keys, ...transactionalImporters.keys};
++    final supportedKeys = {...importers.keys, ...transactionalImporters.keys};
++    final storedKeys = await preferences.getString(
++      manifestDatasetKeysPreferenceKey,
++    );
++    // Older installations without this metadata retain the conservative
++    // original behavior: validate every registered importer on a 304.
++    var datasetKeys = supportedKeys;
++    if (storedKeys != null) {
++      try {
++        final decoded = jsonDecode(storedKeys);
++        if (decoded is List && decoded.every((value) => value is String)) {
++          datasetKeys = decoded
++              .cast<String>()
++              .toSet()
++              .intersection(supportedKeys);
++        }
++      } on FormatException {
++        // Corrupt metadata cannot waive integrity checks.
++      }
++    }
+     for (final datasetKey in datasetKeys) {
+       final installed = await _localDatasetVersion(datasetKey);
+       if (installed == null || installed.status != 'installed') {
+diff --git a/mobile/lib/core/sync/published_catalog_store.dart b/mobile/lib/core/sync/published_catalog_store.dart
+new file mode 100644
+index 0000000..297a6d4
+--- /dev/null
++++ b/mobile/lib/core/sync/published_catalog_store.dart
+@@ -0,0 +1,286 @@
++import 'dart:async';
++import 'dart:convert';
++import 'dart:io';
++
++import 'package:cryptography/cryptography.dart';
++
++import '../database/app_database.dart';
++import 'dataset_sync_service.dart';
++
++/// A small, typed snapshot adapter for existing catalog DTOs. DatasetSyncService
++/// remains the ONLY network client, manifest validator and Drift version writer.
++/// Files are immutable and named by the SHA-256 recorded in dataset_versions.
++class PublishedCatalogStore<T> {
++  PublishedCatalogStore({
++    required this.database,
++    required this.datasetKey,
++    required this.snapshotFile,
++    required this.bundledLoader,
++    required this.parse,
++  });
++
++  final AppDatabase database;
++  final String datasetKey;
++  final File snapshotFile;
++  final Future<String> Function() bundledLoader;
++  final T Function(String source) parse;
++  final _CatalogMutex _mutex = _CatalogMutex();
++  final Map<String, int> _pending = {};
++  String? lastLoadWarning;
++  String? lastMaintenanceWarning;
++
++  TransactionalDatasetImporter get transactionalImporter =>
++      TransactionalDatasetImporter(
++        prepare: _prepare,
++        isInstalledVersionUsable: _isInstalledVersionUsable,
++      );
++
++  Future<T> load() => _mutex.run(() async {
++    final installed = await _installed();
++    if (installed == null || installed.status != 'installed') {
++      lastLoadWarning = null;
++      return parse(await bundledLoader());
++    }
++    try {
++      final value = await _readInstalled(installed);
++      lastLoadWarning = null;
++      return value;
++    } on DatasetSyncException {
++      return _bundledFallback();
++    } on FileSystemException {
++      return _bundledFallback();
++    }
++  });
++
++  Future<T> _bundledFallback() async {
++    lastLoadWarning =
++        'El catálogo descargado no pasó la comprobación de integridad. '
++        'Se muestra la copia incluida en la aplicación.';
++    return parse(await bundledLoader());
++  }
++
++  Future<DatasetVersion?> _installed() async {
++    final found = await (database.select(database.datasetVersions)
++          ..where((row) => row.datasetKey.equals(datasetKey)))
++        .get();
++    if (found.length > 1) {
++      throw DatasetSyncException('Duplicate installed dataset: $datasetKey.');
++    }
++    return found.isEmpty ? null : found.single;
++  }
++
++  File _snapshot(String sha) => File('${snapshotFile.path}.$sha');
++
++  Future<T> _readInstalled(DatasetVersion installed) async {
++    final sha = installed.sha256?.trim() ?? '';
++    if (!_sha256Pattern.hasMatch(sha)) {
++      throw DatasetSyncException('Invalid installed hash for $datasetKey.');
++    }
++    final bytes = await _snapshot(sha).readAsBytes();
++    if (await _digest(bytes) != sha) {
++      throw DatasetSyncException('Installed bytes changed for $datasetKey.');
++    }
++    try {
++      final source = utf8.decode(bytes);
++      final json = jsonDecode(source);
++      if (json is! Map || json['datasetKey'] != datasetKey ||
++          json['version'] != installed.version || json['schemaVersion'] != 1) {
++        throw const FormatException('Installed envelope mismatch.');
++      }
++      return parse(source);
++    } catch (error) {
++      throw DatasetSyncException('Installed $datasetKey is invalid: $error');
++    }
++  }
++
++  Future<bool> _isInstalledVersionUsable(
++    AppDatabase target,
++    DatasetVersion installed,
++  ) async {
++    if (!identical(target, database) || installed.datasetKey != datasetKey ||
++        installed.status != 'installed') {
++      return false;
++    }
++    return _mutex.run(() async {
++      try {
++        await _readInstalled(installed);
++        return true;
++      } on Exception {
++        return false;
++      }
++    });
++  }
++
++  Future<PreparedDatasetImport> _prepare(
++    AppDatabase target,
++    Map<String, dynamic> payload,
++    List<int> verifiedBytes,
++    String sha,
++  ) async {
++    if (!identical(target, database) || !_sha256Pattern.hasMatch(sha) ||
++        await _digest(verifiedBytes) != sha) {
++      throw DatasetSyncException('Invalid verified bytes for $datasetKey.');
++    }
++    try {
++      final source = utf8.decode(verifiedBytes);
++      final decoded = jsonDecode(source);
++      if (decoded is! Map || !_sameJson(decoded, payload) ||
++          decoded['datasetKey'] != datasetKey ||
++          decoded['schemaVersion'] != 1 ||
++          decoded['version'] is! String ||
++          (decoded['version'] as String).trim().isEmpty ||
++          DateTime.tryParse(decoded['generatedAt']?.toString() ?? '') == null) {
++        throw const FormatException('Catalog envelope does not match bytes.');
++      }
++      // The same parser used by the UI must accept the candidate BEFORE Drift
++      // records its version. No committed but unreadable catalog is allowed.
++      parse(source);
++    } catch (error) {
++      throw DatasetSyncException('Invalid published $datasetKey: $error');
++    }
++
++    return _mutex.run(() async {
++      await snapshotFile.parent.create(recursive: true);
++      final destination = _snapshot(sha);
++      var created = false;
++      final present = await destination.exists();
++      final intact = present &&
++          await _digest(await destination.readAsBytes()) == sha;
++      if (!intact) {
++        final nonce = DateTime.now().microsecondsSinceEpoch;
++        final candidate = File('${destination.path}.candidate.$nonce');
++        final quarantine = File('${destination.path}.corrupt.$nonce');
++        var quarantined = false;
++        try {
++          await candidate.writeAsBytes(verifiedBytes, flush: true);
++          // Never write partial bytes to a selected snapshot. A damaged file
++          // is moved out of the way only after the replacement is complete.
++          if (present) {
++            await destination.rename(quarantine.path);
++            quarantined = true;
++          }
++          await candidate.rename(destination.path);
++          created = true;
++        } on FileSystemException {
++          if (quarantined && !await destination.exists()) {
++            await quarantine.rename(destination.path);
++          }
++          if (!await destination.exists() ||
++              await _digest(await destination.readAsBytes()) != sha) {
++            rethrow;
++          }
++        } finally {
++          if (await candidate.exists()) await candidate.delete();
++          if (await quarantine.exists()) await quarantine.delete();
++        }
++      }
++      _pending.update(sha, (count) => count + 1, ifAbsent: () => 1);
++      return _PreparedCatalog<T>(this, sha, created);
++    });
++  }
++
++  Future<void> _finish(String sha, bool created, {required bool committed}) =>
++      _mutex.run(() async {
++        final count = _pending[sha] ?? 0;
++        if (count <= 1) {
++          _pending.remove(sha);
++        } else {
++          _pending[sha] = count - 1;
++        }
++        if (committed) {
++          // Cleanup is best-effort, never invalidate a successful DB commit.
++          try {
++            final selected = await _installed();
++            if (selected?.sha256 == sha) {
++              final prefix = '${snapshotFile.uri.pathSegments.last}.';
++              await for (final entity in snapshotFile.parent.list()) {
++                if (entity is! File) continue;
++                final name = entity.uri.pathSegments.last;
++                if (!name.startsWith(prefix)) continue;
++                final suffix = name.substring(prefix.length);
++                if (suffix != sha && !_pending.containsKey(suffix) &&
++                    _sha256Pattern.hasMatch(suffix)) {
++                  await entity.delete();
++                }
++              }
++            }
++          } on Exception {
++            lastMaintenanceWarning = 'Old snapshot cleanup deferred.';
++          }
++        } else if (created && !_pending.containsKey(sha)) {
++          try {
++            final selected = await _installed();
++            if (selected?.sha256 != sha) {
++              final snapshot = _snapshot(sha);
++              if (await snapshot.exists()) await snapshot.delete();
++            }
++          } on Exception {
++            lastMaintenanceWarning = 'Unselected snapshot cleanup deferred.';
++          }
++        }
++      });
++}
++
++class _PreparedCatalog<T> implements PreparedDatasetImport {
++  _PreparedCatalog(this.store, this.sha, this.created);
++  final PublishedCatalogStore<T> store;
++  final String sha;
++  final bool created;
++  bool _finished = false;
++
++  @override
++  Future<void> activate() async {}
++
++  @override
++  Future<void> commit() async {
++    if (_finished) return;
++    _finished = true;
++    await store._finish(sha, created, committed: true);
++  }
++
++  @override
++  Future<void> rollback() async {
++    if (_finished) return;
++    _finished = true;
++    await store._finish(sha, created, committed: false);
++  }
++}
++
++class _CatalogMutex {
++  Future<void> _last = Future.value();
++
++  Future<T> run<T>(Future<T> Function() action) async {
++    final previous = _last;
++    final completer = Completer<void>();
++    _last = completer.future;
++    await previous;
++    try {
++      return await action();
++    } finally {
++      completer.complete();
++    }
++  }
++}
++
++final _sha256Pattern = RegExp(r'^[a-f0-9]{64}$');
++
++Future<String> _digest(List<int> bytes) async {
++  final hash = await Sha256().hash(bytes);
++  return hash.bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
++}
++
++bool _sameJson(Object? left, Object? right) {
++  if (left is Map && right is Map) {
++    return left.length == right.length &&
++        left.keys.every((key) => right.containsKey(key) &&
++            _sameJson(left[key], right[key]));
++  }
++  if (left is List && right is List) {
++    if (left.length != right.length) return false;
++    for (var i = 0; i < left.length; i++) {
++      if (!_sameJson(left[i], right[i])) return false;
++    }
++    return true;
++  }
++  return left == right;
++}
+diff --git a/mobile/lib/features/cda/presentation/cda_finder_screen.dart b/mobile/lib/features/cda/presentation/cda_finder_screen.dart
+index 0ceb256..d17de05 100644
+--- a/mobile/lib/features/cda/presentation/cda_finder_screen.dart
++++ b/mobile/lib/features/cda/presentation/cda_finder_screen.dart
+@@ -1,5 +1,4 @@
+ import 'package:flutter/material.dart';
+-import 'package:flutter/services.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:go_router/go_router.dart';
+ 
+@@ -12,12 +11,8 @@ import 'cda_directory_view.dart';
+ import 'cda_home_view.dart';
+ import 'cda_map_view.dart';
+ 
+-final cdaCatalogProvider = FutureProvider<CdaCatalog>(
+-  (ref) => loadCdaCatalog(rootBundle),
+-);
+-final cdaGeographyProvider = FutureProvider<CdaGeography>(
+-  (ref) => loadCdaGeography(rootBundle),
+-);
++export '../../../app/app_providers.dart'
++    show cdaCatalogProvider, cdaGeographyProvider;
+ 
+ enum _CdaPage { home, directory, map }
+ 
+diff --git a/mobile/lib/features/vehicle_status/data/insurance_directory.dart b/mobile/lib/features/vehicle_status/data/insurance_directory.dart
+index c9a5b44..1053c52 100644
+--- a/mobile/lib/features/vehicle_status/data/insurance_directory.dart
++++ b/mobile/lib/features/vehicle_status/data/insurance_directory.dart
+@@ -3,6 +3,9 @@ import 'dart:convert';
+ import 'package:flutter/services.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ 
++import '../../../app/app_providers.dart'
++    show datasetSyncConfigProvider, insuranceDirectoryStoreProvider;
++
+ const insuranceDirectoryAsset = 'assets/catalogs/insurance_directory_v1.json';
+ 
+ /// Published request routes, never a statement of the user's policy coverage.
+@@ -17,9 +20,12 @@ enum InsuranceService {
+ final insuranceDirectoryProvider = FutureProvider<InsuranceDirectory>((
+   ref,
+ ) async {
+-  return InsuranceDirectory.fromJsonString(
+-    await rootBundle.loadString(insuranceDirectoryAsset),
+-  );
++  if (ref.watch(datasetSyncConfigProvider) == null) {
++    return InsuranceDirectory.fromJsonString(
++      await rootBundle.loadString(insuranceDirectoryAsset),
++    );
++  }
++  return (await ref.watch(insuranceDirectoryStoreProvider.future)).load();
+ });
+ 
+ class InsuranceDirectory {
+diff --git a/mobile/test/app/dataset_sync_composition_test.dart b/mobile/test/app/dataset_sync_composition_test.dart
+index 8c131ae..ee71048 100644
+--- a/mobile/test/app/dataset_sync_composition_test.dart
++++ b/mobile/test/app/dataset_sync_composition_test.dart
+@@ -67,6 +67,9 @@ void main() {
+     expect(service.transactionalImporters.keys, {
+       tollInventoryDatasetKey,
+       taxCalendarsDatasetKey,
++      cdaCatalogDatasetKey,
++      cdaGeographyDatasetKey,
++      insuranceDirectoryDatasetKey,
+     });
+     expect(service.currentAppVersion, '1.0.1');
+     final pubspec = await File('pubspec.yaml').readAsString();
+diff --git a/mobile/test/app/mobile_catalog_ota_test.dart b/mobile/test/app/mobile_catalog_ota_test.dart
+new file mode 100644
+index 0000000..dbeef77
+--- /dev/null
++++ b/mobile/test/app/mobile_catalog_ota_test.dart
+@@ -0,0 +1,200 @@
++import 'dart:convert';
++import 'dart:io';
++import 'dart:typed_data';
++
++import 'package:cryptography/cryptography.dart';
++import 'package:dio/dio.dart';
++import 'package:drift/native.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:picoradar/app/app_providers.dart';
++import 'package:picoradar/core/config/app_config.dart';
++import 'package:picoradar/core/database/app_database.dart';
++import 'package:picoradar/core/storage/app_preferences.dart';
++import 'package:picoradar/core/sync/dataset_sync_service.dart';
++import 'package:picoradar/features/vehicle_status/data/insurance_directory.dart';
++
++void main() {
++  TestWidgetsFlutterBinding.ensureInitialized();
++
++  test('the 3 shipped catalogs remain available without CDN or account', () async {
++    final db = AppDatabase(NativeDatabase.memory());
++    addTearDown(db.close);
++    final directory = await Directory.systemTemp.createTemp('picoradar_catalogs_');
++    addTearDown(() => directory.delete(recursive: true));
++    final container = ProviderContainer(
++      retry: (_, _) => null,
++      overrides: [
++        appDatabaseProvider.overrideWithValue(db),
++        datasetSnapshotsDirectoryProvider.overrideWith((ref) async => directory),
++      ],
++    );
++    addTearDown(container.dispose);
++    expect(await container.read(datasetSyncServiceProvider.future), isNull);
++    expect((await container.read(cdaCatalogProvider.future)).entries.length, 964);
++    expect((await container.read(cdaGeographyProvider.future)).sites.length, 866);
++    expect((await container.read(insuranceDirectoryProvider.future)).entries.length, 16);
++  });
++
++  test('SHA verified HTTP catalog updates become visible and stay offline', () async {
++    final db = AppDatabase(NativeDatabase.memory());
++    addTearDown(db.close);
++    final directory = await Directory.systemTemp.createTemp('picoradar_catalogs_');
++    addTearDown(() => directory.delete(recursive: true));
++    final container = ProviderContainer(
++      retry: (_, _) => null,
++      overrides: [
++        appDatabaseProvider.overrideWithValue(db),
++        appPreferencesProvider.overrideWithValue(_MemoryPreferences()),
++        datasetSnapshotsDirectoryProvider.overrideWith((ref) async => directory),
++        datasetSyncConfigProvider.overrideWithValue(
++          AppConfig(cdnBaseUrl: 'https://datasets.example.org'),
++        ),
++      ],
++    );
++    addTearDown(container.dispose);
++    final oldCda = await container.read(cdaCatalogProvider.future);
++    final oldSites = await container.read(cdaGeographyProvider.future);
++    final oldInsurers = await container.read(insuranceDirectoryProvider.future);
++
++    final sources = <String, String>{
++      cdaCatalogDatasetKey: 'assets/catalogs/cda_catalog_v1.json',
++      cdaGeographyDatasetKey: 'assets/catalogs/cda_geography_v1.json',
++      insuranceDirectoryDatasetKey: 'assets/catalogs/insurance_directory_v1.json',
++    };
++    final payloads = <String, List<int>>{};
++    final entries = <String, Object?>{};
++    for (final record in sources.entries) {
++      final json = Map<String, dynamic>.from(
++        jsonDecode(File(record.value).readAsStringSync()) as Map,
++      );
++      json['datasetKey'] = record.key;
++      json['version'] = '2026-11-18.1';
++      json['generatedAt'] = '2026-11-18T08:00:00Z';
++      if (record.key == cdaCatalogDatasetKey) {
++        (json['source'] as Map)['provider'] = 'RUNT - updated over OTA';
++      } else if (record.key == cdaGeographyDatasetKey) {
++        json['approved'] = true;
++      } else {
++        json['coverage'] = 'Updated insurance directory over OTA';
++      }
++      final bytes = utf8.encode(jsonEncode(json));
++      payloads['/datasets/${record.key}.json'] = bytes;
++      entries[record.key] = {
++        'version': '2026-11-18.1',
++        'url': '/datasets/${record.key}.json',
++        'sha256': await _hash(bytes),
++        'publicationRevision': 11,
++      };
++    }
++    payloads['/v1/manifest.json'] = utf8.encode(jsonEncode({
++      'schemaVersion': 1,
++      'generatedAt': '2026-11-18T08:00:00Z',
++      'minAppVersion': '1.0.0',
++      'datasets': entries,
++      'features': {'ads': false, 'cloud': false, 'paidDocuments': false},
++    }));
++    final service = (await container.read(datasetSyncServiceProvider.future))!;
++    addTearDown(() => service.http.close(force: true));
++    final transport = _MemoryHttp(Map<String, List<int>>.from(payloads));
++    service.http.httpClientAdapter = transport;
++
++    final result = await service.sync();
++    expect(result.imported.toSet(), sources.keys.toSet());
++    final newCda = await container.read(cdaCatalogProvider.future);
++    final newSites = await container.read(cdaGeographyProvider.future);
++    final newInsurers = await container.read(insuranceDirectoryProvider.future);
++    expect(newCda.source.provider, 'RUNT - updated over OTA');
++    expect(newCda.entries.length, oldCda.entries.length);
++    expect(newSites.sites.length, oldSites.sites.length);
++    expect(newInsurers.entries.length, oldInsurers.entries.length);
++
++    // A conditional manifest with no changes needs only ONE HTTP response:
++    // tax/tolls/restrictions are not treated as missing if never published.
++    transport.returnNotModified = true;
++    final notModified = await service.sync();
++    expect(notModified.notModified, isTrue);
++    transport.returnNotModified = false;
++
++    // The same verified snapshot must be usable offline after a provider reload.
++    transport.responses.clear();
++    container.invalidate(cdaCatalogProvider);
++    container.invalidate(cdaGeographyProvider);
++    container.invalidate(insuranceDirectoryProvider);
++    expect((await container.read(cdaCatalogProvider.future)).source.provider,
++        'RUNT - updated over OTA');
++    expect((await container.read(cdaGeographyProvider.future)).version,
++        '2026-11-18.1');
++
++    // A different manifest SHA MUST NOT replace the last good publication.
++    transport.responses.addAll(payloads);
++    final manifest = jsonDecode(utf8.decode(payloads['/v1/manifest.json']!))
++        as Map<String, dynamic>;
++    final manifestEntries = manifest['datasets'] as Map<String, dynamic>;
++    (manifestEntries[cdaCatalogDatasetKey] as Map)['sha256'] = '0' * 64;
++    (manifestEntries[cdaCatalogDatasetKey] as Map)['version'] = '2026-11-18.2';
++    (manifestEntries[cdaCatalogDatasetKey] as Map)['publicationRevision'] = 12;
++    transport.responses['/v1/manifest.json'] = utf8.encode(jsonEncode(manifest));
++    await expectLater(service.sync(), throwsA(isA<DatasetSyncException>()));
++    container.invalidate(cdaCatalogProvider);
++    expect((await container.read(cdaCatalogProvider.future)).source.provider,
++        'RUNT - updated over OTA');
++
++    // If local storage is altered, never render unverified data. Return to
++    // the shipped copy, then repair the same published hash atomically.
++    final installedSha = (entries[cdaCatalogDatasetKey] as Map)['sha256'] as String;
++    final selected = File(
++      '${directory.path}${Platform.pathSeparator}cda_catalog.json.$installedSha',
++    );
++    await selected.writeAsString('damaged bytes', flush: true);
++    container.invalidate(cdaCatalogProvider);
++    expect((await container.read(cdaCatalogProvider.future)).source.provider,
++        oldCda.source.provider);
++    transport.responses.addAll(payloads);
++    final repaired = await service.sync();
++    expect(repaired.imported, contains(cdaCatalogDatasetKey));
++    container.invalidate(cdaCatalogProvider);
++    expect((await container.read(cdaCatalogProvider.future)).source.provider,
++        'RUNT - updated over OTA');
++  });
++}
++
++Future<String> _hash(List<int> bytes) async {
++  final value = await Sha256().hash(bytes);
++  return value.bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
++}
++
++class _MemoryPreferences extends Fake implements AppPreferences {
++  final values = <String, String>{};
++  @override
++  Future<String?> getString(String key) async => values[key];
++  @override
++  Future<void> setString(String key, String value) async => values[key] = value;
++}
++
++class _MemoryHttp implements HttpClientAdapter {
++  _MemoryHttp(this.responses);
++  final Map<String, List<int>> responses;
++  bool returnNotModified = false;
++
++  @override
++  Future<ResponseBody> fetch(
++    RequestOptions options,
++    Stream<Uint8List>? requestStream,
++    Future<void>? cancelFuture,
++  ) async {
++    if (returnNotModified && options.uri.path == '/v1/manifest.json') {
++      return ResponseBody.fromBytes(const <int>[], HttpStatus.notModified);
++    }
++    final bytes = responses[options.uri.path];
++    if (bytes == null) throw StateError('Unexpected synthetic HTTP request');
++    return ResponseBody.fromBytes(
++      bytes,
++      200,
++      headers: {HttpHeaders.contentTypeHeader: ['application/json']},
++    );
++  }
++
++  @override
++  void close({bool force = false}) {}
++}
