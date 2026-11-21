@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "version": "trip_route_points_pilot_v1",
+  "source": {
+    "authority": "OpenStreetMap",
+    "tool": "Nominatim search API",
+    "url": "https://nominatim.openstreetmap.org/search",
+    "capturedAt": "2026-09-08T00:00:00-05:00",
+    "usage": "Human local pilot route-point snapshot for PicoRadar Viaje"
+  },
+  "points": [
+    {
+      "code": "05001",
+      "municipality": "MEDELLIN",
+      "department": "ANTIOQUIA",
+      "latitude": 6.2697324,
+      "longitude": -75.6025597,
+      "source": "nominatim_openstreetmap",
+      "version": "trip_route_points_pilot_v1",
+      "provenance": {
+        "query": "Medellin, Antioquia, Colombia",
+        "osmType": "relation",
+        "osmId": 1343264,
+        "category": "boundary",
+        "type": "administrative",
+        "displayName": "Medellin, Valle de Aburra, Antioquia, RAP del Agua y la Montana, 0500, Colombia"
+      }
+    },
+    {
+      "code": "11001",
+      "municipality": "BOGOTA",
+      "department": "BOGOTA, D.C.",
+      "latitude": 4.6533817,
+      "longitude": -74.0836331,
+      "source": "nominatim_openstreetmap",
+      "version": "trip_route_points_pilot_v1",
+      "provenance": {
+        "query": "Bogota, Distrito Capital, Colombia",
+        "osmType": "relation",
+        "osmId": 7426387,
+        "category": "boundary",
+        "type": "administrative",
+        "displayName": "Bogota ciudad, Bogota, Distrito Capital, RAP (Especial) Central, Colombia"
+      }
+    },
+    {
+      "code": "05615",
+      "municipality": "RIONEGRO",
+      "department": "ANTIOQUIA",
+      "latitude": 6.1536166,
+      "longitude": -75.3741691,
+      "source": "nominatim_openstreetmap",
+      "version": "trip_route_points_pilot_v1",
+      "provenance": {
+        "query": "Rionegro, Antioquia, Colombia",
+        "osmType": "node",
+        "osmId": 703177370,
+        "category": "place",
+        "type": "city",
+        "displayName": "Rionegro, Oriente, Antioquia, RAP del Agua y la Montana, 054040, Colombia"
+      }
+    }
+  ]
+}

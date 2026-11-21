@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 2,
+  "datasetKey": "restrictions",
+  "version": "g34-preview-2026-11-10",
+  "generatedAt": "2026-11-10T23:34:08Z",
+  "jurisdictions": [
+    {
+      "schemaVersion": 2,
+      "id": "co-cal-manizales",
+      "name": "Manizales",
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-10T23:34:08Z",
+          "staleAfter": "2026-11-17T23:34:08Z",
+          "sourceUrls": [
+            "https://centrodeinformacion.manizales.gov.co/como-funciona-el-pico-y-placa-en-manizales-durante-noviembre-de-2026/",
+            "https://centrodeinformacion.manizales.gov.co/wp-content/uploads/2026/11/DEC_-0357-28102026.pdf"
+          ],
+          "rules": [
+            {
+              "id": "MAN_CAR_MONDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-03T00:00:00-05:00",
+              "validUntil": "2026-11-30T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://centrodeinformacion.manizales.gov.co/como-funciona-el-pico-y-placa-en-manizales-durante-noviembre-de-2026/",
+              "verifiedAt": "2026-11-10T23:34:08Z"
+            },
+            {
+              "id": "MAN_CAR_TUESDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-03T00:00:00-05:00",
+              "validUntil": "2026-11-30T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://centrodeinformacion.manizales.gov.co/como-funciona-el-pico-y-placa-en-manizales-durante-noviembre-de-2026/",
+              "verifiedAt": "2026-11-10T23:34:08Z"
+            },
+            {
+              "id": "MAN_CAR_WEDNESDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-03T00:00:00-05:00",
+              "validUntil": "2026-11-30T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://centrodeinformacion.manizales.gov.co/como-funciona-el-pico-y-placa-en-manizales-durante-noviembre-de-2026/",
+              "verifiedAt": "2026-11-10T23:34:08Z"
+            },
+            {
+              "id": "MAN_CAR_THURSDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-03T00:00:00-05:00",
+              "validUntil": "2026-11-30T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://centrodeinformacion.manizales.gov.co/como-funciona-el-pico-y-placa-en-manizales-durante-noviembre-de-2026/",
+              "verifiedAt": "2026-11-10T23:34:08Z"
+            },
+            {
+              "id": "MAN_CAR_FRIDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-03T00:00:00-05:00",
+              "validUntil": "2026-11-30T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://centrodeinformacion.manizales.gov.co/como-funciona-el-pico-y-placa-en-manizales-durante-noviembre-de-2026/",
+              "verifiedAt": "2026-11-10T23:34:08Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

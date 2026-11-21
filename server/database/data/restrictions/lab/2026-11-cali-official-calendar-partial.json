@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 2,
+  "datasetKey": "restrictions",
+  "version": "LAB-V3-CALI-20261112-01",
+  "generatedAt": "2026-11-12T08:30:17-05:00",
+  "jurisdictions": [
+    {
+      "schemaVersion": 2,
+      "id": "co-vac-cali",
+      "name": "Cali",
+      "municipalityCodes": ["76001"],
+      "consultationEnabled": true,
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-11T23:03:14-05:00",
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "sourceUrls": [
+            "https://www.cali.gov.co/boletines/publicaciones/193096/pico-y-placa-rota-en-cali-para-el-segundo-semestre-de-2026-nueva-medida-rige-desde-el-1-de-julio/",
+            "https://www.cali.gov.co/boletines/publicaciones/194052/cali-retoma-el-pico-y-placa-habitual-desde-el-1-de-septiembre-se-mantienen-recomendaciones-de-movilidad-en-zonas-de-emergencia/"
+          ],
+          "rules": [
+            {
+              "id": "cali-car-private-2026-mon-9-0",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [1],
+              "digitPosition": "lastNumeric",
+              "digits": [0, 9],
+              "timeWindows": [{"startMinute": 360, "endMinute": 1140}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.cali.gov.co/boletines/publicaciones/193096/pico-y-placa-rota-en-cali-para-el-segundo-semestre-de-2026-nueva-medida-rige-desde-el-1-de-julio/",
+              "verifiedAt": "2026-11-11T23:03:14-05:00",
+              "conditions": [{"type": "inside_scope_ref", "value": "co-vac-cali-calendar-unknown-scope@2026-s2"}]
+            },
+            {
+              "id": "cali-car-private-2026-tue-1-2",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [2],
+              "digitPosition": "lastNumeric",
+              "digits": [1, 2],
+              "timeWindows": [{"startMinute": 360, "endMinute": 1140}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.cali.gov.co/boletines/publicaciones/193096/pico-y-placa-rota-en-cali-para-el-segundo-semestre-de-2026-nueva-medida-rige-desde-el-1-de-julio/",
+              "verifiedAt": "2026-11-11T23:03:14-05:00",
+              "conditions": [{"type": "inside_scope_ref", "value": "co-vac-cali-calendar-unknown-scope@2026-s2"}]
+            },
+            {
+              "id": "cali-car-private-2026-wed-3-4",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [3],
+              "digitPosition": "lastNumeric",
+              "digits": [3, 4],
+              "timeWindows": [{"startMinute": 360, "endMinute": 1140}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.cali.gov.co/boletines/publicaciones/193096/pico-y-placa-rota-en-cali-para-el-segundo-semestre-de-2026-nueva-medida-rige-desde-el-1-de-julio/",
+              "verifiedAt": "2026-11-11T23:03:14-05:00",
+              "conditions": [{"type": "inside_scope_ref", "value": "co-vac-cali-calendar-unknown-scope@2026-s2"}]
+            },
+            {
+              "id": "cali-car-private-2026-thu-5-6",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [4],
+              "digitPosition": "lastNumeric",
+              "digits": [5, 6],
+              "timeWindows": [{"startMinute": 360, "endMinute": 1140}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.cali.gov.co/boletines/publicaciones/193096/pico-y-placa-rota-en-cali-para-el-segundo-semestre-de-2026-nueva-medida-rige-desde-el-1-de-julio/",
+              "verifiedAt": "2026-11-11T23:03:14-05:00",
+              "conditions": [{"type": "inside_scope_ref", "value": "co-vac-cali-calendar-unknown-scope@2026-s2"}]
+            },
+            {
+              "id": "cali-car-private-2026-fri-7-8",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [5],
+              "digitPosition": "lastNumeric",
+              "digits": [7, 8],
+              "timeWindows": [{"startMinute": 360, "endMinute": 1140}],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.cali.gov.co/boletines/publicaciones/193096/pico-y-placa-rota-en-cali-para-el-segundo-semestre-de-2026-nueva-medida-rige-desde-el-1-de-julio/",
+              "verifiedAt": "2026-11-11T23:03:14-05:00",
+              "conditions": [{"type": "inside_scope_ref", "value": "co-vac-cali-calendar-unknown-scope@2026-s2"}]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

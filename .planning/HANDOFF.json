@@ -1,0 +1,77 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-09-19",
+  "status": "scanner-opening-confirmed-physical-qa-partial",
+  "phase_name": "Reparacion forense y centro de Alertas",
+  "branch": "codex/forensic-alerts",
+  "checkpoint": "ee7a734",
+  "implementation": "Forensic repairs and Alerts implemented. Integrated automated gates and preserving-data dev installation pass. Scanner/authentication and alarm physical acceptance remain explicit gates; no cleanup, merge or publication.",
+  "historical_consolidation_tasks": [
+    {
+      "id": 1,
+      "name": "Root WIP checkpoint",
+      "commit": "b86c787"
+    },
+    {
+      "id": 2,
+      "name": "Current source checkpoint",
+      "commit": "5958f42"
+    },
+    {
+      "id": 3,
+      "name": "Pending B04 checkpoint",
+      "commit": "fe0d8d4"
+    },
+    {
+      "id": 4,
+      "name": "Resolve 15 focused failures",
+      "status": "passed"
+    },
+    {
+      "id": 5,
+      "name": "Full suite, analyze, format, build and physical install",
+      "status": "passed"
+    }
+  ],
+  "results": {
+    "full_suite": "3196 passed / 10 conditional simulation skips / 0 failed",
+    "driving_simulation": "11 passed with PICORADAR_DRIVING_SIMULATION=true",
+    "android_unit_tests": "57 passed / 0 failed / 0 skipped",
+    "server": "493 passed / 1993 assertions; process-local SQLite extensions only",
+    "insurance_configurations": "7 passed; demo only dev flavor plus APP_ENV=dev",
+    "python_fixture_and_path": "3 passed",
+    "format": "365 files unchanged",
+    "analyze": "no issues",
+    "build": "dev release with APP_ENV=dev, 101.2 MB",
+    "install": "adb install -r Success; installed base.apk hash matches",
+    "scanner_release_gate": "13 fixtures pass; old APK RED, rebuilt APK GREEN; narrow R8 retention",
+    "scanner_physical": "Owner confirmed camera opens after corrected APK install; save/reopen/authentication not yet certified"
+  },
+  "apk": {
+    "path": "C:/Users/felip/Documents/ChatGPT/PicoRadar_ Pico y Placa/artifacts/current/apk/PicoRadar-dev-release-scanner-fix-20260919.apk",
+    "sha256": "A7ABC8D881E814DA68544DBD5472709F6A32F3A0C6C42070B2A957CBE66D21CD",
+    "device": "116f2191b19a",
+    "installed_at_bogota": "2026-09-19 12:38:37"
+  },
+  "remaining_tasks": [
+    {
+      "name": "Scanner opening fixed and confirmed physically. Still test fictional capture save/reopen/front/back and positive authentication. No private-copy overwrite or FLAG_SECURE bypass."
+    },
+    {
+      "name": "Alert center and restored Insurance banner captured physically. Still verify route retirement, private notifications and alarm Stop/Snooze/cutoff. API30 does not certify Android14+ special access."
+    },
+    {
+      "name": "Editorial dataset freshness/CDN and prior debts remain open. No cleanup, expiry extension or external-project changes."
+    }
+  ],
+  "async_jobs": [],
+  "active_agents": [],
+  "next_action": "Camera opening confirmed by owner. Complete remaining private capture/authentication and alarm physical checks before full lot closure. Current corrected APK and hash documented; no old-checkpoint rebuild.",
+  "consolidation_checkpoint": "ccd00bd",
+  "background_processes": "All coordinator test/build sessions completed. No external-project processes changed. ADB connected; user may be interacting with Documentos.",
+  "preserved_untracked": [
+    "capturas/",
+    "mockups/",
+    "output/"
+  ]
+}

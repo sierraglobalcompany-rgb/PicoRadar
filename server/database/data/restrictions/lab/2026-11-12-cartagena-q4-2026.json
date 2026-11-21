@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 2,
+  "id": "co-bol-cartagena",
+  "name": "Cartagena",
+  "coverages": [
+    {
+      "vehicleKind": "car",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "verifiedAt": "2026-11-13T01:14:45Z",
+      "staleAfter": "2026-11-19T00:00:00-05:00",
+      "sourceUrls": [
+        "https://www.cartagena.gov.co/noticias/conozca-el-nuevo-pico-placa-para-particulares-sus-rotaciones-durante-el-2026"
+      ],
+      "rules": [
+        {
+          "id": "CTG_CAR_MONDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2026-12-10T23:59:59-05:00",
+          "weekdays": [
+            1
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            1,
+            2
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 420,
+              "endMinute": 540
+            },
+            {
+              "startMinute": 1080,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.cartagena.gov.co/noticias/conozca-el-nuevo-pico-placa-para-particulares-sus-rotaciones-durante-el-2026",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "CTG_CAR_TUESDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2026-12-10T23:59:59-05:00",
+          "weekdays": [
+            2
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            3,
+            4
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 420,
+              "endMinute": 540
+            },
+            {
+              "startMinute": 1080,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.cartagena.gov.co/noticias/conozca-el-nuevo-pico-placa-para-particulares-sus-rotaciones-durante-el-2026",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "CTG_CAR_WEDNESDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2026-12-10T23:59:59-05:00",
+          "weekdays": [
+            3
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            5,
+            6
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 420,
+              "endMinute": 540
+            },
+            {
+              "startMinute": 1080,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.cartagena.gov.co/noticias/conozca-el-nuevo-pico-placa-para-particulares-sus-rotaciones-durante-el-2026",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "CTG_CAR_THURSDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2026-12-10T23:59:59-05:00",
+          "weekdays": [
+            4
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            7,
+            8
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 420,
+              "endMinute": 540
+            },
+            {
+              "startMinute": 1080,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.cartagena.gov.co/noticias/conozca-el-nuevo-pico-placa-para-particulares-sus-rotaciones-durante-el-2026",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "CTG_CAR_FRIDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2026-12-10T23:59:59-05:00",
+          "weekdays": [
+            5
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            9,
+            0
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 420,
+              "endMinute": 540
+            },
+            {
+              "startMinute": 1080,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.cartagena.gov.co/noticias/conozca-el-nuevo-pico-placa-para-particulares-sus-rotaciones-durante-el-2026",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "municipalityCodes": [
+    "13001"
+  ],
+  "consultationEnabled": true
+}

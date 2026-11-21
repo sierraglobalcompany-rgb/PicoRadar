@@ -1,0 +1,47 @@
+{
+  "catalog": {
+    "municipalities": 1104,
+    "uniqueCodes": 1104,
+    "departmentsAndDistricts": 33,
+    "mobileCatalog": 1104,
+    "exactCodeParity": true,
+    "researchStatuses": {
+      "LEGAL_UNRESOLVED": 1,
+      "NOT_RESEARCHED": 1031,
+      "PARTIAL": 3,
+      "STALE_SOURCE": 69
+    },
+    "historicalCandidateMunicipalities": 73
+  },
+  "historical": {
+    "relations": 219,
+    "municipalities": 73,
+    "workbookCutoff": "2026-09-10",
+    "auditSnapshot": "2026-09-19",
+    "auditStatuses": {
+      "conditional": 36,
+      "expired": 2,
+      "pending": 29,
+      "verified": 6
+    },
+    "external31And55": "SOURCE_NOT_MOUNTED"
+  },
+  "focal": {
+    "officialAuthoritiesChecked": 4,
+    "candidates": 12,
+    "supportedPairCandidates": 10,
+    "unsupportedVehicleCandidates": 2,
+    "states": {
+      "ENGINE_GAP": 5,
+      "LEGAL_UNRESOLVED": 1,
+      "PARTIAL": 6
+    },
+    "legalReadyProposals": 0,
+    "publicReleases": 0
+  },
+  "matrix": {
+    "historicalRows": 219,
+    "focalRows": 12,
+    "totalRows": 231
+  }
+}

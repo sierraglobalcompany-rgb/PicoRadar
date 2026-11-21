@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "version": "LAB-N1-NATIONAL-CARTAGENA-20261115-01",
+    "generatedAt": "2026-11-15T22:39:40-05:00",
+    "outputFile": "national_bulk_n1_2026-11-15.json",
+    "shaFile": "national_bulk_n1_2026-11-15.sha256"
+  },
+  "sources": [
+    {
+      "jurisdictionId": "co-ant-itagui",
+      "file": "2026-11-12-itagui-s2-2026.json",
+      "enabled": true,
+      "expectedSha256": "4513ea08cfab28e1ff4037a88fbac3ff95621b7d2b687c7832c951a2d99ea54f",
+      "provenance": "V6R3 LAB source envelope preserved byte-for-byte; provenance and official source URL are retained in the source JSON.",
+      "editorialDate": "2026-11-12"
+    },
+    {
+      "jurisdictionId": "co-ant-medellin",
+      "file": "2026-11-12-medellin-s2-2026.json",
+      "enabled": true,
+      "expectedSha256": "b9c75d9ce92ff8929ea5fa45be5151fe9a91757e9e7e6defff16843a18c09e9f",
+      "provenance": "V6R3 LAB source envelope preserved byte-for-byte; provenance and official source URL are retained in the source JSON.",
+      "editorialDate": "2026-11-12"
+    },
+    {
+      "jurisdictionId": "co-atl-transito-departamental",
+      "file": "2026-11-12-atlantico-dept-2026.json",
+      "enabled": true,
+      "expectedSha256": "56d350ecedc99a5f46c60fe4c8ea10f28f36ca0a033c0069c4f1fb541238a979",
+      "provenance": "V6R3 LAB source envelope preserved byte-for-byte; provenance and official source URL are retained in the source JSON.",
+      "editorialDate": "2026-11-12"
+    },
+    {
+      "jurisdictionId": "co-bol-cartagena",
+      "file": "2026-11-15-cartagena-q4-n1.json",
+      "enabled": true,
+      "expectedSha256": "79650aa6c9b3a6e11ed10c3f6240b022ecd8b17478e31eeb432c96e141b22fc9",
+      "provenance": "N1 R1 + V3: el comunicado DATT de octubre confirma la rotacion y vigencia 2026-10-05 a 2027-01-22, horarios regulares de carro/moto y excepcion de festivos; ambito espacial y exenciones siguen sin certificar.",
+      "editorialDate": "2026-11-15"
+    },
+    {
+      "jurisdictionId": "co-cal-manizales",
+      "file": "2026-11-12-manizales-nov-2026.json",
+      "enabled": true,
+      "expectedSha256": "9340f99c3770f2b4c3c864b8f6dd0c82e3e23203f9344d3ddd81f2b7a5dd54f2",
+      "provenance": "V6R3 LAB source envelope preserved byte-for-byte; provenance and official source URL are retained in the source JSON.",
+      "editorialDate": "2026-11-12"
+    },
+    {
+      "jurisdictionId": "co-cau-popayan",
+      "file": "2026-11-12-popayan-s2-2026.json",
+      "enabled": true,
+      "expectedSha256": "914c72bf05c22b334c4b20d6a5f814960b980b3029c129d61308f9e898b7f7c1",
+      "provenance": "V6R3 LAB source envelope preserved byte-for-byte; provenance and official source URL are retained in the source JSON.",
+      "editorialDate": "2026-11-12"
+    },
+    {
+      "jurisdictionId": "co-dc-bogota",
+      "file": "2026-11-12-bogota-parity-2026.json",
+      "enabled": true,
+      "expectedSha256": "a0172d794d62f19e65e13c834646bcabe2cfe18ec41c790f22114fa6d889688a",
+      "provenance": "V6R3 LAB source envelope preserved byte-for-byte; provenance and official source URL are retained in the source JSON.",
+      "editorialDate": "2026-11-12"
+    },
+    {
+      "jurisdictionId": "co-met-villavicencio",
+      "file": "2026-11-12-villavicencio-2026.json",
+      "enabled": true,
+      "expectedSha256": "2c926d6b7e7ba1a0e8828e5d2da7c46ac4c508e5cf8a2e4be66566a01ffcb9a5",
+      "provenance": "V6R3 LAB source envelope preserved byte-for-byte; provenance and official source URL are retained in the source JSON.",
+      "editorialDate": "2026-11-12"
+    },
+    {
+      "jurisdictionId": "co-ris-dosquebradas",
+      "file": "2026-11-13-dosquebradas-traditional-partial.json",
+      "enabled": true,
+      "expectedSha256": "b3ab8c896e283f5480069458e5563a49b03af98d11599cfdb8e46327ecbd685f",
+      "provenance": "Alcaldia de Dosquebradas; publicacion 2026-09-26, consulta HTTPS 2026-11-13 HTTP 200; captured response 67704 bytes SHA-256 880f5dfcdfc866bb00b0054bcaec042b5020806b11f1a31985b035dd42d81c. Holiday application is a conservative LAB hypothesis; road scope remains unverified.",
+      "editorialDate": "2026-11-13"
+    },
+    {
+      "jurisdictionId": "co-ris-pereira",
+      "file": "2026-11-pereira-official-calendar-partial.json",
+      "enabled": true,
+      "expectedSha256": "4719aedccf73c758647addd59380d040111172c841a5be2ec85848812312ba12",
+      "provenance": "V6R3 LAB source envelope preserved byte-for-byte; provenance and official source URL are retained in the source JSON.",
+      "editorialDate": "2026-11-12"
+    },
+    {
+      "jurisdictionId": "co-san-bucaramanga",
+      "file": "2026-11-12-bucaramanga-q4-2026.json",
+      "enabled": true,
+      "expectedSha256": "7bf0c0768cd1a5d300999846074ec23499b94420089e3ae83de6cb20cad56396",
+      "provenance": "V6R3 LAB source envelope preserved byte-for-byte; provenance and official source URL are retained in the source JSON.",
+      "editorialDate": "2026-11-12"
+    },
+    {
+      "jurisdictionId": "co-san-floridablanca",
+      "file": "2026-11-12-floridablanca-q4-2026.json",
+      "enabled": true,
+      "expectedSha256": "6cee429323de8e13c7f6e7fd3a7c6b210393b02640d9ba17fd8d13c6ad48308f",
+      "provenance": "V6R3 LAB source envelope preserved byte-for-byte; provenance and official source URL are retained in the source JSON.",
+      "editorialDate": "2026-11-12"
+    },
+    {
+      "jurisdictionId": "co-tol-ibague",
+      "file": "2026-11-12-ibague-s2-2026.json",
+      "enabled": true,
+      "expectedSha256": "3a4aef27fa859121346812f437c0c47999ba76c3e933da7c178f43c2dbe1c1a7",
+      "provenance": "V6R3 LAB source envelope preserved byte-for-byte; provenance and official source URL are retained in the source JSON.",
+      "editorialDate": "2026-11-12"
+    },
+    {
+      "jurisdictionId": "co-vac-cali",
+      "file": "2026-11-cali-official-calendar-partial.json",
+      "enabled": true,
+      "expectedSha256": "84d5ae34ba45bb1258b259f504fe580d69b0ac2ada6a26eb53a31f7726893b99",
+      "provenance": "V6R3 LAB source envelope preserved byte-for-byte; provenance and official source URL are retained in the source JSON.",
+      "editorialDate": "2026-11-11"
+    }
+  ]
+}

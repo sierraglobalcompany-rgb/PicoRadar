@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "datasetKey": "tolls_national_coverage",
+  "version": "2026.09.19-manifest-v1",
+  "inventory": {
+    "version": "2026.09.05-viaje-r2",
+    "sourceSnapshotDate": "2026-09-05",
+    "sourceUrl": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+    "asset": {
+      "path": "tolls_inventory_v1.json",
+      "bytes": 330905,
+      "sha256": "a991626ecc8893c050a60e71b27e8f803cbfe864978dced5e6b595f2fe02de93"
+    },
+    "stationCount": 184,
+    "verifiedChargeEventCount": 0,
+    "unknownTariffStationCount": 184,
+    "currentOperationConfirmed": false,
+    "operationCounts": {
+      "inventoried_operation_not_confirmed": 180,
+      "source_reports_operating": 1,
+      "non_operational_historical": 2,
+      "damaged_review_required": 1
+    },
+    "unknownMeaning": "Inventory membership does not confirm a current charge event or a zero tariff."
+  },
+  "tariffs": {
+    "version": "2026.09.08-upload-a",
+    "consultationCutoffAsStated": "2026-09-08",
+    "independentExternalReverification": false,
+    "asset": {
+      "path": "tolls_tariffs_v1.json",
+      "bytes": 1838432,
+      "sha256": "984f2ab202ff1de8befb3cbed2c48ee2a69dbb5e88c9bbb1ea8f6aa2cdecdd6f"
+    },
+    "stationCount": 184,
+    "generalRateCount": 1300,
+    "numericGeneralRateCount": 1007,
+    "officialGeneralRateCount": 793,
+    "secondaryGeneralRateCount": 214,
+    "specialRateCount": 437,
+    "candidatesOutsideBase": 9,
+    "sourceWorkbook": {
+      "fileName": "PicoRadar_Peajes_Colombia_AUDITADO_2026-09-08.xlsx",
+      "sha256": "8863b418cdd4664fc4b0a2c7eaaafde73dd88b0eea9535db7c57fcbd7f1b5a4a"
+    },
+    "sourceJsonSha256": "ebebeca817cb2487aa632a79c6c2de270550888253924250408936cb7db948f8"
+  }
+}

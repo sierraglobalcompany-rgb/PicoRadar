@@ -1,0 +1,337 @@
+{
+  "schemaVersion": 2,
+  "id": "co-ant-medellin",
+  "name": "Medellín",
+  "coverages": [
+    {
+      "vehicleKind": "car",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "verifiedAt": "2026-11-13T01:14:45Z",
+      "staleAfter": "2026-12-01T00:00:00-05:00",
+      "sourceUrls": [
+        "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+        "https://www.medellin.gov.co/giscatalogacion/srv/api/records/2d9cb19a-e7c7-4e1d-8a38-fb055997b043"
+      ],
+      "rules": [
+        {
+          "id": "MED_CAR_MONDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            1
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            5,
+            8
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+            }
+          ]
+        },
+        {
+          "id": "MED_CAR_TUESDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            2
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            1,
+            4
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+            }
+          ]
+        },
+        {
+          "id": "MED_CAR_WEDNESDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            3
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            0,
+            2
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+            }
+          ]
+        },
+        {
+          "id": "MED_CAR_THURSDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            4
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            3,
+            6
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+            }
+          ]
+        },
+        {
+          "id": "MED_CAR_FRIDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            5
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            7,
+            9
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "vehicleKind": "motorcycle",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "verifiedAt": "2026-11-13T01:14:45Z",
+      "staleAfter": "2026-12-01T00:00:00-05:00",
+      "sourceUrls": [
+        "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+        "https://www.medellin.gov.co/giscatalogacion/srv/api/records/2d9cb19a-e7c7-4e1d-8a38-fb055997b043"
+      ],
+      "rules": [
+        {
+          "id": "MED_MOTO_MONDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            1
+          ],
+          "digitPosition": "firstNumeric",
+          "digits": [
+            5,
+            8
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+            }
+          ]
+        },
+        {
+          "id": "MED_MOTO_TUESDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            2
+          ],
+          "digitPosition": "firstNumeric",
+          "digits": [
+            1,
+            4
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+            }
+          ]
+        },
+        {
+          "id": "MED_MOTO_WEDNESDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            3
+          ],
+          "digitPosition": "firstNumeric",
+          "digits": [
+            0,
+            2
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+            }
+          ]
+        },
+        {
+          "id": "MED_MOTO_THURSDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            4
+          ],
+          "digitPosition": "firstNumeric",
+          "digits": [
+            3,
+            6
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+            }
+          ]
+        },
+        {
+          "id": "MED_MOTO_FRIDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            5
+          ],
+          "digitPosition": "firstNumeric",
+          "digits": [
+            7,
+            9
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "municipalityCodes": [
+    "05001"
+  ],
+  "consultationEnabled": true
+}

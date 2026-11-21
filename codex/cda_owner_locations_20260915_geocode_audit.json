@@ -1,0 +1,11 @@
+{
+  "input": "C:\\Users\\felip\\Documents\\ChatGPT\\PicoRadar_ Pico y Placa\\temp\\VIAJE-R1-real-planner\\codex\\cda_owner_locations_20260915_import.csv",
+  "output": "C:\\Users\\felip\\Documents\\ChatGPT\\PicoRadar_ Pico y Placa\\temp\\VIAJE-R1-real-planner\\codex\\cda_owner_locations_20260915_geocoded.csv",
+  "rows": 866,
+  "geocodedRows": 866,
+  "failed": [],
+  "lowScore": [],
+  "minScore": 70.0,
+  "cache": "C:\\Users\\felip\\Documents\\ChatGPT\\PicoRadar_ Pico y Placa\\temp\\VIAJE-R1-real-planner\\codex\\cda_owner_locations_20260915_geocode_cache.json",
+  "provider": "ArcGIS World Geocoding Service"
+}

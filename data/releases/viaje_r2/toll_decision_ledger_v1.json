@@ -1,0 +1,3142 @@
+{
+  "activeChargesPublished": 0,
+  "generatedAt": "2026-09-05T00:00:00Z",
+  "ledgerKey": "viaje_r2_toll_decisions",
+  "physicalStationsPublished": 184,
+  "recordDecisions": [
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-ABURRA-7CFEFB5C3B",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "ABURRÁ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 2,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-AMAGA-ABD7881C50",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "AMAGÁ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 3,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CABILDO-85848E051D",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CABILDO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 4,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CIRILO-BE48E84B06",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CIRILO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 5,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CISNEROS-79A4B0B96A",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CISNEROS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 6,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-COCORNA-6A6F1282D1",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "COCORNÁ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 7,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-GUARNE-3A941FAFD9",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "GUARNE",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 8,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LAS-PALMAS-E8C2EE2BB5",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LAS PALMAS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 9,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LOS-LLANOS-922FE1F940",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LOS LLANOS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 10,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-NIQUIA-7D4341B203",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "NIQUÍA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 11,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PAJARITO-8C966CE5CE",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PAJARITO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 12,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PANDEQUESO-341847A3C2",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PANDEQUESO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 13,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PINTADA-4F7205EC12",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PINTADA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 14,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PRIMAVERA-C6133D1B1D",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PRIMAVERA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 15,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PUERTO-BERRIO-E5CA05F7A1",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PUERTO BERRÍO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 16,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PUERTO-TRIUNFO-45EF2DAA20",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PUERTO TRIUNFO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 17,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": "TÚNEL DE ORIENTE",
+      "coverageOriginRaw": "Suplemento oficial – estación física fuera API",
+      "decision": "informational_only",
+      "gpsSource": "https://www.flypass.com.co/coberturas/antioquia",
+      "id": "SUP-SAJONIA-44E6331968",
+      "inventorySource": "https://www.antioquia.gov.co/",
+      "name": "SAJONIA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": "Estaciones físicas del mismo sistema. Determinar por sentido/recorrido; no sumar automáticamente por nombre del proyecto.",
+      "sourceRef": {
+        "row": 18,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SANTA-ELENA-183F01CFA8",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "SANTA ELENA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 19,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": "TÚNEL DE ORIENTE",
+      "coverageOriginRaw": "Suplemento oficial – estación física fuera API",
+      "decision": "informational_only",
+      "gpsSource": "https://www.flypass.com.co/coberturas/antioquia",
+      "id": "SUP-SEMINARIO-5823DA6561",
+      "inventorySource": "https://www.antioquia.gov.co/",
+      "name": "SEMINARIO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": "Estaciones físicas del mismo sistema. Determinar por sentido/recorrido; no sumar automáticamente por nombre del proyecto.",
+      "sourceRef": {
+        "row": 20,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-TARAZA-1C8CEF22AB",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "TARAZÁ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 21,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-TRAPICHE-EFC80A1256",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "TRAPICHE",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 22,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-VARIANTE-LAS-PALMAS-79CC926E6A",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "VARIANTE LAS PALMAS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 23,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-ZAMBITO-45B1CBD0F2",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "ZAMBITO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 24,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-ZARAGOZA-A3E29A8778",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "ZARAGOZA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 25,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CORREDOR-PORTUARIO-CC58F3A76F",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CORREDOR PORTUARIO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 26,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-GALAPA-45FE49FDAB",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "GALAPA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 27,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-GALAPA-02-83D8101CA7",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "GALAPA 02",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 28,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-JUAN-MINA-6B38EC56A2",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "JUAN MINA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 29,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LAUREANO-GOMEZ-C7980A9745",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LAUREANO GÓMEZ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 30,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PAPIROS-2F4F657C0E",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PAPIROS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 31,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PUERTO-COLOMBIA-5206BFC772",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PUERTO COLOMBIA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 32,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SABANAGRANDE-FE69779E1A",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "SABANAGRANDE",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 33,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-BAYUNCA-0DB224188F",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "BAYUNCA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 34,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-BAZURTO-MANGA-4A1A18019E",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "BAZURTO (MANGA)",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 35,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CALAMAR-51C7ECFB83",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CALAMAR",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 36,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CEBALLOS-944AC7F223",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CEBALLOS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 37,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CORRALITO-DE-PIEDRA-5E825B9FDC",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CORRALITO DE PIEDRA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 38,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-EL-CARMEN-BEE1E6F5A5",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "EL CARMEN",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 39,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-GAMBOTE-01EF00845D",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "GAMBOTE",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 40,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LA-HEROICA-606ED29172",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LA HEROICA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 41,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-MARAHUACO-A7B7CC57C7",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "MARAHUACO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 42,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PASACABALLOS-6E735F5439",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PASACABALLOS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 43,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SAN-ONOFRE-4966A1BB47",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "SAN ONOFRE",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 44,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-TURBACO-E6A3364829",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "TURBACO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 45,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-ARCABUCO-F15BC9F0DD",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "ARCABUCO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 46,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-EL-CRUCERO-6769668A5E",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "EL CRUCERO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 47,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SABOYA-E20961625E",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "SABOYÁ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 48,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "Suplemento posterior al corte – ANI 2026-08",
+      "decision": "informational_only",
+      "gpsSource": "https://amenazasismica.sgc.gov.co/portal/sites/",
+      "id": "ANI-SAN-LUIS-DE-GACENO-D0BF66293F",
+      "inventorySource": "https://www.ani.gov.co/",
+      "name": "SAN LUIS DE GACENO",
+      "operationClassification": "source_reports_operating",
+      "operationStatusRaw": "Operativo - post corte",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 49,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SACHICA-AE7497E7D2",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "SÁCHICA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 50,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-TUTA-396727DC80",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "TUTA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 51,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-ACAPULCO-24972A09BE",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "ACAPULCO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 52,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-BRISAS-C340FA2A8E",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "BRISAS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 53,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-EL-KORAN-3DBD938708",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "EL KORÁN",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 54,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-GUAICO-F27AEFAAE9",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "GUAICO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 55,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-IRRA-DD39A8E111",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "IRRA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 56,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LA-ESTRELLA-27B1470599",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LA ESTRELLA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 57,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PAVAS-TRINIDAD-I-D0E0431F88",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PAVAS (TRINIDAD I)",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 58,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-QUIEBRA-DE-VELEZ-452AE52BE9",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "QUIEBRA DE VELEZ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 59,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SAN-BERNARDO-TRINIDAD-II-9665AB6055",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "SAN BERNARDO (TRINIDAD II)",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 60,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SANTAGUEDA-C72EA92664",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "SANTAGUEDA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 61,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": "SUPIA — registro oficial independiente",
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SUPIA-9F5DBD30B9",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "SUPIA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": "No fusionar SUPIA y SUPÍA: son dos registros oficiales con GPS distintos.",
+      "sourceRef": {
+        "row": 62,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": "SUPÍA — registro oficial independiente",
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SUPIA-D6AA02EC97",
+      "inventorySource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "name": "SUPÍA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": "No fusionar SUPIA y SUPÍA: son dos registros oficiales con GPS distintos.",
+      "sourceRef": {
+        "row": 63,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-TARAPACA-I-D135198125",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "TARAPACÁ I",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 64,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-TARAPACA-II-147188F24A",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "TARAPACÁ II",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 65,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-ARANGUANEY-NO-OPERATIVO-8D420130F2",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "ARANGUANEY",
+      "operationClassification": "non_operational_historical",
+      "operationStatusRaw": "No operativo / conservar histórico",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 66,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LA-NEVERA-NO-OPERATIVO-6B37E306D5",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LA NEVERA",
+      "operationClassification": "non_operational_historical",
+      "operationStatusRaw": "No operativo / conservar histórico",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 67,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": "SAN PEDRO — Casanare",
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SAN-PEDRO-FA2E9AB236",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "SAN PEDRO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": "Homónimo nacional: usar departamento + corredor + GPS como clave de desambiguación.",
+      "sourceRef": {
+        "row": 68,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-EL-BORDO-07D5509D8F",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "EL BORDO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 69,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-TUNIA-SINIESTRADA-59F1EEBBDA",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "TUNIA",
+      "operationClassification": "damaged_review_required",
+      "operationStatusRaw": "Siniestrado / revisar operación",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 70,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-VILLARICA-56B12D57AC",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "VILLARICA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 71,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-EL-COPEY-43724474FC",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "EL COPEY",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 72,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LA-LOMA-3470BA7FD1",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LA LOMA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 73,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-MORRISON-7DDB448E67",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "MORRISON",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 74,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PAILITAS-E302B3DCBD",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PAILITAS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 75,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PLATANAL-3358DC50CB",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PLATANAL",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 76,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-RINCON-HONDO-B1C7615AA7",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "RINCÓN HONDO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 77,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SAN-DIEGO-C6F178D50B",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "SAN DIEGO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 78,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-VALENCIA-DB61014232",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "VALENCIA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 79,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-ALBARRACIN-B3EA78A114",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "ALBARRACÍN",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 80,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-ANDES-860ED9654B",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "ANDES",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 81,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-BOQUERON-I-D224582B3B",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "BOQUERÓN I",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 82,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-BOQUERON-II-1B0AEA6FA5",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "BOQUERÓN II",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 83,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CAIQUEROS-C63F3307E8",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CAIQUEROS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 84,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CAMBAO-36CEA4A885",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CAMBAO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 85,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CASABLANCA-4F3D636B9B",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CASABLANCA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 86,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CHINAUTA-402CE3E7CD",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CHINAUTA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 87,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CHUSACA-AFC3788407",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CHUSACÁ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 88,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-EL-CORZO-C9202206B6",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "EL CORZO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 89,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-EL-ROBLE-EF9D6E5AE4",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "EL ROBLE",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 90,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-FUSCA-D7D2CE9D68",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "FUSCA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 91,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-GUATAQUI-53D086283A",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "GUATAQUÍ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 92,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-GUAYABAL-D2961E51E7",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "GUAYABAL",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 93,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-JALISCO-0F99F98A62",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "JALISCO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 94,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LA-CABANA-D638646AB4",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LA CABAÑA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 95,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LA-TEBAIDA-C4D2B97D5B",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LA TEBAIDA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 96,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LOS-PATIOS-EA4044DB6E",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LOS PATIOS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 97,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-MACHETA-2BC0CBAFCF",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "MACHETÁ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 98,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-MONDONEDO-20DA221D8C",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "MONDOÑEDO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 99,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-NARANJAL-1B4B06A1E5",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "NARANJAL",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 100,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-NUEVO-SALTO-65446CF114",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "NUEVO SALTO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 101,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PUBENZA-1DCD2DBE73",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PUBENZA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 102,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-RAMAL-0ADA166EBA",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "RAMAL",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 103,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-RIO-BOGOTA-291A2D4976",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "RÍO BOGOTÁ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 104,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SAN-MIGUEL-7E778019DC",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "SAN MIGUEL",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 105,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": "SAN PEDRO — Cundinamarca",
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SAN-PEDRO-40BD8B8EE7",
+      "inventorySource": "https://www.devisabsas.com/peajes/",
+      "name": "SAN PEDRO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": "Homónimo nacional: usar departamento + corredor + GPS como clave de desambiguación.",
+      "sourceRef": {
+        "row": 106,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SIBERIA-B17A6A7349",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "SIBERIA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 107,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SOPO-EBAAAB5FF9",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "SOPÓ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 108,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-UNISABANA-E196306CD0",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "UNISABANA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 109,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CARIMAGUA-10CC5160ED",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CARIMAGUA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 110,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CEDROS-36C1C8473B",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CEDROS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 111,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LA-APARTADA-D1AAA506BC",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LA APARTADA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 112,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": "LOS GARZONES",
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LOS-GARZONES-1-19D74018F1",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LOS GARZONES 1",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": "Punto de recaudo por sentido. Garzones 1 corresponde al sentido Sur→Norte.",
+      "sourceRef": {
+        "row": 113,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": "LOS GARZONES",
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LOS-GARZONES-2-527DDA8D67",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LOS GARZONES 2",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": "Punto de recaudo por sentido. Garzones 2 corresponde al sentido Norte→Sur.",
+      "sourceRef": {
+        "row": 114,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-MANGUITOS-79454646C8",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "MANGUITOS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 115,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-MATA-DE-CANA-167A635619",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "MATA DE CAÑA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 116,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PURGATORIO-A4410ACBE0",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PURGATORIO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 117,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SAN-CARLOS-C1D9ED7F25",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "SAN CARLOS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 118,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-ALTAMIRA-EA2BC42B54",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "ALTAMIRA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 119,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-EL-PATA-71A10210DF",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "EL PATÁ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 120,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LOS-CAUCHOS-51510CD0F9",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LOS CAUCHOS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 121,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-NEIVA-11A9787558",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "NEIVA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 122,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-ALTO-PINO-DD5ECFA91D",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "ALTO PINO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 123,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-EL-EBANAL-1474BBBAEF",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "EL EBANAL",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 124,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PARAGUACHON-E1A5985CB3",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PARAGUACHÓN",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 125,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SAN-JUAN-84FB940118",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "SAN JUAN",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 126,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-URIBIA-2A5BC5E4EC",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "URIBIA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 127,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-EL-DIFICIL-29B614A306",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "EL DIFÍCIL",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 128,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-NEGUANJE-23A0B5D268",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "NEGUANJE",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 129,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PUENTE-PLATO-82A16A45E4",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PUENTE PLATO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 130,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-TASAJERA-8AB2B346C1",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "TASAJERA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 131,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-TUCUNICA-FB0AB1D12B",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "TUCUNICA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 132,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CASETABLA-2116B90F9D",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CASETABLA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 133,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-IRACA-19474BF7BE",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "IRACÁ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 134,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LA-LIBERTAD-54351766D6",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LA LIBERTAD",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 135,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-OCOA-6C4B2BC21F",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "OCOA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 136,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PIPIRAL-CC4D49A4F5",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PIPIRAL",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 137,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PUENTE-AMARILLO-35F3D685EB",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PUENTE AMARILLO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 138,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-VERACRUZ-816D08806A",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "VERACRUZ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 139,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-YUCAO-3F3725DA14",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "YUCAO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 140,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CANO-97DA76D1AB",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CANO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 141,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-EL-PLACER-E43B888D7C",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "EL PLACER",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 142,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-EL-PLACER-2-9133DD91A3",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "EL PLACER 2",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 143,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LA-PARADA-AE9332BA9A",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LA PARADA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 144,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LOS-ACACIOS-1C3A379FF1",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LOS ACACIOS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 145,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CIRCASIA-C4FCB1F11C",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CIRCASIA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 146,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-COROZAL-8603303D36",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "COROZAL",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 147,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": "TÚNEL DE LA LÍNEA",
+      "coverageOriginRaw": "Suplemento oficial – estación física fuera API",
+      "decision": "informational_only",
+      "gpsSource": "https://mapcarta.com/es/N10142412768",
+      "id": "SUP-TUNEL-DE-LA-LINEA-QUINDIO-75D55F3E01",
+      "inventorySource": "https://crucecordilleracentral.invias.gov.co/faqs.php",
+      "name": "TÚNEL DE LA LÍNEA QUINDÍO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": "Dos puntos de recaudo asociados al antiguo peaje de Cajamarca; seleccionar según sentido. No sumar ambos automáticamente en un mismo paso.",
+      "sourceRef": {
+        "row": 148,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CERRITOS-II-FA27DB50A1",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CERRITOS II",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 149,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-SAN-CLEMENTE-97D774A2DE",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "SAN CLEMENTE",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 150,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-AGUAS-NEGRAS-DAF0A55115",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "AGUAS NEGRAS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 151,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CURITI-8D6E0EB7D7",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CURITÍ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 152,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-EL-PICACHO-1FEFCB626A",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "EL PICACHO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 153,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LA-GOMEZ-02E1B4CD61",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LA GÓMEZ",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 154,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LA-LIZAMA-0AA62640DB",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LA LIZAMA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 155,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LEBRIJA-C68DCEED71",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LEBRIJA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 156,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LOS-CUROS-DCF6DD789E",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LOS CUROS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 157,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LOS-SANTOS-85453C31BB",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LOS SANTOS",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 158,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-OIBA-146C9B81A7",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "OIBA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 159,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-RIO-BLANCO-AFD3FED1A4",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "RÍO BLANCO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 160,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-RIONEGRO-0CC842843B",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "RÍONEGRO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 161,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CAIMANERA-30E63801F2",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CAIMANERA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 162,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LA-ESPERANZA-25B112E54C",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LA ESPERANZA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 163,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LAS-FLORES-C5917ABC03",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LAS FLORES",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 164,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-ALVARADO-5D0B4C974C",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "ALVARADO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 165,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-ARMERO-E3B3A1B1F7",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "ARMERO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 166,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-BICENTENARIO-9BAA18BE5D",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "BICENTENARIO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 167,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CHICORAL-979CF20139",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CHICORAL",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 168,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-COCORA-1B32D5687C",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "COCORA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 169,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-FLANDES-B10A43AEBC",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "FLANDES",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 170,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-GUALANDAY-C0ECD25949",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "GUALANDAY",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 171,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-HONDA-1E90FD2359",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "HONDA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 172,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": "TÚNEL DE LA LÍNEA",
+      "coverageOriginRaw": "Suplemento oficial – estación física fuera API",
+      "decision": "informational_only",
+      "gpsSource": "https://peajescolombia.co/peajes/peaje/tunel-de-la-linea-tolima",
+      "id": "SUP-TUNEL-DE-LA-LINEA-TOLIMA-F9DAF1C783",
+      "inventorySource": "https://crucecordilleracentral.invias.gov.co/faqs.php",
+      "name": "TÚNEL DE LA LÍNEA TOLIMA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": "Dos puntos de recaudo asociados al antiguo peaje de Cajamarca; seleccionar según sentido. No sumar ambos automáticamente en un mismo paso.",
+      "sourceRef": {
+        "row": 173,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-BETANIA-55BD9B0706",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "BETANIA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 174,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CENCAR-491C34CF9A",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CENCAR",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 175,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CERRITO-F21F20F83C",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CERRITO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 176,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-CIAT-AF738EA67B",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "CIAT",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 177,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-ESTAMBUL-6384FF0A99",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "ESTAMBUL",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 178,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LA-URIBE-4D1DB0BDBA",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LA URIBE",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 179,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-LOBOGUERRERO-EEA9CF8C74",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "LOBOGUERRERO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 180,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-MEDIACANOA-6C59061373",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "MEDIACANOA",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 181,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-PASO-DE-LA-TORRE-B7F31E9B55",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "PASO DE LA TORRE",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 182,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-ROZO-B994D0E0A0",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "ROZO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 183,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-RIO-FRIO-219758A3BD",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "RÍO FRÍO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 184,
+        "sheet": "Peajes_auditados"
+      }
+    },
+    {
+      "chargeGroupRaw": null,
+      "coverageOriginRaw": "API oficial INVÍAS – corte 2026-07-01",
+      "decision": "informational_only",
+      "gpsSource": "https://www.datos.gov.co/resource/68qj-5xux.json",
+      "id": "INV-TORO-1A933C861F",
+      "inventorySource": "https://www.datos.gov.co/Transporte/Peajes/68qj-5xux",
+      "name": "TORO",
+      "operationClassification": "inventoried_operation_not_confirmed",
+      "operationStatusRaw": "Inventariado",
+      "reason": "physical_station_inventory_not_verified_charge_event",
+      "routeCountingRuleRaw": null,
+      "sourceRef": {
+        "row": 185,
+        "sheet": "Peajes_auditados"
+      }
+    }
+  ],
+  "schemaVersion": 1,
+  "sourceSnapshotDate": "2026-09-05",
+  "tariffCellsNull": 1288,
+  "tariffCellsPublished": 0,
+  "verifiedChargeEventsPublished": 0,
+  "version": "2026.09.05-viaje-r2"
+}

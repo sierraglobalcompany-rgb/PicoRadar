@@ -1,0 +1,660 @@
+{
+  "jurisdictions": [
+    {
+      "coverages": [
+        {
+          "rules": [
+            {
+              "appliesOnHolidays": false,
+              "dateParity": "odd",
+              "digitPosition": "lastNumeric",
+              "digits": [
+                6,
+                7,
+                8,
+                9,
+                0
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-private-2026-11-odd-day",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-bogota-vehiculos-particulares-1-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 360
+                }
+              ],
+              "validFrom": "2026-11-01T00:00:00-05:00",
+              "validUntil": "2026-11-30T23:59:59-05:00",
+              "verifiedAt": "2026-11-09T22:00:10Z",
+              "weekdays": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "dateParity": "even",
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-private-2026-11-even-day",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-bogota-vehiculos-particulares-1-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 360
+                }
+              ],
+              "validFrom": "2026-11-01T00:00:00-05:00",
+              "validUntil": "2026-11-30T23:59:59-05:00",
+              "verifiedAt": "2026-11-09T22:00:10Z",
+              "weekdays": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ]
+            }
+          ],
+          "serviceType": "private",
+          "sourceUrls": [
+            "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-bogota-vehiculos-particulares-1-30-de-noviembre-de-2026",
+            "https://www.movilidadbogota.gov.co/preguntas-frecuentes/en-que-consiste-la-restriccion-establecida-para-vehiculos-particulares"
+          ],
+          "staleAfter": "2026-12-01T05:00:00Z",
+          "vehicleKind": "car",
+          "verifiedAt": "2026-11-09T22:00:10Z"
+        },
+        {
+          "rules": [],
+          "serviceType": "private",
+          "sourceUrls": [
+            "https://www.alcaldiabogota.gov.co/sisjur/normas/Norma1.jsp?i=191872",
+            "https://bogota.gov.co/mi-ciudad/movilidad/transito-motos-de-domicilio-en-dia-sin-carro-y-sin-moto-en-bogota"
+          ],
+          "staleAfter": "2026-09-23T05:00:00Z",
+          "vehicleKind": "motorcycle",
+          "verifiedAt": "2026-09-09T00:00:00Z"
+        },
+        {
+          "rules": [
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-03",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-03T00:00:00-05:00",
+              "validUntil": "2026-11-03T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                2
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-04",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-04T00:00:00-05:00",
+              "validUntil": "2026-11-04T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                3
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-05",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-05T00:00:00-05:00",
+              "validUntil": "2026-11-05T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                4
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-06",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-06T00:00:00-05:00",
+              "validUntil": "2026-11-06T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                5
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-07",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-07T00:00:00-05:00",
+              "validUntil": "2026-11-07T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                6
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-09",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-09T00:00:00-05:00",
+              "validUntil": "2026-11-09T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                1
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-10",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-10T00:00:00-05:00",
+              "validUntil": "2026-11-10T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                2
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-11",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-11T00:00:00-05:00",
+              "validUntil": "2026-11-11T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                3
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-12",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-12T00:00:00-05:00",
+              "validUntil": "2026-11-12T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                4
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-13",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-13T00:00:00-05:00",
+              "validUntil": "2026-11-13T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                5
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-14",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-14T00:00:00-05:00",
+              "validUntil": "2026-11-14T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                6
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-17",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-17T00:00:00-05:00",
+              "validUntil": "2026-11-17T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                2
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-18",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-18T00:00:00-05:00",
+              "validUntil": "2026-11-18T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                3
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-19",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-19T00:00:00-05:00",
+              "validUntil": "2026-11-19T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                4
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-20",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-20T00:00:00-05:00",
+              "validUntil": "2026-11-20T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                5
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-21",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-21T00:00:00-05:00",
+              "validUntil": "2026-11-21T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                6
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-23",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-23T00:00:00-05:00",
+              "validUntil": "2026-11-23T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                1
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-24",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-24T00:00:00-05:00",
+              "validUntil": "2026-11-24T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                2
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-25",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-25T00:00:00-05:00",
+              "validUntil": "2026-11-25T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                3
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-26",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-26T00:00:00-05:00",
+              "validUntil": "2026-11-26T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                4
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-27",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-27T00:00:00-05:00",
+              "validUntil": "2026-11-27T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                5
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-28",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-28T00:00:00-05:00",
+              "validUntil": "2026-11-28T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                6
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-taxi-2026-11-30",
+              "priority": 1000,
+              "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 330
+                }
+              ],
+              "validFrom": "2026-11-30T00:00:00-05:00",
+              "validUntil": "2026-11-30T23:59:59-05:00",
+              "verifiedAt": "2026-11-10T01:14:29Z",
+              "weekdays": [
+                1
+              ]
+            }
+          ],
+          "serviceType": "taxi",
+          "sourceUrls": [
+            "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-para-taxis-en-bogota-del-1-al-30-de-noviembre-de-2026"
+          ],
+          "staleAfter": "2026-12-01T05:00:00Z",
+          "vehicleKind": "car",
+          "verifiedAt": "2026-11-10T01:14:29Z"
+        }
+      ],
+      "id": "co-dc-bogota",
+      "name": "Bogotá"
+    }
+  ]
+}

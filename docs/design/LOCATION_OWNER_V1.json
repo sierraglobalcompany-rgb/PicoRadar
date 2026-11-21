@@ -1,0 +1,20 @@
+{
+  "name": "LOCATION_OWNER_V1",
+  "status": "owner_reference",
+  "reference": "docs/design/reference/home_location_owner_v1.png",
+  "reference_sha256": "0e9d7c4b77177114ccea61325e7c4f9e1c779acec67c7488c89b04cb4e43da25",
+  "scope": "Home location/jurisdiction card and settings sheet for C17A only",
+  "modes": [
+    "manual",
+    "gpsAuto"
+  ],
+  "constraints": {
+    "home_order": "after app header and before vehicle carousel",
+    "home_card_height_dp": "54-64",
+    "location_permission": "requested only after explicit user action",
+    "gps_behavior": "one-shot foreground refresh; no continuous stream",
+    "coordinate_storage": "none",
+    "background_location": "forbidden",
+    "resolver": "local supported-jurisdiction Haversine, fail closed outside/ambiguous"
+  }
+}

@@ -1,0 +1,325 @@
+{
+  "schemaVersion": 2,
+  "id": "co-ris-dosquebradas",
+  "name": "Dosquebradas",
+  "municipalityCodes": [
+    "66170"
+  ],
+  "consultationEnabled": true,
+  "coverages": [
+    {
+      "vehicleKind": "car",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "verifiedAt": "2026-11-13T08:35:42-05:00",
+      "staleAfter": "2026-11-19T23:59:59-05:00",
+      "sourceUrls": [
+        "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional"
+      ],
+      "rules": [
+        {
+          "id": "dosquebradas-car-private-mon-2026",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-09-28T00:00:00-05:00",
+          "weekdays": [
+            1
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            0,
+            1
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": true,
+          "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+          "verifiedAt": "2026-11-13T08:35:42-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+            }
+          ]
+        },
+        {
+          "id": "dosquebradas-car-private-tue-2026",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-09-28T00:00:00-05:00",
+          "weekdays": [
+            2
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            2,
+            3
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": true,
+          "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+          "verifiedAt": "2026-11-13T08:35:42-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+            }
+          ]
+        },
+        {
+          "id": "dosquebradas-car-private-wed-2026",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-09-28T00:00:00-05:00",
+          "weekdays": [
+            3
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            4,
+            5
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": true,
+          "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+          "verifiedAt": "2026-11-13T08:35:42-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+            }
+          ]
+        },
+        {
+          "id": "dosquebradas-car-private-thu-2026",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-09-28T00:00:00-05:00",
+          "weekdays": [
+            4
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            6,
+            7
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": true,
+          "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+          "verifiedAt": "2026-11-13T08:35:42-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+            }
+          ]
+        },
+        {
+          "id": "dosquebradas-car-private-fri-2026",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-09-28T00:00:00-05:00",
+          "weekdays": [
+            5
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            8,
+            9
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": true,
+          "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+          "verifiedAt": "2026-11-13T08:35:42-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "vehicleKind": "motorcycle",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "verifiedAt": "2026-11-13T08:35:42-05:00",
+      "staleAfter": "2026-11-19T23:59:59-05:00",
+      "sourceUrls": [
+        "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional"
+      ],
+      "rules": [
+        {
+          "id": "dosquebradas-motorcycle-private-mon-2026",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-09-28T00:00:00-05:00",
+          "weekdays": [
+            1
+          ],
+          "digitPosition": "firstNumeric",
+          "digits": [
+            0,
+            1
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": true,
+          "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+          "verifiedAt": "2026-11-13T08:35:42-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+            }
+          ]
+        },
+        {
+          "id": "dosquebradas-motorcycle-private-tue-2026",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-09-28T00:00:00-05:00",
+          "weekdays": [
+            2
+          ],
+          "digitPosition": "firstNumeric",
+          "digits": [
+            2,
+            3
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": true,
+          "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+          "verifiedAt": "2026-11-13T08:35:42-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+            }
+          ]
+        },
+        {
+          "id": "dosquebradas-motorcycle-private-wed-2026",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-09-28T00:00:00-05:00",
+          "weekdays": [
+            3
+          ],
+          "digitPosition": "firstNumeric",
+          "digits": [
+            4,
+            5
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": true,
+          "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+          "verifiedAt": "2026-11-13T08:35:42-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+            }
+          ]
+        },
+        {
+          "id": "dosquebradas-motorcycle-private-thu-2026",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-09-28T00:00:00-05:00",
+          "weekdays": [
+            4
+          ],
+          "digitPosition": "firstNumeric",
+          "digits": [
+            6,
+            7
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": true,
+          "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+          "verifiedAt": "2026-11-13T08:35:42-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+            }
+          ]
+        },
+        {
+          "id": "dosquebradas-motorcycle-private-fri-2026",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-09-28T00:00:00-05:00",
+          "weekdays": [
+            5
+          ],
+          "digitPosition": "firstNumeric",
+          "digits": [
+            8,
+            9
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": true,
+          "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+          "verifiedAt": "2026-11-13T08:35:42-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

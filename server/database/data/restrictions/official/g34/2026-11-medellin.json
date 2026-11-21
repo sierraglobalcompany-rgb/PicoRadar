@@ -1,0 +1,283 @@
+{
+  "schemaVersion": 2,
+  "datasetKey": "restrictions",
+  "version": "g34-preview-2026-11-10",
+  "generatedAt": "2026-11-10T23:34:08Z",
+  "jurisdictions": [
+    {
+      "schemaVersion": 2,
+      "id": "co-ant-medellin",
+      "name": "Medellín",
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-10T23:34:08Z",
+          "staleAfter": "2026-11-17T23:34:08Z",
+          "sourceUrls": [
+            "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+            "https://www.medellin.gov.co/giscatalogacion/srv/api/records/2d9cb19a-e7c7-4e1d-8a38-fb055997b043",
+            "https://www.medellin.gov.co/es/tramites-y-servicios/exencion-de-pico-y-placa"
+          ],
+          "rules": [
+            {
+              "id": "MED_CAR_MONDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-11-10T23:34:08Z"
+            },
+            {
+              "id": "MED_CAR_TUESDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-11-10T23:34:08Z"
+            },
+            {
+              "id": "MED_CAR_WEDNESDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                0,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-11-10T23:34:08Z"
+            },
+            {
+              "id": "MED_CAR_THURSDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-11-10T23:34:08Z"
+            },
+            {
+              "id": "MED_CAR_FRIDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                9
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-11-10T23:34:08Z"
+            }
+          ]
+        },
+        {
+          "vehicleKind": "motorcycle",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-10T23:34:08Z",
+          "staleAfter": "2026-11-17T23:34:08Z",
+          "sourceUrls": [
+            "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+            "https://www.medellin.gov.co/giscatalogacion/srv/api/records/2d9cb19a-e7c7-4e1d-8a38-fb055997b043",
+            "https://www.medellin.gov.co/es/tramites-y-servicios/exencion-de-pico-y-placa"
+          ],
+          "rules": [
+            {
+              "id": "MED_MOTO_MONDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                5,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-11-10T23:34:08Z"
+            },
+            {
+              "id": "MED_MOTO_TUESDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                1,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-11-10T23:34:08Z"
+            },
+            {
+              "id": "MED_MOTO_WEDNESDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                0,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-11-10T23:34:08Z"
+            },
+            {
+              "id": "MED_MOTO_THURSDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                3,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-11-10T23:34:08Z"
+            },
+            {
+              "id": "MED_MOTO_FRIDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                7,
+                9
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/",
+              "verifiedAt": "2026-11-10T23:34:08Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,355 @@
+{
+  "schemaVersion": 2,
+  "id": "co-bol-cartagena",
+  "name": "Cartagena",
+  "coverages": [
+    {
+      "vehicleKind": "car",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "verifiedAt": "2026-11-15T22:39:40-05:00",
+      "staleAfter": "2026-11-19T00:00:00-05:00",
+      "sourceUrls": [
+        "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0"
+      ],
+      "rules": [
+        {
+          "id": "CTG_CAR_MONDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2027-01-22T23:59:59-05:00",
+          "weekdays": [
+            1
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            1,
+            2
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 420,
+              "endMinute": 540
+            },
+            {
+              "startMinute": 1080,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+          "verifiedAt": "2026-11-15T22:39:40-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "CTG_CAR_TUESDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2027-01-22T23:59:59-05:00",
+          "weekdays": [
+            2
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            3,
+            4
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 420,
+              "endMinute": 540
+            },
+            {
+              "startMinute": 1080,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+          "verifiedAt": "2026-11-15T22:39:40-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "CTG_CAR_WEDNESDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2027-01-22T23:59:59-05:00",
+          "weekdays": [
+            3
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            5,
+            6
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 420,
+              "endMinute": 540
+            },
+            {
+              "startMinute": 1080,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+          "verifiedAt": "2026-11-15T22:39:40-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "CTG_CAR_THURSDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2027-01-22T23:59:59-05:00",
+          "weekdays": [
+            4
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            7,
+            8
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 420,
+              "endMinute": 540
+            },
+            {
+              "startMinute": 1080,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+          "verifiedAt": "2026-11-15T22:39:40-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "CTG_CAR_FRIDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2027-01-22T23:59:59-05:00",
+          "weekdays": [
+            5
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            9,
+            0
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 420,
+              "endMinute": 540
+            },
+            {
+              "startMinute": 1080,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+          "verifiedAt": "2026-11-15T22:39:40-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "vehicleKind": "motorcycle",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "verifiedAt": "2026-11-15T16:58:17-05:00",
+      "staleAfter": "2026-11-22T16:58:17-05:00",
+      "sourceUrls": [
+        "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0"
+      ],
+      "rules": [
+        {
+          "id": "CTG_MOTO_MONDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2027-01-22T23:59:59-05:00",
+          "weekdays": [
+            1
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            1,
+            2
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1380
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+          "verifiedAt": "2026-11-15T16:58:17-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "CTG_MOTO_TUESDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2027-01-22T23:59:59-05:00",
+          "weekdays": [
+            2
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            3,
+            4
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1380
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+          "verifiedAt": "2026-11-15T16:58:17-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "CTG_MOTO_WEDNESDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2027-01-22T23:59:59-05:00",
+          "weekdays": [
+            3
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            5,
+            6
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1380
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+          "verifiedAt": "2026-11-15T16:58:17-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "CTG_MOTO_THURSDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2027-01-22T23:59:59-05:00",
+          "weekdays": [
+            4
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            7,
+            8
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1380
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+          "verifiedAt": "2026-11-15T16:58:17-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "CTG_MOTO_FRIDAY",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2027-01-22T23:59:59-05:00",
+          "weekdays": [
+            5
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            9,
+            0
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1380
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+          "verifiedAt": "2026-11-15T16:58:17-05:00",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "municipalityCodes": [
+    "13001"
+  ],
+  "consultationEnabled": true
+}

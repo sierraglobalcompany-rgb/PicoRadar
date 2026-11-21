@@ -1,0 +1,354 @@
+{
+  "schemaVersion": 2,
+  "id": "co-atl-transito-departamental",
+  "name": "Tránsito del Atlántico (vías departamentales)",
+  "municipalityCodes": [
+    "08078",
+    "08137",
+    "08141",
+    "08296",
+    "08372",
+    "08433",
+    "08436",
+    "08520",
+    "08549",
+    "08558",
+    "08560",
+    "08573",
+    "08606",
+    "08634",
+    "08638",
+    "08675",
+    "08685",
+    "08770",
+    "08832",
+    "08849"
+  ],
+  "consultationEnabled": true,
+  "coverages": [
+    {
+      "vehicleKind": "motorcycle",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "verifiedAt": "2026-11-13T01:14:45Z",
+      "staleAfter": "2026-12-01T00:00:00-05:00",
+      "sourceUrls": [
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ],
+      "rules": [
+        {
+          "id": "atl-motorcycle-day-mon",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-01-01T00:00:00-05:00",
+          "validUntil": null,
+          "weekdays": [
+            1
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            1,
+            2
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 480,
+              "endMinute": 1439
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+            }
+          ]
+        },
+        {
+          "id": "atl-motorcycle-day-tue",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-01-01T00:00:00-05:00",
+          "validUntil": null,
+          "weekdays": [
+            2
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            3,
+            4
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 480,
+              "endMinute": 1439
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+            }
+          ]
+        },
+        {
+          "id": "atl-motorcycle-day-wed",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-01-01T00:00:00-05:00",
+          "validUntil": null,
+          "weekdays": [
+            3
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            5,
+            6
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 480,
+              "endMinute": 1439
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+            }
+          ]
+        },
+        {
+          "id": "atl-motorcycle-day-thu",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-01-01T00:00:00-05:00",
+          "validUntil": null,
+          "weekdays": [
+            4
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            7,
+            8
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 480,
+              "endMinute": 1439
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+            }
+          ]
+        },
+        {
+          "id": "atl-motorcycle-day-fri",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-01-01T00:00:00-05:00",
+          "validUntil": null,
+          "weekdays": [
+            5
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            9,
+            0
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 480,
+              "endMinute": 1439
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "vehicleKind": "motocarro",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "verifiedAt": "2026-11-13T01:14:45Z",
+      "staleAfter": "2026-12-01T00:00:00-05:00",
+      "sourceUrls": [
+        "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+      ],
+      "rules": [
+        {
+          "id": "atl-motocarro-day-mon",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-01-01T00:00:00-05:00",
+          "validUntil": null,
+          "weekdays": [
+            1
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            1,
+            2
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 480,
+              "endMinute": 1439
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+            }
+          ]
+        },
+        {
+          "id": "atl-motocarro-day-tue",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-01-01T00:00:00-05:00",
+          "validUntil": null,
+          "weekdays": [
+            2
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            3,
+            4
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 480,
+              "endMinute": 1439
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+            }
+          ]
+        },
+        {
+          "id": "atl-motocarro-day-wed",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-01-01T00:00:00-05:00",
+          "validUntil": null,
+          "weekdays": [
+            3
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            5,
+            6
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 480,
+              "endMinute": 1439
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+            }
+          ]
+        },
+        {
+          "id": "atl-motocarro-day-thu",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-01-01T00:00:00-05:00",
+          "validUntil": null,
+          "weekdays": [
+            4
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            7,
+            8
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 480,
+              "endMinute": 1439
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+            }
+          ]
+        },
+        {
+          "id": "atl-motocarro-day-fri",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-01-01T00:00:00-05:00",
+          "validUntil": null,
+          "weekdays": [
+            5
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            9,
+            0
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 480,
+              "endMinute": 1439
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,335 @@
+{
+  "schemaVersion": 2,
+  "id": "co-ant-itagui",
+  "name": "Itagüí",
+  "municipalityCodes": [
+    "05360"
+  ],
+  "consultationEnabled": true,
+  "coverages": [
+    {
+      "vehicleKind": "car",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "verifiedAt": "2026-11-13T01:14:45Z",
+      "staleAfter": "2026-12-01T00:00:00-05:00",
+      "sourceUrls": [
+        "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf"
+      ],
+      "rules": [
+        {
+          "id": "itagui-car-s2-mon",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            1
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            5,
+            8
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+            }
+          ]
+        },
+        {
+          "id": "itagui-car-s2-tue",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            2
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            1,
+            4
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+            }
+          ]
+        },
+        {
+          "id": "itagui-car-s2-wed",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            3
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            0,
+            2
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+            }
+          ]
+        },
+        {
+          "id": "itagui-car-s2-thu",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            4
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            3,
+            6
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+            }
+          ]
+        },
+        {
+          "id": "itagui-car-s2-fri",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            5
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            7,
+            9
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "vehicleKind": "motorcycle",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "verifiedAt": "2026-11-13T01:14:45Z",
+      "staleAfter": "2026-12-01T00:00:00-05:00",
+      "sourceUrls": [
+        "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf"
+      ],
+      "rules": [
+        {
+          "id": "itagui-motorcycle-s2-mon",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            1
+          ],
+          "digitPosition": "firstNumeric",
+          "digits": [
+            5,
+            8
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+            }
+          ]
+        },
+        {
+          "id": "itagui-motorcycle-s2-tue",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            2
+          ],
+          "digitPosition": "firstNumeric",
+          "digits": [
+            1,
+            4
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+            }
+          ]
+        },
+        {
+          "id": "itagui-motorcycle-s2-wed",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            3
+          ],
+          "digitPosition": "firstNumeric",
+          "digits": [
+            0,
+            2
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+            }
+          ]
+        },
+        {
+          "id": "itagui-motorcycle-s2-thu",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            4
+          ],
+          "digitPosition": "firstNumeric",
+          "digits": [
+            3,
+            6
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+            }
+          ]
+        },
+        {
+          "id": "itagui-motorcycle-s2-fri",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-08-03T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            5
+          ],
+          "digitPosition": "firstNumeric",
+          "digits": [
+            7,
+            9
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 300,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

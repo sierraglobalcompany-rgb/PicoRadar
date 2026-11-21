@@ -1,0 +1,43 @@
+{
+  "enabled": true,
+  "selectionPolicy": "fixed",
+  "fixedCampaignId": "demo_affiliate_01",
+  "campaigns": [
+    {
+      "id": "demo_affiliate_01",
+      "kind": "affiliate",
+      "enabled": true,
+      "label": "ALIADO PREMIUM · DEMO",
+      "title": "Protección que te acompaña",
+      "subtitle": "Espacio preparado para campañas y aliados.",
+      "ctaText": "Conocer más",
+      "targetUrl": "https://picoradar.co/demo/home-ally",
+      "asset": null,
+      "priority": 10
+    },
+    {
+      "id": "demo_house_01",
+      "kind": "house",
+      "enabled": true,
+      "label": "PICORADAR · DEMO",
+      "title": "Tu ruta, más tranquila",
+      "subtitle": "Promoción interna configurable para Home.",
+      "ctaText": "Ver más",
+      "targetUrl": null,
+      "asset": null,
+      "priority": 20
+    },
+    {
+      "id": "future_admob_slot",
+      "kind": "adNetwork",
+      "enabled": true,
+      "label": "AD NETWORK",
+      "title": "AdMob preparado",
+      "subtitle": "No se renderiza sin SDK y consentimiento.",
+      "ctaText": "",
+      "targetUrl": null,
+      "asset": null,
+      "priority": 30
+    }
+  ]
+}

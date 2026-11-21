@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 2,
+  "id": "co-dc-bogota",
+  "name": "Bogotá D.C.",
+  "municipalityCodes": [
+    "11001"
+  ],
+  "consultationEnabled": true,
+  "coverages": [
+    {
+      "rules": [
+        {
+          "appliesOnHolidays": false,
+          "dateParity": "odd",
+          "digitPosition": "lastNumeric",
+          "digits": [
+            6,
+            7,
+            8,
+            9,
+            0
+          ],
+          "effect": "restrict",
+          "id": "bogota-car-private-2026-odd-day",
+          "priority": 1000,
+          "sourceUrl": "https://www.alcaldiabogota.gov.co/sisjur/normas/Norma1.jsp?i=191872",
+          "timeWindows": [
+            {
+              "endMinute": 1260,
+              "startMinute": 360
+            }
+          ],
+          "validFrom": "2025-12-25T00:00:00-05:00",
+          "validUntil": null,
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "weekdays": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bogota-district-exemptions-unverified@decreto-652-2025"
+            }
+          ]
+        },
+        {
+          "appliesOnHolidays": false,
+          "dateParity": "even",
+          "digitPosition": "lastNumeric",
+          "digits": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "effect": "restrict",
+          "id": "bogota-car-private-2026-even-day",
+          "priority": 1000,
+          "sourceUrl": "https://www.alcaldiabogota.gov.co/sisjur/normas/Norma1.jsp?i=191872",
+          "timeWindows": [
+            {
+              "endMinute": 1260,
+              "startMinute": 360
+            }
+          ],
+          "validFrom": "2025-12-25T00:00:00-05:00",
+          "validUntil": null,
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "weekdays": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bogota-district-exemptions-unverified@decreto-652-2025"
+            }
+          ]
+        }
+      ],
+      "serviceType": "private",
+      "sourceUrls": [
+        "https://www.alcaldiabogota.gov.co/sisjur/normas/Norma1.jsp?i=191872"
+      ],
+      "staleAfter": "2026-12-01T00:00:00-05:00",
+      "vehicleKind": "car",
+      "verifiedAt": "2026-11-13T01:14:45Z",
+      "coverageCompleteness": "partial"
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "name": "HOME_OWNER_V4",
+  "status": "owner_approved_reference_for_R02A_FIX5",
+  "reference": {
+    "path": "docs/design/reference/home_owner_v4.png",
+    "sha256": "9ad7093229ddfb41be9b3fe1878197afaf166ff08d88f483bf706eb9b279c216",
+    "source_zip": "PICORADAR_HOME_OWNER_V4_REFERENCE.zip",
+    "source_zip_sha256": "a7ba070abaac40879f70917536c80af9156ff3cfa2c6e550428d91418a6cb8a5"
+  },
+  "screen": {
+    "route": "/home",
+    "header": {
+      "brand_position": "top_left",
+      "greeting_copy": "absent",
+      "controls": "one_white_capsule_top_right_with_avatar_and_notification_bell",
+      "height_dp": 56
+    },
+    "vehicle_carousel": {
+      "page_view": true,
+      "viewport_fraction": 0.64,
+      "base_height_dp": 236,
+      "visible_vehicle_target": 3,
+      "restricted_vehicle_default_focus": true,
+      "restricted_glow": ["red", "blue"],
+      "no_auto_advance": true
+    },
+    "tomorrow_card": {
+      "whole_card_tap": true,
+      "target_route": "/pico",
+      "semantics_label": "Ver pico y placa de mañana",
+      "chevron_visible": true
+    },
+    "vehicle_status": {
+      "cards": ["SOAT", "RTM"],
+      "layout": "side_by_side_when_text_scale_allows",
+      "data_source": "C13 vehicle_obligations",
+      "whole_card_tap": true,
+      "comparendos_on_home": false
+    },
+    "driving_cta_on_home": false
+  },
+  "home_banner": {
+    "position": "after_soat_rtm_before_bottom_nav",
+    "runtime_ad_network": "PREPARED_NOT_INTEGRATED",
+    "sdk": "none",
+    "config_asset": "mobile/assets/config/home_banner_config.json",
+    "supported_kinds": ["affiliate", "sponsored", "house", "adNetwork", "none"],
+    "selection_policies": ["fixed", "rotateOnAppLaunch"],
+    "url_policy": "https_only_no_pii_appended",
+    "leads": "no_C25_leads"
+  },
+  "out_of_scope": [
+    "R02B",
+    "R02C",
+    "R02D",
+    "R03",
+    "C14",
+    "backend",
+    "driving_engine",
+    "maintenance_module",
+    "pre_trip_checklist",
+    "tips",
+    "apps_overlay"
+  ],
+  "roadmap_notes": {
+    "R02C": "Apps overlay remains future work.",
+    "maintenance": "Maintenance module remains future work.",
+    "pre_trip": "Pre-trip checklist remains future work.",
+    "tips": "Tips remain future work."
+  }
+}

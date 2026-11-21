@@ -1,0 +1,59 @@
+{
+  "definitionId": "bogota-car-private-urban-nov-2026-v1",
+  "jurisdictionId": "co-dc-bogota",
+  "divipola": "11001",
+  "authority": "Secretaría Distrital de Movilidad de Bogotá / Alcaldía Mayor de Bogotá",
+  "sourceUrls": [
+    "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-bogota-vehiculos-particulares-1-30-de-noviembre-de-2026",
+    "https://www.movilidadbogota.gov.co/preguntas-frecuentes/en-que-consiste-la-restriccion-establecida-para-vehiculos-particulares"
+  ],
+  "verifiedAt": "2026-11-09T22:00:10Z",
+  "reviewStatus": "official-sources-cross-checked; director-review-pending",
+  "scope": "urban-general-only",
+  "regionalReturnEvaluated": false,
+  "individualExceptionsEvaluated": false,
+  "regionalReturnEvidence": "The official November calendar identifies November 2 and 16 as regional return days; those corridor rules are separate from ordinary urban Pico y Placa and are not modeled here.",
+  "ruleInterpretation": "Odd dates restrict 6,7,8,9,0; even dates restrict 1,2,3,4,5.",
+  "coverage": {
+    "vehicleKind": "car",
+    "serviceType": "private",
+    "verifiedAt": "2026-11-09T22:00:10Z",
+    "staleAfter": "2026-12-01T05:00:00Z",
+    "sourceUrls": [
+      "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-bogota-vehiculos-particulares-1-30-de-noviembre-de-2026",
+      "https://www.movilidadbogota.gov.co/preguntas-frecuentes/en-que-consiste-la-restriccion-establecida-para-vehiculos-particulares"
+    ],
+    "rules": [
+      {
+        "id": "bogota-car-private-2026-11-odd-day",
+        "priority": 1000,
+        "effect": "restrict",
+        "validFrom": "2026-11-01T00:00:00-05:00",
+        "validUntil": "2026-11-30T23:59:59-05:00",
+        "weekdays": [1, 2, 3, 4, 5],
+        "dateParity": "odd",
+        "digitPosition": "lastNumeric",
+        "digits": [6, 7, 8, 9, 0],
+        "timeWindows": [{"startMinute": 360, "endMinute": 1260}],
+        "appliesOnHolidays": false,
+        "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-bogota-vehiculos-particulares-1-30-de-noviembre-de-2026",
+        "verifiedAt": "2026-11-09T22:00:10Z"
+      },
+      {
+        "id": "bogota-car-private-2026-11-even-day",
+        "priority": 1000,
+        "effect": "restrict",
+        "validFrom": "2026-11-01T00:00:00-05:00",
+        "validUntil": "2026-11-30T23:59:59-05:00",
+        "weekdays": [1, 2, 3, 4, 5],
+        "dateParity": "even",
+        "digitPosition": "lastNumeric",
+        "digits": [1, 2, 3, 4, 5],
+        "timeWindows": [{"startMinute": 360, "endMinute": 1260}],
+        "appliesOnHolidays": false,
+        "sourceUrl": "https://bogota.gov.co/mi-ciudad/movilidad/2026-11/pico-y-placa-bogota-vehiculos-particulares-1-30-de-noviembre-de-2026",
+        "verifiedAt": "2026-11-09T22:00:10Z"
+      }
+    ]
+  }
+}

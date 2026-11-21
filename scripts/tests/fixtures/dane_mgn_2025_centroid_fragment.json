@@ -1,0 +1,90 @@
+{
+  "layerId": 305,
+  "response": {
+    "features": [
+      {
+        "attributes": {
+          "CLAS_CCDGO": "1",
+          "MPIO_CDPMP": "05001",
+          "OBJECTID": 8641,
+          "ZU_CCNCT": "05001100000000",
+          "ZU_CDIVI": "05001000",
+          "ZU_CNMBRE": "MEDELLÍN, DISTRITO ESPECIAL DE CIENCIA, TECNOLOGÍA E INNOVACIÓN",
+          "ZU_NANO": 2025
+        },
+        "centroid": {
+          "x": -75.58177500722266,
+          "y": 6.246630847495505
+        }
+      },
+      {
+        "attributes": {
+          "CLAS_CCDGO": "1",
+          "MPIO_CDPMP": "05088",
+          "OBJECTID": 8642,
+          "ZU_CCNCT": "05088100000000",
+          "ZU_CDIVI": "05088000",
+          "ZU_CNMBRE": "BELLO",
+          "ZU_NANO": 2025
+        },
+        "centroid": {
+          "x": -75.55535322723098,
+          "y": 6.333594542301594
+        }
+      }
+    ],
+    "fields": [
+      {
+        "alias": "OBJECTID",
+        "name": "OBJECTID",
+        "type": "esriFieldTypeOID"
+      },
+      {
+        "alias": "Codigo municipio concatenado",
+        "length": 5,
+        "name": "MPIO_CDPMP",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Codigo clase",
+        "length": 1,
+        "name": "CLAS_CCDGO",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Código DIVIPOLA concatenado departamento, municipio y zona urbana",
+        "length": 8,
+        "name": "ZU_CDIVI",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Código DANE concatenado departamento, municipio, clase, sector rural, sección rural y zona urbana",
+        "length": 14,
+        "name": "ZU_CCNCT",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Nombre de la zona urbana (cabeceras municipales y centros poblados)",
+        "length": 255,
+        "name": "ZU_CNMBRE",
+        "type": "esriFieldTypeString"
+      },
+      {
+        "alias": "Año versión zona urbana",
+        "name": "ZU_NANO",
+        "type": "esriFieldTypeSmallInteger"
+      }
+    ],
+    "geometryType": "esriGeometryPolygon",
+    "globalIdFieldName": "",
+    "objectIdFieldName": "OBJECTID",
+    "spatialReference": {
+      "latestWkid": 4326,
+      "wkid": 4326
+    }
+  },
+  "responseSha256": "7b3e1a58844cbe709a343820aa24d4ecc41611a1c0dc92245bd823afa6b65b6c",
+  "sourceService": "https://portalgis.dane.gov.co/mparcgis/rest/services/Divipola/Serv_DIVIPOLA_MGN_2025/FeatureServer",
+  "sourceVersion": "2025",
+  "verifiedAt": "2026-11-10T23:34:08Z"
+}

@@ -1,0 +1,1743 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "name": "ACTORES RUNT POR MUNICIPIO Y DEPARTAMENTO RUNT2.0",
+    "datasetId": "epfm-5fhb",
+    "url": "https://www.datos.gov.co/Transporte/ACTORES-RUNT-POR-MUNICIPIO-Y-DEPARTAMENTO-RUNT2-0/epfm-5fhb",
+    "owner": "Ministerio de Transporte - MinTransporte / RUNT 2.0",
+    "filter": "tipo_actor=OT; certifico=SI; registro_novedad NO/NO APLICA/null",
+    "sourceUpdatedAt": "2026-08-04T19:41:48Z"
+  },
+  "generatedAt": "2026-08-30T15:44:39Z",
+  "recordCount": 288,
+  "records": [
+    {
+      "municipality": "Leticia",
+      "department": "Amazonas",
+      "displayName": "Leticia - Amazonas",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Amalfi",
+      "department": "Antioquia",
+      "displayName": "Amalfi - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Andes",
+      "department": "Antioquia",
+      "displayName": "Andes - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Apartado",
+      "department": "Antioquia",
+      "displayName": "Apartado - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Barbosa",
+      "department": "Antioquia",
+      "displayName": "Barbosa - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Bello",
+      "department": "Antioquia",
+      "displayName": "Bello - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Caldas",
+      "department": "Antioquia",
+      "displayName": "Caldas - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Carepa",
+      "department": "Antioquia",
+      "displayName": "Carepa - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Caucasia",
+      "department": "Antioquia",
+      "displayName": "Caucasia - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Chigorodo",
+      "department": "Antioquia",
+      "displayName": "Chigorodo - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Ciudad Bolivar",
+      "department": "Antioquia",
+      "displayName": "Ciudad Bolivar - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Copacabana",
+      "department": "Antioquia",
+      "displayName": "Copacabana - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Don Matias",
+      "department": "Antioquia",
+      "displayName": "Don Matias - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "El Bagre",
+      "department": "Antioquia",
+      "displayName": "El Bagre - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "El Carmen De Viboral",
+      "department": "Antioquia",
+      "displayName": "El Carmen De Viboral - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "El Santuario",
+      "department": "Antioquia",
+      "displayName": "El Santuario - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Envigado",
+      "department": "Antioquia",
+      "displayName": "Envigado - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Frontino",
+      "department": "Antioquia",
+      "displayName": "Frontino - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Girardota",
+      "department": "Antioquia",
+      "displayName": "Girardota - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Guarne",
+      "department": "Antioquia",
+      "displayName": "Guarne - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Itagui",
+      "department": "Antioquia",
+      "displayName": "Itagui - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "La Ceja",
+      "department": "Antioquia",
+      "displayName": "La Ceja - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "La Estrella",
+      "department": "Antioquia",
+      "displayName": "La Estrella - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Marinilla",
+      "department": "Antioquia",
+      "displayName": "Marinilla - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Medellín",
+      "department": "Antioquia",
+      "displayName": "Medellín - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Necocli",
+      "department": "Antioquia",
+      "displayName": "Necocli - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Puerto Berrio",
+      "department": "Antioquia",
+      "displayName": "Puerto Berrio - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Puerto Triunfo",
+      "department": "Antioquia",
+      "displayName": "Puerto Triunfo - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Rionegro",
+      "department": "Antioquia",
+      "displayName": "Rionegro - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Sabaneta",
+      "department": "Antioquia",
+      "displayName": "Sabaneta - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "San Jeronimo",
+      "department": "Antioquia",
+      "displayName": "San Jeronimo - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Santa Rosa De Osos",
+      "department": "Antioquia",
+      "displayName": "Santa Rosa De Osos - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Santafe De Antioquia",
+      "department": "Antioquia",
+      "displayName": "Santafe De Antioquia - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Segovia",
+      "department": "Antioquia",
+      "displayName": "Segovia - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Sonson",
+      "department": "Antioquia",
+      "displayName": "Sonson - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Turbo",
+      "department": "Antioquia",
+      "displayName": "Turbo - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Urrao",
+      "department": "Antioquia",
+      "displayName": "Urrao - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Yarumal",
+      "department": "Antioquia",
+      "displayName": "Yarumal - Antioquia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Arauca",
+      "department": "Arauca",
+      "displayName": "Arauca - Arauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Arauquita",
+      "department": "Arauca",
+      "displayName": "Arauquita - Arauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Saravena",
+      "department": "Arauca",
+      "displayName": "Saravena - Arauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Tame",
+      "department": "Arauca",
+      "displayName": "Tame - Arauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "San Andrés",
+      "department": "Archipielago De San Andres, Providencia",
+      "displayName": "San Andrés - Archipielago De San Andres, Providencia",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Baranoa",
+      "department": "Atlántico",
+      "displayName": "Baranoa - Atlántico",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Barranquilla",
+      "department": "Atlántico",
+      "displayName": "Barranquilla - Atlántico",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Galapa",
+      "department": "Atlántico",
+      "displayName": "Galapa - Atlántico",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Malambo",
+      "department": "Atlántico",
+      "displayName": "Malambo - Atlántico",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Puerto Colombia",
+      "department": "Atlántico",
+      "displayName": "Puerto Colombia - Atlántico",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Sabanagrande",
+      "department": "Atlántico",
+      "displayName": "Sabanagrande - Atlántico",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Sabanalarga",
+      "department": "Atlántico",
+      "displayName": "Sabanalarga - Atlántico",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Soledad",
+      "department": "Atlántico",
+      "displayName": "Soledad - Atlántico",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Bogotá",
+      "department": "Bogotá D.C.",
+      "displayName": "Bogotá - Bogotá D.C.",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Arjona",
+      "department": "Bolívar",
+      "displayName": "Arjona - Bolívar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Cartagena",
+      "department": "Bolívar",
+      "displayName": "Cartagena - Bolívar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Clemencia",
+      "department": "Bolívar",
+      "displayName": "Clemencia - Bolívar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "El Carmen De Bolivar",
+      "department": "Bolívar",
+      "displayName": "El Carmen De Bolivar - Bolívar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Magangue",
+      "department": "Bolívar",
+      "displayName": "Magangue - Bolívar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Mompos",
+      "department": "Bolívar",
+      "displayName": "Mompos - Bolívar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "San Juan Nepomuceno",
+      "department": "Bolívar",
+      "displayName": "San Juan Nepomuceno - Bolívar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Santa Rosa",
+      "department": "Bolívar",
+      "displayName": "Santa Rosa - Bolívar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Santa Rosa Del Sur",
+      "department": "Bolívar",
+      "displayName": "Santa Rosa Del Sur - Bolívar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Turbaco",
+      "department": "Bolívar",
+      "displayName": "Turbaco - Bolívar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Chiquinquira",
+      "department": "Boyacá",
+      "displayName": "Chiquinquira - Boyacá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Combita",
+      "department": "Boyacá",
+      "displayName": "Combita - Boyacá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Duitama",
+      "department": "Boyacá",
+      "displayName": "Duitama - Boyacá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Garagoa",
+      "department": "Boyacá",
+      "displayName": "Garagoa - Boyacá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Guateque",
+      "department": "Boyacá",
+      "displayName": "Guateque - Boyacá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Miraflores",
+      "department": "Boyacá",
+      "displayName": "Miraflores - Boyacá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Moniquira",
+      "department": "Boyacá",
+      "displayName": "Moniquira - Boyacá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Nobsa",
+      "department": "Boyacá",
+      "displayName": "Nobsa - Boyacá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Paipa",
+      "department": "Boyacá",
+      "displayName": "Paipa - Boyacá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Puerto Boyaca",
+      "department": "Boyacá",
+      "displayName": "Puerto Boyaca - Boyacá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Ramiriqui",
+      "department": "Boyacá",
+      "displayName": "Ramiriqui - Boyacá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Saboya",
+      "department": "Boyacá",
+      "displayName": "Saboya - Boyacá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Santa Rosa De Viterbo",
+      "department": "Boyacá",
+      "displayName": "Santa Rosa De Viterbo - Boyacá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Soata",
+      "department": "Boyacá",
+      "displayName": "Soata - Boyacá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Sogamoso",
+      "department": "Boyacá",
+      "displayName": "Sogamoso - Boyacá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Villa De Leyva",
+      "department": "Boyacá",
+      "displayName": "Villa De Leyva - Boyacá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Aguadas",
+      "department": "Caldas",
+      "displayName": "Aguadas - Caldas",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Anserma",
+      "department": "Caldas",
+      "displayName": "Anserma - Caldas",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Aranzazu",
+      "department": "Caldas",
+      "displayName": "Aranzazu - Caldas",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Chinchina",
+      "department": "Caldas",
+      "displayName": "Chinchina - Caldas",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "La Dorada",
+      "department": "Caldas",
+      "displayName": "La Dorada - Caldas",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Manizales",
+      "department": "Caldas",
+      "displayName": "Manizales - Caldas",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Manzanares",
+      "department": "Caldas",
+      "displayName": "Manzanares - Caldas",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Neira",
+      "department": "Caldas",
+      "displayName": "Neira - Caldas",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Riosucio",
+      "department": "Caldas",
+      "displayName": "Riosucio - Caldas",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Salamina",
+      "department": "Caldas",
+      "displayName": "Salamina - Caldas",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Supia",
+      "department": "Caldas",
+      "displayName": "Supia - Caldas",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Villamaria",
+      "department": "Caldas",
+      "displayName": "Villamaria - Caldas",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Viterbo",
+      "department": "Caldas",
+      "displayName": "Viterbo - Caldas",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Belen De Los Andaquies",
+      "department": "Caquetá",
+      "displayName": "Belen De Los Andaquies - Caquetá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "El Paujil",
+      "department": "Caquetá",
+      "displayName": "El Paujil - Caquetá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Florencia",
+      "department": "Caquetá",
+      "displayName": "Florencia - Caquetá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "San Vicente Del Caguan",
+      "department": "Caquetá",
+      "displayName": "San Vicente Del Caguan - Caquetá",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Aguazul",
+      "department": "Casanare",
+      "displayName": "Aguazul - Casanare",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Villanueva",
+      "department": "Casanare",
+      "displayName": "Villanueva - Casanare",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Yopal",
+      "department": "Casanare",
+      "displayName": "Yopal - Casanare",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Bolívar",
+      "department": "Cauca",
+      "displayName": "Bolívar - Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Caloto",
+      "department": "Cauca",
+      "displayName": "Caloto - Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "El Tambo",
+      "department": "Cauca",
+      "displayName": "El Tambo - Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Miranda",
+      "department": "Cauca",
+      "displayName": "Miranda - Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Patia",
+      "department": "Cauca",
+      "displayName": "Patia - Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Piendamo",
+      "department": "Cauca",
+      "displayName": "Piendamo - Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Popayan",
+      "department": "Cauca",
+      "displayName": "Popayan - Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Puerto Tejada",
+      "department": "Cauca",
+      "displayName": "Puerto Tejada - Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Santander De Quilichao",
+      "department": "Cauca",
+      "displayName": "Santander De Quilichao - Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Timbio",
+      "department": "Cauca",
+      "displayName": "Timbio - Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Villa Rica",
+      "department": "Cauca",
+      "displayName": "Villa Rica - Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Aguachica",
+      "department": "Cesar",
+      "displayName": "Aguachica - Cesar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Agustin Codazzi",
+      "department": "Cesar",
+      "displayName": "Agustin Codazzi - Cesar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Bosconia",
+      "department": "Cesar",
+      "displayName": "Bosconia - Cesar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Curumani",
+      "department": "Cesar",
+      "displayName": "Curumani - Cesar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "El Paso",
+      "department": "Cesar",
+      "displayName": "El Paso - Cesar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "La Jagua De Ibirico",
+      "department": "Cesar",
+      "displayName": "La Jagua De Ibirico - Cesar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "La Paz",
+      "department": "Cesar",
+      "displayName": "La Paz - Cesar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "San Alberto",
+      "department": "Cesar",
+      "displayName": "San Alberto - Cesar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "San Diego",
+      "department": "Cesar",
+      "displayName": "San Diego - Cesar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "San Martin",
+      "department": "Cesar",
+      "displayName": "San Martin - Cesar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Valledupar",
+      "department": "Cesar",
+      "displayName": "Valledupar - Cesar",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Istmina",
+      "department": "Chocó",
+      "displayName": "Istmina - Chocó",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Quibdo",
+      "department": "Chocó",
+      "displayName": "Quibdo - Chocó",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Cerete",
+      "department": "Córdoba",
+      "displayName": "Cerete - Córdoba",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Chinu",
+      "department": "Córdoba",
+      "displayName": "Chinu - Córdoba",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "La Apartada",
+      "department": "Córdoba",
+      "displayName": "La Apartada - Córdoba",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Lorica",
+      "department": "Córdoba",
+      "displayName": "Lorica - Córdoba",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Monteria",
+      "department": "Córdoba",
+      "displayName": "Monteria - Córdoba",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Planeta Rica",
+      "department": "Córdoba",
+      "displayName": "Planeta Rica - Córdoba",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Sahagun",
+      "department": "Córdoba",
+      "displayName": "Sahagun - Córdoba",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Arbelaez",
+      "department": "Cundinamarca",
+      "displayName": "Arbelaez - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Cajica",
+      "department": "Cundinamarca",
+      "displayName": "Cajica - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Caqueza",
+      "department": "Cundinamarca",
+      "displayName": "Caqueza - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Chia",
+      "department": "Cundinamarca",
+      "displayName": "Chia - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Chipaque",
+      "department": "Cundinamarca",
+      "displayName": "Chipaque - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Choconta",
+      "department": "Cundinamarca",
+      "displayName": "Choconta - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Cota",
+      "department": "Cundinamarca",
+      "displayName": "Cota - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "El Rosal",
+      "department": "Cundinamarca",
+      "displayName": "El Rosal - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Facatativa",
+      "department": "Cundinamarca",
+      "displayName": "Facatativa - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Funza",
+      "department": "Cundinamarca",
+      "displayName": "Funza - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Fusagasuga",
+      "department": "Cundinamarca",
+      "displayName": "Fusagasuga - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Girardot",
+      "department": "Cundinamarca",
+      "displayName": "Girardot - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Guaduas",
+      "department": "Cundinamarca",
+      "displayName": "Guaduas - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "La Calera",
+      "department": "Cundinamarca",
+      "displayName": "La Calera - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "La Mesa",
+      "department": "Cundinamarca",
+      "displayName": "La Mesa - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Madrid",
+      "department": "Cundinamarca",
+      "displayName": "Madrid - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Mosquera",
+      "department": "Cundinamarca",
+      "displayName": "Mosquera - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Pacho",
+      "department": "Cundinamarca",
+      "displayName": "Pacho - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Puerto Salgar",
+      "department": "Cundinamarca",
+      "displayName": "Puerto Salgar - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Ricaurte",
+      "department": "Cundinamarca",
+      "displayName": "Ricaurte - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Sesquile",
+      "department": "Cundinamarca",
+      "displayName": "Sesquile - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Sibate",
+      "department": "Cundinamarca",
+      "displayName": "Sibate - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Silvania",
+      "department": "Cundinamarca",
+      "displayName": "Silvania - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Soacha",
+      "department": "Cundinamarca",
+      "displayName": "Soacha - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Sopo",
+      "department": "Cundinamarca",
+      "displayName": "Sopo - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Tenjo",
+      "department": "Cundinamarca",
+      "displayName": "Tenjo - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Ubate",
+      "department": "Cundinamarca",
+      "displayName": "Ubate - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Villeta",
+      "department": "Cundinamarca",
+      "displayName": "Villeta - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Zipaquira",
+      "department": "Cundinamarca",
+      "displayName": "Zipaquira - Cundinamarca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "San Jose Del Guaviare",
+      "department": "Guaviare",
+      "displayName": "San Jose Del Guaviare - Guaviare",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Aipe",
+      "department": "Huila",
+      "displayName": "Aipe - Huila",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Garzon",
+      "department": "Huila",
+      "displayName": "Garzon - Huila",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Guadalupe",
+      "department": "Huila",
+      "displayName": "Guadalupe - Huila",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "La Plata",
+      "department": "Huila",
+      "displayName": "La Plata - Huila",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Neiva",
+      "department": "Huila",
+      "displayName": "Neiva - Huila",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Palermo",
+      "department": "Huila",
+      "displayName": "Palermo - Huila",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Pitalito",
+      "department": "Huila",
+      "displayName": "Pitalito - Huila",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Rivera",
+      "department": "Huila",
+      "displayName": "Rivera - Huila",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Timana",
+      "department": "Huila",
+      "displayName": "Timana - Huila",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Albania",
+      "department": "La Guajira",
+      "displayName": "Albania - La Guajira",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Fonseca",
+      "department": "La Guajira",
+      "displayName": "Fonseca - La Guajira",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Hatonuevo",
+      "department": "La Guajira",
+      "displayName": "Hatonuevo - La Guajira",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Maicao",
+      "department": "La Guajira",
+      "displayName": "Maicao - La Guajira",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Riohacha",
+      "department": "La Guajira",
+      "displayName": "Riohacha - La Guajira",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Aracataca",
+      "department": "Magdalena",
+      "displayName": "Aracataca - Magdalena",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Cienaga",
+      "department": "Magdalena",
+      "displayName": "Cienaga - Magdalena",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "El Banco",
+      "department": "Magdalena",
+      "displayName": "El Banco - Magdalena",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Fundacion",
+      "department": "Magdalena",
+      "displayName": "Fundacion - Magdalena",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Plato",
+      "department": "Magdalena",
+      "displayName": "Plato - Magdalena",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Santa Marta",
+      "department": "Magdalena",
+      "displayName": "Santa Marta - Magdalena",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Zona Bananera",
+      "department": "Magdalena",
+      "displayName": "Zona Bananera - Magdalena",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Acacias",
+      "department": "Meta",
+      "displayName": "Acacias - Meta",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Granada",
+      "department": "Meta",
+      "displayName": "Granada - Meta",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Guamal",
+      "department": "Meta",
+      "displayName": "Guamal - Meta",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Puerto Lopez",
+      "department": "Meta",
+      "displayName": "Puerto Lopez - Meta",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Restrepo",
+      "department": "Meta",
+      "displayName": "Restrepo - Meta",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Villavicencio",
+      "department": "Meta",
+      "displayName": "Villavicencio - Meta",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Aldana",
+      "department": "Nariño",
+      "displayName": "Aldana - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Buesaco",
+      "department": "Nariño",
+      "displayName": "Buesaco - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Chachagui",
+      "department": "Nariño",
+      "displayName": "Chachagui - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Guachucal",
+      "department": "Nariño",
+      "displayName": "Guachucal - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Imues",
+      "department": "Nariño",
+      "displayName": "Imues - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Ipiales",
+      "department": "Nariño",
+      "displayName": "Ipiales - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "La Union",
+      "department": "Nariño",
+      "displayName": "La Union - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Nariño",
+      "department": "Nariño",
+      "displayName": "Nariño - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Pasto",
+      "department": "Nariño",
+      "displayName": "Pasto - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Pupiales",
+      "department": "Nariño",
+      "displayName": "Pupiales - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Ricaurte",
+      "department": "Nariño",
+      "displayName": "Ricaurte - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Samaniego",
+      "department": "Nariño",
+      "displayName": "Samaniego - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Sandona",
+      "department": "Nariño",
+      "displayName": "Sandona - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Tangua",
+      "department": "Nariño",
+      "displayName": "Tangua - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Tumaco",
+      "department": "Nariño",
+      "displayName": "Tumaco - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Tuquerres",
+      "department": "Nariño",
+      "displayName": "Tuquerres - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Yacuanquer",
+      "department": "Nariño",
+      "displayName": "Yacuanquer - Nariño",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Convencion",
+      "department": "Norte De Santander",
+      "displayName": "Convencion - Norte De Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Cúcuta",
+      "department": "Norte De Santander",
+      "displayName": "Cúcuta - Norte De Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "El Zulia",
+      "department": "Norte De Santander",
+      "displayName": "El Zulia - Norte De Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Los Patios",
+      "department": "Norte De Santander",
+      "displayName": "Los Patios - Norte De Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Ocaña",
+      "department": "Norte De Santander",
+      "displayName": "Ocaña - Norte De Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Pamplona",
+      "department": "Norte De Santander",
+      "displayName": "Pamplona - Norte De Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Villa Del Rosario",
+      "department": "Norte De Santander",
+      "displayName": "Villa Del Rosario - Norte De Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Mocoa",
+      "department": "Putumayo",
+      "displayName": "Mocoa - Putumayo",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Orito",
+      "department": "Putumayo",
+      "displayName": "Orito - Putumayo",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Puerto Asis",
+      "department": "Putumayo",
+      "displayName": "Puerto Asis - Putumayo",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Sibundoy",
+      "department": "Putumayo",
+      "displayName": "Sibundoy - Putumayo",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Valle Del Guamuez",
+      "department": "Putumayo",
+      "displayName": "Valle Del Guamuez - Putumayo",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Villagarzon",
+      "department": "Putumayo",
+      "displayName": "Villagarzon - Putumayo",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Armenia",
+      "department": "Quindío",
+      "displayName": "Armenia - Quindío",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Calarca",
+      "department": "Quindío",
+      "displayName": "Calarca - Quindío",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Circasia",
+      "department": "Quindío",
+      "displayName": "Circasia - Quindío",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "La Tebaida",
+      "department": "Quindío",
+      "displayName": "La Tebaida - Quindío",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Quimbaya",
+      "department": "Quindío",
+      "displayName": "Quimbaya - Quindío",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Dosquebradas",
+      "department": "Risaralda",
+      "displayName": "Dosquebradas - Risaralda",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "La Virginia",
+      "department": "Risaralda",
+      "displayName": "La Virginia - Risaralda",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Pereira",
+      "department": "Risaralda",
+      "displayName": "Pereira - Risaralda",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Santa Rosa De Cabal",
+      "department": "Risaralda",
+      "displayName": "Santa Rosa De Cabal - Risaralda",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Barbosa",
+      "department": "Santander",
+      "displayName": "Barbosa - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Barichara",
+      "department": "Santander",
+      "displayName": "Barichara - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Barrancabermeja",
+      "department": "Santander",
+      "displayName": "Barrancabermeja - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Bucaramanga",
+      "department": "Santander",
+      "displayName": "Bucaramanga - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Charala",
+      "department": "Santander",
+      "displayName": "Charala - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Cimitarra",
+      "department": "Santander",
+      "displayName": "Cimitarra - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Floridablanca",
+      "department": "Santander",
+      "displayName": "Floridablanca - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Giron",
+      "department": "Santander",
+      "displayName": "Giron - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Malaga",
+      "department": "Santander",
+      "displayName": "Malaga - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Oiba",
+      "department": "Santander",
+      "displayName": "Oiba - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Piedecuesta",
+      "department": "Santander",
+      "displayName": "Piedecuesta - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Puente Nacional",
+      "department": "Santander",
+      "displayName": "Puente Nacional - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Sabana De Torres",
+      "department": "Santander",
+      "displayName": "Sabana De Torres - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "San Gil",
+      "department": "Santander",
+      "displayName": "San Gil - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "San Vicente De Chucuri",
+      "department": "Santander",
+      "displayName": "San Vicente De Chucuri - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Socorro",
+      "department": "Santander",
+      "displayName": "Socorro - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Velez",
+      "department": "Santander",
+      "displayName": "Velez - Santander",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Corozal",
+      "department": "Sucre",
+      "displayName": "Corozal - Sucre",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Sampues",
+      "department": "Sucre",
+      "displayName": "Sampues - Sucre",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "San Onofre",
+      "department": "Sucre",
+      "displayName": "San Onofre - Sucre",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Since",
+      "department": "Sucre",
+      "displayName": "Since - Sucre",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Sincelejo",
+      "department": "Sucre",
+      "displayName": "Sincelejo - Sucre",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Alvarado",
+      "department": "Tolima",
+      "displayName": "Alvarado - Tolima",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Armero",
+      "department": "Tolima",
+      "displayName": "Armero - Tolima",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Chaparral",
+      "department": "Tolima",
+      "displayName": "Chaparral - Tolima",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Espinal",
+      "department": "Tolima",
+      "displayName": "Espinal - Tolima",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Fresno",
+      "department": "Tolima",
+      "displayName": "Fresno - Tolima",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Guamo",
+      "department": "Tolima",
+      "displayName": "Guamo - Tolima",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Honda",
+      "department": "Tolima",
+      "displayName": "Honda - Tolima",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Ibagué",
+      "department": "Tolima",
+      "displayName": "Ibagué - Tolima",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Libano",
+      "department": "Tolima",
+      "displayName": "Libano - Tolima",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Melgar",
+      "department": "Tolima",
+      "displayName": "Melgar - Tolima",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Planadas",
+      "department": "Tolima",
+      "displayName": "Planadas - Tolima",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Purificacion",
+      "department": "Tolima",
+      "displayName": "Purificacion - Tolima",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Alcala",
+      "department": "Valle del Cauca",
+      "displayName": "Alcala - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Andalucia",
+      "department": "Valle del Cauca",
+      "displayName": "Andalucia - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Ansermanuevo",
+      "department": "Valle del Cauca",
+      "displayName": "Ansermanuevo - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Bolívar",
+      "department": "Valle del Cauca",
+      "displayName": "Bolívar - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Buenaventura",
+      "department": "Valle del Cauca",
+      "displayName": "Buenaventura - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Bugalagrande",
+      "department": "Valle del Cauca",
+      "displayName": "Bugalagrande - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Caicedonia",
+      "department": "Valle del Cauca",
+      "displayName": "Caicedonia - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Cali",
+      "department": "Valle del Cauca",
+      "displayName": "Cali - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Candelaria",
+      "department": "Valle del Cauca",
+      "displayName": "Candelaria - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Cartago",
+      "department": "Valle del Cauca",
+      "displayName": "Cartago - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Dagua",
+      "department": "Valle del Cauca",
+      "displayName": "Dagua - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "El Cerrito",
+      "department": "Valle del Cauca",
+      "displayName": "El Cerrito - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Florida",
+      "department": "Valle del Cauca",
+      "displayName": "Florida - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Ginebra",
+      "department": "Valle del Cauca",
+      "displayName": "Ginebra - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Guacari",
+      "department": "Valle del Cauca",
+      "displayName": "Guacari - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Guadalajara De Buga",
+      "department": "Valle del Cauca",
+      "displayName": "Guadalajara De Buga - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Jamundi",
+      "department": "Valle del Cauca",
+      "displayName": "Jamundi - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "La Cumbre",
+      "department": "Valle del Cauca",
+      "displayName": "La Cumbre - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "La Union",
+      "department": "Valle del Cauca",
+      "displayName": "La Union - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Palmira",
+      "department": "Valle del Cauca",
+      "displayName": "Palmira - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Pradera",
+      "department": "Valle del Cauca",
+      "displayName": "Pradera - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Roldanillo",
+      "department": "Valle del Cauca",
+      "displayName": "Roldanillo - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Sevilla",
+      "department": "Valle del Cauca",
+      "displayName": "Sevilla - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Tulua",
+      "department": "Valle del Cauca",
+      "displayName": "Tulua - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Vijes",
+      "department": "Valle del Cauca",
+      "displayName": "Vijes - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Yotoco",
+      "department": "Valle del Cauca",
+      "displayName": "Yotoco - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Yumbo",
+      "department": "Valle del Cauca",
+      "displayName": "Yumbo - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Zarzal",
+      "department": "Valle del Cauca",
+      "displayName": "Zarzal - Valle del Cauca",
+      "source": "epfm-5fhb"
+    },
+    {
+      "municipality": "Puerto Carreno",
+      "department": "Vichada",
+      "displayName": "Puerto Carreno - Vichada",
+      "source": "epfm-5fhb"
+    }
+  ]
+}

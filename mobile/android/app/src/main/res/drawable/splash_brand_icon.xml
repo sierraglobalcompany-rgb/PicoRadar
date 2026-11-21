@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Keep the 58dp mark centered inside Android 12's system icon canvas. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:width="288dp" android:height="288dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#00000000" />
+        </shape>
+    </item>
+    <item android:width="58dp" android:height="58dp" android:gravity="center"
+        android:drawable="@drawable/splash_brand_mark" />
+</layer-list>

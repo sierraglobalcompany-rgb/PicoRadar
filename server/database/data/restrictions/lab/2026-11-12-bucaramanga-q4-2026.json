@@ -1,0 +1,577 @@
+{
+  "schemaVersion": 2,
+  "id": "co-san-bucaramanga",
+  "name": "Bucaramanga",
+  "municipalityCodes": [
+    "68001"
+  ],
+  "consultationEnabled": true,
+  "coverages": [
+    {
+      "vehicleKind": "car",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "verifiedAt": "2026-11-13T01:14:45Z",
+      "staleAfter": "2026-12-01T00:00:00-05:00",
+      "sourceUrls": [
+        "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+        "https://transitobucaramanga.gov.co/dtb/atencion-y-servicios-a-la-ciudadania/pico-y-placa"
+      ],
+      "rules": [
+        {
+          "id": "bga-car-q4-mon",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            1
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            5,
+            6
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "bga-car-q4-tue",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            2
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            7,
+            8
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "bga-car-q4-wed",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            3
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            9,
+            0
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "bga-car-q4-thu",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            4
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            1,
+            2
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "bga-car-q4-fri",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            5
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            3,
+            4
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "bga-car-saturday-2026-11-07",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-11-07T00:00:00-05:00",
+          "validUntil": "2026-11-07T23:59:59-05:00",
+          "weekdays": [
+            6
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            9,
+            0
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 540,
+              "endMinute": 780
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "bga-car-saturday-2026-11-14",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-11-14T00:00:00-05:00",
+          "validUntil": "2026-11-14T23:59:59-05:00",
+          "weekdays": [
+            6
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            1,
+            2
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 540,
+              "endMinute": 780
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "bga-car-saturday-2026-11-21",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-11-21T00:00:00-05:00",
+          "validUntil": "2026-11-21T23:59:59-05:00",
+          "weekdays": [
+            6
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            3,
+            4
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 540,
+              "endMinute": 780
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "bga-car-saturday-2026-11-28",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-11-28T00:00:00-05:00",
+          "validUntil": "2026-11-28T23:59:59-05:00",
+          "weekdays": [
+            6
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            5,
+            6
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 540,
+              "endMinute": 780
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "vehicleKind": "motorcycle",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "verifiedAt": "2026-11-13T01:14:45Z",
+      "staleAfter": "2026-12-01T00:00:00-05:00",
+      "sourceUrls": [
+        "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+        "https://transitobucaramanga.gov.co/dtb/atencion-y-servicios-a-la-ciudadania/pico-y-placa"
+      ],
+      "rules": [
+        {
+          "id": "bga-motorcycle-q4-mon",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            1
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            5,
+            6
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "bga-motorcycle-q4-tue",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            2
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            7,
+            8
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "bga-motorcycle-q4-wed",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            3
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            9,
+            0
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "bga-motorcycle-q4-thu",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            4
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            1,
+            2
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "bga-motorcycle-q4-fri",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            5
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            3,
+            4
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "bga-motorcycle-saturday-2026-11-07",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-11-07T00:00:00-05:00",
+          "validUntil": "2026-11-07T23:59:59-05:00",
+          "weekdays": [
+            6
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            9,
+            0
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 540,
+              "endMinute": 780
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "bga-motorcycle-saturday-2026-11-14",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-11-14T00:00:00-05:00",
+          "validUntil": "2026-11-14T23:59:59-05:00",
+          "weekdays": [
+            6
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            1,
+            2
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 540,
+              "endMinute": 780
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "bga-motorcycle-saturday-2026-11-21",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-11-21T00:00:00-05:00",
+          "validUntil": "2026-11-21T23:59:59-05:00",
+          "weekdays": [
+            6
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            3,
+            4
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 540,
+              "endMinute": 780
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "bga-motorcycle-saturday-2026-11-28",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-11-28T00:00:00-05:00",
+          "validUntil": "2026-11-28T23:59:59-05:00",
+          "weekdays": [
+            6
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            5,
+            6
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 540,
+              "endMinute": 780
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

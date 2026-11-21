@@ -1,0 +1,74 @@
+M docs/CURRENT.md
+ M docs/DESIGN_CONTRACT.md
+ M mobile/lib/app/app_providers.dart
+ M mobile/lib/app/shell/app_shell.dart
+ M mobile/lib/app/startup/startup_gate.dart
+ M mobile/lib/core/design_system/branding.dart
+ M mobile/lib/features/buy_sell/presentation/buy_sell_screen.dart
+ M mobile/lib/features/comparendos/presentation/comparendos_screen.dart
+ M mobile/lib/features/defense/presentation/defense_screen.dart
+ M mobile/lib/features/fotomultas/presentation/fotomultas_screen.dart
+ M mobile/lib/features/garage/data/garage_favorites.dart
+ M mobile/lib/features/garage/data/vehicle_profile.dart
+ M mobile/lib/features/garage/data/vehicle_repository.dart
+ M mobile/lib/features/garage/presentation/garage_screen.dart
+ M mobile/lib/features/garage/presentation/vehicle_detail_screen.dart
+ M mobile/lib/features/home/presentation/home_screen.dart
+ M mobile/lib/features/home/presentation/home_status_section.dart
+ M mobile/lib/features/home/presentation/home_vehicle_carousel.dart
+ M mobile/lib/features/onboarding/data/registration_city_catalog.dart
+ M mobile/lib/features/onboarding/presentation/onboarding_vehicle_screen.dart
+ M mobile/lib/features/pico_placa/presentation/pico_detail_screen.dart
+ M mobile/lib/features/settings/presentation/settings_screen.dart
+ M mobile/lib/features/trip/presentation/trip_screen.dart
+ M mobile/pubspec.yaml
+ M mobile/test/core/design_system/design_system_test.dart
+ M mobile/test/features/buy_sell/presentation/buy_sell_screen_test.dart
+ M mobile/test/features/comparendos/presentation/comparendos_screen_test.dart
+ M mobile/test/features/defense/presentation/defense_screen_test.dart
+ M mobile/test/features/fotomultas/presentation/fotomultas_screen_test.dart
+ M mobile/test/features/garage/data/vehicle_repository_test.dart
+ M mobile/test/features/garage/presentation/garage_performance_test.dart
+ M mobile/test/features/garage/presentation/garage_screen_test.dart
+ M mobile/test/features/home/presentation/home_performance_test.dart
+ M mobile/test/features/home/presentation/home_screen_test.dart
+ M mobile/test/features/onboarding/data/registration_city_catalog_test.dart
+ M mobile/test/features/onboarding/presentation/onboarding_vehicle_screen_test.dart
+ M mobile/test/features/pico_placa/platform/pico_notifications_test.dart
+ M mobile/test/features/pico_placa/presentation/pico_audit_presentation_test.dart
+ M mobile/test/features/pico_placa/presentation/pico_detail_screen_test.dart
+ M mobile/test/features/settings/presentation/settings_screen_test.dart
+ M mobile/test/features/trip/presentation/trip_screen_test.dart
+ M mobile/test/test_app_harness.dart
+?? .planning/
+?? docs/design/reference/home_allowed_owner_20260911.png
+?? docs/design/reference/plate_owner_20260910.png
+?? docs/superpowers/
+?? mobile/assets/catalogs/comparendos_authorities_v1.json
+?? mobile/assets/maps/
+?? mobile/assets/pico/pico_personal_city_background_owner_v1.png
+?? mobile/lib/features/comparendos/data/
+?? mobile/lib/features/comparendos/presentation/comparendos_selectors.dart
+?? mobile/lib/features/comparendos/presentation/comparendos_widgets.dart
+?? mobile/lib/features/fotomultas/presentation/department_camera_map.dart
+?? mobile/lib/features/fotomultas/presentation/department_explorer.dart
+?? mobile/lib/features/fotomultas/presentation/department_geometry.dart
+?? mobile/lib/features/fotomultas/presentation/national_department_map.dart
+?? mobile/lib/features/fotomultas/presentation/national_department_view.dart
+?? mobile/lib/features/garage/presentation/vehicle_deletion_window.dart
+?? mobile/lib/features/garage/presentation/vehicle_plate_badge.dart
+?? mobile/lib/features/pico_placa/presentation/city_pico_widgets.dart
+?? mobile/lib/features/pico_placa/presentation/today_restriction_summary.dart
+?? mobile/test/app/home_entry_test.dart
+?? mobile/test/core/design_system/plate_fidelity_test.dart
+?? mobile/test/features/comparendos/data/
+?? mobile/test/features/comparendos/presentation/comparendos_interactions_test.dart
+?? mobile/test/features/comparendos/presentation/comparendos_layout_test.dart
+?? mobile/test/features/comparendos/presentation/comparendos_test_fixture.dart
+?? mobile/test/features/fotomultas/presentation/department_geometry_test.dart
+?? mobile/test/features/garage/data/garage_favorites_test.dart
+?? mobile/test/features/garage/presentation/vehicle_detail_layout_test.dart
+?? mobile/test/features/garage/presentation/vehicle_detail_screen_test.dart
+?? mobile/test/features/home/presentation/home_priority_test.dart
+?? mobile/test/plate_test_fonts.dart
+?? mobile/tool/

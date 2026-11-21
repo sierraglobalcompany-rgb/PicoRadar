@@ -1,0 +1,25 @@
+# LEGAL_SOURCE_LEDGER — PicoRadar V1 nacional
+
+Comprobación: 2026-11-11, America/Bogota. Fuentes oficiales públicas. Nota, índice y banner son evidencia editorial y no sustituyen automáticamente el acto íntegro.
+
+| ID | Fuente | HTTP | Captura, bytes y SHA-256 | Publicación/periodo | Uso y limitación |
+|---|---|---:|---|---|---|
+| CALI-ROT | [Rotación Cali 2.º semestre](https://intranet.cali.gov.co/2026/07/01/pico-y-placa-rota-en-cali-para-el-segundo-semestre-de-2026-nueva-medida-rige-desde-el-1-de-julio/) | 403 | 2026-11-11 22:37:36-05; cuerpo de error 1.871 bytes no conservado; SHA null | 01-jul según ruta/título | No se leyó; no se declara verificada la rotación. |
+| CALI-RET | [Retorno habitual desde septiembre](https://www.cali.gov.co/boletines/publicaciones/194052/cali-retoma-el-pico-y-placa-habitual-desde-el-1-de-septiembre-se-mantienen-recomendaciones-de-movilidad-en-zonas-de-emergencia/) | 200 | 2026-11-11 22:50:09-05; 143.454 bytes; c43787db27f46fdb5ceb68e8e5499dfb076a5797ff980d29266d238f6eeedefc | Publicada 31-ago; retorna desde 01-sep-2026 | Confirma esquema habitual y dos dígitos/día; tabla, horario y acto no completos. |
+| IBA-ROT | [Rotación Ibagué H2](https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague) | 200 | 2026-11-11 22:37:36-05; 157.132 bytes; 845ac93532dccbfd96ad2fc6de0624e817b46d555c5c29c06b91eb282a058ca0 | Publicada 18-jun; 01-jul a 31-dic según noticia | Carro particular 06-21, rotación 6/7, 8/9, 0/1, 2/3, 4/5; matrícula local con horas valle 09-11 y 15-17; decreto 0768/2025 pendiente. |
+| IBA-INDEX | [Gaceta/índice normativo Ibagué](https://ibague.gov.co/portal/seccion/normatividad/index.php) | 200 | 2026-11-11 22:39:30-05; 150.177 bytes; b8096c0358be984026e7c74c21ebf1b5ba9e5552590b90da26dd63696f8e1ad1 | Captura del índice | No se localizó el decreto en el contenido revisado; eso no demuestra inexistencia. |
+| ARM-135 | [Prórroga Decreto 135/2026](https://www.armenia.gov.co/se-extiende-por-6-meses-medida-de-pico-y-placa-para-mitigar-impactos-de-obras-y-mejorar-la-movilidad) | 200 | 2026-11-11 22:37:36-05; 140.005 bytes; fff80409c9cd257d1fd0b43273c911dd7781f92040bd11ba636ce10d31c0a4c7 | Publicada 26-may-2026 | Refiere extensión, ámbito urbano y categorías; texto íntegro, fechas/excepciones faltantes. |
+| ARM-IDX | [Índice de decretos Armenia](https://www.armenia.gov.co/normativa/decretos) | 200 | 2026-11-11 22:39:30-05; 215.484 bytes; 5cdd457d46f0e0d8e2e54ef431bc18acf412e309d2a4710804054daccb0f2658 | Captura del índice | Decreto 135/2026 no apareció en el contenido descargado; no equivale a inexistencia. |
+| ARM-WEEK | [Banner semana 9-15 nov](https://www.armenia.gov.co/images/BANNER-PICO-Y-PLACA-PARTICULARES-Y-MOTOS-9-AL-15-NOV.png) | 200 | 2026-11-11 22:41:06-05; 1.419.747 bytes; 86d4f41cb3430e706938d0c88cc323318b78cd6b0d0cf4eeb0fd374fbfd922cd | Semana visible 09-15 nov | Tablas de particulares/motos, taxi con número interno y Cuadrante Norte; no prueba acto, geometría ni vigencia posterior. |
+| ARM-161 | [Banner Resolución 161](https://www.armenia.gov.co/images/2026/banner/Banner_RESOLUCION_161_03_noviembre_2026.jpeg) | 200 | 2026-11-11 22:41:07-05; 127.475 bytes; 0a34b7da443f170c339ceacb05a84187c955a3fabfa5dacf28b42c5d5f432d1f | Rótulo 03-nov-2026 | Inspección visual: incentivo IAT de residuos/reciclaje; ajeno a pico y placa, no es conflicto de movilidad. |
+| PER-RET | [Retorno Pereira](https://www.pereira.gov.co/publicaciones/11346/pereira-retorna-al-esquema-habitual-de-pico-y-placa-tras-las-medidas-adoptadas-por-la-emergencia/) | 200 | 2026-11-11 22:37:36-05; 104.828 bytes; 1281c45078cefa7a477989b744149e5f45d9c9d5b8ee06403d6512a18ca84f52 | Retorno desde lunes 28-sep-2026 | Carro por último dígito y moto por primero; 2 dígitos/día L-V; acto íntegro no capturado. |
+| PER-DEC | [Página oficial Decreto 540/2024](https://www.pereira.gov.co/publicaciones/9061/medida-de-pico-y-placa-en-pereira-se-mantiene-sin-modificaciones/) | 200 | 2026-11-11 22:39:30-05; 103.312 bytes; 796798e7c6034ec218f07361e023eabe7c9ff2913b90903253a911146525dc71 | Página de contexto 2024 | Informa horario 06-20, ciudad completa y excepciones remitidas al decreto; PDF no capturado. |
+| PER-STATUS | [Pereira: no ha cambiado](https://www.pereira.gov.co/publicaciones/8720/pico-y-placa-en-pereira-no-ha-cambiado/) | 200 | 2026-11-11 22:39:30-05; 101.723 bytes; e159ee741f52d89be9f6e34b2d2196619184da8dbff26115a3fd10630d40dac6 | Página de contexto 2024 | Atribuye entonces vigencia al Decreto 540; no basta sola para noviembre de 2026. |
+
+## Insumos externos
+
+Lista de 31 medidas / 55 proyecciones no montada en el checkout ni en las rutas accesibles: SOURCE_NOT_MOUNTED. Sin filas ni hashes sintetizados.
+
+## Lectura de fuentes
+
+Solo se calcula hash cuando se recibieron y conservaron bytes. Para el 403, SHA es null. Índices sin acto localizado no prueban ausencia normativa. El XLSX y CSV de septiembre son evidencia histórica, no revisión actual.

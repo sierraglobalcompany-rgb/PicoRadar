@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Current path_provider support directory and legacy document layouts. -->
+    <exclude domain="file" path="vehicle_documents/"/>
+    <exclude domain="root" path="app_flutter/vehicle_documents/"/>
+    <exclude domain="root" path="app_flutter/documents/"/>
+    <exclude domain="file" path="documents/"/>
+    <exclude domain="file" path="flutter_secure_storage/"/>
+    <exclude domain="root" path="app_flutter/flutter_secure_storage/"/>
+    <!-- Secure-storage keys/config, wallet protection settings, widget plate. -->
+    <exclude domain="sharedpref" path="."/>
+    <exclude domain="file" path="datastore/"/>
+    <!-- Drift defaults to the Flutter documents directory. Include sidecars. -->
+    <exclude domain="root" path="app_flutter/picoradar.sqlite"/>
+    <exclude domain="root" path="app_flutter/picoradar.sqlite-wal"/>
+    <exclude domain="root" path="app_flutter/picoradar.sqlite-shm"/>
+    <exclude domain="root" path="app_flutter/picoradar.sqlite-journal"/>
+    <exclude domain="file" path="picoradar.sqlite"/>
+    <exclude domain="file" path="picoradar.sqlite-wal"/>
+    <exclude domain="file" path="picoradar.sqlite-shm"/>
+    <exclude domain="file" path="picoradar.sqlite-journal"/>
+    <exclude domain="database" path="."/>
+    <exclude domain="device_sharedpref" path="."/>
+    <exclude domain="device_database" path="."/>
+    <exclude domain="device_file" path="datastore/"/>
+</full-backup-content>

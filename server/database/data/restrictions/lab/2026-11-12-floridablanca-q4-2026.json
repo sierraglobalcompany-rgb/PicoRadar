@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 2,
+  "id": "co-san-floridablanca",
+  "name": "Floridablanca",
+  "municipalityCodes": [
+    "68276"
+  ],
+  "consultationEnabled": true,
+  "coverages": [
+    {
+      "vehicleKind": "car",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "verifiedAt": "2026-11-13T01:14:45Z",
+      "staleAfter": "2026-12-01T00:00:00-05:00",
+      "sourceUrls": [
+        "https://transitofloridablanca.gov.co/2026/10/02/proxima-semana-dia-sin-carro-y-rota-pico-y-placa/"
+      ],
+      "rules": [
+        {
+          "id": "flor-car-q4-mon",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            1
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            5,
+            6
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitofloridablanca.gov.co/2026/10/02/proxima-semana-dia-sin-carro-y-rota-pico-y-placa/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "floridablanca-municipal-roads-benefits-unverified@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "flor-car-q4-tue",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            2
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            7,
+            8
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitofloridablanca.gov.co/2026/10/02/proxima-semana-dia-sin-carro-y-rota-pico-y-placa/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "floridablanca-municipal-roads-benefits-unverified@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "flor-car-q4-wed",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            3
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            9,
+            0
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitofloridablanca.gov.co/2026/10/02/proxima-semana-dia-sin-carro-y-rota-pico-y-placa/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "floridablanca-municipal-roads-benefits-unverified@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "flor-car-q4-thu",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            4
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            1,
+            2
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitofloridablanca.gov.co/2026/10/02/proxima-semana-dia-sin-carro-y-rota-pico-y-placa/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "floridablanca-municipal-roads-benefits-unverified@2026-q4"
+            }
+          ]
+        },
+        {
+          "id": "flor-car-q4-fri",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-10-05T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            5
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            3,
+            4
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1200
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://transitofloridablanca.gov.co/2026/10/02/proxima-semana-dia-sin-carro-y-rota-pico-y-placa/",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "floridablanca-municipal-roads-benefits-unverified@2026-q4"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

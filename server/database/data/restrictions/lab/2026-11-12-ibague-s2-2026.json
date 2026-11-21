@@ -1,0 +1,393 @@
+{
+  "schemaVersion": 2,
+  "id": "co-tol-ibague",
+  "name": "Ibagué",
+  "municipalityCodes": [
+    "73001"
+  ],
+  "consultationEnabled": true,
+  "coverages": [
+    {
+      "vehicleKind": "car",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "verifiedAt": "2026-11-13T01:14:45Z",
+      "staleAfter": "2026-12-01T00:00:00-05:00",
+      "sourceUrls": [
+        "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague"
+      ],
+      "rules": [
+        {
+          "id": "iba-car-local-mon",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-07-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            1
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            6,
+            7
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 540
+            },
+            {
+              "startMinute": 660,
+              "endMinute": 900
+            },
+            {
+              "startMinute": 1020,
+              "endMinute": 1260
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+            }
+          ],
+          "registrationOrigins": [
+            "local"
+          ]
+        },
+        {
+          "id": "iba-car-foreign-mon",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-07-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            1
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            6,
+            7
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1260
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+            }
+          ],
+          "registrationOrigins": [
+            "foreign"
+          ]
+        },
+        {
+          "id": "iba-car-local-tue",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-07-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            2
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            8,
+            9
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 540
+            },
+            {
+              "startMinute": 660,
+              "endMinute": 900
+            },
+            {
+              "startMinute": 1020,
+              "endMinute": 1260
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+            }
+          ],
+          "registrationOrigins": [
+            "local"
+          ]
+        },
+        {
+          "id": "iba-car-foreign-tue",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-07-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            2
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            8,
+            9
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1260
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+            }
+          ],
+          "registrationOrigins": [
+            "foreign"
+          ]
+        },
+        {
+          "id": "iba-car-local-wed",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-07-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            3
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            0,
+            1
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 540
+            },
+            {
+              "startMinute": 660,
+              "endMinute": 900
+            },
+            {
+              "startMinute": 1020,
+              "endMinute": 1260
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+            }
+          ],
+          "registrationOrigins": [
+            "local"
+          ]
+        },
+        {
+          "id": "iba-car-foreign-wed",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-07-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            3
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            0,
+            1
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1260
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+            }
+          ],
+          "registrationOrigins": [
+            "foreign"
+          ]
+        },
+        {
+          "id": "iba-car-local-thu",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-07-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            4
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            2,
+            3
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 540
+            },
+            {
+              "startMinute": 660,
+              "endMinute": 900
+            },
+            {
+              "startMinute": 1020,
+              "endMinute": 1260
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+            }
+          ],
+          "registrationOrigins": [
+            "local"
+          ]
+        },
+        {
+          "id": "iba-car-foreign-thu",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-07-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            4
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            2,
+            3
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1260
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+            }
+          ],
+          "registrationOrigins": [
+            "foreign"
+          ]
+        },
+        {
+          "id": "iba-car-local-fri",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-07-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            5
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            4,
+            5
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 540
+            },
+            {
+              "startMinute": 660,
+              "endMinute": 900
+            },
+            {
+              "startMinute": 1020,
+              "endMinute": 1260
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+            }
+          ],
+          "registrationOrigins": [
+            "local"
+          ]
+        },
+        {
+          "id": "iba-car-foreign-fri",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-07-01T00:00:00-05:00",
+          "validUntil": "2026-12-31T23:59:59-05:00",
+          "weekdays": [
+            5
+          ],
+          "digitPosition": "lastNumeric",
+          "digits": [
+            4,
+            5
+          ],
+          "timeWindows": [
+            {
+              "startMinute": 360,
+              "endMinute": 1260
+            }
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "conditions": [
+            {
+              "type": "inside_scope_ref",
+              "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+            }
+          ],
+          "registrationOrigins": [
+            "foreign"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,4158 @@
+{
+  "schemaVersion": 2,
+  "datasetKey": "restrictions",
+  "version": "LAB-N1-NATIONAL-CARTAGENA-20261115-01",
+  "generatedAt": "2026-11-15T22:39:40-05:00",
+  "jurisdictions": [
+    {
+      "schemaVersion": 2,
+      "id": "co-ant-itagui",
+      "name": "Itagüí",
+      "municipalityCodes": [
+        "05360"
+      ],
+      "consultationEnabled": true,
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "sourceUrls": [
+            "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf"
+          ],
+          "rules": [
+            {
+              "id": "itagui-car-s2-mon",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "itagui-car-s2-tue",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "itagui-car-s2-wed",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                0,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "itagui-car-s2-thu",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "itagui-car-s2-fri",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                9
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "vehicleKind": "motorcycle",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "sourceUrls": [
+            "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf"
+          ],
+          "rules": [
+            {
+              "id": "itagui-motorcycle-s2-mon",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                5,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "itagui-motorcycle-s2-tue",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                1,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "itagui-motorcycle-s2-wed",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                0,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "itagui-motorcycle-s2-thu",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                3,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "itagui-motorcycle-s2-fri",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                7,
+                9
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.transitoitagui.gov.co/wp-content/uploads/2026/08/decreto_1011_-2026_picoyplaca.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "itagui-urban-scope-except-autopista-sur@2026-s2"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "id": "co-ant-medellin",
+      "name": "Medellín",
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "sourceUrls": [
+            "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+            "https://www.medellin.gov.co/giscatalogacion/srv/api/records/2d9cb19a-e7c7-4e1d-8a38-fb055997b043"
+          ],
+          "rules": [
+            {
+              "id": "MED_CAR_MONDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "MED_CAR_TUESDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "MED_CAR_WEDNESDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                0,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "MED_CAR_THURSDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "MED_CAR_FRIDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                9
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "vehicleKind": "motorcycle",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "sourceUrls": [
+            "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+            "https://www.medellin.gov.co/giscatalogacion/srv/api/records/2d9cb19a-e7c7-4e1d-8a38-fb055997b043"
+          ],
+          "rules": [
+            {
+              "id": "MED_MOTO_MONDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                5,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "MED_MOTO_TUESDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                1,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "MED_MOTO_WEDNESDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                0,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "MED_MOTO_THURSDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                3,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "MED_MOTO_FRIDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-08-03T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                7,
+                9
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.medellin.gov.co/es/sala-de-prensa/noticias/la-nueva-rotacion-del-pico-y-placa-en-medellin-comenzara-a-regir-a-partir-del-lunes-3-de-agosto/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "medellin-urban-scope-exempt-roads-unverified@2026-s2"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "municipalityCodes": [
+        "05001"
+      ],
+      "consultationEnabled": true
+    },
+    {
+      "schemaVersion": 2,
+      "id": "co-atl-transito-departamental",
+      "name": "Tránsito del Atlántico (vías departamentales)",
+      "municipalityCodes": [
+        "08078",
+        "08137",
+        "08141",
+        "08296",
+        "08372",
+        "08433",
+        "08436",
+        "08520",
+        "08549",
+        "08558",
+        "08560",
+        "08573",
+        "08606",
+        "08634",
+        "08638",
+        "08675",
+        "08685",
+        "08770",
+        "08832",
+        "08849"
+      ],
+      "consultationEnabled": true,
+      "coverages": [
+        {
+          "vehicleKind": "motocarro",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "sourceUrls": [
+            "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+          ],
+          "rules": [
+            {
+              "id": "atl-motocarro-day-mon",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-01-01T00:00:00-05:00",
+              "validUntil": null,
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 480,
+                  "endMinute": 1439
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+                }
+              ]
+            },
+            {
+              "id": "atl-motocarro-day-tue",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-01-01T00:00:00-05:00",
+              "validUntil": null,
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 480,
+                  "endMinute": 1439
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+                }
+              ]
+            },
+            {
+              "id": "atl-motocarro-day-wed",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-01-01T00:00:00-05:00",
+              "validUntil": null,
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 480,
+                  "endMinute": 1439
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+                }
+              ]
+            },
+            {
+              "id": "atl-motocarro-day-thu",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-01-01T00:00:00-05:00",
+              "validUntil": null,
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 480,
+                  "endMinute": 1439
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+                }
+              ]
+            },
+            {
+              "id": "atl-motocarro-day-fri",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-01-01T00:00:00-05:00",
+              "validUntil": null,
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 480,
+                  "endMinute": 1439
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "vehicleKind": "motorcycle",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "sourceUrls": [
+            "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/"
+          ],
+          "rules": [
+            {
+              "id": "atl-motorcycle-day-mon",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-01-01T00:00:00-05:00",
+              "validUntil": null,
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 480,
+                  "endMinute": 1439
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+                }
+              ]
+            },
+            {
+              "id": "atl-motorcycle-day-tue",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-01-01T00:00:00-05:00",
+              "validUntil": null,
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 480,
+                  "endMinute": 1439
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+                }
+              ]
+            },
+            {
+              "id": "atl-motorcycle-day-wed",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-01-01T00:00:00-05:00",
+              "validUntil": null,
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 480,
+                  "endMinute": 1439
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+                }
+              ]
+            },
+            {
+              "id": "atl-motorcycle-day-thu",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-01-01T00:00:00-05:00",
+              "validUntil": null,
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 480,
+                  "endMinute": 1439
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+                }
+              ]
+            },
+            {
+              "id": "atl-motorcycle-day-fri",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-01-01T00:00:00-05:00",
+              "validUntil": null,
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 480,
+                  "endMinute": 1439
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitodelatlantico.gov.co/transito-del-atlantico-implementara-pico-y-placa-unificado-a-partir-de-enero-del-2026/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "atlantico-departmental-secondary-tertiary-road-scope-unverified@decreto-000362-2025"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "id": "co-bol-cartagena",
+      "name": "Cartagena",
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-15T22:39:40-05:00",
+          "staleAfter": "2026-11-19T00:00:00-05:00",
+          "sourceUrls": [
+            "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0"
+          ],
+          "rules": [
+            {
+              "id": "CTG_CAR_MONDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-05T00:00:00-05:00",
+              "validUntil": "2027-01-22T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 420,
+                  "endMinute": 540
+                },
+                {
+                  "startMinute": 1080,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+              "verifiedAt": "2026-11-15T22:39:40-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "CTG_CAR_TUESDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-05T00:00:00-05:00",
+              "validUntil": "2027-01-22T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 420,
+                  "endMinute": 540
+                },
+                {
+                  "startMinute": 1080,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+              "verifiedAt": "2026-11-15T22:39:40-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "CTG_CAR_WEDNESDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-05T00:00:00-05:00",
+              "validUntil": "2027-01-22T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 420,
+                  "endMinute": 540
+                },
+                {
+                  "startMinute": 1080,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+              "verifiedAt": "2026-11-15T22:39:40-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "CTG_CAR_THURSDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-05T00:00:00-05:00",
+              "validUntil": "2027-01-22T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 420,
+                  "endMinute": 540
+                },
+                {
+                  "startMinute": 1080,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+              "verifiedAt": "2026-11-15T22:39:40-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "CTG_CAR_FRIDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-05T00:00:00-05:00",
+              "validUntil": "2027-01-22T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 420,
+                  "endMinute": 540
+                },
+                {
+                  "startMinute": 1080,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+              "verifiedAt": "2026-11-15T22:39:40-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "vehicleKind": "motorcycle",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-15T16:58:17-05:00",
+          "staleAfter": "2026-11-22T16:58:17-05:00",
+          "sourceUrls": [
+            "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0"
+          ],
+          "rules": [
+            {
+              "id": "CTG_MOTO_MONDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-05T00:00:00-05:00",
+              "validUntil": "2027-01-22T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1380
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+              "verifiedAt": "2026-11-15T16:58:17-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "CTG_MOTO_TUESDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-05T00:00:00-05:00",
+              "validUntil": "2027-01-22T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1380
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+              "verifiedAt": "2026-11-15T16:58:17-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "CTG_MOTO_WEDNESDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-05T00:00:00-05:00",
+              "validUntil": "2027-01-22T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1380
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+              "verifiedAt": "2026-11-15T16:58:17-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "CTG_MOTO_THURSDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-05T00:00:00-05:00",
+              "validUntil": "2027-01-22T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1380
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+              "verifiedAt": "2026-11-15T16:58:17-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "CTG_MOTO_FRIDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-05T00:00:00-05:00",
+              "validUntil": "2027-01-22T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 300,
+                  "endMinute": 1380
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://cartagena.gov.co/noticias/cambia-rotacion-pico-placa-para-motos-vehiculos-particulares-cartagena-0",
+              "verifiedAt": "2026-11-15T16:58:17-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "cartagena-main-corridors-and-exemptions-unverified@2026-q4"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "municipalityCodes": [
+        "13001"
+      ],
+      "consultationEnabled": true
+    },
+    {
+      "schemaVersion": 2,
+      "id": "co-cal-manizales",
+      "name": "Manizales",
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "staleAfter": "2026-11-23T00:00:00-05:00",
+          "sourceUrls": [
+            "https://centrodeinformacion.manizales.gov.co/como-funciona-el-pico-y-placa-en-manizales-durante-noviembre-de-2026/"
+          ],
+          "rules": [
+            {
+              "id": "MAN_CAR_MONDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-03T00:00:00-05:00",
+              "validUntil": "2026-11-30T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://centrodeinformacion.manizales.gov.co/como-funciona-el-pico-y-placa-en-manizales-durante-noviembre-de-2026/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "manizales-municipal-roads-exemptions-unverified@2026-11"
+                }
+              ]
+            },
+            {
+              "id": "MAN_CAR_TUESDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-03T00:00:00-05:00",
+              "validUntil": "2026-11-30T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://centrodeinformacion.manizales.gov.co/como-funciona-el-pico-y-placa-en-manizales-durante-noviembre-de-2026/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "manizales-municipal-roads-exemptions-unverified@2026-11"
+                }
+              ]
+            },
+            {
+              "id": "MAN_CAR_WEDNESDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-03T00:00:00-05:00",
+              "validUntil": "2026-11-30T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://centrodeinformacion.manizales.gov.co/como-funciona-el-pico-y-placa-en-manizales-durante-noviembre-de-2026/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "manizales-municipal-roads-exemptions-unverified@2026-11"
+                }
+              ]
+            },
+            {
+              "id": "MAN_CAR_THURSDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-03T00:00:00-05:00",
+              "validUntil": "2026-11-30T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://centrodeinformacion.manizales.gov.co/como-funciona-el-pico-y-placa-en-manizales-durante-noviembre-de-2026/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "manizales-municipal-roads-exemptions-unverified@2026-11"
+                }
+              ]
+            },
+            {
+              "id": "MAN_CAR_FRIDAY",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-03T00:00:00-05:00",
+              "validUntil": "2026-11-30T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://centrodeinformacion.manizales.gov.co/como-funciona-el-pico-y-placa-en-manizales-durante-noviembre-de-2026/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "manizales-municipal-roads-exemptions-unverified@2026-11"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "municipalityCodes": [
+        "17001"
+      ],
+      "consultationEnabled": true
+    },
+    {
+      "schemaVersion": 2,
+      "id": "co-cau-popayan",
+      "name": "Popayán",
+      "municipalityCodes": [
+        "19001"
+      ],
+      "consultationEnabled": true,
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "sourceUrls": [
+            "https://www.popayan.gov.co/NuestraAlcaldia/Normatividad/Decreto_20261000000355_del_09_de_enero_2026.pdf"
+          ],
+          "rules": [
+            {
+              "id": "pop-car-s2-mon",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-06T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 420,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.popayan.gov.co/NuestraAlcaldia/Normatividad/Decreto_20261000000355_del_09_de_enero_2026.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "popayan-urban-connectors-excluded-unverified@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "pop-car-s2-tue",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-06T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 420,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.popayan.gov.co/NuestraAlcaldia/Normatividad/Decreto_20261000000355_del_09_de_enero_2026.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "popayan-urban-connectors-excluded-unverified@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "pop-car-s2-wed",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-06T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 420,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.popayan.gov.co/NuestraAlcaldia/Normatividad/Decreto_20261000000355_del_09_de_enero_2026.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "popayan-urban-connectors-excluded-unverified@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "pop-car-s2-thu",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-06T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 420,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.popayan.gov.co/NuestraAlcaldia/Normatividad/Decreto_20261000000355_del_09_de_enero_2026.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "popayan-urban-connectors-excluded-unverified@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "pop-car-s2-fri",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-06T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 420,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.popayan.gov.co/NuestraAlcaldia/Normatividad/Decreto_20261000000355_del_09_de_enero_2026.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "popayan-urban-connectors-excluded-unverified@2026-s2"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "vehicleKind": "motorcycle",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "sourceUrls": [
+            "https://www.popayan.gov.co/NuestraAlcaldia/Normatividad/Decreto_20261000000355_del_09_de_enero_2026.pdf"
+          ],
+          "rules": [
+            {
+              "id": "pop-motorcycle-s2-mon",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-06T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 420,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.popayan.gov.co/NuestraAlcaldia/Normatividad/Decreto_20261000000355_del_09_de_enero_2026.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "popayan-urban-connectors-excluded-unverified@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "pop-motorcycle-s2-tue",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-06T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 420,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.popayan.gov.co/NuestraAlcaldia/Normatividad/Decreto_20261000000355_del_09_de_enero_2026.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "popayan-urban-connectors-excluded-unverified@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "pop-motorcycle-s2-wed",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-06T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 420,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.popayan.gov.co/NuestraAlcaldia/Normatividad/Decreto_20261000000355_del_09_de_enero_2026.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "popayan-urban-connectors-excluded-unverified@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "pop-motorcycle-s2-thu",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-06T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 420,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.popayan.gov.co/NuestraAlcaldia/Normatividad/Decreto_20261000000355_del_09_de_enero_2026.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "popayan-urban-connectors-excluded-unverified@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "pop-motorcycle-s2-fri",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-06T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 420,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.popayan.gov.co/NuestraAlcaldia/Normatividad/Decreto_20261000000355_del_09_de_enero_2026.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "popayan-urban-connectors-excluded-unverified@2026-s2"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "id": "co-dc-bogota",
+      "name": "Bogotá D.C.",
+      "municipalityCodes": [
+        "11001"
+      ],
+      "consultationEnabled": true,
+      "coverages": [
+        {
+          "rules": [
+            {
+              "appliesOnHolidays": false,
+              "dateParity": "odd",
+              "digitPosition": "lastNumeric",
+              "digits": [
+                6,
+                7,
+                8,
+                9,
+                0
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-private-2026-odd-day",
+              "priority": 1000,
+              "sourceUrl": "https://www.alcaldiabogota.gov.co/sisjur/normas/Norma1.jsp?i=191872",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 360
+                }
+              ],
+              "validFrom": "2025-12-25T00:00:00-05:00",
+              "validUntil": null,
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "weekdays": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bogota-district-exemptions-unverified@decreto-652-2025"
+                }
+              ]
+            },
+            {
+              "appliesOnHolidays": false,
+              "dateParity": "even",
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "effect": "restrict",
+              "id": "bogota-car-private-2026-even-day",
+              "priority": 1000,
+              "sourceUrl": "https://www.alcaldiabogota.gov.co/sisjur/normas/Norma1.jsp?i=191872",
+              "timeWindows": [
+                {
+                  "endMinute": 1260,
+                  "startMinute": 360
+                }
+              ],
+              "validFrom": "2025-12-25T00:00:00-05:00",
+              "validUntil": null,
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "weekdays": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bogota-district-exemptions-unverified@decreto-652-2025"
+                }
+              ]
+            }
+          ],
+          "serviceType": "private",
+          "sourceUrls": [
+            "https://www.alcaldiabogota.gov.co/sisjur/normas/Norma1.jsp?i=191872"
+          ],
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "vehicleKind": "car",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "coverageCompleteness": "partial"
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "id": "co-met-villavicencio",
+      "name": "Villavicencio",
+      "municipalityCodes": [
+        "50001"
+      ],
+      "consultationEnabled": true,
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "staleAfter": "2026-12-18T00:00:00-05:00",
+          "sourceUrls": [
+            "https://villavicencio.gov.co/con-jornadas-pedagogicas-inicio-el-pico-y-placa-2026-para-vehiculos-particulares-en-villavicencio/"
+          ],
+          "rules": [
+            {
+              "id": "vvc-car-2026-mon",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-01-26T00:00:00-05:00",
+              "validUntil": "2026-12-22T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 390,
+                  "endMinute": 570
+                },
+                {
+                  "startMinute": 1020,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://villavicencio.gov.co/con-jornadas-pedagogicas-inicio-el-pico-y-placa-2026-para-vehiculos-particulares-en-villavicencio/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "villavicencio-urban-polygon-unverified@2026-annual"
+                }
+              ]
+            },
+            {
+              "id": "vvc-car-2026-tue",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-01-26T00:00:00-05:00",
+              "validUntil": "2026-12-22T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 390,
+                  "endMinute": 570
+                },
+                {
+                  "startMinute": 1020,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://villavicencio.gov.co/con-jornadas-pedagogicas-inicio-el-pico-y-placa-2026-para-vehiculos-particulares-en-villavicencio/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "villavicencio-urban-polygon-unverified@2026-annual"
+                }
+              ]
+            },
+            {
+              "id": "vvc-car-2026-wed",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-01-26T00:00:00-05:00",
+              "validUntil": "2026-12-22T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 390,
+                  "endMinute": 570
+                },
+                {
+                  "startMinute": 1020,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://villavicencio.gov.co/con-jornadas-pedagogicas-inicio-el-pico-y-placa-2026-para-vehiculos-particulares-en-villavicencio/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "villavicencio-urban-polygon-unverified@2026-annual"
+                }
+              ]
+            },
+            {
+              "id": "vvc-car-2026-thu",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-01-26T00:00:00-05:00",
+              "validUntil": "2026-12-22T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 390,
+                  "endMinute": 570
+                },
+                {
+                  "startMinute": 1020,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://villavicencio.gov.co/con-jornadas-pedagogicas-inicio-el-pico-y-placa-2026-para-vehiculos-particulares-en-villavicencio/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "villavicencio-urban-polygon-unverified@2026-annual"
+                }
+              ]
+            },
+            {
+              "id": "vvc-car-2026-fri",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-01-26T00:00:00-05:00",
+              "validUntil": "2026-12-22T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 390,
+                  "endMinute": 570
+                },
+                {
+                  "startMinute": 1020,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://villavicencio.gov.co/con-jornadas-pedagogicas-inicio-el-pico-y-placa-2026-para-vehiculos-particulares-en-villavicencio/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "villavicencio-urban-polygon-unverified@2026-annual"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "id": "co-ris-dosquebradas",
+      "name": "Dosquebradas",
+      "municipalityCodes": [
+        "66170"
+      ],
+      "consultationEnabled": true,
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-13T08:35:42-05:00",
+          "staleAfter": "2026-11-19T23:59:59-05:00",
+          "sourceUrls": [
+            "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional"
+          ],
+          "rules": [
+            {
+              "id": "dosquebradas-car-private-mon-2026",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                0,
+                1
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": true,
+              "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+              "verifiedAt": "2026-11-13T08:35:42-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+                }
+              ]
+            },
+            {
+              "id": "dosquebradas-car-private-tue-2026",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                2,
+                3
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": true,
+              "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+              "verifiedAt": "2026-11-13T08:35:42-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+                }
+              ]
+            },
+            {
+              "id": "dosquebradas-car-private-wed-2026",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                4,
+                5
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": true,
+              "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+              "verifiedAt": "2026-11-13T08:35:42-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+                }
+              ]
+            },
+            {
+              "id": "dosquebradas-car-private-thu-2026",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                6,
+                7
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": true,
+              "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+              "verifiedAt": "2026-11-13T08:35:42-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+                }
+              ]
+            },
+            {
+              "id": "dosquebradas-car-private-fri-2026",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                8,
+                9
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": true,
+              "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+              "verifiedAt": "2026-11-13T08:35:42-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "vehicleKind": "motorcycle",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-13T08:35:42-05:00",
+          "staleAfter": "2026-11-19T23:59:59-05:00",
+          "sourceUrls": [
+            "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional"
+          ],
+          "rules": [
+            {
+              "id": "dosquebradas-motorcycle-private-mon-2026",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                0,
+                1
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": true,
+              "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+              "verifiedAt": "2026-11-13T08:35:42-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+                }
+              ]
+            },
+            {
+              "id": "dosquebradas-motorcycle-private-tue-2026",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                2,
+                3
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": true,
+              "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+              "verifiedAt": "2026-11-13T08:35:42-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+                }
+              ]
+            },
+            {
+              "id": "dosquebradas-motorcycle-private-wed-2026",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                4,
+                5
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": true,
+              "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+              "verifiedAt": "2026-11-13T08:35:42-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+                }
+              ]
+            },
+            {
+              "id": "dosquebradas-motorcycle-private-thu-2026",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                6,
+                7
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": true,
+              "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+              "verifiedAt": "2026-11-13T08:35:42-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+                }
+              ]
+            },
+            {
+              "id": "dosquebradas-motorcycle-private-fri-2026",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                8,
+                9
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": true,
+              "sourceUrl": "https://dosquebradas.gov.co/web/dosquebradas/ciudad/sala-de-prensa/noticias/303-vigencia-2026/10128-dosquebradas-retoma-desde-este-lunes-el-pico-y-placa-tradicional",
+              "verifiedAt": "2026-11-13T08:35:42-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "dosquebradas-current-road-scope-unverified@2026-retorno"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "id": "co-ris-pereira",
+      "name": "Pereira",
+      "municipalityCodes": [
+        "66001"
+      ],
+      "consultationEnabled": true,
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-12T08:30:17-05:00",
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "sourceUrls": [
+            "https://www.pereira.gov.co/publicaciones/11346/pereira-retorna-al-esquema-habitual-de-pico-y-placa-tras-las-medidas-adoptadas-por-la-emergencia/",
+            "https://www.pereira.gov.co/publicaciones/9061/medida-de-pico-y-placa-en-pereira-se-mantiene-sin-modificaciones/"
+          ],
+          "rules": [
+            {
+              "id": "pereira-car-private-2026-mon-0-1",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                0,
+                1
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.pereira.gov.co/publicaciones/11346/pereira-retorna-al-esquema-habitual-de-pico-y-placa-tras-las-medidas-adoptadas-por-la-emergencia/",
+              "verifiedAt": "2026-11-12T08:30:17-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "co-ris-pereira-calendar-unknown-scope@2026-retorno"
+                }
+              ]
+            },
+            {
+              "id": "pereira-car-private-2026-tue-2-3",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                2,
+                3
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.pereira.gov.co/publicaciones/11346/pereira-retorna-al-esquema-habitual-de-pico-y-placa-tras-las-medidas-adoptadas-por-la-emergencia/",
+              "verifiedAt": "2026-11-12T08:30:17-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "co-ris-pereira-calendar-unknown-scope@2026-retorno"
+                }
+              ]
+            },
+            {
+              "id": "pereira-car-private-2026-wed-4-5",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                4,
+                5
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.pereira.gov.co/publicaciones/11346/pereira-retorna-al-esquema-habitual-de-pico-y-placa-tras-las-medidas-adoptadas-por-la-emergencia/",
+              "verifiedAt": "2026-11-12T08:30:17-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "co-ris-pereira-calendar-unknown-scope@2026-retorno"
+                }
+              ]
+            },
+            {
+              "id": "pereira-car-private-2026-thu-6-7",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                6,
+                7
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.pereira.gov.co/publicaciones/11346/pereira-retorna-al-esquema-habitual-de-pico-y-placa-tras-las-medidas-adoptadas-por-la-emergencia/",
+              "verifiedAt": "2026-11-12T08:30:17-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "co-ris-pereira-calendar-unknown-scope@2026-retorno"
+                }
+              ]
+            },
+            {
+              "id": "pereira-car-private-2026-fri-8-9",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                8,
+                9
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.pereira.gov.co/publicaciones/11346/pereira-retorna-al-esquema-habitual-de-pico-y-placa-tras-las-medidas-adoptadas-por-la-emergencia/",
+              "verifiedAt": "2026-11-12T08:30:17-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "co-ris-pereira-calendar-unknown-scope@2026-retorno"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "vehicleKind": "motorcycle",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-12T08:30:17-05:00",
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "sourceUrls": [
+            "https://www.pereira.gov.co/publicaciones/11346/pereira-retorna-al-esquema-habitual-de-pico-y-placa-tras-las-medidas-adoptadas-por-la-emergencia/",
+            "https://www.pereira.gov.co/publicaciones/9061/medida-de-pico-y-placa-en-pereira-se-mantiene-sin-modificaciones/"
+          ],
+          "rules": [
+            {
+              "id": "pereira-motorcycle-private-2026-mon-0-1",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                0,
+                1
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.pereira.gov.co/publicaciones/11346/pereira-retorna-al-esquema-habitual-de-pico-y-placa-tras-las-medidas-adoptadas-por-la-emergencia/",
+              "verifiedAt": "2026-11-12T08:30:17-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "co-ris-pereira-calendar-unknown-scope@2026-retorno"
+                }
+              ]
+            },
+            {
+              "id": "pereira-motorcycle-private-2026-tue-2-3",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                2,
+                3
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.pereira.gov.co/publicaciones/11346/pereira-retorna-al-esquema-habitual-de-pico-y-placa-tras-las-medidas-adoptadas-por-la-emergencia/",
+              "verifiedAt": "2026-11-12T08:30:17-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "co-ris-pereira-calendar-unknown-scope@2026-retorno"
+                }
+              ]
+            },
+            {
+              "id": "pereira-motorcycle-private-2026-wed-4-5",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                4,
+                5
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.pereira.gov.co/publicaciones/11346/pereira-retorna-al-esquema-habitual-de-pico-y-placa-tras-las-medidas-adoptadas-por-la-emergencia/",
+              "verifiedAt": "2026-11-12T08:30:17-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "co-ris-pereira-calendar-unknown-scope@2026-retorno"
+                }
+              ]
+            },
+            {
+              "id": "pereira-motorcycle-private-2026-thu-6-7",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                6,
+                7
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.pereira.gov.co/publicaciones/11346/pereira-retorna-al-esquema-habitual-de-pico-y-placa-tras-las-medidas-adoptadas-por-la-emergencia/",
+              "verifiedAt": "2026-11-12T08:30:17-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "co-ris-pereira-calendar-unknown-scope@2026-retorno"
+                }
+              ]
+            },
+            {
+              "id": "pereira-motorcycle-private-2026-fri-8-9",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-09-28T00:00:00-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "firstNumeric",
+              "digits": [
+                8,
+                9
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.pereira.gov.co/publicaciones/11346/pereira-retorna-al-esquema-habitual-de-pico-y-placa-tras-las-medidas-adoptadas-por-la-emergencia/",
+              "verifiedAt": "2026-11-12T08:30:17-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "co-ris-pereira-calendar-unknown-scope@2026-retorno"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "id": "co-san-bucaramanga",
+      "name": "Bucaramanga",
+      "municipalityCodes": [
+        "68001"
+      ],
+      "consultationEnabled": true,
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "sourceUrls": [
+            "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+            "https://transitobucaramanga.gov.co/dtb/atencion-y-servicios-a-la-ciudadania/pico-y-placa"
+          ],
+          "rules": [
+            {
+              "id": "bga-car-q4-mon",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "bga-car-q4-tue",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "bga-car-q4-wed",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "bga-car-q4-thu",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "bga-car-q4-fri",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "bga-car-saturday-2026-11-07",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-07T00:00:00-05:00",
+              "validUntil": "2026-11-07T23:59:59-05:00",
+              "weekdays": [
+                6
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 540,
+                  "endMinute": 780
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "bga-car-saturday-2026-11-14",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-14T00:00:00-05:00",
+              "validUntil": "2026-11-14T23:59:59-05:00",
+              "weekdays": [
+                6
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 540,
+                  "endMinute": 780
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "bga-car-saturday-2026-11-21",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-21T00:00:00-05:00",
+              "validUntil": "2026-11-21T23:59:59-05:00",
+              "weekdays": [
+                6
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 540,
+                  "endMinute": 780
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "bga-car-saturday-2026-11-28",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-28T00:00:00-05:00",
+              "validUntil": "2026-11-28T23:59:59-05:00",
+              "weekdays": [
+                6
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 540,
+                  "endMinute": 780
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "vehicleKind": "motorcycle",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "sourceUrls": [
+            "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+            "https://transitobucaramanga.gov.co/dtb/atencion-y-servicios-a-la-ciudadania/pico-y-placa"
+          ],
+          "rules": [
+            {
+              "id": "bga-motorcycle-q4-mon",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "bga-motorcycle-q4-tue",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "bga-motorcycle-q4-wed",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "bga-motorcycle-q4-thu",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "bga-motorcycle-q4-fri",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "bga-motorcycle-saturday-2026-11-07",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-07T00:00:00-05:00",
+              "validUntil": "2026-11-07T23:59:59-05:00",
+              "weekdays": [
+                6
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 540,
+                  "endMinute": 780
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "bga-motorcycle-saturday-2026-11-14",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-14T00:00:00-05:00",
+              "validUntil": "2026-11-14T23:59:59-05:00",
+              "weekdays": [
+                6
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 540,
+                  "endMinute": 780
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "bga-motorcycle-saturday-2026-11-21",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-21T00:00:00-05:00",
+              "validUntil": "2026-11-21T23:59:59-05:00",
+              "weekdays": [
+                6
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 540,
+                  "endMinute": 780
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "bga-motorcycle-saturday-2026-11-28",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-11-28T00:00:00-05:00",
+              "validUntil": "2026-11-28T23:59:59-05:00",
+              "weekdays": [
+                6
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 540,
+                  "endMinute": 780
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitobucaramanga.gov.co/consulta_resoluciones_DTB/uploads/RESOLUCION-854-2025-PICOYPLACA.pdf",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "bucaramanga-road-exceptions-and-saturday-schedule-partial@2026-q4"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "id": "co-san-floridablanca",
+      "name": "Floridablanca",
+      "municipalityCodes": [
+        "68276"
+      ],
+      "consultationEnabled": true,
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "sourceUrls": [
+            "https://transitofloridablanca.gov.co/2026/10/02/proxima-semana-dia-sin-carro-y-rota-pico-y-placa/"
+          ],
+          "rules": [
+            {
+              "id": "flor-car-q4-mon",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-05T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitofloridablanca.gov.co/2026/10/02/proxima-semana-dia-sin-carro-y-rota-pico-y-placa/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "floridablanca-municipal-roads-benefits-unverified@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "flor-car-q4-tue",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-05T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitofloridablanca.gov.co/2026/10/02/proxima-semana-dia-sin-carro-y-rota-pico-y-placa/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "floridablanca-municipal-roads-benefits-unverified@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "flor-car-q4-wed",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-05T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                9,
+                0
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitofloridablanca.gov.co/2026/10/02/proxima-semana-dia-sin-carro-y-rota-pico-y-placa/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "floridablanca-municipal-roads-benefits-unverified@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "flor-car-q4-thu",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-05T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitofloridablanca.gov.co/2026/10/02/proxima-semana-dia-sin-carro-y-rota-pico-y-placa/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "floridablanca-municipal-roads-benefits-unverified@2026-q4"
+                }
+              ]
+            },
+            {
+              "id": "flor-car-q4-fri",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-10-05T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1200
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://transitofloridablanca.gov.co/2026/10/02/proxima-semana-dia-sin-carro-y-rota-pico-y-placa/",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "floridablanca-municipal-roads-benefits-unverified@2026-q4"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "id": "co-tol-ibague",
+      "name": "Ibagué",
+      "municipalityCodes": [
+        "73001"
+      ],
+      "consultationEnabled": true,
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-13T01:14:45Z",
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "sourceUrls": [
+            "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague"
+          ],
+          "rules": [
+            {
+              "id": "iba-car-local-mon",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                6,
+                7
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 540
+                },
+                {
+                  "startMinute": 660,
+                  "endMinute": 900
+                },
+                {
+                  "startMinute": 1020,
+                  "endMinute": 1260
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+                }
+              ],
+              "registrationOrigins": [
+                "local"
+              ]
+            },
+            {
+              "id": "iba-car-foreign-mon",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                6,
+                7
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1260
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+                }
+              ],
+              "registrationOrigins": [
+                "foreign"
+              ]
+            },
+            {
+              "id": "iba-car-local-tue",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                8,
+                9
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 540
+                },
+                {
+                  "startMinute": 660,
+                  "endMinute": 900
+                },
+                {
+                  "startMinute": 1020,
+                  "endMinute": 1260
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+                }
+              ],
+              "registrationOrigins": [
+                "local"
+              ]
+            },
+            {
+              "id": "iba-car-foreign-tue",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                8,
+                9
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1260
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+                }
+              ],
+              "registrationOrigins": [
+                "foreign"
+              ]
+            },
+            {
+              "id": "iba-car-local-wed",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                0,
+                1
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 540
+                },
+                {
+                  "startMinute": 660,
+                  "endMinute": 900
+                },
+                {
+                  "startMinute": 1020,
+                  "endMinute": 1260
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+                }
+              ],
+              "registrationOrigins": [
+                "local"
+              ]
+            },
+            {
+              "id": "iba-car-foreign-wed",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                0,
+                1
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1260
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+                }
+              ],
+              "registrationOrigins": [
+                "foreign"
+              ]
+            },
+            {
+              "id": "iba-car-local-thu",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                2,
+                3
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 540
+                },
+                {
+                  "startMinute": 660,
+                  "endMinute": 900
+                },
+                {
+                  "startMinute": 1020,
+                  "endMinute": 1260
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+                }
+              ],
+              "registrationOrigins": [
+                "local"
+              ]
+            },
+            {
+              "id": "iba-car-foreign-thu",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                2,
+                3
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1260
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+                }
+              ],
+              "registrationOrigins": [
+                "foreign"
+              ]
+            },
+            {
+              "id": "iba-car-local-fri",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                4,
+                5
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 540
+                },
+                {
+                  "startMinute": 660,
+                  "endMinute": 900
+                },
+                {
+                  "startMinute": 1020,
+                  "endMinute": 1260
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+                }
+              ],
+              "registrationOrigins": [
+                "local"
+              ]
+            },
+            {
+              "id": "iba-car-foreign-fri",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                4,
+                5
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1260
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://ibague.gov.co/portal/noticias/22523-asi-sera-el-pico-y-placa-para-el-segundo-semestre-de-este-ano-en-ibague",
+              "verifiedAt": "2026-11-13T01:14:45Z",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "ibague-sectorized-urban-scope-unverified@2026-s2"
+                }
+              ],
+              "registrationOrigins": [
+                "foreign"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "schemaVersion": 2,
+      "id": "co-vac-cali",
+      "name": "Cali",
+      "municipalityCodes": [
+        "76001"
+      ],
+      "consultationEnabled": true,
+      "coverages": [
+        {
+          "vehicleKind": "car",
+          "serviceType": "private",
+          "coverageCompleteness": "partial",
+          "verifiedAt": "2026-11-11T23:03:14-05:00",
+          "staleAfter": "2026-12-01T00:00:00-05:00",
+          "sourceUrls": [
+            "https://www.cali.gov.co/boletines/publicaciones/193096/pico-y-placa-rota-en-cali-para-el-segundo-semestre-de-2026-nueva-medida-rige-desde-el-1-de-julio/",
+            "https://www.cali.gov.co/boletines/publicaciones/194052/cali-retoma-el-pico-y-placa-habitual-desde-el-1-de-septiembre-se-mantienen-recomendaciones-de-movilidad-en-zonas-de-emergencia/"
+          ],
+          "rules": [
+            {
+              "id": "cali-car-private-2026-mon-9-0",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                1
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                0,
+                9
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1140
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.cali.gov.co/boletines/publicaciones/193096/pico-y-placa-rota-en-cali-para-el-segundo-semestre-de-2026-nueva-medida-rige-desde-el-1-de-julio/",
+              "verifiedAt": "2026-11-11T23:03:14-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "co-vac-cali-calendar-unknown-scope@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "cali-car-private-2026-tue-1-2",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                2
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                1,
+                2
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1140
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.cali.gov.co/boletines/publicaciones/193096/pico-y-placa-rota-en-cali-para-el-segundo-semestre-de-2026-nueva-medida-rige-desde-el-1-de-julio/",
+              "verifiedAt": "2026-11-11T23:03:14-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "co-vac-cali-calendar-unknown-scope@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "cali-car-private-2026-wed-3-4",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                3
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                3,
+                4
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1140
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.cali.gov.co/boletines/publicaciones/193096/pico-y-placa-rota-en-cali-para-el-segundo-semestre-de-2026-nueva-medida-rige-desde-el-1-de-julio/",
+              "verifiedAt": "2026-11-11T23:03:14-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "co-vac-cali-calendar-unknown-scope@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "cali-car-private-2026-thu-5-6",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                4
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                5,
+                6
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1140
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.cali.gov.co/boletines/publicaciones/193096/pico-y-placa-rota-en-cali-para-el-segundo-semestre-de-2026-nueva-medida-rige-desde-el-1-de-julio/",
+              "verifiedAt": "2026-11-11T23:03:14-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "co-vac-cali-calendar-unknown-scope@2026-s2"
+                }
+              ]
+            },
+            {
+              "id": "cali-car-private-2026-fri-7-8",
+              "priority": 100,
+              "effect": "restrict",
+              "validFrom": "2026-07-01T00:00:00-05:00",
+              "validUntil": "2026-12-31T23:59:59-05:00",
+              "weekdays": [
+                5
+              ],
+              "digitPosition": "lastNumeric",
+              "digits": [
+                7,
+                8
+              ],
+              "timeWindows": [
+                {
+                  "startMinute": 360,
+                  "endMinute": 1140
+                }
+              ],
+              "appliesOnHolidays": false,
+              "sourceUrl": "https://www.cali.gov.co/boletines/publicaciones/193096/pico-y-placa-rota-en-cali-para-el-segundo-semestre-de-2026-nueva-medida-rige-desde-el-1-de-julio/",
+              "verifiedAt": "2026-11-11T23:03:14-05:00",
+              "conditions": [
+                {
+                  "type": "inside_scope_ref",
+                  "value": "co-vac-cali-calendar-unknown-scope@2026-s2"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "classification": "TEST_ONLY",
+  "territories": [
+    {
+      "id": "co-test-a",
+      "vehicleKind": "car",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "rules": [
+        {
+          "id": "test-a-car-private-v1",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-11-09",
+          "validUntil": "2026-11-30",
+          "weekdays": [1],
+          "digitPosition": "lastNumeric",
+          "digits": [4, 6],
+          "timeWindows": [
+            {"startMinute": 420, "endMinute": 540}
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://test-only.invalid/TEST_ONLY",
+          "verifiedAt": "2026-11-09T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "co-test-b",
+      "vehicleKind": "motorcycle",
+      "serviceType": "private",
+      "coverageCompleteness": "partial",
+      "rules": [
+        {
+          "id": "test-b-motorcycle-private-v1",
+          "priority": 100,
+          "effect": "restrict",
+          "validFrom": "2026-11-09",
+          "validUntil": "2026-11-30",
+          "weekdays": [1],
+          "digitPosition": "firstNumeric",
+          "digits": [3],
+          "timeWindows": [
+            {"startMinute": 420, "endMinute": 540}
+          ],
+          "appliesOnHolidays": false,
+          "sourceUrl": "https://test-only.invalid/TEST_ONLY",
+          "verifiedAt": "2026-11-09T00:00:00Z"
+        }
+      ]
+    }
+  ]
+}
