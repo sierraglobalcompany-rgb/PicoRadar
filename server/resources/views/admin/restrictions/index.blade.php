@@ -68,6 +68,7 @@
 
 @can('datasets.view')
     <div class="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+        <a class="text-teal-700 underline" href="{{ route('admin.restrictions.municipalities') }}">Matriz municipal</a>
         <a class="text-teal-700 underline" href="{{ route('admin.restrictions.coverage.export', ['scope' => 'editorial'] + $filters) }}">Exportar vista CSV</a>
         <a class="text-teal-700 underline" href="{{ route('admin.restrictions.coverage.export', ['scope' => 'municipalities']) }}">Matriz municipal CSV</a>
     </div>

@@ -72,6 +72,71 @@ class RestrictionRuleController extends Controller
         ]);
     }
 
+    public function municipalities(Request $request)
+    {
+        Gate::authorize('datasets.view');
+
+        $filters = $this->municipalityMatrixFilters($request);
+        $query = $this->municipalityCoverageQuery();
+
+        if ($filters['q'] !== '') {
+            $search = $filters['q'];
+            $query->where(function (Builder $query) use ($search): void {
+                $query->where('name', 'like', "%$search%")
+                    ->orWhere('code', 'like', "%$search%")
+                    ->orWhere('key', 'like', "%$search%")
+                    ->orWhereHas('parent', fn (Builder $parent) => $parent
+                        ->where('name', 'like', "%$search%")
+                        ->orWhere('code', 'like', "%$search%"))
+                    ->orWhereHas('jurisdictions', fn (Builder $jurisdiction) => $jurisdiction
+                        ->where('name', 'like', "%$search%")
+                        ->orWhere('key', 'like', "%$search%"));
+            });
+        }
+        if ($filters['department'] !== '') {
+            $department = $filters['department'];
+            $query->whereHas('parent', fn (Builder $parent) => $parent->where('code', $department));
+        }
+        if ($filters['management'] === 'unassigned') {
+            $query->whereDoesntHave('jurisdictions');
+        } elseif (in_array($filters['management'], ['active', 'inactive'], true)) {
+            $enabled = $filters['management'] === 'active';
+            $query->whereHas('jurisdictions', fn (Builder $jurisdictions) => $jurisdictions->where('enabled', $enabled));
+        }
+
+        $perPage = 50;
+        $page = filter_var($request->query('page', 1), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 1;
+        $offset = ($page - 1) * $perPage;
+        $rows = [];
+        $total = 0;
+
+        foreach ($query->orderBy('parent_id')->orderBy('code')->orderBy('id')->lazy(100) as $municipality) {
+            $entries = $this->municipalityCoverageEntries($municipality, $filters);
+            if ($entries === []) {
+                continue;
+            }
+            if ($total >= $offset && $total < $offset + $perPage) {
+                $rows[] = ['municipality' => $municipality, 'entries' => $entries];
+            }
+            $total++;
+        }
+
+        $municipalities = new LengthAwarePaginator(
+            $rows,
+            $total,
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $filters],
+        );
+
+        return view('admin.restrictions.municipalities', [
+            'operator' => $request->user(),
+            'municipalities' => $municipalities,
+            'departments' => GeographicUnit::query()->where('level', 'department')->where('is_active', true)->orderBy('name')->get(['code', 'name']),
+            'filters' => $filters,
+        ]);
+    }
+
     public function exportCoverage(Request $request): StreamedResponse
     {
         Gate::authorize('datasets.view');
@@ -116,6 +181,26 @@ class RestrictionRuleController extends Controller
             'management' => is_string($management) && in_array($management, ['active', 'inactive', 'all'], true)
                 ? $management
                 : 'active',
+        ];
+    }
+
+    /** @return array{q:string,department:string,management:string,availability:string} */
+    private function municipalityMatrixFilters(Request $request): array
+    {
+        $management = $request->query('management');
+        $availability = $request->query('availability');
+
+        return [
+            'q' => mb_substr(trim((string) $request->query('q', '')), 0, 100),
+            'department' => preg_match('/^\d{2}$/', (string) $request->query('department', ''))
+                ? (string) $request->query('department')
+                : '',
+            'management' => is_string($management) && in_array($management, ['active', 'inactive', 'unassigned', 'all'], true)
+                ? $management
+                : 'all',
+            'availability' => is_string($availability) && in_array($availability, ['verified', 'partial', 'stale', 'unknown', 'all'], true)
+                ? $availability
+                : 'all',
         ];
     }
 
@@ -214,10 +299,61 @@ class RestrictionRuleController extends Controller
         }
     }
 
-    /** @param resource $stream */
-    private function streamMunicipalityCoverage($stream): void
+    /**
+     * @param  array{q:string,department:string,management:string,availability:string}  $filters
+     * @return list<array{jurisdiction: Jurisdiction|null,management_state:string,coverages:list<array<string,mixed>>,version:RestrictionRuleVersion|null,published_release:DatasetRelease|null}>
+     */
+    private function municipalityCoverageEntries(GeographicUnit $municipality, array $filters): array
     {
-        $municipalities = GeographicUnit::query()
+        $jurisdictions = $municipality->jurisdictions;
+        if ($jurisdictions->isEmpty()) {
+            if (! in_array($filters['management'], ['all', 'unassigned'], true) || ! in_array($filters['availability'], ['all', 'unknown'], true)) {
+                return [];
+            }
+
+            return [[
+                'jurisdiction' => null,
+                'management_state' => 'NO_JURISDICTION',
+                'coverages' => [[...$this->unknownCoverage(), 'missing_reason' => 'NO_JURISDICTION']],
+                'version' => null,
+                'published_release' => null,
+            ]];
+        }
+
+        $entries = [];
+        foreach ($jurisdictions as $jurisdiction) {
+            $managementState = $jurisdiction->enabled ? 'ACTIVE' : 'INACTIVE';
+            if (($filters['management'] === 'active' && ! $jurisdiction->enabled)
+                || ($filters['management'] === 'inactive' && $jurisdiction->enabled)
+                || $filters['management'] === 'unassigned') {
+                continue;
+            }
+
+            $version = $jurisdiction->restrictionRuleVersions->first();
+            $coverages = $this->coverageSummariesForVersion($version)
+                ->filter(fn (array $coverage): bool => $filters['availability'] === 'all'
+                    || strtolower($coverage['availability']) === $filters['availability'])
+                ->values()
+                ->all();
+            if ($coverages === []) {
+                continue;
+            }
+
+            $entries[] = [
+                'jurisdiction' => $jurisdiction,
+                'management_state' => $managementState,
+                'coverages' => $coverages,
+                'version' => $version,
+                'published_release' => $this->publishedReleaseForVersion($version),
+            ];
+        }
+
+        return $entries;
+    }
+
+    private function municipalityCoverageQuery(): Builder
+    {
+        return GeographicUnit::query()
             ->where('level', 'municipality')
             ->with([
                 'parent',
@@ -226,9 +362,13 @@ class RestrictionRuleController extends Controller
                     'restriction_rule_versions.version = (select max(latest.version) from restriction_rule_versions as latest where latest.jurisdiction_id = restriction_rule_versions.jurisdiction_id)',
                 ),
                 'jurisdictions.restrictionRuleVersions.publicationItems.publication.datasetRelease',
-            ])
-            ->orderBy('id')
-            ->lazy(100);
+            ]);
+    }
+
+    /** @param resource $stream */
+    private function streamMunicipalityCoverage($stream): void
+    {
+        $municipalities = $this->municipalityCoverageQuery()->orderBy('id')->lazy(100);
 
         foreach ($municipalities->chunk(100) as $batch) {
             foreach ($batch as $municipality) {
