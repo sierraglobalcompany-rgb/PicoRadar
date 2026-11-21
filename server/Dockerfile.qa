@@ -9,5 +9,5 @@ RUN apt-get update \
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 WORKDIR /workspace
 COPY . .
-RUN composer install --no-interaction --prefer-dist --no-progress \
-    && mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
+RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && composer install --no-interaction --prefer-dist --no-progress
