@@ -107,53 +107,7 @@ class ManifestFormatException implements Exception {
 // Generation and expiry are absolute instants. Without an explicit zone,
 // device-local time could shift freshness checks.
 DateTime _parseZonedDateTime(String value, String field) {
-  if (!RegExp(r'(?:Z|[+-]\d{2}:\d{2})
-
-int _int(Map<String, dynamic> json, String key) {
-  final value = json[key];
-  if (value is int) {
-    return value;
-  }
-  throw ManifestFormatException('$key must be an integer.');
-}
-
-String _string(Map<String, dynamic> json, String key) {
-  final value = json[key];
-  if (value is String && value.trim().isNotEmpty) {
-    return value.trim();
-  }
-  throw ManifestFormatException('$key must be a non-empty string.');
-}
-
-Map<String, dynamic> _map(Map<String, dynamic> json, String key) {
-  return _mapValue(json[key], key);
-}
-
-Map<String, dynamic> _mapValue(Object? value, String key) {
-  if (value is Map) {
-    return Map<String, dynamic>.from(value);
-  }
-  throw ManifestFormatException('$key must be an object.');
-}
-
-Map<String, bool> _optionalBoolMap(Object? value) {
-  if (value == null) {
-    return const {};
-  }
-  if (value is! Map) {
-    throw const ManifestFormatException('features must be an object.');
-  }
-
-  final result = <String, bool>{};
-  for (final entry in value.entries) {
-    if (entry.value is! bool) {
-      throw ManifestFormatException('features.${entry.key} must be a boolean.');
-    }
-    result[entry.key.toString()] = entry.value as bool;
-  }
-  return result;
-}
-).hasMatch(value)) {
+  if (!RegExp(r'(?:Z|[+-]\d{2}:\d{2})$').hasMatch(value)) {
     throw ManifestFormatException('$field must include a timezone offset.');
   }
   try {
@@ -163,53 +117,7 @@ Map<String, bool> _optionalBoolMap(Object? value) {
   }
 }
 
-final _sha256Pattern = RegExp(r'^[a-f0-9]{64}
-
-int _int(Map<String, dynamic> json, String key) {
-  final value = json[key];
-  if (value is int) {
-    return value;
-  }
-  throw ManifestFormatException('$key must be an integer.');
-}
-
-String _string(Map<String, dynamic> json, String key) {
-  final value = json[key];
-  if (value is String && value.trim().isNotEmpty) {
-    return value.trim();
-  }
-  throw ManifestFormatException('$key must be a non-empty string.');
-}
-
-Map<String, dynamic> _map(Map<String, dynamic> json, String key) {
-  return _mapValue(json[key], key);
-}
-
-Map<String, dynamic> _mapValue(Object? value, String key) {
-  if (value is Map) {
-    return Map<String, dynamic>.from(value);
-  }
-  throw ManifestFormatException('$key must be an object.');
-}
-
-Map<String, bool> _optionalBoolMap(Object? value) {
-  if (value == null) {
-    return const {};
-  }
-  if (value is! Map) {
-    throw const ManifestFormatException('features must be an object.');
-  }
-
-  final result = <String, bool>{};
-  for (final entry in value.entries) {
-    if (entry.value is! bool) {
-      throw ManifestFormatException('features.${entry.key} must be a boolean.');
-    }
-    result[entry.key.toString()] = entry.value as bool;
-  }
-  return result;
-}
-);
+final _sha256Pattern = RegExp(r'^[a-f0-9]{64}$');
 
 int _int(Map<String, dynamic> json, String key) {
   final value = json[key];
