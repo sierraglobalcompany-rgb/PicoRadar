@@ -18,7 +18,7 @@ class DatasetManifest {
     final datasetsJson = _map(json, 'datasets');
     return DatasetManifest(
       schemaVersion: schemaVersion,
-      generatedAt: DateTime.parse(_string(json, 'generatedAt')),
+      generatedAt: _parseZonedDateTime(_string(json, 'generatedAt'), 'generatedAt'),
       minAppVersion: _string(json, 'minAppVersion'),
       datasets: datasetsJson.map(
         (key, value) => MapEntry(
@@ -78,7 +78,7 @@ class DatasetManifestEntry {
           : contentEncoding,
       expiresAt: expiresAt == null || expiresAt.isEmpty
           ? null
-          : DateTime.parse(expiresAt),
+          : _parseZonedDateTime(expiresAt, 'expiresAt'),
       sourceTimestamp: sourceTimestamp == null || sourceTimestamp.isEmpty
           ? null
           : DateTime.parse(sourceTimestamp),
@@ -102,6 +102,19 @@ class ManifestFormatException implements Exception {
 
   @override
   String toString() => 'ManifestFormatException: $message';
+}
+
+// Generation and expiry are absolute instants. Without an explicit zone,
+// device-local time could shift freshness checks.
+DateTime _parseZonedDateTime(String value, String field) {
+  if (!RegExp(r'(?:Z|[+-]\d{2}:\d{2})$').hasMatch(value)) {
+    throw ManifestFormatException('$field must include a timezone offset.');
+  }
+  try {
+    return DateTime.parse(value);
+  } on FormatException {
+    throw ManifestFormatException('$field must be a valid date-time.');
+  }
 }
 
 final _sha256Pattern = RegExp(r'^[a-f0-9]{64}$');
