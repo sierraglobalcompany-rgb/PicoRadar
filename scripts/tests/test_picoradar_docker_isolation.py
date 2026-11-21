@@ -40,7 +40,9 @@ class IsolationContractTests(unittest.TestCase):
         self.assertIn('!.env.example', IGNORE)
         self.assertIn('function New-HexSecret', WRAPPER)
         self.assertIn('function New-AppKey', WRAPPER)
-        self.assertIn('[IO.File]::WriteAllText($envFile', WRAPPER)
+        self.assertIn('$env:PICORADAR_QA_DB_PASSWORD = New-HexSecret', WRAPPER)
+        self.assertIn('$env:PICORADAR_QA_APP_KEY = New-AppKey', WRAPPER)
+        self.assertNotIn('--env-file', WRAPPER)
 
     def test_clean_checkout_and_scoped_operations_only(self):
         self.assertIn('git -C $repo status --porcelain', WRAPPER)
@@ -48,6 +50,13 @@ class IsolationContractTests(unittest.TestCase):
         self.assertIn('docker @composeArgs down', WRAPPER)
         self.assertNotRegex(WRAPPER, r'(?im)^\s*&?\s*docker\s+system\s+prune')
         self.assertNotRegex(WRAPPER, r'(?i)docker\s+compose\s+down\s+-v\b')
+
+    def test_generated_qa_env_is_process_scoped_and_restored(self):
+        self.assertIn("[Environment]::GetEnvironmentVariable($qaName, 'Process')", WRAPPER)
+        self.assertIn("[Environment]::SetEnvironmentVariable($qaName, $qaEnvBefore[$qaName], 'Process')", WRAPPER)
+        self.assertIn("$env:PICORADAR_QA_PROJECT = $project", WRAPPER)
+        self.assertNotIn('$envFile', WRAPPER)
+        self.assertNotIn('WriteAllText', WRAPPER)
 
     def test_focused_tests_and_migrations_are_distinct(self):
         self.assertIn("[ValidateSet('schema', 'test')]", WRAPPER)
