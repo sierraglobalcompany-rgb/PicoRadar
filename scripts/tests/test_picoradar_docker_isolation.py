@@ -56,6 +56,14 @@ class IsolationContractTests(unittest.TestCase):
         self.assertIn('No MariaDB service is started in the focused test mode.', WRAPPER)
         self.assertIn("'up', '-d', '--wait', 'db'", WRAPPER)
 
+    def test_phpunit_sqlite_not_overridden_by_compose_mariadb(self):
+        # PHPunit.xml env entries are not forced; container variables win.
+        # Thus focused test mode must override the Compose service DB env.
+        self.assertIn("'-e', 'DB_CONNECTION=sqlite'", WRAPPER)
+        self.assertIn("'-e', 'DB_DATABASE=:memory:'", WRAPPER)
+        self.assertIn("'-e', 'DB_URL='", WRAPPER)
+        self.assertRegex(WRAPPER, r"(?s)@\('run', '--rm', '--no-deps',.*?'DB_CONNECTION=sqlite'.*?'app', 'php', 'artisan', 'test'")
+
 
 if __name__ == '__main__':
     unittest.main()
