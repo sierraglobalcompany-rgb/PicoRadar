@@ -107,7 +107,7 @@ class C10NationalEditorEntryTest extends TestCase
         $response->assertSee('<option value="'.$this->bogota->id.'" data-municipality-code="11001" selected>', false)
             ->assertSee('Bogotá sintética · co-dc-bogota-c10')
             ->assertSee('value="11001"', false)
-            ->assertSee('Administración territorial: <strong>activa</strong>', false)
+            ->assertSee('Administración territorial: <strong id="jurisdiction-management-state">activa</strong>', false)
             ->assertSee('<input type="hidden" name="consultation_enabled" value="0">', false);
         $checkbox = $this->renderedCheckbox($response->getContent());
         $this->assertDoesNotMatchRegularExpression('/\schecked(?:\s|>)/', $checkbox);
