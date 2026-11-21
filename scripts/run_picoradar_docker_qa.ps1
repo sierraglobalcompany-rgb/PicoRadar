@@ -77,9 +77,15 @@ try {
         Invoke-Compose -ArgsList @('run', '--rm', '--no-deps', 'app', 'php', 'artisan', 'migrate', '--force', '--no-interaction')
         Invoke-Compose -ArgsList @('run', '--rm', '--no-deps', 'app', 'php', 'artisan', 'migrate:status')
     } else {
-        # phpunit.xml intentionally selects in-memory SQLite for existing tests.
+        # PHPUnit XML's <env> does NOT replace already-set Compose variables.
+        # Force synthetic SQLite in the *test container*; never use MariaDB from
+        # the schema mode or any host/other-project database.
         # No MariaDB service is started in the focused test mode.
-        Invoke-Compose -ArgsList @('run', '--rm', '--no-deps', 'app', 'php', 'artisan', 'test', '--filter', $Filter)
+        Invoke-Compose -ArgsList @('run', '--rm', '--no-deps',
+            '-e', 'DB_CONNECTION=sqlite',
+            '-e', 'DB_DATABASE=:memory:',
+            '-e', 'DB_URL=',
+            'app', 'php', 'artisan', 'test', '--filter', $Filter)
     }
     Write-Host 'PASS_SCOPED_DOCKER_ISOLATION; does not imply HTTPS or production release.'
 } finally {
