@@ -825,6 +825,7 @@ class _PartnerInquiryFormState extends ConsumerState<PartnerInquiryForm> {
               consentVersion: ref
                   .read(partnerInquiryConfigProvider)
                   .privacyVersion,
+              consentAccepted: _consent,
             ),
           );
       if (mounted) setState(() => _receipt = receipt);
@@ -840,6 +841,7 @@ class _PartnerInquiryFormState extends ConsumerState<PartnerInquiryForm> {
     'timeout' ||
     'network' => 'No pudimos conectar. Revisa tu conexión e intenta de nuevo.',
     'not_configured' => 'El canal para aliados aún no está disponible.',
+    'consent_required' => 'Debes autorizar el contacto.',
     _ => 'No pudimos enviar la solicitud. Intenta de nuevo.',
   };
 }
