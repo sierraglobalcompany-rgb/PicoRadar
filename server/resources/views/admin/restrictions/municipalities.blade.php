@@ -166,7 +166,11 @@
                                             @endcan
                                         @endif
                                     @elseif($entry['management_state'] === 'NO_JURISDICTION')
-                                        <span class="text-sm text-slate-600">Requiere asignación revisada</span>
+                                        @can('jurisdictions.edit')
+                                            <a class="text-sm text-teal-700 underline" href="{{ route('admin.jurisdictions.create', ['primary_geographic_unit_id' => $municipality->id]) }}">Preparar jurisdicción</a>
+                                        @else
+                                            <span class="text-sm text-slate-600">Requiere asignación revisada</span>
+                                        @endcan
                                     @else
                                         <span class="text-sm text-slate-600">Solo lectura</span>
                                     @endif

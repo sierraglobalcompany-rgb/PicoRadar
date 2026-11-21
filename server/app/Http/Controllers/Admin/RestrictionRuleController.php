@@ -146,7 +146,7 @@ class RestrictionRuleController extends Controller
     {
         Gate::authorize('datasets.view');
         $scope = $request->query('scope', 'editorial');
-        abort_unless(is_string($scope) && in_array($scope, ['editorial', 'municipalities'], true), 422);
+        abort_unless(is_string($scope) && in_array($scope, ['editorial', 'published', 'municipalities'], true), 422);
         $filters = $this->restrictionFilters($request);
 
         return response()->streamDownload(function () use ($scope, $filters): void {
@@ -159,8 +159,10 @@ class RestrictionRuleController extends Controller
             fputcsv($stream, $this->coverageExportHeaders(), ',', '"', '');
             if ($scope === 'municipalities') {
                 $this->streamMunicipalityCoverage($stream, $currentSnapshot);
-            } else {
+            } elseif ($scope === 'editorial') {
                 $this->streamEditorialCoverage($stream, $filters, $currentSnapshot);
+            } else {
+                $this->streamPublishedCoverage($stream, $filters, $currentSnapshot);
             }
             fclose($stream);
         }, "restriction-coverage-{$scope}-".now()->format('Ymd').'.csv', [
@@ -454,6 +456,36 @@ class RestrictionRuleController extends Controller
     {
         foreach ($this->jurisdictionsForFilters($filters)->lazy(100) as $jurisdiction) {
             $version = $jurisdiction->restrictionRuleVersions->first();
+            $coverages = $version === null
+                ? collect([$this->unknownCoverage('NO_EDITOR_VERSION')])
+                : $this->filterCoverageSummaries($this->coverageSummariesForVersion($version), $filters);
+            foreach ($coverages as $coverage) {
+                $municipality = $jurisdiction->primaryGeographicUnit;
+                $this->writeCoverageRow($stream, [
+                    'scope' => 'editorial',
+                    'department_code' => $municipality?->parent?->code ?? '',
+                    'municipality_code' => $municipality?->code ?? '',
+                    'municipality_key' => $municipality?->key ?? '',
+                    'municipality_name' => $municipality?->name ?? '',
+                    'jurisdiction' => $jurisdiction,
+                    'version' => $version,
+                    'coverage' => $coverage,
+                    'management_state' => $jurisdiction->enabled ? 'ACTIVE' : 'INACTIVE',
+                    'published_release' => $currentSnapshot['release'],
+                    'source_editor_version' => $currentSnapshot['source_editor_versions'][$jurisdiction->key] ?? 'NO_IDENTIFICADA',
+                    'publication_state' => $currentSnapshot['release'] === null ? 'UNKNOWN' : 'REFERENCE_ONLY',
+                ]);
+            }
+        }
+    }
+
+    /** @param resource $stream
+     * @param array{q:string,department:string,vehicle_kind:string,availability:string,management:string} $filters
+     */
+    private function streamPublishedCoverage($stream, array $filters, array $currentSnapshot): void
+    {
+        foreach ($this->jurisdictionsForFilters($filters)->lazy(100) as $jurisdiction) {
+            $version = $jurisdiction->restrictionRuleVersions->first();
             $coverages = $this->filterCoverageSummaries(
                 $this->currentCoverageSummaries($currentSnapshot, $jurisdiction->key),
                 $filters,
@@ -461,7 +493,7 @@ class RestrictionRuleController extends Controller
             foreach ($coverages as $coverage) {
                 $municipality = $jurisdiction->primaryGeographicUnit;
                 $this->writeCoverageRow($stream, [
-                    'scope' => 'editorial',
+                    'scope' => 'published',
                     'department_code' => $municipality?->parent?->code ?? '',
                     'municipality_code' => $municipality?->code ?? '',
                     'municipality_key' => $municipality?->key ?? '',
@@ -613,7 +645,7 @@ class RestrictionRuleController extends Controller
             $jurisdiction?->key ?? '', $jurisdiction?->name ?? '', $row['management_state'],
             $coverage['vehicle_kind'] ?? '', $coverage['service_type'] ?? '', $coverage['availability'] ?? 'UNKNOWN',
             $version?->version ?? '', $version?->status?->value ?? '', $row['source_editor_version'] ?? 'NO_IDENTIFICADA', $release?->version ?? '',
-            $release ? 'PUBLISHED' : 'UNKNOWN',
+            $row['publication_state'] ?? ($release ? 'PUBLISHED' : 'UNKNOWN'),
             $this->jsonList($coverage['source_urls'] ?? []), $this->jsonList($coverage['verified_at'] ?? []),
             $this->jsonList($coverage['valid_until'] ?? []), $coverage['stale_after'] ?? '', $coverage['missing_reason'] ?? '',
         ];
