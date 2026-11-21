@@ -136,7 +136,9 @@ class C9JurisdictionOnboardingTest extends TestCase
         $this->actingAs($editor)
             ->post(route('admin.jurisdictions.store'), [...$payload, 'primary_geographic_unit_id' => $this->department->id])
             ->assertStatus(422);
-        self::assertSame(0, Jurisdiction::query()->count());
+        // setUp() creates the already-assigned municipality's jurisdiction.
+        // Invalid POST must not create a second one.
+        self::assertSame(1, Jurisdiction::query()->count());
 
         $this->actingAs($editor)
             ->post(route('admin.jurisdictions.store'), [...$payload, 'primary_geographic_unit_id' => $this->activeMunicipality->id])
