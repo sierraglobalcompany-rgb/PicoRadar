@@ -40,6 +40,39 @@ void main() {
       expect(manifest.features['ads'], isFalse);
     });
 
+    test('requires an explicit timezone for manifest generatedAt', () {
+      expect(
+        () => DatasetManifest.fromJson({
+          'schemaVersion': 1,
+          'generatedAt': '2026-11-21T08:00:00',
+          'minAppVersion': '1.0.1',
+          'datasets': <String, Object?>{},
+          'features': <String, Object?>{},
+        }),
+        throwsA(isA<ManifestFormatException>()),
+      );
+    });
+
+    test('requires an explicit timezone for dataset expiresAt', () {
+      final base = {
+        'version': 'r12',
+        'url': '/datasets/restrictions.json',
+        'sha256': 'a' * 64,
+      };
+      expect(
+        () => DatasetManifestEntry.fromJson({
+          ...base,
+          'expiresAt': '2026-11-21T08:00:00',
+        }),
+        throwsA(isA<ManifestFormatException>()),
+      );
+      final withOffset = DatasetManifestEntry.fromJson({
+        ...base,
+        'expiresAt': '2026-11-21T08:00:00-05:00',
+      });
+      expect(withOffset.expiresAt?.toUtc(), DateTime.utc(2026, 11, 21, 13));
+    });
+
     test('rejects incompatible schema before any dataset can be imported', () {
       expect(
         () => DatasetManifest.fromJson({
