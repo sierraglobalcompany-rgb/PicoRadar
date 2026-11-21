@@ -1,0 +1,13 @@
+# Synthetic QA image only; contains an isolated COPY, not a writable host mount.
+FROM php:8.3-cli-bookworm
+ENV COMPOSER_ALLOW_SUPERUSER=1
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git unzip libzip-dev libicu-dev libpng-dev libjpeg62-turbo-dev libfreetype6-dev libonig-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j2 pdo_mysql pdo_sqlite mbstring zip gd intl bcmath pcntl \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+WORKDIR /workspace
+COPY . .
+RUN composer install --no-interaction --prefer-dist --no-progress \
+    && mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
