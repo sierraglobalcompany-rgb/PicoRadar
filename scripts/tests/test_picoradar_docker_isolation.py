@@ -51,6 +51,13 @@ class IsolationContractTests(unittest.TestCase):
         self.assertNotRegex(WRAPPER, r'(?im)^\s*&?\s*docker\s+system\s+prune')
         self.assertNotRegex(WRAPPER, r'(?i)docker\s+compose\s+down\s+-v\b')
 
+    def test_bootstrap_cache_exists_before_composer_scripts(self):
+        # Composer triggers artisan package:discover during install; its cache
+        # directory must exist before the install, not after it.
+        self.assertIn('bootstrap/cache', DOCKERFILE)
+        self.assertIn('composer install', DOCKERFILE)
+        self.assertLess(DOCKERFILE.index('mkdir -p'), DOCKERFILE.index('composer install'))
+
     def test_generated_qa_env_is_process_scoped_and_restored(self):
         self.assertIn("[Environment]::GetEnvironmentVariable($qaName, 'Process')", WRAPPER)
         self.assertIn("[Environment]::SetEnvironmentVariable($qaName, $qaEnvBefore[$qaName], 'Process')", WRAPPER)
