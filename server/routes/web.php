@@ -43,6 +43,7 @@ Route::middleware(['auth', EnsureActiveOperator::class, SecurityHeaders::class])
     Route::post('/admin/operators', [OperatorController::class, 'store'])->name('admin.operators.store');
     Route::put('/admin/operators/{operator}', [OperatorController::class, 'update'])->name('admin.operators.update');
     Route::get('/admin/restrictions', [RestrictionRuleController::class, 'index'])->name('admin.restrictions.index');
+    Route::get('/admin/restrictions/municipalities', [RestrictionRuleController::class, 'municipalities'])->name('admin.restrictions.municipalities');
     Route::get('/admin/restrictions/coverage/export', [RestrictionRuleController::class, 'exportCoverage'])->name('admin.restrictions.coverage.export');
     Route::get('/admin/restrictions/create', [RestrictionRuleController::class, 'create'])->name('admin.restrictions.create');
     Route::post('/admin/restrictions', [RestrictionRuleController::class, 'store'])->name('admin.restrictions.store');
