@@ -71,6 +71,35 @@ void main() {
     },
   );
 
+  test('rejects an unconsented draft before any HTTP request', () async {
+    final client = HttpPartnerInquiryClient(dio, config: _readyConfig);
+    const unconsented = PartnerInquiryDraft(
+      idempotencyKey: 'mobile-test-consent-denied',
+      businessName: 'Taller Ejemplo SAS',
+      contactName: 'Persona Ejemplo',
+      email: 'contacto@example.test',
+      phone: '+57 300 000 0000',
+      city: 'Medellin',
+      category: 'workshop',
+      message: '',
+      consentVersion: 'privacy-v1',
+      consentAccepted: false,
+    );
+
+    expect(unconsented.toJson()['consentAccepted'], isFalse);
+    await expectLater(
+      client.submit(unconsented),
+      throwsA(
+        isA<PartnerInquiryFailure>().having(
+          (failure) => failure.code,
+          'code',
+          'consent_required',
+        ),
+      ),
+    );
+    expect(adapter.calls, 0);
+  });
+
   test('exposes only allow-listed server failure codes', () async {
     adapter
       ..status = 418
@@ -110,6 +139,7 @@ const _draft = PartnerInquiryDraft(
   category: 'workshop',
   message: '',
   consentVersion: 'privacy-v1',
+  consentAccepted: true,
 );
 
 class _PartnerAdapter implements HttpClientAdapter {
