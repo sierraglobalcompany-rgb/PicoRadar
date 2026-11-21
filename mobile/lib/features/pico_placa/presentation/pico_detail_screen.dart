@@ -14,6 +14,7 @@ import '../../location/application/location_controller.dart';
 import '../../visual_assets/presentation/visual_asset_widgets.dart';
 import '../data/pico_jurisdiction_catalog.dart';
 import '../data/restriction_store.dart';
+import '../../trip/data/trip_municipality_catalog.dart';
 import '../domain/city_restriction_summary.dart';
 import '../domain/colombia_holiday_calendar.dart';
 import '../domain/restriction_engine.dart';
@@ -653,7 +654,8 @@ class _CitySelectorSheetState extends ConsumerState<_CitySelectorSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final catalog = ref.watch(picoJurisdictionCatalogProvider);
+    final picoCatalog = ref.watch(picoJurisdictionCatalogProvider);
+    final tripCatalog = ref.watch(tripMunicipalityCatalogProvider);
     return SizedBox(
       height: MediaQuery.sizeOf(context).height * 0.72,
       child: Padding(
@@ -677,7 +679,7 @@ class _CitySelectorSheetState extends ConsumerState<_CitySelectorSheet> {
               textInputAction: TextInputAction.search,
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.search_rounded),
-                hintText: 'Buscar ciudad',
+                hintText: 'Municipio, departamento o DIVIPOLA',
               ),
               onChanged: (value) => setState(() => _query = value),
             ),
@@ -685,39 +687,85 @@ class _CitySelectorSheetState extends ConsumerState<_CitySelectorSheet> {
             Expanded(
               child: FutureBuilder<Map<String, _CityCoverageAvailability>>(
                 future: _availability,
-                builder: (context, availabilitySnapshot) {
-                  return catalog.when(
-                    data: (catalog) => _CitySelectorList(
-                      entries: catalog.withRuntimeAvailability(
-                        widget.runtimeJurisdictions,
-                      ),
-                      query: _query,
-                      runtimeJurisdictionIds: widget.runtimeJurisdictions
-                          .where(
-                            (jurisdiction) =>
-                                jurisdiction.consultationEnabled != false,
-                          )
-                          .map((jurisdiction) => jurisdiction.id)
-                          .toSet(),
-                      availability: availabilitySnapshot.data ?? const {},
-                      selectedJurisdictionId: widget.selectedJurisdictionId,
+                builder: (context, availabilitySnapshot) =>
+                    _buildCitySelectorOptions(
+                      picoCatalog,
+                      tripCatalog,
+                      availabilitySnapshot,
                     ),
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (error, stackTrace) => Center(
-                      child: Text(
-                        'No pudimos cargar el catálogo.',
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.body,
-                      ),
-                    ),
-                  );
-                },
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildCitySelectorOptions(
+    AsyncValue<PicoJurisdictionCatalog> picoState,
+    AsyncValue<TripMunicipalityCatalog> tripState,
+    AsyncSnapshot<Map<String, _CityCoverageAvailability>> availabilitySnapshot,
+  ) {
+    final pico = picoState.asData?.value;
+    final trip = tripState.asData?.value;
+    if (pico == null && trip == null) {
+      if (picoState.isLoading || tripState.isLoading) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      return const Center(
+        child: Text(
+          'No pudimos cargar un catálogo de municipios.',
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
+    final List<PicoJurisdictionCatalogEntry> entries;
+    final String? scopeNotice;
+    if (pico != null) {
+      final runtimeEntries = pico.withRuntimeAvailability(
+        widget.runtimeJurisdictions,
+        includeUnlisted: false,
+      );
+      final runtimeCatalog = PicoJurisdictionCatalog(
+        records: runtimeEntries,
+        version: pico.version,
+        sourceCutoff: pico.sourceCutoff,
+        asOfDate: pico.asOfDate,
+        sourceWorkbookSha256: pico.sourceWorkbookSha256,
+      );
+      if (trip != null) {
+        entries = mergePicoMunicipalityOptions(
+          runtimeCatalog,
+          _tripMunicipalityOptions(trip),
+        ).records;
+        scopeNotice = null;
+      } else {
+        entries = runtimeEntries;
+        scopeNotice =
+            'El catálogo nacional no cargó; mostramos solo estas ${entries.length} opciones Pico.';
+      }
+    } else {
+      entries = mergePicoMunicipalityOptions(
+        const PicoJurisdictionCatalog(records: []),
+        _tripMunicipalityOptions(trip!),
+      ).records;
+      scopeNotice =
+          'El catálogo Pico no cargó. Estas ciudades se muestran sin reglas '
+          'verificadas y no se pueden evaluar.';
+    }
+
+    return _CitySelectorList(
+      entries: entries,
+      query: _query,
+      runtimeJurisdictionIds: widget.runtimeJurisdictions
+          .where((jurisdiction) => jurisdiction.consultationEnabled != false)
+          .map((jurisdiction) => jurisdiction.id)
+          .toSet(),
+      availability: availabilitySnapshot.data ?? const {},
+      coverageFailed: availabilitySnapshot.hasError,
+      scopeNotice: scopeNotice,
+      selectedJurisdictionId: widget.selectedJurisdictionId,
     );
   }
 
@@ -748,12 +796,24 @@ class _CitySelectorSheetState extends ConsumerState<_CitySelectorSheet> {
   }
 }
 
+Iterable<({String code, String municipality, String department})>
+_tripMunicipalityOptions(TripMunicipalityCatalog catalog) =>
+    catalog.records.map(
+      (item) => (
+        code: item.code,
+        municipality: item.municipality,
+        department: item.department,
+      ),
+    );
+
 class _CitySelectorList extends StatelessWidget {
   const _CitySelectorList({
     required this.entries,
     required this.query,
     required this.runtimeJurisdictionIds,
     required this.availability,
+    required this.coverageFailed,
+    required this.scopeNotice,
     required this.selectedJurisdictionId,
   });
 
@@ -761,6 +821,8 @@ class _CitySelectorList extends StatelessWidget {
   final String query;
   final Set<String> runtimeJurisdictionIds;
   final Map<String, _CityCoverageAvailability> availability;
+  final bool coverageFailed;
+  final String? scopeNotice;
   final String? selectedJurisdictionId;
 
   @override
@@ -771,39 +833,72 @@ class _CitySelectorList extends StatelessWidget {
           if (normalizedQuery.isEmpty) {
             return true;
           }
-          return normalizePicoJurisdictionText(
-            '${entry.name} ${entry.department}',
-          ).contains(normalizedQuery);
+          final searchable =
+              '${entry.name} ${entry.selectorName} ${entry.department} ${entry.municipalityCode}';
+          return normalizePicoJurisdictionText(searchable)
+              .contains(normalizedQuery);
         })
         .toList(growable: false);
-    final available = filtered
-        .where(
-          (entry) =>
-              entry.engineEnabled && runtimeJurisdictionIds.contains(entry.id),
-        )
-        .toList(growable: false);
-    final upcoming = filtered
-        .where(
-          (entry) =>
-              !entry.engineEnabled ||
-              !runtimeJurisdictionIds.contains(entry.id),
-        )
+    final searching = normalizedQuery.isNotEmpty;
+    final limit = searching ? 80 : 12;
+    final visible = filtered.take(limit).toList(growable: false);
+    final available = visible.where(_canConsult).toList(growable: false);
+    final upcoming = visible
+        .where((entry) => !_canConsult(entry))
         .toList(growable: false);
 
-    if (filtered.isEmpty) {
+    if (searching && filtered.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
         child: Center(child: Text('Sin resultados')),
       );
     }
 
+    final countLabel = entries.length == 1104
+        ? '1.104'
+        : entries.length.toString();
     return ListView(
       key: const ValueKey('pico-city-selector-results'),
       children: [
+        if (scopeNotice != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.s),
+            child: Text(
+              scopeNotice!,
+              key: const ValueKey('pico-city-selector-scope-notice'),
+              style: AppTextStyles.caption,
+            ),
+          ),
+        if (coverageFailed)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.s),
+            child: Text(
+              'No pudimos verificar la cobertura. El estado queda sin confirmar.',
+              key: ValueKey('pico-city-selector-coverage-error'),
+              style: AppTextStyles.caption,
+            ),
+          ),
+        if (!searching)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.s),
+            child: Text(
+              'Busca entre $countLabel municipios por nombre, departamento o código.',
+              key: const ValueKey('pico-city-selector-search-hint'),
+              style: AppTextStyles.caption,
+            ),
+          ),
+        if (searching && filtered.length > limit)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.s),
+            child: Text(
+              'Mostrando 80 resultados. Afina la búsqueda para distinguir la ciudad.',
+              style: AppTextStyles.caption,
+            ),
+          ),
         if (available.isNotEmpty)
           _CitySelectorSection(
             key: const ValueKey('pico-city-section-available'),
-            title: 'Disponibles en PicoRadar',
+            title: 'Con cobertura verificada',
             entries: available,
             available: true,
             availability: availability,
@@ -812,7 +907,7 @@ class _CitySelectorList extends StatelessWidget {
         if (upcoming.isNotEmpty)
           _CitySelectorSection(
             key: const ValueKey('pico-city-section-upcoming'),
-            title: 'Otras ciudades',
+            title: 'Otras ciudades · sin confirmar',
             entries: upcoming,
             available: false,
             availability: availability,
@@ -820,6 +915,14 @@ class _CitySelectorList extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  bool _canConsult(PicoJurisdictionCatalogEntry entry) {
+    final jurisdictionId = entry.engineJurisdictionId ?? entry.id;
+    return !coverageFailed &&
+        entry.engineEnabled &&
+        runtimeJurisdictionIds.contains(jurisdictionId) &&
+        availability[jurisdictionId]?.canConsult == true;
   }
 }
 
@@ -857,8 +960,11 @@ class _CitySelectorSection extends StatelessWidget {
             _PicoCatalogCityTile(
               entry: entry,
               available: available,
-              availability: availability[entry.id],
-              selected: entry.id == selectedJurisdictionId,
+              availability:
+                  availability[entry.engineJurisdictionId ?? entry.id],
+              selected:
+                  (entry.engineJurisdictionId ?? entry.id) ==
+                  selectedJurisdictionId,
             ),
         ],
       ),
@@ -881,7 +987,7 @@ class _PicoCatalogCityTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusLabel = available ? 'Disponible' : 'Consulta no disponible';
+    final statusLabel = available ? 'Disponible' : 'Sin confirmar';
     return ListTile(
       key: ValueKey('pico-city-option-${entry.id}'),
       enabled: true,
@@ -893,7 +999,9 @@ class _PicoCatalogCityTile extends StatelessWidget {
           Text(
             available
                 ? availability?.description ?? 'Verificando cobertura'
-                : '${entry.department} · Consulta no disponible',
+                : availability == null
+                ? ' · Pico y placa sin confirmar'
+                : ' · ',
           ),
           const SizedBox(height: AppSpacing.xs),
           Wrap(
@@ -918,7 +1026,9 @@ class _PicoCatalogCityTile extends StatelessWidget {
         ),
       ),
       onTap: available
-          ? () => Navigator.of(context).pop(entry.id)
+          ? () =>
+                Navigator.of(context)
+                    .pop(entry.engineJurisdictionId ?? entry.id)
           : () => _showUnavailableCityInfo(context, entry),
     );
   }
@@ -967,7 +1077,7 @@ class _CityCoverageAvailability {
   final List<String> categories;
   final bool dataIsStale;
 
-  bool get hasCoverage => categories.isNotEmpty;
+  bool get canConsult => categories.isNotEmpty && !dataIsStale;
 
   String get description {
     if (categories.isEmpty) {

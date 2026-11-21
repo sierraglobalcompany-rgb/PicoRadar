@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/features/pico_placa/data/pico_jurisdiction_catalog.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_store.dart';
+import 'package:picoradar/features/trip/data/trip_municipality_catalog.dart';
 
 void main() {
   test('catalog represents all 73 source municipalities exactly once', () {
@@ -105,6 +106,104 @@ void main() {
     );
   });
 
+  test(
+    'national options merge 1,104 DIVIPOLA municipalities without rules',
+    () {
+      final pico = _loadCatalog();
+      final trip = _loadTripCatalog();
+      final combined = mergePicoMunicipalityOptions(
+        pico,
+        trip.records.map(
+          (item) => (
+            code: item.code,
+            municipality: item.municipality,
+            department: item.department,
+          ),
+        ),
+      );
+
+      expect(combined.records, hasLength(1104));
+      expect(
+        combined.records.map((entry) => entry.municipalityCode).toSet(),
+        hasLength(1104),
+      );
+      expect(
+        combined.records.map((entry) => entry.id).toSet(),
+        hasLength(1104),
+      );
+
+      final originalCodes = pico.records
+          .map((entry) => entry.municipalityCode)
+          .toSet();
+      final added = combined.records.where(
+        (entry) => !originalCodes.contains(entry.municipalityCode),
+      );
+      expect(added, hasLength(1031));
+      for (final entry in added) {
+        expect(entry.id, 'co-mun-${entry.municipalityCode}');
+        expect(entry.status, PicoOperationalStatus.pending);
+        expect(entry.classification, 'GEOGRAPHIC_ONLY');
+        expect(entry.engineEnabled, isFalse);
+        expect(entry.engineJurisdictionId, isNull);
+        expect(entry.evidenceRecordIds, isEmpty);
+        expect(entry.sourceIds, isEmpty);
+        expect(entry.sourceUrls, isEmpty);
+      }
+      for (final original in pico.records) {
+        expect(
+          identical(
+            combined.records.singleWhere(
+              (entry) => entry.municipalityCode == original.municipalityCode,
+            ),
+            original,
+          ),
+          isTrue,
+          reason: original.municipalityCode,
+        );
+      }
+    },
+  );
+
+  test('national search separates La Union homonyms and resolves DIVIPOLA', () {
+    final pico = _loadCatalog();
+    final trip = _loadTripCatalog();
+    final combined = mergePicoMunicipalityOptions(
+      pico,
+      trip.records.map(
+        (item) => (
+          code: item.code,
+          municipality: item.municipality,
+          department: item.department,
+        ),
+      ),
+    );
+
+    final laUnion = combined.search('La Unión');
+    expect(laUnion, hasLength(4));
+    expect(laUnion.map((entry) => entry.municipalityCode).toSet(), {
+      '05400',
+      '52399',
+      '70400',
+      '76400',
+    });
+    expect(combined.search('05400').single.department, 'Antioquia');
+    expect(
+      combined
+          .search('medellin')
+          .any((entry) => entry.municipalityCode == '05001'),
+      isTrue,
+    );
+    expect(
+      combined.search('cali').any((entry) => entry.municipalityCode == '76001'),
+      isTrue,
+    );
+    expect(
+      combined
+          .search('bogota')
+          .any((entry) => entry.municipalityCode == '11001'),
+      isTrue,
+    );
+  });
   test('runtime availability overrides seed without inventing new entries', () {
     final catalog = _loadCatalog();
     final disabledSeed = _city(catalog, 'Itagüí');
@@ -144,6 +243,15 @@ void main() {
       isFalse,
     );
     expect(runtime.any((entry) => entry.id == 'co-new-supported'), isTrue);
+    final limited = catalog.withRuntimeAvailability(const [
+      RestrictionJurisdiction(
+        id: 'co-new-supported',
+        name: 'Municipio nuevo',
+        municipalityCodes: ['99001'],
+        consultationEnabled: true,
+      ),
+    ], includeUnlisted: false);
+    expect(limited.any((entry) => entry.id == 'co-new-supported'), isFalse);
     expect(runtime.any((entry) => entry.id == 'co-new-disabled'), isFalse);
     expect(runtime.any((entry) => entry.id == 'co-unmapped-new-city'), isFalse);
     expect(_city(catalog, 'Itagüí').engineEnabled, isFalse);
@@ -155,6 +263,13 @@ PicoJurisdictionCatalogEntry _city(
   PicoJurisdictionCatalog catalog,
   String name,
 ) => catalog.records.singleWhere((entry) => entry.name == name);
+
+TripMunicipalityCatalog _loadTripCatalog() {
+  final raw = File(tripMunicipalityCatalogAssetPath).readAsStringSync();
+  return TripMunicipalityCatalog.fromJson(
+    jsonDecode(raw) as Map<String, Object?>,
+  );
+}
 
 PicoJurisdictionCatalog _loadCatalog() {
   final raw = File(picoJurisdictionCatalogAssetPath).readAsStringSync();

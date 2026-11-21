@@ -107,6 +107,28 @@ class JurisdictionController extends Controller
     /** @return array<string,mixed> */
     private function formData(Request $request): array
     {
-        return ['operator' => $request->user(), 'geography' => GeographicUnit::query()->where('level', GeographicUnitLevel::Municipality)->with('parent')->orderBy('name')->get(), 'kinds' => JurisdictionKind::cases()];
+        $value = $request->query('primary_geographic_unit_id');
+        $preselectedMunicipalityId = null;
+        $id = is_int($value)
+            ? $value
+            : (is_string($value) && strlen($value) <= 19
+                ? filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+                : false);
+
+        if ($id !== false && $id > 0) {
+            $matchedId = GeographicUnit::query()
+                ->whereKey($id)
+                ->where('level', GeographicUnitLevel::Municipality)
+                ->where('is_active', true)
+                ->value('id');
+            $preselectedMunicipalityId = $matchedId === null ? null : (int) $matchedId;
+        }
+
+        return [
+            'operator' => $request->user(),
+            'geography' => GeographicUnit::query()->where('level', GeographicUnitLevel::Municipality)->with('parent')->orderBy('name')->get(),
+            'kinds' => JurisdictionKind::cases(),
+            'preselectedMunicipalityId' => $preselectedMunicipalityId,
+        ];
     }
 }

@@ -18,6 +18,7 @@ import 'package:picoradar/features/pico_placa/data/restriction_dataset.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_store.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_rule.dart';
 import 'package:picoradar/features/pico_placa/presentation/pico_detail_screen.dart';
+import 'package:picoradar/features/trip/data/trip_municipality_catalog.dart';
 
 import '../../../test_app_harness.dart';
 
@@ -1057,6 +1058,138 @@ void main() {
     },
   );
 
+  testWidgets(
+    'national selector separates La Union and keeps unknown city non-evaluable',
+    (tester) async {
+      final store = _WeeklyRestrictionStore(harness.database);
+      await _pumpCityPico(
+        tester,
+        harness,
+        store: store,
+        viewportSize: const Size(390, 1600),
+      );
+      await tester.tap(find.byKey(const ValueKey('pico-city-change')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('pico-city-search')),
+        'La Unión',
+      );
+      await tester.pumpAndSettle();
+
+      for (final code in ['05400', '52399', '70400', '76400']) {
+        expect(
+          find.byKey(ValueKey('pico-city-option-co-mun-$code')),
+          findsOneWidget,
+        );
+      }
+      final requestedBeforeTap = store.requestedJurisdictions.length;
+      await tester.tap(
+        find.byKey(const ValueKey('pico-city-option-co-mun-05400')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'No hay información verificada para determinar si tiene restricción.',
+        ),
+        findsOneWidget,
+      );
+      expect(store.requestedJurisdictions, hasLength(requestedBeforeTap));
+      expect(
+        await harness.preferences.getString(picoJurisdictionPreferenceKey),
+        'co-ant-medellin',
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('national selector falls back to 73 when Trip catalog fails', (
+    tester,
+  ) async {
+    await _pumpCityPico(
+      tester,
+      harness,
+      store: _WeeklyRestrictionStore(harness.database),
+      failTripCatalog: true,
+      viewportSize: const Size(390, 1600),
+    );
+    await tester.tap(find.byKey(const ValueKey('pico-city-change')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('pico-city-selector-scope-notice')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('73 opciones Pico'), findsOneWidget);
+    expect(find.textContaining('Busca entre 73 municipios'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('stale city coverage remains unselectable in the selector', (
+    tester,
+  ) async {
+    await _pumpCityPico(
+      tester,
+      harness,
+      store: _StaleCoverageStore(harness.database),
+      viewportSize: const Size(390, 1600),
+    );
+    await tester.tap(find.byKey(const ValueKey('pico-city-change')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('pico-city-search')),
+      'Bogotá',
+    );
+    await tester.pumpAndSettle();
+    final option = find.byKey(const ValueKey('pico-city-option-co-dc-bogota'));
+    expect(
+      find.descendant(of: option, matching: find.text('Sin confirmar')),
+      findsOneWidget,
+    );
+    await tester.tap(option);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'No hay información verificada para determinar si tiene restricción.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      await harness.preferences.getString(picoJurisdictionPreferenceKey),
+      'co-ant-medellin',
+    );
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('national selector stays neutral when Pico catalog fails', (
+    tester,
+  ) async {
+    await _pumpCityPico(
+      tester,
+      harness,
+      store: _WeeklyRestrictionStore(harness.database),
+      failPicoCatalog: true,
+      viewportSize: const Size(390, 1600),
+    );
+    await tester.tap(find.byKey(const ValueKey('pico-city-change')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('pico-city-search')),
+      'La Unión',
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('pico-city-option-co-mun-05400')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('pico-city-option-co-mun-52399')),
+      findsOneWidget,
+    );
+    expect(find.text('Sin confirmar'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('city change stays neutral until new coverage completes', (
     tester,
   ) async {
@@ -1073,6 +1206,11 @@ void main() {
       findsOneWidget,
     );
     await tester.tap(find.byKey(const ValueKey('pico-city-change')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('pico-city-search')),
+      'Bogotá',
+    );
     await tester.pumpAndSettle();
     final option = find.byKey(const ValueKey('pico-city-option-co-dc-bogota'));
     await tester.ensureVisible(option);
@@ -2601,6 +2739,8 @@ Future<void> _pumpCityPico(
   ValueNotifier<DateTime>? clock,
   List<RestrictionJurisdiction>? jurisdictions,
   bool useRealJurisdictionProvider = false,
+  bool failPicoCatalog = false,
+  bool failTripCatalog = false,
 }) async {
   tester.view.physicalSize = viewportSize;
   tester.view.devicePixelRatio = 1;
@@ -2619,13 +2759,22 @@ Future<void> _pumpCityPico(
         appPreferencesProvider.overrideWithValue(harness.preferences),
         bundledRestrictionsProvider.overrideWith((ref) async {}),
         if (vehicle == null)
-          picoJurisdictionCatalogProvider.overrideWith(
-            (ref) async => PicoJurisdictionCatalog.fromJson(
+          picoJurisdictionCatalogProvider.overrideWith((ref) async {
+            if (failPicoCatalog) throw StateError('Catalog unavailable');
+            return PicoJurisdictionCatalog.fromJson(
               jsonDecode(
                 File(picoJurisdictionCatalogAssetPath).readAsStringSync(),
               ) as Map<String, Object?>,
-            ),
-          ),
+            );
+          }),
+        tripMunicipalityCatalogProvider.overrideWith((ref) async {
+          if (failTripCatalog) throw StateError('Trip catalog unavailable');
+          return TripMunicipalityCatalog.fromJson(
+            jsonDecode(
+              File(tripMunicipalityCatalogAssetPath).readAsStringSync(),
+            ) as Map<String, Object?>,
+          );
+        }),
         if (!useRealJurisdictionProvider)
           restrictionJurisdictionsProvider.overrideWith(
             (ref) async =>

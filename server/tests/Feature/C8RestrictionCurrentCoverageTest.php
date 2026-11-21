@@ -54,6 +54,7 @@ class C8RestrictionCurrentCoverageTest extends TestCase
         [$bogotaUnit, $bogota] = $this->jurisdiction('05001', 'bogota', 'Bogotá');
         [, $cali] = $this->jurisdiction('05002', 'cali', 'Cali');
         $this->municipality('05003', 'co-05003', ' =HYPERLINK("https://example.test","x")');
+        $this->jurisdiction('05004', 'no-editor-version', 'Sin versión editorial');
 
         $bogotaV1Payload = $this->city($bogota, [$this->coverage('car', '=SUM(1,1)', 'complete', 'https://official.example.test/bogota')]);
         $bogotaV1 = $this->editorVersion($bogota, 1, RestrictionRuleVersionStatus::Validated, $bogotaV1Payload);
@@ -114,29 +115,76 @@ class C8RestrictionCurrentCoverageTest extends TestCase
             'status' => DatasetReleaseStatus::Published->value,
         ]);
 
-        foreach (['editorial', 'municipalities'] as $scope) {
-            $csvResponse = $this->actingAs($reviewer)->get(route('admin.restrictions.coverage.export', ['scope' => $scope]));
-            $csvResponse->assertOk();
-            $rows = $this->csvRows($csvResponse->streamedContent());
-            $bogotaCsv = collect($rows)->firstWhere('municipality_code', '05001');
-            self::assertNotNull($bogotaCsv);
-            self::assertSame('VERIFIED', $bogotaCsv['coverage_evidence_state']);
-            self::assertSame('2', $bogotaCsv['editor_version']);
-            self::assertSame('1', $bogotaCsv['source_editor_version']);
-            self::assertSame('c8-release-2', $bogotaCsv['published_release']);
-            self::assertSame('PUBLISHED', $bogotaCsv['publication_state']);
-            self::assertSame("'=SUM(1,1)", $bogotaCsv['service_type']);
+        $editorialResponse = $this->actingAs($reviewer)->get(route('admin.restrictions.coverage.export', ['scope' => 'editorial']));
+        $editorialResponse->assertOk();
+        $editorialRows = $this->csvRows($editorialResponse->streamedContent());
+        $bogotaEditorial = collect($editorialRows)->firstWhere('municipality_code', '05001');
+        self::assertNotNull($bogotaEditorial);
+        self::assertSame('PARTIAL', $bogotaEditorial['coverage_evidence_state']);
+        self::assertSame('private', $bogotaEditorial['service_type']);
+        self::assertSame('2', $bogotaEditorial['editor_version']);
+        self::assertSame('draft', $bogotaEditorial['editor_version_status']);
+        self::assertSame('1', $bogotaEditorial['source_editor_version']);
+        self::assertSame('c8-release-2', $bogotaEditorial['published_release']);
+        self::assertSame('REFERENCE_ONLY', $bogotaEditorial['publication_state']);
+        $noEditorVersion = collect($editorialRows)->firstWhere('municipality_code', '05004');
+        self::assertSame('UNKNOWN', $noEditorVersion['coverage_evidence_state']);
+        self::assertSame('NO_EDITOR_VERSION', $noEditorVersion['missing_reason']);
+        self::assertSame('', $noEditorVersion['editor_version']);
 
-            if ($scope === 'municipalities') {
-                $unassignedCsv = collect($rows)->firstWhere('municipality_code', '05003');
-                self::assertSame('UNKNOWN', $unassignedCsv['coverage_evidence_state']);
-                self::assertSame('NO_JURISDICTION', $unassignedCsv['missing_reason']);
-                self::assertSame("' =HYPERLINK(\"https://example.test\",\"x\")", $unassignedCsv['municipality_name']);
-            }
-        }
+        $publishedResponse = $this->actingAs($reviewer)->get(route('admin.restrictions.coverage.export', ['scope' => 'published']));
+        $publishedResponse->assertOk();
+        $publishedRows = $this->csvRows($publishedResponse->streamedContent());
+        $bogotaPublished = collect($publishedRows)->firstWhere('municipality_code', '05001');
+        self::assertNotNull($bogotaPublished);
+        self::assertSame('VERIFIED', $bogotaPublished['coverage_evidence_state']);
+        self::assertSame("'=SUM(1,1)", $bogotaPublished['service_type']);
+        self::assertSame('2', $bogotaPublished['editor_version']);
+        self::assertSame('draft', $bogotaPublished['editor_version_status']);
+        self::assertSame('1', $bogotaPublished['source_editor_version']);
+        self::assertSame('c8-release-2', $bogotaPublished['published_release']);
+        self::assertSame('PUBLISHED', $bogotaPublished['publication_state']);
+        $noPublishedCoverage = collect($publishedRows)->firstWhere('municipality_code', '05004');
+        self::assertSame('UNKNOWN', $noPublishedCoverage['coverage_evidence_state']);
+        self::assertSame('NOT_PRESENT_IN_CURRENT_RELEASE', $noPublishedCoverage['missing_reason']);
+
+        $municipalitiesResponse = $this->actingAs($reviewer)->get(route('admin.restrictions.coverage.export', ['scope' => 'municipalities']));
+        $municipalityRows = $this->csvRows($municipalitiesResponse->streamedContent());
+        $bogotaMunicipality = collect($municipalityRows)->firstWhere('municipality_code', '05001');
+        self::assertSame('VERIFIED', $bogotaMunicipality['coverage_evidence_state']);
+        self::assertSame('2', $bogotaMunicipality['editor_version']);
+        self::assertSame('draft', $bogotaMunicipality['editor_version_status']);
+        self::assertSame('c8-release-2', $bogotaMunicipality['published_release']);
+        self::assertSame('PUBLISHED', $bogotaMunicipality['publication_state']);
+        $unassignedCsv = collect($municipalityRows)->firstWhere('municipality_code', '05003');
+        self::assertSame('UNKNOWN', $unassignedCsv['coverage_evidence_state']);
+        self::assertSame('NO_JURISDICTION', $unassignedCsv['missing_reason']);
+        self::assertSame("' =HYPERLINK(\"https://example.test\",\"x\")", $unassignedCsv['municipality_name']);
+
+        $indexFilters = [
+            'q' => 'Bogotá', 'department' => '05', 'vehicle_kind' => 'car',
+            'availability' => 'partial', 'management' => 'active',
+        ];
+        $publishedCsvUrl = route('admin.restrictions.coverage.export', ['scope' => 'published'] + $indexFilters);
+        $this->actingAs($reviewer)
+            ->get(route('admin.restrictions.index', $indexFilters))
+            ->assertOk()
+            ->assertSee('Exportar vista CSV · editorial')
+            ->assertSee('CSV publicado')
+            ->assertSee(e($publishedCsvUrl), false);
 
         app(DatasetPublisher::class)->rollback($dataset, $release1, $admin);
         self::assertSame('c8-release-1', $dataset->fresh()->current_version);
+
+        $publishedAfterRollback = $this->actingAs($reviewer)->get(route('admin.restrictions.coverage.export', ['scope' => 'published']));
+        $publishedAfterRollbackRows = $this->csvRows($publishedAfterRollback->streamedContent());
+        $bogotaAfterRollback = collect($publishedAfterRollbackRows)->firstWhere('municipality_code', '05001');
+        self::assertSame('VERIFIED', $bogotaAfterRollback['coverage_evidence_state']);
+        self::assertSame('c8-release-1', $bogotaAfterRollback['published_release']);
+        self::assertSame('PUBLISHED', $bogotaAfterRollback['publication_state']);
+        $caliAfterRollback = collect($publishedAfterRollbackRows)->firstWhere('municipality_code', '05002');
+        self::assertSame('UNKNOWN', $caliAfterRollback['coverage_evidence_state']);
+        self::assertSame('NOT_PRESENT_IN_CURRENT_RELEASE', $caliAfterRollback['missing_reason']);
 
         $rolledBack = $this->actingAs($reviewer)->get(route('admin.restrictions.municipalities'));
         $rolledBack->assertOk()
@@ -148,11 +196,29 @@ class C8RestrictionCurrentCoverageTest extends TestCase
         self::assertSame('c8-release-1', $caliRow['entries'][0]['published_release']->version);
 
         Storage::disk('public')->put($release1->asset_path, 'corrupt bytes');
+        $corruptCsvResponse = $this->actingAs($reviewer)->get(route('admin.restrictions.coverage.export', ['scope' => 'published']));
+        $corruptCsvRows = $this->csvRows($corruptCsvResponse->streamedContent());
+        $corruptCsvCity = collect($corruptCsvRows)->firstWhere('municipality_code', '05001');
+        self::assertSame('UNKNOWN', $corruptCsvCity['coverage_evidence_state']);
+        self::assertSame('UNKNOWN', $corruptCsvCity['publication_state']);
+        self::assertSame('', $corruptCsvCity['published_release']);
+        self::assertSame('2', $corruptCsvCity['editor_version']);
+        self::assertSame('draft', $corruptCsvCity['editor_version_status']);
+
         $corruptAsset = $this->actingAs($reviewer)->get(route('admin.restrictions.municipalities'));
         $corruptAsset->assertOk()->assertSee('Sin release actual verificable');
         $bogotaWithCorruptAsset = $this->matrixRow($corruptAsset->viewData('municipalities')->items(), '05001');
         self::assertSame('UNKNOWN', $bogotaWithCorruptAsset['entries'][0]['coverages'][0]['availability']);
         self::assertNull($bogotaWithCorruptAsset['entries'][0]['published_release']);
+
+        $dataset->forceFill(['current_version' => 'missing-release'])->save();
+        $missingReleaseResponse = $this->actingAs($reviewer)->get(route('admin.restrictions.coverage.export', ['scope' => 'published']));
+        $missingReleaseRows = $this->csvRows($missingReleaseResponse->streamedContent());
+        $missingReleaseCity = collect($missingReleaseRows)->firstWhere('municipality_code', '05001');
+        self::assertSame('UNKNOWN', $missingReleaseCity['coverage_evidence_state']);
+        self::assertSame('UNKNOWN', $missingReleaseCity['publication_state']);
+        self::assertSame('', $missingReleaseCity['published_release']);
+        $dataset->forceFill(['current_version' => $release1->version])->save();
 
         $this->replaceReleaseAsset($release1, $release1Payload);
         \Illuminate\Support\Facades\DB::table('dataset_releases')->where('id', $release1->id)->update(['status' => DatasetReleaseStatus::Retired->value]);
@@ -161,6 +227,13 @@ class C8RestrictionCurrentCoverageTest extends TestCase
         $bogotaAfterRetirement = $this->matrixRow($notPublished->viewData('municipalities')->items(), '05001');
         self::assertSame('UNKNOWN', $bogotaAfterRetirement['entries'][0]['coverages'][0]['availability']);
         self::assertNull($bogotaAfterRetirement['entries'][0]['published_release']);
+
+        $retiredPublishedResponse = $this->actingAs($reviewer)->get(route('admin.restrictions.coverage.export', ['scope' => 'published']));
+        $retiredPublishedRows = $this->csvRows($retiredPublishedResponse->streamedContent());
+        $retiredPublishedCity = collect($retiredPublishedRows)->firstWhere('municipality_code', '05001');
+        self::assertSame('UNKNOWN', $retiredPublishedCity['coverage_evidence_state']);
+        self::assertSame('UNKNOWN', $retiredPublishedCity['publication_state']);
+        self::assertSame('', $retiredPublishedCity['published_release']);
     }
 
     public function test_malformed_filter_arrays_and_extreme_pages_are_bounded_without_errors(): void
@@ -196,6 +269,10 @@ class C8RestrictionCurrentCoverageTest extends TestCase
         ]));
         $csv->assertOk();
         self::assertSame([], $this->csvRows($csv->streamedContent()));
+
+        $this->actingAs($reviewer)
+            ->get(route('admin.restrictions.coverage.export', ['scope' => 'unknown']))
+            ->assertStatus(422);
     }
 
     public function test_municipality_and_export_routes_keep_dataset_view_authorization(): void

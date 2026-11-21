@@ -139,8 +139,9 @@ class PicoJurisdictionCatalog {
   final String sourceWorkbookSha256;
 
   List<PicoJurisdictionCatalogEntry> withRuntimeAvailability(
-    List<RestrictionJurisdiction> runtimeJurisdictions,
-  ) {
+    List<RestrictionJurisdiction> runtimeJurisdictions, {
+    bool includeUnlisted = true,
+  }) {
     final runtimeById = {
       for (final jurisdiction in runtimeJurisdictions)
         jurisdiction.id: jurisdiction,
@@ -158,7 +159,8 @@ class PicoJurisdictionCatalog {
     }).toList();
     final catalogIds = entries.map((entry) => entry.id).toSet();
     for (final jurisdiction in runtimeJurisdictions) {
-      if (catalogIds.contains(jurisdiction.id) ||
+      if (!includeUnlisted ||
+          catalogIds.contains(jurisdiction.id) ||
           jurisdiction.consultationEnabled != true) {
         continue;
       }
@@ -234,12 +236,60 @@ class PicoJurisdictionCatalog {
     return List.unmodifiable(
       records.where((entry) {
         final text = normalizePicoJurisdictionText(
-          '${entry.name} ${entry.selectorName} ${entry.department}',
+          '${entry.name} ${entry.selectorName} ${entry.department} '
+          '${entry.municipalityCode}',
         );
         return terms.every(text.contains);
       }),
     );
   }
+}
+
+PicoJurisdictionCatalog mergePicoMunicipalityOptions(
+  PicoJurisdictionCatalog picoCatalog,
+  Iterable<({String code, String municipality, String department})>
+  municipalities,
+) {
+  final byCode = {
+    for (final entry in picoCatalog.records) entry.municipalityCode: entry,
+  };
+  final ids = picoCatalog.records.map((entry) => entry.id).toSet();
+  final sourceCodes = <String>{};
+
+  for (final municipality in municipalities) {
+    if (!RegExp(r'^\d{5}$').hasMatch(municipality.code) ||
+        !sourceCodes.add(municipality.code)) {
+      throw const FormatException('Invalid or duplicate DIVIPOLA code');
+    }
+    if (byCode.containsKey(municipality.code)) {
+      continue;
+    }
+
+    final id = 'co-mun-${municipality.code}';
+    if (!ids.add(id)) {
+      throw const FormatException('DIVIPOLA ID conflicts with Pico catalog');
+    }
+    byCode[municipality.code] = PicoJurisdictionCatalogEntry(
+      id: id,
+      name: municipality.municipality,
+      selectorDisplayName: municipality.municipality,
+      department: municipality.department,
+      classification: 'GEOGRAPHIC_ONLY',
+      sourceDate: 'pending',
+      municipalityCode: municipality.code,
+      status: PicoOperationalStatus.pending,
+      engineEnabled: false,
+      evidenceSummary: 'Municipio geográfico sin regla Pico verificada.',
+    );
+  }
+
+  return PicoJurisdictionCatalog(
+    records: List.unmodifiable(byCode.values),
+    version: picoCatalog.version,
+    sourceCutoff: picoCatalog.sourceCutoff,
+    asOfDate: picoCatalog.asOfDate,
+    sourceWorkbookSha256: picoCatalog.sourceWorkbookSha256,
+  );
 }
 
 String normalizePicoJurisdictionText(String value) {
