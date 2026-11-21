@@ -37,6 +37,9 @@ class HttpPartnerInquiryClient implements PartnerInquiryClient {
     if (!config.isAvailable || baseUri == null) {
       throw const PartnerInquiryFailure('not_configured');
     }
+    if (!draft.consentAccepted) {
+      throw const PartnerInquiryFailure('consent_required');
+    }
     try {
       final response = await _dio.post<Object?>(
         baseUri.resolve('/api/v1/partner-inquiries').toString(),
@@ -110,6 +113,7 @@ class PartnerInquiryDraft {
     required this.category,
     required this.message,
     required this.consentVersion,
+    required this.consentAccepted,
   });
 
   final String idempotencyKey;
@@ -121,6 +125,7 @@ class PartnerInquiryDraft {
   final String category;
   final String message;
   final String consentVersion;
+  final bool consentAccepted;
 
   Map<String, Object?> toJson() => {
     'businessName': businessName.trim(),
@@ -130,7 +135,7 @@ class PartnerInquiryDraft {
     'city': city.trim(),
     'category': category,
     'message': message.trim().isEmpty ? null : message.trim(),
-    'consentAccepted': true,
+    'consentAccepted': consentAccepted,
     'consentVersion': consentVersion,
   };
 }
