@@ -107,7 +107,7 @@
                 <option value="" disabled @selected($formJurisdiction === null)>Selecciona municipio y jurisdicción</option>
                 @foreach($jurisdictions as $jurisdiction)
                     @php($optionMunicipalityCode = $jurisdiction->primaryGeographicUnit?->code)
-                    <option value="{{ $jurisdiction->id }}" data-municipality-code="{{ is_string($optionMunicipalityCode) && preg_match('/^\d{5}$/', $optionMunicipalityCode) ? $optionMunicipalityCode : '' }}" @selected($formJurisdiction?->is($jurisdiction))>{{ $jurisdiction->name }} · {{ $jurisdiction->key }}</option>
+                    <option value="{{ $jurisdiction->id }}" data-municipality-code="{{ is_string($optionMunicipalityCode) && preg_match('/^\d{5}$/', $optionMunicipalityCode) ? $optionMunicipalityCode : '' }}" data-management-state="{{ $jurisdiction->enabled ? 'activa' : 'inactiva' }}" @selected($formJurisdiction?->is($jurisdiction))>{{ $jurisdiction->name }} · {{ $jurisdiction->key }}</option>
                 @endforeach
             </select>
         </label>
@@ -128,7 +128,7 @@
                     <span id="consultation-availability-note" class="text-sm text-amber-900" @if($hasMunicipalityCode) hidden @endif>Selecciona un municipio con DIVIPOLA válido para habilitar esta opción.</span>
                 </div>
             </div>
-            <p id="availability-help" class="mt-2">Administración territorial: <strong>{{ $formJurisdiction ? ($formJurisdiction->enabled ? 'activa' : 'inactiva') : 'sin municipio seleccionado' }}</strong>. <code>Jurisdiction.enabled</code> solo controla la gestión y no cambia el dataset publicado. El código procede del municipio seleccionado y no se edita aquí; cambiar de municipio desactiva la casilla hasta una decisión manual.</p>
+            <p id="availability-help" class="mt-2">Administración territorial: <strong id="jurisdiction-management-state">{{ $formJurisdiction ? ($formJurisdiction->enabled ? 'activa' : 'inactiva') : 'sin municipio seleccionado' }}</strong>. <code>Jurisdiction.enabled</code> solo controla la gestión y no cambia el dataset publicado. El código procede del municipio seleccionado y no se edita aquí; cambiar de municipio desactiva la casilla hasta una decisión manual.</p>
         </section>
     @endif
 
@@ -185,8 +185,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const codeInput = document.getElementById('municipality-code');
         const consultationCheckbox = document.getElementById('consultation-enabled');
         const consultationNote = document.getElementById('consultation-availability-note');
-        const selectedCode = jurisdictionSelect.selectedOptions[0]?.dataset.municipalityCode ?? '';
+        const managementState = document.getElementById('jurisdiction-management-state');
+        const selectedOption = jurisdictionSelect.selectedOptions[0];
+        const selectedCode = selectedOption?.dataset.municipalityCode ?? '';
         const hasMunicipalityCode = /^\d{5}$/.test(selectedCode);
+        if (managementState) managementState.textContent = selectedOption?.dataset.managementState ?? 'sin municipio seleccionado';
         if (codeInput) codeInput.value = hasMunicipalityCode ? selectedCode : '';
         if (consultationNote) consultationNote.hidden = hasMunicipalityCode;
         if (consultationCheckbox) {

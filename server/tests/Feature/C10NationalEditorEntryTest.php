@@ -228,7 +228,8 @@ class C10NationalEditorEntryTest extends TestCase
 
         $response->assertSee('consultationCheckbox.checked = false;', false)
             ->assertSee('consultationCheckbox.disabled = !hasMunicipalityCode;', false)
-            ->assertSee('codeInput.value = hasMunicipalityCode ? selectedCode :', false);
+            ->assertSee('codeInput.value = hasMunicipalityCode ? selectedCode :', false)
+            ->assertSee("managementState.textContent = selectedOption?.dataset.managementState ?? 'sin municipio seleccionado';", false);
     }
 
     public function test_post_requires_edit_permission_and_creates_only_an_unpublished_draft_with_consultation_off(): void
