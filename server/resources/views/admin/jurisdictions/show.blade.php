@@ -1,6 +1,11 @@
 @extends('layouts.admin', ['title' => $jurisdiction->name.' | PicoRadar Control Plane'])
 @section('content')
     <p class="text-sm font-medium text-teal-700">{{ $jurisdiction->key }} · immutable key</p><h1 class="mt-1 text-3xl font-semibold">{{ $jurisdiction->name }}</h1>
+    @can('datasets.edit')
+        @if($jurisdiction->enabled === true)
+            <a class="mt-4 inline-flex min-h-12 items-center rounded-md bg-teal-700 px-4 font-medium text-white" href="{{ route('admin.restrictions.create', ['jurisdiction_id' => $jurisdiction->id]) }}">Crear borrador de restricciones</a>
+        @endif
+    @endcan
     @can('jurisdictions.edit')<form class="mt-6 grid gap-3 rounded-xl border border-slate-200 bg-white p-5 md:grid-cols-2" method="POST" action="{{ route('admin.jurisdictions.update', $jurisdiction) }}">@csrf @method('PUT')
         <label>Name<input class="mt-1 block w-full rounded border-slate-300" name="name" value="{{ $jurisdiction->name }}"></label><label>Kind<select class="mt-1 block w-full rounded border-slate-300" name="kind">@foreach(\App\Enums\JurisdictionKind::cases() as $kind)<option value="{{ $kind->value }}" @selected($jurisdiction->kind === $kind)>{{ $kind->value }}</option>@endforeach</select></label>
         <label>Primary geography<select class="mt-1 block w-full rounded border-slate-300" name="primary_geographic_unit_id">@foreach($geography as $unit)<option value="{{ $unit->id }}" @selected($unit->id === $jurisdiction->primary_geographic_unit_id)>{{ $unit->name }} — {{ $unit->parent?->name }}</option>@endforeach</select></label><label>Timezone<input class="mt-1 block w-full rounded border-slate-300" name="timezone" value="{{ $jurisdiction->timezone }}"></label>

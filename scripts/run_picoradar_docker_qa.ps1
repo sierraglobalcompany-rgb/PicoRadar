@@ -53,16 +53,18 @@ function New-AppKey {
 }
 
 $project = 'picoradar-qa-' + [Guid]::NewGuid().ToString('N').Substring(0, 12)
-$scratch = Join-Path ([IO.Path]::GetTempPath()) $project
-[void][IO.Directory]::CreateDirectory($scratch)
-$envFile = Join-Path $scratch 'compose.env'
-$settings = @(
-    "PICORADAR_QA_PROJECT=$project",
-    'PICORADAR_QA_DB_PASSWORD=' + (New-HexSecret),
-    'PICORADAR_QA_APP_KEY=' + (New-AppKey)
-) -join "`n"
-[IO.File]::WriteAllText($envFile, $settings + "`n", (New-Object Text.UTF8Encoding($false)))
-$composeArgs = @('compose', '--project-name', $project, '--env-file', $envFile, '--file', $composeFile)
+# Process-scoped environment takes precedence over --env-file in Docker
+# Compose; this also avoids storing synthetic secrets on disk.
+$qaEnvNames = @('PICORADAR_QA_PROJECT', 'PICORADAR_QA_DB_PASSWORD', 'PICORADAR_QA_APP_KEY')
+$qaEnvBefore = @{}
+foreach ($qaName in $qaEnvNames) {
+    $qaEnvBefore[$qaName] = [Environment]::GetEnvironmentVariable($qaName, 'Process')
+}
+$env:PICORADAR_QA_PROJECT = $project
+$env:PICORADAR_QA_DB_PASSWORD = New-HexSecret
+$env:PICORADAR_QA_APP_KEY = New-AppKey
+$composeArgs = @('compose', '--project-name', $project, '--file', $composeFile)
+
 function Invoke-Compose {
     param([Parameter(Mandatory=$true)][string[]]$ArgsList)
     & docker @composeArgs @ArgsList
@@ -89,8 +91,13 @@ try {
     }
     Write-Host 'PASS_SCOPED_DOCKER_ISOLATION; does not imply HTTPS or production release.'
 } finally {
-    # Only our unique project: NEVER docker system prune / compose down -v.
-    & docker @composeArgs down 2>$null | Out-Null
-    if (Test-Path -LiteralPath $envFile) { Remove-Item -LiteralPath $envFile -Force }
-    if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Force }
+    try {
+        # Only our unique project: NEVER docker system prune / compose down -v.
+        & docker @composeArgs down 2>$null | Out-Null
+    } finally {
+        # Restore process-only values even if Docker cleanup fails.
+        foreach ($qaName in $qaEnvNames) {
+            [Environment]::SetEnvironmentVariable($qaName, $qaEnvBefore[$qaName], 'Process')
+        }
+    }
 }

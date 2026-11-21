@@ -19,6 +19,7 @@ import '../../location/data/location_preferences.dart';
 import '../../location/domain/jurisdiction_location_resolver.dart';
 import '../../location/platform/device_location_gateway.dart';
 import '../data/home_partner_catalog.dart';
+import '../domain/campaign_territory_mapper.dart';
 import 'home_partner_carousel.dart';
 import 'pico_notification_sheet.dart';
 import '../../pico_placa/data/pico_jurisdiction_catalog.dart';
@@ -42,28 +43,6 @@ const _defaultHomeAlertPreferences = PicoAlertPreferences(
   permissionRequested: false,
   permissionGranted: false,
 );
-
-CampaignTerritoryContext _campaignTerritory(
-  String? jurisdictionId,
-  List<PicoJurisdictionCatalogEntry> records,
-) {
-  if (jurisdictionId == null) return const CampaignTerritoryContext();
-  for (final entry in records) {
-    if (entry.engineJurisdictionId != jurisdictionId &&
-        entry.id != jurisdictionId) {
-      continue;
-    }
-    final municipalityCode = entry.municipalityCode;
-    return CampaignTerritoryContext(
-      departmentCode: municipalityCode.length >= 2
-          ? municipalityCode.substring(0, 2)
-          : null,
-      municipalityCode: municipalityCode,
-      municipalityKey: jurisdictionId,
-    );
-  }
-  return CampaignTerritoryContext(municipalityKey: jurisdictionId);
-}
 
 final homeFocusedVehicleIdProvider =
     NotifierProvider<HomeFocusedVehicleNotifier, String?>(
@@ -642,15 +621,17 @@ class _HomeReadyState extends ConsumerState<_HomeReady> {
     final campaignTerritory = ref
         .watch(picoJurisdictionCatalogProvider)
         .when(
-          data: (catalog) => _campaignTerritory(
-            widget.selectedJurisdiction?.id,
+          data: (catalog) => mapCampaignTerritory(
+            widget.selectedJurisdiction,
             catalog.records,
           ),
-          loading: () => CampaignTerritoryContext(
-            municipalityKey: widget.selectedJurisdiction?.id,
+          loading: () => mapCampaignTerritory(
+            widget.selectedJurisdiction,
+            const <PicoJurisdictionCatalogEntry>[],
           ),
-          error: (error, stackTrace) => CampaignTerritoryContext(
-            municipalityKey: widget.selectedJurisdiction?.id,
+          error: (error, stackTrace) => mapCampaignTerritory(
+            widget.selectedJurisdiction,
+            const <PicoJurisdictionCatalogEntry>[],
           ),
         );
     return LayoutBuilder(

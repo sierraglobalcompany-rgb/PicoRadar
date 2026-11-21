@@ -61,9 +61,31 @@
         'bus|special' => 'Bus · especial', 'motocarro|private' => 'Motocarro · particular',
     ];
     $coverages = old('coverages', $payloadCoverages ?: [$defaultCoverage]);
-    $formJurisdiction = $version?->jurisdiction ?? $jurisdictions->firstWhere('id', old('jurisdiction_id')) ?? $jurisdictions->first();
-    $municipalityCodes = $version?->payload['municipalityCodes'] ?? (preg_match('/^\d{5}$/', (string) ($formJurisdiction?->primaryGeographicUnit?->code ?? '')) ? [$formJurisdiction->primaryGeographicUnit->code] : []);
-    $consultationEnabled = (bool) ($version?->payload['consultationEnabled'] ?? false);
+    $oldJurisdictionId = old('jurisdiction_id');
+    $oldJurisdiction = (is_int($oldJurisdictionId) || (is_string($oldJurisdictionId) && strlen($oldJurisdictionId) <= 19 && ctype_digit($oldJurisdictionId)))
+        ? $jurisdictions->first(fn ($jurisdiction) => (string) $jurisdiction->id === (string) $oldJurisdictionId)
+        : null;
+    $preselectedJurisdiction = isset($preselectedJurisdictionId)
+        ? $jurisdictions->firstWhere('id', $preselectedJurisdictionId)
+        : null;
+    $formJurisdiction = $version?->jurisdiction ?? $oldJurisdiction ?? $preselectedJurisdiction;
+    $primaryMunicipalityCode = $formJurisdiction?->primaryGeographicUnit?->code;
+    $primaryMunicipalityCode = is_string($primaryMunicipalityCode) && preg_match('/^\d{5}$/', $primaryMunicipalityCode)
+        ? $primaryMunicipalityCode
+        : null;
+    $payloadMunicipalityCodes = $version?->payload['municipalityCodes'] ?? null;
+    $municipalityCodes = is_array($payloadMunicipalityCodes)
+        ? array_values(array_filter($payloadMunicipalityCodes, static fn ($code) => is_string($code) && preg_match('/^\d{5}$/', $code)))
+        : ($primaryMunicipalityCode !== null ? [$primaryMunicipalityCode] : []);
+    $hasMunicipalityCode = $primaryMunicipalityCode !== null && in_array($primaryMunicipalityCode, $municipalityCodes, true);
+    $oldJurisdictionIsScalar = is_int($oldJurisdictionId) || is_string($oldJurisdictionId);
+    $oldJurisdictionMatches = $version
+        ? (!session()->hasOldInput('jurisdiction_id') || ($oldJurisdictionIsScalar && (string) $oldJurisdictionId === (string) $formJurisdiction?->id))
+        : ($oldJurisdiction !== null && $formJurisdiction?->is($oldJurisdiction));
+    $consultationValue = session()->hasOldInput('consultation_enabled') && $oldJurisdictionMatches
+        ? old('consultation_enabled')
+        : ($version?->payload['consultationEnabled'] ?? false);
+    $consultationEnabled = $hasMunicipalityCode && in_array($consultationValue, [true, 1, '1', 'true', 'on', 'yes'], true);
 @endphp
 
 @section('content')
@@ -71,7 +93,7 @@
     <div>
         <p class="text-sm font-medium text-teal-700">Pico y placa</p>
         <h1 class="mt-1 text-3xl font-semibold">{{ $version ? 'Borrador '.$version->jurisdiction->name.' v'.$version->version : ($isSchema2 ? 'Nuevo borrador nacional schema2' : 'Nuevo borrador de ciudad') }}</h1>
-        <p class="mt-2 max-w-3xl text-sm text-slate-600">Define coberturas y reglas con la fuente oficial. Guardar no publica: otra persona debe validar y seleccionar la ciudad para publicación.</p>
+        <p class="mt-2 max-w-3xl text-sm text-slate-600">Define coberturas y reglas con la fuente oficial. Este editor no consulta servicios externos. Guardar crea un borrador; no publica ni habilita consulta pública.</p>
     </div>
     <a class="inline-flex min-h-12 items-center rounded-md border border-slate-300 px-4 font-medium" href="{{ route('admin.restrictions.index') }}">Volver</a>
 </div>
@@ -82,8 +104,10 @@
     @if($version) @method('PUT') @else
         <label class="block max-w-xl text-sm font-medium">Ciudad
             <select class="mt-1 block min-h-12 w-full rounded-md border border-slate-300 bg-white px-3" name="jurisdiction_id" required>
+                <option value="" disabled @selected($formJurisdiction === null)>Selecciona municipio y jurisdicción</option>
                 @foreach($jurisdictions as $jurisdiction)
-                    <option value="{{ $jurisdiction->id }}" data-municipality-code="{{ $jurisdiction->primaryGeographicUnit?->code }}" @selected((string) old('jurisdiction_id') === (string) $jurisdiction->id)>{{ $jurisdiction->name }} · {{ $jurisdiction->key }}</option>
+                    @php($optionMunicipalityCode = $jurisdiction->primaryGeographicUnit?->code)
+                    <option value="{{ $jurisdiction->id }}" data-municipality-code="{{ is_string($optionMunicipalityCode) && preg_match('/^\d{5}$/', $optionMunicipalityCode) ? $optionMunicipalityCode : '' }}" data-management-state="{{ $jurisdiction->enabled ? 'activa' : 'inactiva' }}" @selected($formJurisdiction?->is($jurisdiction))>{{ $jurisdiction->name }} · {{ $jurisdiction->key }}</option>
                 @endforeach
             </select>
         </label>
@@ -97,17 +121,14 @@
                 <label class="font-medium">Código municipal DIVIPOLA
                     <input id="municipality-code" class="mt-1 min-h-12 w-full rounded-md border border-slate-300 bg-slate-100 px-3" value="{{ implode(', ', $municipalityCodes) }}" readonly aria-describedby="availability-help">
                 </label>
-                <div class="flex min-h-12 items-center gap-3 rounded-md bg-white px-3">
-                    @if($municipalityCodes !== [])
-                        <input type="hidden" name="consultation_enabled" value="0">
-                        <input id="consultation-enabled" type="checkbox" name="consultation_enabled" value="1" @checked(old('consultation_enabled', $consultationEnabled ? '1' : '0') === '1')>
-                        <label for="consultation-enabled" class="font-medium">Consulta pública habilitada</label>
-                    @else
-                        <span class="text-amber-900">No hay un código municipal de cinco dígitos; no se puede habilitar la consulta.</span>
-                    @endif
+                <div class="flex min-h-12 flex-wrap items-center gap-3 rounded-md bg-white px-3">
+                    <input type="hidden" name="consultation_enabled" value="0">
+                    <input id="consultation-enabled" type="checkbox" name="consultation_enabled" value="1" @checked($consultationEnabled) @disabled(!$hasMunicipalityCode)>
+                    <label for="consultation-enabled" class="font-medium">Consulta pública habilitada</label>
+                    <span id="consultation-availability-note" class="text-sm text-amber-900" @if($hasMunicipalityCode) hidden @endif>Selecciona un municipio con DIVIPOLA válido para habilitar esta opción.</span>
                 </div>
             </div>
-            <p id="availability-help" class="mt-2">Administración territorial: <strong>{{ $formJurisdiction?->enabled ? 'activa' : 'inactiva' }}</strong>. <code>Jurisdiction.enabled</code> solo controla la gestión y no cambia el dataset publicado. El código procede del catálogo geográfico y no se edita aquí; esta casilla de consulta sí se versiona y requiere aprobación independiente antes de publicarse.</p>
+            <p id="availability-help" class="mt-2">Administración territorial: <strong id="jurisdiction-management-state">{{ $formJurisdiction ? ($formJurisdiction->enabled ? 'activa' : 'inactiva') : 'sin municipio seleccionado' }}</strong>. <code>Jurisdiction.enabled</code> solo controla la gestión y no cambia el dataset publicado. El código procede del municipio seleccionado y no se edita aquí; cambiar de municipio desactiva la casilla hasta una decisión manual.</p>
         </section>
     @endif
 
@@ -162,7 +183,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const jurisdictionSelect = document.querySelector('select[name="jurisdiction_id"]');
     if (jurisdictionSelect) jurisdictionSelect.addEventListener('change', () => {
         const codeInput = document.getElementById('municipality-code');
-        if (codeInput) codeInput.value = jurisdictionSelect.selectedOptions[0]?.dataset.municipalityCode ?? '';
+        const consultationCheckbox = document.getElementById('consultation-enabled');
+        const consultationNote = document.getElementById('consultation-availability-note');
+        const managementState = document.getElementById('jurisdiction-management-state');
+        const selectedOption = jurisdictionSelect.selectedOptions[0];
+        const selectedCode = selectedOption?.dataset.municipalityCode ?? '';
+        const hasMunicipalityCode = /^\d{5}$/.test(selectedCode);
+        if (managementState) managementState.textContent = selectedOption?.dataset.managementState ?? 'sin municipio seleccionado';
+        if (codeInput) codeInput.value = hasMunicipalityCode ? selectedCode : '';
+        if (consultationNote) consultationNote.hidden = hasMunicipalityCode;
+        if (consultationCheckbox) {
+            consultationCheckbox.checked = false;
+            consultationCheckbox.disabled = !hasMunicipalityCode;
+        }
     });
     refreshCoverageLimit();
 });

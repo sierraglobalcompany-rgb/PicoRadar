@@ -776,12 +776,27 @@ class RestrictionRuleController extends Controller
     {
         Gate::authorize('datasets.edit');
         $dataset = Dataset::query()->where('key', 'restrictions')->firstOrFail();
+        $jurisdictions = Jurisdiction::query()
+            ->with('primaryGeographicUnit')
+            ->where('enabled', true)
+            ->orderBy('name')
+            ->get();
+        $queryId = $request->query('jurisdiction_id');
+        $preselectedJurisdictionId = null;
+
+        if (is_int($queryId) || (is_string($queryId) && strlen($queryId) <= 19 && ctype_digit($queryId))) {
+            $id = filter_var($queryId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if ($id !== false && $jurisdictions->contains('id', $id)) {
+                $preselectedJurisdictionId = (int) $id;
+            }
+        }
 
         return view('admin.restrictions.form', [
             'operator' => $request->user(),
-            'jurisdictions' => Jurisdiction::query()->with('primaryGeographicUnit')->where('enabled', true)->orderBy('name')->get(),
+            'jurisdictions' => $jurisdictions,
             'version' => null,
             'schemaVersion' => (int) $dataset->schema_version,
+            'preselectedJurisdictionId' => $preselectedJurisdictionId,
         ]);
     }
 
