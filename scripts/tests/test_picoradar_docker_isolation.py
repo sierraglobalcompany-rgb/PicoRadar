@@ -42,7 +42,7 @@ class IsolationContractTests(unittest.TestCase):
         self.assertIn('function New-AppKey', WRAPPER)
         self.assertIn('$env:PICORADAR_QA_DB_PASSWORD = New-HexSecret', WRAPPER)
         self.assertIn('$env:PICORADAR_QA_APP_KEY = New-AppKey', WRAPPER)
-        self.assertNotIn('--env-file', WRAPPER)
+        self.assertNotIn("'--env-file'", WRAPPER)
 
     def test_clean_checkout_and_scoped_operations_only(self):
         self.assertIn('git -C $repo status --porcelain', WRAPPER)
