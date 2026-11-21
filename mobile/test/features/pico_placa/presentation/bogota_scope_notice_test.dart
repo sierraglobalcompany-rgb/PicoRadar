@@ -16,52 +16,39 @@ import 'package:picoradar/features/trip/application/trip_restriction_evaluation.
 import 'package:picoradar/features/trip/presentation/trip_plan_result.dart';
 
 void main() {
-  test('scope message is limited to Bogota private cars in November 2026', () {
-    expect(
-      bogotaUrbanRestrictionScopeNotice(
-        jurisdictionId: 'co-dc-bogota',
-        vehicleKind: VehicleKind.car,
-        serviceType: VehicleServiceType.private,
-        localDate: DateTime(2026, 11, 9),
-      ),
-      'Solo pico y placa urbano general. No evalúa retorno regional por corredores ni excepciones individuales.',
-    );
-    expect(
-      bogotaUrbanRestrictionScopeNotice(
-        jurisdictionId: 'co-dc-bogota',
-        vehicleKind: VehicleKind.car,
-        serviceType: VehicleServiceType.private,
-        localDate: DateTime(2026, 11, 16),
-      ),
-      'Restricción ordinaria urbana no aplica; retorno regional no evaluado.',
-    );
-    expect(
-      bogotaUrbanRestrictionScopeNotice(
-        jurisdictionId: 'co-dc-bogota',
-        vehicleKind: VehicleKind.car,
-        serviceType: VehicleServiceType.taxi,
-        localDate: DateTime(2026, 11, 9),
-      ),
-      isNull,
-    );
-    expect(
-      bogotaUrbanRestrictionScopeNotice(
-        jurisdictionId: 'co-medellin',
-        vehicleKind: VehicleKind.car,
-        serviceType: VehicleServiceType.private,
-        localDate: DateTime(2026, 11, 9),
-      ),
-      isNull,
-    );
-    expect(
-      bogotaUrbanRestrictionScopeNotice(
-        jurisdictionId: 'co-dc-bogota',
-        vehicleKind: VehicleKind.motorcycle,
-        serviceType: VehicleServiceType.private,
-        localDate: DateTime(2026, 11, 9),
-      ),
-      isNull,
-    );
+  const scopeNotice =
+      'La evaluación corresponde al pico y placa urbano disponible; no determina restricciones regionales, corredores de retorno ni excepciones individuales.';
+  const novemberScopeNotice =
+      'Solo pico y placa urbano general. No evalúa retorno regional por corredores ni excepciones individuales.';
+  const historicalNovemberNotice =
+      'Restricción ordinaria urbana no aplica; retorno regional no evaluado.';
+
+  test('November copy stays stable and the new scope notice is bounded', () {
+    String? notice(
+      DateTime date, {
+      String jurisdictionId = 'co-dc-bogota',
+      VehicleKind vehicleKind = VehicleKind.car,
+      VehicleServiceType serviceType = VehicleServiceType.private,
+    }) =>
+        bogotaUrbanRestrictionScopeNotice(
+          jurisdictionId: jurisdictionId,
+          vehicleKind: vehicleKind,
+          serviceType: serviceType,
+          localDate: date,
+        );
+
+    expect(notice(DateTime(2026, 11, 2)), historicalNovemberNotice);
+    expect(notice(DateTime(2026, 11, 16)), historicalNovemberNotice);
+    expect(notice(DateTime(2026, 11, 9)), novemberScopeNotice);
+    expect(notice(DateTime(2026, 11, 30)), novemberScopeNotice);
+    expect(notice(DateTime(2026, 12, 1)), scopeNotice);
+    expect(notice(DateTime(2027, 1, 1)), scopeNotice);
+
+    for (final date in [DateTime(2026, 12, 1), DateTime(2027, 1, 1)]) {
+      expect(notice(date, jurisdictionId: 'co-medellin'), isNull);
+      expect(notice(date, serviceType: VehicleServiceType.taxi), isNull);
+      expect(notice(date, vehicleKind: VehicleKind.motorcycle), isNull);
+    }
   });
 
   testWidgets('Inicio summary exposes the scope visibly and accessibly', (
@@ -71,7 +58,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          bogotaNowProvider.overrideWith((ref) => DateTime(2026, 11, 9, 8)),
+          bogotaNowProvider.overrideWith((ref) => DateTime(2026, 12, 9, 8)),
         ],
         child: const MaterialApp(
           home: Scaffold(
@@ -90,13 +77,11 @@ void main() {
       ),
     );
 
-    const scope =
-        'Solo pico y placa urbano general. No evalúa retorno regional por corredores ni excepciones individuales.';
-    expect(find.text(scope), findsOneWidget);
+    expect(find.text(scopeNotice), findsOneWidget);
     final node = tester.getSemantics(
       find.byKey(const ValueKey('home-status-today')),
     );
-    expect(node.value, contains(scope));
+    expect(node.value, contains(scopeNotice));
     semantics.dispose();
   });
 
@@ -113,7 +98,7 @@ void main() {
             ProviderScope(
               overrides: [
                 bogotaNowProvider.overrideWith(
-                  (ref) => DateTime(2026, 11, 9, 8),
+                  (ref) => DateTime(2026, 12, 9, 8),
                 ),
               ],
               child: MaterialApp(
@@ -214,10 +199,8 @@ void main() {
       expect(evaluation.status, RestrictionDayStatus.allowed);
       expect(find.text('Puede circular'), findsOneWidget);
       expect(
-        find.text(
-          'Solo pico y placa urbano general. No evalúa retorno regional por corredores ni excepciones individuales.',
-        ),
-        findsOneWidget,
+        find.text(scopeNotice),
+        findsNothing,
       );
     },
   );
@@ -255,11 +238,108 @@ void main() {
     );
   });
 
+  testWidgets('Viaje matches Inicio post-November scope notice', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TripInstantEndpoint(
+            label: 'Salida',
+            city: 'Bogotá',
+            jurisdictionId: 'co-dc-bogota',
+            vehicleKind: VehicleKind.car,
+            serviceType: VehicleServiceType.private,
+            instantUtc: DateTime.utc(2026, 12, 9, 13),
+            evaluation: const AsyncValue.data(
+              TripEndpointRestriction(
+                status: RestrictionDayStatus.allowed,
+                instantStatus: RestrictionStatus.allowed,
+              ),
+            ),
+            onSource: (_) {},
+          ),
+        ),
+      ),
+    );
+    expect(find.text(scopeNotice), findsOneWidget);
+  });
+
+  testWidgets('Inicio and Viaje retain UNKNOWN and STALE alongside scope', (
+    tester,
+  ) async {
+    const cases = <(RestrictionDayStatus, String, RestrictionStatus, String)>[
+      (
+        RestrictionDayStatus.unknown,
+        'Por verificar',
+        RestrictionStatus.unknown,
+        'Reglas del día no disponibles',
+      ),
+      (
+        RestrictionDayStatus.stale,
+        'Datos vencidos',
+        RestrictionStatus.stale,
+        'Información desactualizada',
+      ),
+    ];
+
+    for (final (dayStatus, homeStatus, instantStatus, tripStatus) in cases) {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            bogotaNowProvider.overrideWith((ref) => DateTime(2026, 12, 9, 8)),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: TodayRestrictionSummary(
+                evaluation: RestrictionDayEvaluation(
+                  status: dayStatus,
+                  effectiveWindows: const [],
+                ),
+                vehicleKind: VehicleKind.car,
+                serviceType: VehicleServiceType.private,
+                jurisdictionId: 'co-dc-bogota',
+                cityLabel: 'Bogotá',
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text(homeStatus), findsOneWidget);
+      expect(find.text(scopeNotice), findsOneWidget);
+      expect(find.text('Puede circular'), findsNothing);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TripInstantEndpoint(
+              label: 'Salida',
+              city: 'Bogotá',
+              jurisdictionId: 'co-dc-bogota',
+              vehicleKind: VehicleKind.car,
+              serviceType: VehicleServiceType.private,
+              instantUtc: DateTime.utc(2026, 12, 9, 13),
+              dateOnly: true,
+              evaluation: AsyncValue.data(
+                TripEndpointRestriction(
+                  status: dayStatus,
+                  instantStatus: instantStatus,
+                ),
+              ),
+              onSource: (_) {},
+            ),
+          ),
+        ),
+      );
+      expect(find.text(tripStatus), findsOneWidget);
+      expect(find.text(scopeNotice), findsOneWidget);
+      expect(find.text('Puede circular'), findsNothing);
+    }
+  });
+
   testWidgets(
     'Trip does not show the car scope warning for private motorcycles',
     (tester) async {
-      const scope =
-          'Solo pico y placa urbano general. No evalúa retorno regional por corredores ni excepciones individuales.';
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -269,7 +349,7 @@ void main() {
               jurisdictionId: 'co-dc-bogota',
               vehicleKind: VehicleKind.motorcycle,
               serviceType: VehicleServiceType.private,
-              instantUtc: DateTime.utc(2026, 11, 9, 13),
+              instantUtc: DateTime.utc(2026, 12, 9, 13),
               evaluation: const AsyncValue.data(
                 TripEndpointRestriction(
                   status: RestrictionDayStatus.allowed,
@@ -282,15 +362,13 @@ void main() {
         ),
       );
 
-      expect(find.text(scope), findsNothing);
+      expect(find.text(scopeNotice), findsNothing);
     },
   );
 
   testWidgets('Trip needs a car/private identity before showing the car notice', (
     tester,
   ) async {
-    const scope =
-        'Solo pico y placa urbano general. No evalúa retorno regional por corredores ni excepciones individuales.';
     const cases = <(VehicleKind?, VehicleServiceType)>[
       (VehicleKind.car, VehicleServiceType.taxi),
       (null, VehicleServiceType.private),
@@ -306,7 +384,7 @@ void main() {
               jurisdictionId: 'co-dc-bogota',
               vehicleKind: kind,
               serviceType: service,
-              instantUtc: DateTime.utc(2026, 11, 9, 13),
+              instantUtc: DateTime.utc(2026, 12, 9, 13),
               evaluation: const AsyncValue.data(
                 TripEndpointRestriction(
                   status: RestrictionDayStatus.allowed,
@@ -319,7 +397,7 @@ void main() {
         ),
       );
 
-      expect(find.text(scope), findsNothing);
+      expect(find.text(scopeNotice), findsNothing);
     }
   });
 }

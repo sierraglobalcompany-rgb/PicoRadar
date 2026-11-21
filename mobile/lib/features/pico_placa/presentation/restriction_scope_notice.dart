@@ -8,13 +8,21 @@ String? bogotaUrbanRestrictionScopeNotice({
 }) {
   if (vehicleKind != VehicleKind.car ||
       jurisdictionId != 'co-dc-bogota' ||
-      serviceType != VehicleServiceType.private ||
-      localDate.year != 2026 ||
-      localDate.month != 11) {
+      serviceType != VehicleServiceType.private) {
     return null;
   }
-  if (localDate.day == 2 || localDate.day == 16) {
-    return 'Restricción ordinaria urbana no aplica; retorno regional no evaluado.';
+
+  if (localDate.year == 2026 && localDate.month == 11) {
+    if (localDate.day == 2 || localDate.day == 16) {
+      return 'Restricción ordinaria urbana no aplica; retorno regional no evaluado.';
+    }
+    return 'Solo pico y placa urbano general. No evalúa retorno regional por corredores ni excepciones individuales.';
   }
-  return 'Solo pico y placa urbano general. No evalúa retorno regional por corredores ni excepciones individuales.';
+
+  final afterNovember2026 =
+      localDate.year > 2026 ||
+      (localDate.year == 2026 && localDate.month > 11);
+  if (!afterNovember2026) return null;
+
+  return 'La evaluación corresponde al pico y placa urbano disponible; no determina restricciones regionales, corredores de retorno ni excepciones individuales.';
 }

@@ -14,6 +14,7 @@ use App\Models\RestrictionPublication;
 use App\Models\RestrictionRuleVersion;
 use App\Services\RestrictionFormPayloadBuilder;
 use App\Services\RestrictionImportService;
+use App\Services\RestrictionPayloadEncoder;
 use App\Services\RestrictionPublicationService;
 use App\Services\RestrictionRuleVersionService;
 use DomainException;
@@ -24,8 +25,10 @@ use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 class RestrictionRuleController extends Controller
 {
@@ -36,7 +39,7 @@ class RestrictionRuleController extends Controller
         $filters = $this->restrictionFilters($request);
         $query = $this->jurisdictionsForFilters($filters);
         $perPage = 50;
-        $page = max(1, (int) $request->query('page', 1));
+        $page = $this->boundedPage($request);
         $offset = ($page - 1) * $perPage;
         $rows = [];
         $total = 0;
@@ -58,7 +61,7 @@ class RestrictionRuleController extends Controller
             $total,
             $perPage,
             $page,
-            ['path' => $request->url(), 'query' => $request->query()],
+            ['path' => $request->url(), 'query' => $filters],
         );
 
         return view('admin.restrictions.index', [
@@ -77,6 +80,7 @@ class RestrictionRuleController extends Controller
         Gate::authorize('datasets.view');
 
         $filters = $this->municipalityMatrixFilters($request);
+        $currentSnapshot = $this->currentRestrictionSnapshot();
         $query = $this->municipalityCoverageQuery();
 
         if ($filters['q'] !== '') {
@@ -105,13 +109,13 @@ class RestrictionRuleController extends Controller
         }
 
         $perPage = 50;
-        $page = filter_var($request->query('page', 1), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 1;
+        $page = $this->boundedPage($request);
         $offset = ($page - 1) * $perPage;
         $rows = [];
         $total = 0;
 
         foreach ($query->orderBy('parent_id')->orderBy('code')->orderBy('id')->lazy(100) as $municipality) {
-            $entries = $this->municipalityCoverageEntries($municipality, $filters);
+            $entries = $this->municipalityCoverageEntries($municipality, $filters, $currentSnapshot);
             if ($entries === []) {
                 continue;
             }
@@ -134,6 +138,7 @@ class RestrictionRuleController extends Controller
             'municipalities' => $municipalities,
             'departments' => GeographicUnit::query()->where('level', 'department')->where('is_active', true)->orderBy('name')->get(['code', 'name']),
             'filters' => $filters,
+            'currentRelease' => $currentSnapshot['release'],
         ]);
     }
 
@@ -150,11 +155,12 @@ class RestrictionRuleController extends Controller
                 return;
             }
 
+            $currentSnapshot = $this->currentRestrictionSnapshot();
             fputcsv($stream, $this->coverageExportHeaders(), ',', '"', '');
             if ($scope === 'municipalities') {
-                $this->streamMunicipalityCoverage($stream);
+                $this->streamMunicipalityCoverage($stream, $currentSnapshot);
             } else {
-                $this->streamEditorialCoverage($stream, $filters);
+                $this->streamEditorialCoverage($stream, $filters, $currentSnapshot);
             }
             fclose($stream);
         }, "restriction-coverage-{$scope}-".now()->format('Ymd').'.csv', [
@@ -165,18 +171,19 @@ class RestrictionRuleController extends Controller
     /** @return array{q:string,department:string,vehicle_kind:string,availability:string,management:string} */
     private function restrictionFilters(Request $request): array
     {
-        $management = $request->query('management');
+        $management = $this->queryString($request, 'management');
+        $vehicleKind = $this->queryString($request, 'vehicle_kind');
+        $availability = $this->queryString($request, 'availability');
+        $department = $this->queryString($request, 'department');
 
         return [
-            'q' => mb_substr(trim((string) $request->query('q', '')), 0, 100),
-            'department' => preg_match('/^\d{2}$/', (string) $request->query('department', ''))
-                ? (string) $request->query('department')
+            'q' => mb_substr(trim($this->queryString($request, 'q')), 0, 100),
+            'department' => preg_match('/^\d{2}$/D', $department) === 1 ? $department : '',
+            'vehicle_kind' => in_array($vehicleKind, ['car', 'motorcycle', 'truck', 'bus', 'motocarro'], true)
+                ? $vehicleKind
                 : '',
-            'vehicle_kind' => in_array($request->query('vehicle_kind'), ['car', 'motorcycle', 'truck', 'bus', 'motocarro'], true)
-                ? (string) $request->query('vehicle_kind')
-                : '',
-            'availability' => in_array($request->query('availability'), ['attention', 'verified', 'partial', 'unknown', 'stale'], true)
-                ? (string) $request->query('availability')
+            'availability' => in_array($availability, ['attention', 'verified', 'partial', 'unknown', 'stale'], true)
+                ? $availability
                 : '',
             'management' => is_string($management) && in_array($management, ['active', 'inactive', 'all'], true)
                 ? $management
@@ -187,14 +194,13 @@ class RestrictionRuleController extends Controller
     /** @return array{q:string,department:string,management:string,availability:string} */
     private function municipalityMatrixFilters(Request $request): array
     {
-        $management = $request->query('management');
-        $availability = $request->query('availability');
+        $management = $this->queryString($request, 'management');
+        $availability = $this->queryString($request, 'availability');
+        $department = $this->queryString($request, 'department');
 
         return [
-            'q' => mb_substr(trim((string) $request->query('q', '')), 0, 100),
-            'department' => preg_match('/^\d{2}$/', (string) $request->query('department', ''))
-                ? (string) $request->query('department')
-                : '',
+            'q' => mb_substr(trim($this->queryString($request, 'q')), 0, 100),
+            'department' => preg_match('/^\d{2}$/D', $department) === 1 ? $department : '',
             'management' => is_string($management) && in_array($management, ['active', 'inactive', 'unassigned', 'all'], true)
                 ? $management
                 : 'all',
@@ -213,7 +219,6 @@ class RestrictionRuleController extends Controller
                 'restrictionRuleVersions' => fn ($query) => $query->whereRaw(
                     'restriction_rule_versions.version = (select max(latest.version) from restriction_rule_versions as latest where latest.jurisdiction_id = restriction_rule_versions.jurisdiction_id)',
                 ),
-                'restrictionRuleVersions.publicationItems.publication.datasetRelease',
             ])
             ->orderBy('name')
             ->orderBy('id');
@@ -249,19 +254,186 @@ class RestrictionRuleController extends Controller
         if ($coverages->isEmpty()) {
             $coverages->push($this->unknownCoverage());
         }
+        return $this->filterCoverageSummaries($coverages, $filters);
+    }
+
+    /**
+     * @param array{release:DatasetRelease|null,cities:array<string,array<string,mixed>>,source_editor_versions:array<string,string>} $snapshot
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function currentCoverageSummaries(array $snapshot, string $jurisdictionKey): Collection
+    {
+        if ($snapshot['release'] === null) {
+            return collect([$this->unknownCoverage('NO_VERIFIED_CURRENT_RELEASE')]);
+        }
+
+        $city = $snapshot['cities'][$jurisdictionKey] ?? null;
+        if ($city === null) {
+            return collect([$this->unknownCoverage('NOT_PRESENT_IN_CURRENT_RELEASE')]);
+        }
+
+        $rawCoverages = $city['coverages'] ?? null;
+        if (! is_array($rawCoverages)) {
+            return collect([$this->unknownCoverage('NO_COVERAGE_IN_CURRENT_RELEASE')]);
+        }
+
+        $coverages = collect($rawCoverages)
+            ->filter(fn ($coverage): bool => is_array($coverage))
+            ->map(fn (array $coverage): array => $this->coverageSummary($coverage));
+
+        return $coverages->isEmpty()
+            ? collect([$this->unknownCoverage('NO_COVERAGE_IN_CURRENT_RELEASE')])
+            : $coverages->values();
+    }
+
+    /**
+     * @param Collection<int, array<string, mixed>> $coverages
+     * @param array<string, string> $filters
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function filterCoverageSummaries(Collection $coverages, array $filters): Collection
+    {
         if (($filters['vehicle_kind'] ?? '') !== '') {
             $coverages = $coverages->filter(fn (array $coverage): bool => $coverage['vehicle_kind'] === $filters['vehicle_kind']);
         }
-        if (($filters['availability'] ?? '') !== '') {
-            $availability = $filters['availability'];
-            $coverages = $coverages->filter(function (array $coverage) use ($availability): bool {
-                return $availability === 'attention'
-                    ? in_array($coverage['availability'], ['UNKNOWN', 'PARTIAL', 'STALE'], true)
-                    : strtolower($coverage['availability']) === $availability;
-            });
+        $availability = $filters['availability'] ?? '';
+        if ($availability !== '' && $availability !== 'all') {
+            $coverages = $coverages->filter(fn (array $coverage): bool => $availability === 'attention'
+                ? in_array($coverage['availability'], ['UNKNOWN', 'PARTIAL', 'STALE'], true)
+                : strtolower($coverage['availability']) === $availability);
         }
 
         return $coverages->values();
+    }
+
+    /**
+     * Resolve the currently pointed restrictions asset once for this request. An
+     * editor version or publication history never substitutes for that asset.
+     *
+     * @return array{release:DatasetRelease|null,cities:array<string,array<string,mixed>>,source_editor_versions:array<string,string>}
+     */
+    private function currentRestrictionSnapshot(): array
+    {
+        $empty = ['release' => null, 'cities' => [], 'source_editor_versions' => []];
+        $dataset = Dataset::query()->where('key', 'restrictions')->first();
+        if ($dataset === null || ! is_string($dataset->current_version) || $dataset->current_version === '') {
+            return $empty;
+        }
+
+        $release = DatasetRelease::query()
+            ->where('dataset_id', $dataset->id)
+            ->where('version', $dataset->current_version)
+            ->first();
+        if ($release === null || $release->status !== DatasetReleaseStatus::Published
+            || ! is_string($release->asset_path) || $release->asset_path === ''
+            || ! is_string($release->sha256) || preg_match('/^[a-f0-9]{64}$/iD', $release->sha256) !== 1) {
+            return $empty;
+        }
+
+        try {
+            $disk = Storage::disk(config('datasets.published_disk'));
+            if (! $disk->exists($release->asset_path)) {
+                return $empty;
+            }
+            $bytes = $disk->get($release->asset_path);
+            if (! hash_equals($release->sha256, hash('sha256', $bytes))) {
+                return $empty;
+            }
+            $payload = json_decode($bytes, true, 512, JSON_THROW_ON_ERROR);
+        } catch (Throwable) {
+            return $empty;
+        }
+
+        if (! is_array($payload)
+            || ($payload['datasetKey'] ?? null) !== 'restrictions'
+            || ($payload['version'] ?? null) !== $release->version
+            || ! is_array($payload['jurisdictions'] ?? null)) {
+            return $empty;
+        }
+
+        $cities = [];
+        $duplicateKeys = [];
+        foreach ($payload['jurisdictions'] as $city) {
+            if (! is_array($city) || ! is_string($city['id'] ?? null) || trim($city['id']) === '') {
+                continue;
+            }
+            $key = $city['id'];
+            if (isset($duplicateKeys[$key])) {
+                continue;
+            }
+            if (isset($cities[$key])) {
+                unset($cities[$key]);
+                $duplicateKeys[$key] = true;
+
+                continue;
+            }
+            $cities[$key] = $city;
+        }
+
+        $sourceEditorVersions = array_fill_keys(array_keys($cities), 'NO_IDENTIFICADA');
+        if ($cities !== []) {
+            $encoder = app(RestrictionPayloadEncoder::class);
+            $jurisdictions = Jurisdiction::query()
+                ->whereIn('key', array_keys($cities))
+                ->get(['id', 'key']);
+            $keyByJurisdictionId = $jurisdictions->mapWithKeys(fn (Jurisdiction $jurisdiction): array => [
+                $jurisdiction->id => $jurisdiction->key,
+            ])->all();
+            $hashByKey = [];
+            foreach ($cities as $key => $city) {
+                $hashByKey[$key] = hash('sha256', $encoder->encode($city));
+            }
+            $hashes = array_values(array_unique($hashByKey));
+            $matches = [];
+
+            if ($keyByJurisdictionId !== [] && $hashes !== []) {
+                $versions = RestrictionRuleVersion::query()
+                    ->whereIn('jurisdiction_id', array_keys($keyByJurisdictionId))
+                    ->whereIn('payload_sha256', $hashes)
+                    ->get(['jurisdiction_id', 'version', 'payload', 'payload_sha256']);
+
+                foreach ($versions as $version) {
+                    $key = $keyByJurisdictionId[$version->jurisdiction_id] ?? null;
+                    if ($key === null || ! isset($hashByKey[$key]) || ! is_array($version->payload)) {
+                        continue;
+                    }
+                    $versionHash = hash('sha256', $encoder->encode($version->payload));
+                    if (hash_equals($hashByKey[$key], $versionHash)) {
+                        $matches[$key][] = (string) $version->version;
+                    }
+                }
+            }
+
+            foreach ($matches as $key => $versions) {
+                if (count($versions) === 1) {
+                    $sourceEditorVersions[$key] = $versions[0];
+                }
+            }
+        }
+
+        return [
+            'release' => $release,
+            'cities' => $cities,
+            'source_editor_versions' => $sourceEditorVersions,
+        ];
+    }
+
+    private function queryString(Request $request, string $key): string
+    {
+        $value = $request->query($key);
+
+        return is_string($value) || is_int($value) ? (string) $value : '';
+    }
+
+    private function boundedPage(Request $request): int
+    {
+        $value = $request->query('page', 1);
+        if (! is_string($value) && ! is_int($value)) {
+            return 1;
+        }
+        $page = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+        return $page === false ? 1 : min($page, 10000);
     }
 
     /** @return list<string> */
@@ -270,7 +442,7 @@ class RestrictionRuleController extends Controller
         return [
             'scope', 'department_code', 'municipality_code', 'municipality_key', 'municipality_name',
             'jurisdiction_key', 'jurisdiction_name', 'management_state', 'vehicle_kind', 'service_type',
-            'coverage_evidence_state', 'editor_version', 'editor_version_status', 'published_release',
+            'coverage_evidence_state', 'editor_version', 'editor_version_status', 'source_editor_version', 'published_release',
             'publication_state', 'source_urls', 'verified_at', 'valid_until', 'stale_after', 'missing_reason',
         ];
     }
@@ -278,11 +450,15 @@ class RestrictionRuleController extends Controller
     /** @param resource $stream
      * @param  array{q:string,department:string,vehicle_kind:string,availability:string,management:string}  $filters
      */
-    private function streamEditorialCoverage($stream, array $filters): void
+    private function streamEditorialCoverage($stream, array $filters, array $currentSnapshot): void
     {
         foreach ($this->jurisdictionsForFilters($filters)->lazy(100) as $jurisdiction) {
             $version = $jurisdiction->restrictionRuleVersions->first();
-            foreach ($this->coverageSummariesForVersion($version, $filters) as $coverage) {
+            $coverages = $this->filterCoverageSummaries(
+                $this->currentCoverageSummaries($currentSnapshot, $jurisdiction->key),
+                $filters,
+            );
+            foreach ($coverages as $coverage) {
                 $municipality = $jurisdiction->primaryGeographicUnit;
                 $this->writeCoverageRow($stream, [
                     'scope' => 'editorial',
@@ -294,6 +470,8 @@ class RestrictionRuleController extends Controller
                     'version' => $version,
                     'coverage' => $coverage,
                     'management_state' => $jurisdiction->enabled ? 'ACTIVE' : 'INACTIVE',
+                    'published_release' => $currentSnapshot['release'],
+                    'source_editor_version' => $currentSnapshot['source_editor_versions'][$jurisdiction->key] ?? 'NO_IDENTIFICADA',
                 ]);
             }
         }
@@ -301,9 +479,10 @@ class RestrictionRuleController extends Controller
 
     /**
      * @param  array{q:string,department:string,management:string,availability:string}  $filters
-     * @return list<array{jurisdiction: Jurisdiction|null,management_state:string,coverages:list<array<string,mixed>>,version:RestrictionRuleVersion|null,published_release:DatasetRelease|null}>
+     * @param array{release:DatasetRelease|null,cities:array<string,array<string,mixed>>,source_editor_versions:array<string,string>} $currentSnapshot
+     * @return list<array{jurisdiction: Jurisdiction|null,management_state:string,coverages:list<array<string,mixed>>,editor_coverages:list<array<string,mixed>>,version:RestrictionRuleVersion|null,published_release:DatasetRelease|null,source_editor_version:string}>
      */
-    private function municipalityCoverageEntries(GeographicUnit $municipality, array $filters): array
+    private function municipalityCoverageEntries(GeographicUnit $municipality, array $filters, array $currentSnapshot): array
     {
         $jurisdictions = $municipality->jurisdictions;
         if ($jurisdictions->isEmpty()) {
@@ -314,9 +493,11 @@ class RestrictionRuleController extends Controller
             return [[
                 'jurisdiction' => null,
                 'management_state' => 'NO_JURISDICTION',
-                'coverages' => [[...$this->unknownCoverage(), 'missing_reason' => 'NO_JURISDICTION']],
+                'coverages' => [$this->unknownCoverage('NO_JURISDICTION')],
+                'editor_coverages' => [],
                 'version' => null,
-                'published_release' => null,
+                'published_release' => $currentSnapshot['release'],
+                'source_editor_version' => 'NO_IDENTIFICADA',
             ]];
         }
 
@@ -330,11 +511,11 @@ class RestrictionRuleController extends Controller
             }
 
             $version = $jurisdiction->restrictionRuleVersions->first();
-            $coverages = $this->coverageSummariesForVersion($version)
-                ->filter(fn (array $coverage): bool => $filters['availability'] === 'all'
-                    || strtolower($coverage['availability']) === $filters['availability'])
-                ->values()
-                ->all();
+            $currentCoverages = $this->filterCoverageSummaries(
+                $this->currentCoverageSummaries($currentSnapshot, $jurisdiction->key),
+                $filters,
+            );
+            $coverages = $currentCoverages->all();
             if ($coverages === []) {
                 continue;
             }
@@ -343,8 +524,10 @@ class RestrictionRuleController extends Controller
                 'jurisdiction' => $jurisdiction,
                 'management_state' => $managementState,
                 'coverages' => $coverages,
+                'editor_coverages' => $this->coverageSummariesForVersion($version)->all(),
                 'version' => $version,
-                'published_release' => $this->publishedReleaseForVersion($version),
+                'published_release' => $currentSnapshot['release'],
+                'source_editor_version' => $currentSnapshot['source_editor_versions'][$jurisdiction->key] ?? 'NO_IDENTIFICADA',
             ];
         }
 
@@ -361,12 +544,11 @@ class RestrictionRuleController extends Controller
                 'jurisdictions.restrictionRuleVersions' => fn ($query) => $query->whereRaw(
                     'restriction_rule_versions.version = (select max(latest.version) from restriction_rule_versions as latest where latest.jurisdiction_id = restriction_rule_versions.jurisdiction_id)',
                 ),
-                'jurisdictions.restrictionRuleVersions.publicationItems.publication.datasetRelease',
             ]);
     }
 
     /** @param resource $stream */
-    private function streamMunicipalityCoverage($stream): void
+    private function streamMunicipalityCoverage($stream, array $currentSnapshot): void
     {
         $municipalities = $this->municipalityCoverageQuery()->orderBy('id')->lazy(100);
 
@@ -382,8 +564,10 @@ class RestrictionRuleController extends Controller
                         'municipality_name' => $municipality->name,
                         'jurisdiction' => null,
                         'version' => null,
-                        'coverage' => [...$this->unknownCoverage(), 'missing_reason' => 'NO_JURISDICTION'],
+                        'coverage' => $this->unknownCoverage('NO_JURISDICTION'),
                         'management_state' => 'NO_JURISDICTION',
+                        'published_release' => $currentSnapshot['release'],
+                        'source_editor_version' => 'NO_IDENTIFICADA',
                     ]);
 
                     continue;
@@ -391,7 +575,7 @@ class RestrictionRuleController extends Controller
 
                 foreach ($jurisdictions as $jurisdiction) {
                     $version = $jurisdiction->restrictionRuleVersions->first();
-                    foreach ($this->coverageSummariesForVersion($version) as $coverage) {
+                    foreach ($this->currentCoverageSummaries($currentSnapshot, $jurisdiction->key) as $coverage) {
                         $this->writeCoverageRow($stream, [
                             'scope' => 'municipalities',
                             'department_code' => $municipality->parent?->code ?? '',
@@ -402,6 +586,8 @@ class RestrictionRuleController extends Controller
                             'version' => $version,
                             'coverage' => $coverage,
                             'management_state' => $jurisdiction->enabled ? 'ACTIVE' : 'INACTIVE',
+                            'published_release' => $currentSnapshot['release'],
+                            'source_editor_version' => $currentSnapshot['source_editor_versions'][$jurisdiction->key] ?? 'NO_IDENTIFICADA',
                         ]);
                     }
                 }
@@ -420,34 +606,19 @@ class RestrictionRuleController extends Controller
         $version = $row['version'];
         /** @var array<string, mixed> $coverage */
         $coverage = $row['coverage'];
-        $release = $this->publishedReleaseForVersion($version);
+        /** @var DatasetRelease|null $release */
+        $release = $row['published_release'] ?? null;
         $values = [
             $row['scope'], $row['department_code'], $row['municipality_code'], $row['municipality_key'], $row['municipality_name'],
             $jurisdiction?->key ?? '', $jurisdiction?->name ?? '', $row['management_state'],
             $coverage['vehicle_kind'] ?? '', $coverage['service_type'] ?? '', $coverage['availability'] ?? 'UNKNOWN',
-            $version?->version ?? '', $version?->status?->value ?? '', $release?->version ?? '',
-            $release ? ($release->status === DatasetReleaseStatus::Published ? 'PUBLISHED' : 'RETIRED') : 'UNKNOWN',
+            $version?->version ?? '', $version?->status?->value ?? '', $row['source_editor_version'] ?? 'NO_IDENTIFICADA', $release?->version ?? '',
+            $release ? 'PUBLISHED' : 'UNKNOWN',
             $this->jsonList($coverage['source_urls'] ?? []), $this->jsonList($coverage['verified_at'] ?? []),
             $this->jsonList($coverage['valid_until'] ?? []), $coverage['stale_after'] ?? '', $coverage['missing_reason'] ?? '',
         ];
 
         fputcsv($stream, array_map($this->spreadsheetSafe(...), $values), ',', '"', '');
-    }
-
-    private function publishedReleaseForVersion(?RestrictionRuleVersion $version): ?DatasetRelease
-    {
-        if ($version === null) {
-            return null;
-        }
-
-        return $version->publicationItems
-            ->filter(fn ($item): bool => in_array(
-                $item->publication?->datasetRelease?->status,
-                [DatasetReleaseStatus::Published, DatasetReleaseStatus::Retired],
-                true,
-            ))
-            ->sortByDesc(fn ($item): int => (int) ($item->publication?->result_publication_revision ?? 0))
-            ->first()?->publication?->datasetRelease;
     }
 
     /** @param list<string> $values */
@@ -518,7 +689,7 @@ class RestrictionRuleController extends Controller
     }
 
     /** @return array{vehicle_kind: string, service_type: string, category: string, availability: string, source_urls: list<string>, verified_at: list<string>, valid_until: list<string>, stale_after: null, has_unbounded_rule: false, missing_reason: string} */
-    private function unknownCoverage(): array
+    private function unknownCoverage(string $reason = 'NO_COVERAGE_REGISTERED'): array
     {
         return [
             'vehicle_kind' => '',
@@ -530,7 +701,7 @@ class RestrictionRuleController extends Controller
             'valid_until' => [],
             'stale_after' => null,
             'has_unbounded_rule' => false,
-            'missing_reason' => 'NO_COVERAGE_REGISTERED',
+            'missing_reason' => $reason,
         ];
     }
 

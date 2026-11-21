@@ -4,7 +4,8 @@
     <div>
         <p class="text-sm font-medium text-teal-700">Pico y placa · cobertura</p>
         <h1 class="mt-1 text-3xl font-semibold">Matriz municipal</h1>
-        <p class="mt-2 max-w-3xl text-sm text-slate-600">Revisión del catálogo geográfico y sus jurisdicciones. UNKNOWN significa que la evidencia no confirma la regla; no equivale a autorización para circular.</p>
+        <p class="mt-2 max-w-3xl text-sm text-slate-600">La cobertura nacional actual viene del asset verificado al que apunta el dataset. El editor más reciente se muestra por separado. UNKNOWN no equivale a autorización para circular.</p>
+        <p class="mt-2 text-sm font-medium text-slate-700">Release nacional actual: {{ $currentRelease?->version ?? 'Sin release actual verificable' }}</p>
     </div>
     <div class="flex flex-wrap gap-2">
         <a class="inline-flex min-h-12 items-center rounded-md border border-slate-300 px-4 text-teal-800 underline" href="{{ route('admin.restrictions.index') }}">Reglas por ciudad</a>
@@ -55,10 +56,11 @@
                 <th scope="col" class="p-3">Código DIVIPOLA</th>
                 <th scope="col" class="p-3">Municipio</th>
                 <th scope="col" class="p-3">Departamento</th>
-                <th scope="col" class="p-3">Jurisdicción y categorías</th>
+                <th scope="col" class="p-3">Jurisdicción</th>
                 <th scope="col" class="p-3">Gestión</th>
-                <th scope="col" class="p-3">Evidencia</th>
-                <th scope="col" class="p-3">Release publicado</th>
+                <th scope="col" class="p-3">Cobertura nacional actual</th>
+                <th scope="col" class="p-3">Release nacional actual</th>
+                <th scope="col" class="p-3">Editor más reciente</th>
                 <th scope="col" class="p-3">Acciones</th>
             </tr>
         </thead>
@@ -79,11 +81,6 @@
                                     @else
                                         <div class="font-medium">Sin jurisdicción asignada</div>
                                     @endif
-                                    <ul class="mt-2 space-y-1 border-l-2 border-slate-200 pl-3">
-                                        @foreach($entry['coverages'] as $coverage)
-                                            <li>{{ $coverage['category'] }}</li>
-                                        @endforeach
-                                    </ul>
                                 </li>
                             @endforeach
                         </ul>
@@ -110,8 +107,13 @@
                                 <li class="space-y-1">
                                     @foreach($entry['coverages'] as $coverage)
                                         @php($evidenceClass = match($coverage['availability']) {'VERIFIED' => 'bg-emerald-50 text-emerald-800', 'PARTIAL' => 'bg-amber-50 text-amber-900', 'STALE' => 'bg-rose-50 text-rose-800', default => 'bg-slate-100 text-slate-800'})
+                                        <div class="font-medium">{{ $coverage['category'] }}</div>
                                         <div><span class="inline-flex rounded-full px-2 py-1 font-semibold {{ $evidenceClass }}">{{ $coverage['availability'] }}</span></div>
+                                        @if($coverage['availability'] === 'UNKNOWN')<div class="text-xs text-slate-600">{{ $coverage['missing_reason'] }}</div>@endif
                                     @endforeach
+                                    @if($entry['jurisdiction'])
+                                        <div class="text-xs text-slate-600">Fuente editorial: {{ $entry['source_editor_version'] === 'NO_IDENTIFICADA' ? 'NO_IDENTIFICADA' : 'v'.$entry['source_editor_version'] }}</div>
+                                    @endif
                                 </li>
                             @endforeach
                         </ul>
@@ -122,9 +124,27 @@
                                 <li>
                                     @if($entry['published_release'])
                                         <span class="font-medium">{{ $entry['published_release']->version }}</span>
-                                        <div class="text-xs text-slate-600">{{ $entry['published_release']->status->value === 'published' ? 'Publicado' : 'Retirado' }}</div>
+                                        <div class="text-xs text-slate-600">Publicado · asset verificado</div>
                                     @else
-                                        <span class="text-slate-600">Sin release publicado</span>
+                                        <span class="text-slate-600">Sin release actual verificable</span>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    </td>
+                    <td class="p-3">
+                        <ul class="space-y-3">
+                            @foreach($row['entries'] as $entry)
+                                <li>
+                                    @if($entry['version'])
+                                        <div class="font-medium">Editor: v{{ $entry['version']->version }} · {{ $entry['version']->status->value }}</div>
+                                        <ul class="mt-1 space-y-1 text-xs text-slate-600">
+                                            @foreach($entry['editor_coverages'] as $coverage)
+                                                <li>{{ $coverage['category'] }} · editor: {{ $coverage['availability'] }}</li>
+                                            @endforeach
+                                        </ul>
+                                    @else
+                                        <span class="text-slate-600">Sin versión editorial</span>
                                     @endif
                                 </li>
                             @endforeach
@@ -156,7 +176,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td class="p-5 text-center text-slate-600" colspan="8">No hay municipios que coincidan con los filtros.</td></tr>
+                <tr><td class="p-5 text-center text-slate-600" colspan="9">No hay municipios que coincidan con los filtros.</td></tr>
             @endforelse
         </tbody>
     </table>
