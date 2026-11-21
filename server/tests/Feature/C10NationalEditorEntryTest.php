@@ -104,7 +104,7 @@ class C10NationalEditorEntryTest extends TestCase
         $response = $this->actingAs($editor)->get($url)->assertOk();
 
         $this->assertSame($this->bogota->id, $response->viewData('preselectedJurisdictionId'));
-        $response->assertSee('<option value="'.$this->bogota->id.'" data-municipality-code="11001" selected>', false)
+        $response->assertSee('<option value="'.$this->bogota->id.'" data-municipality-code="11001" data-management-state="activa" selected>', false)
             ->assertSee('Bogotá sintética · co-dc-bogota-c10')
             ->assertSee('value="11001"', false)
             ->assertSee('Administración territorial: <strong id="jurisdiction-management-state">activa</strong>', false)
@@ -125,9 +125,9 @@ class C10NationalEditorEntryTest extends TestCase
             ->get(route('admin.restrictions.create', ['jurisdiction_id' => $this->bogota->id]))
             ->assertOk();
 
-        $response->assertSee('<option value="'.$this->medellin->id.'" data-municipality-code="05001" selected>', false)
+        $response->assertSee('<option value="'.$this->medellin->id.'" data-municipality-code="05001" data-management-state="activa" selected>', false)
             ->assertSee('value="05001"', false)
-            ->assertDontSee('<option value="'.$this->bogota->id.'" data-municipality-code="11001" selected>', false);
+            ->assertDontSee('<option value="'.$this->bogota->id.'" data-municipality-code="11001" data-management-state="activa" selected>', false);
         $checkbox = $this->renderedCheckbox($response->getContent());
         $this->assertMatchesRegularExpression('/\schecked(?:\s|>)/', $checkbox);
         $this->assertDoesNotMatchRegularExpression('/\sdisabled(?:\s|>)/', $checkbox);
@@ -144,7 +144,7 @@ class C10NationalEditorEntryTest extends TestCase
             ]])
             ->get(route('admin.restrictions.create', ['jurisdiction_id' => $this->bogota->id]))
             ->assertOk();
-        $inactiveOld->assertSee('<option value="'.$this->bogota->id.'" data-municipality-code="11001" selected>', false)
+        $inactiveOld->assertSee('<option value="'.$this->bogota->id.'" data-municipality-code="11001" data-management-state="activa" selected>', false)
             ->assertSee('value="11001"', false);
         $this->assertDoesNotMatchRegularExpression('/\schecked(?:\s|>)/', $this->renderedCheckbox($inactiveOld->getContent()));
 
@@ -188,7 +188,7 @@ class C10NationalEditorEntryTest extends TestCase
 
         $withInvalidGeographicUnit = $this->get(route('admin.restrictions.create', ['jurisdiction_id' => $this->withoutDivipola->id]))
             ->assertOk();
-        $withInvalidGeographicUnit->assertSee('<option value="'.$this->withoutDivipola->id.'" data-municipality-code="" selected>', false)
+        $withInvalidGeographicUnit->assertSee('<option value="'.$this->withoutDivipola->id.'" data-municipality-code="" data-management-state="activa" selected>', false)
             ->assertSee('<input type="hidden" name="consultation_enabled" value="0">', false);
         $this->assertMatchesRegularExpression('/\sdisabled(?:\s|>)/', $this->renderedCheckbox($withInvalidGeographicUnit->getContent()));
 
