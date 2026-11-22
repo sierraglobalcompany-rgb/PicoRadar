@@ -97,8 +97,12 @@ class JurisdictionController extends Controller
             $rules['key'] = ['required', 'regex:/^[a-z0-9-]+$/', 'max:64', Rule::unique('jurisdictions', 'key')];
         }
         $data = $request->validate($rules);
-        if (GeographicUnit::query()->whereKey($data['primary_geographic_unit_id'])->value('level') !== GeographicUnitLevel::Municipality) {
+        $primaryUnit = GeographicUnit::query()->findOrFail($data['primary_geographic_unit_id']);
+        if ($primaryUnit->level !== GeographicUnitLevel::Municipality) {
             abort(422, 'Primary geographic unit must be a municipality.');
+        }
+        if ($creating && ! $primaryUnit->is_active) {
+            abort(422, 'Cannot create a jurisdiction for an inactive municipality.');
         }
 
         return $data;
@@ -126,7 +130,7 @@ class JurisdictionController extends Controller
 
         return [
             'operator' => $request->user(),
-            'geography' => GeographicUnit::query()->where('level', GeographicUnitLevel::Municipality)->with('parent')->orderBy('name')->get(),
+            'geography' => GeographicUnit::query()->where('level', GeographicUnitLevel::Municipality)->where('is_active', true)->with('parent')->orderBy('name')->get(),
             'kinds' => JurisdictionKind::cases(),
             'preselectedMunicipalityId' => $preselectedMunicipalityId,
         ];
