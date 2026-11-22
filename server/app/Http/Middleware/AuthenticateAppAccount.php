@@ -23,9 +23,8 @@ class AuthenticateAppAccount
         $tokenHash = hash('sha256', $plainToken);
         $access = AppAccessToken::query()
             ->with('appUser')
-            ->where('purpose', 'session')
+            ->whereIn('purpose', ['session', 'suppression'])
             ->where('token_hash', $tokenHash)
-            ->whereNull('revoked_at')
             ->where('expires_at', '>', now())
             ->first();
 
@@ -35,6 +34,28 @@ class AuthenticateAppAccount
             || ! hash_equals($access->token_hash, $tokenHash)
         ) {
             return $this->unauthorized();
+        }
+
+        if ($access->purpose === 'session' && $access->revoked_at) {
+            return $this->unauthorized();
+        }
+
+        if ($access->purpose === 'suppression') {
+            if ($access->revoked_at) {
+                return $this->unauthorized();
+            }
+            if (! $request->isMethod('DELETE') || ! $request->routeIs('api.v1.app-account.destroy')) {
+                return response()->json(['error' => ['code' => 'suppression_action_only']], 403);
+            }
+        } elseif ($access->appUser->isAccessBlocked()) {
+            $errorCode = match ($access->appUser->accountStatus()) {
+                'banned' => 'account_banned',
+                'suspended' => 'account_suspended',
+                default => 'account_unavailable',
+            };
+            return response()->json([
+                'error' => ['code' => $errorCode],
+            ], 403);
         }
 
         $request->attributes->set('appAccount', $access->appUser);

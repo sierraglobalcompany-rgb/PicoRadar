@@ -107,6 +107,26 @@ class AppAccountController extends Controller
 
                 $challenge->update(['consumed_at' => now()]);
                 $user = AppUser::query()->where('email', $email)->lockForUpdate()->first();
+                if ($user && $user->isAccessBlocked()) {
+                    $plainToken = bin2hex(random_bytes(32));
+                    $expiresAt = now()->addMinutes(10);
+                    AppAccessToken::query()->create([
+                        'app_user_id' => $user->id,
+                        'purpose' => 'suppression',
+                        'token_hash' => hash('sha256', $plainToken),
+                        'expires_at' => $expiresAt,
+                    ]);
+                    AuditLog::query()->create([
+                        'actor_id' => null,
+                        'action' => 'app_account.suppression_access_issued',
+                        'subject_type' => AppUser::class,
+                        'subject_id' => $user->id,
+                        'metadata' => ['purpose' => 'suppression_only', 'expires_at' => $expiresAt->toISOString()],
+                    ]);
+                    $challenge->delete();
+
+                    return ['token' => $plainToken, 'purpose' => 'suppression', 'user' => $user->fresh()];
+                }
                 if (! $user) {
                     if (! $challenge->privacy_version || ! $challenge->privacy_accepted_at || ! $this->privacyUrl()) {
                         return [];
@@ -138,7 +158,7 @@ class AppAccountController extends Controller
                 ]);
                 $challenge->delete();
 
-                return ['token' => $plainToken, 'user' => $user->fresh()];
+                return ['token' => $plainToken, 'purpose' => 'session', 'user' => $user->fresh()];
             });
         } catch (QueryException) {
             return $this->invalidCode();
@@ -150,7 +170,10 @@ class AppAccountController extends Controller
 
         return response()->json(['data' => [
             'token' => $result['token'],
-            'profile' => $this->profileData($result['user']),
+            'tokenPurpose' => $result['purpose'],
+            'profile' => $result['purpose'] === 'suppression'
+                ? $this->suppressionAccessData($result['user'])
+                : $this->profileData($result['user']),
         ]]);
     }
 
@@ -236,6 +259,30 @@ class AppAccountController extends Controller
             'privacyVersion' => $user->privacy_version,
             'privacyAcceptedAt' => $user->privacy_accepted_at?->toISOString(),
             'marketingConsent' => $user->marketing_consent,
+            'accountStatus' => $user->accountStatus(),
+            'entitlement' => [
+                'plan' => $user->accountPlan(),
+                'status' => $user->entitlementStatus(),
+                'validFrom' => $user->plan_valid_from?->toISOString()
+                    ?? ($user->accountPlan() === 'free' ? $user->created_at?->toISOString() : null),
+                'validUntil' => $user->plan_valid_until?->toISOString(),
+                'source' => $user->plan_source ?: ($user->accountPlan() === 'free' ? 'default_free' : null),
+            ],
+        ];
+    }
+
+    private function suppressionAccessData(AppUser $user): array
+    {
+        return [
+            'id' => $user->public_id,
+            'accountStatus' => $user->accountStatus(),
+            'entitlement' => [
+                'plan' => 'unknown',
+                'status' => 'unknown',
+                'validFrom' => null,
+                'validUntil' => null,
+                'source' => null,
+            ],
         ];
     }
 

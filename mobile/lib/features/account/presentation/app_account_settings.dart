@@ -164,9 +164,54 @@ class _AppAccountSettingsSectionState
     ),
   ];
 
-  List<Widget> _profileFields() => [
+  List<Widget> _profileFields() {
+    final profile = _profile!;
+    if (profile.accountStatus == AppAccountStatus.suspended ||
+        profile.accountStatus == AppAccountStatus.banned ||
+        profile.accountStatus == AppAccountStatus.unknown) {
+      return [
+        const SizedBox(height: 12),
+        ListTile(
+          key: const ValueKey('account-entitlement-status'),
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.lock_outline),
+          title: Text(profile.accountStatusLabel),
+          subtitle: const Text(
+            'El código se verificó para permitir únicamente la eliminación de la cuenta. No se abrió una sesión.',
+          ),
+        ),
+        OutlinedButton.icon(
+          key: const ValueKey('account-delete'),
+          onPressed: _busy ? null : _confirmDelete,
+          icon: const Icon(Icons.delete_outline),
+          label: const Text('Eliminar cuenta'),
+        ),
+        TextButton(
+          key: const ValueKey('account-reverify-suppression'),
+          onPressed: _busy ? null : _restartSuppressionVerification,
+          child: const Text('Verificar correo de nuevo'),
+        ),
+      ];
+    }
+
+    return [
     const SizedBox(height: 12),
     Text('Correo verificado: ${_profile!.email}'),
+    ListTile(
+      key: const ValueKey('account-entitlement-status'),
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        _profile!.accountStatus == AppAccountStatus.active
+            ? Icons.verified_user_outlined
+            : Icons.lock_outline,
+      ),
+      title: Text(_profile!.entitlementTitle),
+      subtitle: Text(_profile!.entitlementDescription),
+    ),
+    Text(
+      _profile!.accountStatusLabel,
+      key: const ValueKey('account-current-status'),
+    ),
     TextField(
       key: const ValueKey('account-name'),
       controller: _name,
@@ -237,7 +282,8 @@ class _AppAccountSettingsSectionState
         ),
       ],
     ),
-  ];
+    ];
+  }
 
   Future<void> _requestOtp() async {
     final config = ref.read(appAccountConfigProvider);
@@ -272,7 +318,9 @@ class _AppAccountSettingsSectionState
           .read(appAccountClientProvider)
           .verifyOtp(_email.text, _code.text);
       _applyProfile(profile);
-      _message = 'Cuenta conectada. Los vehículos y documentos siguen locales.';
+      _message = profile.accountStatus != AppAccountStatus.active
+          ? 'Código verificado. Solo quedó disponible la eliminación de cuenta; no se abrió sesión.'
+          : 'Cuenta conectada. Los vehículos y documentos siguen locales.';
     });
   }
 
@@ -342,6 +390,16 @@ class _AppAccountSettingsSectionState
     });
   }
 
+  Future<void> _restartSuppressionVerification() async {
+    await _run(() async {
+      await ref.read(appAccountClientProvider).discardSuppressionToken();
+      _profile = null;
+      _otpRequested = false;
+      _code.clear();
+      _message = 'Solicita un nuevo código para continuar con la eliminación.';
+    });
+  }
+
   Future<void> _run(
     Future<void> Function() action, {
     bool? marketingFallback,
@@ -357,6 +415,9 @@ class _AppAccountSettingsSectionState
       _error = switch (failure.code) {
         'not_configured' => 'No disponible todavía.',
         'unauthorized' || 'invalid_or_expired_code' => 'El código o la sesión no se pudo confirmar. Revisa el dato e inténtalo de nuevo.',
+        'account_suspended' => 'La cuenta está suspendida. La consulta Free local continúa disponible.',
+        'account_banned' => 'La cuenta está inhabilitada. La consulta Free local continúa disponible.',
+        'account_unavailable' => 'No se pudo confirmar el estado de la cuenta. La consulta Free local continúa disponible.',
         'rate_limited' =>
           'Demasiados intentos. Espera antes de volver a solicitarlo.',
         _ => 'No se pudo completar la solicitud. Inténtalo más tarde.',

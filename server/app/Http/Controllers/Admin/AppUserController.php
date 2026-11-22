@@ -7,11 +7,13 @@ use App\Mail\AppAccountMarketingMail;
 use App\Models\AppAccessToken;
 use App\Models\AppUser;
 use App\Models\AuditLog;
+use App\Services\AppAccountAdministrationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Carbon;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AppUserController extends Controller
@@ -44,7 +46,7 @@ class AppUserController extends Controller
 
         return response()->streamDownload(function () use ($query): void {
             $output = fopen('php://output', 'w');
-            fputcsv($output, ['Nombre', 'Correo verificado', 'Teléfono', 'Municipio declarado', 'Categorías declaradas', 'Creada', 'Verificada', 'Marketing'], ',', '"', '');
+            fputcsv($output, ['Nombre', 'Correo verificado', 'Teléfono', 'Municipio declarado', 'Categorías declaradas', 'Plan', 'Estado', 'Plan vigente hasta', 'Creada', 'Verificada', 'Marketing'], ',', '"', '');
             foreach ($query->orderBy('id')->cursor() as $user) {
                 fputcsv($output, [
                     $this->safeCsv((string) $user->name),
@@ -52,6 +54,9 @@ class AppUserController extends Controller
                     $this->safeCsv((string) $user->phone),
                     $this->safeCsv((string) $user->municipality),
                     $this->safeCsv(implode('|', $user->categories ?? [])),
+                    $user->accountPlan(),
+                    $user->accountStatus(),
+                    $user->plan_valid_until?->toISOString(),
                     $user->created_at?->toISOString(),
                     $user->email_verified_at?->toISOString(),
                     $user->marketing_consent ? 'sí' : 'no',
@@ -119,6 +124,57 @@ class AppUserController extends Controller
         return redirect()->route('admin.app-users.index')->with('status', "Despacho simulado a {$sent} destinatarios elegibles.");
     }
 
+    public function updateStatus(Request $request, AppUser $appUser, AppAccountAdministrationService $service)
+    {
+        Gate::authorize('app_users.manage');
+        if (array_diff(array_keys($request->all()), ['status', 'reason', 'until', '_token', '_method']) !== []) {
+            abort(422);
+        }
+        $data = $request->validate([
+            'status' => ['required', 'in:active,suspended,banned'],
+            'reason' => ['required', 'string', 'min:3', 'max:500'],
+            'until' => ['nullable', 'date', 'after:now'],
+        ]);
+        if ($data['status'] !== 'suspended' && ! empty($data['until'])) {
+            abort(422);
+        }
+
+        $service->changeStatus(
+            $appUser,
+            $data['status'],
+            $data['reason'],
+            isset($data['until']) ? Carbon::parse($data['until']) : null,
+            $request->user(),
+        );
+
+        return back()->with('status', 'Estado de cuenta registrado y auditado. Las sesiones revocadas requieren iniciar sesión nuevamente.');
+    }
+
+    public function updatePlan(Request $request, AppUser $appUser, AppAccountAdministrationService $service)
+    {
+        Gate::authorize('app_users.manage');
+        if (array_diff(array_keys($request->all()), ['plan', 'valid_from', 'valid_until', 'reference', '_token', '_method']) !== []) {
+            abort(422);
+        }
+        $data = $request->validate([
+            'plan' => ['required', 'in:free,pro'],
+            'valid_from' => ['required_if:plan,pro', 'nullable', 'date'],
+            'valid_until' => ['nullable', 'date', 'after:valid_from'],
+            'reference' => ['required_if:plan,pro', 'nullable', 'string', 'min:4', 'max:120'],
+        ]);
+
+        $service->changePlan(
+            $appUser,
+            $data['plan'],
+            isset($data['valid_from']) ? Carbon::parse($data['valid_from']) : null,
+            isset($data['valid_until']) ? Carbon::parse($data['valid_until']) : null,
+            $data['reference'] ?? null,
+            $request->user(),
+        );
+
+        return back()->with('status', 'Plan registrado desde el servidor y auditado.');
+    }
+
     private function marketingInput(Request $request): array
     {
         if (array_diff(array_keys($request->all()), ['user_ids', 'subject', 'body', '_token']) !== []) {
@@ -157,7 +213,7 @@ class AppUserController extends Controller
 
     private function validatedFilters(Request $request): array
     {
-        if (array_diff(array_keys($request->query()), ['q', 'created_from', 'created_to', 'municipality', 'category', 'marketing', 'verified', 'page']) !== []) {
+        if (array_diff(array_keys($request->query()), ['q', 'created_from', 'created_to', 'municipality', 'category', 'marketing', 'verified', 'plan', 'status', 'page']) !== []) {
             abort(422);
         }
 
@@ -169,6 +225,8 @@ class AppUserController extends Controller
             'category' => ['sometimes', 'nullable', 'in:'.implode(',', self::CATEGORIES)],
             'marketing' => ['sometimes', 'nullable', 'in:0,1'],
             'verified' => ['sometimes', 'nullable', 'in:0,1'],
+            'plan' => ['sometimes', 'nullable', 'in:free,pro'],
+            'status' => ['sometimes', 'nullable', 'in:active,suspended,banned'],
             'page' => ['sometimes', 'integer', 'min:1'],
         ]);
     }
@@ -202,6 +260,12 @@ class AppUserController extends Controller
                 ? $query->whereNotNull('email_verified_at')
                 : $query->whereNull('email_verified_at');
         }
+        if (! empty($filters['plan'])) {
+            $query->where('account_plan', $filters['plan']);
+        }
+        if (! empty($filters['status'])) {
+            $query->where('account_status', $filters['status']);
+        }
 
         return $query;
     }
@@ -226,7 +290,7 @@ class AppUserController extends Controller
             'metadata' => [
                 'count' => $count,
                 'filter_types' => array_values(array_intersect(
-                    ['q', 'created_from', 'created_to', 'municipality', 'category', 'marketing', 'verified', 'selection'],
+                    ['q', 'created_from', 'created_to', 'municipality', 'category', 'marketing', 'verified', 'plan', 'status', 'selection'],
                     array_keys($filters),
                 )),
             ],

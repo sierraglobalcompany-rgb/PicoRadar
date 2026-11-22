@@ -30,6 +30,14 @@ void main() {
             'categories': [],
             'privacyVersion': 'v1',
             'marketingConsent': false,
+            'accountStatus': 'active',
+            'entitlement': {
+              'plan': 'pro',
+              'status': 'active',
+              'validFrom': '2026-11-21T00:00:00Z',
+              'validUntil': '2026-12-21T00:00:00Z',
+              'source': 'operator_grant',
+            },
           },
         },
       });
@@ -55,11 +63,16 @@ void main() {
     );
 
     await client.verifyOtp('person@example.test', '123456');
+    final profile = await client.loadProfile();
     expect(adapter.requests.last.data, {
       'email': 'person@example.test',
       'code': '123456',
     });
     expect(storage.values[appAccountTokenStorageKey], token);
+    expect(profile.accountStatus, AppAccountStatus.active);
+    expect(profile.entitlement.plan, AppAccountPlan.pro);
+    expect(profile.entitlement.status, AppAccountEntitlementStatus.active);
+    expect(profile.entitlement.sourceLabel, 'asignación administrativa');
     expect(storage.values.containsKey('file_master_key_v1'), isFalse);
   });
 
@@ -225,6 +238,153 @@ void main() {
     );
     expect(adapter.requests, hasLength(1));
     expect(adapter.requests.single.followRedirects, isFalse);
+  });
+
+  test(
+    'server entitlement is display-only and cannot be submitted by profile updates',
+    () async {
+      final adapter = _RecordingAdapter()
+        ..body = jsonEncode({
+          'data': {
+            'profile': {
+              'id': 'synthetic-id',
+              'name': null,
+              'email': 'person@example.test',
+              'phone': null,
+              'municipality': null,
+              'categories': [],
+              'privacyVersion': 'v1',
+              'marketingConsent': false,
+              'accountStatus': 'active',
+              'entitlement': {
+                'plan': 'pro',
+                'status': 'active',
+                'validFrom': '2026-11-21T00:00:00Z',
+                'validUntil': null,
+                'source': 'operator_grant',
+              },
+            },
+          },
+        });
+      final client = HttpAppAccountClient(
+        Dio()..httpClientAdapter = adapter,
+        config: config,
+        storage: _FakeTokenStorage()..values[appAccountTokenStorageKey] = token,
+      );
+
+      final profile = await client.updateProfile(
+        name: '',
+        phone: '',
+        municipality: '',
+        categories: const [],
+      );
+
+      expect(profile.entitlement.plan, AppAccountPlan.pro);
+      expect(profile.entitlement.status, AppAccountEntitlementStatus.active);
+      expect(adapter.requests.single.data.keys.toSet(), {
+        'name',
+        'phone',
+        'municipality',
+        'categories',
+      });
+    },
+  );
+
+  test('account suspension errors remain typed for the settings screen', () async {
+    final adapter = _RecordingAdapter()
+      ..statusCode = 403
+      ..body = const {
+        'error': {'code': 'account_suspended'},
+      };
+    final client = HttpAppAccountClient(
+      Dio()..httpClientAdapter = adapter,
+      config: config,
+      storage: _FakeTokenStorage()..values[appAccountTokenStorageKey] = token,
+    );
+
+    await expectLater(
+      client.loadProfile(),
+      throwsA(
+        isA<AppAccountFailure>().having(
+          (failure) => failure.code,
+          'code',
+          'account_suspended',
+        ),
+      ),
+    );
+  });
+
+  test('suppression OTP stays isolated from normal account sessions', () async {
+    final suppressionToken = List.filled(64, 'c').join();
+    final adapter = _RecordingAdapter()
+      ..body = jsonEncode({
+        'data': {
+          'token': suppressionToken,
+          'tokenPurpose': 'suppression',
+          'profile': {
+            'id': 'synthetic-id',
+            'accountStatus': 'banned',
+            'entitlement': {
+              'plan': 'unknown',
+              'status': 'unknown',
+              'validFrom': null,
+              'validUntil': null,
+              'source': null,
+            },
+          },
+        },
+      });
+    final storage = _FakeTokenStorage()
+      ..values[appAccountTokenStorageKey] =
+          'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+    final client = HttpAppAccountClient(
+      Dio()..httpClientAdapter = adapter,
+      config: config,
+      storage: storage,
+    );
+
+    final profile = await client.verifyOtp('person@example.test', '123456');
+    expect(profile.accountStatus, AppAccountStatus.banned);
+    expect(storage.values[appAccountTokenStorageKey], isNull);
+    expect(storage.values[appAccountSuppressionTokenStorageKey], suppressionToken);
+    await expectLater(
+      client.loadProfile(),
+      throwsA(isA<AppAccountFailure>().having((failure) => failure.code, 'code', 'unauthorized')),
+    );
+
+    adapter.statusCode = 204;
+    await client.suppress();
+    expect(adapter.requests.last.method, 'DELETE');
+    expect(
+      adapter.requests.last.headers['Authorization'],
+      'Bearer $suppressionToken',
+    );
+    expect(storage.values, isEmpty);
+  });
+
+  test('logout never reuses a suppression-only token', () async {
+    final suppressionToken = List.filled(64, 'c').join();
+    final adapter = _RecordingAdapter();
+    final storage = _FakeTokenStorage()
+      ..values[appAccountSuppressionTokenStorageKey] = suppressionToken;
+    final client = HttpAppAccountClient(
+      Dio()..httpClientAdapter = adapter,
+      config: config,
+      storage: storage,
+    );
+
+    await expectLater(
+      client.logout(),
+      throwsA(
+        isA<AppAccountFailure>().having(
+          (failure) => failure.code,
+          'code',
+          'unauthorized',
+        ),
+      ),
+    );
+    expect(adapter.requests, isEmpty);
+    expect(storage.values[appAccountSuppressionTokenStorageKey], suppressionToken);
   });
 
   test('offline suppression keeps the secure token for a retry and local data intact', () async {

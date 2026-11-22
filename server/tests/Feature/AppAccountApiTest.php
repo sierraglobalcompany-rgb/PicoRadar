@@ -64,7 +64,12 @@ class AppAccountApiTest extends TestCase
         $response = $this->postJson('/api/v1/app-accounts/otp/verify', [
             'email' => 'person@example.test',
             'code' => $this->mailCode(),
-        ])->assertOk()->assertJsonPath('data.profile.email', 'person@example.test');
+        ])->assertOk()
+            ->assertJsonPath('data.profile.email', 'person@example.test')
+            ->assertJsonPath('data.profile.accountStatus', 'active')
+            ->assertJsonPath('data.profile.entitlement.plan', 'free')
+            ->assertJsonPath('data.profile.entitlement.status', 'active')
+            ->assertJsonPath('data.profile.entitlement.source', 'default_free');
 
         $this->assertDatabaseCount('app_users', 1);
         $this->assertDatabaseCount('users', 0);
@@ -195,6 +200,9 @@ class AppAccountApiTest extends TestCase
 
         $this->withToken($token)->patchJson('/api/v1/app-account', [
             'email' => 'other@example.test', 'plate' => 'MED124',
+        ])->assertStatus(422);
+        $this->withToken($token)->patchJson('/api/v1/app-account', [
+            'account_plan' => 'pro', 'entitlement' => ['status' => 'active'],
         ])->assertStatus(422);
         $this->withToken($token)->patchJson('/api/v1/app-account/marketing', [
             'marketingConsent' => true,

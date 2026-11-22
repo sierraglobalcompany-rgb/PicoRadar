@@ -7,6 +7,8 @@ import '../../../core/storage/app_secure_storage.dart';
 import 'app_account_config.dart';
 
 const appAccountTokenStorageKey = 'app_account_access_token_v1';
+const appAccountSuppressionTokenStorageKey =
+    'app_account_suppression_token_v1';
 
 final appAccountClientProvider = Provider<AppAccountClient>((ref) {
   final dio = Dio(
@@ -34,6 +36,7 @@ abstract interface class AppAccountClient {
   Future<bool> updateMarketing(bool accepted);
   Future<void> logout();
   Future<void> suppress();
+  Future<void> discardSuppressionToken();
 }
 
 class HttpAppAccountClient implements AppAccountClient {
@@ -79,7 +82,17 @@ class HttpAppAccountClient implements AppAccountClient {
     } on TypeError {
       throw const AppAccountFailure('invalid_response');
     }
-    await _storage.writeSecret(appAccountTokenStorageKey, token);
+    final purpose = data['tokenPurpose']?.toString() ?? 'session';
+    final tokenStorageKey = switch (purpose) {
+      'session' => appAccountTokenStorageKey,
+      'suppression' => appAccountSuppressionTokenStorageKey,
+      _ => throw const AppAccountFailure('invalid_response'),
+    };
+    final otherTokenStorageKey = tokenStorageKey == appAccountTokenStorageKey
+        ? appAccountSuppressionTokenStorageKey
+        : appAccountTokenStorageKey;
+    await _storage.writeSecret(tokenStorageKey, token);
+    await _storage.deleteSecret(otherTokenStorageKey);
     return parsedProfile;
   }
 
@@ -129,28 +142,48 @@ class HttpAppAccountClient implements AppAccountClient {
 
   @override
   Future<void> logout() async {
-    await _send('POST', '/api/v1/app-account/logout', authenticated: true);
+    await _send(
+      'POST',
+      '/api/v1/app-account/logout',
+      authenticated: true,
+      tokenStorageKey: appAccountTokenStorageKey,
+    );
     await _storage.deleteSecret(appAccountTokenStorageKey);
   }
 
   @override
   Future<void> suppress() async {
-    await _send('DELETE', '/api/v1/app-account', authenticated: true);
+    final tokenStorageKey =
+        await _storage.readSecret(appAccountSuppressionTokenStorageKey) != null
+        ? appAccountSuppressionTokenStorageKey
+        : appAccountTokenStorageKey;
+    await _send(
+      'DELETE',
+      '/api/v1/app-account',
+      authenticated: true,
+      tokenStorageKey: tokenStorageKey,
+    );
     await _storage.deleteSecret(appAccountTokenStorageKey);
+    await _storage.deleteSecret(appAccountSuppressionTokenStorageKey);
   }
+
+  @override
+  Future<void> discardSuppressionToken() =>
+      _storage.deleteSecret(appAccountSuppressionTokenStorageKey);
 
   Future<Map<String, Object?>> _send(
     String method,
     String path, {
     Map<String, Object?>? body,
     bool authenticated = false,
+    String tokenStorageKey = appAccountTokenStorageKey,
   }) async {
     final base = config.apiBaseUri;
     if (!config.isAvailable || base == null) {
       throw const AppAccountFailure('not_configured');
     }
     final token = authenticated
-        ? await _storage.readSecret(appAccountTokenStorageKey)
+        ? await _storage.readSecret(tokenStorageKey)
         : null;
     if (authenticated && token == null) {
       throw const AppAccountFailure('unauthorized');
@@ -205,6 +238,10 @@ class HttpAppAccountClient implements AppAccountClient {
       'invalid_or_expired_code',
       'server_error',
       'secure_transport_required',
+      'account_suspended',
+      'account_banned',
+      'account_unavailable',
+      'suppression_action_only',
     };
     final error = response?['error'];
     final code = error is Map ? error['code']?.toString() : null;
@@ -244,6 +281,8 @@ class AppAccountProfile {
     required this.categories,
     required this.privacyVersion,
     required this.marketingConsent,
+    this.accountStatus = AppAccountStatus.unknown,
+    this.entitlement = const AppAccountEntitlement.unknown(),
   });
 
   final String id;
@@ -254,6 +293,48 @@ class AppAccountProfile {
   final List<String> categories;
   final String privacyVersion;
   final bool marketingConsent;
+  final AppAccountStatus accountStatus;
+  final AppAccountEntitlement entitlement;
+
+  String get accountStatusLabel => switch (accountStatus) {
+    AppAccountStatus.active => 'Cuenta activa',
+    AppAccountStatus.suspended => 'Cuenta suspendida',
+    AppAccountStatus.banned => 'Cuenta inhabilitada',
+    AppAccountStatus.unknown => 'Estado de cuenta sin confirmar',
+  };
+
+  String get entitlementTitle => switch (entitlement.plan) {
+    AppAccountPlan.free => 'Plan Free',
+    AppAccountPlan.pro => entitlement.status == AppAccountEntitlementStatus.active
+        ? 'Plan Pro vigente'
+        : 'Plan Pro sin vigencia confirmada',
+    AppAccountPlan.unknown => 'Plan sin confirmar',
+  };
+
+  String get entitlementDescription {
+    if (accountStatus == AppAccountStatus.suspended) {
+      return 'La cuenta está suspendida. La consulta Free local sigue disponible.';
+    }
+    if (accountStatus == AppAccountStatus.banned) {
+      return 'La cuenta está inhabilitada. La consulta Free local sigue disponible.';
+    }
+    final expiry = entitlement.validUntil == null
+        ? 'sin fecha de vencimiento'
+        : 'hasta ${_dateOnly(entitlement.validUntil!)}';
+    return switch ((entitlement.plan, entitlement.status)) {
+      (AppAccountPlan.free, AppAccountEntitlementStatus.active) =>
+        'Acceso gratuito de PicoRadar. La cuenta es opcional; vehículos y documentos permanecen en este dispositivo.',
+      (AppAccountPlan.pro, AppAccountEntitlementStatus.active) =>
+        'El servidor confirma Pro $expiry. Fuente: ${entitlement.sourceLabel}.',
+      (AppAccountPlan.pro, AppAccountEntitlementStatus.expired) =>
+        'La vigencia Pro terminó. El acceso se valida en el servidor.',
+      (AppAccountPlan.pro, AppAccountEntitlementStatus.pending) =>
+        'La vigencia Pro aún no comienza. El servidor valida el acceso.',
+      (AppAccountPlan.pro, AppAccountEntitlementStatus.unverified) =>
+        'La vigencia Pro no está confirmada. No se habilitan funciones Pro.',
+      _ => 'El servidor todavía no confirmó el plan de esta cuenta.',
+    };
+  }
 
   factory AppAccountProfile.fromJson(Map<String, Object?> json) {
     return AppAccountProfile(
@@ -267,6 +348,89 @@ class AppAccountProfile {
           .toList(growable: false),
       privacyVersion: json['privacyVersion']?.toString() ?? '',
       marketingConsent: json['marketingConsent'] == true,
+      accountStatus: AppAccountStatus.parse(json['accountStatus']),
+      entitlement: AppAccountEntitlement.fromJson(json['entitlement']),
+    );
+  }
+
+  static String _dateOnly(DateTime value) =>
+      '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+}
+
+enum AppAccountStatus {
+  active,
+  suspended,
+  banned,
+  unknown;
+
+  static AppAccountStatus parse(Object? value) => switch (value) {
+    'active' => active,
+    'suspended' => suspended,
+    'banned' => banned,
+    _ => unknown,
+  };
+}
+
+enum AppAccountPlan { free, pro, unknown }
+
+enum AppAccountEntitlementStatus {
+  active,
+  pending,
+  expired,
+  unverified,
+  unknown,
+}
+
+class AppAccountEntitlement {
+  const AppAccountEntitlement({
+    required this.plan,
+    required this.status,
+    required this.validFrom,
+    required this.validUntil,
+    required this.source,
+  });
+
+  const AppAccountEntitlement.unknown()
+    : plan = AppAccountPlan.unknown,
+      status = AppAccountEntitlementStatus.unknown,
+      validFrom = null,
+      validUntil = null,
+      source = null;
+
+  final AppAccountPlan plan;
+  final AppAccountEntitlementStatus status;
+  final DateTime? validFrom;
+  final DateTime? validUntil;
+  final String? source;
+
+  String get sourceLabel => switch (source) {
+    'default_free' => 'acceso gratuito',
+    'operator_grant' => 'asignación administrativa',
+    null || '' => 'no informada',
+    _ => 'registrada por el servidor',
+  };
+
+  factory AppAccountEntitlement.fromJson(Object? value) {
+    if (value is! Map) return const AppAccountEntitlement.unknown();
+    final json = Map<String, Object?>.from(value);
+    final plan = switch (json['plan']) {
+      'free' => AppAccountPlan.free,
+      'pro' => AppAccountPlan.pro,
+      _ => AppAccountPlan.unknown,
+    };
+    final status = switch (json['status']) {
+      'active' => AppAccountEntitlementStatus.active,
+      'pending' => AppAccountEntitlementStatus.pending,
+      'expired' => AppAccountEntitlementStatus.expired,
+      'unverified' => AppAccountEntitlementStatus.unverified,
+      _ => AppAccountEntitlementStatus.unknown,
+    };
+    return AppAccountEntitlement(
+      plan: plan,
+      status: status,
+      validFrom: DateTime.tryParse(json['validFrom']?.toString() ?? ''),
+      validUntil: DateTime.tryParse(json['validUntil']?.toString() ?? ''),
+      source: json['source'] is String ? json['source'] as String : null,
     );
   }
 }
