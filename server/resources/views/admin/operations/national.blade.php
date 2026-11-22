@@ -32,6 +32,54 @@
         </div>
     </section>
 
+    <section class="mt-4 rounded-lg border border-slate-200 bg-white p-4" aria-labelledby="national-integrity-title">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+                <h2 id="national-integrity-title" class="font-semibold">Integridad técnica de datos nacionales</h2>
+                @if($integrityVerification)
+                    <p class="mt-1 text-sm text-slate-600">Comprobado en esta solicitud · {{ $integrityVerification['checked_at']->setTimezone('America/Bogota')->format('Y-m-d H:i:s') }} Bogotá.</p>
+                @else
+                    <p class="mt-1 text-sm text-slate-600">NO_VERIFICADO · La lectura de assets se ejecuta solo cuando se solicita.</p>
+                @endif
+                <p class="mt-1 text-xs text-slate-600">Una comprobación técnica no acredita legalidad, entrega OTA ni datos del dispositivo.</p>
+            </div>
+            <a class="inline-flex min-h-11 items-center rounded border border-slate-300 px-4 py-2 font-medium" href="{{ route('admin.operations.national', ['verify_assets' => '1']) }}">Verificar integridad técnica ahora</a>
+        </div>
+        @if($integrityVerification)
+            <div class="mt-4 overflow-x-auto">
+                <table class="w-full min-w-[720px] text-left text-sm">
+                    <thead class="bg-slate-50 text-slate-700">
+                        <tr>
+                            <th class="p-2">Dataset</th>
+                            <th class="p-2">Versión apuntada</th>
+                            <th class="p-2">Expira</th>
+                            <th class="p-2">Estado</th>
+                            <th class="p-2">Resultado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($integrityVerification['rows'] as $integrityRow)
+                            <tr class="border-t border-slate-200 align-top">
+                                <td class="p-2">
+                                    <span>{{ $integrityRow['label'] }}</span>
+                                    @can('datasets.view')
+                                        @if($integrityRow['dataset_id'])
+                                            <a class="ml-2 text-teal-800 underline" href="{{ route('admin.datasets.show', $integrityRow['dataset_id']) }}">Ver registro</a>
+                                        @endif
+                                    @endcan
+                                </td>
+                                <td class="p-2">{{ $integrityRow['version'] ?? 'sin versión' }}</td>
+                                <td class="p-2">{{ $integrityRow['expires_at']?->setTimezone('America/Bogota')->format('Y-m-d H:i:s') ?? 'sin fecha registrada' }}</td>
+                                <td class="p-2 font-semibold">{{ $integrityRow['status'] }}</td>
+                                <td class="p-2">{{ $integrityRow['reason'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </section>
+
     <section class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Conteos del universo filtrado">
         @foreach([
             ['Municipios DIVIPOLA activos', $metrics['active_municipalities'], 'Municipios del universo tras los filtros'],
