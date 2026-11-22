@@ -12,6 +12,7 @@
         @endcan
         @can('service_providers.edit')
             <a class="inline-flex min-h-12 items-center rounded-md bg-slate-900 px-4 py-2 font-medium text-white" href="{{ route('admin.service-providers.create') }}">Agregar proveedor</a>
+            <a class="inline-flex min-h-12 items-center rounded-md border border-teal-700 px-4 py-2 font-medium text-teal-900" href="{{ route('admin.service-providers.import') }}">Importar CSV/XLSX</a>
         @endcan
     </div>
 

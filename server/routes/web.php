@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\PartnerInquiryController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\RestrictionRuleController;
 use App\Http\Controllers\Admin\ServiceProviderController;
+use App\Http\Controllers\Admin\ServiceProviderImportController;
 use App\Http\Controllers\Admin\ServiceProviderPublicationController;
 use App\Http\Controllers\Admin\SponsorController;
 use App\Http\Controllers\AppAccountUnsubscribeController;
@@ -107,6 +108,10 @@ Route::middleware(['auth', EnsureActiveOperator::class, SecurityHeaders::class])
     Route::post('/admin/cameras/{camera}/deactivate', [CameraController::class, 'deactivate'])->name('admin.cameras.deactivate');
     Route::post('/admin/cameras/{camera}/reopen', [CameraController::class, 'reopen'])->name('admin.cameras.reopen');
     Route::post('/admin/cameras/{camera}/retire', [CameraController::class, 'retire'])->name('admin.cameras.retire');
+    Route::get('/admin/service-providers/import', [ServiceProviderImportController::class, 'create'])->name('admin.service-providers.import');
+    Route::post('/admin/service-providers/imports', [ServiceProviderImportController::class, 'analyze'])->name('admin.service-providers.imports.analyze');
+    Route::get('/admin/service-providers/imports/{serviceProviderImport}', [ServiceProviderImportController::class, 'review'])->name('admin.service-providers.imports.review');
+    Route::post('/admin/service-providers/imports/{serviceProviderImport}/confirm', [ServiceProviderImportController::class, 'confirm'])->name('admin.service-providers.imports.confirm');
     Route::resource('/admin/service-providers', ServiceProviderController::class)
         ->except(['show', 'destroy'])
         ->parameters(['service-providers' => 'serviceProvider'])
