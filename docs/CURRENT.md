@@ -2,6 +2,15 @@
 
 Actualizado: 2026-11-22, America/Bogota. El estado operativo actual está arriba; el material previo se conserva como historial. Baseline, Arquitectura y contratos conservan su precedencia. Esta actualización no cambia aprobaciones del producto.
 
+## Estado operativo — cierre C14 V2 2026-11-22
+
+- Rama candidata: `feat/platform-integral-national-20261122`, basada en `b9309761b1f2dc9ca56505e84e3960d9686bee8b`. HEAD de código C14: `a764f9e56caed1aed49db4a572ca51799c9fea15` (tree `8c1128a1fe7d52898b3cb87dfa883a75f6faafdd`).
+- Resultado de código: A/B/C `DONE_CODE`. A extiende el importador existente con propuestas territoriales DIVIPOLA revisables; analizar no crea jurisdicciones y confirmar resuelve/reutiliza o crea una jurisdicción deshabilitada con borrador parcial/off. B añade importación administrativa CSV/XLSX de proveedores mediante staging privado, revisión/selección y confirmación idempotente sólo a fichas `draft`; agrega una migración aditiva de lote y filas. C revalida en publicación la fuente exacta aprobada y vigente antes de cambiar release/puntero/manifiesto.
+- Commits funcionales integrados: C `2fda6f7010120bc2098ea7232303b877daddc811`; A `debd65eafd24a370e5da122ec75c8c7598605a81`; refuerzo A `3415696970666cdbba521da4389126fdf95cd36b`; B `a764f9e56caed1aed49db4a572ca51799c9fea15`.
+- QA local C14: `php -l` exit 0 en las 17 rutas cambiadas con extensión `.php`; `git diff --check b930976..HEAD` exit 0. Se escribieron 15 pruebas focales C14; 0 ejecutadas. PHPUnit `NOT_RUN_ENV` porque no existen `server/vendor/autoload.php` ni `server/vendor/bin/phpunit`. Flutter no aplica a este delta y no se ejecutó. Migración no aplicada; sin DB real, APK, dispositivo, publicación ni QA funcional acreditada.
+- GitHub: push normal aceptado y `git ls-remote` confirma la rama autorizada en `a764f9e56caed1aed49db4a572ca51799c9fea15`. No se creó PR ni se tocó `main`, PR #88 o hosting. Checkout original preservado en `da9d8083bb21bd7c9863a319e07de51a5e692d09`, con la eliminación preexistente `scripts/tests/test_hostinger_installer_browser.ps1` como único estado reportado.
+- Seguridad/decisión: datos de pruebas son sintéticos; no se afirma cobertura legal ni vigencia de fuentes nacionales. `LEGAL=NO_GO`, `RELEASE=NO_GO`, `MAIN_BRIDGE=HOLD`. Siguiente cuello de botella: ejecutar las 15 pruebas focales en entorno Laravel aislado cuando estén disponibles las dependencias fijadas; después validar fuentes y reglas con revisión jurídica humana. El SHA-256 acredita integridad, no firma criptográfica.
+
 ## Estado operativo — cierre C13 V2 2026-11-22
 
 - Rama candidata: `feat/platform-integral-national-20261122`, basada en el HEAD remoto verificado de C12 `d4ef642db312cf6b8a5ee2e01634e2be8e13c849`; C12 conserva su base histórica `bc2c90743437a017a989adf9f00d38b1ca9459e7`.
