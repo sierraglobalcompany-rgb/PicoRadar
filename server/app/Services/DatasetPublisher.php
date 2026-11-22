@@ -37,6 +37,9 @@ class DatasetPublisher
                     (! $locked->expires_at || ! $locked->expires_at->isAfter(now()))) {
                     throw new DomainException('The service provider release has expired and cannot be published.');
                 }
+                if ($dataset->key === 'service_providers' && ! $this->hasCurrentValidatedSource($dataset, $locked)) {
+                    throw new DomainException('A source approved during validation must still be active and current; validate the release again before publishing.');
+                }
                 $draft = Storage::disk(config('datasets.draft_disk'));
                 $published = Storage::disk(config('datasets.published_disk'));
                 if (! $draft->exists($locked->draft_path)) {
@@ -69,6 +72,69 @@ class DatasetPublisher
                 return $locked->refresh();
             });
         });
+    }
+
+    private function hasCurrentValidatedSource(Dataset $dataset, DatasetRelease $release): bool
+    {
+        $approvedSources = $release->metadata['sources'] ?? null;
+        if (! is_array($approvedSources) || ! array_is_list($approvedSources) || $approvedSources === []) {
+            return false;
+        }
+
+        $approvedById = [];
+        foreach ($approvedSources as $approved) {
+            if (! is_array($approved) ||
+                ! is_int($approved['id'] ?? null) ||
+                $approved['id'] < 1 ||
+                ! is_string($approved['authority'] ?? null) || trim($approved['authority']) === '' ||
+                ! is_string($approved['url'] ?? null) ||
+                ! is_string($approved['verifiedAt'] ?? null) ||
+                $approved['verifiedAt'] === '' ||
+                isset($approvedById[$approved['id']])) {
+                return false;
+            }
+            $approvedById[$approved['id']] = $approved;
+        }
+
+        $sources = $dataset->sources()
+            ->whereIn('id', array_keys($approvedById))
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+        $now = now();
+
+        foreach ($approvedById as $id => $approved) {
+            /** @var \App\Models\DatasetSource|null $source */
+            $source = $sources->get($id);
+            if ($source === null ||
+                $source->authority !== $approved['authority'] ||
+                $source->url !== $approved['url'] ||
+                $source->verified_at?->toAtomString() !== $approved['verifiedAt'] ||
+                ! $source->is_active ||
+                $source->verified_at === null ||
+                $source->verified_at->isAfter($now) ||
+                ($source->valid_from !== null && $source->valid_from->isAfter($now)) ||
+                ($source->valid_until !== null && $source->valid_until->isBefore($now)) ||
+                ! $this->isValidHttpsSourceUrl($source->url)) {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private function isValidHttpsSourceUrl(string $url): bool
+    {
+        $parts = parse_url($url);
+
+        return filter_var($url, FILTER_VALIDATE_URL) !== false &&
+            is_array($parts) &&
+            strtolower((string) ($parts['scheme'] ?? '')) === 'https' &&
+            trim((string) ($parts['host'] ?? '')) !== '' &&
+            ! isset($parts['user']) &&
+            ! isset($parts['pass']);
     }
 
     public function rollback(Dataset $dataset, DatasetRelease $target, User $actor): void
