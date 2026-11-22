@@ -351,6 +351,76 @@ void main() {
   });
 
   group('Home V2 shell states', () {
+    for (final scale in [1.5, 2.0]) {
+      testWidgets('C18 vehicle and tomorrow status readable at scale $scale', (
+        tester,
+      ) async {
+        final vehicle = await _readyHome(harness, plate: 'ABC126');
+        await _pumpHome(
+          tester,
+          harness,
+          viewportSize: const Size(390, 844),
+          textScaleFactor: scale,
+          homeEvaluation: const RestrictionDayEvaluation(
+            status: RestrictionDayStatus.restricted,
+            effectiveWindows: [
+              RestrictionDayWindow(startMinute: 480, endMinute: 720),
+            ],
+          ),
+          tomorrowEvaluation: const RestrictionDayEvaluation(
+            status: RestrictionDayStatus.allowed,
+            effectiveWindows: [],
+          ),
+        );
+
+        final vehicleDetail = find.byKey(
+          const ValueKey('home-vehicle-today-detail'),
+        );
+        final tomorrowStatus = find.byKey(
+          const ValueKey('home-status-tomorrow'),
+        );
+        expect(
+          find.byKey(ValueKey('home-vehicle-card-${vehicle.id}')),
+          findsOneWidget,
+        );
+        expect(find.text('Pico y placa hoy'), findsWidgets);
+        expect(find.text('Horario: 8:00 a. m. – 12:00 p. m.'), findsOneWidget);
+        expect(find.text('Puede circular'), findsOneWidget);
+        expect(find.text('Mañana · Sin restricción local'), findsOneWidget);
+        expect(tomorrowStatus, findsOneWidget);
+        expect(
+          tester
+              .widget<Semantics>(
+                find
+                    .ancestor(
+                      of: tomorrowStatus,
+                      matching: find.byType(Semantics),
+                    )
+                    .first,
+              )
+              .properties
+              .value,
+          contains('Puede circular'),
+        );
+
+        for (final surface in [vehicleDetail, tomorrowStatus]) {
+          await tester.ensureVisible(surface);
+          for (final element
+              in find
+                  .descendant(of: surface, matching: find.byType(RichText))
+                  .evaluate()) {
+            final paragraph = element.renderObject! as RenderParagraph;
+            expect(
+              paragraph.didExceedMaxLines,
+              isFalse,
+              reason: paragraph.text.toPlainText(),
+            );
+          }
+        }
+        expect(tester.takeException(), isNull);
+      });
+    }
+
     for (final size in const [
       Size(360, 800),
       Size(390, 844),
@@ -372,10 +442,6 @@ void main() {
           );
           final card = find.byKey(ValueKey('home-vehicle-card-${vehicle.id}'));
           final summary = find.byKey(const ValueKey('home-status-today'));
-          expect(
-            find.textContaining(RegExp('mañana', caseSensitive: false)),
-            findsNothing,
-          );
           expect(find.text('Particular'), findsNothing);
           expect(
             find.descendant(
@@ -2656,8 +2722,8 @@ void main() {
           );
         }
         expect(
-          find.textContaining(RegExp('mañana', caseSensitive: false)),
-          findsNothing,
+          find.byKey(const ValueKey('home-status-tomorrow')),
+          findsOneWidget,
         );
         expect(tester.takeException(), isNull);
       });
@@ -4649,6 +4715,7 @@ Future<void> _pumpHome(
   DateTime Function()? homeGpsClock,
   DateTime Function()? currentInstantClock,
   RestrictionDayEvaluation? homeEvaluation,
+  RestrictionDayEvaluation? tomorrowEvaluation,
 }) async {
   await _pump(
     tester,
@@ -4664,6 +4731,7 @@ Future<void> _pumpHome(
     homeGpsClock: homeGpsClock,
     currentInstantClock: currentInstantClock,
     homeEvaluation: homeEvaluation,
+    tomorrowEvaluation: tomorrowEvaluation,
   );
 }
 
@@ -4906,6 +4974,7 @@ Future<void> _pump(
   DateTime Function()? homeGpsClock,
   DateTime Function()? currentInstantClock,
   RestrictionDayEvaluation? homeEvaluation,
+  RestrictionDayEvaluation? tomorrowEvaluation,
   HomeBannerCampaign? homeBanner,
 }) async {
   await _installWidgetChannelMock(tester, harness, viewportSize: viewportSize);
@@ -4920,6 +4989,7 @@ Future<void> _pump(
     homeGpsClock: homeGpsClock,
     currentInstantClock: currentInstantClock,
     homeEvaluation: homeEvaluation,
+    tomorrowEvaluation: tomorrowEvaluation,
     homeBanner: homeBanner,
   );
   await tester.pumpWidget(wrap == null ? app : wrap(app));
@@ -4936,6 +5006,7 @@ Widget _providerScope(
   DateTime Function()? homeGpsClock,
   DateTime Function()? currentInstantClock,
   RestrictionDayEvaluation? homeEvaluation,
+  RestrictionDayEvaluation? tomorrowEvaluation,
   HomeBannerCampaign? homeBanner,
 }) {
   return ProviderScope(
@@ -4946,7 +5017,16 @@ Widget _providerScope(
         homeVehicleSnapshotsProvider.overrideWith(
           (ref, request) async => [
             for (final vehicle in request.vehicles)
-              HomeVehicleSnapshot(vehicle: vehicle, today: homeEvaluation),
+              HomeVehicleSnapshot(
+                vehicle: vehicle,
+                today: homeEvaluation,
+                tomorrow:
+                    tomorrowEvaluation ??
+                    const RestrictionDayEvaluation(
+                      status: RestrictionDayStatus.unknown,
+                      effectiveWindows: [],
+                    ),
+              ),
           ],
         ),
       appDatabaseProvider.overrideWithValue(harness.database),

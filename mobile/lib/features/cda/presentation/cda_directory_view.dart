@@ -220,6 +220,7 @@ class _CdaDirectoryViewState extends State<CdaDirectoryView> {
 
   Widget _resultRow(CdaCatalogEntry entry) {
     final types = widget.verifiedVehicleTypes[entry.id] ?? const <String>{};
+    final enlarged = MediaQuery.textScalerOf(context).scale(1) > 1.25;
     final compatibility = types.contains('car') && types.contains('motorcycle')
         ? 'Carros y motos'
         : types.contains('car')
@@ -227,42 +228,77 @@ class _CdaDirectoryViewState extends State<CdaDirectoryView> {
         : types.contains('motorcycle')
         ? 'Motos'
         : 'Compatibilidad por verificar';
-    return InkWell(
-      key: ValueKey('cda-directory-entry-${entry.id}'),
-      onTap: () {
-        FocusScope.of(context).unfocus();
-        widget.onOpen(entry);
-      },
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 48),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: AppColors.border)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(entry.name, style: _titleStyle),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${entry.municipality} · ${entry.department}',
-                    style: _labelStyle,
+    void openEntry() {
+      FocusScope.of(context).unfocus();
+      widget.onOpen(entry);
+    }
+
+    final detailsButton = TextButton(
+      key: ValueKey('cda-detail-${entry.id}'),
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.teal,
+        minimumSize: const Size(48, 48),
+        textStyle: _labelStyle,
+      ),
+      onPressed: openEntry,
+      child: const Text('Ver detalles'),
+    );
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  key: ValueKey('cda-directory-entry-${entry.id}'),
+                  onTap: openEntry,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(entry.name, style: _titleStyle),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${entry.municipality} · ${entry.department}',
+                                style: _labelStyle,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                compatibility,
+                                style: _labelStyle.copyWith(
+                                  color: AppColors.teal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.chevron_right, color: AppColors.teal),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    compatibility,
-                    style: _labelStyle.copyWith(color: AppColors.teal),
-                  ),
-                ],
+                ),
+              ),
+              if (!enlarged) detailsButton,
+            ],
+          ),
+          if (enlarged)
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: detailsButton,
               ),
             ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right, color: AppColors.teal),
-          ],
-        ),
+        ],
       ),
     );
   }

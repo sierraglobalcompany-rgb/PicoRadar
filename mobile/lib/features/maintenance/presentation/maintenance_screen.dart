@@ -587,12 +587,7 @@ class _SummaryValue extends StatelessWidget {
     final color = alert ? AppColors.red : AppColors.navy;
     return Column(
       children: [
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppTextStyles.bodyStrong.copyWith(color: color),
-        ),
+        Text(value, style: AppTextStyles.bodyStrong.copyWith(color: color)),
         Text(label, style: AppTextStyles.caption.copyWith(color: color)),
       ],
     );

@@ -254,6 +254,16 @@ void main() {
     },
   );
 
+  testWidgets('enlarged results expose a working details action', (
+    tester,
+  ) async {
+    await _pump(tester, query: 'revision', scale: 2, openDetail: true);
+    final details = find.byKey(const ValueKey('cda-detail-car'));
+    expect(details, findsOneWidget);
+    await _tap(tester, details);
+    expect(find.text('Detalle car'), findsOneWidget);
+  });
+
   for (final width in [360.0, 390.0, 412.0, 430.0]) {
     for (final scale in [1.0, 1.5, 2.0]) {
       testWidgets('portrait $width text $scale keeps rows and filters usable', (

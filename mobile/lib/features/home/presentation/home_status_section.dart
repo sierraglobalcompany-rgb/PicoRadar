@@ -122,6 +122,10 @@ class _StatusGrid extends ConsumerWidget {
               selectedJurisdiction: selectedJurisdiction,
             ),
             const SizedBox(height: AppSpacing.s),
+            if (_tomorrowAddsInformation(snapshot)) ...[
+              _TomorrowStatusStrip(snapshot: snapshot),
+              const SizedBox(height: AppSpacing.s),
+            ],
             Wrap(
               spacing: AppSpacing.s,
               runSpacing: AppSpacing.s,
@@ -137,6 +141,134 @@ class _StatusGrid extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+bool _tomorrowAddsInformation(HomeVehicleSnapshot snapshot) {
+  return snapshot.tomorrow.status != RestrictionDayStatus.allowed ||
+      snapshot.today.status != RestrictionDayStatus.allowed;
+}
+
+class _TomorrowStatusStrip extends StatelessWidget {
+  const _TomorrowStatusStrip({required this.snapshot});
+
+  final HomeVehicleSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final evaluation = snapshot.tomorrow;
+    final value = switch (evaluation.status) {
+      RestrictionDayStatus.restricted =>
+        evaluation.effectiveWindows.isEmpty
+            ? 'Pico y placa'
+            : formatRestrictionWindows12(evaluation.effectiveWindows),
+      RestrictionDayStatus.allowed => 'Puede circular',
+      RestrictionDayStatus.unknown => 'Sin confirmar',
+      RestrictionDayStatus.stale => 'Datos pendientes',
+    };
+    final message = switch (evaluation.status) {
+      RestrictionDayStatus.restricted => 'Pico y placa',
+      RestrictionDayStatus.allowed => 'Sin restricción local',
+      RestrictionDayStatus.unknown => 'Verifica ciudad y datos',
+      RestrictionDayStatus.stale => 'Actualiza datos locales',
+    };
+
+    return Semantics(
+      button: true,
+      label: 'Ver pico y placa',
+      value: '$value, $message',
+      child: Material(
+        key: const ValueKey('home-status-tomorrow'),
+        color: AppColors.orange.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(AppRadius.input),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => context.push(
+            picoShellLocation(
+              origin: PicoRouteOrigin.home,
+              vehicleId: snapshot.vehicle.id,
+            ),
+          ),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 50),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.m,
+              vertical: AppSpacing.s,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.input),
+              border: Border.all(
+                color: AppColors.orange.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.calendar_month_rounded,
+                    color: AppColors.orange,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s),
+                SizedBox(
+                  width: 72,
+                  child: _ScaleDownText(
+                    'Pico y placa',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.orange,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s),
+                Container(
+                  width: 1,
+                  height: 32,
+                  color: AppColors.orange.withValues(alpha: 0.2),
+                ),
+                const SizedBox(width: AppSpacing.s),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ScaleDownText(
+                        value,
+                        style: AppTextStyles.bodyStrong.copyWith(
+                          fontSize: 14.5,
+                          color: AppColors.navy,
+                        ),
+                      ),
+                      Text(
+                        'Mañana · $message',
+                        style: AppTextStyles.caption.copyWith(
+                          fontSize: 12,
+                          color: AppColors.navy.withValues(alpha: 0.72),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.orange,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -54,21 +54,42 @@ _HomeVehicleCarouselLayout _homeCarouselLayoutFor(
       final vehicle = snapshot.vehicle;
       final nickname = vehicle.nickname?.trim() ?? '';
       final brand = vehicle.brand?.trim() ?? '';
+      final name = nickname.isNotEmpty
+          ? nickname
+          : brand.isNotEmpty
+          ? brand
+          : 'Mi vehículo';
       painter.text = TextSpan(
-        text: nickname.isNotEmpty
-            ? nickname
-            : brand.isNotEmpty
-            ? brand
-            : 'Mi vehículo',
+        text: name,
         style: AppTextStyles.bodyStrong.copyWith(fontSize: 16, height: 1.2),
       );
       painter.layout(maxWidth: cardWidth - 88);
+      final nameHeight = painter.height;
+      painter.text = TextSpan(
+        text: homeVehicleStatusLabel(snapshot.today.status),
+        style: AppTextStyles.caption.copyWith(fontSize: 12),
+      );
+      painter.layout(maxWidth: cardWidth - 56);
+      final statusHeight = painter.height;
+      var detailHeight = 0.0;
+      if (snapshot.today.status == RestrictionDayStatus.restricted) {
+        final windows = snapshot.today.effectiveWindows.isEmpty
+            ? 'Horario sin confirmar'
+            : 'Horario: ${formatRestrictionWindows12(snapshot.today.effectiveWindows)}';
+        painter.text = TextSpan(
+          text: windows,
+          style: AppTextStyles.caption.copyWith(fontSize: 12.5),
+        );
+        painter.layout(maxWidth: cardWidth - 24);
+        detailHeight = painter.height + 10;
+      }
       final plateHeight = VehiclePlateBadge.contentHeight(
         context,
         vehicle,
         cardWidth - 24,
       );
-      final needed = plateHeight + painter.height + 168;
+      final needed =
+          plateHeight + nameHeight + statusHeight + detailHeight + 168;
       if (needed > contentMinimum) contentMinimum = needed.ceilToDouble();
     }
     painter.dispose();
@@ -218,7 +239,12 @@ class _HomeVehicleCard extends StatelessWidget {
         : 'Mi vehículo';
     return Semantics(
       button: true,
-      label: '${snapshot.vehicle.plate}, ${todayStatusText(status)}',
+      label: '${snapshot.vehicle.plate}, ${homeVehicleStatusLabel(status)}',
+      value: status == RestrictionDayStatus.restricted
+          ? snapshot.today.effectiveWindows.isEmpty
+                ? 'Horario sin confirmar'
+                : 'Horario: ${formatRestrictionWindows12(snapshot.today.effectiveWindows)}'
+          : null,
       child: Material(
         color: AppColors.surface,
         elevation: focused ? 4 : 2,
@@ -250,20 +276,37 @@ class _HomeVehicleCard extends StatelessWidget {
                     Icon(
                       statusIcon(status),
                       key: ValueKey('home-vehicle-status-${vehicle.id}'),
-                      semanticLabel: todayStatusText(status),
+                      semanticLabel: homeVehicleStatusLabel(status),
                       color: color,
                       size: 24,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        name,
-                        key: ValueKey('home-vehicle-name-${vehicle.id}'),
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.bodyStrong.copyWith(
-                          fontSize: 16,
-                          height: 1.2,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            name,
+                            key: ValueKey('home-vehicle-name-${vehicle.id}'),
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.bodyStrong.copyWith(
+                              fontSize: 16,
+                              height: 1.2,
+                            ),
+                          ),
+                          Text(
+                            homeVehicleStatusLabel(status),
+                            key: ValueKey(
+                              'home-vehicle-status-label-${vehicle.id}',
+                            ),
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.caption.copyWith(
+                              color: color,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     // Balance the status icon and its gap around the title.
@@ -291,8 +334,67 @@ class _HomeVehicleCard extends StatelessWidget {
                   child: VehiclePlateBadge(vehicle: vehicle, compact: true),
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+                child: _TodayDetail(evaluation: snapshot.today),
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TodayDetail extends StatelessWidget {
+  const _TodayDetail({required this.evaluation});
+
+  final RestrictionDayEvaluation evaluation;
+
+  @override
+  Widget build(BuildContext context) {
+    if (evaluation.status != RestrictionDayStatus.restricted) {
+      return const SizedBox.shrink();
+    }
+    final color = statusColor(evaluation.status);
+    final detail = evaluation.effectiveWindows.isEmpty
+        ? 'Horario sin confirmar'
+        : 'Horario: ${formatRestrictionWindows12(evaluation.effectiveWindows)}';
+
+    return Semantics(
+      container: true,
+      label: detail,
+      child: Container(
+        key: const ValueKey('home-vehicle-today-detail'),
+        width: double.infinity,
+        constraints: const BoxConstraints(minHeight: 38),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.s,
+          vertical: 3,
+        ),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(AppRadius.input),
+        ),
+        child: Row(
+          children: [
+            Icon(statusIcon(status), color: color, size: 16),
+            const SizedBox(width: AppSpacing.s),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    detail,
+                    style: AppTextStyles.caption.copyWith(
+                      fontSize: 10.8,
+                      color: AppColors.navy.withValues(alpha: 0.78),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

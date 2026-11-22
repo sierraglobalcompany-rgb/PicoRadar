@@ -107,13 +107,14 @@ final homeVehicleSnapshotsProvider = FutureProvider.autoDispose
               date: date,
             );
         final today = evaluate(now);
+        final tomorrow = evaluate(DateTime(year, month, day + 1));
         DateTime? nextDate;
         var unverified = false;
         // Reuse this coverage for the whole lookahead; no additional storage reads.
         if (today.status != RestrictionDayStatus.restricted) {
           for (var offset = 1; offset <= 7; offset++) {
             final date = DateTime(year, month, day + offset);
-            final future = evaluate(date);
+            final future = offset == 1 ? tomorrow : evaluate(date);
             if (future.status == RestrictionDayStatus.restricted &&
                 future.effectiveWindows.isNotEmpty) {
               nextDate = date;
@@ -128,6 +129,7 @@ final homeVehicleSnapshotsProvider = FutureProvider.autoDispose
           HomeVehicleSnapshot(
             vehicle: vehicle,
             today: today,
+            tomorrow: tomorrow,
             nextRestrictionDate: nextDate,
             hasUnverifiedUpcomingDays: unverified,
           ),
@@ -220,12 +222,14 @@ class HomeVehicleSnapshot {
   const HomeVehicleSnapshot({
     required this.vehicle,
     required this.today,
+    this.tomorrow = _unknownEvaluation,
     this.nextRestrictionDate,
     this.hasUnverifiedUpcomingDays = false,
   });
 
   final VehicleProfile vehicle;
   final RestrictionDayEvaluation today;
+  final RestrictionDayEvaluation tomorrow;
   final DateTime? nextRestrictionDate;
   final bool hasUnverifiedUpcomingDays;
 }
@@ -1271,6 +1275,15 @@ String todayStatusText(RestrictionDayStatus status) {
     RestrictionDayStatus.allowed => 'Sin pico y placa hoy',
     RestrictionDayStatus.unknown => 'Sin confirmar',
     RestrictionDayStatus.stale => 'Datos pendientes',
+  };
+}
+
+String homeVehicleStatusLabel(RestrictionDayStatus status) {
+  return switch (status) {
+    RestrictionDayStatus.restricted => 'Pico y placa hoy',
+    RestrictionDayStatus.allowed => 'Puede circular',
+    RestrictionDayStatus.unknown => 'Pico y placa sin confirmar',
+    RestrictionDayStatus.stale => 'Datos de pico y placa pendientes',
   };
 }
 

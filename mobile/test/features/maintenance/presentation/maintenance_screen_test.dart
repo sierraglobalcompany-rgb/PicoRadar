@@ -52,6 +52,42 @@ void main() {
       await database.close();
     });
 
+    testWidgets('C18 maintenance summary wraps complete totals at large text', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(360, 800);
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await repository.create(
+        vehicleId: 'vehicle-1',
+        serviceDate: DateTime(2026, 9, 5),
+        type: 'Inspección',
+        description: 'Revisión preventiva',
+        costCents: 1_234_567_800,
+      );
+
+      await _pump(tester, database, repository, theme: buildPicoRadarTheme());
+
+      final summary = find.byKey(const ValueKey('maintenance-summary'));
+      final total = find.text('Total \$12.345.678');
+      await tester.ensureVisible(total);
+      expect(summary, findsOneWidget);
+      expect(total, findsOneWidget);
+      final paragraph = tester.renderObject<RenderParagraph>(total);
+      final fullText = TextPainter(
+        text: paragraph.text,
+        textDirection: paragraph.textDirection,
+        textScaler: paragraph.textScaler,
+      )..layout(maxWidth: paragraph.size.width);
+      expect(paragraph.didExceedMaxLines, isFalse);
+      expect(fullText.height, lessThanOrEqualTo(paragraph.size.height + 0.1));
+      fullText.dispose();
+      expect(tester.takeException(), isNull);
+    });
+
     for (final size in [
       const Size(360, 800),
       const Size(390, 844),
