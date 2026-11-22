@@ -20,6 +20,9 @@ final class RestrictionImportService
 {
     private const MAX_ROWS = 10_000;
 
+    /** @var array<int,?array<string,mixed>> */
+    private array $latestPayloadCache = [];
+
     public function __construct(
         private readonly SafeXlsxReader $xlsx,
         private readonly RestrictionContractValidator $validator,
@@ -29,6 +32,7 @@ final class RestrictionImportService
 
     public function analyze(string $path, string $originalName, string $format, ?string $sheet, User $actor): RestrictionImport
     {
+        $this->latestPayloadCache = [];
         $format = strtolower($format);
         if (! in_array($format, ['json', 'csv', 'xlsx'], true)) {
             throw new DomainException('Only JSON, CSV, and XLSX imports are supported.');
@@ -113,7 +117,8 @@ final class RestrictionImportService
             foreach ($rows->groupBy('jurisdiction_id') as $jurisdictionId => $cityRows) {
                 $jurisdiction = Jurisdiction::query()->findOrFail($jurisdictionId);
                 $payload = $this->payloadForRows($jurisdiction, $cityRows->all());
-                $this->validator->validateJurisdiction($payload, $jurisdiction->key);
+                $schemaVersion = $payload['schemaVersion'] ?? 1;
+                $this->validator->validateJurisdictionForEnvelope($payload, $jurisdiction->key, $schemaVersion);
                 $created[] = $this->versions->createDraft($jurisdiction, $payload, $actor);
             }
             $locked->update(['status' => RestrictionImportStatus::Confirmed, 'confirmed_by_id' => $actor->id, 'confirmed_at' => now()]);
@@ -239,13 +244,29 @@ final class RestrictionImportService
             if (! $jurisdiction) {
                 throw new DomainException('The jurisdiction_id is unknown or disabled.');
             }
+            $existingPayload = $this->latestPayloadFor($jurisdiction);
+            $vehicleKind = trim((string) ($raw['vehicle_kind'] ?? ''));
+            $serviceType = trim((string) ($raw['service_type'] ?? ''));
+            $existingCoverage = $this->coverageForPair($existingPayload, $vehicleKind, $serviceType);
+            $rawConsultationInput = $raw['consultation_enabled'] ?? '';
+            $consultationProvided = array_key_exists('consultation_enabled', $raw) && $raw['consultation_enabled'] !== '';
+            $consultationInput = is_bool($rawConsultationInput)
+                ? ($rawConsultationInput ? 'true' : 'false')
+                : trim((string) $rawConsultationInput);
+            $schemaVersion = ($existingPayload['schemaVersion'] ?? 1) === 2 || $consultationProvided ? 2 : 1;
             $coverage = [
-                'vehicleKind' => trim((string) ($raw['vehicle_kind'] ?? '')),
-                'serviceType' => trim((string) ($raw['service_type'] ?? '')),
+                'vehicleKind' => $vehicleKind,
+                'serviceType' => $serviceType,
                 'verifiedAt' => trim((string) ($raw['verified_at'] ?? '')),
                 'staleAfter' => trim((string) ($raw['stale_after'] ?? '')),
                 'sourceUrls' => [trim((string) ($raw['source_url'] ?? ''))],
             ];
+            if ($schemaVersion === 2) {
+                $coverage['coverageCompleteness'] = $existingCoverage['coverageCompleteness'] ?? 'partial';
+                if ($consultationProvided) {
+                    $coverage['consultationEnabled'] = $this->boolean($consultationInput, 'consultation_enabled');
+                }
+            }
             $rule = [
                 'id' => trim((string) ($raw['rule_id'] ?? '')),
                 'priority' => $this->integer($raw['priority'] ?? null, 'priority'),
@@ -266,8 +287,22 @@ final class RestrictionImportService
                     $rule[$target] = $this->jsonList($raw[$source], $source);
                 }
             }
-            $payload = ['id' => $jurisdiction->key, 'name' => (string) ($raw['jurisdiction_name'] ?? $jurisdiction->name), 'coverages' => [$coverage + ['rules' => [$rule]]]];
-            $this->validator->validateJurisdiction($payload, $jurisdiction->key);
+            if ($schemaVersion === 2) {
+                $existingRules = [];
+                foreach ($existingCoverage['rules'] ?? [] as $existingRule) {
+                    if (is_array($existingRule) && is_string($existingRule['id'] ?? null)) {
+                        $existingRules[$existingRule['id']] = $existingRule;
+                    }
+                }
+                $rule['conditions'] = $existingRules[$rule['id']]['conditions'] ?? [];
+            }
+            $payload = [
+                'id' => $jurisdiction->key,
+                'name' => (string) ($raw['jurisdiction_name'] ?? $jurisdiction->name),
+                'coverages' => [$coverage + ['rules' => [$rule]]],
+                ...($schemaVersion === 2 ? ['schemaVersion' => 2] : []),
+            ];
+            $this->validator->validateJurisdiction($payload, $jurisdiction->key, $schemaVersion);
 
             return ['state' => 'valid', 'jurisdiction' => $jurisdiction, 'normalized' => ['coverage' => $coverage, 'rule' => $rule], 'errors' => []];
         } catch (DomainException $error) {
@@ -397,7 +432,10 @@ final class RestrictionImportService
     private function payloadForRows(Jurisdiction $jurisdiction, array $rows): array
     {
         if (count($rows) === 1 && isset($rows[0]->normalized['payload'])) {
-            return $rows[0]->normalized['payload'];
+            return $this->mergeSchema2CoverageState(
+                $rows[0]->normalized['payload'],
+                $this->latestPayloadFor($jurisdiction, false),
+            );
         }
         $coverages = [];
         foreach ($rows as $row) {
@@ -415,7 +453,119 @@ final class RestrictionImportService
             $coverages[$key]['rules'][] = $normalized['rule'];
         }
 
-        return ['id' => $jurisdiction->key, 'name' => $jurisdiction->name, 'coverages' => array_values($coverages)];
+        $payload = ['id' => $jurisdiction->key, 'name' => $jurisdiction->name, 'coverages' => array_values($coverages)];
+
+        return $this->mergeSchema2CoverageState($payload, $this->latestPayloadFor($jurisdiction, false));
+    }
+
+    /** @param array<string,mixed> $payload @param array<string,mixed>|null $existing @return array<string,mixed> */
+    private function mergeSchema2CoverageState(array $payload, ?array $existing): array
+    {
+        $coverages = $payload['coverages'] ?? [];
+        $isSchema2 = ($payload['schemaVersion'] ?? 1) === 2 ||
+            ($existing['schemaVersion'] ?? 1) === 2 ||
+            array_filter($coverages, static fn (mixed $coverage): bool => is_array($coverage) && (
+                array_key_exists('coverageCompleteness', $coverage) || array_key_exists('consultationEnabled', $coverage)
+            )) !== [];
+        if (! $isSchema2) {
+            return $payload;
+        }
+
+        $payload['schemaVersion'] = 2;
+        $existingByPair = [];
+        foreach ($existing['coverages'] ?? [] as $coverage) {
+            if (is_array($coverage)) {
+                $existingByPair[($coverage['vehicleKind'] ?? '').'|'.($coverage['serviceType'] ?? '')] = $coverage;
+            }
+        }
+
+        $incomingPairs = [];
+        $merged = [];
+        foreach ($coverages as $coverage) {
+            if (! is_array($coverage)) {
+                throw new DomainException('An imported coverage is invalid.');
+            }
+            $pair = ($coverage['vehicleKind'] ?? '').'|'.($coverage['serviceType'] ?? '');
+            $incomingPairs[$pair] = true;
+            $previous = $existingByPair[$pair] ?? [];
+            $coverage['coverageCompleteness'] ??= $previous['coverageCompleteness'] ?? 'partial';
+            if (! array_key_exists('consultationEnabled', $coverage)) {
+                $coverage['consultationEnabled'] = $previous['consultationEnabled'] ?? true;
+            }
+            if (! is_bool($coverage['consultationEnabled'])) {
+                throw new DomainException('coverage consultationEnabled must be a boolean.');
+            }
+
+            $previousRules = [];
+            foreach ($previous['rules'] ?? [] as $rule) {
+                if (is_array($rule) && is_string($rule['id'] ?? null)) {
+                    $previousRules[$rule['id']] = $rule;
+                }
+            }
+            foreach ($coverage['rules'] ?? [] as &$rule) {
+                if (is_array($rule) && ! array_key_exists('conditions', $rule)) {
+                    $rule['conditions'] = $previousRules[$rule['id'] ?? '']['conditions'] ?? [];
+                }
+            }
+            unset($rule);
+            $merged[] = $coverage;
+        }
+
+        foreach ($existingByPair as $pair => $coverage) {
+            if (isset($incomingPairs[$pair])) {
+                continue;
+            }
+            $coverage['coverageCompleteness'] ??= 'partial';
+            $coverage['consultationEnabled'] ??= true;
+            foreach ($coverage['rules'] ?? [] as &$rule) {
+                if (is_array($rule)) {
+                    $rule['conditions'] ??= [];
+                }
+            }
+            unset($rule);
+            $merged[] = $coverage;
+        }
+        $payload['coverages'] = $merged;
+
+        if (! array_key_exists('municipalityCodes', $payload) && ! array_key_exists('consultationEnabled', $payload) &&
+            array_key_exists('municipalityCodes', $existing ?? []) && array_key_exists('consultationEnabled', $existing ?? [])) {
+            $payload['municipalityCodes'] = $existing['municipalityCodes'];
+            $payload['consultationEnabled'] = $existing['consultationEnabled'];
+        }
+
+        return $payload;
+    }
+
+    /** @param array<string,mixed>|null $payload */
+    private function coverageForPair(?array $payload, string $vehicleKind, string $serviceType): ?array
+    {
+        foreach ($payload['coverages'] ?? [] as $coverage) {
+            if (is_array($coverage) &&
+                ($coverage['vehicleKind'] ?? null) === $vehicleKind &&
+                ($coverage['serviceType'] ?? null) === $serviceType) {
+                return $coverage;
+            }
+        }
+
+        return null;
+    }
+
+    /** @return array<string,mixed>|null */
+    private function latestPayloadFor(Jurisdiction $jurisdiction, bool $cache = true): ?array
+    {
+        if ($cache && array_key_exists($jurisdiction->id, $this->latestPayloadCache)) {
+            return $this->latestPayloadCache[$jurisdiction->id];
+        }
+        $version = RestrictionRuleVersion::query()
+            ->where('jurisdiction_id', $jurisdiction->id)
+            ->orderByDesc('version')
+            ->first(['payload']);
+        $payload = is_array($version?->payload) ? $version->payload : null;
+        if ($cache) {
+            $this->latestPayloadCache[$jurisdiction->id] = $payload;
+        }
+
+        return $payload;
     }
 
     private function integer(mixed $value, string $field): int
@@ -442,11 +592,11 @@ final class RestrictionImportService
         return $decoded;
     }
 
-    private function boolean(mixed $value): bool
+    private function boolean(mixed $value, string $field = 'applies_on_holidays'): bool
     {
         $boolean = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
         if ($boolean === null) {
-            throw new DomainException('applies_on_holidays must be true or false.');
+            throw new DomainException("$field must be true or false.");
         }
 
         return $boolean;

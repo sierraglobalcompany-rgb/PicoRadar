@@ -416,6 +416,9 @@ final class RestrictionPublicationService
             $beforeMetadata = $previous;
             $afterMetadata = $coverage;
             unset($beforeMetadata['rules'], $afterMetadata['rules']);
+            // Historical schema2 coverages without the field were evaluated as enabled.
+            $beforeMetadata['consultationEnabled'] ??= true;
+            $afterMetadata['consultationEnabled'] ??= true;
             if ($this->encoder->encode($beforeMetadata) !== $this->encoder->encode($afterMetadata)) {
                 $changes[] = 'coverage_metadata_changed';
             }
@@ -726,6 +729,7 @@ final class RestrictionPublicationService
             $coverages[] = [
                 'identity' => ($coverage['vehicleKind'] ?? '').'/'.($coverage['serviceType'] ?? ''),
                 'coverageCompleteness' => $coverage['coverageCompleteness'] ?? 'legacy',
+                'consultationEnabled' => $coverage['consultationEnabled'] ?? true,
                 'restrictiveRuleIds' => $ruleIds,
                 'sourceUrls' => array_values($coverage['sourceUrls'] ?? []),
                 'sha256' => hash('sha256', $this->encoder->encode($coverage)),

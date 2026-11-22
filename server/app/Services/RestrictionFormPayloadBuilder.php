@@ -31,11 +31,13 @@ final class RestrictionFormPayloadBuilder
         }
 
         $existingCompleteness = [];
+        $existingConsultationEnabled = [];
         $existingRules = [];
         foreach ($existingPayload['coverages'] ?? [] as $existingCoverage) {
             if (is_array($existingCoverage)) {
                 $pair = ($existingCoverage['vehicleKind'] ?? '').'|'.($existingCoverage['serviceType'] ?? '');
                 $existingCompleteness[$pair] = $existingCoverage['coverageCompleteness'] ?? null;
+                $existingConsultationEnabled[$pair] = $existingCoverage['consultationEnabled'] ?? true;
                 foreach ($existingCoverage['rules'] ?? [] as $existingRule) {
                     if (is_array($existingRule) && is_string($existingRule['id'] ?? null)) {
                         $existingRules[$pair][$existingRule['id']] = $existingRule;
@@ -64,22 +66,28 @@ final class RestrictionFormPayloadBuilder
                 throw new DomainException('No repitas la misma combinación de vehículo y servicio.');
             }
             $seen[$coverageKey] = true;
-            // Schema2: a safe, reversible *consultation* pause uses the existing
-            // partial+empty-rules contract. It is NOT evidence of free circulation.
-            // Preserve the coverage identity so publication cannot drop it.
-            $pauseConsultation = $this->truthy($coverage['suspend_consultation'] ?? false);
-            if ($pauseConsultation && ($schemaVersion !== 2 || ! array_key_exists("$vehicleKind|$serviceType", $existingCompleteness))) {
-                throw new DomainException('Solo se puede suspender una cobertura schema2 que ya existe en el borrador de origen.');
-            }
-            if ($pauseConsultation && $this->truthy($coverage['confirmed_no_rules'] ?? false)) {
-                throw new DomainException('Suspender consulta y confirmar ausencia de restricciones son decisiones distintas; elige solo una.');
+            $pairKey = "$vehicleKind|$serviceType";
+            $consultationEnabled = true;
+            if ($schemaVersion === 2) {
+                if (array_key_exists('consultationEnabled', $coverage)) {
+                    if (! is_bool($coverage['consultationEnabled'])) {
+                        throw new DomainException('La consulta de la modalidad debe ser booleana.');
+                    }
+                    $consultationEnabled = $coverage['consultationEnabled'];
+                } elseif (array_key_exists('consultation_enabled_present', $coverage)) {
+                    $consultationEnabled = $this->truthy($coverage['consultation_enabled'] ?? false);
+                } elseif (array_key_exists('consultation_enabled', $coverage)) {
+                    $consultationEnabled = $this->truthy($coverage['consultation_enabled']);
+                } else {
+                    $consultationEnabled = (bool) ($existingConsultationEnabled[$pairKey] ?? true);
+                }
             }
             $submittedRules = $coverage['rules'] ?? [];
             if (! is_array($submittedRules) || count($submittedRules) > 1000) {
                 throw new DomainException('Las reglas de la cobertura no tienen un formato válido.');
             }
-            $rules = $pauseConsultation ? [] : $submittedRules;
-            if ($rules === [] && ! $pauseConsultation && ! $this->truthy($coverage['confirmed_no_rules'] ?? false)) {
+            $rules = $submittedRules;
+            if ($rules === [] && $consultationEnabled && ! $this->truthy($coverage['confirmed_no_rules'] ?? false)) {
                 throw new DomainException('Una cobertura sin reglas exige confirmar explícitamente que la fuente no publica restricción.');
             }
 
@@ -102,13 +110,12 @@ final class RestrictionFormPayloadBuilder
                 ),
             ];
             if ($schemaVersion === 2) {
-                $completeness = $existingCompleteness["$vehicleKind|$serviceType"] ?? 'partial';
+                $completeness = $existingCompleteness[$pairKey] ?? 'partial';
                 if (! in_array($completeness, ['complete', 'partial'], true)) {
                     throw new DomainException('La cobertura existente tiene un estado de completitud no válido; no se modificó.');
                 }
-                // Pausing must never preserve "complete": otherwise an empty
-                // coverage could be evaluated as ALLOWED by the client.
-                $normalizedCoverage['coverageCompleteness'] = $pauseConsultation ? 'partial' : $completeness;
+                $normalizedCoverage['coverageCompleteness'] = $completeness;
+                $normalizedCoverage['consultationEnabled'] = $consultationEnabled;
             }
             $result[] = $normalizedCoverage;
         }

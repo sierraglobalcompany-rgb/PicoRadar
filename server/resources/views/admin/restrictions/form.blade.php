@@ -16,12 +16,11 @@
             'service_type' => $coverage['serviceType'] ?? 'private',
             'pair' => ($coverage['vehicleKind'] ?? 'car').'|'.($coverage['serviceType'] ?? 'private'),
             'coverage_completeness' => $coverage['coverageCompleteness'] ?? null,
+            'consultation_enabled' => $coverage['consultationEnabled'] ?? true,
             'verified_at' => $formatDate($coverage['verifiedAt'] ?? null),
             'stale_after' => $formatDate($coverage['staleAfter'] ?? null),
             'source_urls' => implode("\n", $coverage['sourceUrls'] ?? []),
             'confirmed_no_rules' => empty($coverage['rules']) && ($coverage['coverageCompleteness'] ?? 'legacy') !== 'partial',
-            // Partial without rules cannot establish circulation permission.
-            'suspend_consultation' => empty($coverage['rules']) && ($coverage['coverageCompleteness'] ?? null) === 'partial',
             'rules' => collect($coverage['rules'] ?? [])->map(static fn ($rule): array => [
                 'id' => $rule['id'] ?? '',
                 'priority' => $rule['priority'] ?? 1000,
@@ -49,7 +48,7 @@
     ];
     $defaultCoverage = [
         'vehicle_kind' => 'car', 'service_type' => 'private', 'pair' => 'car|private', 'coverage_completeness' => 'partial', 'verified_at' => '', 'stale_after' => '',
-        'source_urls' => '', 'confirmed_no_rules' => false, 'suspend_consultation' => false, 'rules' => [$defaultRule],
+        'source_urls' => '', 'consultation_enabled' => true, 'confirmed_no_rules' => false, 'rules' => [$defaultRule],
     ];
     $templateCoverage = $defaultCoverage;
     $templateCoverage['rules'] = [];

@@ -58,6 +58,8 @@ class RestrictionContext {
     required this.coverageKnown,
     required this.dataIsStale,
     this.coverageCompleteness = CoverageCompleteness.legacy,
+    this.consultationEnabled = true,
+    this.jurisdictionConsultationEnabled = true,
     this.facts,
     this.isHolidayOnDate,
   });
@@ -72,6 +74,8 @@ class RestrictionContext {
   final bool coverageKnown;
   final bool dataIsStale;
   final CoverageCompleteness coverageCompleteness;
+  final bool consultationEnabled;
+  final bool jurisdictionConsultationEnabled;
   final RestrictionFacts? facts;
   final bool Function(DateTime date)? isHolidayOnDate;
 }
@@ -102,6 +106,14 @@ class RestrictionEngine {
     Iterable<RestrictionRule> rules,
   ) {
     if (!context.coverageKnown) {
+      return const RestrictionEvaluation(
+        status: RestrictionStatus.unknown,
+        effectiveWindows: [],
+        reasonCode: RestrictionReasonCode.unknownCoverage,
+      );
+    }
+    if (!context.consultationEnabled ||
+        !context.jurisdictionConsultationEnabled) {
       return const RestrictionEvaluation(
         status: RestrictionStatus.unknown,
         effectiveWindows: [],

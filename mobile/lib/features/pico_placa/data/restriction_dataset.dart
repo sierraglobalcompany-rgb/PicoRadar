@@ -36,11 +36,8 @@ List<RestrictionRule> restrictionRulesFromJson(
   required VehicleServiceType serviceType,
   int schemaVersion = 1,
 }) {
-  final decoded = jsonDecode(rulesJson);
-  if (decoded is! List) {
-    throw const DatasetSyncException('Restriction rules must be a list.');
-  }
-  return decoded
+  final decoded = _decodeRestrictionRulesPayload(rulesJson);
+  return decoded.rules
       .map(
         (rule) => _parseRule(
           _mapValue(rule, 'rules[]'),
@@ -51,6 +48,29 @@ List<RestrictionRule> restrictionRulesFromJson(
         ),
       )
       .toList(growable: false);
+}
+
+bool restrictionConsultationEnabledFromJson(String rulesJson) =>
+    _decodeRestrictionRulesPayload(rulesJson).consultationEnabled;
+
+({List<dynamic> rules, bool consultationEnabled})
+_decodeRestrictionRulesPayload(String rulesJson) {
+  final decoded = jsonDecode(rulesJson);
+  if (decoded is List) {
+    // Historical local rows stored only the rules list and meant ON.
+    return (rules: decoded, consultationEnabled: true);
+  }
+  if (decoded is! Map) {
+    throw const DatasetSyncException('Restriction rules payload is invalid.');
+  }
+  final payload = Map<String, dynamic>.from(decoded);
+  _knownKeys(payload, const {'consultationEnabled', 'rules'}, 'coverage rules');
+  final consultationEnabled = payload['consultationEnabled'];
+  final rules = payload['rules'];
+  if (consultationEnabled is! bool || rules is! List) {
+    throw const DatasetSyncException('Restriction rules payload is invalid.');
+  }
+  return (rules: rules, consultationEnabled: consultationEnabled);
 }
 
 List<String> restrictionSourceUrlsFromJson(String sourceUrlsJson) {
@@ -194,6 +214,7 @@ _ParsedRestrictionDataset _parseRestrictionDataset(
                 'vehicleKind',
                 'serviceType',
                 'coverageCompleteness',
+                'consultationEnabled',
                 'verifiedAt',
                 'staleAfter',
                 'sourceUrls',
@@ -218,6 +239,17 @@ _ParsedRestrictionDataset _parseRestrictionDataset(
       final completeness = jurisdictionSchemaVersion == 1
           ? CoverageCompleteness.legacy
           : _coverageCompleteness(_string(coverage, 'coverageCompleteness'));
+      var consultationEnabled = true;
+      if (jurisdictionSchemaVersion == 2 &&
+          coverage.containsKey('consultationEnabled')) {
+        final value = coverage['consultationEnabled'];
+        if (value is! bool) {
+          throw const DatasetSyncException(
+            'coverage consultationEnabled must be a boolean.',
+          );
+        }
+        consultationEnabled = value;
+      }
       final id = _coverageId(jurisdictionId, vehicleKind, serviceType);
       if (!coverageIds.add(id)) {
         throw DatasetSyncException('Duplicate restriction coverage id: $id.');
@@ -294,7 +326,14 @@ _ParsedRestrictionDataset _parseRestrictionDataset(
           jurisdictionName: jurisdictionName,
           vehicleKind: vehicleKind.value,
           serviceType: serviceType.value,
-          rulesJson: jsonEncode(normalizedRules),
+          rulesJson: jsonEncode(
+            jurisdictionSchemaVersion == 2
+                ? {
+                    'consultationEnabled': consultationEnabled,
+                    'rules': normalizedRules,
+                  }
+                : normalizedRules,
+          ),
           verifiedAt: verifiedAt,
           staleAfter: staleAfter,
           sourceUrlsJson: jsonEncode(sourceUrls),

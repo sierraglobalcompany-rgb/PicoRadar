@@ -24,7 +24,7 @@ class RestrictionMaterialApprovalWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const SOURCE = 'https://www.medellin.gov.co/es/secretaria-de-movilidad/pico-y-placa-medellin-2023-segundo-semestre/';
+    private const SOURCE = 'https://example.test/synthetic-restrictions';
 
     private Dataset $dataset;
 
@@ -44,7 +44,7 @@ class RestrictionMaterialApprovalWorkflowTest extends TestCase
             'key' => 'restrictions', 'title' => 'Restrictions', 'schema_version' => 2, 'enabled' => true,
         ]);
         $this->dataset->sources()->create([
-            'title' => 'Pico y placa Medellín', 'authority' => 'Alcaldía de Medellín',
+            'title' => 'Synthetic restriction fixture', 'authority' => 'Synthetic test authority',
             'url' => self::SOURCE, 'verified_at' => now(), 'is_active' => true,
         ]);
         $this->author = User::factory()->create(['role' => OperatorRole::Editor, 'is_active' => true]);
@@ -122,6 +122,61 @@ class RestrictionMaterialApprovalWorkflowTest extends TestCase
         $this->assertSame(DatasetReleaseStatus::Published, $release->status);
         $this->assertNotEmpty(Storage::disk('public')->get(config('datasets.manifest_path')));
         $this->assertSame(1, AuditLog::query()->where('action', 'restriction.material_change.approved')->count());
+    }
+
+    public function test_coverage_toggle_is_material_approved_and_restored_by_rollback(): void
+    {
+        $service = app(RestrictionPublicationService::class);
+        $versions = app(RestrictionRuleVersionService::class);
+        $service->approveMaterialChange(
+            $this->version, 0, $this->admin,
+            'Publicación inicial sintética revisada.', self::SOURCE,
+        );
+        $service->publish([$this->version->id], 0, $this->author);
+
+        $jurisdiction = $this->version->jurisdiction()->firstOrFail();
+        $disabledPayload = $this->version->payload;
+        $disabledPayload['coverages'][0]['consultationEnabled'] = false;
+        $disabled = $versions->validate(
+            $versions->createDraft($jurisdiction, $disabledPayload, $this->author),
+            $this->author,
+        );
+        $preview = $service->materialChangePreview($disabled, 1);
+        $this->assertContains('coverage_metadata_changed', $preview['changes']);
+
+        try {
+            $service->publish([$disabled->id], 1, $this->author);
+            $this->fail('A modality toggle was published without independent material approval.');
+        } catch (DomainException $error) {
+            $this->assertStringContainsString('REVIEW_REQUIRED', $error->getMessage());
+        }
+        $this->assertSame(1, $this->dataset->refresh()->publication_revision);
+
+        $service->approveMaterialChange(
+            $disabled, 1, $this->admin,
+            'Deshabilitación sintética revisada de forma independiente.', self::SOURCE,
+        );
+        $service->publish([$disabled->id], 1, $this->author);
+        $publishedRelease = $this->dataset->releases()
+            ->where('status', DatasetReleaseStatus::Published)
+            ->latest('id')
+            ->firstOrFail();
+        $published = json_decode(Storage::disk('public')->get($publishedRelease->asset_path), true, 512, JSON_THROW_ON_ERROR);
+        $publishedCoverage = collect($published['jurisdictions'])->firstWhere('id', $jurisdiction->key)['coverages'][0];
+        $this->assertFalse($publishedCoverage['consultationEnabled']);
+        $this->assertSame('partial', $publishedCoverage['coverageCompleteness']);
+        $this->assertSame($this->version->payload['coverages'][0]['rules'], $publishedCoverage['rules']);
+
+        $service->rollbackCity($this->version, 2, $this->author);
+        $rollbackRelease = $this->dataset->releases()
+            ->where('status', DatasetReleaseStatus::Published)
+            ->latest('id')
+            ->firstOrFail();
+        $rollback = json_decode(Storage::disk('public')->get($rollbackRelease->asset_path), true, 512, JSON_THROW_ON_ERROR);
+        $rolledBackCoverage = collect($rollback['jurisdictions'])->firstWhere('id', $jurisdiction->key)['coverages'][0];
+        $this->assertTrue($rolledBackCoverage['consultationEnabled']);
+        $this->assertSame($this->version->payload['coverages'][0]['rules'], $rolledBackCoverage['rules']);
+        $this->assertSame(3, $this->dataset->refresh()->publication_revision);
     }
 
     public function test_http_editor_journey_publishes_and_rolls_back_only_through_authorized_admin(): void
@@ -516,6 +571,7 @@ class RestrictionMaterialApprovalWorkflowTest extends TestCase
             'name' => 'Medellín',
             'coverages' => [[
                 'vehicleKind' => 'car', 'serviceType' => 'private', 'coverageCompleteness' => 'partial',
+                'consultationEnabled' => true,
                 'verifiedAt' => '2026-11-10T00:00:00Z', 'staleAfter' => '2026-11-30T00:00:00Z',
                 'sourceUrls' => [self::SOURCE],
                 'rules' => [[

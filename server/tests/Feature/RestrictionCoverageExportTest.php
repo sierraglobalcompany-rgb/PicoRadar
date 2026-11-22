@@ -50,9 +50,11 @@ class RestrictionCoverageExportTest extends TestCase
                 sprintf('export-city-%02d', $index),
                 sprintf('Export city %02d', $index),
             );
-            $this->version($jurisdiction, 1, RestrictionRuleVersionStatus::Draft, [
-                $this->coverage('car', 'private', 'complete', ['https://example.test/source'], '2099-01-01T00:00:00Z'),
-            ]);
+            $coverage = $this->coverage('car', 'private', 'complete', ['https://example.test/source'], '2099-01-01T00:00:00Z');
+            if ($index === 1) {
+                $coverage['consultationEnabled'] = false;
+            }
+            $this->version($jurisdiction, 1, RestrictionRuleVersionStatus::Draft, [$coverage]);
         }
 
         foreach ([
@@ -77,6 +79,7 @@ class RestrictionCoverageExportTest extends TestCase
         $allRows = $this->csvRows($allResponse->streamedContent());
         self::assertCount(59, $allRows, 'The export must include all 56 rows plus three attention rows, independent of page 2.');
         self::assertSame('editorial', $allRows[0]['scope']);
+        self::assertSame('false', collect($allRows)->firstWhere('municipality_key', 'co-05001')['consultation_enabled']);
 
         $filteredResponse = $this->actingAs($reviewer)->get(route('admin.restrictions.coverage.export', [
             'q' => 'Attention',

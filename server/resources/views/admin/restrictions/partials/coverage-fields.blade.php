@@ -30,6 +30,13 @@
         <label class="text-sm font-medium">Fecha real de revisión<input class="mt-1 min-h-12 w-full rounded-md border border-slate-300 px-3" type="datetime-local" name="coverages[{{ $coverageIndex }}][verified_at]" value="{{ $coverage['verified_at'] ?? '' }}" required></label>
         <label class="text-sm font-medium">Revisar nuevamente antes de<input class="mt-1 min-h-12 w-full rounded-md border border-slate-300 px-3" type="datetime-local" name="coverages[{{ $coverageIndex }}][stale_after]" value="{{ $coverage['stale_after'] ?? '' }}" required></label>
     </div>
+    @if($schemaVersion === 2)
+        <label class="mt-4 flex min-h-12 items-start gap-3 rounded-md bg-sky-50 px-3 py-3 text-sm text-sky-950">
+            <input type="hidden" name="coverages[{{ $coverageIndex }}][consultation_enabled_present]" value="1">
+            <input type="checkbox" class="mt-1" name="coverages[{{ $coverageIndex }}][consultation_enabled]" value="1" @checked($coverage['consultation_enabled'] ?? true)>
+            <span><strong>Consulta habilitada para esta modalidad</strong>. Si se desactiva, la app muestra estado desconocido y conserva las reglas y la completitud declarada.</span>
+        </label>
+    @endif
     <label class="mt-4 block text-sm font-medium">Fuentes HTTPS de la cobertura <span class="font-normal text-slate-500">(una por línea)</span><textarea class="mt-1 min-h-24 w-full rounded-md border border-slate-300 p-3" name="coverages[{{ $coverageIndex }}][source_urls]" required>{{ $coverage['source_urls'] ?? '' }}</textarea></label>
     <div class="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5">
         <div><p class="text-xs font-semibold uppercase text-teal-700">Reglas</p><p class="text-sm text-slate-600">Cada regla tiene vigencia, horario, placa aplicable y fuente propia.</p></div>
@@ -40,11 +47,5 @@
             @include('admin.restrictions.partials.rule-fields', ['coverageIndex' => $coverageIndex, 'ruleIndex' => $ruleIndex, 'rule' => $rule, 'schemaVersion' => $schemaVersion])
         @endforeach
     </div>
-    @if($schemaVersion === 2)
-        <label class="mt-4 flex min-h-12 items-start gap-3 rounded-md bg-amber-50 px-3 py-3 text-sm text-amber-950">
-            <input type="checkbox" class="mt-1" name="coverages[{{ $coverageIndex }}][suspend_consultation]" value="1" @checked(!empty($coverage['suspend_consultation']))>
-            <span><strong>Suspender consulta de esta modalidad</strong> (solo cobertura ya existente). Publica <code>partial</code> sin reglas y la app responde <strong>desconocido</strong>, nunca “puede circular”. Requiere revisión independiente. Para reactivar, recupera o vuelve a cargar las reglas respaldadas por la fuente.</span>
-        </label>
-    @endif
-    <label class="mt-4 flex min-h-12 items-center gap-3 rounded-md bg-amber-50 px-3 text-sm text-amber-950"><input type="checkbox" name="coverages[{{ $coverageIndex }}][confirmed_no_rules]" value="1" @checked(!empty($coverage['confirmed_no_rules']))>Confirmo que la fuente revisada no publica restricciones para esta cobertura. No marques esta opción al suspender la consulta.</label>
+    <label class="mt-4 flex min-h-12 items-center gap-3 rounded-md bg-amber-50 px-3 text-sm text-amber-950"><input type="checkbox" name="coverages[{{ $coverageIndex }}][confirmed_no_rules]" value="1" @checked(!empty($coverage['confirmed_no_rules']))>Confirmo que la fuente revisada no publica restricciones para esta cobertura. Esta confirmación no activa una modalidad deshabilitada.</label>
 </section>

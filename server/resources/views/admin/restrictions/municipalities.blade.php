@@ -109,6 +109,7 @@
                                         @php($evidenceClass = match($coverage['availability']) {'VERIFIED' => 'bg-emerald-50 text-emerald-800', 'PARTIAL' => 'bg-amber-50 text-amber-900', 'STALE' => 'bg-rose-50 text-rose-800', default => 'bg-slate-100 text-slate-800'})
                                         <div class="font-medium">{{ $coverage['category'] }}</div>
                                         <div><span class="inline-flex rounded-full px-2 py-1 font-semibold {{ $evidenceClass }}">{{ $coverage['availability'] }}</span></div>
+                                        <div class="text-xs text-slate-600">Consulta de modalidad: {{ $coverage['consultation_enabled'] ? 'habilitada' : 'deshabilitada' }}</div>
                                         @if($coverage['availability'] === 'UNKNOWN')<div class="text-xs text-slate-600">{{ $coverage['missing_reason'] }}</div>@endif
                                     @endforeach
                                     @if($entry['jurisdiction'])

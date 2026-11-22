@@ -37,6 +37,7 @@
                             <div class="mb-2 last:mb-0">
                                 <div>{{ $coverage['vehicleKind'] ?? 'No confirmado' }} · {{ $coverage['serviceType'] ?? 'No confirmado' }}</div>
                                 @if(isset($coverage['coverageCompleteness']))<div class="text-xs text-slate-600">Cobertura declarada: {{ $coverage['coverageCompleteness'] }}</div>@endif
+                                <div class="text-xs text-slate-600">Consulta de modalidad: {{ array_key_exists('consultationEnabled', $coverage) ? ($coverage['consultationEnabled'] ? 'habilitada' : 'deshabilitada') : 'no indicada; conserva el valor vigente o usa ON por compatibilidad histórica' }}</div>
                             </div>
                         @empty
                             <span class="text-slate-600">Modalidad no disponible</span>

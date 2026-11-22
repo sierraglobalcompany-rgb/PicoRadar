@@ -52,6 +52,7 @@ class RestrictionFormPayloadBuilderTest extends TestCase
             $payload['coverages'],
         ));
         $this->assertSame('partial', $payload['coverages'][0]['coverageCompleteness']);
+        $this->assertTrue($payload['coverages'][0]['consultationEnabled']);
         $this->assertSame([
             ['startMinute' => 0, 'endMinute' => 0, 'fullDay' => true],
             ['startMinute' => 360, 'endMinute' => 480],
@@ -183,7 +184,7 @@ class RestrictionFormPayloadBuilderTest extends TestCase
         $this->assertStringContainsString('-05:00', $rule['validFrom']);
     }
 
-    public function test_schema2_can_pause_one_existing_modality_without_dropping_its_identity_or_claiming_free_circulation(): void
+    public function test_schema2_toggle_changes_one_modality_without_dropping_rules_or_completeness(): void
     {
         $builder = new RestrictionFormPayloadBuilder;
         $jurisdiction = new Jurisdiction(['key' => 'synthetic-city', 'name' => 'Ciudad sintética']);
@@ -191,53 +192,50 @@ class RestrictionFormPayloadBuilderTest extends TestCase
         $car = $this->schema2Coverage('car|private', 'car-rule');
         $taxi = $this->schema2Coverage('car|taxi', 'taxi-rule');
         $active = $builder->build($jurisdiction, ['coverages' => [$car, $taxi]], 2);
-        $taxi['suspend_consultation'] = '1';
+        $taxi['consultation_enabled_present'] = '1';
         $paused = $builder->build($jurisdiction, ['coverages' => [$car, $taxi]], 2, $active);
 
         $this->assertSame($active['coverages'][0], $paused['coverages'][0], 'Unrelated modality must not change.');
         $this->assertSame('taxi', $paused['coverages'][1]['serviceType']);
+        $this->assertFalse($paused['coverages'][1]['consultationEnabled']);
         $this->assertSame('partial', $paused['coverages'][1]['coverageCompleteness']);
-        $this->assertSame([], $paused['coverages'][1]['rules']);
-        $this->assertNotEmpty($active['coverages'][1]['rules'], 'Published history remains recoverable.');
-        $this->assertArrayNotHasKey('suspend_consultation', $paused['coverages'][1], 'Do not change the OTA contract.');
+        $this->assertSame($active['coverages'][1]['rules'], $paused['coverages'][1]['rules']);
 
-        // Re-enabling by re-entering the official rules uses the same engine.
-        $resumed = $builder->build($jurisdiction, ['coverages' => [$car, $this->schema2Coverage('car|taxi', 'taxi-rule')]], 2, $paused);
-        $this->assertNotEmpty($resumed['coverages'][1]['rules']);
+        $taxi['consultation_enabled'] = '1';
+        $resumed = $builder->build($jurisdiction, ['coverages' => [$car, $taxi]], 2, $paused);
+        $this->assertTrue($resumed['coverages'][1]['consultationEnabled']);
+        $this->assertSame($active['coverages'][1]['rules'], $resumed['coverages'][1]['rules']);
     }
 
-    public function test_schema2_pause_rejects_a_new_coverage_or_legacy_schema(): void
+    public function test_schema2_toggle_preserves_an_existing_off_value_when_form_omits_it(): void
     {
         $builder = new RestrictionFormPayloadBuilder;
         $jurisdiction = new Jurisdiction(['key' => 'synthetic-city', 'name' => 'Ciudad sintética']);
-        $coverage = $this->schema2Coverage('car|taxi', 'taxi-rule');
-        $coverage['suspend_consultation'] = '1';
-        foreach ([1, 2] as $schemaVersion) {
-            $submitted = $coverage;
-            if ($schemaVersion === 1) {
-                $submitted['vehicle_kind'] = 'car';
-                $submitted['service_type'] = 'taxi';
-            }
-            try {
-                $builder->build($jurisdiction, ['coverages' => [$submitted]], $schemaVersion);
-                $this->fail('An unpublished or legacy coverage could be paused.');
-            } catch (DomainException $error) {
-                $this->assertStringContainsString('Solo se puede suspender una cobertura schema2', $error->getMessage());
-            }
-        }
-    }
-
-    public function test_schema2_pause_cannot_be_confused_with_no_official_restrictions(): void
-    {
-        $builder = new RestrictionFormPayloadBuilder;
-        $jurisdiction = new Jurisdiction(['key' => 'synthetic-city', 'name' => 'Ciudad sintética']);
-        $original = $builder->build($jurisdiction, ['coverages' => [$this->schema2Coverage('car|private', 'car-rule')]], 2);
         $coverage = $this->schema2Coverage('car|private', 'car-rule');
-        $coverage['suspend_consultation'] = '1';
-        $coverage['confirmed_no_rules'] = '1';
+        $coverage['consultation_enabled_present'] = '1';
+        $original = $builder->build($jurisdiction, ['coverages' => [$coverage]], 2);
+        unset($coverage['consultation_enabled_present']);
+
+        $updated = $builder->build($jurisdiction, ['coverages' => [$coverage]], 2, [
+            ...$original,
+            'coverages' => [[...$original['coverages'][0], 'consultationEnabled' => false]],
+        ]);
+
+        $this->assertFalse($updated['coverages'][0]['consultationEnabled']);
+        $this->assertSame($original['coverages'][0]['rules'], $updated['coverages'][0]['rules']);
+    }
+
+    public function test_schema2_toggle_rejects_non_boolean_contract_values(): void
+    {
+        $coverage = $this->schema2Coverage('car|private', 'car-rule');
+        $coverage['consultationEnabled'] = 'false';
         $this->expectException(DomainException::class);
-        $this->expectExceptionMessage('decisiones distintas');
-        $builder->build($jurisdiction, ['coverages' => [$coverage]], 2, $original);
+        $this->expectExceptionMessage('debe ser booleana');
+        (new RestrictionFormPayloadBuilder)->build(
+            new Jurisdiction(['key' => 'synthetic-city', 'name' => 'Ciudad sintética']),
+            ['coverages' => [$coverage]],
+            2,
+        );
     }
 
     #[DataProvider('invalidInputs')]

@@ -444,7 +444,7 @@ class RestrictionRuleController extends Controller
         return [
             'scope', 'department_code', 'municipality_code', 'municipality_key', 'municipality_name',
             'jurisdiction_key', 'jurisdiction_name', 'management_state', 'vehicle_kind', 'service_type',
-            'coverage_evidence_state', 'editor_version', 'editor_version_status', 'source_editor_version', 'published_release',
+            'consultation_enabled', 'coverage_evidence_state', 'editor_version', 'editor_version_status', 'source_editor_version', 'published_release',
             'publication_state', 'source_urls', 'verified_at', 'valid_until', 'stale_after', 'missing_reason',
         ];
     }
@@ -643,7 +643,9 @@ class RestrictionRuleController extends Controller
         $values = [
             $row['scope'], $row['department_code'], $row['municipality_code'], $row['municipality_key'], $row['municipality_name'],
             $jurisdiction?->key ?? '', $jurisdiction?->name ?? '', $row['management_state'],
-            $coverage['vehicle_kind'] ?? '', $coverage['service_type'] ?? '', $coverage['availability'] ?? 'UNKNOWN',
+            $coverage['vehicle_kind'] ?? '', $coverage['service_type'] ?? '',
+            ($coverage['consultation_enabled'] ?? null) === null ? '' : ($coverage['consultation_enabled'] ? 'true' : 'false'),
+            $coverage['availability'] ?? 'UNKNOWN',
             $version?->version ?? '', $version?->status?->value ?? '', $row['source_editor_version'] ?? 'NO_IDENTIFICADA', $release?->version ?? '',
             $row['publication_state'] ?? ($release ? 'PUBLISHED' : 'UNKNOWN'),
             $this->jsonList($coverage['source_urls'] ?? []), $this->jsonList($coverage['verified_at'] ?? []),
@@ -660,7 +662,7 @@ class RestrictionRuleController extends Controller
     }
 
     /** @param array<string, mixed> $coverage
-     * @return array{vehicle_kind: string, service_type: string, category: string, availability: string, source_urls: list<string>, verified_at: list<string>, valid_until: list<string>, stale_after: ?string, has_unbounded_rule: bool, missing_reason: string}
+     * @return array{vehicle_kind: string, service_type: string, consultation_enabled: bool, category: string, availability: string, source_urls: list<string>, verified_at: list<string>, valid_until: list<string>, stale_after: ?string, has_unbounded_rule: bool, missing_reason: string}
      */
     private function coverageSummary(array $coverage): array
     {
@@ -701,6 +703,8 @@ class RestrictionRuleController extends Controller
         return [
             'vehicle_kind' => $vehicleKind,
             'service_type' => $serviceType,
+            // Payloads without the field predate the toggle and were evaluated as ON.
+            'consultation_enabled' => $coverage['consultationEnabled'] ?? true,
             'category' => implode(' · ', array_filter([
                 $this->vehicleKindLabel($vehicleKind),
                 $this->serviceTypeLabel($serviceType),
@@ -720,12 +724,13 @@ class RestrictionRuleController extends Controller
         ];
     }
 
-    /** @return array{vehicle_kind: string, service_type: string, category: string, availability: string, source_urls: list<string>, verified_at: list<string>, valid_until: list<string>, stale_after: null, has_unbounded_rule: false, missing_reason: string} */
+    /** @return array{vehicle_kind: string, service_type: string, consultation_enabled: null, category: string, availability: string, source_urls: list<string>, verified_at: list<string>, valid_until: list<string>, stale_after: null, has_unbounded_rule: false, missing_reason: string} */
     private function unknownCoverage(string $reason = 'NO_COVERAGE_REGISTERED'): array
     {
         return [
             'vehicle_kind' => '',
             'service_type' => '',
+            'consultation_enabled' => null,
             'category' => 'Sin cobertura registrada',
             'availability' => 'UNKNOWN',
             'source_urls' => [],
@@ -1023,7 +1028,7 @@ class RestrictionRuleController extends Controller
     public function template(): Response
     {
         Gate::authorize('datasets.edit');
-        $headers = ['jurisdiction_id', 'jurisdiction_name', 'vehicle_kind', 'service_type', 'rule_id', 'priority', 'effect', 'valid_from', 'valid_until', 'weekdays', 'date_parity', 'digit_position', 'digits', 'time_windows', 'applies_on_holidays', 'source_url', 'verified_at', 'stale_after', 'publish'];
+        $headers = ['jurisdiction_id', 'jurisdiction_name', 'vehicle_kind', 'service_type', 'consultation_enabled', 'rule_id', 'priority', 'effect', 'valid_from', 'valid_until', 'weekdays', 'date_parity', 'digit_position', 'digits', 'time_windows', 'applies_on_holidays', 'source_url', 'verified_at', 'stale_after', 'publish'];
 
         return response(implode(',', $headers)."\n", 200, ['Content-Type' => 'text/csv; charset=UTF-8', 'Content-Disposition' => 'attachment; filename="restriction-rules-template.csv"']);
     }

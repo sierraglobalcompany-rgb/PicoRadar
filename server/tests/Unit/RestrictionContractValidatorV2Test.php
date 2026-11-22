@@ -15,6 +15,35 @@ class RestrictionContractValidatorV2Test extends TestCase
         $this->assertSame(['truck'], $summary['vehicleKinds']);
     }
 
+    public function test_schema2_coverage_toggle_is_optional_for_history_and_strictly_boolean_when_present(): void
+    {
+        $validator = new RestrictionContractValidator;
+        $historical = $this->jurisdiction();
+        $validator->validateJurisdiction($historical, null, 2);
+
+        $disabled = $this->jurisdiction();
+        $disabled['coverages'][0]['consultationEnabled'] = false;
+        $validator->validateJurisdiction($disabled, null, 2);
+
+        foreach (['false', 0, null] as $invalidValue) {
+            $invalid = $this->jurisdiction();
+            $invalid['coverages'][0]['consultationEnabled'] = $invalidValue;
+            try {
+                $validator->validateJurisdiction($invalid, null, 2);
+                $this->fail('A non-boolean schema2 consultation toggle was accepted.');
+            } catch (DomainException $error) {
+                $this->assertStringContainsString('must be a boolean', $error->getMessage());
+            }
+        }
+
+        $legacy = $this->jurisdiction();
+        unset($legacy['schemaVersion'], $legacy['coverages'][0]['coverageCompleteness']);
+        unset($legacy['coverages'][0]['rules'][0]['conditions']);
+        $legacy['coverages'][0]['consultationEnabled'] = false;
+        $this->expectException(DomainException::class);
+        $validator->validateJurisdiction($legacy, null, 1);
+    }
+
     public function test_rejects_unknown_duplicate_and_impossible_conditions(): void
     {
         foreach ([

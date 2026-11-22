@@ -9,6 +9,7 @@ import 'package:picoradar/core/sync/dataset_sync_service.dart';
 import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_dataset.dart';
 import 'package:picoradar/features/pico_placa/data/restriction_store.dart';
+import 'package:picoradar/features/pico_placa/domain/restriction_day_evaluation.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_engine.dart';
 import 'package:picoradar/features/pico_placa/domain/restriction_rule.dart';
 
@@ -173,6 +174,149 @@ void main() {
       expect(await db.select(db.restrictionCoverages).get(), hasLength(1));
     },
   );
+
+  test('schema2 modality and jurisdiction toggles produce only safe evaluation states', () async {
+    Map<String, dynamic> fixture({required bool jurisdictionEnabled}) {
+      final dataset = _dataset(
+        schemaVersion: 2,
+        coveragePatch: {
+          'coverageCompleteness': 'partial',
+          'consultationEnabled': true,
+        },
+        rulePatch: {'conditions': []},
+        jurisdictionPatch: {
+          'schemaVersion': 2,
+          'municipalityCodes': ['05001'],
+          'consultationEnabled': jurisdictionEnabled,
+        },
+      );
+      final jurisdiction = Map<String, dynamic>.from(
+        (dataset['jurisdictions'] as List).single as Map,
+      );
+      final car = Map<String, dynamic>.from(
+        (jurisdiction['coverages'] as List).single as Map,
+      );
+      final motorcycle = Map<String, dynamic>.from(car)
+        ..['vehicleKind'] = 'motorcycle'
+        ..['consultationEnabled'] = false;
+      final motorcycleRule = Map<String, dynamic>.from(
+        (car['rules'] as List).single as Map,
+      )..['id'] = 'NON_PRODUCTION_FIXTURE-motorcycle-rule';
+      motorcycle['rules'] = [motorcycleRule];
+      jurisdiction['coverages'] = [car, motorcycle];
+      dataset['jurisdictions'] = [jurisdiction];
+      return dataset;
+    }
+
+    await importRestrictionsDataset(db, fixture(jurisdictionEnabled: true));
+    final store = RestrictionStore(db);
+    final day = DateTime(2026, 8, 27);
+    final car = await store.loadCoverage(
+      'synthetic_test_jurisdiction',
+      VehicleKind.car,
+      VehicleServiceType.private,
+      DateTime(2026, 8, 27, 8),
+    );
+    final motorcycle = await store.loadCoverage(
+      'synthetic_test_jurisdiction',
+      VehicleKind.motorcycle,
+      VehicleServiceType.private,
+      DateTime(2026, 8, 27, 8),
+    );
+    expect(car.consultationEnabled, isTrue);
+    expect(motorcycle.consultationEnabled, isFalse);
+    expect(motorcycle.rules, isNotEmpty, 'OFF retains rules for later reactivation.');
+    expect(
+      evaluateRestrictionDay(
+        ruleSet: car,
+        jurisdictionId: 'synthetic_test_jurisdiction',
+        plate: 'ABC123',
+        vehicleKind: VehicleKind.car,
+        serviceType: VehicleServiceType.private,
+        date: day,
+      ).status,
+      RestrictionDayStatus.restricted,
+    );
+    expect(
+      evaluateRestrictionDay(
+        ruleSet: motorcycle,
+        jurisdictionId: 'synthetic_test_jurisdiction',
+        plate: 'ABC123',
+        vehicleKind: VehicleKind.motorcycle,
+        serviceType: VehicleServiceType.private,
+        date: day,
+      ).status,
+      RestrictionDayStatus.unknown,
+    );
+
+    await importRestrictionsDataset(db, fixture(jurisdictionEnabled: false));
+    for (final (kind, coverage) in [
+      (VehicleKind.car, await store.loadCoverage(
+        'synthetic_test_jurisdiction',
+        VehicleKind.car,
+        VehicleServiceType.private,
+        DateTime(2026, 8, 27, 8),
+      )),
+      (VehicleKind.motorcycle, await store.loadCoverage(
+        'synthetic_test_jurisdiction',
+        VehicleKind.motorcycle,
+        VehicleServiceType.private,
+        DateTime(2026, 8, 27, 8),
+      )),
+    ]) {
+      expect(coverage.jurisdictionConsultationEnabled, isFalse);
+      expect(
+        evaluateRestrictionDay(
+          ruleSet: coverage,
+          jurisdictionId: 'synthetic_test_jurisdiction',
+          plate: 'ABC123',
+          vehicleKind: kind,
+          serviceType: VehicleServiceType.private,
+          date: day,
+        ).status,
+        RestrictionDayStatus.unknown,
+      );
+    }
+  });
+
+  test('schema2 historical coverage without a toggle remains enabled', () async {
+    await importRestrictionsDataset(
+      db,
+      _dataset(
+        schemaVersion: 2,
+        coveragePatch: {'coverageCompleteness': 'partial'},
+        rulePatch: {'conditions': []},
+        jurisdictionPatch: {'schemaVersion': 2},
+      ),
+    );
+
+    final coverage = await RestrictionStore(db).loadCoverage(
+      'synthetic_test_jurisdiction',
+      VehicleKind.car,
+      VehicleServiceType.private,
+      DateTime(2026, 8, 27, 8),
+    );
+    expect(coverage.consultationEnabled, isTrue);
+    expect(coverage.rules, isNotEmpty);
+  });
+
+  test('rejects non-boolean schema2 coverage toggles', () async {
+    await expectLater(
+      importRestrictionsDataset(
+        db,
+        _dataset(
+          schemaVersion: 2,
+          coveragePatch: {
+            'coverageCompleteness': 'partial',
+            'consultationEnabled': 'false',
+          },
+          rulePatch: {'conditions': []},
+          jurisdictionPatch: {'schemaVersion': 2},
+        ),
+      ),
+      throwsA(isA<DatasetSyncException>()),
+    );
+  });
 
   test('rejects unsupported future restrictions schema', () async {
     await expectLater(

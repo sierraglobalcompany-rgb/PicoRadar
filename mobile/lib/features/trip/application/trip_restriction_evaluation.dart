@@ -77,6 +77,9 @@ TripEndpointRestriction evaluateTripRestriction({
   final String? coverageReason;
   if (!ruleSet.coverageKnown) {
     coverageReason = 'no_coverage';
+  } else if (!ruleSet.consultationEnabled ||
+      !ruleSet.jurisdictionConsultationEnabled) {
+    coverageReason = 'consultation_disabled';
   } else if (ruleSet.dataIsStale ||
       (staleAfter != null && !nowUtc.toUtc().isBefore(staleAfter.toUtc()))) {
     coverageReason = 'stale_data';
@@ -121,6 +124,9 @@ TripEndpointRestriction evaluateTripRestriction({
         coverageKnown: true,
         dataIsStale: false,
         coverageCompleteness: ruleSet.coverageCompleteness,
+        consultationEnabled: ruleSet.consultationEnabled,
+        jurisdictionConsultationEnabled:
+            ruleSet.jurisdictionConsultationEnabled,
       ),
       rules,
     );

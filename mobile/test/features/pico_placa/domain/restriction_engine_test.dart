@@ -13,6 +13,20 @@ void main() {
     expect(result.reasonCode, RestrictionReasonCode.unknownCoverage);
   });
 
+  test('a disabled coverage or jurisdiction never evaluates as allowed', () {
+    for (final context in [
+      _context(consultationEnabled: false),
+      _context(jurisdictionConsultationEnabled: false),
+    ]) {
+      final result = engine.evaluate(
+        context,
+        [_rule(effect: RestrictionEffect.allow)],
+      );
+      expect(result.status, RestrictionStatus.unknown);
+      expect(result.reasonCode, RestrictionReasonCode.unknownCoverage);
+    }
+  });
+
   test('data stale returns stale', () {
     final result = engine.evaluate(_context(dataIsStale: true), [_rule()]);
 
@@ -436,6 +450,8 @@ RestrictionContext _context({
   bool isHoliday = false,
   bool coverageKnown = true,
   bool dataIsStale = false,
+  bool consultationEnabled = true,
+  bool jurisdictionConsultationEnabled = true,
 }) {
   return RestrictionContext(
     jurisdictionId: jurisdictionId,
@@ -447,6 +463,8 @@ RestrictionContext _context({
     isHoliday: isHoliday,
     coverageKnown: coverageKnown,
     dataIsStale: dataIsStale,
+    consultationEnabled: consultationEnabled,
+    jurisdictionConsultationEnabled: jurisdictionConsultationEnabled,
   );
 }
 

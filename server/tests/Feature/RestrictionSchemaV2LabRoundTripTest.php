@@ -413,36 +413,38 @@ class RestrictionSchemaV2LabRoundTripTest extends TestCase
         self::assertTrue($this->city($v4, 'co-ant-medellin-form')['consultationEnabled']);
         self::assertSame($this->canonical($cityB), $this->canonical($this->city($v4, 'co-ant-abejorral-form')));
 
-        // Pausing an individual modality must not delete its coverage, overwrite
-        // another jurisdiction, or claim that the vehicle can circulate.
+        // Disabling one modality preserves its rules, completeness, and peer coverage.
         $this->actingAs($editor)->post(route('admin.restrictions.duplicate', $a2))->assertRedirect();
-        $paused = RestrictionRuleVersion::query()->where('jurisdiction_id', $medellin->id)->latest('version')->firstOrFail();
-        $pauseInput = $a2Input;
-        $pauseInput['coverages'][1]['suspend_consultation'] = '1';
-        $this->actingAs($editor)->put(route('admin.restrictions.update', $paused), $pauseInput)
+        $disabledModality = RestrictionRuleVersion::query()->where('jurisdiction_id', $medellin->id)->latest('version')->firstOrFail();
+        $disabledModalityInput = $a2Input;
+        $disabledModalityInput['coverages'][1]['consultation_enabled_present'] = '1';
+        $this->actingAs($editor)->put(route('admin.restrictions.update', $disabledModality), $disabledModalityInput)
             ->assertRedirect()->assertSessionHasNoErrors();
-        $paused->refresh();
-        self::assertCount(2, $paused->payload['coverages']);
-        self::assertSame('partial', $paused->payload['coverages'][1]['coverageCompleteness']);
-        self::assertSame([], $paused->payload['coverages'][1]['rules']);
-        $this->validateVersionAs($paused, $reviewer);
+        $disabledModality->refresh();
+        self::assertCount(2, $disabledModality->payload['coverages']);
+        self::assertFalse($disabledModality->payload['coverages'][1]['consultationEnabled']);
+        self::assertSame($a2->payload['coverages'][1]['coverageCompleteness'], $disabledModality->payload['coverages'][1]['coverageCompleteness']);
+        self::assertSame($a2->payload['coverages'][1]['rules'], $disabledModality->payload['coverages'][1]['rules']);
+        $this->validateVersionAs($disabledModality, $reviewer);
         $this->actingAs($reviewer)->post(route('admin.restrictions.publish'), [
-            'versions' => [$paused->id], 'publication_revision' => 4,
+            'versions' => [$disabledModality->id], 'publication_revision' => 4,
         ])->assertRedirect()->assertSessionHasErrors('publication');
         self::assertSame(4, $this->dataset->refresh()->publication_revision);
-        $this->approveVersion($paused, 4, $source);
-        $this->publishAs($reviewer, [$paused], 4);
+        $this->approveVersion($disabledModality, 4, $source);
+        $this->publishAs($reviewer, [$disabledModality], 4);
         $v5 = $this->readPublishedRestrictions();
         $cityA5 = $this->city($v5, 'co-ant-medellin-form');
         self::assertCount(2, $cityA5['coverages']);
-        self::assertSame('partial', $cityA5['coverages'][1]['coverageCompleteness']);
-        self::assertSame([], $cityA5['coverages'][1]['rules']);
+        self::assertFalse($cityA5['coverages'][1]['consultationEnabled']);
+        self::assertSame($cityA2['coverages'][1]['coverageCompleteness'], $cityA5['coverages'][1]['coverageCompleteness']);
+        self::assertSame($cityA2['coverages'][1]['rules'], $cityA5['coverages'][1]['rules']);
         self::assertSame($this->canonical($cityB), $this->canonical($this->city($v5, 'co-ant-abejorral-form')));
 
         $this->actingAs($reviewer)->post(route('admin.restrictions.rollback', $a2), [
             'publication_revision' => 5,
         ])->assertRedirect(route('admin.restrictions.history'))->assertSessionHasNoErrors();
         $restored = $this->city($this->readPublishedRestrictions(), 'co-ant-medellin-form');
+        self::assertTrue($restored['coverages'][1]['consultationEnabled']);
         self::assertNotEmpty($restored['coverages'][1]['rules']);
         self::assertSame($this->canonical($cityB), $this->canonical($this->city($this->readPublishedRestrictions(), 'co-ant-abejorral-form')));
     }

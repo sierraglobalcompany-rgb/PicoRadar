@@ -74,6 +74,69 @@ class RestrictionImportServiceTest extends TestCase
         $this->assertSame(0, $dataset->fresh()->publication_revision);
     }
 
+    public function test_partial_schema2_import_preserves_existing_off_state_rules_and_unselected_coverages(): void
+    {
+        Dataset::query()->where('key', 'restrictions')->update(['schema_version' => 2]);
+        $jurisdiction = Jurisdiction::query()->where('key', 'co-test-synthetic')->firstOrFail();
+        $existing = $this->payload();
+        $existing['schemaVersion'] = 2;
+        $existing['municipalityCodes'] = ['05001'];
+        $existing['consultationEnabled'] = false;
+        $car = $existing['coverages'][0];
+        $car['coverageCompleteness'] = 'partial';
+        $car['consultationEnabled'] = true;
+        $car['rules'][0]['conditions'] = [];
+        $motorcycle = $car;
+        $motorcycle['vehicleKind'] = 'motorcycle';
+        $motorcycle['consultationEnabled'] = false;
+        $motorcycle['rules'][0]['id'] = 'synthetic-motorcycle-rule';
+        $existing['coverages'] = [$car, $motorcycle];
+        app(\App\Services\RestrictionRuleVersionService::class)->createDraft($jurisdiction, $existing, $this->actor);
+
+        $partial = $motorcycle;
+        unset($partial['consultationEnabled']);
+        $incoming = [
+            'schemaVersion' => 2,
+            'id' => $jurisdiction->key,
+            'name' => $jurisdiction->name,
+            'coverages' => [$partial],
+        ];
+        $json = json_encode([
+            'schemaVersion' => 2,
+            'datasetKey' => 'restrictions',
+            'version' => 'synthetic-partial-toggle-import',
+            'generatedAt' => '2026-09-20T12:00:00Z',
+            'jurisdictions' => [$incoming],
+        ], JSON_THROW_ON_ERROR);
+        $import = app(RestrictionImportService::class)->analyze(
+            $this->temporaryFile($json),
+            'synthetic-partial-toggle.json',
+            'json',
+            null,
+            $this->actor,
+        );
+
+        $this->assertSame(1, $import->valid_count);
+        $versions = app(RestrictionImportService::class)->confirm(
+            $import,
+            $import->rows()->pluck('id')->all(),
+            $this->actor,
+        );
+
+        $draft = $versions[0]->payload;
+        $this->assertSame(false, $draft['consultationEnabled']);
+        $this->assertSame(['05001'], $draft['municipalityCodes']);
+        $this->assertSame(2, count($draft['coverages']));
+        $byPair = [];
+        foreach ($draft['coverages'] as $coverage) {
+            $byPair[$coverage['vehicleKind'].'|'.$coverage['serviceType']] = $coverage;
+        }
+        $this->assertTrue($byPair['car|private']['consultationEnabled']);
+        $this->assertFalse($byPair['motorcycle|private']['consultationEnabled']);
+        $this->assertSame('synthetic-motorcycle-rule', $byPair['motorcycle|private']['rules'][0]['id']);
+        $this->assertSame('partial', $byPair['motorcycle|private']['coverageCompleteness']);
+    }
+
     public function test_csv_and_xlsx_rows_use_the_same_real_contract_mapping(): void
     {
         $header = array_keys($this->flatRow());
@@ -86,6 +149,33 @@ class RestrictionImportServiceTest extends TestCase
         $this->assertSame(1, $csvImport->valid_count);
         $this->assertSame(1, $xlsxImport->valid_count);
         $this->assertSame($csvImport->rows()->first()->normalized, $xlsxImport->rows()->first()->normalized);
+    }
+
+    public function test_tabular_import_accepts_a_per_modality_consultation_toggle(): void
+    {
+        $row = $this->flatRow();
+        $row['consultation_enabled'] = 'false';
+        $header = array_keys($row);
+        $csv = implode(',', $header)."\n".implode(',', array_map(fn (string $value): string => $this->csv($value), array_values($row)))."\n";
+        $import = app(RestrictionImportService::class)->analyze(
+            $this->temporaryFile($csv),
+            'synthetic-toggle.csv',
+            'csv',
+            null,
+            $this->actor,
+        );
+
+        $this->assertSame(1, $import->valid_count);
+        $versions = app(RestrictionImportService::class)->confirm(
+            $import,
+            $import->rows()->pluck('id')->all(),
+            $this->actor,
+        );
+        $coverage = $versions[0]->payload['coverages'][0];
+        $this->assertSame(2, $versions[0]->payload['schemaVersion']);
+        $this->assertFalse($coverage['consultationEnabled']);
+        $this->assertSame('partial', $coverage['coverageCompleteness']);
+        $this->assertSame('synthetic-rule-1', $coverage['rules'][0]['id']);
     }
 
     public function test_invalid_or_excluded_rows_are_never_confirmed(): void

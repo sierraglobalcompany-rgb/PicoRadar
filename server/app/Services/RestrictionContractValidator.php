@@ -83,7 +83,7 @@ final class RestrictionContractValidator
             $coverage = $this->object($coverageValue, "coverages.$coverageIndex");
             $this->knownKeys($coverage, $schemaVersion === 1
                 ? ['vehicleKind', 'serviceType', 'verifiedAt', 'staleAfter', 'sourceUrls', 'rules']
-                : ['vehicleKind', 'serviceType', 'coverageCompleteness', 'verifiedAt', 'staleAfter', 'sourceUrls', 'rules'], 'coverage');
+                : ['vehicleKind', 'serviceType', 'coverageCompleteness', 'consultationEnabled', 'verifiedAt', 'staleAfter', 'sourceUrls', 'rules'], 'coverage');
             $vehicleKind = $this->enum($coverage, 'vehicleKind', $schemaVersion === 1
                 ? ['car', 'motorcycle']
                 : ['car', 'motorcycle', 'truck', 'bus', 'motocarro']);
@@ -96,6 +96,9 @@ final class RestrictionContractValidator
             }
             if ($schemaVersion === 2) {
                 $this->enum($coverage, 'coverageCompleteness', ['complete', 'partial']);
+                if (array_key_exists('consultationEnabled', $coverage) && ! is_bool($coverage['consultationEnabled'])) {
+                    throw new DomainException('coverage consultationEnabled must be a boolean.');
+                }
             }
             $coverageKey = "$vehicleKind:$serviceType";
             if (isset($coverageKeys[$coverageKey])) {

@@ -120,6 +120,7 @@
                             @foreach($row['coverages'] as $coverage)
                                 <li>
                                     <span class="font-semibold">{{ $coverage['availability'] }}</span>
+                                    <div class="text-xs text-slate-600">Consulta de modalidad: {{ $coverage['consultation_enabled'] ? 'habilitada' : 'deshabilitada' }}</div>
                                     @if($coverage['availability'] === 'UNKNOWN')
                                         <div class="text-xs text-slate-600">No verificada</div>
                                     @endif

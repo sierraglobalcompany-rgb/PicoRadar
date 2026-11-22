@@ -49,6 +49,7 @@ class RestrictionRuleControllerTest extends TestCase
         $response = app(RestrictionRuleController::class)->template();
         $this->assertSame('text/csv; charset=UTF-8', $response->headers->get('content-type'));
         $this->assertStringContainsString('jurisdiction_id', $response->getContent());
+        $this->assertStringContainsString('consultation_enabled', $response->getContent());
         $this->assertStringContainsString('time_windows', $response->getContent());
         $this->assertStringContainsString('stale_after', $response->getContent());
 

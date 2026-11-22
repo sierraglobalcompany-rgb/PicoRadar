@@ -13,6 +13,8 @@ class RestrictionRuleSet {
     required this.dataIsStale,
     required this.rules,
     this.coverageCompleteness = CoverageCompleteness.legacy,
+    this.consultationEnabled = true,
+    this.jurisdictionConsultationEnabled = true,
     this.jurisdictionName,
     this.verifiedAt,
     this.staleAfter,
@@ -22,6 +24,8 @@ class RestrictionRuleSet {
   final bool coverageKnown;
   final bool dataIsStale;
   final CoverageCompleteness coverageCompleteness;
+  final bool consultationEnabled;
+  final bool jurisdictionConsultationEnabled;
   final List<RestrictionRule> rules;
   final String? jurisdictionName;
   final DateTime? verifiedAt;
@@ -95,11 +99,15 @@ class RestrictionStore {
     }
 
     final row = rows.single;
+    final availability = await (database.select(
+      database.restrictionJurisdictionAvailability,
+    )..where((value) => value.jurisdictionId.equals(jurisdictionId))).get();
+    final rulesJson = row.rulesJson;
     return RestrictionRuleSet(
       coverageKnown: true,
       dataIsStale: !now.toUtc().isBefore(row.staleAfter.toUtc()),
       rules: restrictionRulesFromJson(
-        row.rulesJson,
+        rulesJson,
         jurisdictionId: row.jurisdictionId,
         vehicleKind: vehicleKind,
         serviceType: serviceType,
@@ -109,6 +117,11 @@ class RestrictionStore {
             : 2,
       ),
       coverageCompleteness: _coverageCompleteness(row.coverageCompleteness),
+      consultationEnabled:
+          restrictionConsultationEnabledFromJson(rulesJson),
+      jurisdictionConsultationEnabled: availability.isEmpty
+          ? true
+          : availability.single.consultationEnabled,
       jurisdictionName: row.jurisdictionName,
       verifiedAt: row.verifiedAt,
       staleAfter: row.staleAfter,

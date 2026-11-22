@@ -137,6 +137,13 @@ RestrictionDayEvaluation evaluateRestrictionDay({
       effectiveWindows: [],
     );
   }
+  if (!ruleSet.consultationEnabled ||
+      !ruleSet.jurisdictionConsultationEnabled) {
+    return const RestrictionDayEvaluation(
+      status: RestrictionDayStatus.unknown,
+      effectiveWindows: [],
+    );
+  }
   if (ruleSet.dataIsStale) {
     return const RestrictionDayEvaluation(
       status: RestrictionDayStatus.stale,
@@ -208,6 +215,9 @@ RestrictionDayEvaluation evaluateRestrictionDay({
         coverageKnown: ruleSet.coverageKnown,
         dataIsStale: ruleSet.dataIsStale,
         coverageCompleteness: ruleSet.coverageCompleteness,
+        consultationEnabled: ruleSet.consultationEnabled,
+        jurisdictionConsultationEnabled:
+            ruleSet.jurisdictionConsultationEnabled,
         facts: facts,
         isHolidayOnDate: holidays.isHoliday,
       ),

@@ -217,6 +217,19 @@ void main() {
     expect(result.sourceUrl, 'https://example.test/coverage');
   });
 
+  test('disabled modality and global consultation remain unknown', () {
+    for (final ruleSet in [
+      _ruleSet(consultationEnabled: false),
+      _ruleSet(jurisdictionConsultationEnabled: false),
+    ]) {
+      final result = _evaluate(ruleSet: ruleSet);
+      expect(result.status, RestrictionDayStatus.unknown);
+      expect(result.instantStatus, RestrictionStatus.unknown);
+      expect(result.reason, 'consultation_disabled');
+      expect(result.windows, isEmpty);
+    }
+  });
+
   test(
     'trip consumer keeps partial conditional coverage unknown without facts',
     () {
@@ -798,11 +811,15 @@ VehicleProfile _vehicle({
 RestrictionRuleSet _ruleSet({
   bool known = true,
   bool stale = false,
+  bool consultationEnabled = true,
+  bool jurisdictionConsultationEnabled = true,
   List<RestrictionRule>? rules,
 }) {
   return RestrictionRuleSet(
     coverageKnown: known,
     dataIsStale: stale,
+    consultationEnabled: consultationEnabled,
+    jurisdictionConsultationEnabled: jurisdictionConsultationEnabled,
     rules: rules ?? [_rule()],
     verifiedAt: DateTime.utc(2026, 8, 31),
     staleAfter: DateTime.utc(2026, 10, 1, 5),
