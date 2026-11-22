@@ -18,7 +18,9 @@ class ServiceProviderCatalog {
   factory ServiceProviderCatalog.fromJsonString(String source) {
     final decoded = jsonDecode(source);
     if (decoded is! Map) {
-      throw const FormatException('Service provider dataset must be an object.');
+      throw const FormatException(
+        'Service provider dataset must be an object.',
+      );
     }
     return ServiceProviderCatalog.fromJson(Map<String, dynamic>.from(decoded));
   }
@@ -60,18 +62,22 @@ class ServiceProviderCatalog {
     ServiceProviderCategory? category,
   }) {
     final needle = _fold(query);
-    return providers.where((provider) {
-      if (category != null && provider.category != category) return false;
-      if (needle.isEmpty) return true;
-      return _fold([
-        provider.name,
-        provider.municipality,
-        provider.department,
-        provider.municipalityCode,
-        provider.departmentCode,
-        provider.address ?? '',
-      ].join(' ')).contains(needle);
-    }).toList(growable: false);
+    return providers
+        .where((provider) {
+          if (category != null && provider.category != category) return false;
+          if (needle.isEmpty) return true;
+          return _fold(
+            [
+              provider.name,
+              provider.municipality,
+              provider.department,
+              provider.municipalityCode,
+              provider.departmentCode,
+              provider.address ?? '',
+            ].join(' '),
+          ).contains(needle);
+        })
+        .toList(growable: false);
   }
 }
 
@@ -134,8 +140,11 @@ class ServiceProviderRecord {
 
   bool isCurrentAt(DateTime instant) {
     final bogotaDate = instant.toUtc().subtract(const Duration(hours: 5));
-    return DateTime.utc(bogotaDate.year, bogotaDate.month, bogotaDate.day)
-        .compareTo(validUntil) <=
+    return DateTime.utc(
+          bogotaDate.year,
+          bogotaDate.month,
+          bogotaDate.day,
+        ).compareTo(validUntil) <=
         0;
   }
 
@@ -180,14 +189,16 @@ class ServiceProviderRecord {
 }
 
 String _requiredCode(Object? value, int length) {
-  if (value is! String || !RegExp('^\\d{$length}$').hasMatch(value)) {
+  if (value is! String || !RegExp('^\\d{$length}\$').hasMatch(value)) {
     throw const FormatException('Invalid DIVIPOLA code.');
   }
   return value;
 }
 
 String _requiredText(Object? value, String field, {required int maxLength}) {
-  if (value is! String || value.trim().isEmpty || value.trim().length > maxLength) {
+  if (value is! String ||
+      value.trim().isEmpty ||
+      value.trim().length > maxLength) {
     throw FormatException('Invalid $field.');
   }
   return value.trim();
@@ -199,8 +210,7 @@ String? _optionalText(Object? value, String field, int maxLength) {
 }
 
 DateTime _instant(Object? value, String field) {
-  if (value is! String ||
-      !RegExp(r'(?:Z|[+-]\d{2}:\d{2})$').hasMatch(value)) {
+  if (value is! String || !RegExp(r'(?:Z|[+-]\d{2}:\d{2})$').hasMatch(value)) {
     throw FormatException('$field must include a timezone.');
   }
   final date = DateTime.tryParse(value);
@@ -220,7 +230,12 @@ DateTime _dateOnly(Object? value, String field) {
   return date;
 }
 
-double? _optionalCoordinate(Object? value, double min, double max, String field) {
+double? _optionalCoordinate(
+  Object? value,
+  double min,
+  double max,
+  String field,
+) {
   if (value == null) return null;
   if (value is! num || !value.isFinite || value < min || value > max) {
     throw FormatException('Invalid $field.');
@@ -232,7 +247,10 @@ String? _httpsUrl(Object? value, String field, {bool optional = false}) {
   if (value == null && optional) return null;
   if (value is! String) throw FormatException('Invalid $field.');
   final uri = Uri.tryParse(value);
-  if (uri == null || uri.scheme != 'https' || uri.host.isEmpty || uri.userInfo.isNotEmpty) {
+  if (uri == null ||
+      uri.scheme != 'https' ||
+      uri.host.isEmpty ||
+      uri.userInfo.isNotEmpty) {
     throw FormatException('$field must be an HTTPS URL.');
   }
   return uri.toString();

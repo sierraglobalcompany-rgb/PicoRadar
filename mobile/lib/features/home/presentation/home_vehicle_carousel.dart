@@ -378,7 +378,7 @@ class _TodayDetail extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(statusIcon(status), color: color, size: 16),
+            Icon(statusIcon(evaluation.status), color: color, size: 16),
             const SizedBox(width: AppSpacing.s),
             Expanded(
               child: Column(
