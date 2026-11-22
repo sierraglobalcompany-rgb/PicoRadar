@@ -13,6 +13,7 @@ import '../../comparendos/presentation/comparendos_screen.dart';
 import '../../account/presentation/app_account_settings.dart';
 import '../../driving/data/camera_pack_loader.dart';
 import '../../defense/application/defense_case_providers.dart';
+import '../application/national_dataset_status_provider.dart';
 import '../../documents/application/wallet_providers.dart';
 import '../../documents/data/wallet_models.dart';
 import '../../documents/presentation/documents_screen.dart';
@@ -79,6 +80,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final notificationStatus = ref.watch(settingsNotificationStatusProvider);
     final cameraDiagnostic = ref.watch(cameraDatasetDiagnosticProvider);
+    final nationalDatasetStatus = ref.watch(nationalDatasetStatusProvider);
+    final syncConfig = ref.watch(datasetSyncConfigProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ajustes')),
@@ -135,6 +138,50 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         onPressed: _configureNotifications,
                         icon: const Icon(Icons.home_outlined),
                         label: const Text('Ir a Inicio para configurar'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.l),
+                  _SettingsSection(
+                    key: const ValueKey('settings-national-dataset-section'),
+                    title: 'Estado de datos nacionales',
+                    icon: Icons.storage_outlined,
+                    children: [
+                      if (syncConfig == null) ...[
+                        const _SectionText(
+                          'Servidor OTA no configurado en esta compilación.',
+                        ),
+                        const SizedBox(height: AppSpacing.s),
+                      ],
+                      nationalDatasetStatus.when(
+                        data: (records) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (final key in nationalDatasetKeys)
+                              _NationalDatasetStatusRow(
+                                datasetKey: key,
+                                record: records[key],
+                              ),
+                          ],
+                        ),
+                        loading: () => const _SectionText(
+                          'Leyendo el registro local de versiones.',
+                        ),
+                        error: (error, stackTrace) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (final key in nationalDatasetKeys)
+                              _NationalDatasetStatusRow(
+                                datasetKey: key,
+                                record: null,
+                                readError: true,
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.s),
+                      const _SectionText(
+                        'Datos instalados ≠ cobertura legal confirmada. Si falta evidencia para tu municipio, vehículo, servicio o fecha, el estado es desconocido; consulta el detalle de pico y placa',
                       ),
                     ],
                   ),
@@ -554,6 +601,73 @@ class _SettingsSection extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _NationalDatasetStatusRow extends StatelessWidget {
+  const _NationalDatasetStatusRow({
+    required this.datasetKey,
+    required this.record,
+    this.readError = false,
+  });
+
+  final String datasetKey;
+  final NationalDatasetRecord? record;
+  final bool readError;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = datasetKey == 'restrictions'
+        ? 'Restricciones nacionales'
+        : 'Directorio de servicios';
+    final state = readError
+        ? 'ERROR_LECTURA'
+        : record == null
+        ? 'SIN_INSTALAR'
+        : record!.status == 'installed'
+        ? 'INSTALADO_REGISTRADO'
+        : 'ESTADO_NO_RECONOCIDO';
+    final details = switch (state) {
+      'ERROR_LECTURA' => 'No fue posible leer el estado local.',
+      'SIN_INSTALAR' when datasetKey == 'restrictions' =>
+        'Sin versión OTA registrada; puede haber datos incorporados en la app.',
+      'SIN_INSTALAR' =>
+        'Sin directorio remoto instalado; respaldo vacío.',
+      'ESTADO_NO_RECONOCIDO' =>
+        'El registro local tiene un estado que la app no reconoce.',
+      _ => _installedDetails(record!),
+    };
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.m),
+      child: Semantics(
+        label: '$label. $state. $details',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: AppTextStyles.bodyStrong),
+            const SizedBox(height: AppSpacing.xs),
+            Text(state, style: AppTextStyles.caption),
+            const SizedBox(height: AppSpacing.xs),
+            Text(details, style: AppTextStyles.body),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _installedDetails(NationalDatasetRecord record) {
+    final localDate = record.appliedAt.toLocal();
+    final installedAt = '${localDate.year.toString().padLeft(4, '0')}-'
+        '${localDate.month.toString().padLeft(2, '0')}-'
+        '${localDate.day.toString().padLeft(2, '0')} '
+        '${localDate.hour.toString().padLeft(2, '0')}:'
+        '${localDate.minute.toString().padLeft(2, '0')}';
+    final incompleteHash = record.hasCompleteHash
+        ? ''
+        : ' · Registro local incompleto.';
+    return 'Versión ${record.version} · Fecha de instalación registrada: '
+        '$installedAt · revisión ${record.publicationRevision}$incompleteHash';
   }
 }
 

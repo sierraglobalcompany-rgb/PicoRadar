@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart' show Value;
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picoradar/app/app_providers.dart';
 import 'package:picoradar/app/theme/app_theme.dart';
+import 'package:picoradar/core/database/app_database.dart';
 import 'package:picoradar/features/comparendos/presentation/comparendos_screen.dart';
 import 'package:picoradar/features/defense/application/defense_case_providers.dart';
 import 'package:picoradar/features/defense/data/defense_case.dart';
@@ -22,6 +25,7 @@ import 'package:picoradar/features/garage/data/vehicle_profile.dart';
 import 'package:picoradar/features/peritajes/data/peritajes_draft_store.dart';
 import 'package:picoradar/features/pico_placa/data/pico_preferences.dart';
 import 'package:picoradar/features/pico_placa/platform/pico_notifications.dart';
+import 'package:picoradar/features/settings/application/national_dataset_status_provider.dart';
 import 'package:picoradar/features/settings/presentation/settings_screen.dart';
 import 'package:picoradar/features/trip/application/trip_services.dart';
 import 'package:picoradar/features/vehicle_status/data/private_vehicle_document_store.dart';
@@ -80,6 +84,113 @@ void main() {
     );
     await tester.pump();
     expect(configureCalls, 1);
+  });
+
+  testWidgets('shows installed local record and both offline fallbacks', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database.into(database.datasetVersions).insert(
+      DatasetVersionsCompanion.insert(
+        id: 'restrictions',
+        datasetKey: 'restrictions',
+        version: 'r16-synthetic',
+        sha256: Value(List.filled(64, 'a').join()),
+        status: 'installed',
+        publicationRevision: const Value(8),
+        appliedAt: Value(DateTime.utc(2026, 11, 20, 12)),
+      ),
+    );
+
+    await _pumpSettings(
+      tester,
+      preferences: preferences,
+      scheduler: scheduler,
+      launcher: launcher,
+      documentStore: documentStore,
+      onChangeAvatar: () {},
+      database: database,
+    );
+
+    expect(find.text('Estado de datos nacionales'), findsOneWidget);
+    expect(find.text('INSTALADO_REGISTRADO'), findsOneWidget);
+    expect(find.textContaining('Versión r16-synthetic'), findsOneWidget);
+    expect(find.textContaining('Fecha de instalación registrada:'), findsOneWidget);
+    expect(find.text('SIN_INSTALAR'), findsOneWidget);
+    expect(
+      find.text('Sin versión OTA registrada; puede haber datos incorporados en la app.'),
+      findsOneWidget,
+    );
+    expect(find.text('Sin directorio remoto instalado; respaldo vacío.'), findsOneWidget);
+    expect(
+      find.text('Servidor OTA no configurado en esta compilación.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'Datos instalados ≠ cobertura legal confirmada. Si falta evidencia para tu municipio, vehículo, servicio o fecha, el estado es desconocido; consulta el detalle de pico y placa',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('keeps unknown states cautious when the local hash is incomplete', (
+    tester,
+  ) async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    await database.into(database.datasetVersions).insert(
+      DatasetVersionsCompanion.insert(
+        id: 'restrictions',
+        datasetKey: 'restrictions',
+        version: 'local-record',
+        sha256: const Value('short-hash'),
+        status: 'installed',
+      ),
+    );
+    await database.into(database.datasetVersions).insert(
+      DatasetVersionsCompanion.insert(
+        id: 'service_providers',
+        datasetKey: 'service_providers',
+        version: 'unknown-record',
+        sha256: Value(List.filled(64, 'b').join()),
+        status: 'pending',
+      ),
+    );
+
+    await _pumpSettings(
+      tester,
+      preferences: preferences,
+      scheduler: scheduler,
+      launcher: launcher,
+      documentStore: documentStore,
+      onChangeAvatar: () {},
+      database: database,
+    );
+
+    expect(find.text('INSTALADO_REGISTRADO'), findsOneWidget);
+    expect(find.text('ESTADO_NO_RECONOCIDO'), findsOneWidget);
+    expect(find.textContaining('Registro local incompleto.'), findsOneWidget);
+    expect(find.textContaining('verificado'), findsNothing);
+  });
+
+  testWidgets('reports local database errors without exposing error details', (
+    tester,
+  ) async {
+    await _pumpSettings(
+      tester,
+      preferences: preferences,
+      scheduler: scheduler,
+      launcher: launcher,
+      documentStore: documentStore,
+      onChangeAvatar: () {},
+      databaseStatusError: true,
+    );
+
+    expect(find.text('ERROR_LECTURA'), findsNWidgets(2));
+    expect(find.text('No fue posible leer el estado local.'), findsNWidgets(2));
+    expect(find.textContaining('private test detail'), findsNothing);
   });
 
   testWidgets('system notification false overrides stale local grant', (
@@ -1234,6 +1345,8 @@ Future<void> _pumpSettings(
   Size size = const Size(390, 844),
   double textScale = 1.0,
   ThemeData? theme,
+  AppDatabase? database,
+  bool databaseStatusError = false,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
@@ -1244,6 +1357,11 @@ Future<void> _pumpSettings(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        if (database != null) appDatabaseProvider.overrideWithValue(database),
+        if (databaseStatusError)
+          nationalDatasetStatusProvider.overrideWith((ref) async {
+            throw StateError('private test detail');
+          }),
         if (accountConfig != null)
           appAccountConfigProvider.overrideWithValue(accountConfig),
         if (accountClient != null)
