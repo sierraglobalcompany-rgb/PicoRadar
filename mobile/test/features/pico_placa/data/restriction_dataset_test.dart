@@ -225,7 +225,11 @@ void main() {
     );
     expect(car.consultationEnabled, isTrue);
     expect(motorcycle.consultationEnabled, isFalse);
-    expect(motorcycle.rules, isNotEmpty, 'OFF retains rules for later reactivation.');
+    expect(
+      motorcycle.rules,
+      isNotEmpty,
+      reason: 'OFF retains rules for later reactivation.',
+    );
     expect(
       evaluateRestrictionDay(
         ruleSet: car,
@@ -251,18 +255,24 @@ void main() {
 
     await importRestrictionsDataset(db, fixture(jurisdictionEnabled: false));
     for (final (kind, coverage) in [
-      (VehicleKind.car, await store.loadCoverage(
-        'synthetic_test_jurisdiction',
+      (
         VehicleKind.car,
-        VehicleServiceType.private,
-        DateTime(2026, 8, 27, 8),
-      )),
-      (VehicleKind.motorcycle, await store.loadCoverage(
-        'synthetic_test_jurisdiction',
+        await store.loadCoverage(
+          'synthetic_test_jurisdiction',
+          VehicleKind.car,
+          VehicleServiceType.private,
+          DateTime(2026, 8, 27, 8),
+        ),
+      ),
+      (
         VehicleKind.motorcycle,
-        VehicleServiceType.private,
-        DateTime(2026, 8, 27, 8),
-      )),
+        await store.loadCoverage(
+          'synthetic_test_jurisdiction',
+          VehicleKind.motorcycle,
+          VehicleServiceType.private,
+          DateTime(2026, 8, 27, 8),
+        ),
+      ),
     ]) {
       expect(coverage.jurisdictionConsultationEnabled, isFalse);
       expect(
@@ -279,26 +289,29 @@ void main() {
     }
   });
 
-  test('schema2 historical coverage without a toggle remains enabled', () async {
-    await importRestrictionsDataset(
-      db,
-      _dataset(
-        schemaVersion: 2,
-        coveragePatch: {'coverageCompleteness': 'partial'},
-        rulePatch: {'conditions': []},
-        jurisdictionPatch: {'schemaVersion': 2},
-      ),
-    );
+  test(
+    'schema2 historical coverage without a toggle remains enabled',
+    () async {
+      await importRestrictionsDataset(
+        db,
+        _dataset(
+          schemaVersion: 2,
+          coveragePatch: {'coverageCompleteness': 'partial'},
+          rulePatch: {'conditions': []},
+          jurisdictionPatch: {'schemaVersion': 2},
+        ),
+      );
 
-    final coverage = await RestrictionStore(db).loadCoverage(
-      'synthetic_test_jurisdiction',
-      VehicleKind.car,
-      VehicleServiceType.private,
-      DateTime(2026, 8, 27, 8),
-    );
-    expect(coverage.consultationEnabled, isTrue);
-    expect(coverage.rules, isNotEmpty);
-  });
+      final coverage = await RestrictionStore(db).loadCoverage(
+        'synthetic_test_jurisdiction',
+        VehicleKind.car,
+        VehicleServiceType.private,
+        DateTime(2026, 8, 27, 8),
+      );
+      expect(coverage.consultationEnabled, isTrue);
+      expect(coverage.rules, isNotEmpty);
+    },
+  );
 
   test('rejects non-boolean schema2 coverage toggles', () async {
     await expectLater(

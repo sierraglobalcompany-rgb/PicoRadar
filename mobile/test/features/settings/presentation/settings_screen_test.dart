@@ -91,17 +91,19 @@ void main() {
   ) async {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
-    await database.into(database.datasetVersions).insert(
-      DatasetVersionsCompanion.insert(
-        id: 'restrictions',
-        datasetKey: 'restrictions',
-        version: 'r16-synthetic',
-        sha256: Value(List.filled(64, 'a').join()),
-        status: 'installed',
-        publicationRevision: const Value(8),
-        appliedAt: Value(DateTime.utc(2026, 11, 20, 12)),
-      ),
-    );
+    await database
+        .into(database.datasetVersions)
+        .insert(
+          DatasetVersionsCompanion.insert(
+            id: 'restrictions',
+            datasetKey: 'restrictions',
+            version: 'r16-synthetic',
+            sha256: Value(List.filled(64, 'a').join()),
+            status: 'installed',
+            publicationRevision: const Value(8),
+            appliedAt: Value(DateTime.utc(2026, 11, 20, 12)),
+          ),
+        );
 
     await _pumpSettings(
       tester,
@@ -116,13 +118,21 @@ void main() {
     expect(find.text('Estado de datos nacionales'), findsOneWidget);
     expect(find.text('INSTALADO_REGISTRADO'), findsOneWidget);
     expect(find.textContaining('Versión r16-synthetic'), findsOneWidget);
-    expect(find.textContaining('Fecha de instalación registrada:'), findsOneWidget);
-    expect(find.text('SIN_INSTALAR'), findsOneWidget);
     expect(
-      find.text('Sin versión OTA registrada; puede haber datos incorporados en la app.'),
+      find.textContaining('Fecha de instalación registrada:'),
       findsOneWidget,
     );
-    expect(find.text('Sin directorio remoto instalado; respaldo vacío.'), findsOneWidget);
+    expect(find.text('SIN_INSTALAR'), findsOneWidget);
+    expect(
+      find.text(
+        'Sin versión OTA registrada; puede haber datos incorporados en la app.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Sin directorio remoto instalado; respaldo vacío.'),
+      findsOneWidget,
+    );
     expect(
       find.text('Servidor OTA no configurado en esta compilación.'),
       findsOneWidget,
@@ -135,45 +145,50 @@ void main() {
     );
   });
 
-  testWidgets('keeps unknown states cautious when the local hash is incomplete', (
-    tester,
-  ) async {
-    final database = AppDatabase(NativeDatabase.memory());
-    addTearDown(database.close);
-    await database.into(database.datasetVersions).insert(
-      DatasetVersionsCompanion.insert(
-        id: 'restrictions',
-        datasetKey: 'restrictions',
-        version: 'local-record',
-        sha256: const Value('short-hash'),
-        status: 'installed',
-      ),
-    );
-    await database.into(database.datasetVersions).insert(
-      DatasetVersionsCompanion.insert(
-        id: 'service_providers',
-        datasetKey: 'service_providers',
-        version: 'unknown-record',
-        sha256: Value(List.filled(64, 'b').join()),
-        status: 'pending',
-      ),
-    );
+  testWidgets(
+    'keeps unknown states cautious when the local hash is incomplete',
+    (tester) async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      await database
+          .into(database.datasetVersions)
+          .insert(
+            DatasetVersionsCompanion.insert(
+              id: 'restrictions',
+              datasetKey: 'restrictions',
+              version: 'local-record',
+              sha256: const Value('short-hash'),
+              status: 'installed',
+            ),
+          );
+      await database
+          .into(database.datasetVersions)
+          .insert(
+            DatasetVersionsCompanion.insert(
+              id: 'service_providers',
+              datasetKey: 'service_providers',
+              version: 'unknown-record',
+              sha256: Value(List.filled(64, 'b').join()),
+              status: 'pending',
+            ),
+          );
 
-    await _pumpSettings(
-      tester,
-      preferences: preferences,
-      scheduler: scheduler,
-      launcher: launcher,
-      documentStore: documentStore,
-      onChangeAvatar: () {},
-      database: database,
-    );
+      await _pumpSettings(
+        tester,
+        preferences: preferences,
+        scheduler: scheduler,
+        launcher: launcher,
+        documentStore: documentStore,
+        onChangeAvatar: () {},
+        database: database,
+      );
 
-    expect(find.text('INSTALADO_REGISTRADO'), findsOneWidget);
-    expect(find.text('ESTADO_NO_RECONOCIDO'), findsOneWidget);
-    expect(find.textContaining('Registro local incompleto.'), findsOneWidget);
-    expect(find.textContaining('verificado'), findsNothing);
-  });
+      expect(find.text('INSTALADO_REGISTRADO'), findsOneWidget);
+      expect(find.text('ESTADO_NO_RECONOCIDO'), findsOneWidget);
+      expect(find.textContaining('Registro local incompleto.'), findsOneWidget);
+      expect(find.textContaining('verificado'), findsNothing);
+    },
+  );
 
   testWidgets('reports local database errors without exposing error details', (
     tester,
@@ -1778,6 +1793,9 @@ class _FakeAppAccountClient implements AppAccountClient {
 
   @override
   Future<void> suppress() async {}
+
+  @override
+  Future<void> discardSuppressionToken() async {}
 
   @override
   Future<AppAccountProfile> updateProfile({
