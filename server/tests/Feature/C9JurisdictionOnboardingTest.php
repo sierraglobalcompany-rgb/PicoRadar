@@ -140,6 +140,13 @@ class C9JurisdictionOnboardingTest extends TestCase
         // Invalid POST must not create a second one.
         self::assertSame(1, Jurisdiction::query()->count());
 
+        // Inactive geography is not eligible for new national jurisdictions,
+        // even if a POST bypasses the create-form dropdown.
+        $this->actingAs($editor)
+            ->post(route('admin.jurisdictions.store'), [...$payload, 'primary_geographic_unit_id' => $this->inactiveMunicipality->id])
+            ->assertStatus(422);
+        self::assertSame(1, Jurisdiction::query()->count());
+
         $this->actingAs($editor)
             ->post(route('admin.jurisdictions.store'), [...$payload, 'primary_geographic_unit_id' => $this->activeMunicipality->id])
             ->assertRedirect(route('admin.jurisdictions.show', Jurisdiction::query()->where('key', $payload['key'])->firstOrFail()));
