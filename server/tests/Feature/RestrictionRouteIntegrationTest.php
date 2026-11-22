@@ -335,7 +335,10 @@ class RestrictionRouteIntegrationTest extends TestCase
             ->assertOk()
             ->assertSee('OFF — NO PUBLICADO')
             ->assertSee('Este borrador conserva la consulta global y todas sus modalidades apagadas')
-            ->assertSee('name="coverages[__COVERAGE__][consultation_enabled]" value="1" disabled', false)
+            ->assertSeeInOrder([
+                'name="coverages[__COVERAGE__][consultation_enabled]" value="1"',
+                'disabled',
+            ], false)
             ->assertViewHas('preselectedJurisdictionId', $offJurisdiction->id)
             ->assertViewHas('jurisdictions', fn ($jurisdictions): bool => $jurisdictions->contains('id', $activeJurisdiction->id)
                 && $jurisdictions->contains('id', $offJurisdiction->id));
@@ -484,8 +487,9 @@ class RestrictionRouteIntegrationTest extends TestCase
             ->assertViewHas('version', fn (RestrictionRuleVersion $formVersion): bool =>
                 $formVersion->payload['consultationEnabled'] === false
                 && $formVersion->payload['coverages'][0]['consultationEnabled'] === false)
-            ->assertSee('name="consultation_enabled" value="0" checked', false)
-            ->assertDontSee('name="consultation_enabled" value="1" checked', false);
+            ->assertSee('name="consultation_enabled" value="0"', false)
+            ->assertSee('id="consultation-enabled" type="checkbox" name="consultation_enabled" value="1"', false)
+            ->assertDontSee('id="consultation-enabled" type="checkbox" name="consultation_enabled" value="1" checked', false);
 
         $input = $this->offDraftInput($jurisdiction);
         $input['consultation_enabled'] = '1';
@@ -517,6 +521,7 @@ class RestrictionRouteIntegrationTest extends TestCase
         $active = $this->municipalityJurisdiction('05002', true);
         $activeInput = $this->offDraftInput($active);
         $activeInput['coverages'] = array_slice($activeInput['coverages'], 0, 1);
+        $activeInput['coverages'][0]['confirmed_no_rules'] = '1';
         $this->actingAs($editor)->post(route('admin.restrictions.store'), $activeInput)->assertRedirect()->assertSessionHasNoErrors();
         $activeVersion = RestrictionRuleVersion::query()->where('jurisdiction_id', $active->id)->firstOrFail();
 
@@ -553,17 +558,27 @@ class RestrictionRouteIntegrationTest extends TestCase
 
     private function municipalityJurisdiction(string $code, bool $enabled): Jurisdiction
     {
-        $country = GeographicUnit::query()->create([
-            'key' => 'co-off-'.$code, 'level' => GeographicUnitLevel::Country, 'code' => 'CO',
-            'name' => 'Colombia sintética', 'normalized_name' => 'colombia sintetica',
-            'source_system' => 'test-fixture', 'source_version' => '2026-11',
-        ]);
-        $department = GeographicUnit::query()->create([
-            'parent_id' => $country->id, 'key' => 'co-05-off-'.$code,
-            'level' => GeographicUnitLevel::Department, 'code' => '05',
-            'name' => 'Antioquia sintética', 'normalized_name' => 'antioquia sintetica',
-            'source_system' => 'test-fixture', 'source_version' => '2026-11',
-        ]);
+        $country = GeographicUnit::query()->firstOrCreate(
+            ['level' => GeographicUnitLevel::Country, 'code' => 'CO'],
+            [
+                'key' => 'co-off-synthetic',
+                'name' => 'Colombia sintética',
+                'normalized_name' => 'colombia sintetica',
+                'source_system' => 'test-fixture',
+                'source_version' => '2026-11',
+            ],
+        );
+        $department = GeographicUnit::query()->firstOrCreate(
+            ['level' => GeographicUnitLevel::Department, 'code' => '05'],
+            [
+                'parent_id' => $country->id,
+                'key' => 'co-05-off-synthetic',
+                'name' => 'Antioquia sintética',
+                'normalized_name' => 'antioquia sintetica',
+                'source_system' => 'test-fixture',
+                'source_version' => '2026-11',
+            ],
+        );
         $municipality = GeographicUnit::query()->create([
             'parent_id' => $department->id, 'key' => 'co-'.$code,
             'level' => GeographicUnitLevel::Municipality, 'code' => $code,

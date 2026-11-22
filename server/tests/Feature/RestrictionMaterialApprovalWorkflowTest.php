@@ -165,7 +165,10 @@ class RestrictionMaterialApprovalWorkflowTest extends TestCase
         $publishedCoverage = collect($published['jurisdictions'])->firstWhere('id', $jurisdiction->key)['coverages'][0];
         $this->assertFalse($publishedCoverage['consultationEnabled']);
         $this->assertSame('partial', $publishedCoverage['coverageCompleteness']);
-        $this->assertSame($this->version->payload['coverages'][0]['rules'], $publishedCoverage['rules']);
+        $this->assertSame(
+            $this->sortAssociativeKeysRecursively($this->version->payload['coverages'][0]['rules']),
+            $this->sortAssociativeKeysRecursively($publishedCoverage['rules']),
+        );
 
         $service->rollbackCity($this->version, 2, $this->author);
         $rollbackRelease = $this->dataset->releases()
@@ -175,7 +178,10 @@ class RestrictionMaterialApprovalWorkflowTest extends TestCase
         $rollback = json_decode(Storage::disk('public')->get($rollbackRelease->asset_path), true, 512, JSON_THROW_ON_ERROR);
         $rolledBackCoverage = collect($rollback['jurisdictions'])->firstWhere('id', $jurisdiction->key)['coverages'][0];
         $this->assertTrue($rolledBackCoverage['consultationEnabled']);
-        $this->assertSame($this->version->payload['coverages'][0]['rules'], $rolledBackCoverage['rules']);
+        $this->assertSame(
+            $this->sortAssociativeKeysRecursively($this->version->payload['coverages'][0]['rules']),
+            $this->sortAssociativeKeysRecursively($rolledBackCoverage['rules']),
+        );
         $this->assertSame(3, $this->dataset->refresh()->publication_revision);
     }
 
@@ -651,5 +657,21 @@ class RestrictionMaterialApprovalWorkflowTest extends TestCase
         $draft = $versions->createDraft($jurisdiction, $payload, $this->author);
 
         return $versions->validate($draft, $this->author);
+    }
+
+    /** @param array<array-key, mixed> $values */
+    private function sortAssociativeKeysRecursively(array $values): array
+    {
+        foreach ($values as $key => $value) {
+            if (is_array($value)) {
+                $values[$key] = $this->sortAssociativeKeysRecursively($value);
+            }
+        }
+
+        if (! array_is_list($values)) {
+            ksort($values);
+        }
+
+        return $values;
     }
 }

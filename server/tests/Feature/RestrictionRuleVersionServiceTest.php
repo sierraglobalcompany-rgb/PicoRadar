@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\Dataset;
 use App\Models\GeographicUnit;
 use App\Models\Jurisdiction;
+use App\Models\RestrictionRuleVersion;
 use App\Models\User;
 use App\Services\RestrictionRuleVersionService;
 use DomainException;
