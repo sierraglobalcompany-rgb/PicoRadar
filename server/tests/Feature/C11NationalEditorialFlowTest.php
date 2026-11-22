@@ -109,7 +109,31 @@ class C11NationalEditorialFlowTest extends TestCase
             ->post(route('admin.restrictions.store'), [
                 'jurisdiction_id' => $jurisdiction->id,
                 'consultation_enabled' => '0',
-                'coverages' => [],
+                // A real schema2 draft needs at least one documented coverage.
+                // Reuse the form contract exercised by C10 instead of asserting
+                // that an invalid empty submission creates a version.
+                'coverages' => [[
+                    'pair' => 'car|private',
+                    'verified_at' => '2026-11-18T08:00',
+                    'stale_after' => '2026-12-18T00:00',
+                    'source_urls' => 'https://example.test/restrictions',
+                    'rules' => [[
+                        'id' => 'c11-editor-national-rule',
+                        'priority' => '1000',
+                        'effect' => 'restrict',
+                        'valid_from' => '2026-11-18T00:00',
+                        'weekdays' => '1',
+                        'date_parity' => '',
+                        'digit_position' => 'lastNumeric',
+                        'digits' => '1',
+                        'time_windows' => '06:00-08:00',
+                        'applies_on_holidays' => '0',
+                        'source_url' => 'https://example.test/restrictions',
+                        'verified_at' => '2026-11-18T08:00',
+                        'registration_origins' => '',
+                        'conditions_json' => '[]',
+                    ]],
+                ]],
             ]);
 
         $version = RestrictionRuleVersion::query()->sole();
