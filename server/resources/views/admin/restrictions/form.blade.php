@@ -50,8 +50,6 @@
         'vehicle_kind' => 'car', 'service_type' => 'private', 'pair' => 'car|private', 'coverage_completeness' => 'partial', 'verified_at' => '', 'stale_after' => '',
         'source_urls' => '', 'consultation_enabled' => true, 'confirmed_no_rules' => false, 'rules' => [$defaultRule],
     ];
-    $templateCoverage = $defaultCoverage;
-    $templateCoverage['rules'] = [];
     $isSchema2 = (int) $schemaVersion === 2;
     $pairOptions = [
         'car|private' => 'Carro · particular', 'car|taxi' => 'Carro · taxi', 'car|special' => 'Carro · especial',
@@ -59,7 +57,6 @@
         'truck|public_cargo' => 'Camión · carga pública', 'bus|public_passenger' => 'Bus · transporte público',
         'bus|special' => 'Bus · especial', 'motocarro|private' => 'Motocarro · particular',
     ];
-    $coverages = old('coverages', $payloadCoverages ?: [$defaultCoverage]);
     $oldJurisdictionId = old('jurisdiction_id');
     $oldJurisdiction = (is_int($oldJurisdictionId) || (is_string($oldJurisdictionId) && strlen($oldJurisdictionId) <= 19 && ctype_digit($oldJurisdictionId)))
         ? $jurisdictions->first(fn ($jurisdiction) => (string) $jurisdiction->id === (string) $oldJurisdictionId)
@@ -68,6 +65,23 @@
         ? $jurisdictions->firstWhere('id', $preselectedJurisdictionId)
         : null;
     $formJurisdiction = $version?->jurisdiction ?? $oldJurisdiction ?? $preselectedJurisdiction;
+    $isNewOffDraft = ! $version && $formJurisdiction !== null && ! $formJurisdiction->enabled;
+    if ($isNewOffDraft) {
+        $defaultCoverage['consultation_enabled'] = false;
+    }
+    $coverages = old('coverages', $payloadCoverages ?: [$defaultCoverage]);
+    if ($isNewOffDraft && is_array($coverages)) {
+        $coverages = array_map(static function ($coverage): array {
+            $coverage = is_array($coverage) ? $coverage : [];
+
+            return array_replace($coverage, [
+                'coverage_completeness' => 'partial',
+                'consultation_enabled' => false,
+            ]);
+        }, $coverages);
+    }
+    $templateCoverage = $defaultCoverage;
+    $templateCoverage['rules'] = [];
     $primaryMunicipalityCode = $formJurisdiction?->primaryGeographicUnit?->code;
     $primaryMunicipalityCode = is_string($primaryMunicipalityCode) && preg_match('/^\d{5}$/', $primaryMunicipalityCode)
         ? $primaryMunicipalityCode
@@ -84,7 +98,7 @@
     $consultationValue = session()->hasOldInput('consultation_enabled') && $oldJurisdictionMatches
         ? old('consultation_enabled')
         : ($version?->payload['consultationEnabled'] ?? false);
-    $consultationEnabled = $hasMunicipalityCode && in_array($consultationValue, [true, 1, '1', 'true', 'on', 'yes'], true);
+    $consultationEnabled = ! $isNewOffDraft && $hasMunicipalityCode && in_array($consultationValue, [true, 1, '1', 'true', 'on', 'yes'], true);
 @endphp
 
 @section('content')
@@ -97,6 +111,10 @@
     <a class="inline-flex min-h-12 items-center rounded-md border border-slate-300 px-4 font-medium" href="{{ route('admin.restrictions.index') }}">Volver</a>
 </div>
 
+@if(!empty($selectionNotice))
+    <p class="mt-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="status">{{ $selectionNotice }}</p>
+@endif
+
 @if(!$version || ($editable ?? false))
 <form class="mt-6 space-y-5" method="POST" action="{{ $version ? route('admin.restrictions.update', $version) : route('admin.restrictions.store') }}" id="restriction-form">
     @csrf
@@ -106,7 +124,7 @@
                 <option value="" disabled @selected($formJurisdiction === null)>Selecciona municipio y jurisdicción</option>
                 @foreach($jurisdictions as $jurisdiction)
                     @php($optionMunicipalityCode = $jurisdiction->primaryGeographicUnit?->code)
-                    <option value="{{ $jurisdiction->id }}" data-municipality-code="{{ is_string($optionMunicipalityCode) && preg_match('/^\d{5}$/', $optionMunicipalityCode) ? $optionMunicipalityCode : '' }}" data-management-state="{{ $jurisdiction->enabled ? 'activa' : 'inactiva' }}" @selected($formJurisdiction?->is($jurisdiction))>{{ $jurisdiction->name }} · {{ $jurisdiction->key }}</option>
+                    <option value="{{ $jurisdiction->id }}" data-municipality-code="{{ is_string($optionMunicipalityCode) && preg_match('/^\d{5}$/', $optionMunicipalityCode) ? $optionMunicipalityCode : '' }}" data-management-state="{{ $jurisdiction->enabled ? 'activa' : 'inactiva' }}" @selected($formJurisdiction?->is($jurisdiction))>{{ $jurisdiction->enabled ? '' : 'OFF — NO PUBLICADO · ' }}{{ $jurisdiction->name }} · {{ $jurisdiction->key }}</option>
                 @endforeach
             </select>
         </label>
@@ -122,18 +140,19 @@
                 </label>
                 <div class="flex min-h-12 flex-wrap items-center gap-3 rounded-md bg-white px-3">
                     <input type="hidden" name="consultation_enabled" value="0">
-                    <input id="consultation-enabled" type="checkbox" name="consultation_enabled" value="1" @checked($consultationEnabled) @disabled(!$hasMunicipalityCode)>
+                    <input id="consultation-enabled" type="checkbox" name="consultation_enabled" value="1" @checked($consultationEnabled) @disabled(!$hasMunicipalityCode || $isNewOffDraft)>
                     <label for="consultation-enabled" class="font-medium">Consulta pública habilitada</label>
                     <span id="consultation-availability-note" class="text-sm text-amber-900" @if($hasMunicipalityCode) hidden @endif>Selecciona un municipio con DIVIPOLA válido para habilitar esta opción.</span>
                 </div>
             </div>
+            <p id="off-draft-note" class="mt-2 rounded bg-amber-100 p-3 font-medium text-amber-950" @if(!$isNewOffDraft) hidden @endif>Jurisdicción OFF — NO PUBLICADO. Este borrador conserva la consulta global y todas sus modalidades apagadas; guardarlo no habilita la jurisdicción ni publica reglas.</p>
             <p id="availability-help" class="mt-2">Administración territorial: <strong id="jurisdiction-management-state">{{ $formJurisdiction ? ($formJurisdiction->enabled ? 'activa' : 'inactiva') : 'sin municipio seleccionado' }}</strong>. <code>Jurisdiction.enabled</code> solo controla la gestión y no cambia el dataset publicado. El código procede del municipio seleccionado y no se edita aquí; cambiar de municipio desactiva la casilla hasta una decisión manual.</p>
         </section>
     @endif
 
     <div class="space-y-5" id="coverage-list">
         @foreach($coverages as $coverageIndex => $coverage)
-            @include('admin.restrictions.partials.coverage-fields', ['coverageIndex' => $coverageIndex, 'coverage' => $coverage, 'schemaVersion' => (int) $schemaVersion, 'pairOptions' => $pairOptions])
+            @include('admin.restrictions.partials.coverage-fields', ['coverageIndex' => $coverageIndex, 'coverage' => $coverage, 'schemaVersion' => (int) $schemaVersion, 'pairOptions' => $pairOptions, 'isOffDraft' => $isNewOffDraft])
         @endforeach
     </div>
     @error('coverages')<p class="rounded-md bg-red-50 p-3 text-sm text-red-800" role="alert">{{ $message }}</p>@enderror
@@ -141,13 +160,14 @@
 </form>
 
 <template id="rule-template">@include('admin.restrictions.partials.rule-fields', ['coverageIndex' => '__COVERAGE__', 'ruleIndex' => '__RULE__', 'rule' => $defaultRule, 'schemaVersion' => (int) $schemaVersion])</template>
-<template id="coverage-template">@include('admin.restrictions.partials.coverage-fields', ['coverageIndex' => '__COVERAGE__', 'coverage' => $templateCoverage, 'schemaVersion' => (int) $schemaVersion, 'pairOptions' => $pairOptions])</template>
+<template id="coverage-template">@include('admin.restrictions.partials.coverage-fields', ['coverageIndex' => '__COVERAGE__', 'coverage' => $templateCoverage, 'schemaVersion' => (int) $schemaVersion, 'pairOptions' => $pairOptions, 'isOffDraft' => $isNewOffDraft])</template>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const coverageList = document.getElementById('coverage-list');
     const coverageTemplate = document.getElementById('coverage-template').innerHTML;
     const ruleTemplate = document.getElementById('rule-template').innerHTML;
     const maximumCoverages = {{ $isSchema2 ? 9 : 8 }};
+    const isNewDraft = @json(!$version);
     const addCoverageButton = document.getElementById('add-coverage');
     let nextCoverage = Math.max(-1, ...Array.from(coverageList.querySelectorAll('.coverage-card')).map((card) => Number(card.dataset.coverageIndex))) + 1;
     function refreshCoverageLimit() {
@@ -167,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const index = nextCoverage++;
         coverageList.insertAdjacentHTML('beforeend', coverageTemplate.replaceAll('__COVERAGE__', index));
         addRule(coverageList.lastElementChild);
+        applyJurisdictionSelection();
         refreshCoverageLimit();
     });
     coverageList.addEventListener('click', (event) => {
@@ -180,22 +201,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     const jurisdictionSelect = document.querySelector('select[name="jurisdiction_id"]');
-    if (jurisdictionSelect) jurisdictionSelect.addEventListener('change', () => {
+    function applyJurisdictionSelection(resetConsultation = false) {
+        if (!isNewDraft || !jurisdictionSelect) return;
         const codeInput = document.getElementById('municipality-code');
         const consultationCheckbox = document.getElementById('consultation-enabled');
         const consultationNote = document.getElementById('consultation-availability-note');
+        const offDraftNote = document.getElementById('off-draft-note');
         const managementState = document.getElementById('jurisdiction-management-state');
         const selectedOption = jurisdictionSelect.selectedOptions[0];
         const selectedCode = selectedOption?.dataset.municipalityCode ?? '';
         const hasMunicipalityCode = /^\d{5}$/.test(selectedCode);
+        const isOff = selectedOption?.dataset.managementState === 'inactiva';
         if (managementState) managementState.textContent = selectedOption?.dataset.managementState ?? 'sin municipio seleccionado';
         if (codeInput) codeInput.value = hasMunicipalityCode ? selectedCode : '';
         if (consultationNote) consultationNote.hidden = hasMunicipalityCode;
+        if (offDraftNote) offDraftNote.hidden = !isOff;
         if (consultationCheckbox) {
-            consultationCheckbox.checked = false;
-            consultationCheckbox.disabled = !hasMunicipalityCode;
+            if (isOff || resetConsultation) consultationCheckbox.checked = false;
+            consultationCheckbox.disabled = isOff || !hasMunicipalityCode;
         }
-    });
+        coverageList.querySelectorAll('input[name$="[consultation_enabled]"]').forEach((checkbox) => {
+            if (isOff) checkbox.checked = false;
+            checkbox.disabled = isOff;
+        });
+    }
+    if (jurisdictionSelect) jurisdictionSelect.addEventListener('change', () => applyJurisdictionSelection(true));
+    applyJurisdictionSelection();
     refreshCoverageLimit();
 });
 </script>

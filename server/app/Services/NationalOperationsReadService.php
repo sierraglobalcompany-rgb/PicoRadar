@@ -16,6 +16,7 @@ use App\Models\RestrictionRuleVersion;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 
 final class NationalOperationsReadService
 {
@@ -34,19 +35,33 @@ final class NationalOperationsReadService
      */
     public function dashboard(array $filters): array
     {
+        $canEditDatasets = Gate::allows('datasets.edit');
+        $canReviewDatasets = Gate::allows('datasets.review');
+        $canEditJurisdictions = Gate::allows('jurisdictions.edit');
+        $restrictionSchemaVersion = (int) (Dataset::query()->where('key', 'restrictions')->value('schema_version') ?? 1);
         $municipalities = $this->municipalityQuery($filters)->get();
         $jurisdictionsByMunicipality = $this->jurisdictionsByMunicipality($municipalities->modelKeys());
         $proposalRowsByMunicipality = $this->pendingProposalsByMunicipality($municipalities->pluck('code')->map(fn ($code): string => (string) $code));
         $asOf = now();
         $publishedVersionIds = $this->publicationHistoryVersionIds($jurisdictionsByMunicipality);
 
-        $rows = $municipalities->map(function (GeographicUnit $unit) use ($jurisdictionsByMunicipality, $proposalRowsByMunicipality, $publishedVersionIds, $asOf): array {
+        $rows = $municipalities->map(function (GeographicUnit $unit) use ($jurisdictionsByMunicipality, $proposalRowsByMunicipality, $publishedVersionIds, $asOf, $canEditDatasets, $canReviewDatasets, $canEditJurisdictions, $restrictionSchemaVersion): array {
             $jurisdictions = collect($jurisdictionsByMunicipality[$unit->id] ?? [])->values();
             $pendingRows = collect($proposalRowsByMunicipality[(string) $unit->code] ?? []);
             $details = $jurisdictions->map(fn (Jurisdiction $jurisdiction): array => $this->jurisdictionSummary($jurisdiction, $asOf, $publishedVersionIds));
             $state = $this->stateFor($jurisdictions, $details);
             $firstProposal = $pendingRows->first();
-            $action = $this->nextAction($state, $jurisdictions, $details, $firstProposal);
+            $action = $this->nextAction(
+                $unit,
+                $state,
+                $jurisdictions,
+                $details,
+                $firstProposal,
+                $canEditDatasets,
+                $canReviewDatasets,
+                $canEditJurisdictions,
+                $restrictionSchemaVersion,
+            );
 
             return [
                 'municipality_code' => (string) $unit->code,
@@ -340,26 +355,82 @@ final class NationalOperationsReadService
      *  @param array{import_id:int,row_id:int}|null $proposal
      *  @return array{label:string,url:string}
      */
-    private function nextAction(string $state, Collection $jurisdictions, Collection $details, ?array $proposal): array
+    private function nextAction(
+        GeographicUnit $municipality,
+        string $state,
+        Collection $jurisdictions,
+        Collection $details,
+        ?array $proposal,
+        bool $canEditDatasets,
+        bool $canReviewDatasets,
+        bool $canEditJurisdictions,
+        int $restrictionSchemaVersion,
+    ): array
     {
         if ($proposal !== null) {
-            return ['label' => 'Revisar propuesta de importación', 'url' => route('admin.restrictions.imports.review', $proposal['import_id'])];
+            return $canEditDatasets
+                ? ['label' => 'Revisar propuesta de importación', 'url' => route('admin.restrictions.imports.review', $proposal['import_id'])]
+                : ['label' => 'Propuesta de importación pendiente · abrir matriz', 'url' => route('admin.restrictions.municipalities')];
+        }
+        $offDraft = $details->first(fn (array $detail): bool =>
+            ! $detail['enabled']
+            && $detail['version_id'] !== null
+            && $detail['version_status'] === RestrictionRuleVersionStatus::Draft->value
+        );
+        if ($offDraft !== null) {
+            return [
+                'label' => $canEditDatasets ? 'Revisar borrador OFF' : 'Ver borrador OFF',
+                'url' => route('admin.restrictions.edit', $offDraft['version_id']),
+            ];
         }
         if ($jurisdictions->isEmpty()) {
-            return ['label' => 'Analizar importación territorial', 'url' => route('admin.restrictions.import')];
+            if ($canEditJurisdictions) {
+                return [
+                    'label' => 'Crear jurisdicción para este municipio',
+                    'url' => route('admin.jurisdictions.create', ['primary_geographic_unit_id' => $municipality->id]),
+                ];
+            }
+
+            return $canEditDatasets
+                ? ['label' => 'Analizar importación territorial', 'url' => route('admin.restrictions.import')]
+                : ['label' => 'Abrir matriz municipal', 'url' => route('admin.restrictions.municipalities')];
         }
         if ($jurisdictions->count() > 1) {
             return ['label' => 'Resolver asignación en matriz', 'url' => route('admin.restrictions.municipalities')];
         }
         $detail = $details->first();
-        if ($detail && $detail['version_id'] !== null && in_array($state, ['borrador', 'vencido', 'sin_evidencia'], true)) {
-            return ['label' => 'Revisar borrador y fuente', 'url' => route('admin.restrictions.edit', $detail['version_id'])];
+        if ($detail && $detail['enabled'] && $detail['version_id'] !== null && $detail['version_status'] === RestrictionRuleVersionStatus::Draft->value) {
+            $label = $detail['enabled'] ? 'Revisar borrador y fuente' : 'Revisar borrador OFF';
+
+            return ['label' => $label, 'url' => route('admin.restrictions.edit', $detail['version_id'])];
+        }
+        if ($detail && ! $detail['enabled']) {
+            $offJurisdiction = $jurisdictions->first();
+            $hasCanonicalMunicipality = $offJurisdiction instanceof Jurisdiction
+                && (int) $offJurisdiction->primary_geographic_unit_id === (int) $municipality->id
+                && $municipality->level === GeographicUnitLevel::Municipality
+                && is_string($municipality->code)
+                && preg_match('/^\d{5}$/D', $municipality->code) === 1;
+            if ($canEditDatasets && $canEditJurisdictions && $restrictionSchemaVersion === 2 && $hasCanonicalMunicipality) {
+                return [
+                    'label' => 'Crear borrador OFF · no publicado',
+                    'url' => route('admin.restrictions.create', ['jurisdiction_id' => $detail['id']]),
+                ];
+            }
+
+            return ['label' => 'Ver jurisdicción OFF', 'url' => route('admin.jurisdictions.show', $detail['id'])];
         }
         if ($state === 'validado' || $state === 'publicacion_no_confirmada') {
-            return ['label' => 'Revisar publicación', 'url' => route('admin.restrictions.publish.preview')];
+            if ($canReviewDatasets) {
+                return ['label' => 'Revisar publicación', 'url' => route('admin.restrictions.publish.preview')];
+            }
+
+            return $detail && $detail['version_id'] !== null
+                ? ['label' => 'Ver versión editorial', 'url' => route('admin.restrictions.edit', $detail['version_id'])]
+                : ['label' => 'Abrir matriz municipal', 'url' => route('admin.restrictions.municipalities')];
         }
         if ($detail) {
-            return ['label' => $detail['enabled'] ? 'Abrir matriz municipal' : 'Revisar jurisdicción deshabilitada', 'url' => $detail['enabled'] ? route('admin.restrictions.municipalities') : route('admin.jurisdictions.show', $detail['id'])];
+            return ['label' => 'Abrir matriz municipal', 'url' => route('admin.restrictions.municipalities')];
         }
 
         return ['label' => 'Abrir matriz municipal', 'url' => route('admin.restrictions.municipalities')];

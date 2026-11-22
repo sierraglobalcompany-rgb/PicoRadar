@@ -12,6 +12,7 @@ use App\Models\Jurisdiction;
 use App\Models\RestrictionRuleVersion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
 use Tests\TestCase;
 
 class RestrictionRouteIntegrationTest extends TestCase
@@ -320,5 +321,218 @@ class RestrictionRouteIntegrationTest extends TestCase
         $invalidResponse->assertSee('Las condiciones no cumplen el contrato schema2');
         $version->refresh();
         $this->assertCount(9, $version->payload['coverages']);
+    }
+
+    public function test_off_schema2_creation_is_gate_protected_and_cannot_be_spoofed_on_post(): void
+    {
+        Dataset::query()->where('key', 'restrictions')->update(['schema_version' => 2]);
+        $editor = User::factory()->create(['role' => OperatorRole::Editor, 'is_active' => true]);
+        $offJurisdiction = $this->municipalityJurisdiction('05001', false);
+        $activeJurisdiction = $this->municipalityJurisdiction('05002', true);
+
+        $this->actingAs($editor)
+            ->get(route('admin.restrictions.create', ['jurisdiction_id' => $offJurisdiction->id]))
+            ->assertOk()
+            ->assertSee('OFF — NO PUBLICADO')
+            ->assertSee('Este borrador conserva la consulta global y todas sus modalidades apagadas')
+            ->assertSee('name="coverages[__COVERAGE__][consultation_enabled]" value="1" disabled', false)
+            ->assertViewHas('preselectedJurisdictionId', $offJurisdiction->id)
+            ->assertViewHas('jurisdictions', fn ($jurisdictions): bool => $jurisdictions->contains('id', $activeJurisdiction->id)
+                && $jurisdictions->contains('id', $offJurisdiction->id));
+
+        Gate::define('jurisdictions.edit', static fn (User $user): bool => false);
+        $this->get(route('admin.restrictions.create', ['jurisdiction_id' => $offJurisdiction->id]))
+            ->assertOk()
+            ->assertSee('Se requiere el permiso de edición territorial')
+            ->assertDontSee('value="'.$offJurisdiction->id.'"')
+            ->assertViewHas('preselectedJurisdictionId', null)
+            ->assertViewHas('jurisdictions', fn ($jurisdictions): bool => ! $jurisdictions->contains('id', $offJurisdiction->id));
+
+        $this->post(route('admin.restrictions.store'), $this->offDraftInput($offJurisdiction))
+            ->assertForbidden();
+        $this->assertDatabaseCount('restriction_rule_versions', 0);
+
+        $activeInput = $this->offDraftInput($activeJurisdiction);
+        $activeInput['consultation_enabled'] = '1';
+        $activeInput['coverages'] = array_map(static function (array $coverage): array {
+            $coverage['confirmed_no_rules'] = '1';
+
+            return $coverage;
+        }, $activeInput['coverages']);
+        $this->post(route('admin.restrictions.store'), $activeInput)
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+        $activeVersion = RestrictionRuleVersion::query()->sole();
+        $this->assertTrue($activeVersion->payload['consultationEnabled']);
+        $this->assertTrue($activeVersion->payload['coverages'][0]['consultationEnabled']);
+        $this->assertTrue($activeJurisdiction->fresh()->enabled);
+    }
+
+    public function test_off_schema2_post_forces_all_nine_coverages_off_partial_and_uses_primary_divipola(): void
+    {
+        Dataset::query()->where('key', 'restrictions')->update(['schema_version' => 2]);
+        $editor = User::factory()->create(['role' => OperatorRole::Editor, 'is_active' => true]);
+        $jurisdiction = $this->municipalityJurisdiction('05001', false);
+        $input = $this->offDraftInput($jurisdiction);
+        $input['consultation_enabled'] = '1';
+        $input['coverages'] = array_map(static function (array $coverage): array {
+            $coverage['consultationEnabled'] = true;
+            $coverage['consultation_enabled_present'] = '1';
+            $coverage['consultation_enabled'] = '1';
+
+            return $coverage;
+        }, $input['coverages']);
+
+        $response = $this->actingAs($editor)->post(route('admin.restrictions.store'), $input);
+        $version = RestrictionRuleVersion::query()->sole();
+        $response->assertRedirect(route('admin.restrictions.edit', $version))->assertSessionHasNoErrors();
+
+        $this->assertSame(2, $version->payload['schemaVersion']);
+        $this->assertSame(['05001'], $version->payload['municipalityCodes']);
+        $this->assertFalse($version->payload['consultationEnabled']);
+        $this->assertCount(9, $version->payload['coverages']);
+        $this->assertSame([
+            'car|private', 'car|taxi', 'car|special', 'motorcycle|private',
+            'truck|private', 'truck|public_cargo', 'bus|public_passenger',
+            'bus|special', 'motocarro|private',
+        ], array_map(static fn (array $coverage): string => $coverage['vehicleKind'].'|'.$coverage['serviceType'], $version->payload['coverages']));
+        foreach ($version->payload['coverages'] as $coverage) {
+            $this->assertFalse($coverage['consultationEnabled']);
+            $this->assertSame('partial', $coverage['coverageCompleteness']);
+        }
+        $this->assertSame(RestrictionRuleVersionStatus::Draft, $version->status);
+        $this->assertFalse($jurisdiction->fresh()->enabled);
+        $this->assertNull(Dataset::query()->where('key', 'restrictions')->value('current_version'));
+        $this->assertDatabaseCount('restriction_publications', 0);
+    }
+
+    public function test_schema1_rejects_off_creation_and_does_not_expose_the_option(): void
+    {
+        $editor = User::factory()->create(['role' => OperatorRole::Editor, 'is_active' => true]);
+        $jurisdiction = $this->municipalityJurisdiction('05001', false);
+
+        $this->actingAs($editor)
+            ->get(route('admin.restrictions.create', ['jurisdiction_id' => $jurisdiction->id]))
+            ->assertOk()
+            ->assertSee('restrictions use schema1')
+            ->assertDontSee('value="'.$jurisdiction->id.'"')
+            ->assertViewHas('preselectedJurisdictionId', null);
+
+        $input = $this->offDraftInput($jurisdiction);
+        $input['coverages'] = array_slice($input['coverages'], 0, 1);
+        $this->post(route('admin.restrictions.store'), $input)
+            ->assertSessionHasErrors('jurisdiction_id');
+        $this->assertDatabaseCount('restriction_rule_versions', 0);
+        $this->assertFalse($jurisdiction->fresh()->enabled);
+    }
+
+    public function test_off_schema2_requires_explicit_dates_and_https_sources(): void
+    {
+        Dataset::query()->where('key', 'restrictions')->update(['schema_version' => 2]);
+        $editor = User::factory()->create(['role' => OperatorRole::Editor, 'is_active' => true]);
+        $jurisdiction = $this->municipalityJurisdiction('05001', false);
+        $input = $this->offDraftInput($jurisdiction);
+        unset($input['coverages'][0]['verified_at']);
+
+        $this->actingAs($editor)->post(route('admin.restrictions.store'), $input)
+            ->assertSessionHasErrors('coverages');
+        $this->assertDatabaseCount('restriction_rule_versions', 0);
+
+        $input = $this->offDraftInput($jurisdiction);
+        $input['coverages'][0]['source_urls'] = 'http://example.test/not-https';
+        $this->post(route('admin.restrictions.store'), $input)
+            ->assertSessionHasErrors('coverages');
+        $this->assertDatabaseCount('restriction_rule_versions', 0);
+    }
+
+    public function test_editing_an_existing_off_draft_preserves_its_consultation_values(): void
+    {
+        $editor = User::factory()->create(['role' => OperatorRole::Editor, 'is_active' => true]);
+        $jurisdiction = $this->municipalityJurisdiction('05001', false);
+        $payload = [
+            'schemaVersion' => 2,
+            'id' => $jurisdiction->key,
+            'name' => $jurisdiction->name,
+            'municipalityCodes' => ['05001'],
+            'consultationEnabled' => true,
+            'coverages' => [[
+                'vehicleKind' => 'car',
+                'serviceType' => 'private',
+                'coverageCompleteness' => 'complete',
+                'consultationEnabled' => true,
+                'verifiedAt' => '2026-11-20T08:00:00-05:00',
+                'staleAfter' => '2026-12-20T00:00:00-05:00',
+                'sourceUrls' => ['https://example.test/historical-source'],
+                'rules' => [],
+            ]],
+        ];
+        $version = RestrictionRuleVersion::query()->create([
+            'jurisdiction_id' => $jurisdiction->id,
+            'version' => 1,
+            'status' => RestrictionRuleVersionStatus::Draft,
+            'payload' => $payload,
+            'payload_sha256' => hash('sha256', json_encode($payload)),
+            'base_publication_revision' => 0,
+            'created_by_id' => $editor->id,
+            'updated_by_id' => $editor->id,
+        ]);
+
+        $response = $this->actingAs($editor)->get(route('admin.restrictions.edit', $version));
+        $response->assertOk()
+            ->assertSee('name="consultation_enabled" value="1" checked', false)
+            ->assertSee('name="coverages[0][consultation_enabled]" value="1" checked', false)
+            ->assertSee('name="coverages[__COVERAGE__][consultation_enabled]" value="1"', false)
+            ->assertDontSee('name="coverages[0][consultation_enabled]" value="1" checked disabled', false);
+    }
+
+    private function municipalityJurisdiction(string $code, bool $enabled): Jurisdiction
+    {
+        $country = GeographicUnit::query()->create([
+            'key' => 'co-off-'.$code, 'level' => GeographicUnitLevel::Country, 'code' => 'CO',
+            'name' => 'Colombia sintética', 'normalized_name' => 'colombia sintetica',
+            'source_system' => 'test-fixture', 'source_version' => '2026-11',
+        ]);
+        $department = GeographicUnit::query()->create([
+            'parent_id' => $country->id, 'key' => 'co-05-off-'.$code,
+            'level' => GeographicUnitLevel::Department, 'code' => '05',
+            'name' => 'Antioquia sintética', 'normalized_name' => 'antioquia sintetica',
+            'source_system' => 'test-fixture', 'source_version' => '2026-11',
+        ]);
+        $municipality = GeographicUnit::query()->create([
+            'parent_id' => $department->id, 'key' => 'co-'.$code,
+            'level' => GeographicUnitLevel::Municipality, 'code' => $code,
+            'name' => 'Municipio sintético '.$code, 'normalized_name' => 'municipio sintetico '.$code,
+            'source_system' => 'test-fixture', 'source_version' => '2026-11',
+        ]);
+        $jurisdiction = Jurisdiction::query()->create([
+            'key' => 'municipio-'.$code, 'name' => $municipality->name,
+            'kind' => JurisdictionKind::City, 'primary_geographic_unit_id' => $municipality->id,
+            'enabled' => $enabled, 'timezone' => 'America/Bogota',
+        ]);
+        $jurisdiction->geographicUnits()->attach($municipality->id);
+
+        return $jurisdiction;
+    }
+
+    /** @return array<string,mixed> */
+    private function offDraftInput(Jurisdiction $jurisdiction): array
+    {
+        $pairs = [
+            'car|private', 'car|taxi', 'car|special', 'motorcycle|private',
+            'truck|private', 'truck|public_cargo', 'bus|public_passenger',
+            'bus|special', 'motocarro|private',
+        ];
+
+        return [
+            'jurisdiction_id' => $jurisdiction->id,
+            'consultation_enabled' => '0',
+            'coverages' => array_map(static fn (string $pair): array => [
+                'pair' => $pair,
+                'verified_at' => '2026-11-20T08:00',
+                'stale_after' => '2026-12-20T00:00',
+                'source_urls' => 'https://example.test/synthetic-restrictions',
+                'rules' => [],
+            ], $pairs),
+        ];
     }
 }

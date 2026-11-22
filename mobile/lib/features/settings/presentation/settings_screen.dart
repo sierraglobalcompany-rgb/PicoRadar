@@ -9,6 +9,7 @@ import '../../../app/app_providers.dart';
 import '../../../app/router/app_routes.dart';
 import '../../../app/theme/app_tokens.dart';
 import '../../../core/database/app_database.dart';
+import '../../../core/sync/dataset_sync_service.dart';
 import '../../comparendos/presentation/comparendos_screen.dart';
 import '../../account/presentation/app_account_settings.dart';
 import '../../driving/data/camera_pack_loader.dart';
@@ -180,6 +181,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                       ),
                       const SizedBox(height: AppSpacing.s),
+                      Semantics(
+                        liveRegion: _busyActionKey == 'national-datasets',
+                        child: FilledButton.icon(
+                          key: const ValueKey(
+                            'settings-refresh-national-datasets',
+                          ),
+                          onPressed: syncConfig == null ||
+                                  _busyActionKey.isNotEmpty
+                              ? null
+                              : _refreshNationalDatasets,
+                          icon: _busyActionKey == 'national-datasets'
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    semanticsLabel:
+                                        'Actualizando datos nacionales',
+                                  ),
+                                )
+                              : const Icon(Icons.sync),
+                          label: const Text(
+                            'Actualizar datos nacionales ahora',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.s),
                       const _SectionText(
                         'Datos instalados ≠ cobertura legal confirmada. Si falta evidencia para tu municipio, vehículo, servicio o fecha, el estado es desconocido; consulta el detalle de pico y placa',
                       ),
@@ -309,6 +336,99 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       return;
     }
     context.go(AppRoute.home.path);
+  }
+
+  Future<void> _refreshNationalDatasets() async {
+    if (_busyActionKey.isNotEmpty ||
+        ref.read(datasetSyncConfigProvider) == null) {
+      return;
+    }
+    setState(() => _busyActionKey = 'national-datasets');
+    var message = 'No pudimos actualizar los datos nacionales.';
+    try {
+      final result = await ref.read(manualDatasetRefreshProvider)();
+      if (result == null) {
+        message =
+            'La actualización nacional no está disponible en este momento.';
+      } else {
+        ref.invalidate(nationalDatasetStatusProvider);
+        message = _datasetRefreshMessage(result);
+      }
+    } catch (_) {
+      message =
+          'No pudimos actualizar los datos nacionales. Revisa la conexión e inténtalo de nuevo.';
+    } finally {
+      if (mounted) {
+        setState(() => _busyActionKey = '');
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
+      }
+    }
+  }
+
+  String _datasetRefreshMessage(DatasetSyncResult result) {
+    final importedNational = result.imported
+        .where(nationalDatasetKeys.contains)
+        .toList();
+    final importedOther = result.imported
+        .where((key) => !nationalDatasetKeys.contains(key))
+        .toList();
+    final parts = <String>[];
+
+    if (importedNational.isNotEmpty) {
+      parts.add(
+        'Datos nacionales nuevos instalados: ${_datasetLabels(importedNational)}.',
+      );
+    }
+    if (importedOther.isNotEmpty) {
+      parts.add(
+        '${importedNational.isEmpty ? 'Otros catálogos nuevos instalados' : 'También se instalaron otros catálogos'}: ${_datasetLabels(importedOther)}.',
+      );
+    }
+    if (result.notModified) {
+      parts.add('Sin cambios nuevos detectados: el manifiesto no cambió.');
+    } else if (result.skippedCurrent.isNotEmpty) {
+      parts.add(
+        'Sin cambios nuevos detectados en: ${_datasetLabels(result.skippedCurrent)}.',
+      );
+    }
+
+    if (result.skippedMissingImporter.isNotEmpty) {
+      final missingNational = result.skippedMissingImporter
+          .where(nationalDatasetKeys.contains)
+          .toList();
+      final missingOther = result.skippedMissingImporter
+          .where((key) => !nationalDatasetKeys.contains(key))
+          .toList();
+      if (missingNational.isNotEmpty) {
+        parts.add(
+          'No se pudieron actualizar ${_datasetLabels(missingNational)}: falta el importador correspondiente.',
+        );
+      }
+      if (missingOther.isNotEmpty) {
+        parts.add(
+          'Se omitieron catálogos sin importador: ${_datasetLabels(missingOther)}.',
+        );
+      }
+    }
+
+    if (parts.isEmpty) {
+      parts.add('El servidor no reportó cambios nuevos para instalar.');
+    }
+    return parts.join(' ');
+  }
+
+  String _datasetLabels(List<String> datasetKeys) {
+    const labels = {
+      'restrictions': 'Restricciones nacionales',
+      'service_providers': 'Directorio de servicios',
+      'tolls_inventory': 'Peajes',
+      'tax_calendars': 'Calendarios de impuestos',
+      'cda_catalog': 'Directorio de CDA',
+      'cda_geography': 'Cobertura geográfica de CDA',
+      'insurance_directory': 'Directorio de aseguradoras',
+    };
+    return datasetKeys.map((key) => labels[key] ?? key).join(', ');
   }
 
   Future<void> _deleteComparendosNote() async {

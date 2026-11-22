@@ -311,6 +311,12 @@ final _datasetRefreshProvider =
       };
     });
 
+final manualDatasetRefreshProvider =
+    Provider<Future<DatasetSyncResult?> Function()>((ref) {
+      final refresh = ref.watch(_datasetRefreshProvider);
+      return () => refresh(true);
+    });
+
 final taxCatalogRefreshProvider = Provider<Future<bool> Function(bool)>((ref) {
   final refresh = ref.watch(_datasetRefreshProvider);
   return (force) async {

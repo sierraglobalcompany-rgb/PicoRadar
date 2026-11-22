@@ -6,6 +6,7 @@ use App\Enums\GeographicUnitLevel;
 use App\Enums\OperatorRole;
 use App\Enums\RestrictionImportStatus;
 use App\Enums\RestrictionRuleVersionStatus;
+use App\Models\Dataset;
 use App\Models\GeographicUnit;
 use App\Models\Jurisdiction;
 use App\Models\RestrictionImport;
@@ -117,6 +118,72 @@ class NationalOperationsTest extends TestCase
         $this->actingAs($admin)->get(route('admin.operations.national', ['department' => '5']))->assertSessionHasErrors('department');
     }
 
+    public function test_next_action_prioritizes_proposal_then_off_draft_and_contextual_off_or_jurisdiction_creation(): void
+    {
+        $admin = User::factory()->create(['role' => OperatorRole::Admin, 'is_active' => true]);
+        Dataset::query()->create(['key' => 'restrictions', 'title' => 'Pico y placa', 'schema_version' => 2, 'enabled' => true]);
+        $department = $this->department('05', 'Antioquia sintética');
+        $proposalMunicipality = $this->municipality($department, '05001', 'Municipio con propuesta');
+        $offDraftMunicipality = $this->municipality($department, '05002', 'Municipio OFF con borrador');
+        $offNewMunicipality = $this->municipality($department, '05003', 'Municipio OFF sin borrador');
+        $unassignedMunicipality = $this->municipality($department, '05004', 'Municipio sin jurisdicción');
+
+        $offDraft = $this->jurisdiction($offDraftMunicipality, false);
+        $this->jurisdiction($offDraftMunicipality, true, '-active');
+        $offWithoutDraft = $this->jurisdiction($offNewMunicipality, false);
+        $draftVersion = $this->version($offDraft, RestrictionRuleVersionStatus::Draft);
+        $import = RestrictionImport::query()->create([
+            'sha256' => str_repeat('b', 64),
+            'original_name' => 'proposal.json',
+            'format' => 'json',
+            'private_path' => 'restriction-imports/proposal.json',
+            'status' => RestrictionImportStatus::Analyzed,
+            'row_count' => 1,
+            'created_by_id' => $admin->id,
+            'analyzed_at' => now(),
+        ]);
+        $import->rows()->create([
+            'row_number' => 1,
+            'state' => 'valid',
+            'publishable' => true,
+            'normalized' => ['onboarding' => ['status' => 'ALTA_PROPUESTA', 'municipality_code' => (string) $proposalMunicipality->code]],
+            'raw' => ['fixture' => true],
+        ]);
+
+        $this->actingAs($admin)->get(route('admin.operations.national'))
+            ->assertOk()
+            ->assertViewHas('rows', function ($rows) use ($import, $draftVersion, $offWithoutDraft, $unassignedMunicipality): bool {
+                $byCode = collect($rows->items())->keyBy('municipality_code');
+
+                return $byCode['05001']['next_action_url'] === route('admin.restrictions.imports.review', $import)
+                    && $byCode['05002']['next_action_url'] === route('admin.restrictions.edit', $draftVersion)
+                    && $byCode['05002']['next_action_label'] === 'Revisar borrador OFF'
+                    && $byCode['05003']['next_action_url'] === route('admin.restrictions.create', ['jurisdiction_id' => $offWithoutDraft->id])
+                    && $byCode['05004']['next_action_url'] === route('admin.jurisdictions.create', ['primary_geographic_unit_id' => $unassignedMunicipality->id]);
+            });
+    }
+
+    public function test_next_action_hides_off_creation_links_without_the_required_gates(): void
+    {
+        $reviewer = User::factory()->create(['role' => OperatorRole::Reviewer, 'is_active' => true]);
+        Dataset::query()->create(['key' => 'restrictions', 'title' => 'Pico y placa', 'schema_version' => 2, 'enabled' => true]);
+        $department = $this->department('05', 'Antioquia sintética');
+        $offMunicipality = $this->municipality($department, '05001', 'Municipio OFF');
+        $unassignedMunicipality = $this->municipality($department, '05002', 'Municipio sin jurisdicción');
+        $off = $this->jurisdiction($offMunicipality, false);
+
+        $this->actingAs($reviewer)->get(route('admin.operations.national'))
+            ->assertOk()
+            ->assertDontSee(route('admin.restrictions.create', ['jurisdiction_id' => $off->id]))
+            ->assertDontSee(route('admin.jurisdictions.create', ['primary_geographic_unit_id' => $unassignedMunicipality->id]))
+            ->assertViewHas('rows', function ($rows) use ($off, $unassignedMunicipality): bool {
+                $byCode = collect($rows->items())->keyBy('municipality_code');
+
+                return $byCode['05001']['next_action_url'] === route('admin.jurisdictions.show', $off)
+                    && $byCode['05002']['next_action_url'] === route('admin.restrictions.municipalities');
+            });
+    }
+
     private function department(string $code, string $name): GeographicUnit
     {
         $country = GeographicUnit::query()->firstOrCreate(['key' => 'co'], [
@@ -157,10 +224,10 @@ class NationalOperationsTest extends TestCase
         ]);
     }
 
-    private function jurisdiction(GeographicUnit $municipality, bool $enabled): Jurisdiction
+    private function jurisdiction(GeographicUnit $municipality, bool $enabled, string $keySuffix = ''): Jurisdiction
     {
         $jurisdiction = Jurisdiction::query()->create([
-            'key' => 'municipio-'.$municipality->code,
+            'key' => 'municipio-'.$municipality->code.$keySuffix,
             'name' => $municipality->name,
             'kind' => 'city',
             'primary_geographic_unit_id' => $municipality->id,

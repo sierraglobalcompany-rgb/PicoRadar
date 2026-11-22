@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\DatasetReleaseStatus;
+use App\Enums\GeographicUnitLevel;
 use App\Enums\RestrictionRuleVersionStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Dataset;
@@ -24,6 +25,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -781,18 +783,45 @@ class RestrictionRuleController extends Controller
     {
         Gate::authorize('datasets.edit');
         $dataset = Dataset::query()->where('key', 'restrictions')->firstOrFail();
-        $jurisdictions = Jurisdiction::query()
+        $schemaVersion = (int) $dataset->schema_version;
+        $canEditJurisdictions = Gate::allows('jurisdictions.edit');
+        $canCreateOffDrafts = $schemaVersion === 2 && $canEditJurisdictions;
+        $jurisdictionsQuery = Jurisdiction::query()
             ->with('primaryGeographicUnit')
-            ->where('enabled', true)
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name');
+        if (! $canCreateOffDrafts) {
+            $jurisdictionsQuery->where('enabled', true);
+        }
+        $jurisdictions = $jurisdictionsQuery->get();
+        if ($canCreateOffDrafts) {
+            $jurisdictions = $jurisdictions->filter(static function (Jurisdiction $jurisdiction): bool {
+                if ($jurisdiction->enabled) {
+                    return true;
+                }
+                $unit = $jurisdiction->primaryGeographicUnit;
+
+                return $unit?->level === GeographicUnitLevel::Municipality
+                    && is_string($unit->code)
+                    && preg_match('/^\d{5}$/D', $unit->code) === 1;
+            })->values();
+        }
         $queryId = $request->query('jurisdiction_id');
         $preselectedJurisdictionId = null;
+        $selectionNotice = null;
 
         if (is_int($queryId) || (is_string($queryId) && strlen($queryId) <= 19 && ctype_digit($queryId))) {
             $id = filter_var($queryId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
             if ($id !== false && $jurisdictions->contains('id', $id)) {
                 $preselectedJurisdictionId = (int) $id;
+            } elseif ($id !== false) {
+                $requestedJurisdiction = Jurisdiction::query()->with('primaryGeographicUnit')->find($id);
+                if ($requestedJurisdiction !== null && ! $requestedJurisdiction->enabled) {
+                    $selectionNotice = match (true) {
+                        $schemaVersion !== 2 => 'No se puede crear un borrador OFF mientras restrictions use schema1. Se requiere schema2.',
+                        ! $canEditJurisdictions => 'La jurisdicción OFF no está disponible para este usuario. Se requiere el permiso de edición territorial.',
+                        default => 'La jurisdicción OFF no tiene un municipio principal con código DIVIPOLA válido de cinco dígitos.',
+                    };
+                }
             }
         }
 
@@ -800,31 +829,69 @@ class RestrictionRuleController extends Controller
             'operator' => $request->user(),
             'jurisdictions' => $jurisdictions,
             'version' => null,
-            'schemaVersion' => (int) $dataset->schema_version,
+            'schemaVersion' => $schemaVersion,
             'preselectedJurisdictionId' => $preselectedJurisdictionId,
+            'selectionNotice' => $selectionNotice,
         ]);
     }
 
     public function store(Request $request, RestrictionRuleVersionService $service, RestrictionFormPayloadBuilder $builder): RedirectResponse
     {
         Gate::authorize('datasets.edit');
-        $schemaVersion = (int) Dataset::query()->where('key', 'restrictions')->value('schema_version');
-        if (! in_array($schemaVersion, [1, 2], true)) {
-            throw ValidationException::withMessages(['coverages' => 'La versión publicada del esquema no permite crear borradores.']);
-        }
-        $data = $request->validate([
-            'jurisdiction_id' => ['required', 'integer', 'exists:jurisdictions,id'],
-            'coverages' => ['required', 'array', 'min:1', 'max:'.($schemaVersion === 2 ? 9 : 8)],
-            'coverages.*' => ['required', 'array'],
-            'coverages.*.rules' => ['present', 'array', 'max:1000'],
-        ]);
-        $jurisdiction = Jurisdiction::query()->where('enabled', true)->findOrFail($data['jurisdiction_id']);
-        try {
-            $payload = $builder->build($jurisdiction, $request->only(['coverages', 'consultation_enabled']), $schemaVersion);
-        } catch (DomainException $error) {
-            throw ValidationException::withMessages([$this->formErrorField($error) => $this->formErrorMessage($error)]);
-        }
-        $version = $service->createDraft($jurisdiction, $payload, $request->user());
+        $version = DB::transaction(function () use ($request, $service, $builder): RestrictionRuleVersion {
+            $data = $request->validate([
+                'jurisdiction_id' => ['required', 'integer', 'exists:jurisdictions,id'],
+                'coverages' => ['required', 'array', 'min:1', 'max:9'],
+                'coverages.*' => ['required', 'array'],
+                'coverages.*.rules' => ['present', 'array', 'max:1000'],
+            ]);
+            $jurisdiction = Jurisdiction::query()
+                ->with('primaryGeographicUnit')
+                ->lockForUpdate()
+                ->findOrFail($data['jurisdiction_id']);
+            $dataset = Dataset::query()->where('key', 'restrictions')->lockForUpdate()->firstOrFail();
+            $schemaVersion = (int) $dataset->schema_version;
+            if (! in_array($schemaVersion, [1, 2], true)) {
+                throw ValidationException::withMessages(['coverages' => 'La versión publicada del esquema no permite crear borradores.']);
+            }
+            if (count($data['coverages']) > ($schemaVersion === 2 ? 9 : 8)) {
+                throw ValidationException::withMessages(['coverages' => 'El esquema actual no admite esta cantidad de coberturas.']);
+            }
+            $input = $request->only(['coverages', 'consultation_enabled']);
+
+            if (! $jurisdiction->enabled) {
+                Gate::authorize('jurisdictions.edit');
+                if ($schemaVersion !== 2) {
+                    throw ValidationException::withMessages([
+                        'jurisdiction_id' => 'No se pueden crear borradores para jurisdicciones OFF mientras restrictions use schema1; se requiere schema2.',
+                    ]);
+                }
+                $municipality = $jurisdiction->primaryGeographicUnit;
+                if ($municipality?->level !== GeographicUnitLevel::Municipality
+                    || ! is_string($municipality->code)
+                    || preg_match('/^\d{5}$/D', $municipality->code) !== 1) {
+                    throw ValidationException::withMessages([
+                        'jurisdiction_id' => 'La jurisdicción OFF requiere un municipio principal con código DIVIPOLA válido.',
+                    ]);
+                }
+                $input['consultation_enabled'] = '0';
+                $input['coverages'] = array_map(static function (array $coverage): array {
+                    $coverage['consultationEnabled'] = false;
+                    $coverage['consultation_enabled_present'] = '1';
+                    $coverage['consultation_enabled'] = '0';
+
+                    return $coverage;
+                }, $input['coverages']);
+            }
+
+            try {
+                $payload = $builder->build($jurisdiction, $input, $schemaVersion);
+            } catch (DomainException $error) {
+                throw ValidationException::withMessages([$this->formErrorField($error) => $this->formErrorMessage($error)]);
+            }
+
+            return $service->createDraft($jurisdiction, $payload, $request->user());
+        });
 
         return redirect()->route('admin.restrictions.edit', $version);
     }

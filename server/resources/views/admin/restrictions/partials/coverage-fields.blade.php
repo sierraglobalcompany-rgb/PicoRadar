@@ -33,8 +33,8 @@
     @if($schemaVersion === 2)
         <label class="mt-4 flex min-h-12 items-start gap-3 rounded-md bg-sky-50 px-3 py-3 text-sm text-sky-950">
             <input type="hidden" name="coverages[{{ $coverageIndex }}][consultation_enabled_present]" value="1">
-            <input type="checkbox" class="mt-1" name="coverages[{{ $coverageIndex }}][consultation_enabled]" value="1" @checked($coverage['consultation_enabled'] ?? true)>
-            <span><strong>Consulta habilitada para esta modalidad</strong>. Si se desactiva, la app muestra estado desconocido y conserva las reglas y la completitud declarada.</span>
+            <input type="checkbox" class="mt-1" name="coverages[{{ $coverageIndex }}][consultation_enabled]" value="1" @checked($coverage['consultation_enabled'] ?? true) @disabled($isOffDraft ?? false)>
+            <span><strong>Consulta habilitada para esta modalidad</strong>. En una jurisdicción OFF el servidor conserva la modalidad apagada aunque se envíe la casilla marcada; si se desactiva en una jurisdicción activa, la app muestra estado desconocido y conserva reglas y completitud.</span>
         </label>
     @endif
     <label class="mt-4 block text-sm font-medium">Fuentes HTTPS de la cobertura <span class="font-normal text-slate-500">(una por línea)</span><textarea class="mt-1 min-h-24 w-full rounded-md border border-slate-300 p-3" name="coverages[{{ $coverageIndex }}][source_urls]" required>{{ $coverage['source_urls'] ?? '' }}</textarea></label>
