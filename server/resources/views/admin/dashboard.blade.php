@@ -53,6 +53,9 @@
                 <a class="min-h-12 rounded-lg border border-slate-200 bg-white p-4 font-medium hover:border-teal-500" href="{{ route('admin.cameras.index') }}">Cámaras y fuentes</a>
                 <a class="min-h-12 rounded-lg border border-slate-200 bg-white p-4 font-medium hover:border-teal-500" href="{{ route('admin.audit.index') }}">Auditoría</a>
             @endcan
+            @can('service_providers.view')
+                <a class="min-h-12 rounded-lg border border-slate-200 bg-white p-4 font-medium hover:border-teal-500" href="{{ route('admin.service-providers.index') }}">Directorio de servicios</a>
+            @endcan
             @can('partner_inquiries.view')
                 <a class="min-h-12 rounded-lg border border-slate-200 bg-white p-4 font-medium hover:border-teal-500" href="{{ route('admin.partner-inquiries.index') }}">Solicitudes de aliados</a>
             @endcan
