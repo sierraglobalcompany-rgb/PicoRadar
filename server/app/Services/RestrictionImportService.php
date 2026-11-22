@@ -436,6 +436,7 @@ final class RestrictionImportService
             ! is_array($staleAfter) || $staleAfter === []) {
             throw new DomainException('A current HTTPS source, verification date, and review date are required.');
         }
+        $this->assertSourceUrlsHaveNoCredentials($urls);
         foreach ($verifiedAt as $date) {
             if (CarbonImmutable::parse($date)->isAfter(now())) {
                 throw new DomainException('A source verification date is in the future.');
@@ -444,6 +445,24 @@ final class RestrictionImportService
         foreach ($staleAfter as $date) {
             if (! CarbonImmutable::parse($date)->isAfter(now())) {
                 throw new DomainException('A source has expired since analysis; analyze the file again.');
+            }
+        }
+    }
+
+    /** @param list<mixed> $urls */
+    private function assertSourceUrlsHaveNoCredentials(array $urls): void
+    {
+        foreach ($urls as $url) {
+            if (! is_string($url)) {
+                throw new DomainException('Source URLs must not contain embedded credentials.');
+            }
+            try {
+                $parts = parse_url($url);
+            } catch (\ValueError) {
+                $parts = false;
+            }
+            if (! is_array($parts) || array_key_exists('user', $parts) || array_key_exists('pass', $parts)) {
+                throw new DomainException('Source URLs must not contain embedded credentials.');
             }
         }
     }
@@ -472,7 +491,7 @@ final class RestrictionImportService
     }
 
     /** @param array<string,mixed> $payload @param array<string,mixed>|null $existing @return array<string,mixed> */
-    private function prepareNewModalityCoverage(array $payload, ?array $existing): array
+    private function prepareNewModalityCoverage(array $payload, ?array $existing, bool $preserveExistingConsultation = false): array
     {
         if (! is_array($payload['coverages'] ?? null) || ! array_is_list($payload['coverages'])) {
             throw new DomainException('An imported jurisdiction must contain a coverage list.');
@@ -493,8 +512,13 @@ final class RestrictionImportService
             if ($previous === null) {
                 $coverage['coverageCompleteness'] = 'partial';
                 $coverage['consultationEnabled'] = false;
-            } elseif (isset($previous['coverageCompleteness'])) {
-                $coverage['coverageCompleteness'] = $previous['coverageCompleteness'];
+            } else {
+                if (isset($previous['coverageCompleteness'])) {
+                    $coverage['coverageCompleteness'] = $previous['coverageCompleteness'];
+                }
+                if ($preserveExistingConsultation) {
+                    $coverage['consultationEnabled'] = $previous['consultationEnabled'] ?? false;
+                }
             }
         }
         unset($coverage);
@@ -738,6 +762,7 @@ final class RestrictionImportService
                     $envelopeSchemaVersion ?? $citySchemaVersion,
                 );
                 $this->assertSourceCurrent($validation);
+                $this->assertSourceUrlsHaveNoCredentials($onboarding['source']['urls'] ?? []);
                 if ($jurisdiction) {
                     $this->assertNoMaterialRuleConflicts($payload, $this->latestPayloadFor($jurisdiction));
                 }
@@ -872,6 +897,7 @@ final class RestrictionImportService
                 ? $this->validator->validateJurisdictionForEnvelope($payload, $payload['id'], 2)
                 : $this->validator->validateJurisdiction($payload, $payload['id'], $schemaVersion);
             $this->assertSourceCurrent($validation);
+            $this->assertSourceUrlsHaveNoCredentials($onboarding['source']['urls'] ?? []);
             if ($existingPayload) {
                 $this->assertNoMaterialRuleConflicts($payload, $existingPayload);
             }
@@ -1007,13 +1033,21 @@ final class RestrictionImportService
     private function payloadForRows(Jurisdiction $jurisdiction, array $rows, bool $createdNewMunicipality = false): array
     {
         if (count($rows) === 1 && isset($rows[0]->normalized['payload'])) {
+            $existing = $this->latestPayloadFor($jurisdiction, false);
             $payload = $this->mergeSchema2CoverageState(
                 $rows[0]->normalized['payload'],
-                $this->latestPayloadFor($jurisdiction, false),
+                $existing,
             );
             if ($createdNewMunicipality) {
                 $unit = $jurisdiction->primaryGeographicUnit()->with('parent')->firstOrFail();
                 $payload = $this->prepareNewMunicipalityPayload($payload, $unit);
+            } elseif (($rows[0]->normalized['onboarding']['status'] ?? null) === 'ALTA_PROPUESTA') {
+                $unit = $jurisdiction->primaryGeographicUnit()->with('parent')->firstOrFail();
+                $payload['id'] = $jurisdiction->key;
+                $payload['name'] = $jurisdiction->name;
+                $payload['municipalityCodes'] = $existing['municipalityCodes'] ?? [(string) $unit->code];
+                $payload['consultationEnabled'] = $existing['consultationEnabled'] ?? false;
+                $payload = $this->prepareNewModalityCoverage($payload, $existing, true);
             }
 
             return $payload;

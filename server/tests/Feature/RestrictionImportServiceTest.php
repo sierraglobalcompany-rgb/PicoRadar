@@ -335,6 +335,106 @@ class RestrictionImportServiceTest extends TestCase
         $this->assertSame(1, Jurisdiction::query()->count());
     }
 
+    public function test_schema2_proposal_rebinds_identity_when_confirmation_reuses_a_new_registration(): void
+    {
+        Dataset::query()->where('key', 'restrictions')->update(['schema_version' => 2]);
+        $unit = $this->geoMunicipality('05', '05002', 'Municipio sintético 2');
+        $city = $this->payload();
+        $city['id'] = 'file-provided-id';
+        $city['name'] = 'Nombre no canónico';
+        $city['schemaVersion'] = 2;
+        $city['municipalityCodes'] = ['05002'];
+        $city['consultationEnabled'] = true;
+        $city['coverages'][0]['coverageCompleteness'] = 'complete';
+        $city['coverages'][0]['consultationEnabled'] = true;
+        $city['coverages'][0]['rules'][0]['conditions'] = [];
+        $document = ['schemaVersion' => 2, 'datasetKey' => 'restrictions', 'version' => 'synthetic-race-rebind', 'generatedAt' => '2026-11-21T12:00:00Z', 'jurisdictions' => [$city]];
+        $service = app(RestrictionImportService::class);
+        $import = $service->analyze($this->temporaryFile(json_encode($document, JSON_THROW_ON_ERROR)), 'race-rebind.json', 'json', null, $this->actor);
+        $row = $import->rows()->firstOrFail();
+        $this->assertSame('valid', $row->state);
+        $this->assertSame('ALTA_PROPUESTA', $row->normalized['onboarding']['status']);
+
+        $jurisdiction = Jurisdiction::query()->create([
+            'key' => 'editorial-05002',
+            'name' => 'Nombre editorial existente',
+            'kind' => 'city',
+            'primary_geographic_unit_id' => $unit->id,
+            'enabled' => true,
+            'timezone' => 'America/Bogota',
+        ]);
+        $existingPayload = $city;
+        $existingPayload['id'] = $jurisdiction->key;
+        $existingPayload['name'] = $jurisdiction->name;
+        app(\App\Services\RestrictionRuleVersionService::class)->createDraft($jurisdiction, $existingPayload, $this->actor);
+
+        $versions = $service->confirm($import, [$row->id], $this->actor);
+
+        $this->assertCount(1, $versions);
+        $this->assertSame($jurisdiction->key, $versions[0]->payload['id']);
+        $this->assertSame($jurisdiction->name, $versions[0]->payload['name']);
+        $this->assertTrue($versions[0]->payload['consultationEnabled']);
+        $this->assertTrue($versions[0]->payload['coverages'][0]['consultationEnabled']);
+        $this->assertSame($jurisdiction->id, $row->fresh()->jurisdiction_id);
+        $this->assertSame(2, Jurisdiction::query()->count());
+        $this->assertSame(2, RestrictionRuleVersion::query()->count());
+    }
+
+    public function test_schema2_proposal_rejects_embedded_credentials_in_any_source_url(): void
+    {
+        Dataset::query()->where('key', 'restrictions')->update(['schema_version' => 2]);
+        $this->geoMunicipality('05', '05002', 'Municipio sintético 2');
+        $city = $this->payload();
+        $city['id'] = 'file-provided-id';
+        $city['schemaVersion'] = 2;
+        $city['municipalityCodes'] = ['05002'];
+        $city['coverages'][0]['rules'][0]['conditions'] = [];
+        $city['coverages'][0]['sourceUrls'][] = 'https://user:password@example.test/private-rules';
+        $document = ['schemaVersion' => 2, 'datasetKey' => 'restrictions', 'version' => 'synthetic-credential-url', 'generatedAt' => '2026-11-21T12:00:00Z', 'jurisdictions' => [$city]];
+        $import = app(RestrictionImportService::class)->analyze(
+            $this->temporaryFile(json_encode($document, JSON_THROW_ON_ERROR)),
+            'credential-url.json',
+            'json',
+            null,
+            $this->actor,
+        );
+        $row = $import->rows()->firstOrFail();
+
+        $this->assertSame('invalid', $row->state);
+        $this->assertStringContainsString('embedded credentials', $row->errors[0]);
+        $this->assertSame(1, Jurisdiction::query()->count());
+        $this->assertSame(0, RestrictionRuleVersion::query()->count());
+    }
+
+    public function test_confirmation_rechecks_onboarding_urls_for_embedded_credentials(): void
+    {
+        Dataset::query()->where('key', 'restrictions')->update(['schema_version' => 2]);
+        $this->geoMunicipality('05', '05002', 'Municipio sintético 2');
+        $city = $this->payload();
+        $city['id'] = 'file-provided-id';
+        $city['schemaVersion'] = 2;
+        $city['municipalityCodes'] = ['05002'];
+        $city['coverages'][0]['rules'][0]['conditions'] = [];
+        $document = ['schemaVersion' => 2, 'datasetKey' => 'restrictions', 'version' => 'synthetic-confirm-credential-url', 'generatedAt' => '2026-11-21T12:00:00Z', 'jurisdictions' => [$city]];
+        $service = app(RestrictionImportService::class);
+        $import = $service->analyze($this->temporaryFile(json_encode($document, JSON_THROW_ON_ERROR)), 'confirm-credential-url.json', 'json', null, $this->actor);
+        $row = $import->rows()->firstOrFail();
+        $normalized = $row->normalized;
+        $normalized['onboarding']['source']['urls'][] = 'https://user:password@example.test/private-rules';
+        $row->normalized = $normalized;
+        $row->save();
+
+        try {
+            $service->confirm($import, [$row->id], $this->actor);
+            $this->fail('Confirmation accepted embedded source credentials.');
+        } catch (DomainException $error) {
+            $this->assertStringContainsString('embedded credentials', $error->getMessage());
+        }
+
+        $this->assertSame(1, Jurisdiction::query()->count());
+        $this->assertSame(0, RestrictionRuleVersion::query()->count());
+    }
+
     public function test_existing_rule_conditions_are_preserved_and_material_rule_id_conflicts_are_review_errors(): void
     {
         Dataset::query()->where('key', 'restrictions')->update(['schema_version' => 2]);
