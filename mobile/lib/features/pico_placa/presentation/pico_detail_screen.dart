@@ -1274,6 +1274,9 @@ String? _personalRuleReason(
         coverageKnown: rules.coverageKnown,
         dataIsStale: rules.dataIsStale,
         coverageCompleteness: rules.coverageCompleteness,
+        consultationEnabled: rules.consultationEnabled,
+        jurisdictionConsultationEnabled:
+            rules.jurisdictionConsultationEnabled,
       ),
       rules.rules,
     );
