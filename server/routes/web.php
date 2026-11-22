@@ -75,7 +75,7 @@ Route::middleware(['auth', EnsureActiveOperator::class, SecurityHeaders::class])
         ->except(['destroy'])
         ->names('admin.sponsors');
     Route::delete('/admin/sponsors/{sponsor}', [SponsorController::class, 'archive'])->name('admin.sponsors.archive');
-    Route::get('/admin/campaigns/planning', CampaignPlanningController::class)
+    Route::get('/admin/campaigns/planning', [CampaignPlanningController::class, 'index'])
         ->middleware('can:campaigns.view')
         ->name('admin.campaigns.planning');
     Route::resource('/admin/campaigns', CampaignController::class)
