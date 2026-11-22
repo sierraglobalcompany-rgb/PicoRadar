@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\OperatorController;
 use App\Http\Controllers\Admin\PartnerInquiryController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\RestrictionRuleController;
+use App\Http\Controllers\Admin\ServiceProviderController;
 use App\Http\Controllers\Admin\SponsorController;
 use App\Http\Controllers\AppAccountUnsubscribeController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -105,6 +106,10 @@ Route::middleware(['auth', EnsureActiveOperator::class, SecurityHeaders::class])
     Route::post('/admin/cameras/{camera}/deactivate', [CameraController::class, 'deactivate'])->name('admin.cameras.deactivate');
     Route::post('/admin/cameras/{camera}/reopen', [CameraController::class, 'reopen'])->name('admin.cameras.reopen');
     Route::post('/admin/cameras/{camera}/retire', [CameraController::class, 'retire'])->name('admin.cameras.retire');
+    Route::resource('/admin/service-providers', ServiceProviderController::class)
+        ->except(['show', 'destroy'])
+        ->parameters(['service-providers' => 'serviceProvider'])
+        ->names('admin.service-providers');
     Route::put('/admin/jurisdictions/{jurisdiction}', [JurisdictionController::class, 'update'])->name('admin.jurisdictions.update');
     Route::post('/admin/jurisdictions/{jurisdiction}/coverage', [JurisdictionController::class, 'attach'])->name('admin.jurisdictions.coverage.attach');
     Route::delete('/admin/jurisdictions/{jurisdiction}/coverage/{unit}', [JurisdictionController::class, 'detach'])->name('admin.jurisdictions.coverage.detach');
@@ -123,6 +128,8 @@ Route::middleware(['auth', EnsureActiveOperator::class, SecurityHeaders::class])
     Route::post('/admin/datasets/{dataset}/releases/{release}/retire', [DatasetController::class, 'retire'])->name('admin.datasets.releases.retire');
     Route::get('/admin/app-users', [AppUserController::class, 'index'])->name('admin.app-users.index');
     Route::get('/admin/app-users/export', [AppUserController::class, 'export'])->name('admin.app-users.export');
+    Route::patch('/admin/app-users/{appUser}/status', [AppUserController::class, 'updateStatus'])->name('admin.app-users.status');
+    Route::patch('/admin/app-users/{appUser}/plan', [AppUserController::class, 'updatePlan'])->name('admin.app-users.plan');
     Route::post('/admin/app-users/marketing/preview', [AppUserController::class, 'preview'])->name('admin.app-users.marketing.preview');
     Route::post('/admin/app-users/marketing/dispatch', [AppUserController::class, 'dispatch'])
         ->middleware('throttle:app-user-marketing-dispatch')

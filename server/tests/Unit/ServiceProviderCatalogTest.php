@@ -52,6 +52,7 @@ class ServiceProviderCatalogTest extends TestCase
             'name' => 'Centro sintético',
             'source_url' => 'https://authority.example/providers/1',
             'verified_at' => Carbon::parse('2026-11-22 11:00:00', 'America/Bogota'),
+            'valid_until' => '2026-11-23',
             'status' => 'draft',
         ]);
 

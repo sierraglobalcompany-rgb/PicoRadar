@@ -26,7 +26,7 @@
                 <select class="mt-1 min-h-12 w-full rounded-md border border-slate-300 px-3" name="status" required>
                     @foreach($statuses as $status)
                         @if($status !== 'published' || auth()->user()?->can('service_providers.publish'))
-                            <option value="{{ $status }}" @selected(old('status', $provider->status) === $status)>{{ match($status) {'draft' => 'Borrador', 'published' => 'Publicado', default => 'Deshabilitado'} }}</option>
+                            <option value="{{ $status }}" @selected(old('status', $provider->status) === $status)>{{ match($status) {'draft' => 'Borrador', 'published' => 'Aprobado para exportar', default => 'Deshabilitado'} }}</option>
                         @endif
                     @endforeach
                 </select>

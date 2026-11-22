@@ -5,7 +5,7 @@
         <div>
             <p class="text-sm font-semibold text-teal-700">Catálogo editorial</p>
             <h1 class="mt-2 text-3xl font-semibold tracking-tight">Directorio de servicios</h1>
-            <p class="mt-2 max-w-2xl text-slate-600">Administra CDA, canales SOAT, talleres, grúas y aliados por municipio. Publicar una ficha no certifica su acreditación.</p>
+            <p class="mt-2 max-w-2xl text-slate-600">Administra CDA, canales SOAT, talleres, grúas y aliados por municipio. Aprobar una ficha no certifica su acreditación ni confirma que el dataset de la app esté actualizado.</p>
         </div>
         @can('service_providers.edit')
             <a class="inline-flex min-h-12 items-center rounded-md bg-slate-900 px-4 py-2 font-medium text-white" href="{{ route('admin.service-providers.create') }}">Agregar proveedor</a>
@@ -52,7 +52,7 @@
                         <td class="p-3"><span class="font-medium">{{ $provider->name }}</span>@if($provider->address)<span class="mt-1 block text-slate-500">{{ $provider->address }}</span>@endif</td>
                         <td class="p-3">{{ match($provider->category) {'cda' => 'CDA', 'soat' => 'SOAT', 'workshop' => 'Taller', 'tow' => 'Grúa', default => 'Aliado'} }}</td>
                         <td class="p-3">{{ $provider->municipality?->name ?? $provider->municipality_code }} · {{ $provider->department?->name ?? $provider->department_code }}</td>
-                        <td class="p-3">{{ match($provider->status) {'draft' => 'Borrador', 'published' => 'Publicado', default => 'Deshabilitado'} }}</td>
+                        <td class="p-3">{{ match($provider->status) {'draft' => 'Borrador', 'published' => 'Aprobado para exportar', default => 'Deshabilitado'} }}</td>
                         <td class="p-3">@if($provider->hasCurrentSourceEvidence())<a class="text-teal-800 underline" href="{{ $provider->source_url }}" target="_blank" rel="noopener noreferrer">Revisada · {{ $provider->verified_at?->format('Y-m-d') }}</a>@else<span class="text-slate-500">Sin confirmar</span>@endif</td>
                         <td class="p-3">@can('service_providers.edit')<a class="font-medium text-teal-800 underline" href="{{ route('admin.service-providers.edit', $provider) }}">Editar</a>@endcan</td>
                     </tr>
