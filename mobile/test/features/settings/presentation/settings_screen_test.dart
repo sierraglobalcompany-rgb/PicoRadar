@@ -124,12 +124,6 @@ void main() {
     );
     expect(find.text('SIN_INSTALAR'), findsOneWidget);
     expect(
-      find.text(
-        'Sin versión OTA registrada; puede haber datos incorporados en la app.',
-      ),
-      findsOneWidget,
-    );
-    expect(
       find.text('Sin directorio remoto instalado; respaldo vacío.'),
       findsOneWidget,
     );
@@ -141,6 +135,28 @@ void main() {
       find.text(
         'Datos instalados ≠ cobertura legal confirmada. Si falta evidencia para tu municipio, vehículo, servicio o fecha, el estado es desconocido; consulta el detalle de pico y placa',
       ),
+      findsOneWidget,
+    );
+
+    final offlineDatabase = AppDatabase(NativeDatabase.memory());
+    addTearDown(offlineDatabase.close);
+    await _pumpSettings(
+      tester,
+      preferences: preferences,
+      scheduler: scheduler,
+      launcher: launcher,
+      documentStore: documentStore,
+      onChangeAvatar: () {},
+      database: offlineDatabase,
+    );
+    expect(
+      find.text(
+        'Sin versión OTA registrada; puede haber datos incorporados en la app.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Sin directorio remoto instalado; respaldo vacío.'),
       findsOneWidget,
     );
   });
@@ -1778,6 +1794,7 @@ class _FakeAppAccountClient implements AppAccountClient {
     categories: const [],
     privacyVersion: 'v1',
     marketingConsent: marketingConsent,
+    accountStatus: AppAccountStatus.active,
   );
 
   @override
