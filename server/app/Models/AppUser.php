@@ -47,6 +47,13 @@ class AppUser extends Model
     {
         $status = $this->getAttribute('account_status') ?? 'active';
 
+        if ($status === 'suspended') {
+            $until = $this->getAttribute('status_until');
+            if ($until instanceof Carbon && ! $until->isAfter(now())) {
+                return 'active';
+            }
+        }
+
         return in_array($status, ['active', 'suspended', 'banned'], true)
             ? $status
             : 'unknown';

@@ -12,6 +12,7 @@ use App\Services\AppAccountAdministrationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Carbon;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -123,6 +124,53 @@ class AppAccountAdministrationTest extends TestCase
             ->getJson('/api/v1/app-account')
             ->assertForbidden()
             ->assertExactJson(['error' => ['code' => 'account_suspended']]);
+    }
+
+    public function test_expired_suspension_allows_a_fresh_otp_session_but_never_revives_old_tokens(): void
+    {
+        $actor = User::factory()->create(['role' => OperatorRole::SuperAdmin]);
+        $appUser = $this->appUser();
+        $oldSession = $this->token($appUser, 'session');
+        $expiresAt = now()->addMinute();
+
+        app(AppAccountAdministrationService::class)->changeStatus(
+            $appUser,
+            'suspended',
+            'Revisión temporal #C-13',
+            $expiresAt,
+            $actor,
+        );
+
+        $this->assertNotNull($oldSession->fresh()->revoked_at);
+        Carbon::setTestNow($expiresAt->copy()->addSecond());
+
+        try {
+            $this->assertSame('active', $appUser->fresh()->accountStatus());
+            $this->withToken($this->plainTokens[$oldSession->id])
+                ->getJson('/api/v1/app-account')
+                ->assertUnauthorized();
+
+            $this->postJson('/api/v1/app-accounts/otp', [
+                'email' => 'person@example.test',
+                'privacyAccepted' => false,
+            ])->assertAccepted();
+            $mail = Mail::sent(AppAccountOtpMail::class)->last();
+            $this->assertNotNull($mail);
+
+            $response = $this->postJson('/api/v1/app-accounts/otp/verify', [
+                'email' => 'person@example.test',
+                'code' => $mail->code,
+            ])->assertOk()
+                ->assertJsonPath('data.tokenPurpose', 'session')
+                ->assertJsonPath('data.profile.accountStatus', 'active');
+
+            $this->withToken($response->json('data.token'))
+                ->getJson('/api/v1/app-account')
+                ->assertOk();
+            $this->assertNotNull($oldSession->fresh()->revoked_at);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_blocked_account_keeps_the_existing_self_service_deletion_path(): void
