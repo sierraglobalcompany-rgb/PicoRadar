@@ -5,11 +5,13 @@ use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\CameraController;
 use App\Http\Controllers\Admin\CameraSourceController;
 use App\Http\Controllers\Admin\CampaignController;
+use App\Http\Controllers\Admin\CampaignPlanningController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DatasetController;
 use App\Http\Controllers\Admin\GeographyController;
 use App\Http\Controllers\Admin\JurisdictionController;
 use App\Http\Controllers\Admin\OperatorController;
+use App\Http\Controllers\Admin\NationalOperationsController;
 use App\Http\Controllers\Admin\PartnerInquiryController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\RestrictionRuleController;
@@ -39,6 +41,9 @@ Route::middleware(['guest', SecurityHeaders::class])->group(function (): void {
 
 Route::middleware(['auth', EnsureActiveOperator::class, SecurityHeaders::class])->group(function (): void {
     Route::get('/admin', DashboardController::class)->name('admin.dashboard');
+    Route::get('/admin/operations/national', [NationalOperationsController::class, 'index'])
+        ->middleware(['can:datasets.view', 'can:jurisdictions.view'])
+        ->name('admin.operations.national');
     Route::get('/admin/audit', [AuditLogController::class, 'index'])->name('admin.audit.index');
     Route::get('/admin/profile', [ProfileController::class, 'edit'])->name('admin.profile.edit');
     Route::put('/admin/profile/password', [ProfileController::class, 'updatePassword'])->name('admin.profile.password');
@@ -70,6 +75,9 @@ Route::middleware(['auth', EnsureActiveOperator::class, SecurityHeaders::class])
         ->except(['destroy'])
         ->names('admin.sponsors');
     Route::delete('/admin/sponsors/{sponsor}', [SponsorController::class, 'archive'])->name('admin.sponsors.archive');
+    Route::get('/admin/campaigns/planning', CampaignPlanningController::class)
+        ->middleware('can:campaigns.view')
+        ->name('admin.campaigns.planning');
     Route::resource('/admin/campaigns', CampaignController::class)
         ->except(['destroy'])
         ->names('admin.campaigns');

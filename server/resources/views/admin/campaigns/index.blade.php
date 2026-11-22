@@ -1,6 +1,6 @@
 @extends('layouts.admin',['title'=>'Campanas | PicoRadar'])
 @section('content')
-<div class="flex items-center justify-between gap-4"><div><h1 class="text-3xl font-semibold">Campanas</h1><p class="mt-1 text-sm text-slate-600">Catalogo comercial de Inicio C11.</p></div><a class="rounded bg-slate-900 px-4 py-2 text-white" href="{{route('admin.campaigns.create')}}">Nueva campana</a></div>
+<div class="flex items-center justify-between gap-4"><div><h1 class="text-3xl font-semibold">Campanas</h1><p class="mt-1 text-sm text-slate-600">Catalogo comercial de Inicio C11.</p></div><div class="flex flex-wrap gap-2"><a class="rounded border px-4 py-2" href="{{route('admin.campaigns.planning')}}">Planificacion y alcance</a><a class="rounded bg-slate-900 px-4 py-2 text-white" href="{{route('admin.campaigns.create')}}">Nueva campana</a></div></div>
 @if(config('campaigns.public_catalog_enabled') !== true)
 <div class="mt-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm" role="status">Difusion comercial desactivada (Free 1.0). Los borradores y las activaciones internas no se muestran como publicidad real en la app.</div>
 @endif
