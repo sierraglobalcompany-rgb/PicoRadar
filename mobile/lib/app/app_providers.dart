@@ -27,6 +27,7 @@ import '../features/maintenance/data/maintenance_repository.dart';
 import '../features/maintenance/application/maintenance_reminders.dart';
 import '../features/vehicle_status/data/vehicle_obligation_store.dart';
 import '../features/vehicle_status/data/insurance_directory.dart';
+import '../features/services/data/service_provider_catalog.dart';
 import '../features/vehicle_status/data/tax_catalog.dart';
 import '../features/vehicle_status/data/tax_catalog_store.dart';
 import '../features/vehicle_status/data/private_vehicle_document_store.dart';
@@ -180,6 +181,33 @@ final insuranceDirectoryStoreProvider =
       );
     });
 
+final serviceProviderCatalogStoreProvider =
+    FutureProvider<PublishedCatalogStore<ServiceProviderCatalog>>((ref) async {
+      final directory = await ref.watch(
+        datasetSnapshotsDirectoryProvider.future,
+      );
+      return PublishedCatalogStore<ServiceProviderCatalog>(
+        database: ref.watch(appDatabaseProvider),
+        datasetKey: serviceProvidersDatasetKey,
+        snapshotFile: File(
+          '${directory.path}${Platform.pathSeparator}service_providers.json',
+        ),
+        bundledLoader: () async => emptyServiceProviderCatalogJson,
+        parse: ServiceProviderCatalog.fromJsonString,
+      );
+    });
+
+final serviceProvidersCatalogProvider = FutureProvider<ServiceProviderCatalog>(
+  (ref) async {
+    if (ref.watch(datasetSyncConfigProvider) == null) {
+      return ServiceProviderCatalog.fromJsonString(
+        emptyServiceProviderCatalogJson,
+      );
+    }
+    return (await ref.watch(serviceProviderCatalogStoreProvider.future)).load();
+  },
+);
+
 final cdaCatalogProvider = FutureProvider<CdaCatalog>((ref) async {
   if (ref.watch(datasetSyncConfigProvider) == null) {
     return loadCdaCatalog(rootBundle);
@@ -224,6 +252,8 @@ final datasetSyncCommitHandlerProvider =
           ref.invalidate(cdaGeographyProvider);
         } else if (datasetKey == insuranceDirectoryDatasetKey) {
           ref.invalidate(insuranceDirectoryProvider);
+        } else if (datasetKey == serviceProvidersDatasetKey) {
+          ref.invalidate(serviceProvidersCatalogProvider);
         }
       };
     });
@@ -309,6 +339,9 @@ final datasetSyncServiceProvider = FutureProvider<DatasetSyncService?>((
   final cdaStore = await ref.watch(cdaCatalogStoreProvider.future);
   final geographyStore = await ref.watch(cdaGeographyStoreProvider.future);
   final insurersStore = await ref.watch(insuranceDirectoryStoreProvider.future);
+  final providersStore = await ref.watch(
+    serviceProviderCatalogStoreProvider.future,
+  );
   return DatasetSyncService(
     database: ref.watch(appDatabaseProvider),
     preferences: ref.watch(appPreferencesProvider),
@@ -320,6 +353,7 @@ final datasetSyncServiceProvider = FutureProvider<DatasetSyncService?>((
       cdaCatalogDatasetKey: cdaStore.transactionalImporter,
       cdaGeographyDatasetKey: geographyStore.transactionalImporter,
       insuranceDirectoryDatasetKey: insurersStore.transactionalImporter,
+      serviceProvidersDatasetKey: providersStore.transactionalImporter,
     },
     onDatasetCommitted: ref.watch(datasetSyncCommitHandlerProvider),
   );

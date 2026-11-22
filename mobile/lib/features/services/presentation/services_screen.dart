@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/app_providers.dart';
 import '../../../app/theme/app_tokens.dart';
 import '../../cda/presentation/cda_finder_screen.dart';
 import '../../location/application/location_controller.dart';
@@ -8,6 +9,7 @@ import '../../location/domain/jurisdiction_location_resolver.dart';
 import '../../location/platform/device_location_gateway.dart';
 import '../../onboarding/data/registration_city_catalog.dart';
 import '../../vehicle_status/platform/external_launcher.dart';
+import '../data/service_provider_catalog.dart';
 import '../data/google_maps_service_search.dart';
 
 class ServicesScreen extends ConsumerStatefulWidget {
@@ -85,6 +87,8 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     _CdaCard(onTap: _openCda),
+                    const SizedBox(height: AppSpacing.xs),
+                    const _OfflineServiceProviderDirectory(),
                     const SizedBox(height: AppSpacing.xs),
                     const _ServicesDisclaimer(),
                   ],
@@ -386,6 +390,166 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 }
+
+class _OfflineServiceProviderDirectory extends ConsumerStatefulWidget {
+  const _OfflineServiceProviderDirectory();
+
+  @override
+  ConsumerState<_OfflineServiceProviderDirectory> createState() =>
+      _OfflineServiceProviderDirectoryState();
+}
+
+class _OfflineServiceProviderDirectoryState
+    extends ConsumerState<_OfflineServiceProviderDirectory> {
+  String _query = '';
+  ServiceProviderCategory? _category;
+
+  @override
+  Widget build(BuildContext context) {
+    final catalog = ref.watch(serviceProvidersCatalogProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Directorio disponible sin conexión',
+          style: AppTextStyles.h2.copyWith(fontSize: 18),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          'Fichas con fuente revisada y vigencia explícita. No implica aval oficial.',
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.navy.withValues(alpha: 0.72),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.s),
+        TextField(
+          key: const ValueKey('service-provider-search'),
+          onChanged: (value) => setState(() => _query = value),
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            labelText: 'Buscar por nombre, municipio o departamento',
+            prefixIcon: Icon(Icons.search),
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Wrap(
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
+          children: [
+            ChoiceChip(
+              label: const Text('Todas'),
+              selected: _category == null,
+              onSelected: (_) => setState(() => _category = null),
+            ),
+            for (final category in ServiceProviderCategory.values)
+              ChoiceChip(
+                label: Text(category.label),
+                selected: _category == category,
+                onSelected: (_) => setState(() => _category = category),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        catalog.when(
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(AppSpacing.m),
+              child: CircularProgressIndicator(),
+            ),
+          ),
+          error: (error, stack) => const Text(
+            'El directorio no está disponible en este momento.',
+          ),
+          data: (value) {
+            final current = value.providers
+                .where((provider) => provider.isCurrentAt(DateTime.now()))
+                .toList(growable: false);
+            final results = ServiceProviderCatalog(
+              version: value.version,
+              generatedAt: value.generatedAt,
+              providers: current,
+            ).search(_query, category: _category);
+            final expiredCount = value.providers.length - current.length;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (expiredCount > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                    child: Text(
+                      '$expiredCount fichas vencidas no se muestran.',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.navy.withValues(alpha: 0.72),
+                      ),
+                    ),
+                  ),
+                if (results.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: AppSpacing.s),
+                    child: Text(
+                      'No hay fichas vigentes para esta búsqueda. Las búsquedas externas siguen disponibles.',
+                    ),
+                  )
+                else ...[
+                  Text(
+                    '${results.length} fichas · versión ${value.version}',
+                    style: AppTextStyles.caption,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  for (final provider in results)
+                    _OfflineProviderTile(provider: provider),
+                ],
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _OfflineProviderTile extends ConsumerWidget {
+  const _OfflineProviderTile({required this.provider});
+
+  final ServiceProviderRecord provider;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final url = provider.contactUrl ?? provider.sourceUrl;
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: ListTile(
+        key: ValueKey('service-provider-${provider.id}'),
+        title: Text(provider.name),
+        subtitle: Text(
+          '${provider.category.label} · ${provider.territoryLabel}'
+          '${provider.address == null ? '' : '\n${provider.address}'}'
+          '\nFuente revisada · vigente hasta ${_dateLabel(provider.validUntil)}',
+        ),
+        trailing: IconButton(
+          tooltip: provider.contactUrl == null
+              ? 'Abrir fuente HTTPS'
+              : 'Abrir contacto HTTPS',
+          icon: const Icon(Icons.open_in_new),
+          onPressed: () async {
+            final opened = await ref
+                .read(externalLauncherProvider)
+                .openExternal(url);
+            if (!context.mounted || opened) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No se pudo abrir el enlace.')),
+            );
+          },
+        ),
+        isThreeLine: true,
+      ),
+    );
+  }
+}
+
+String _dateLabel(DateTime date) =>
+    '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
 
 class _TopChrome extends StatelessWidget {
   const _TopChrome({required this.location, required this.onRefresh});
