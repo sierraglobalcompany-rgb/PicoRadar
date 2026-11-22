@@ -925,7 +925,11 @@ class RestrictionRuleController extends Controller
     {
         Gate::authorize('datasets.edit');
 
-        return view('admin.restrictions.import-review', ['operator' => $request->user(), 'import' => $import->load(['rows.jurisdiction.primaryGeographicUnit.parent'])]);
+        return view('admin.restrictions.import-review', [
+            'operator' => $request->user(),
+            'import' => $import->load(['rows.jurisdiction.primaryGeographicUnit.parent']),
+            'canCreateJurisdictions' => Gate::allows('jurisdictions.edit'),
+        ]);
     }
 
     public function confirmImport(Request $request, RestrictionImport $import, RestrictionImportService $service): RedirectResponse
@@ -1028,7 +1032,7 @@ class RestrictionRuleController extends Controller
     public function template(): Response
     {
         Gate::authorize('datasets.edit');
-        $headers = ['jurisdiction_id', 'jurisdiction_name', 'vehicle_kind', 'service_type', 'consultation_enabled', 'rule_id', 'priority', 'effect', 'valid_from', 'valid_until', 'weekdays', 'date_parity', 'digit_position', 'digits', 'time_windows', 'applies_on_holidays', 'source_url', 'verified_at', 'stale_after', 'publish'];
+        $headers = ['jurisdiction_id', 'jurisdiction_name', 'vehicle_kind', 'service_type', 'consultation_enabled', 'rule_id', 'priority', 'effect', 'valid_from', 'valid_until', 'weekdays', 'date_parity', 'digit_position', 'digits', 'time_windows', 'applies_on_holidays', 'source_url', 'verified_at', 'stale_after', 'publish', 'department_code', 'municipality_code'];
 
         return response(implode(',', $headers)."\n", 200, ['Content-Type' => 'text/csv; charset=UTF-8', 'Content-Disposition' => 'attachment; filename="restriction-rules-template.csv"']);
     }
@@ -1039,9 +1043,20 @@ class RestrictionRuleController extends Controller
 
         return response()->streamDownload(function () use ($import): void {
             $stream = fopen('php://output', 'wb');
-            fputcsv($stream, ['row', 'state', 'publishable', 'jurisdiction', 'errors'], ',', '"', '');
+            fputcsv($stream, ['row', 'state', 'publishable', 'jurisdiction', 'onboarding_status', 'department_code', 'municipality_code', 'proposed_key', 'errors'], ',', '"', '');
             foreach ($import->rows()->with('jurisdiction')->orderBy('row_number')->cursor() as $row) {
-                $values = [$row->row_number, $row->state, $row->publishable ? 'yes' : 'no', $row->jurisdiction?->key ?? '', implode(' | ', $row->errors ?? [])];
+                $onboarding = $row->normalized['onboarding'] ?? [];
+                $values = [
+                    $row->row_number,
+                    $row->state,
+                    $row->publishable ? 'yes' : 'no',
+                    $row->jurisdiction?->key ?? '',
+                    $onboarding['status'] ?? '',
+                    $onboarding['department_code'] ?? '',
+                    $onboarding['municipality_code'] ?? '',
+                    $onboarding['proposed_key'] ?? '',
+                    implode(' | ', $row->errors ?? []),
+                ];
                 fputcsv($stream, array_map($this->spreadsheetSafe(...), $values), ',', '"', '');
             }
             fclose($stream);

@@ -208,6 +208,267 @@ class RestrictionImportServiceTest extends TestCase
         }
     }
 
+    public function test_divipola_review_confirms_one_disabled_jurisdiction_per_municipality_and_is_idempotent(): void
+    {
+        $this->geoMunicipality('05', '05002', 'Municipio sintético 2');
+        $this->geoMunicipality('05', '05003', 'Municipio sin fuente');
+        $this->geoMunicipality('05', '05004', 'Municipio padre incorrecto');
+        $this->geoMunicipality('08', '08001', 'Municipio sintético 8');
+        $rows = [];
+        $car = $this->flatRow();
+        $car['jurisdiction_id'] = '';
+        $car['department_code'] = '05';
+        $car['municipality_code'] = '05002';
+        $car['rule_id'] = 'new-car-rule';
+        $rows[] = $car;
+        $motorcycle = $car;
+        $motorcycle['vehicle_kind'] = 'motorcycle';
+        $motorcycle['rule_id'] = 'new-motorcycle-rule';
+        $rows[] = $motorcycle;
+        $otherDepartment = $car;
+        $otherDepartment['department_code'] = '08';
+        $otherDepartment['municipality_code'] = '08001';
+        $otherDepartment['rule_id'] = 'other-department-rule';
+        $rows[] = $otherDepartment;
+        $existing = $this->flatRow();
+        $existing['department_code'] = '05';
+        $existing['municipality_code'] = '05001';
+        $rows[] = $existing;
+        $missingSource = $car;
+        $missingSource['municipality_code'] = '05003';
+        $missingSource['source_url'] = '';
+        $rows[] = $missingSource;
+        $wrongParent = $car;
+        $wrongParent['department_code'] = '08';
+        $wrongParent['municipality_code'] = '05004';
+        $rows[] = $wrongParent;
+
+        $header = array_keys($rows[0]);
+        $csv = implode(',', $header)."\n";
+        foreach ($rows as $row) {
+            $csv .= implode(',', array_map($this->csv(...), array_values($row)))."\n";
+        }
+        $service = app(RestrictionImportService::class);
+        $jurisdictionsBefore = Jurisdiction::query()->count();
+        $geographyBefore = GeographicUnit::query()->count();
+        $import = $service->analyze($this->temporaryFile($csv), 'synthetic-divipola.csv', 'csv', null, $this->actor);
+
+        $this->assertSame([6, 4, 2, 0], [$import->row_count, $import->valid_count, $import->invalid_count, $import->excluded_count]);
+        $this->assertSame($jurisdictionsBefore, Jurisdiction::query()->count(), 'Analyze must not create jurisdictions.');
+        $this->assertSame($geographyBefore, GeographicUnit::query()->count(), 'Analyze must not write canonical geography.');
+        $this->assertSame(3, $import->report['onboarding']['new']);
+        $this->assertSame(1, $import->report['onboarding']['existing']);
+        $this->assertSame('ALTA_PROPUESTA', $import->rows()->where('row_number', 1)->firstOrFail()->normalized['onboarding']['status']);
+        $this->assertSame('EXISTENTE', $import->rows()->where('row_number', 4)->firstOrFail()->normalized['onboarding']['status']);
+
+        $this->actingAs($this->actor)->get(route('admin.restrictions.imports.review', $import))
+            ->assertOk()
+            ->assertSeeText('Alta propuesta')
+            ->assertSeeText('Municipio sintético 2')
+            ->assertSeeText('https://example.test/synthetic-rules')
+            ->assertSeeText('2026-09-01T05:00:00Z')
+            ->assertSeeText('Department and municipality DIVIPOLA codes must be valid and match.');
+
+        $selected = $import->rows()->where('state', 'valid')->pluck('id')->all();
+        $versions = $service->confirm($import, $selected, $this->actor);
+        $this->assertCount(3, $versions);
+        $this->assertSame(3, RestrictionRuleVersion::query()->count());
+        $this->assertSame($jurisdictionsBefore + 2, Jurisdiction::query()->count());
+        foreach (['05002', '08001'] as $code) {
+            $jurisdiction = Jurisdiction::query()->where('key', 'municipio-'.$code)->firstOrFail();
+            $this->assertFalse($jurisdiction->enabled);
+            $version = collect($versions)->first(fn (RestrictionRuleVersion $candidate): bool => $candidate->jurisdiction_id === $jurisdiction->id);
+            $this->assertNotNull($version);
+            $this->assertSame([$code], $version->payload['municipalityCodes']);
+        }
+        $newMunicipalityVersion = collect($versions)->first(fn (RestrictionRuleVersion $version): bool => $version->jurisdiction_id === Jurisdiction::query()->where('key', 'municipio-05002')->value('id'));
+        $this->assertFalse($newMunicipalityVersion->payload['consultationEnabled']);
+        $this->assertSame(['05002'], $newMunicipalityVersion->payload['municipalityCodes']);
+        $this->assertCount(2, $newMunicipalityVersion->payload['coverages']);
+        foreach ($newMunicipalityVersion->payload['coverages'] as $coverage) {
+            $this->assertFalse($coverage['consultationEnabled']);
+            $this->assertSame('partial', $coverage['coverageCompleteness']);
+        }
+        $this->assertSame(0, $import->rows()->whereIn('row_number', [1, 2, 3, 4])->whereNull('jurisdiction_id')->count());
+
+        $again = $service->confirm($import, $selected, $this->actor);
+        $this->assertSame(collect($versions)->pluck('id')->all(), collect($again)->pluck('id')->all());
+        $this->assertSame(3, RestrictionRuleVersion::query()->count());
+        $this->assertSame(3, Jurisdiction::query()->count());
+        $this->assertSame(2, count($import->fresh()->report['confirmation']['created_jurisdictions']));
+    }
+
+    public function test_schema2_json_new_municipality_is_canonicalized_and_multiple_codes_require_manual_assignment(): void
+    {
+        $this->geoMunicipality('05', '05002', 'Municipio sintético 2');
+        $city = $this->payload();
+        $city['id'] = 'file-provided-id';
+        $city['name'] = 'Nombre no canónico';
+        $city['schemaVersion'] = 2;
+        $city['municipalityCodes'] = ['05002'];
+        $city['consultationEnabled'] = true;
+        $city['coverages'][0]['coverageCompleteness'] = 'complete';
+        $city['coverages'][0]['consultationEnabled'] = true;
+        $city['coverages'][0]['rules'][0]['conditions'] = [];
+        $document = ['schemaVersion' => 2, 'datasetKey' => 'restrictions', 'version' => 'synthetic-json-onboarding', 'generatedAt' => '2026-11-21T12:00:00Z', 'jurisdictions' => [$city]];
+        $service = app(RestrictionImportService::class);
+        $import = $service->analyze($this->temporaryFile(json_encode($document, JSON_THROW_ON_ERROR)), 'new-city.json', 'json', null, $this->actor);
+        $row = $import->rows()->firstOrFail();
+
+        $this->assertSame('valid', $row->state);
+        $this->assertNull($row->jurisdiction_id);
+        $this->assertSame('municipio-05002', $row->normalized['payload']['id']);
+        $this->assertSame('Municipio sintético 2', $row->normalized['payload']['name']);
+        $this->assertFalse($row->normalized['payload']['consultationEnabled']);
+        $this->assertFalse($row->normalized['payload']['coverages'][0]['consultationEnabled']);
+        $this->assertSame('partial', $row->normalized['payload']['coverages'][0]['coverageCompleteness']);
+        $this->assertSame(1, Jurisdiction::query()->count());
+
+        $city['municipalityCodes'] = ['05001', '05002'];
+        sort($city['municipalityCodes']);
+        $manualDoc = [...$document, 'version' => 'synthetic-json-manual', 'jurisdictions' => [$city]];
+        $manual = $service->analyze($this->temporaryFile(json_encode($manualDoc, JSON_THROW_ON_ERROR)), 'multi-city.json', 'json', null, $this->actor);
+        $manualRow = $manual->rows()->firstOrFail();
+        $this->assertSame('invalid', $manualRow->state);
+        $this->assertSame('REQUIERE_ASIGNACION_MANUAL', $manualRow->normalized['onboarding']['status']);
+        $this->assertNull($manualRow->jurisdiction_id);
+        $this->assertSame(1, Jurisdiction::query()->count());
+    }
+
+    public function test_existing_rule_conditions_are_preserved_and_material_rule_id_conflicts_are_review_errors(): void
+    {
+        Dataset::query()->where('key', 'restrictions')->update(['schema_version' => 2]);
+        $jurisdiction = Jurisdiction::query()->where('key', 'co-test-synthetic')->firstOrFail();
+        $existing = $this->payload();
+        $existing['schemaVersion'] = 2;
+        $existing['municipalityCodes'] = ['05001'];
+        $existing['consultationEnabled'] = false;
+        $existing['coverages'][0]['coverageCompleteness'] = 'partial';
+        $existing['coverages'][0]['consultationEnabled'] = false;
+        $existing['coverages'][0]['rules'][0]['conditions'] = [['type' => 'pillion_present', 'value' => true]];
+        app(\App\Services\RestrictionRuleVersionService::class)->createDraft($jurisdiction, $existing, $this->actor);
+
+        $newRule = $this->flatRow();
+        $newRule['department_code'] = '05';
+        $newRule['municipality_code'] = '05001';
+        $newRule['rule_id'] = 'synthetic-rule-2';
+        $import = app(RestrictionImportService::class)->analyze($this->temporaryFile(json_encode([$newRule], JSON_THROW_ON_ERROR)), 'preserve-existing-rule.json', 'json', null, $this->actor);
+        $version = app(RestrictionImportService::class)->confirm($import, $import->rows()->pluck('id')->all(), $this->actor)[0];
+        $rules = $version->payload['coverages'][0]['rules'];
+        $this->assertCount(2, $rules);
+        $this->assertSame([['type' => 'pillion_present', 'value' => true]], $rules[0]['conditions']);
+        $this->assertFalse($version->payload['coverages'][0]['consultationEnabled']);
+
+        $conflicting = $this->flatRow();
+        $conflicting['jurisdiction_id'] = '';
+        $conflicting['department_code'] = '05';
+        $conflicting['municipality_code'] = '05001';
+        $conflicting['effect'] = 'allow';
+        $conflictImport = app(RestrictionImportService::class)->analyze($this->temporaryFile(json_encode([$conflicting], JSON_THROW_ON_ERROR)), 'material-conflict.json', 'json', null, $this->actor);
+        $conflictRow = $conflictImport->rows()->firstOrFail();
+        $this->assertSame('invalid', $conflictRow->state);
+        $this->assertStringContainsString('Material conflict', $conflictRow->errors[0]);
+        $this->assertSame(2, RestrictionRuleVersion::query()->count());
+    }
+
+    public function test_new_schema2_modality_is_forced_off_and_partial_without_changing_existing_coverage(): void
+    {
+        Dataset::query()->where('key', 'restrictions')->update(['schema_version' => 2]);
+        $jurisdiction = Jurisdiction::query()->where('key', 'co-test-synthetic')->firstOrFail();
+        $existing = $this->payload();
+        $existing['schemaVersion'] = 2;
+        $existing['municipalityCodes'] = ['05001'];
+        $existing['consultationEnabled'] = false;
+        $existing['coverages'][0]['coverageCompleteness'] = 'partial';
+        $existing['coverages'][0]['consultationEnabled'] = true;
+        $existing['coverages'][0]['rules'][0]['conditions'] = [];
+        app(\App\Services\RestrictionRuleVersionService::class)->createDraft($jurisdiction, $existing, $this->actor);
+
+        $newCoverage = $existing['coverages'][0];
+        $newCoverage['vehicleKind'] = 'motorcycle';
+        $newCoverage['coverageCompleteness'] = 'complete';
+        $newCoverage['consultationEnabled'] = true;
+        $newCoverage['rules'][0]['id'] = 'new-modality-rule';
+        $city = [
+            'schemaVersion' => 2,
+            'id' => $jurisdiction->key,
+            'name' => $jurisdiction->name,
+            'municipalityCodes' => ['05001'],
+            'consultationEnabled' => false,
+            'coverages' => [$newCoverage],
+        ];
+        $import = app(RestrictionImportService::class)->analyze(
+            $this->temporaryFile(json_encode(['schemaVersion' => 2, 'datasetKey' => 'restrictions', 'version' => 'new-modality-off', 'generatedAt' => '2026-11-21T12:00:00Z', 'jurisdictions' => [$city]], JSON_THROW_ON_ERROR)),
+            'new-modality.json',
+            'json',
+            null,
+            $this->actor,
+        );
+        $review = $import->rows()->firstOrFail();
+        $this->assertSame('valid', $review->state);
+        $this->assertFalse($review->normalized['payload']['coverages'][0]['consultationEnabled']);
+        $this->assertSame('partial', $review->normalized['payload']['coverages'][0]['coverageCompleteness']);
+
+        $version = app(RestrictionImportService::class)->confirm($import, [$review->id], $this->actor)[0];
+        $coverages = collect($version->payload['coverages'])->keyBy('vehicleKind');
+        $this->assertCount(2, $coverages);
+        $this->assertTrue($coverages->get('car')['consultationEnabled']);
+        $this->assertFalse($coverages->get('motorcycle')['consultationEnabled']);
+        $this->assertSame('partial', $coverages->get('motorcycle')['coverageCompleteness']);
+    }
+
+    public function test_reviewer_cannot_confirm_a_municipality_proposal(): void
+    {
+        $this->geoMunicipality('05', '05002', 'Municipio sintético 2');
+        $row = $this->flatRow();
+        $row['jurisdiction_id'] = '';
+        $row['department_code'] = '05';
+        $row['municipality_code'] = '05002';
+        $import = app(RestrictionImportService::class)->analyze($this->temporaryFile(json_encode([$row], JSON_THROW_ON_ERROR)), 'permission-gate.json', 'json', null, $this->actor);
+        $reviewer = User::factory()->create(['role' => OperatorRole::Reviewer]);
+
+        $this->actingAs($reviewer)->post(route('admin.restrictions.imports.confirm', $import), ['rows' => [$import->rows()->value('id')]])
+            ->assertForbidden();
+        $this->assertSame(1, Jurisdiction::query()->count());
+        $this->assertSame(0, RestrictionRuleVersion::query()->count());
+    }
+
+    public function test_ambiguous_municipality_requires_an_explicit_existing_jurisdiction_id(): void
+    {
+        $municipality = GeographicUnit::query()->where('code', '05001')->firstOrFail();
+        $candidate = Jurisdiction::query()->create([
+            'key' => 'co-test-synthetic-alternative',
+            'name' => 'Jurisdicción alternativa sintética',
+            'kind' => 'city',
+            'primary_geographic_unit_id' => $municipality->id,
+            'enabled' => false,
+            'timezone' => 'America/Bogota',
+        ]);
+        $row = $this->flatRow();
+        $row['jurisdiction_id'] = '';
+        $row['department_code'] = '05';
+        $row['municipality_code'] = '05001';
+        $service = app(RestrictionImportService::class);
+        $ambiguous = $service->analyze($this->temporaryFile(json_encode([$row], JSON_THROW_ON_ERROR)), 'ambiguous.json', 'json', null, $this->actor);
+        $ambiguousRow = $ambiguous->rows()->firstOrFail();
+        $this->assertSame('invalid', $ambiguousRow->state);
+        $this->assertSame('REQUIERE_ASIGNACION_MANUAL', $ambiguousRow->normalized['onboarding']['status']);
+        $this->assertCount(2, $ambiguousRow->normalized['onboarding']['candidate_jurisdictions']);
+        $this->assertSame(0, RestrictionRuleVersion::query()->count());
+
+        $row['jurisdiction_id'] = $candidate->key;
+        $selected = $service->analyze($this->temporaryFile(json_encode([$row], JSON_THROW_ON_ERROR)), 'manual-selection.json', 'json', null, $this->actor);
+        $selectedRow = $selected->rows()->firstOrFail();
+        $this->assertSame('valid', $selectedRow->state);
+        $this->assertSame('EXISTENTE', $selectedRow->normalized['onboarding']['status']);
+        $this->assertSame($candidate->id, $selectedRow->jurisdiction_id);
+
+        $versions = $service->confirm($selected, [$selectedRow->id], $this->actor);
+        $this->assertCount(1, $versions);
+        $this->assertSame(2, Jurisdiction::query()->count());
+        $this->assertFalse($candidate->fresh()->enabled);
+    }
+
     /** @return array<string,string> */
     private function flatRow(): array
     {
@@ -249,6 +510,37 @@ class RestrictionImportServiceTest extends TestCase
         $department = GeographicUnit::query()->create(['parent_id' => $country->id, 'key' => 'co-05', 'level' => 'department', 'code' => '05', 'name' => 'Antioquia', 'normalized_name' => 'antioquia', 'is_active' => true, 'source_system' => 'synthetic', 'source_version' => 'v1']);
         $municipality = GeographicUnit::query()->create(['parent_id' => $department->id, 'key' => 'co-05001', 'level' => 'municipality', 'code' => '05001', 'name' => 'Ciudad sintética', 'normalized_name' => 'ciudad sintetica', 'is_active' => true, 'source_system' => 'synthetic', 'source_version' => 'v1']);
         Jurisdiction::query()->create(['key' => 'co-test-synthetic', 'name' => 'Ciudad sintética', 'kind' => 'city', 'primary_geographic_unit_id' => $municipality->id, 'enabled' => true, 'timezone' => 'America/Bogota']);
+    }
+
+    private function geoMunicipality(string $departmentCode, string $municipalityCode, string $name): GeographicUnit
+    {
+        $country = GeographicUnit::query()->where('level', 'country')->firstOrFail();
+        $department = GeographicUnit::query()->where('code', $departmentCode)->first();
+        if (! $department) {
+            $department = GeographicUnit::query()->create([
+                'parent_id' => $country->id,
+                'key' => 'co-'.$departmentCode,
+                'level' => 'department',
+                'code' => $departmentCode,
+                'name' => 'Departamento '.$departmentCode,
+                'normalized_name' => 'departamento '.$departmentCode,
+                'is_active' => true,
+                'source_system' => 'synthetic',
+                'source_version' => 'v1',
+            ]);
+        }
+
+        return GeographicUnit::query()->create([
+            'parent_id' => $department->id,
+            'key' => 'co-'.$municipalityCode,
+            'level' => 'municipality',
+            'code' => $municipalityCode,
+            'name' => $name,
+            'normalized_name' => strtolower(str_replace(' ', '-', $name)),
+            'is_active' => true,
+            'source_system' => 'synthetic',
+            'source_version' => 'v1',
+        ]);
     }
 
     private function temporaryFile(string $contents): string
