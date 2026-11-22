@@ -64,6 +64,71 @@ class RestrictionRuleVersionServiceTest extends TestCase
         $this->assertSame(7, $dataset->fresh()->publication_revision);
     }
 
+    public function test_off_jurisdiction_service_guard_rejects_on_payload_without_mutation(): void
+    {
+        $actor = User::factory()->create(['role' => OperatorRole::Editor]);
+        $jurisdiction = $this->jurisdiction();
+        $jurisdiction->update(['enabled' => false]);
+        $dataset = Dataset::query()->create([
+            'key' => 'restrictions', 'title' => 'Restrictions', 'schema_version' => 2,
+            'enabled' => true, 'publication_revision' => 0,
+        ]);
+        $offPayload = $this->payload();
+        $offPayload['schemaVersion'] = 2;
+        $offPayload['municipalityCodes'] = ['05001'];
+        $offPayload['consultationEnabled'] = false;
+        $offPayload['coverages'][0]['coverageCompleteness'] = 'partial';
+        $offPayload['coverages'][0]['consultationEnabled'] = false;
+        $onPayload = $offPayload;
+        $onPayload['consultationEnabled'] = true;
+        $onPayload['coverages'][0]['consultationEnabled'] = true;
+        $service = app(RestrictionRuleVersionService::class);
+
+        try {
+            $service->createDraft($jurisdiction, $onPayload, $actor);
+            $this->fail('An OFF jurisdiction accepted an ON draft.');
+        } catch (DomainException $error) {
+            $this->assertStringContainsString('OFF jurisdiction', $error->getMessage());
+        }
+        $this->assertDatabaseCount('restriction_rule_versions', 0);
+
+        $draft = $service->createDraft($jurisdiction, $offPayload, $actor);
+        try {
+            $service->updateDraft($draft, $onPayload, $actor);
+            $this->fail('An OFF draft was changed to ON by the service.');
+        } catch (DomainException $error) {
+            $this->assertStringContainsString('OFF jurisdiction', $error->getMessage());
+        }
+        $this->assertSame($offPayload, $draft->fresh()->payload);
+
+        RestrictionRuleVersion::query()->create([
+            'jurisdiction_id' => $jurisdiction->id,
+            'version' => 2,
+            'status' => RestrictionRuleVersionStatus::Draft,
+            'payload' => $onPayload,
+            'payload_sha256' => hash('sha256', json_encode($onPayload)),
+            'base_publication_revision' => 0,
+            'created_by_id' => $actor->id,
+            'updated_by_id' => $actor->id,
+        ]);
+        try {
+            $service->duplicate(RestrictionRuleVersion::query()->where('version', 2)->firstOrFail(), $actor);
+            $this->fail('An OFF jurisdiction duplicated a historical ON payload.');
+        } catch (DomainException $error) {
+            $this->assertStringContainsString('OFF jurisdiction', $error->getMessage());
+        }
+        $this->assertDatabaseCount('restriction_rule_versions', 2);
+
+        $dataset->update(['schema_version' => 1]);
+        try {
+            $service->createDraft($jurisdiction, $offPayload, $actor);
+            $this->fail('An OFF jurisdiction accepted a new schema1 draft.');
+        } catch (DomainException $error) {
+            $this->assertStringContainsString('schema2', $error->getMessage());
+        }
+        $this->assertDatabaseCount('restriction_rule_versions', 2);
+    }
+
     private function jurisdiction(): Jurisdiction
     {
         $country = GeographicUnit::query()->create([

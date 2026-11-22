@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\DatasetReleaseStatus;
-use App\Enums\GeographicUnitLevel;
 use App\Enums\OperatorRole;
 use App\Enums\RestrictionRuleVersionStatus;
 use App\Models\AuditLog;
@@ -182,6 +181,9 @@ final class RestrictionPublicationService
             throw new DomainException('Only one rule version per jurisdiction can be published.');
         }
         foreach ($versions as $version) {
+            if (! $version->jurisdiction->enabled) {
+                $this->validator->assertOffSchema2Payload($version->jurisdiction, $version->payload);
+            }
             if ($version->status !== RestrictionRuleVersionStatus::Validated) {
                 throw new DomainException('Only validated city rule versions can be published.');
             }
@@ -326,6 +328,26 @@ final class RestrictionPublicationService
                     ]);
                 }
             },
+            function (DatasetRelease $_release, Dataset $lockedDataset) use ($versions): void {
+                $jurisdictions = Jurisdiction::query()
+                    ->whereKey($versions->pluck('jurisdiction_id')->unique()->all())
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get()
+                    ->keyBy('id');
+                foreach ($versions as $version) {
+                    $jurisdiction = $jurisdictions->get($version->jurisdiction_id);
+                    if ($jurisdiction === null) {
+                        throw new DomainException('A selected jurisdiction no longer exists.');
+                    }
+                    if (! $jurisdiction->enabled) {
+                        if ((int) $lockedDataset->schema_version !== 2) {
+                            throw new DomainException('OFF jurisdictions cannot publish a new restriction version under schema1.');
+                        }
+                        $this->validator->assertOffSchema2Payload($jurisdiction, $version->payload);
+                    }
+                }
+            },
         );
     }
 
@@ -457,18 +479,7 @@ final class RestrictionPublicationService
     /** @param array<string,mixed> $payload */
     private function assertMunicipalityCodesBelongToJurisdiction(Jurisdiction $jurisdiction, array $payload): void
     {
-        if (! array_key_exists('municipalityCodes', $payload)) {
-            return;
-        }
-        $codes = $payload['municipalityCodes'];
-        $matched = $jurisdiction->geographicUnits()
-            ->where('geographic_units.level', GeographicUnitLevel::Municipality->value)
-            ->whereIn('geographic_units.code', $codes)
-            ->distinct()
-            ->count('geographic_units.id');
-        if ($matched !== count($codes)) {
-            throw new DomainException('municipalityCodes do not belong to the jurisdiction.');
-        }
+        $this->validator->assertMunicipalityCodesBelongToJurisdiction($jurisdiction, $payload);
     }
 
     /** @param list<array<string,mixed>> $coverages @return array<string,array<string,mixed>> */

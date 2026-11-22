@@ -445,8 +445,9 @@ class RestrictionRouteIntegrationTest extends TestCase
         $this->assertDatabaseCount('restriction_rule_versions', 0);
     }
 
-    public function test_editing_an_existing_off_draft_preserves_its_consultation_values(): void
+    public function test_editing_an_existing_off_schema2_draft_forces_global_and_coverage_consultation_off(): void
     {
+        Dataset::query()->where('key', 'restrictions')->update(['schema_version' => 2]);
         $editor = User::factory()->create(['role' => OperatorRole::Editor, 'is_active' => true]);
         $jurisdiction = $this->municipalityJurisdiction('05001', false);
         $payload = [
@@ -479,10 +480,75 @@ class RestrictionRouteIntegrationTest extends TestCase
 
         $response = $this->actingAs($editor)->get(route('admin.restrictions.edit', $version));
         $response->assertOk()
-            ->assertSee('name="consultation_enabled" value="1" checked', false)
-            ->assertSee('name="coverages[0][consultation_enabled]" value="1" checked', false)
-            ->assertSee('name="coverages[__COVERAGE__][consultation_enabled]" value="1"', false)
-            ->assertDontSee('name="coverages[0][consultation_enabled]" value="1" checked disabled', false);
+            ->assertViewHas('editable', true)
+            ->assertViewHas('version', fn (RestrictionRuleVersion $formVersion): bool =>
+                $formVersion->payload['consultationEnabled'] === false
+                && $formVersion->payload['coverages'][0]['consultationEnabled'] === false)
+            ->assertSee('name="consultation_enabled" value="0" checked', false)
+            ->assertDontSee('name="consultation_enabled" value="1" checked', false);
+
+        $input = $this->offDraftInput($jurisdiction);
+        $input['consultation_enabled'] = '1';
+        $input['coverages'] = array_map(static function (array $coverage): array {
+            $coverage['consultationEnabled'] = true;
+            $coverage['consultation_enabled_present'] = '1';
+            $coverage['consultation_enabled'] = '1';
+
+            return $coverage;
+        }, $input['coverages']);
+        $this->put(route('admin.restrictions.update', $version), $input)
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $saved = $version->fresh();
+        $this->assertFalse($saved->payload['consultationEnabled']);
+        $this->assertCount(9, $saved->payload['coverages']);
+        foreach ($saved->payload['coverages'] as $coverage) {
+            $this->assertFalse($coverage['consultationEnabled']);
+        }
+        $this->assertFalse($jurisdiction->fresh()->enabled);
+        $this->assertDatabaseCount('restriction_publications', 0);
+    }
+
+    public function test_off_edit_and_duplicate_require_jurisdiction_edit_without_blocking_active_dataset_edits(): void
+    {
+        Dataset::query()->where('key', 'restrictions')->update(['schema_version' => 2]);
+        $editor = User::factory()->create(['role' => OperatorRole::Editor, 'is_active' => true]);
+        $active = $this->municipalityJurisdiction('05002', true);
+        $activeInput = $this->offDraftInput($active);
+        $activeInput['coverages'] = array_slice($activeInput['coverages'], 0, 1);
+        $this->actingAs($editor)->post(route('admin.restrictions.store'), $activeInput)->assertRedirect()->assertSessionHasNoErrors();
+        $activeVersion = RestrictionRuleVersion::query()->where('jurisdiction_id', $active->id)->firstOrFail();
+
+        $off = $this->municipalityJurisdiction('05003', false);
+        $payload = [
+            'schemaVersion' => 2,
+            'id' => $off->key,
+            'name' => $off->name,
+            'municipalityCodes' => ['05003'],
+            'consultationEnabled' => false,
+            'coverages' => [[
+                'vehicleKind' => 'car', 'serviceType' => 'private', 'coverageCompleteness' => 'partial',
+                'consultationEnabled' => false,
+                'verifiedAt' => '2026-11-20T08:00:00-05:00', 'staleAfter' => '2026-12-20T00:00:00-05:00',
+                'sourceUrls' => ['https://example.test/synthetic-restrictions'], 'rules' => [],
+            ]],
+        ];
+        $offVersion = RestrictionRuleVersion::query()->create([
+            'jurisdiction_id' => $off->id, 'version' => 1, 'status' => RestrictionRuleVersionStatus::Draft,
+            'payload' => $payload, 'payload_sha256' => hash('sha256', json_encode($payload)),
+            'base_publication_revision' => 0, 'created_by_id' => $editor->id, 'updated_by_id' => $editor->id,
+        ]);
+
+        Gate::define('jurisdictions.edit', static fn (User $user): bool => false);
+        $this->get(route('admin.restrictions.edit', $offVersion))->assertOk()->assertViewHas('editable', false);
+        $this->put(route('admin.restrictions.update', $offVersion), $this->offDraftInput($off))->assertForbidden();
+        $this->post(route('admin.restrictions.duplicate', $offVersion))->assertForbidden();
+
+        $this->get(route('admin.restrictions.edit', $activeVersion))->assertOk()->assertViewHas('editable', true);
+        $this->put(route('admin.restrictions.update', $activeVersion), $activeInput)
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->post(route('admin.restrictions.duplicate', $activeVersion))->assertRedirect();
     }
 
     private function municipalityJurisdiction(string $code, bool $enabled): Jurisdiction

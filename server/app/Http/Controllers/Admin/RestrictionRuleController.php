@@ -845,11 +845,11 @@ class RestrictionRuleController extends Controller
                 'coverages.*' => ['required', 'array'],
                 'coverages.*.rules' => ['present', 'array', 'max:1000'],
             ]);
+            $dataset = Dataset::query()->where('key', 'restrictions')->lockForUpdate()->firstOrFail();
             $jurisdiction = Jurisdiction::query()
                 ->with('primaryGeographicUnit')
                 ->lockForUpdate()
                 ->findOrFail($data['jurisdiction_id']);
-            $dataset = Dataset::query()->where('key', 'restrictions')->lockForUpdate()->firstOrFail();
             $schemaVersion = (int) $dataset->schema_version;
             if (! in_array($schemaVersion, [1, 2], true)) {
                 throw ValidationException::withMessages(['coverages' => 'La versión publicada del esquema no permite crear borradores.']);
@@ -899,24 +899,50 @@ class RestrictionRuleController extends Controller
     public function edit(Request $request, RestrictionRuleVersion $version)
     {
         Gate::authorize('datasets.view');
+        $version = RestrictionRuleVersion::query()->with('jurisdiction.primaryGeographicUnit')->findOrFail($version->id);
+        $jurisdiction = $version->jurisdiction;
+        $schemaVersion = (int) ($version->payload['schemaVersion'] ?? 1);
+        if (! $jurisdiction->enabled && $schemaVersion === 2) {
+            $payload = $version->payload;
+            $payload['consultationEnabled'] = false;
+            if (is_array($payload['coverages'] ?? null)) {
+                $payload['coverages'] = array_map(static function ($coverage) {
+                    if (is_array($coverage)) {
+                        $coverage['consultationEnabled'] = false;
+                    }
+
+                    return $coverage;
+                }, $payload['coverages']);
+            }
+            $version->setAttribute('payload', $payload);
+        }
 
         return view('admin.restrictions.form', [
             'operator' => $request->user(),
-            'jurisdictions' => collect([$version->jurisdiction->loadMissing('primaryGeographicUnit')]),
+            'jurisdictions' => collect([$jurisdiction]),
             'version' => $version,
-            'schemaVersion' => (int) ($version->payload['schemaVersion'] ?? 1),
+            'schemaVersion' => $schemaVersion,
             'editable' => Gate::allows('datasets.edit')
+                && ($jurisdiction->enabled || Gate::allows('jurisdictions.edit'))
                 && $version->status === RestrictionRuleVersionStatus::Draft
-                && in_array(($version->payload['schemaVersion'] ?? 1), [1, 2], true),
+                && in_array($schemaVersion, [1, 2], true),
         ]);
     }
 
     public function update(Request $request, RestrictionRuleVersion $version, RestrictionRuleVersionService $service, RestrictionFormPayloadBuilder $builder): RedirectResponse
     {
         Gate::authorize('datasets.edit');
+        $version = RestrictionRuleVersion::query()->with('jurisdiction.primaryGeographicUnit')->findOrFail($version->id);
+        $jurisdiction = $version->jurisdiction;
         $schemaVersion = (int) ($version->payload['schemaVersion'] ?? 1);
         if (! in_array($schemaVersion, [1, 2], true)) {
             return back()->withErrors(['version' => 'La versión del esquema de este borrador no se puede editar.']);
+        }
+        if (! $jurisdiction->enabled) {
+            Gate::authorize('jurisdictions.edit');
+            if ($schemaVersion !== 2) {
+                return back()->withErrors(['version' => 'Los borradores históricos schema1 de jurisdicciones OFF se conservan sin edición; usa schema2 para una propuesta nueva.']);
+            }
         }
         $request->validate([
             'coverages' => ['required', 'array', 'min:1', 'max:'.($schemaVersion === 2 ? 9 : 8)],
@@ -924,9 +950,20 @@ class RestrictionRuleController extends Controller
             'coverages.*.rules' => ['present', 'array', 'max:1000'],
         ]);
         try {
+            $input = $request->only(['coverages', 'consultation_enabled']);
+            if (! $jurisdiction->enabled) {
+                $input['consultation_enabled'] = '0';
+                $input['coverages'] = array_map(static function (array $coverage): array {
+                    $coverage['consultationEnabled'] = false;
+                    $coverage['consultation_enabled_present'] = '1';
+                    $coverage['consultation_enabled'] = '0';
+
+                    return $coverage;
+                }, $input['coverages']);
+            }
             $payload = $builder->build(
-                $version->jurisdiction,
-                $request->only(['coverages', 'consultation_enabled']),
+                $jurisdiction,
+                $input,
                 $schemaVersion,
                 $schemaVersion === 2 ? $version->payload : null,
             );
@@ -941,7 +978,15 @@ class RestrictionRuleController extends Controller
     public function duplicate(Request $request, RestrictionRuleVersion $version, RestrictionRuleVersionService $service): RedirectResponse
     {
         Gate::authorize('datasets.edit');
-        $copy = $service->duplicate($version, $request->user());
+        $version = RestrictionRuleVersion::query()->with('jurisdiction')->findOrFail($version->id);
+        if (! $version->jurisdiction->enabled) {
+            Gate::authorize('jurisdictions.edit');
+        }
+        try {
+            $copy = $service->duplicate($version, $request->user());
+        } catch (DomainException $error) {
+            return back()->withErrors(['version' => $error->getMessage()]);
+        }
 
         return redirect()->route('admin.restrictions.edit', $copy);
     }

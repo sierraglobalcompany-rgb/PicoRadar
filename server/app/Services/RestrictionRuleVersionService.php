@@ -42,16 +42,17 @@ final class RestrictionRuleVersionService
     private function persistDraft(Jurisdiction $jurisdiction, array $payload, User $actor, string $action, array $auditMetadata = []): RestrictionRuleVersion
     {
         return DB::transaction(function () use ($jurisdiction, $payload, $actor, $action, $auditMetadata): RestrictionRuleVersion {
-            $lockedJurisdiction = Jurisdiction::query()->lockForUpdate()->findOrFail($jurisdiction->id);
+            $dataset = Dataset::query()->where('key', 'restrictions')->lockForUpdate()->firstOrFail();
+            $lockedJurisdiction = Jurisdiction::query()->with('geographicUnits')->lockForUpdate()->findOrFail($jurisdiction->id);
+            $this->assertOffDraftPayload($lockedJurisdiction, $payload, (int) $dataset->schema_version);
             $versionNumber = ((int) RestrictionRuleVersion::query()->where('jurisdiction_id', $lockedJurisdiction->id)->lockForUpdate()->max('version')) + 1;
-            $datasetRevision = (int) Dataset::query()->where('key', 'restrictions')->lockForUpdate()->value('publication_revision');
             $version = RestrictionRuleVersion::query()->create([
                 'jurisdiction_id' => $lockedJurisdiction->id,
                 'version' => $versionNumber,
                 'status' => RestrictionRuleVersionStatus::Draft,
                 'payload' => $payload,
                 'payload_sha256' => $this->hash($payload),
-                'base_publication_revision' => $datasetRevision,
+                'base_publication_revision' => (int) $dataset->publication_revision,
                 'created_by_id' => $actor->id,
                 'updated_by_id' => $actor->id,
             ]);
@@ -65,8 +66,18 @@ final class RestrictionRuleVersionService
     public function updateDraft(RestrictionRuleVersion $version, array $payload, User $actor): RestrictionRuleVersion
     {
         return DB::transaction(function () use ($version, $payload, $actor): RestrictionRuleVersion {
+            $dataset = Dataset::query()->where('key', 'restrictions')->lockForUpdate()->firstOrFail();
+            $jurisdictionId = RestrictionRuleVersion::query()->whereKey($version->id)->value('jurisdiction_id');
+            if ($jurisdictionId === null) {
+                throw new DomainException('The draft rule version is unavailable.');
+            }
+            $jurisdiction = Jurisdiction::query()->with('geographicUnits')->lockForUpdate()->findOrFail($jurisdictionId);
             $locked = RestrictionRuleVersion::query()->lockForUpdate()->findOrFail($version->id);
+            if ((int) $locked->jurisdiction_id !== (int) $jurisdiction->id) {
+                throw new DomainException('The draft jurisdiction changed; reload the editor before saving.');
+            }
             $this->assertDraft($locked);
+            $this->assertOffDraftPayload($jurisdiction, $payload, (int) $dataset->schema_version);
             $locked->update(['payload' => $payload, 'payload_sha256' => $this->hash($payload), 'updated_by_id' => $actor->id]);
             $this->audit->log($actor, 'restriction_rule.updated', $locked, ['jurisdictionId' => $locked->jurisdiction_id, 'version' => $locked->version]);
 
@@ -115,6 +126,17 @@ final class RestrictionRuleVersionService
     {
         if ($version->status !== RestrictionRuleVersionStatus::Draft) {
             throw new DomainException('Only draft rule versions can be edited.');
+        }
+    }
+
+    /** @param array<string,mixed> $payload */
+    private function assertOffDraftPayload(Jurisdiction $jurisdiction, array $payload, int $datasetSchemaVersion): void
+    {
+        if (! $jurisdiction->enabled) {
+            if ($datasetSchemaVersion !== 2) {
+                throw new DomainException('OFF jurisdictions can only be edited with restrictions schema2.');
+            }
+            $this->validator->assertOffSchema2Payload($jurisdiction, $payload);
         }
     }
 

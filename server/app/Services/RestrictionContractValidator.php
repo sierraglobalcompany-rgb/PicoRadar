@@ -2,11 +2,68 @@
 
 namespace App\Services;
 
+use App\Enums\GeographicUnitLevel;
+use App\Models\Jurisdiction;
 use DateTimeImmutable;
 use DomainException;
 
 final class RestrictionContractValidator
 {
+    /** @param array<string,mixed> $payload */
+    public function assertOffSchema2Payload(Jurisdiction $jurisdiction, array $payload): void
+    {
+        if (($payload['schemaVersion'] ?? null) !== 2 ||
+            ($payload['id'] ?? null) !== $jurisdiction->key ||
+            ($payload['consultationEnabled'] ?? null) !== false) {
+            throw new DomainException('An OFF jurisdiction requires a schema2 payload with consultation disabled.');
+        }
+
+        $this->assertMunicipalityCodesBelongToJurisdiction($jurisdiction, $payload, true);
+        $coverages = $payload['coverages'] ?? null;
+        if (! is_array($coverages) || ! array_is_list($coverages) || $coverages === []) {
+            throw new DomainException('An OFF jurisdiction requires at least one schema2 coverage.');
+        }
+        foreach ($coverages as $coverage) {
+            if (! is_array($coverage) || ($coverage['consultationEnabled'] ?? null) !== false) {
+                throw new DomainException('Every coverage of an OFF jurisdiction must disable consultation.');
+            }
+        }
+    }
+
+    /** @param array<string,mixed> $payload */
+    public function assertMunicipalityCodesBelongToJurisdiction(Jurisdiction $jurisdiction, array $payload, bool $required = false): void
+    {
+        if (! array_key_exists('municipalityCodes', $payload)) {
+            if ($required) {
+                throw new DomainException('An OFF jurisdiction requires municipality DIVIPOLA codes.');
+            }
+
+            return;
+        }
+
+        $codes = $payload['municipalityCodes'];
+        if (! is_array($codes) || ! array_is_list($codes) || $codes === []) {
+            throw new DomainException('municipalityCodes must be a non-empty list of unique DIVIPOLA codes.');
+        }
+        foreach ($codes as $code) {
+            if (! is_string($code) || preg_match('/^\d{5}$/D', $code) !== 1) {
+                throw new DomainException('municipalityCodes must contain valid five-digit DIVIPOLA codes.');
+            }
+        }
+        if (count(array_unique($codes)) !== count($codes)) {
+            throw new DomainException('municipalityCodes must be a non-empty list of unique DIVIPOLA codes.');
+        }
+
+        $matched = $jurisdiction->geographicUnits()
+            ->where('geographic_units.level', GeographicUnitLevel::Municipality->value)
+            ->whereIn('geographic_units.code', $codes)
+            ->distinct()
+            ->count('geographic_units.id');
+        if ($matched !== count($codes)) {
+            throw new DomainException('municipalityCodes do not belong to the jurisdiction.');
+        }
+    }
+
     /**
      * @param  array<string,mixed>  $jurisdiction
      * @return array{vehicleKinds:list<string>,validFrom:?string,validUntil:?string,staleAfter:string,sourceCheckedAt:string}

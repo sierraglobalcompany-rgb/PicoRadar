@@ -15,10 +15,10 @@ class DatasetPublisher
 {
     public function __construct(private readonly ManifestPublisher $manifest, private readonly DatasetAuditLogger $audit) {}
 
-    public function publish(DatasetRelease $release, User $actor, ?int $expectedPublicationRevision = null, ?Closure $afterPublish = null): DatasetRelease
+    public function publish(DatasetRelease $release, User $actor, ?int $expectedPublicationRevision = null, ?Closure $afterPublish = null, ?Closure $beforePublish = null): DatasetRelease
     {
-        return $this->manifest->mutateAndRegenerate(function () use ($release, $actor, $expectedPublicationRevision, $afterPublish): DatasetRelease {
-            return DB::transaction(function () use ($release, $actor, $expectedPublicationRevision, $afterPublish): DatasetRelease {
+        return $this->manifest->mutateAndRegenerate(function () use ($release, $actor, $expectedPublicationRevision, $afterPublish, $beforePublish): DatasetRelease {
+            return DB::transaction(function () use ($release, $actor, $expectedPublicationRevision, $afterPublish, $beforePublish): DatasetRelease {
                 $dataset = Dataset::query()->lockForUpdate()->findOrFail($release->dataset_id);
                 $locked = DatasetRelease::query()->whereKey($release->id)->lockForUpdate()->firstOrFail();
                 if ($locked->dataset_id !== $dataset->id) {
@@ -39,6 +39,9 @@ class DatasetPublisher
                 }
                 if ($dataset->key === 'service_providers' && ! $this->hasCurrentValidatedSource($dataset, $locked)) {
                     throw new DomainException('A source approved during validation must still be active and current; validate the release again before publishing.');
+                }
+                if ($beforePublish !== null) {
+                    $beforePublish($locked, $dataset);
                 }
                 $draft = Storage::disk(config('datasets.draft_disk'));
                 $published = Storage::disk(config('datasets.published_disk'));

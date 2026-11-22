@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\GeographicUnitLevel;
 use App\Enums\RestrictionImportStatus;
+use App\Models\Dataset;
 use App\Models\GeographicUnit;
 use App\Models\Jurisdiction;
 use App\Models\RestrictionImport;
@@ -140,6 +141,9 @@ final class RestrictionImportService
             foreach ($rows as $row) {
                 $this->assertOnboardingSourceCurrent($row->normalized);
             }
+
+            // Keep dataset and jurisdiction row locks in the same order as publication.
+            Dataset::query()->where('key', 'restrictions')->lockForUpdate()->firstOrFail();
 
             $proposals = $rows->filter(fn (RestrictionImportRow $row): bool => ($row->normalized['onboarding']['status'] ?? null) === 'ALTA_PROPUESTA');
             if ($proposals->isNotEmpty()) {

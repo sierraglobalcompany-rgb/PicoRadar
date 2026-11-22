@@ -535,6 +535,70 @@ class RestrictionMaterialApprovalWorkflowTest extends TestCase
         }
     }
 
+    public function test_off_publication_blocks_on_publish_and_rollback_but_allows_reviewed_off_only_payload(): void
+    {
+        $service = app(RestrictionPublicationService::class);
+        $service->approveMaterialChange(
+            $this->version, 0, $this->admin,
+            'Alta inicial revisada contra la fuente oficial.', self::SOURCE,
+        );
+        $service->publish([$this->version->id], 0, $this->author);
+
+        $jurisdiction = $this->version->jurisdiction()->firstOrFail();
+        $jurisdiction->geographicUnits()->attach($jurisdiction->primary_geographic_unit_id);
+        $offPayload = $this->version->payload;
+        $offPayload['municipalityCodes'] = ['05001'];
+        $offPayload['consultationEnabled'] = false;
+        foreach ($offPayload['coverages'] as &$coverage) {
+            $coverage['consultationEnabled'] = false;
+        }
+        unset($coverage);
+        $versions = app(RestrictionRuleVersionService::class);
+        $offDraft = $versions->createDraft($jurisdiction, $offPayload, $this->author);
+        $offVersion = $versions->validate($offDraft, $this->author);
+        $jurisdiction->update(['enabled' => false]);
+        $filesBeforeOnPublish = Storage::disk('public')->allFiles();
+
+        try {
+            $service->publish([$this->version->id], 1, $this->author);
+            $this->fail('An OFF jurisdiction republished an ON payload.');
+        } catch (DomainException $error) {
+            $this->assertStringContainsString('OFF jurisdiction', $error->getMessage());
+        }
+        $this->assertSame(1, $this->dataset->refresh()->publication_revision);
+        $this->assertSame(1, $this->dataset->releases()->count());
+        $this->assertEqualsCanonicalizing($filesBeforeOnPublish, Storage::disk('public')->allFiles());
+
+        $service->approveMaterialChange(
+            $offVersion, 1, $this->admin,
+            'Desactivación de consulta revisada contra la fuente oficial.', self::SOURCE,
+        );
+        $service->publish([$offVersion->id], 1, $this->author);
+        $this->assertFalse($jurisdiction->fresh()->enabled);
+        $this->assertSame(2, $this->dataset->refresh()->publication_revision);
+        $this->assertSame(2, $this->dataset->releases()->count());
+        $release = $this->dataset->releases()->where('status', DatasetReleaseStatus::Published)->latest('id')->firstOrFail();
+        $published = json_decode(Storage::disk('public')->get($release->asset_path), true);
+        $publishedJurisdiction = collect($published['jurisdictions'])->firstWhere('id', $jurisdiction->key);
+        $this->assertFalse($publishedJurisdiction['consultationEnabled']);
+        $this->assertFalse($publishedJurisdiction['coverages'][0]['consultationEnabled']);
+        $currentVersion = $this->dataset->current_version;
+        $manifest = Storage::disk('public')->get(config('datasets.manifest_path'));
+        $publicFilesBeforeRollback = Storage::disk('public')->allFiles();
+
+        try {
+            $service->rollbackCity($this->version, 2, $this->author);
+            $this->fail('A rollback reactivated ON data for an OFF jurisdiction.');
+        } catch (DomainException $error) {
+            $this->assertStringContainsString('OFF jurisdiction', $error->getMessage());
+        }
+        $this->assertSame(2, $this->dataset->refresh()->publication_revision);
+        $this->assertSame($currentVersion, $this->dataset->current_version);
+        $this->assertSame(2, $this->dataset->releases()->count());
+        $this->assertSame($manifest, Storage::disk('public')->get(config('datasets.manifest_path')));
+        $this->assertEqualsCanonicalizing($publicFilesBeforeRollback, Storage::disk('public')->allFiles());
+    }
+
     /** @param array<string,mixed> $availability */
     private function createAvailabilityVersion(array $availability): RestrictionRuleVersion
     {
