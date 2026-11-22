@@ -4,7 +4,7 @@
     <div class="max-w-3xl">
         <a class="text-sm font-medium text-teal-800 underline" href="{{ route('admin.service-providers.index') }}">← Directorio</a>
         <h1 class="mt-3 text-3xl font-semibold tracking-tight">{{ $provider->exists ? 'Editar proveedor' : 'Agregar proveedor' }}</h1>
-        <p class="mt-2 text-slate-600">La ficha publicada aparece en el directorio tras una revisión editorial. Patrocinio no concede señal oficial o acreditación.</p>
+        <p class="mt-2 text-slate-600">El estado aprobado significa revisión editorial y elegibilidad para la proyección. No publica una versión OTA ni certifica acreditación; patrocinio tampoco concede señal oficial.</p>
     </div>
 
     <form class="mt-6 max-w-3xl space-y-5 rounded-lg border border-slate-200 bg-white p-5" method="POST" action="{{ $provider->exists ? route('admin.service-providers.update', $provider) : route('admin.service-providers.store') }}">
@@ -26,7 +26,7 @@
                 <select class="mt-1 min-h-12 w-full rounded-md border border-slate-300 px-3" name="status" required>
                     @foreach($statuses as $status)
                         @if($status !== 'published' || auth()->user()?->can('service_providers.publish'))
-                            <option value="{{ $status }}" @selected(old('status', $provider->status) === $status)>{{ match($status) {'draft' => 'Borrador', 'published' => 'Aprobado para exportar', default => 'Deshabilitado'} }}</option>
+                            <option value="{{ $status }}" @selected(old('status', $provider->status) === $status)>{{ match($status) {'draft' => 'Borrador', 'published' => 'Aprobado editorialmente (sin distribución OTA)', default => 'Deshabilitado'} }}</option>
                         @endif
                     @endforeach
                 </select>
@@ -50,10 +50,10 @@
                 <input class="mt-1 min-h-12 w-full rounded-md border border-slate-300 px-3" name="address" maxlength="1000" value="{{ old('address', $provider->address) }}">
             </label>
             <label class="text-sm font-medium">Latitud <span class="font-normal text-slate-500">(opcional)</span>
-                <input class="mt-1 min-h-12 w-full rounded-md border border-slate-300 px-3" type="number" step="any" min="-90" max="90" name="latitude" value="{{ old('latitude', $provider->latitude) }}">
+                <input class="mt-1 min-h-12 w-full rounded-md border border-slate-300 px-3" type="number" step="any" min="-5" max="14" name="latitude" value="{{ old('latitude', $provider->latitude) }}">
             </label>
             <label class="text-sm font-medium">Longitud <span class="font-normal text-slate-500">(opcional)</span>
-                <input class="mt-1 min-h-12 w-full rounded-md border border-slate-300 px-3" type="number" step="any" min="-180" max="180" name="longitude" value="{{ old('longitude', $provider->longitude) }}">
+                <input class="mt-1 min-h-12 w-full rounded-md border border-slate-300 px-3" type="number" step="any" min="-82" max="-66" name="longitude" value="{{ old('longitude', $provider->longitude) }}">
             </label>
             <label class="text-sm font-medium sm:col-span-2">URL de la fuente <span class="font-normal text-slate-500">(HTTPS; necesaria para publicar)</span>
                 <input class="mt-1 min-h-12 w-full rounded-md border border-slate-300 px-3" type="url" inputmode="url" name="source_url" value="{{ old('source_url', $provider->source_url) }}">

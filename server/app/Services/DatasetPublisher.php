@@ -33,6 +33,10 @@ class DatasetPublisher
                 if ($locked->status !== DatasetReleaseStatus::Validated || ! $locked->draft_path || ! $locked->sha256) {
                     throw new DomainException('Only a validated release can be published.');
                 }
+                if ($dataset->key === 'service_providers' &&
+                    (! $locked->expires_at || ! $locked->expires_at->isAfter(now()))) {
+                    throw new DomainException('The service provider release has expired and cannot be published.');
+                }
                 $draft = Storage::disk(config('datasets.draft_disk'));
                 $published = Storage::disk(config('datasets.published_disk'));
                 if (! $draft->exists($locked->draft_path)) {

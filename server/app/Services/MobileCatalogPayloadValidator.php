@@ -2,16 +2,20 @@
 
 namespace App\Services;
 
+use App\Enums\GeographicUnitLevel;
+use App\Models\GeographicUnit;
+use App\Models\ServiceProvider;
 use DateTimeImmutable;
+use DateTimeZone;
 use DomainException;
 
-/** Validation for existing Flutter catalog schema v1 before immutable publication. */
+/** Validation for versioned mobile catalog payloads before publication. */
 final class MobileCatalogPayloadValidator
 {
     /** @param array<string, mixed> $payload */
     public function validate(array $payload, string $key): void
     {
-        if (! in_array($key, ['cda_catalog', 'cda_geography', 'insurance_directory'], true) ||
+        if (! in_array($key, ['cda_catalog', 'cda_geography', 'insurance_directory', ServiceProvider::DATASET_KEY], true) ||
             ($payload['datasetKey'] ?? null) !== $key || ($payload['schemaVersion'] ?? null) !== 1) {
             throw new DomainException('Unsupported mobile catalog contract.');
         }
@@ -19,6 +23,7 @@ final class MobileCatalogPayloadValidator
             'cda_catalog' => $this->cdaCatalog($payload),
             'cda_geography' => $this->cdaGeography($payload),
             'insurance_directory' => $this->insuranceDirectory($payload),
+            ServiceProvider::DATASET_KEY => $this->serviceProviders($payload),
         };
     }
 
@@ -208,6 +213,174 @@ final class MobileCatalogPayloadValidator
                 }
             }
         }
+    }
+
+    /** @param array<string,mixed> $payload */
+    private function serviceProviders(array $payload): void
+    {
+        $this->onlyKeys($payload, ['schemaVersion', 'datasetKey', 'version', 'generatedAt', 'providers'], 'service_providers envelope');
+        foreach (['schemaVersion', 'datasetKey', 'version', 'generatedAt', 'providers'] as $field) {
+            if (! array_key_exists($field, $payload)) {
+                throw new DomainException("Missing service_providers field: $field.");
+            }
+        }
+
+        $this->boundedText($payload['version'], 'service_providers version', 64);
+        $generatedAt = $this->boundedText($payload['generatedAt'], 'service_providers generatedAt', 40);
+        $this->instant($generatedAt, 'service_providers generatedAt');
+        $generatedAtDate = (new DateTimeImmutable($generatedAt))->setTimezone(new DateTimeZone('America/Bogota'));
+        $seen = [];
+        $previous = null;
+        $providers = $this->rowsAllowEmpty($payload['providers'], 'providers');
+
+        foreach ($providers as $entry) {
+            $row = $this->object($entry, 'service provider');
+            $fields = [
+                'id', 'category', 'departmentCode', 'department', 'municipalityCode', 'municipality',
+                'name', 'address', 'latitude', 'longitude', 'contactUrl', 'sourceUrl', 'verifiedAt', 'validUntil',
+            ];
+            $this->onlyKeys($row, $fields, 'service provider');
+            foreach ($fields as $field) {
+                if (! array_key_exists($field, $row)) {
+                    throw new DomainException("Missing service provider field: $field.");
+                }
+            }
+
+            $id = $this->boundedText($row['id'], 'service provider id', 24);
+            if (! preg_match('/^sp-[1-9][0-9]*$/D', $id)) {
+                throw new DomainException('Service provider id must be sp-{primary_key}.');
+            }
+            $this->unique($seen, $id, 'service provider id');
+            if (! in_array($row['category'], ServiceProvider::CATEGORIES, true)) {
+                throw new DomainException('Invalid service provider category.');
+            }
+            $departmentCode = $this->boundedText($row['departmentCode'], 'departmentCode', 2);
+            $municipalityCode = $this->boundedText($row['municipalityCode'], 'municipalityCode', 5);
+            if (! preg_match('/^\d{2}$/D', $departmentCode) || ! preg_match('/^\d{5}$/D', $municipalityCode)) {
+                throw new DomainException('Invalid DIVIPOLA department or municipality code.');
+            }
+            $this->boundedText($row['department'], 'department', 120);
+            $this->boundedText($row['municipality'], 'municipality', 120);
+            $this->boundedText($row['name'], 'service provider name', 160);
+            $this->nullableBoundedText($row['address'], 'service provider address', 240);
+            $this->nullableBoundedText($row['contactUrl'], 'service provider contactUrl', 768);
+            if ($row['contactUrl'] !== null) {
+                $this->https($row['contactUrl'], 'service provider contactUrl');
+            }
+            $sourceUrl = $this->boundedText($row['sourceUrl'], 'service provider sourceUrl', 768);
+            $this->https($sourceUrl, 'service provider sourceUrl');
+
+            $latitude = $row['latitude'];
+            $longitude = $row['longitude'];
+            if (($latitude === null) !== ($longitude === null) ||
+                ($latitude !== null && ((! is_float($latitude) && ! is_int($latitude)) || ! is_finite((float) $latitude) || (float) $latitude < -5 || (float) $latitude > 14)) ||
+                ($longitude !== null && ((! is_float($longitude) && ! is_int($longitude)) || ! is_finite((float) $longitude) || (float) $longitude < -82 || (float) $longitude > -66))) {
+                throw new DomainException('Invalid or unpaired Colombian service provider coordinates.');
+            }
+
+            $verifiedAt = $this->boundedText($row['verifiedAt'], 'service provider verifiedAt', 40);
+            $this->instant($verifiedAt, 'service provider verifiedAt');
+            $validUntil = $this->boundedText($row['validUntil'], 'service provider validUntil', 10);
+            $this->date($validUntil, 'service provider validUntil');
+            if (new DateTimeImmutable($verifiedAt) > $generatedAtDate || $validUntil < $generatedAtDate->format('Y-m-d')) {
+                throw new DomainException('Service provider source evidence is not current for generatedAt.');
+            }
+
+            if ($previous !== null && $this->compareServiceProviders($previous, $row) > 0) {
+                throw new DomainException('Service providers must use deterministic order.');
+            }
+            $previous = $row;
+        }
+
+        $this->assertServiceProviderGeography($providers);
+    }
+
+    /** @param list<mixed> $providers */
+    private function assertServiceProviderGeography(array $providers): void
+    {
+        if ($providers === []) {
+            return;
+        }
+
+        $departmentCodes = array_values(array_unique(array_column($providers, 'departmentCode')));
+        $municipalityCodes = array_values(array_unique(array_column($providers, 'municipalityCode')));
+        $departments = GeographicUnit::query()
+            ->where('level', GeographicUnitLevel::Department->value)
+            ->where('is_active', true)
+            ->whereIn('code', $departmentCodes)
+            ->get(['id', 'code', 'name'])
+            ->keyBy('code');
+        $municipalities = GeographicUnit::query()
+            ->where('level', GeographicUnitLevel::Municipality->value)
+            ->where('is_active', true)
+            ->whereIn('code', $municipalityCodes)
+            ->get(['id', 'parent_id', 'code', 'name'])
+            ->keyBy('code');
+
+        foreach ($providers as $row) {
+            $department = $departments->get($row['departmentCode']);
+            $municipality = $municipalities->get($row['municipalityCode']);
+            if (
+                $department === null
+                || $municipality === null
+                || (int) $municipality->parent_id !== (int) $department->id
+                || $department->name !== $row['department']
+                || $municipality->name !== $row['municipality']
+            ) {
+                throw new DomainException('Service provider DIVIPOLA codes, names, and department-parent relationship do not match the active geographic catalog.');
+            }
+        }
+    }
+
+    /** @param array<string,mixed> $left @param array<string,mixed> $right */
+    private function compareServiceProviders(array $left, array $right): int
+    {
+        foreach (['departmentCode', 'municipalityCode', 'category', 'name', 'id'] as $field) {
+            $comparison = strcmp((string) $left[$field], (string) $right[$field]);
+            if ($comparison !== 0) {
+                return $comparison;
+            }
+        }
+
+        return 0;
+    }
+
+    private function boundedText(mixed $value, string $label, int $maxLength): string
+    {
+        if (! is_string($value) || trim($value) === '' || preg_match('//u', $value) !== 1 || preg_match('/[\x00-\x1F\x7F]/u', $value)) {
+            throw new DomainException("Missing or invalid $label.");
+        }
+
+        $trimmed = trim($value);
+        $length = preg_match_all('/./us', $trimmed);
+        if ($length === false || $length > $maxLength) {
+            throw new DomainException("Missing or invalid $label.");
+        }
+
+        return $trimmed;
+    }
+
+    private function nullableBoundedText(mixed $value, string $label, int $maxLength): ?string
+    {
+        return $value === null ? null : $this->boundedText($value, $label, $maxLength);
+    }
+
+    /** @param array<string,mixed> $value @param list<string> $allowed */
+    private function onlyKeys(array $value, array $allowed, string $label): void
+    {
+        if (array_diff(array_keys($value), $allowed) !== []) {
+            throw new DomainException("Unexpected field in $label.");
+        }
+    }
+
+    /** @return list<mixed> */
+    private function rowsAllowEmpty(mixed $value, string $label): array
+    {
+        if (! is_array($value) || ! array_is_list($value)) {
+            throw new DomainException("Expected JSON array: $label.");
+        }
+
+        return $value;
     }
 
     private function text(mixed $value, string $label): string

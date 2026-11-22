@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\GeographicUnit;
 use App\Models\ServiceProvider;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -92,18 +93,43 @@ class ServiceProviderCatalogService
     }
 
     /** @return list<array<string, mixed>> */
-    public function publishedDatasetRecords(): array
+    public function publishedDatasetRecords(?Carbon $asOf = null): array
     {
-        return ServiceProvider::query()
+        $records = ServiceProvider::query()
             ->where('status', 'published')
-            ->orderBy('department_code')
-            ->orderBy('municipality_code')
-            ->orderBy('name')
+            ->with(['department', 'municipality'])
             ->get()
-            ->map(fn (ServiceProvider $provider): ?array => $provider->toPublishedDatasetRecord())
+            ->map(fn (ServiceProvider $provider): ?array => $provider->toPublishedDatasetRecord($asOf))
             ->filter()
             ->values()
             ->all();
+
+        usort($records, static function (array $left, array $right): int {
+            foreach (['departmentCode', 'municipalityCode', 'category', 'name', 'id'] as $field) {
+                $comparison = strcmp((string) $left[$field], (string) $right[$field]);
+                if ($comparison !== 0) {
+                    return $comparison;
+                }
+            }
+
+            return 0;
+        });
+
+        return $records;
+    }
+
+    /** @return array{schemaVersion:int,datasetKey:string,version:string,generatedAt:string,providers:list<array<string,mixed>>} */
+    public function publishedDatasetPayload(string $version, ?Carbon $generatedAt = null): array
+    {
+        $generatedAt ??= now();
+
+        return [
+            'schemaVersion' => 1,
+            'datasetKey' => ServiceProvider::DATASET_KEY,
+            'version' => $version,
+            'generatedAt' => $generatedAt->toAtomString(),
+            'providers' => $this->publishedDatasetRecords($generatedAt),
+        ];
     }
 
     private function assertTerritory(ServiceProvider $provider): void
@@ -133,6 +159,17 @@ class ServiceProviderCatalogService
     {
         if (($provider->latitude === null) !== ($provider->longitude === null)) {
             throw ValidationException::withMessages(['latitude' => 'Registra latitud y longitud juntas, o deja ambas vacías.']);
+        }
+
+        if ($provider->latitude !== null && (
+            ! is_finite((float) $provider->latitude)
+            || ! is_finite((float) $provider->longitude)
+            || (float) $provider->latitude < -5
+            || (float) $provider->latitude > 14
+            || (float) $provider->longitude < -82
+            || (float) $provider->longitude > -66
+        )) {
+            throw ValidationException::withMessages(['latitude' => 'Las coordenadas deben estar dentro del rango de Colombia.']);
         }
     }
 

@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\PartnerInquiryController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\RestrictionRuleController;
 use App\Http\Controllers\Admin\ServiceProviderController;
+use App\Http\Controllers\Admin\ServiceProviderPublicationController;
 use App\Http\Controllers\Admin\SponsorController;
 use App\Http\Controllers\AppAccountUnsubscribeController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -110,6 +111,7 @@ Route::middleware(['auth', EnsureActiveOperator::class, SecurityHeaders::class])
         ->except(['show', 'destroy'])
         ->parameters(['service-providers' => 'serviceProvider'])
         ->names('admin.service-providers');
+    Route::get('/admin/service-providers/publication', [ServiceProviderPublicationController::class, 'index'])->name('admin.service-providers.publication');
     Route::put('/admin/jurisdictions/{jurisdiction}', [JurisdictionController::class, 'update'])->name('admin.jurisdictions.update');
     Route::post('/admin/jurisdictions/{jurisdiction}/coverage', [JurisdictionController::class, 'attach'])->name('admin.jurisdictions.coverage.attach');
     Route::delete('/admin/jurisdictions/{jurisdiction}/coverage/{unit}', [JurisdictionController::class, 'detach'])->name('admin.jurisdictions.coverage.detach');

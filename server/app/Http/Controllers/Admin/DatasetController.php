@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -106,9 +107,12 @@ class DatasetController extends Controller
         return back();
     }
 
-    public function storeRelease(Request $request, Dataset $dataset): RedirectResponse
+    public function storeRelease(Request $request, Dataset $dataset, ServiceProviderCatalogService $providers): RedirectResponse
     {
         Gate::authorize('datasets.edit');
+        if ($request->boolean('generate_from_provider_catalog')) {
+            return $this->storeProviderCatalogDraft($request, $dataset, $providers);
+        }
         $request->validate(['dataset' => ['required', 'file', 'max:'.config('datasets.max_upload_kb')], 'verified_at' => ['nullable', 'date'], 'expires_at' => ['nullable', 'date']]);
         $file = $request->file('dataset');
         if (strtolower($file->getClientOriginalExtension()) !== 'json') {
@@ -121,14 +125,68 @@ class DatasetController extends Controller
         if (! is_array($payload) || array_is_list($payload) || ! is_string($payload['version'] ?? null) || ! preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/', $payload['version'])) {
             throw ValidationException::withMessages(['dataset' => 'The JSON version is required and unsafe versions are rejected.']);
         }
-        $path = "dataset-drafts/{$dataset->key}/".Str::uuid().'.json';
-        if (Storage::disk(config('datasets.draft_disk'))->put($path, $file->get()) === false) {
-            throw ValidationException::withMessages(['dataset' => 'The draft could not be stored.']);
-        }
-        $release = $dataset->releases()->create(['version' => $payload['version'], 'status' => DatasetReleaseStatus::Draft, 'draft_path' => $path, 'verified_at' => $request->input('verified_at'), 'expires_at' => $request->input('expires_at')]);
-        $this->audit->log($request->user(), 'release.created', $release, ['datasetKey' => $dataset->key, 'version' => $release->version]);
+        $this->createDraft($dataset, $request, $payload, $file->get());
 
         return back();
+    }
+
+    private function storeProviderCatalogDraft(Request $request, Dataset $dataset, ServiceProviderCatalogService $providers): RedirectResponse
+    {
+        if ($dataset->key !== 'service_providers' || $dataset->schema_version !== 1 || ! $dataset->enabled) {
+            throw ValidationException::withMessages(['dataset' => 'El dataset service_providers debe estar habilitado con schema 1.']);
+        }
+        $data = $request->validate([
+            'version' => ['required', 'string', 'regex:/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/'],
+            'generated_at' => ['required', 'string'],
+            'preview_sha256' => ['required', 'regex:/^[a-f0-9]{64}$/'],
+        ]);
+        if (! preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/', $data['generated_at'])) {
+            throw ValidationException::withMessages(['generated_at' => 'La fecha de la vista previa debe incluir zona horaria.']);
+        }
+
+        $payload = $providers->publishedDatasetPayload($data['version'], Carbon::parse($data['generated_at']));
+        if ($payload['providers'] === []) {
+            throw ValidationException::withMessages(['dataset' => 'No hay fichas vigentes para generar un borrador.']);
+        }
+        $bytes = json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if (! hash_equals($data['preview_sha256'], hash('sha256', $bytes))) {
+            throw ValidationException::withMessages(['dataset' => 'Las fichas cambiaron después de la vista previa. Revisa el snapshot actualizado.']);
+        }
+
+        $expiresAt = null;
+        foreach ($payload['providers'] as $provider) {
+            $validUntil = Carbon::parse($provider['validUntil'], 'America/Bogota')->endOfDay();
+            if ($expiresAt === null || $validUntil->isBefore($expiresAt)) {
+                $expiresAt = $validUntil;
+            }
+        }
+        if ($expiresAt === null || ! $expiresAt->isAfter(now())) {
+            throw ValidationException::withMessages(['dataset' => 'La vigencia de las fichas venció; no se creó el borrador.']);
+        }
+
+        $release = $this->createDraft($dataset, $request, $payload, $bytes, $expiresAt);
+
+        return redirect()->route('admin.datasets.show', $dataset)
+            ->with('status', "Borrador {$release->version} listo para validar y revisar manualmente.");
+    }
+
+    /** @param array<string,mixed> $payload */
+    private function createDraft(Dataset $dataset, Request $request, array $payload, string $bytes, ?Carbon $expiresAt = null): DatasetRelease
+    {
+        $path = "dataset-drafts/{$dataset->key}/".Str::uuid().'.json';
+        if (Storage::disk(config('datasets.draft_disk'))->put($path, $bytes) === false) {
+            throw ValidationException::withMessages(['dataset' => 'The draft could not be stored.']);
+        }
+        $release = $dataset->releases()->create([
+            'version' => $payload['version'],
+            'status' => DatasetReleaseStatus::Draft,
+            'draft_path' => $path,
+            'verified_at' => $request->input('verified_at'),
+            'expires_at' => $expiresAt ?? $request->input('expires_at'),
+        ]);
+        $this->audit->log($request->user(), 'release.created', $release, ['datasetKey' => $dataset->key, 'version' => $release->version]);
+
+        return $release;
     }
 
     public function validateRelease(Request $request, Dataset $dataset, DatasetRelease $release, DatasetReleaseValidator $validator): RedirectResponse

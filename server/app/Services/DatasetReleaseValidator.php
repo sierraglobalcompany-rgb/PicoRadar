@@ -46,6 +46,21 @@ class DatasetReleaseValidator
             }
             $this->validateEnvelope($payload, $dataset, $locked, $bytes);
             $sources = DatasetSource::query()->where('dataset_id', $dataset->id)->lockForUpdate()->get()->filter(fn (DatasetSource $source): bool => $source->is_active && trim($source->authority) !== '' && filter_var($source->url, FILTER_VALIDATE_URL) !== false && in_array(strtolower((string) parse_url($source->url, PHP_URL_SCHEME)), ['http', 'https'], true) && $source->verified_at !== null);
+            if ($dataset->key === 'service_providers') {
+                $sources = $sources->filter(function (DatasetSource $source): bool {
+                    $parts = parse_url($source->url);
+                    $now = now();
+
+                    return is_array($parts)
+                        && strtolower((string) ($parts['scheme'] ?? '')) === 'https'
+                        && trim((string) ($parts['host'] ?? '')) !== ''
+                        && ! isset($parts['user'])
+                        && ! isset($parts['pass'])
+                        && ! $source->verified_at->isAfter($now)
+                        && ($source->valid_from === null || ! $source->valid_from->isAfter($now))
+                        && ($source->valid_until === null || ! $source->valid_until->isBefore($now));
+                });
+            }
             if ($sources->isEmpty()) {
                 throw new DomainException('At least one verified active source is required.');
             }
@@ -71,6 +86,7 @@ class DatasetReleaseValidator
             'restrictions' => $this->validateRestrictions($payload),
             'tax_calendars' => (new TaxCalendarPayloadValidator)->validate((array) json_decode($bytes, false, 512, JSON_THROW_ON_ERROR)),
             'cda_catalog', 'cda_geography', 'insurance_directory' => (new MobileCatalogPayloadValidator)->validate($payload, $dataset->key),
+            'service_providers' => (new MobileCatalogPayloadValidator)->validate($payload, $dataset->key),
             default => throw new DomainException("No approved validator exists for {$dataset->key}."),
         };
     }
