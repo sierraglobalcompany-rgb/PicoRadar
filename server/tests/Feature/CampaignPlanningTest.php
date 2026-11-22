@@ -7,14 +7,12 @@ use App\Enums\CampaignStatus;
 use App\Enums\GeographicUnitLevel;
 use App\Enums\OperatorRole;
 use App\Enums\SponsorStatus;
-use App\Http\Controllers\Admin\CampaignPlanningController;
 use App\Models\Campaign;
 use App\Models\GeographicUnit;
 use App\Models\Sponsor;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class CampaignPlanningTest extends TestCase
@@ -40,11 +38,6 @@ class CampaignPlanningTest extends TestCase
         $this->municipality = $this->unit('co-11-001', GeographicUnitLevel::Municipality, '11001', 'Bogotá', $this->department);
         $this->otherMunicipality = $this->unit('co-05-001', GeographicUnitLevel::Municipality, '05001', 'Medellín', $this->otherDepartment);
         $this->activeSponsor = $this->sponsor('Patrocinador activo', SponsorStatus::Active);
-
-        Route::middleware(['web', 'auth'])->get('/test-admin/campaigns/planning', [CampaignPlanningController::class, 'index'])
-            ->name('admin.campaigns.planning');
-        Route::getRoutes()->refreshNameLookups();
-        Route::getRoutes()->refreshActionLookups();
     }
 
     public function test_commercial_can_read_planning_with_separate_server_mobile_and_off_states(): void
@@ -53,6 +46,10 @@ class CampaignPlanningTest extends TestCase
         $this->campaign('scheduled', $this->activeSponsor, CampaignScope::Municipality, $this->municipality, 10, [
             'starts_at' => '2026-11-22 18:00:00',
             'ends_at' => '2026-11-22 20:00:00',
+        ]);
+        $this->campaign('future-beyond-window', $this->activeSponsor, CampaignScope::Municipality, $this->municipality, 11, [
+            'starts_at' => '2026-11-24 12:00:00',
+            'ends_at' => '2026-11-25 12:00:00',
         ]);
         $this->campaign('outside-city', $this->activeSponsor, CampaignScope::Municipality, $this->otherMunicipality, 12);
         $inactiveSponsor = $this->sponsor('Patrocinador inactivo', SponsorStatus::Inactive);
@@ -77,13 +74,19 @@ class CampaignPlanningTest extends TestCase
             ->assertSee('PATROCINADOR INACTIVO')
             ->assertSee('BORRADOR')
             ->assertSee('VENCIDA')
+            ->assertSee('data-simulation-campaign="future-beyond-window" data-server-candidate="true" data-mobile-reason="scheduled"', false)
             ->assertSee('data-simulation-campaign="scheduled" data-server-candidate="true" data-mobile-reason="scheduled"', false)
             ->assertSee('data-simulation-campaign="outside-city" data-server-candidate="true" data-mobile-reason="outside_territory"', false)
             ->assertSee('data-simulation-campaign="ended-at-t" data-server-candidate="false" data-mobile-reason="not_in_server_candidate"', false)
             ->assertSee(route('admin.campaigns.show', $national), false)
             ->assertSee(route('admin.campaigns.edit', $national), false);
 
-        $this->assertDatabaseCount('campaigns', 6);
+        $this->actingAs($commercial)
+            ->get(route('admin.campaigns.planning', $this->filters(['department_id' => $this->department->id])))
+            ->assertOk()
+            ->assertSee('data-simulation-campaign="outside-city" data-server-candidate="true" data-mobile-reason="municipality_required"', false);
+
+        $this->assertDatabaseCount('campaigns', 7);
     }
 
     public function test_non_campaign_viewer_is_denied_and_invalid_range_returns_validation_errors(): void

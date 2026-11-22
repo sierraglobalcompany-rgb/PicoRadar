@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\CampaignStatus;
 use App\Enums\CampaignScope;
 use App\Enums\GeographicUnitLevel;
+use App\Enums\SponsorStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Campaign;
 use App\Models\GeographicUnit;
@@ -102,7 +103,19 @@ class CampaignPlanningController extends Controller
             ->paginate((int) $filters['per_page'])
             ->withQueryString();
 
-        $simulationCampaigns = $this->campaignsInWindow($from, $until, null, null, $filters, false)
+        $simulationCampaigns = Campaign::query()
+            ->where('placement', $filters['placement'])
+            ->where(function (Builder $query) use ($from, $until, $at): void {
+                $query->where(function (Builder $window) use ($from, $until): void {
+                    $window->where('starts_at', '<', $until)
+                        ->where('ends_at', '>', $from);
+                })->orWhere(function (Builder $candidate) use ($at): void {
+                    $candidate->where('status', CampaignStatus::Active->value)
+                        ->where('ends_at', '>', $at)
+                        ->whereHas('sponsor', fn (Builder $sponsor) => $sponsor->where('status', SponsorStatus::Active->value));
+                });
+            })
+            ->when(! empty($filters['sponsor_id']), fn (Builder $query) => $query->where('sponsor_id', (int) $filters['sponsor_id']))
             ->with(['sponsor', 'geographicUnit.parent'])
             ->orderBy('priority')
             ->orderBy('public_id')

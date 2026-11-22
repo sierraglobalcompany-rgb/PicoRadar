@@ -81,7 +81,7 @@
             </select>
         </label>
         <div class="flex items-end"><button class="rounded bg-slate-900 px-4 py-2 text-white" type="submit">Aplicar filtros</button></div>
-        <p class="text-sm text-slate-600 md:col-span-3 xl:col-span-5">Rango máximo: 90 días; T debe quedar dentro de [desde, hasta). La agenda aplica los filtros de estado y territorio. La simulación compara todos los estados y territorios dentro del mismo rango (y patrocinador, si se eligió) para explicar resultados fuera de territorio.</p>
+        <p class="text-sm text-slate-600 md:col-span-3 xl:col-span-5">Rango máximo: 90 días; T debe quedar dentro de [desde, hasta). La agenda aplica los filtros de estado y territorio. La simulación compara los registros del rango y añade candidatas activas al catálogo con ends_at &gt; T, aunque empiecen después del rango (y patrocinador, si se eligió).</p>
     </form>
 
     <section class="space-y-3" aria-labelledby="simulation-heading">

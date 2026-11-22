@@ -35,7 +35,8 @@ class CampaignPlanningService
         $mobileReason = match (true) {
             ! $serverCandidate => 'not_in_server_candidate',
             $campaign->starts_at->getTimestamp() > $at->getTimestamp() => 'scheduled',
-            $campaign->scope !== CampaignScope::National && $department === null && $municipality === null => 'municipality_required',
+            $campaign->scope === CampaignScope::Municipality && $municipality === null => 'municipality_required',
+            $campaign->scope === CampaignScope::Department && $department === null && $municipality === null => 'municipality_required',
             ! $this->matchesTerritory($campaign, $department, $municipality) => 'outside_territory',
             default => null,
         };
