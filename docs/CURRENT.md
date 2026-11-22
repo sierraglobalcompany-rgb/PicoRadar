@@ -1,17 +1,16 @@
 # PicoRadar: estado vigente
 
-Actualizado: 2026-11-21, America/Bogota. El estado operativo actual está arriba; el material previo se conserva como historial. Baseline, Arquitectura y contratos conservan su precedencia. Esta actualización no cambia aprobaciones del producto.
+Actualizado: 2026-11-22, America/Bogota. El estado operativo actual está arriba; el material previo se conserva como historial. Baseline, Arquitectura y contratos conservan su precedencia. Esta actualización no cambia aprobaciones del producto.
 
-## Estado operativo — macro nacional 2026-11-21
+## Estado operativo — cierre C13 V2 2026-11-22
 
-- Rama candidata: `feat/platform-integral-national-20261122`, hija de C12 `bc2c90743437a017a989adf9f00d38b1ca9459e7`.
-- HEAD de código integrado antes de esta actualización: `b7f8f1e33f72a3535b1f82504bd9fb209b0f3d7b` (`feat(platform): integrate shared catalog and account contracts`).
-- Resultado: `PARTIAL`. H1: `PARTIAL` — se conserva el ciclo existente de importación/revisión/borrador/publicación/manifest y la revisión muestra procedencia; no hay control independiente por modalidad ni revalidación del motor móvil. H2: `PARTIAL` — CRUD administrativo por categoría y territorio, auditoría y proyección local; no está conectado a un consumidor aprobado del dataset/manifest. H3: `DONE_CODE / QA_BLOCKED` — plan/estado en servidor, revocación, OTP de supresión limitada y UI cliente; sin billing.
-- Último gate: `php -l` pasó en 16 archivos PHP modificados; `git diff --check` CRLF-aware pasó. PHPUnit no se ejecutó porque falta `server/vendor/autoload.php`; Flutter/Dart no está disponible. Migración y pruebas siguen sin ejecución runtime.
-- Seguridad/producto: publicidad y pagos siguen apagados; los proveedores publicados exigen fuente HTTPS revisada y vigencia explícita. Directorio no certifica habilitación oficial. MFA real no verificado. Legal nacional: `NO_GO`, porcentaje no calculable sin denominador municipio × modalidad × vigencia y evidencia oficial.
-- GitHub/entorno: no tocar `main`, PR #88, Hostinger, dispositivos ni datos reales. La rama candidata no se integra automáticamente; una rama puente requiere reconciliación y autorización separadas.
-- Siguiente actividad: completar el contrato y consumidor versionado para `service_providers`; luego ejecutar las pruebas focales cuando estén disponibles las dependencias. Mantener explícitos los estados jurídicos desconocidos y la habilitación por modalidad pendiente.
-- Decisión de alcance: se puede construir Free/Pro como entitlement controlado por servidor; esto no aprueba cobros, compra en tiendas ni campañas activas.
+- Rama candidata: `feat/platform-integral-national-20261122`, basada en el HEAD remoto verificado de C12 `d4ef642db312cf6b8a5ee2e01634e2be8e13c849`; C12 conserva su base histórica `bc2c90743437a017a989adf9f00d38b1ca9459e7`.
+- HEAD de código integrado antes de este commit documental: `7313a4c62231ba2c500ec0db87fb36a32b591c84`.
+- Resultado: `DONE_CODE`. H1 `DONE_CODE`: toggle `consultationEnabled` por cobertura schema2 y par vehículo/servicio conectado desde edición/importación/revisión/publicación hasta parser, almacenamiento y evaluación Flutter; OFF produce `UNKNOWN`, preserva reglas y completitud. H2 `DONE_CODE`: `service_providers` tiene preview/diff, borrador, validación, publicación/rollback por el flujo único de releases y consumo Flutter SHA-256, último bueno y búsqueda offline; ficha aprobada no equivale a distribución. H3 `DONE_CODE`: suspensión temporal vencida permite una sesión OTP nueva; tokens revocados siguen revocados, ban permanente y entitlement Pro conservados.
+- QA local: `php -l` PASS en 34 archivos PHP y `git -c core.whitespace=cr-at-eol diff --check` PASS. 22 casos focales nuevos/específicos escritos para C13; `TESTS_EXECUTED=0`. PHPUnit `NOT_RUN_ENV` por ausencia de `server/vendor/autoload.php` y ejecutable PHPUnit; Flutter/Dart `NOT_RUN_ENV` porque no están instalados. Sin migraciones, datos reales, APK ni QA física.
+- Seguridad/producto: datasets y pruebas usan fixtures sintéticas; no se inspeccionó ni modificó una base real. SHA-256 acredita integridad, no firma criptográfica. Anuncios, pagos, servicios comerciales y GPS remoto permanecen fuera de este lote. Legal nacional `NO_GO`; falta validación jurídica/QA de fuentes reales. `RELEASE=NO_GO` y `MAIN_BRIDGE=HOLD`.
+- GitHub/entorno: el cambio vive solo en `feat/platform-integral-national-20261122`; `main`, PR #88, Hostinger, Mi A3, otros dispositivos y datos reales quedan intactos. El push de esta rama es el único destino remoto permitido por C13; no crear PR ni hacer merge.
+- Siguiente prioridad: ejecutar la batería focal cuando estén disponibles dependencias ya bloqueantes y obtener validación legal/runtime real antes de considerar cualquier release; no inferir cobertura jurídica nacional del catálogo técnico.
 
 ## Punto de entrada histórico — 2026-10-21
 
