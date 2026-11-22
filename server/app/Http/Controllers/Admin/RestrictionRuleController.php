@@ -920,7 +920,7 @@ class RestrictionRuleController extends Controller
     {
         Gate::authorize('datasets.edit');
 
-        return view('admin.restrictions.import-review', ['operator' => $request->user(), 'import' => $import->load(['rows.jurisdiction'])]);
+        return view('admin.restrictions.import-review', ['operator' => $request->user(), 'import' => $import->load(['rows.jurisdiction.primaryGeographicUnit.parent'])]);
     }
 
     public function confirmImport(Request $request, RestrictionImport $import, RestrictionImportService $service): RedirectResponse

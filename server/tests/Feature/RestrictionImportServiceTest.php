@@ -50,6 +50,30 @@ class RestrictionImportServiceTest extends TestCase
         $this->assertSame(RestrictionImportStatus::Confirmed, $import->fresh()->status);
     }
 
+    public function test_review_shows_jurisdiction_modality_and_provenance_before_confirmation(): void
+    {
+        $json = json_encode(['schemaVersion' => 1, 'datasetKey' => 'restrictions', 'version' => 'synthetic-review', 'generatedAt' => '2026-09-20T12:00:00Z', 'jurisdictions' => [$this->payload()]], JSON_THROW_ON_ERROR);
+        $import = app(RestrictionImportService::class)->analyze($this->temporaryFile($json), 'synthetic-review.json', 'json', null, $this->actor);
+        $dataset = Dataset::query()->where('key', 'restrictions')->firstOrFail();
+
+        $this->actingAs($this->actor)
+            ->get(route('admin.restrictions.imports.review', $import))
+            ->assertOk()
+            ->assertSeeText('Antioquia')
+            ->assertSeeText('05001')
+            ->assertSeeText('co-test-synthetic')
+            ->assertSeeText('car')
+            ->assertSeeText('private')
+            ->assertSeeText('https://example.test/synthetic-rules')
+            ->assertSeeText('2026-09-01T05:00:00Z')
+            ->assertSeeText($import->sha256);
+
+        $this->assertSame(RestrictionImportStatus::Analyzed, $import->fresh()->status);
+        $this->assertSame(0, RestrictionRuleVersion::query()->count());
+        $this->assertSame(0, $dataset->releases()->count());
+        $this->assertSame(0, $dataset->fresh()->publication_revision);
+    }
+
     public function test_csv_and_xlsx_rows_use_the_same_real_contract_mapping(): void
     {
         $header = array_keys($this->flatRow());
