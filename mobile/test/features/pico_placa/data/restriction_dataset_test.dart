@@ -239,7 +239,7 @@ void main() {
         serviceType: VehicleServiceType.private,
         date: day,
       ).status,
-      RestrictionDayStatus.restricted,
+      RestrictionDayStatus.unknown,
     );
     expect(
       evaluateRestrictionDay(
