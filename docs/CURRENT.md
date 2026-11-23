@@ -1,5 +1,15 @@
 # PicoRadar: estado vigente
 
+## Estado operativo — C23 V2 2026-11-22 (parcial)
+
+- Base C23 confirmada: `f4f6c9a3ce8e9ae764c131db5e7d34194e78642c`; rama remota exclusiva `feat/platform-integral-national-20261122`; `main=e9ef37511df3110ffb0fc006ef06be781df432ac`.
+- B `PASS`: vista Blade renderizada. C1 activo conservado: 1 test/37 aserciones/exit 0. OFF independiente desde cola nacional: 1 test/23 aserciones/exit 0; POST falsificado ON persiste OFF global y por cobertura, jurisdicción deshabilitada, schema2/Draft, cero publicaciones/releases. Código en `bc2d1c1d956c7c9f0f25e9e376c9ada26e3053e8` (vista y prueba focal solamente).
+- C `PASS_HTTP_LIMITADO`: bootstrap/cache/SQLite confinados a copia desechable D:. HTTP real: `/login=200`, `/admin/operations/national=302` a login, `/api/v1/campaign-catalog=404`. La copia carecía de bundle Vite; el único retry usó manifiesto temporal para renderizar HTML. CSS/JS no se compilaron ni probaron. Runbook `codex/C23_V2_LOCAL_HTTP_RUNBOOK.md`, commit `84f0bf45278c90424aef321a3e9dbc93c853293e`.
+- A `BLOCKED_OS_SYMLINK`: no se encontró Flutter/Dart en PATH ni en SDK local conocido; la única alternativa preinstalada revisada (Ubuntu WSL) tampoco tiene Flutter. Lock sin cambios, SHA-256 `9D68CE85ABA7E40C4E484D34B0F449E3BFFB98BE3D9F0118B7775ECC1E5F4834`; no existen metadatos de plugins/registrant generados en la copia. No hubo pub get, build, APK, ADB o AVD. C21 ya había registrado la denegación Windows de symlinks; no se alteró el sistema.
+- Checkout original y WIP históricos permanecen intactos. No se cambió motor, reglas, normas, datos, dependencias, migraciones, permisos ni certificados; no se repitieron C2/C3 ni suites C19–C21.
+- `LEGAL=NO_GO`, `RELEASE=NO_GO`, `MAIN_BRIDGE=HOLD`. NEXT: disponer de Flutter ya instalado que permita generación oficial con lock fijo; solo entonces continuar gate A y, si pasa, build, inspección estática y un inicio AVD.
+
+Actualizado: 2026-11-22, America/Bogota. Informe, hashes y límites en `PICORADAR_C23_V2_RETORNO_UNICO.zip`; esta actualización no altera aprobaciones.
 ## Estado operativo — C22 V2 2026-11-22 (ejecución parcial)
 
 - Base autorizada y verificada: `0fc292db2938744c40bf8d51a0503cbd3fec8562`; rama remota exclusiva `feat/platform-integral-national-20261122`; `main=e9ef37511df3110ffb0fc006ef06be781df432ac`. Los commits C22 de pruebas son `986bf8f` (cuentas y planificación) y `57bf545` (gates SuperAdmin). El candidato local deriva linealmente de la base. La rama local antigua con el mismo nombre remoto permanece intacta porque está ocupada por otro worktree y detrás del remoto.
