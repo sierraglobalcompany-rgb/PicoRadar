@@ -55,6 +55,7 @@
 ## Security / privacy review
 - Initial npm audit: 5 package advisories (3 high, 2 critical); final audit: zero. Final package lock SHA-256: `57945438E08009CFD6B67BFF40AF90D68E1E3D287A5DF6A86B5B5F3B2D306362`.
 - Synthetic credentials/cookies were not retained in evidence. The QA server was stopped after capture; no service or business mutation was performed.
+- The task-created synthetic credential file remains at `%LOCALAPPDATA%\Temp\Picoradar-C25-QA\synthetic-users.tmp`: the environment blocked its removal command. It is excluded from the return ZIP; server stopped and temporary login router removed. Manual cleanup remains.
 
 ## Dependencies added/changed
 - No dependency manifest change. `server/package-lock.json` only.
