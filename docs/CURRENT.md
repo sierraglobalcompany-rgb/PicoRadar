@@ -1,5 +1,14 @@
 # PicoRadar: estado vigente
 
+## Estado operativo — C24 V2 2026-11-22 (parcial, sin cambios funcionales)
+
+- Base confirmada: `6802ceaa9abcc7a51c15fb348109456c73f206b1`, destino remoto exclusivo `feat/platform-integral-national-20261122`; `main=e9ef37511df3110ffb0fc006ef06be781df432ac`.
+- A Android: Flutter 3.50.0/Dart 3.14.0, Java 21 y Android SDK están disponibles. El probe de symlink en la copia aislada falló con «Administrator privilege required». Gate `BLOCKED_OS_SYMLINK` antes de `pub get`; sin build, APK, ADB ni AVD. El lock conserva SHA-256 `9D68CE85ABA7E40C4E484D34B0F449E3BFFB98BE3D9F0118B7775ECC1E5F4834`; el literal esperado en el prompt omitía una `B` y tenía 63 caracteres.
+- B Vite: `npm ci` y `npm run build` terminaron con exit 0; `server/package-lock.json` sin cambio. Manifest auténtico y CSS/JS devolvieron HTTP 200 con MIME y hashes iguales a disco. npm reportó 5 advisories (3 high, 2 critical); no se ejecutó `audit fix`. Sin inspección visual.
+- C HTTP: migraciones y dos operadores sintéticos se prepararon en SQLite efímera; `GET /login=200` con referencias a assets Vite reales, acceso anónimo nacional `302` a login y catálogo OFF `404`. Ambos POST sintéticos de login devolvieron `500` porque el proceso PHP hijo de `artisan serve` no tenía `pdo_sqlite` («could not find driver»). Límite de reintento alcanzado: ACL autenticada/commercial `NOT_RUN`; no es un defecto demostrado de la app. SQLite, sesiones y logs temporales se retiraron; no se llamaron acciones de negocio mutantes.
+- Sin cambios de código, reglas, schema o dependencias; ningún APK ni teléfono intervenido. WIP preservado: checkout canónico conserva su eliminación previa; C22 admin su modificación previa; C22 local server su runbook sin seguimiento previo; rama local C13 antigua no se movió. Las tres copias C24 se mantienen aisladas.
+- `LEGAL=NO_GO`, `RELEASE=NO_GO`, `MAIN_BRIDGE=HOLD`. `HEAD_FINAL` y estado remoto se verifican en `codex/C24_HANDOFF.md` y en `GITHUB_STATE.md` del ZIP C24. Evidencias y límites en `PICORADAR_C24_V2_RETORNO_UNICO.zip`.
+
 ## Estado operativo — C23 V2 2026-11-22 (parcial)
 
 - Base C23 confirmada: `f4f6c9a3ce8e9ae764c131db5e7d34194e78642c`; rama remota exclusiva `feat/platform-integral-national-20261122`; `main=e9ef37511df3110ffb0fc006ef06be781df432ac`.
