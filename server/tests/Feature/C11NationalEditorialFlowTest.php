@@ -148,6 +148,90 @@ class C11NationalEditorialFlowTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_editor_creates_an_off_schema2_draft_from_national_queue_without_enabling_consultation(): void
+    {
+        Http::preventStrayRequests();
+
+        $country = $this->geographicUnit(null, 'country', 'CO', 'Colombia', 'co-c23');
+        $department = $this->geographicUnit($country, 'department', '05', 'Departamento sintético', 'co-05-c23');
+        $municipality = $this->geographicUnit($department, 'municipality', '05001', 'Municipio OFF sintético', 'co-05001-c23');
+        $jurisdiction = Jurisdiction::query()->create([
+            'key' => 'co-c23-municipio-off',
+            'name' => 'Municipio OFF sintético',
+            'kind' => JurisdictionKind::City,
+            'primary_geographic_unit_id' => $municipality->id,
+            'enabled' => false,
+            'timezone' => 'America/Bogota',
+        ]);
+        $municipality->jurisdictions()->attach($jurisdiction->id);
+        $editor = User::factory()->create(['role' => OperatorRole::Editor, 'is_active' => true]);
+
+        $entryUrl = route('admin.restrictions.create', ['jurisdiction_id' => $jurisdiction->id]);
+        $beforeQueue = $this->editorFlowCounts();
+        $queue = $this->actingAs($editor)
+            ->get(route('admin.operations.national'))
+            ->assertOk()
+            ->assertSee('Crear borrador OFF · no publicado')
+            ->assertSee(e($entryUrl), false);
+        self::assertSame($beforeQueue, $this->editorFlowCounts());
+
+        $beforeForm = $this->editorFlowCounts();
+        $form = $this->actingAs($editor)
+            ->get($entryUrl)
+            ->assertOk()
+            ->assertSee('<option value="'.$jurisdiction->id.'" data-municipality-code="05001" data-management-state="inactiva" selected>', false)
+            ->assertSee('<input type="hidden" name="consultation_enabled" value="0">', false);
+        self::assertSame($jurisdiction->id, $form->viewData('preselectedJurisdictionId'));
+        self::assertDoesNotMatchRegularExpression('/\schecked(?:\s|>)/', $this->renderedCheckbox($form->getContent()));
+        self::assertSame($beforeForm, $this->editorFlowCounts());
+
+        $draftResponse = $this->actingAs($editor)
+            ->post(route('admin.restrictions.store'), [
+                'jurisdiction_id' => $jurisdiction->id,
+                'consultation_enabled' => '1',
+                'coverages' => [[
+                    'pair' => 'car|private',
+                    'consultationEnabled' => true,
+                    'consultation_enabled_present' => '1',
+                    'consultation_enabled' => '1',
+                    'verified_at' => '2026-11-20T08:00',
+                    'stale_after' => '2026-12-20T00:00',
+                    'source_urls' => 'https://example.test/synthetic-restrictions',
+                    'rules' => [[
+                        'id' => 'c23-off-editor-rule',
+                        'priority' => '1000',
+                        'effect' => 'restrict',
+                        'valid_from' => '2026-11-20T00:00',
+                        'weekdays' => '1',
+                        'date_parity' => '',
+                        'digit_position' => 'lastNumeric',
+                        'digits' => '1',
+                        'time_windows' => '06:00-08:00',
+                        'applies_on_holidays' => '0',
+                        'source_url' => 'https://example.test/synthetic-restrictions',
+                        'verified_at' => '2026-11-20T08:00',
+                        'registration_origins' => '',
+                        'conditions_json' => '[]',
+                    ]],
+                ]],
+            ]);
+
+        $version = RestrictionRuleVersion::query()->sole();
+        $draftResponse->assertRedirect(route('admin.restrictions.edit', $version));
+        self::assertSame(2, $version->payload['schemaVersion']);
+        self::assertSame($jurisdiction->id, $version->jurisdiction_id);
+        self::assertSame(RestrictionRuleVersionStatus::Draft, $version->status);
+        self::assertFalse($jurisdiction->fresh()->enabled);
+        self::assertFalse($version->payload['consultationEnabled']);
+        foreach ($version->payload['coverages'] as $coverage) {
+            self::assertFalse($coverage['consultationEnabled']);
+        }
+        self::assertSame([], $version->publicationItems()->get()->all());
+        self::assertSame(0, RestrictionPublication::query()->count());
+        self::assertSame(0, DatasetRelease::query()->count());
+        Http::assertNothingSent();
+    }
+
     private function geographicUnit(?GeographicUnit $parent, string $level, string $code, string $name, string $key): GeographicUnit
     {
         return GeographicUnit::query()->create([
