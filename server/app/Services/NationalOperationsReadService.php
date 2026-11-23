@@ -14,6 +14,7 @@ use App\Models\RestrictionImportRow;
 use App\Models\RestrictionPublicationItem;
 use App\Models\RestrictionRuleVersion;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -92,7 +93,8 @@ final class NationalOperationsReadService
 
         $selectedRows = $rows->values();
         $metrics = $this->metrics($selectedRows, $jurisdictionsByMunicipality, $proposalRowsByMunicipality);
-        $perPage = in_array((int) ($filters['per_page'] ?? 50), [25, 50], true) ? (int) $filters['per_page'] : 50;
+        $requestedPerPage = (int) ($filters['per_page'] ?? 50);
+        $perPage = in_array($requestedPerPage, [25, 50], true) ? $requestedPerPage : 50;
         $page = max(1, (int) request()->query('page', 1));
         $paginator = new LengthAwarePaginator(
             $selectedRows->forPage($page, $perPage)->values(),
@@ -155,7 +157,7 @@ final class NationalOperationsReadService
             ->with([
                 'primaryGeographicUnit.parent',
                 'geographicUnits',
-                'restrictionRuleVersions' => fn (Builder $versions) => $versions->whereRaw(
+                'restrictionRuleVersions' => fn (HasMany $versions) => $versions->whereRaw(
                     'restriction_rule_versions.version = (select max(latest.version) from restriction_rule_versions as latest where latest.jurisdiction_id = restriction_rule_versions.jurisdiction_id)',
                 ),
             ])
