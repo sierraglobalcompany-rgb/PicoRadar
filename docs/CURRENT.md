@@ -1,5 +1,15 @@
 # PicoRadar: estado vigente
 
+## Registro de ejecución — C26 V2 2026-11-23 (PARTIAL)
+
+- Base remota confirmada al inicio: `4980d9c363d17392b3b030e4d6ee4e1a97776c5d` en `feat/platform-integral-national-20261122`; `main=e9ef37511df3110ffb0fc006ef06be781df432ac`.
+- A: menú administrativo móvil implementado y prueba focal de permisos PASS (3 tests, 37 assertions). Código C26 A separado en los commits locales `a421161` y `9641192`; no cambia rutas ni ACL de servidor.
+- Browser interno: Vite CSS real HTTP 200 (45.372 bytes), login HTTP 200, sin overflow a 360/1280 CSS px y sin errores/warnings de consola. Las cuatro rutas C protegidas devuelven 302 a `/login` anónimo. No se pudo autenticar ni verificar menú/filas porque B no creó operadores ni registros; no se conservaron capturas de pantallas objetivo.
+- B: preflight PASS sin escritura. La única aplicación creó `c26-fixture-20261123.sqlite`, corrió migraciones y falló al sembrar con `TypeError`; inspección SQLite de solo lectura: 36 tablas y cero filas en usuarios, geografía, jurisdicciones, dataset, versiones de regla, cuentas app, patrocinadores, campañas o releases. Se retuvo el archivo; no se reusó ni eliminó. La causa interna del TypeError no quedó registrada por el runner.
+- B y C permanecen parciales/bloqueados por el fallo de fixture. La herramienta B no se incluye en el delta publicado de A. La corrección local del import de `ConsoleKernel` permitió pasar preflight, pero no resolvió la siembra y no se incluye en el candidato A.
+- C26 no cambia Flutter, Android, rutas, normas, catálogo legal, datos reales ni servicios externos. `ANDROID=HOLD_OS_SYMLINK_UNCHANGED`; `LEGAL=NO_GO`, `RELEASE=NO_GO`, `MAIN_BRIDGE=HOLD`. Sin aumento porcentual C26 certificado; la meta 92–93 % no se alcanzó.
+- El cierre GitHub y el estado final se documentan en `codex/C26_V2_HANDOFF.md` y en `GITHUB_STATE.md` del retorno único.
+
 ## Estado operativo — C25 V2 2026-11-23 (parcial, sin release)
 
 - Base `c154d38383a68aa092a687fb0b5cd71dbaced66b`; código C25 local `4891534cdbb5b5d49a2e5d295110d89ea0034fdc`, rama `codex/c25-integrator`. El cambio de código es solo `server/package-lock.json`; `package.json` y la aplicación no cambiaron.
