@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\OperatorRole;
 use App\Mail\AppAccountMarketingMail;
 use App\Mail\AppAccountOtpMail;
+use App\Models\AppAccessToken;
 use App\Models\AppUser;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -46,6 +47,73 @@ class AdminAppUsersTest extends TestCase
         $inactive = User::factory()->create(['role' => OperatorRole::SuperAdmin, 'is_active' => false]);
         $this->actingAs($inactive)->get('/admin/app-users')->assertRedirect('/login');
         $this->assertGuest();
+    }
+
+    public function test_super_admin_manages_synthetic_accounts_by_patch_with_audit_and_other_roles_are_denied(): void
+    {
+        $superAdmin = User::factory()->create(['role' => OperatorRole::SuperAdmin, 'is_active' => true]);
+        $inactiveSuperAdmin = User::factory()->create(['role' => OperatorRole::SuperAdmin, 'is_active' => false]);
+        $admin = User::factory()->create(['role' => OperatorRole::Admin, 'is_active' => true]);
+        $commercial = User::factory()->create(['role' => OperatorRole::Commercial, 'is_active' => true]);
+        $bannedAccount = $this->appUser(['email' => 'c22-banned@example.test']);
+        $proAccount = $this->appUser(['email' => 'c22-pro@example.test']);
+        $session = AppAccessToken::query()->create([
+            'app_user_id' => $bannedAccount->id,
+            'purpose' => 'session',
+            'token_hash' => hash('sha256', 'c22-synthetic-session-token'),
+            'expires_at' => now()->addDay(),
+        ]);
+
+        $this->actingAs($superAdmin)->get('/admin/app-users')->assertOk();
+        $this->actingAs($superAdmin)->patch('/admin/app-users/'.$bannedAccount->id.'/status', [
+            'status' => 'banned',
+            'reason' => 'C22 QA sintética',
+        ])->assertRedirect('/admin/app-users');
+        $this->actingAs($superAdmin)->patch('/admin/app-users/'.$proAccount->id.'/plan', [
+            'plan' => 'pro',
+            'valid_from' => now()->subDay()->toDateString(),
+            'reference' => 'C22-QA-PRO-001',
+        ])->assertRedirect('/admin/app-users');
+
+        $this->assertDatabaseHas('app_users', ['id' => $bannedAccount->id, 'account_status' => 'banned']);
+        $this->assertNotNull($session->fresh()->revoked_at);
+        $this->assertDatabaseHas('app_users', [
+            'id' => $proAccount->id,
+            'account_plan' => 'pro',
+            'plan_source' => 'operator_grant',
+            'plan_reference' => 'C22-QA-PRO-001',
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_id' => $superAdmin->id,
+            'action' => 'app_users.status_changed',
+            'subject_id' => $bannedAccount->id,
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_id' => $superAdmin->id,
+            'action' => 'app_users.plan_changed',
+            'subject_id' => $proAccount->id,
+        ]);
+        $changeActions = ['app_users.status_changed', 'app_users.plan_changed'];
+        $this->assertSame(2, \DB::table('audit_logs')->whereIn('action', $changeActions)->count());
+
+        foreach ([$admin, $commercial] as $unauthorized) {
+            $this->actingAs($unauthorized)->get('/admin/app-users')->assertForbidden();
+            $this->actingAs($unauthorized)->patch('/admin/app-users/'.$proAccount->id.'/plan', [
+                'plan' => 'free',
+            ])->assertForbidden();
+            $this->actingAs($unauthorized)->patch('/admin/app-users/'.$bannedAccount->id.'/status', [
+                'status' => 'active',
+                'reason' => 'Intento no autorizado',
+            ])->assertForbidden();
+        }
+        $this->actingAs($inactiveSuperAdmin)->patch('/admin/app-users/'.$proAccount->id.'/plan', [
+            'plan' => 'free',
+        ])->assertRedirect('/login');
+
+        $this->assertDatabaseHas('app_users', ['id' => $bannedAccount->id, 'account_status' => 'banned']);
+        $this->assertDatabaseHas('app_users', ['id' => $proAccount->id, 'account_plan' => 'pro']);
+        $this->assertSame(2, \DB::table('audit_logs')->whereIn('action', $changeActions)->count());
+        Mail::assertNothingOutgoing();
     }
 
     public function test_super_admin_filters_and_exports_only_verified_customers_with_csv_formula_protection(): void

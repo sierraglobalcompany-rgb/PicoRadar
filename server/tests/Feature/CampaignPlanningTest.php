@@ -86,6 +86,12 @@ class CampaignPlanningTest extends TestCase
             ->assertOk()
             ->assertSee('data-simulation-campaign="outside-city" data-server-candidate="true" data-mobile-reason="municipality_required"', false);
 
+        $editor = User::factory()->create(['role' => OperatorRole::Editor, 'is_active' => true]);
+        $this->actingAs($editor)->get(route('admin.campaigns.planning', $this->filters()))->assertForbidden();
+        self::assertFalse((bool) config('campaigns.public_catalog_enabled', false));
+        self::assertFalse((bool) config('datasets.features.ads', false));
+        $this->get(route('api.v1.campaign-catalog'))->assertNotFound();
+        $this->assertDatabaseCount('campaign_catalog_releases', 0);
         $this->assertDatabaseCount('campaigns', 7);
     }
 
