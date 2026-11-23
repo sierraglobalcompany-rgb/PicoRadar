@@ -104,7 +104,7 @@ class C26MobileNavigationTest extends TestCase
 
         $this->assertSame(1, $matched, 'The mobile navigation details element should be rendered.');
 
-        return [$matches[1], $content];
+        return [$matches[0], $content];
     }
 
     /** @param list<string> $routeNames */
