@@ -65,15 +65,16 @@ class AdminAppUsersTest extends TestCase
         ]);
 
         $this->actingAs($superAdmin)->get('/admin/app-users')->assertOk();
+        $this->actingAs($superAdmin)->get('/admin/operators')->assertOk();
         $this->actingAs($superAdmin)->patch('/admin/app-users/'.$bannedAccount->id.'/status', [
             'status' => 'banned',
             'reason' => 'C22 QA sintética',
-        ])->assertRedirect('/admin/app-users');
+        ])->assertRedirect();
         $this->actingAs($superAdmin)->patch('/admin/app-users/'.$proAccount->id.'/plan', [
             'plan' => 'pro',
             'valid_from' => now()->subDay()->toDateString(),
             'reference' => 'C22-QA-PRO-001',
-        ])->assertRedirect('/admin/app-users');
+        ])->assertRedirect();
 
         $this->assertDatabaseHas('app_users', ['id' => $bannedAccount->id, 'account_status' => 'banned']);
         $this->assertNotNull($session->fresh()->revoked_at);
@@ -98,6 +99,8 @@ class AdminAppUsersTest extends TestCase
 
         foreach ([$admin, $commercial] as $unauthorized) {
             $this->actingAs($unauthorized)->get('/admin/app-users')->assertForbidden();
+            $this->actingAs($unauthorized)->get('/admin/operators')->assertForbidden();
+            $this->actingAs($unauthorized)->post('/admin/operators', [])->assertForbidden();
             $this->actingAs($unauthorized)->patch('/admin/app-users/'.$proAccount->id.'/plan', [
                 'plan' => 'free',
             ])->assertForbidden();
@@ -109,6 +112,7 @@ class AdminAppUsersTest extends TestCase
         $this->actingAs($inactiveSuperAdmin)->patch('/admin/app-users/'.$proAccount->id.'/plan', [
             'plan' => 'free',
         ])->assertRedirect('/login');
+        $this->actingAs($inactiveSuperAdmin)->get('/admin/operators')->assertRedirect('/login');
 
         $this->assertDatabaseHas('app_users', ['id' => $bannedAccount->id, 'account_status' => 'banned']);
         $this->assertDatabaseHas('app_users', ['id' => $proAccount->id, 'account_plan' => 'pro']);
