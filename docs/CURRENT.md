@@ -1,5 +1,14 @@
 # PicoRadar: estado vigente
 
+## Estado operativo — C25 V2 2026-11-23 (parcial, sin release)
+
+- Base `c154d38383a68aa092a687fb0b5cd71dbaced66b`; código C25 local `4891534cdbb5b5d49a2e5d295110d89ea0034fdc`, rama `codex/c25-integrator`. El cambio de código es solo `server/package-lock.json`; `package.json` y la aplicación no cambiaron.
+- A HTTP/ACL: `PASS`. PHP 8.5.8 y `pdo_sqlite` disponibles en CLI/servidor loopback aislado; matriz sintética SuperAdmin/Commercial/anónimo pasó, catálogo público OFF devolvió 404. Sin mutaciones de negocio.
+- B UX web: `PASS_FOCAL/PARTIAL`. En navegador interno se revisaron resumen, operación nacional, matriz municipal, clientes de la app y planificación a 360/1280 CSS px; cero errores de consola y cero desbordamiento de página. Las tablas estrechas usan contenedores con desplazamiento horizontal. La base sintética no contiene municipios ni cuentas; no se certificaron filas reales ni estados municipales individuales. Tres capturas sanitizadas están en el ZIP C25.
+- C seguridad npm: `PATCHED`. La auditoría inicial reportó 5 advisories (3 high, 2 critical); actualización lock-only, `npm ci` y `npm run build` pasaron una vez; auditoría final sin advisories. SHA-256 del lock final `57945438E08009CFD6B67BFF40AF90D68E1E3D287A5DF6A86B5B5F3B2D306362`.
+- Android permanece `HOLD_OS_SYMLINK_UNCHANGED`; `APK_NEW=NO`. Sin build, ADB ni intervención de dispositivos. `LEGAL=NO_GO`, `RELEASE=NO_GO`, `MAIN_BRIDGE=HOLD`.
+- Resultado y alcance: C25 es parcial por ausencia intencional de datos sintéticos para verificar filas de municipios/cuentas y por el gate Android no resuelto. No se alteraron normas, SQLite de producto, secretos, permisos ni servicios externos. El estado de destino remoto y las evidencias completas están en el paquete único `PICORADAR_C25_V2_RETORNO_UNICO.zip`.
+
 ## Estado operativo — C24 V2 2026-11-22 (parcial, sin cambios funcionales)
 
 - Base confirmada: `6802ceaa9abcc7a51c15fb348109456c73f206b1`, destino remoto exclusivo `feat/platform-integral-national-20261122`; `main=e9ef37511df3110ffb0fc006ef06be781df432ac`.
