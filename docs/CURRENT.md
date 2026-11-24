@@ -1,5 +1,14 @@
 # PicoRadar: estado vigente
 
+## Registro de ejecución — C28 V2 2026-11-23 (PARTIAL, sin release)
+
+- Base comprobada: `dba24e009ea8ba260fc6d0492027169dad5dd85d`; rama local `codex/c27-v2-qa`; destino remoto autorizado `feat/platform-integral-national-20261122`. Código local `1f6e08c69a4bf0f341db6a495e91f721b7c4bb33` añade únicamente el test Dart opt-in `mobile/qa/c28/national_bridge_interop_c28_test.dart`; no toca código de producción, motor, reglas, dependencias, esquema ni lock.
+- A Android: Flutter 3.50.0/Dart 3.14.0, Java 21 y SDK local. La copia aislada omitió solo `windows/` y `linux/`; 1.203 blobs restantes coinciden con HEAD, sin artefactos previos. `pub get --offline --enforce-lockfile` PASS; lock SHA-256 `9D68CE85ABA7E40C4E484D34B0F449E3BFFB98BE3D9F0118B7775ECC1E5F4834`. Un build `devDebug` exit 0 produjo APK debug de 209.317.424 bytes, SHA-256 `29D896DE83AA8DCEF267733FA1FB755C5D04D55B0D818E56484BD592463F077E`; paquete `co.picoradar.app.dev`, v1.0.1+2, firma debug verificada. ZIP/CRC PASS; 22 DEX; `GeneratedPluginRegistrant.registerWith` definido en `classes17.dex`; 12 plugins Android con build nativo presentes en registrant; el asset nacional coincide con fuente.
+- Runtime PASS en el AVD existente `PicoRadar_QA_API35_Phone` (`emulator-5556`, API 35), no en teléfono: `install -r` reemplazó el APK C21 verificado con el mismo certificado/versión y conservó `firstInstallTime`. Inicio → Garaje → Inicio respondió a toque; la app permaneció en primer plano 30 s y no hubo errores críticos. El AVD no tenía vehículos; no se creó ni modificó ninguno. Mi A3 quedó intacto.
+- B_DATE=BLOCKED: la prueba focal no llegó a PHPUnit; faltan `server/vendor/autoload.php` y `pdo_sqlite` (0 tests/0 assertions). `index.blade.php` permanece sin cambios; no se declaró defecto ni corrección de zona horaria.
+- C_PHP=BLOCKED por el mismo entorno. `php -l` pasó en ambas pruebas nuevas; no hubo publicación fake ejecutada ni export real. C_DART=NOT_RUN_ENV; el test opt-in está formateado y `dart analyze` PASS, pero no se ejecutó por falta de bytes PHP. C_BRIDGE=NOT_VERIFIED; OTA_E2E=NOT_RUN.
+- Evidencia, APK nuevo, capturas sin identificadores, logs sanitizados y pruebas PHP diferidas: retorno único C28 V2. `LEGAL=NO_GO`, `RELEASE=NO_GO`, `MAIN_BRIDGE=HOLD`. Próximo paso acotado: habilitar el entorno PHP focal y, solo si C_PHP exporta bytes reales, ejecutar el test Dart opt-in; no requiere recompilar APK porque no cambió producción.
+
 ## Registro de ejecución — C27 V2 2026-11-23 (PARTIAL)
 
 - Base local: `ea7782b30c9d76fc53d6861dc025bb542c7416fa`; código de fixture `47fe1a093541a6abfe69d68af499c6811d10cf80` en `codex/c27-v2-qa`. Solo se añadieron `codex/qa/c27/README.md` y `codex/qa/c27/seed.php`; sin cambios de producto, motor, normas, esquema, dependencias, Flutter o Android.
