@@ -1,5 +1,15 @@
 # PicoRadar: estado vigente
 
+## Registro de ejecución — C27 V2 2026-11-23 (PARTIAL)
+
+- Base local: `ea7782b30c9d76fc53d6861dc025bb542c7416fa`; código de fixture `47fe1a093541a6abfe69d68af499c6811d10cf80` en `codex/c27-v2-qa`. Solo se añadieron `codex/qa/c27/README.md` y `codex/qa/c27/seed.php`; sin cambios de producto, motor, normas, esquema, dependencias, Flutter o Android.
+- Causa confirmada del TypeError de GEO: PHP convierte la clave asociativa numérica `"11001"` a `int`, incompatible con `c27GeoUnit(..., string $code, ...)`. La fixture se corrigió para iterar tuplas/lista y se repitió solo GEO, luego de verificar rollback. OPERATORS (3), GEO (7 unidades/3 municipios, 2 jurisdicciones y pivots), APP_USERS (3; 2 logs de auditoría) y CAMPAIGN (1 Draft/1 sponsor inactivo) quedaron PASS; no hay versiones, publicaciones ni releases.
+- HTTP local aislado conectado a la misma SQLite: login 200, nacional anónimo 302, catálogo OFF 404, CSS/JS 200 y hashes coincidentes con disco. Sesión autenticada en navegador interno: las tres filas de municipios, las cuentas Free/Pro/Baneada y campaña DRAFT/OFF fueron observadas. Editor: nacional permitido, clientes y campañas 403. Commercial: planificación permitida, nacional y clientes 403.
+- `C_MENU=PARTIAL`: el navegador interno permitió 1265 px, no fijar 360/1280; no se verificó interacción responsive por clic/teclado. `C_ROWS=PARTIAL`: filas reales sintéticas observadas, pero las capturas del navegador interno no se pudieron exportar como archivos del paquete; no se conservó una captura de clientes con emails. No certificar cobertura legal ni el motor Flutter.
+- Diferencia observada, sin corregir: clientes muestra fecha de alta `2026-11-24`, mientras la agenda de Bogotá usa fecha de QA `2026-11-23`; requiere comprobar formato/zona antes de tratarlo como defecto.
+- Runtime detenido y puerto 18727 sin listener. Se retuvo la SQLite nueva solo para QA fuera del repositorio; no se incluyó en el retorno. `ANDROID=HOLD_OS_SYMLINK_UNCHANGED`, `LEGAL=NO_GO`, `RELEASE=NO_GO`, `MAIN_BRIDGE=HOLD`; sin porcentaje de cierre inventado.
+- Handoff C27: `codex/C27_V2_HANDOFF.md`. Informe, logs y estado de GitHub: retorno ZIP C27 V2.
+
 ## Registro de ejecución — C26 V2 2026-11-23 (PARTIAL)
 
 - Base remota confirmada al inicio: `4980d9c363d17392b3b030e4d6ee4e1a97776c5d` en `feat/platform-integral-national-20261122`; `main=e9ef37511df3110ffb0fc006ef06be781df432ac`.
