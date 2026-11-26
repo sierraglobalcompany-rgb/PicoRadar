@@ -30,7 +30,7 @@
         <section class="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-label="Cuentas registradas">
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
-                    <thead class="bg-slate-100 text-slate-700"><tr><th class="p-3">Seleccionar</th><th class="p-3">Nombre / correo verificado</th><th class="p-3">Municipio y categorías declaradas</th><th class="p-3">Plan / estado</th><th class="p-3">Administrar</th><th class="p-3">Alta / marketing</th></tr></thead>
+                    <thead class="bg-slate-100 text-slate-700"><tr><th class="p-3">Seleccionar</th><th class="p-3">Nombre / correo verificado</th><th class="p-3">Municipio y categorías declaradas</th><th class="p-3">Plan / estado</th><th class="p-3">Administrar</th><th class="p-3">Alta (Bogotá) / marketing</th></tr></thead>
                     <tbody>
                     @forelse($users as $user)
                         <tr class="border-t border-slate-100">
@@ -58,7 +58,7 @@
                                     </form>
                                 </details>
                             </td>
-                            <td class="p-3">{{ $user->created_at?->format('Y-m-d') }} · {{ $user->marketing_consent ? 'Opt-in vigente' : 'Sin opt-in' }}</td>
+                            <td class="p-3">{{ $user->created_at?->copy()->setTimezone('America/Bogota')->format('Y-m-d') }} · {{ $user->marketing_consent ? 'Opt-in vigente' : 'Sin opt-in' }}</td>
                         </tr>
                     @empty
                         <tr><td class="p-4 text-slate-600" colspan="6">No hay cuentas para estos filtros.</td></tr>
