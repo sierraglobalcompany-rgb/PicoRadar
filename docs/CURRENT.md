@@ -1,5 +1,14 @@
 # PicoRadar: estado vigente
 
+## Registro de ejecución — C29 V3 2026-11-26 (PARTIAL, sin release)
+
+- Base `e9bb44ae08b5edff6f698c662e6d7b064b24aaad`; commit funcional `9fa14a40c50f66b9b072819ad16590110937f593` en `feat/platform-integral-national-20261122`, push fast-forward normal comprobado; `main` continúa en `e9ef37511df3110ffb0fc006ef06be781df432ac`.
+- Fecha administrativa corregida: renderiza `created_at` en `America/Bogota` sobre una copia del valor y rotula `Alta (Bogotá)`. El test focal reprodujo primero UTC 00:30 como día siguiente (1 test/4 assertions, RED), luego pasó (1/11, GREEN) y comprobó que `created_at`/`updated_at` permanecen UTC.
+- PHP aislado listo con PHP 8.5.8, PDO SQLite en memoria y vendor compatible con lock; sin `.env`, base persistente, migración ni dependencias cambiadas. Publicación QA OFF/partial exportó bytes reales de Laravel en fake disks: B1 1 test/37 assertions; payload 936 bytes SHA-256 `AF1955879EDC63725FB8C8332CDDD627C6D8B5116A15BD0FEEFB1ECC358CFD7E`, manifest 424 bytes SHA-256 `F244CEB0CEE6C56AB3D1F7FFB72EA78190BE14AA0D38804052A107EF1F0676FA`; schema 2/1, versión `r2-7f969a248a68`, revisión 2, OFF y `partial`, URL relativa `/storage/`, sin `expiresAt` global.
+- Dart B2 importó los mismos bytes y conservó OFF/UNKNOWN (1 test PASS). B3 usó `DatasetSyncService`, Dio y `HttpServer` loopback, importó a SQLite en memoria y después rechazó un payload de hash alterado tras GET reales del manifest/payload; la instantánea de versiones/cobertura/disponibilidad quedó intacta. Formato, análisis Dart focal y B3 PASS. Esto no certifica HTTPS productivo.
+- C1 reutilizó APK C28 exacto (209.317.424 bytes, SHA-256 `29D896DE83AA8DCEF267733FA1FB755C5D04D55B0D818E56484BD592463F077E`) en AVD API 35; flujo sintético ABC123 → ciudad Medellín observado offline, datos UI vencidos/por actualizar; vehículo retirado por UI, AVD detenido y conectividad restaurada. `UNKNOWN_UI=NONE`; no Mi A3, build ni reinstalación.
+- Sin cambios al motor, reglas, datasets, locks o dependencias. `LEGAL=NO_GO`, `RELEASE=NO_GO`, `MAIN_BRIDGE=HOLD`; QA parcial y no equivale a OTA HTTPS, validación legal ni certificación nacional. Informe/evidencias únicos en el ZIP C29 V3.
+
 ## Registro de ejecución — C28 V2 2026-11-23 (PARTIAL, sin release)
 
 - Base comprobada: `dba24e009ea8ba260fc6d0492027169dad5dd85d`; rama local `codex/c27-v2-qa`; destino remoto autorizado `feat/platform-integral-national-20261122`. Código local `1f6e08c69a4bf0f341db6a495e91f721b7c4bb33` añade únicamente el test Dart opt-in `mobile/qa/c28/national_bridge_interop_c28_test.dart`; no toca código de producción, motor, reglas, dependencias, esquema ni lock.
