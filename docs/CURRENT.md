@@ -1,5 +1,14 @@
 # PicoRadar: estado vigente
 
+## Registro de ejecución — C30 V2 2026-11-26 (PARTIAL, sin release)
+
+- Trabajo aislado en `D:\codex\_build\PicoRadar-C30-V2\repo`, rama `codex/c30-v2`. Base remota y local al inicio `efc2f7c7b4633efe7d323fb00bfcbbc6c360688c`; `main=e9ef37511df3110ffb0fc006ef06be781df432ac`. El único delta de código es el operador local SQLite, la herramienta segura de respaldo/restauración y un test Dart opt-in HTTPS; no cambian motor, reglas, Laravel de producción, API, dependencias ni esquema.
+- A PASS: instancia privada `instance-a`, SQLite y Laravel confinados a `runtime/instance-a`; cuentas y jurisdicción/catálogo/campaña sintéticos con publicación OFF. PHP 8.5.8, migraciones 26. Stop/restart conserva ID, filas y acceso al panel; privadas, dotfiles y traversal no revelan sentinelas; catálogo OFF devuelve 404. Instancia fuente y restaurada detenidas al cierre.
+- B PASS: respaldo SQLite consistente y restauración independiente con ID nuevo, sin migrar ni resembrar; hashes de storage y estado canónico coinciden. Ocho pruebas focales PASS, incluidos ZIP alterado, destino ocupado, traversal, servidor activo/estado no verificable y restauración en un nuevo slot. ZIP operativo privado 17.364 bytes, SHA-256 `C765EB04117DF3991EDB89C5DF17A9C007874889AC6D2DC7FAA3C1F0A13E95A5`; nunca se incluye en Git o retorno.
+- C PASS con alcance `HTTPS_QA_STATIC_PASS`: el cliente Dart real valida TLS con CA privada de laboratorio y consume los dos bytes C29 exactos; cliente sin CA falla por certificado, no alcanza HTTP ni importa datos. Dataset importado `r2-7f969a248a68`, revisión 2, OFF/partial y UNKNOWN. El certificado sirvió solo en loopback; cuatro archivos TLS propios quedaron en la carpeta privada porque el borrado fue bloqueado por política del entorno y no se eludió.
+- Hubo un falso FAIL inicial en la expectativa 404 de rutas privadas/traversal (el router denegó con 403 sin revelar sentinelas); la repetición focal pasó con criterio de no exposición. Un primer intento TLS falló por un salto de línea PEM; se corrigió la cadena una vez y el intento condicionado pasó. Sin APK nuevo, ADB, Mi A3, OTA viva, MariaDB, producción, PR, merge o release. `MAIN_BRIDGE=HOLD`, `LEGAL=NO_GO`, `RELEASE=NO_GO`.
+- Handoff, comandos ejecutables y evidencias de esta corrida: [C30_V2_HANDOFF.md](../codex/C30_V2_HANDOFF.md), [PicoRadar_LOCAL_QA.md](operations/PicoRadar_LOCAL_QA.md) y el retorno único C30 V2.
+
 ## Registro de ejecución — C29 V3 2026-11-26 (PARTIAL, sin release)
 
 - Base `e9bb44ae08b5edff6f698c662e6d7b064b24aaad`; commit funcional `9fa14a40c50f66b9b072819ad16590110937f593` en `feat/platform-integral-national-20261122`, push fast-forward normal comprobado; `main` continúa en `e9ef37511df3110ffb0fc006ef06be781df432ac`.
