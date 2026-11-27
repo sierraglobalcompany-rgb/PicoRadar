@@ -1,5 +1,36 @@
 # PicoRadar — servidor local y respaldo QA C30
 
+## Registro C33 V2 — OTA viva y panel MariaDB local
+
+- El operador C31 recuperado vive en D:\codex\_build\PicoRadar-C33-V2\repo; el slot C31 sigue siendo D:\codex\_build\PicoRadar-C30-V2\runtime\instance-restored-c31-20261126, ID 5c2624b6-c48e-4e0a-8956-c09d33285725. En C33 el proceso y puerto obsoletos se comprobaron por separado y el marker se archivó íntegro como process.stale-5e72189220924324b8d2f9adc66eb530.json. No repetir recuperación ni ejecutar preparación editorial/publicación sobre este slot.
+- El frente B usó origen MariaDB C32 D:\codex\_build\PicoRadar-C32-V2\db-candidate\private (64595) y destino C33 D:\codex\_build\PicoRadar-C33-V2\private\B (57305), versión 11.8.8, ambos solo en loopback y con ACL privada. El dump SQL y sus credenciales siguen fuera del repositorio y del ZIP. El backup cubre el catálogo lógico únicamente, no claves ni archivos de aplicación. La restauración ya ocurrió: no repetir sobre el destino ocupado ni ejecutar Migrate/bootstrap.
+- Estado de cierre: origen y destino DB_STATUS=STOPPED, panel PANEL_STATE=STOPPED, puertos 8892, 8893, 64595 y 57305 cerrados. El destino conserva un usuario sintético SuperAdmin y audit_logs=157; el GET de la lista de usuarios generó un evento de auditoría de lectura. No se alteraron filas editoriales, reglas, releases ni publicaciones.
+- Para consultar o reanudar las instancias existentes, los comandos exactos son:
+
+      $repo = 'D:\codex\_build\PicoRadar-C33-V2\repo'
+      $dbHelper = Join-Path $repo 'codex\qa\c32\mariadb-qa.ps1'
+      $mariaDbRoot = 'C:\codex\_tool-cache\mariadb-11.8.8-winx64'
+      $source = 'D:\codex\_build\PicoRadar-C32-V2\db-candidate\private'
+      $target = 'D:\codex\_build\PicoRadar-C33-V2\private\B'
+      & $dbHelper -Action Status -PrivateRoot $source -MariaDbRoot $mariaDbRoot
+      & $dbHelper -Action Status -PrivateRoot $target -MariaDbRoot $mariaDbRoot
+      & $dbHelper -Action Resume -PrivateRoot $source -MariaDbRoot $mariaDbRoot
+      & $dbHelper -Action Resume -PrivateRoot $target -MariaDbRoot $mariaDbRoot
+      & $dbHelper -Action Stop -PrivateRoot $target -MariaDbRoot $mariaDbRoot
+      & $dbHelper -Action Stop -PrivateRoot $source -MariaDbRoot $mariaDbRoot
+
+- Operación de panel; Prepare ya se ejecutó y no debe repetirse sobre esta DB, porque ya existe el SuperAdmin sintético. Smoke vuelve a consultar app-users y agrega otra auditoría de lectura.
+
+      $panel = Join-Path $repo 'codex\qa\c33\mariadb-panel-qa.ps1'
+      & $panel -Action Status -PrivateRoot $target -SourcePrivateRoot $source -MariaDbRoot $mariaDbRoot -Port 8893
+      & $panel -Action Start -PrivateRoot $target -SourcePrivateRoot $source -MariaDbRoot $mariaDbRoot -Port 8893
+      & $panel -Action Smoke -PrivateRoot $target -SourcePrivateRoot $source -MariaDbRoot $mariaDbRoot -Port 8893
+      & $panel -Action Stop -PrivateRoot $target -SourcePrivateRoot $source -MariaDbRoot $mariaDbRoot -Port 8893
+
+- Start permite archivar un marcador solo cuando dice STOPPED y las consultas confirmadas de PID/listeners no encuentran proceso ni puerto ocupado. Los listeners se enumeran con error fatal y se filtran en memoria para distinguir “puerto libre” de fallo del proveedor. El marker está ligado al router del worktree B original; para operar este estado privado usa D:\codex\_build\PicoRadar-C33-V2\worktrees\B, no el integrador repo.
+- El backup/restore reutilizable está en codex/qa/c33/mariadb-catalog-backup.ps1. Backup emite el path privado de backup-manifest.json; Restore requiere ese path exacto y un destino nuevo y vacío. No copies el dump, manifest privado, client option files, APP_KEY, credencial sintética, sesiones o logs al checkout ni al retorno.
+- El panel es QA Laravel local autenticada, solo loopback y con catálogo comercial apagado. No es editor productivo, certificación visual ni servicio definitivo. LEGAL=NO_GO, RELEASE=NO_GO, MAIN_BRIDGE=HOLD.
+
 ## Registro C32 V2 — OTA C31 pendiente y catálogo MariaDB aislado
 
 - Frente A reutilizó el slot sintético C31 solo después de validar identidad, fixture y hashes. El certificado efímero para `127.0.0.1` pasó EKU `serverAuth`, SAN IP, cadena/propósito y vigencia; no se instaló CA global. El operador arrancó, pero el runner se bloqueó antes de capturar los dos GET vivos y el test Dart. Se detuvo el proceso y se confirmó el puerto 8892 cerrado. El marcador C31 quedó obsoleto; no eliminar ni reconstruirlo ni repetir preparación/publicación en ese slot.

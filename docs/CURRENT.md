@@ -1,5 +1,14 @@
 # PicoRadar: estado vigente
 
+## Registro de ejecución — C33 V2 (PARTIAL, QA local aislada)
+
+- Candidato integrador: D:\codex\_build\PicoRadar-C33-V2\repo, rama codex/c33-v2, base 04a64f5ef5a344e39f2fc28790feb6baadecf5ad. Código final antes del registro documental: e698a02 (ver SHA completo en el handoff). A y B se implementaron en worktrees C33 separados. Los checkouts C31 (71c61ca1a591fdbe571ec771e95c769969951547) y C32 (04a64f5ef5a344e39f2fc28790feb6baadecf5ad) quedaron limpios.
+- A PARTIAL: recuperación del marcador C31 obsoleto verificada y archivada sin alterar el marker original; HTTPS GET del manifiesto (424 bytes, SHA-256 103bf15d43ee2d54ffd06a3b0a8685bfcd43f74f57c82162c8aa6454ed6fddc8) y payload (941 bytes, SHA-256 a2cd478f2204a51ae1d80a045d70c56a55c54b5cd66b64881590da379e6b620a) respondió 200; TLS de loopback válido; UNKNOWN y relay quedaron conforme al contrato; limpieza y Stop verificados. El flutter test completo terminó con un caso negativo de URI que asume que %6d se conserva literalmente, aunque Dart normaliza la URI; el test focal de allowlist pasó con el fixture de QA corregido. No se cambió el cliente ni el motor; por ese resultado global A_DART_LIVE=PARTIAL.
+- B PASS_SCOPED: corrección del bootstrap MariaDB validada en destino aislado; respaldo lógico CATALOG_DB_ONLY de 304.811 bytes, SHA-256 DCF90E8B16992B51B4BC65BDC8E7CEDAA2EB52AB7CE4DE83238C9DE308105B76; restauración independiente conciliada en 36 tablas. Panel local autenticado mostró 1.104 municipios y SIN RELEASE ACTUAL, Medellín por filtro, vistas nacionales, assets Vite auténticos y catálogo de campañas 404/OFF. El reinicio Stop→Start→Status→Stop se verificó con la guardia de puerto fail-closed.
+- El GET de /admin/app-users añadió un evento de auditoría de lectura en el destino QA (156→157); el origen permaneció en 156. La DB destino conserva un único SuperAdmin sintético; ambas DB, panel y listeners quedaron detenidos. DB_TARGET_FINAL=NOT_CERTIFIED: es material QA privado, no infraestructura ni backup completo de aplicación.
+- Solo cambiaron herramientas QA bajo scripts/local y codex/qa/c33, y documentación C33. No se modificaron server/, mobile/lib/, motor, normas, API, dependencias ni esquema. Sin APK, ADB, Mi A3, Hostinger, datos reales, publicación legal o comercial. MAIN_BRIDGE=HOLD, LEGAL=NO_GO, RELEASE=NO_GO.
+- Pruebas focales, hashes, matrices, límites y commits: codex/C33_V2_HANDOFF.md y retorno único sanitizado C33.
+
 ## Registro de ejecución — C32 V2 (PARTIAL, QA local sintética)
 
 - Candidato integrador `D:\codex\_build\PicoRadar-C32-V2\integrator\repo`, rama local `codex/c32-v2`, base `71c61ca1a591fdbe571ec771e95c769969951547`. Commit de utilidades `956e001cdbd87d5db27fc774b7a636f26a1c9159`; el commit documental final está en `codex/C32_V2_HANDOFF.md` y en el retorno C32. Destino remoto autorizado: `feat/platform-integral-national-20261122`; `main=e9ef37511df3110ffb0fc006ef06be781df432ac` permanece HOLD.
