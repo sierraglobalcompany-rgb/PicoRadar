@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('Init', 'PrepareEditorial', 'Start', 'Stop', 'Status')][string]$Action,
+    [Parameter(Mandatory)][ValidateSet('Init', 'PrepareEditorial', 'Start', 'Stop', 'Status', 'RecoverStopped')][string]$Action,
     [string]$RepoRoot = (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)),
     [string]$RuntimeHome = 'D:\codex\_build\PicoRadar-C30-V2\runtime',
     [string]$InstanceRoot = 'D:\codex\_build\PicoRadar-C30-V2\runtime\instance-a',
@@ -8,6 +8,7 @@ param(
     [string]$KeyFile = 'D:\codex\_build\PicoRadar-C30-V2\private\instance-a.app-key',
     [string]$PasswordFile = 'D:\codex\_build\PicoRadar-C30-V2\private\operator.qa.password',
     [string]$EditorialPrivateRoot,
+    [string]$HistoricalRouterPath,
     [string]$ExpectedInstanceId,
     [string]$PhpExe = 'C:\xampphp\php\php.exe',
     [string]$ReportRoot = 'D:\codex\_REPORTES\PicoRadar\C30-V2-20261126',
@@ -18,6 +19,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $script:InvocationBoundParameters = $PSBoundParameters
+Import-Module (Join-Path $PSScriptRoot 'picoradar-local-qa-recovery.psm1') -Force -ErrorAction Stop
 
 function Get-FullPath([string]$Path) { [IO.Path]::GetFullPath($Path).TrimEnd('\') }
 
@@ -220,6 +222,83 @@ function Assert-EditorialStopped([string]$ProcessPath) {
 }
 
 function Get-ProcessMarkerPath { Join-Path $InstanceRoot 'runtime\process.json' }
+function Get-ListenerConnections([Nullable[int]]$Port) {
+    if ($null -eq $Port) {
+        return ,@(Get-CimInstance -Namespace root/StandardCimv2 -ClassName MSFT_NetTCPConnection -Filter 'State = 2' -ErrorAction Stop -OperationTimeoutSec 8)
+    }
+    return ,@(Get-CimInstance -Namespace root/StandardCimv2 -ClassName MSFT_NetTCPConnection -Filter "LocalPort = $([int]$Port) AND State = 2" -ErrorAction Stop -OperationTimeoutSec 8)
+}
+
+function Get-RecoveryRouterPaths {
+    $paths=@((Get-FullPath (Join-Path $PSScriptRoot 'picoradar-local-qa.php')))
+    if (-not [string]::IsNullOrWhiteSpace($HistoricalRouterPath)) {
+        $historical=[IO.Path]::GetFullPath($HistoricalRouterPath)
+        if (Test-Path -LiteralPath $historical) {
+            Assert-NoReparseAncestors $historical
+            if (-not (Test-Path -LiteralPath $historical -PathType Leaf)) { throw 'BLOCKED_HISTORICAL_ROUTER_NOT_FILE' }
+            $paths+=@($historical)
+        }
+    }
+    return @($paths|Select-Object -Unique)
+}
+
+function Read-RecoveryMarker([string]$Path,[int]$MaxBytes,[string]$Name) {
+    if (-not (Test-Path -LiteralPath $Path)) { return $null }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw "BLOCKED_$Name_NOT_REGULAR_FILE" }
+    Assert-NoReparseAncestors $Path
+    $item=Get-Item -LiteralPath $Path -Force
+    if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -lt 2 -or $item.Length -gt $MaxBytes) { throw "BLOCKED_$Name_FILE_SHAPE" }
+    $bytes=[IO.File]::ReadAllBytes($Path)
+    $text=[Text.UTF8Encoding]::new($false,$true).GetString($bytes)
+    try {$value=ConvertFrom-Json -InputObject $text -ErrorAction Stop}catch{throw "BLOCKED_$Name_JSON_INVALID"}
+    return [pscustomobject]@{Value=$value;Bytes=$bytes;Sha256=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes))}
+}
+
+function Get-RecoverySnapshot([Nullable[int]]$ProcessId,[Nullable[int]]$Port,[string[]]$RouterPaths) {
+    $processes=@(Get-Process -ErrorAction Stop)
+    $cim=@(Get-CimInstance -ClassName Win32_Process -ErrorAction Stop -OperationTimeoutSec 8)
+    $listeners=Get-ListenerConnections $Port
+    $pidProcessPresent=$false
+    $pidCimPresent=$false
+    if ($null -ne $ProcessId) {
+        $pidProcessPresent=@($processes|Where-Object Id -eq ([int]$ProcessId)).Count -gt 0
+        $pidCimPresent=@($cim|Where-Object {[int]$_.ProcessId -eq ([int]$ProcessId)}).Count -gt 0
+    }
+    $slotWriter=$false;$ambiguousPhp=$false;$unverifiableListener=$false
+    foreach($process in $cim) {
+        if ([int]$process.ProcessId -eq $PID) { continue }
+        $name=[string]$process.Name;$cmd=[string]$process.CommandLine;$isPhp=$name -in @('php.exe','php-cgi.exe')
+        $matchesRouter=$false
+        foreach($router in $RouterPaths) { if (-not [string]::IsNullOrWhiteSpace($cmd) -and $cmd.IndexOf($router,[StringComparison]::OrdinalIgnoreCase) -ge 0) {$matchesRouter=$true} }
+        $matchesInstance=(-not [string]::IsNullOrWhiteSpace($cmd) -and $cmd.IndexOf($InstanceRoot,[StringComparison]::OrdinalIgnoreCase) -ge 0)
+        if ($isPhp -and ($matchesRouter -or $matchesInstance)) {$slotWriter=$true}
+        if ($isPhp -and [string]::IsNullOrWhiteSpace($cmd)) {$ambiguousPhp=$true}
+        if ($isPhp -and $cmd -match '(?i)(?:^|\s)-S(?:\s|$)' -and -not $matchesRouter -and -not $matchesInstance -and $cmd -notmatch '(?i)(?:[A-Z]:\\[^"]+\.php\b|\bartisan\b)') {$ambiguousPhp=$true}
+    }
+    foreach($listener in $listeners) {
+        $owner=@($cim|Where-Object {[int]$_.ProcessId -eq [int]$listener.OwningProcess})
+        if ($owner.Count -eq 0 -or [string]::IsNullOrWhiteSpace([string]$owner[0].CommandLine)) {$unverifiableListener=$true;continue}
+        $ownerName=[string]$owner[0].Name;$ownerCommand=[string]$owner[0].CommandLine
+        foreach($router in $RouterPaths) {if ($ownerCommand.IndexOf($router,[StringComparison]::OrdinalIgnoreCase) -ge 0) {$slotWriter=$true}}
+        if ($ownerCommand.IndexOf($InstanceRoot,[StringComparison]::OrdinalIgnoreCase) -ge 0) {$slotWriter=$true}
+        if ($ownerName -in @('php.exe','php-cgi.exe') -and $ownerCommand -match '(?i)(?:^|\s)-S(?:\s|$)' -and $ownerCommand -notmatch '(?i)(?:[A-Z]:\\[^"]+\.php\b|\bartisan\b)' -and -not $slotWriter) {$unverifiableListener=$true}
+    }
+    return [pscustomobject]@{GetProcessQuery='PASS';CimQuery='PASS';ListenerQuery='PASS';ProcessInventoryQuery='PASS';PidPresent=($pidProcessPresent -or $pidCimPresent);ListenerCount=@($listeners).Count;SlotWriterPresent=$slotWriter;PhpServerAmbiguous=$ambiguousPhp;UnverifiableListener=$unverifiableListener;Listeners=@($listeners)}
+}
+
+function Assert-NoActiveInstanceServer([Nullable[int]]$Port) {
+    $routers=Get-RecoveryRouterPaths;$probe=Get-RecoverySnapshot -ProcessId $null -Port $Port -RouterPaths $routers
+    if ($probe.SlotWriterPresent) { throw 'BLOCKED_SLOT_PROCESS_WITHOUT_MARKER' }
+    if ($probe.PhpServerAmbiguous) { throw 'BLOCKED_PHP_SERVER_AMBIGUOUS' }
+    if ($probe.UnverifiableListener) { throw 'BLOCKED_LISTENER_OWNER_UNVERIFIABLE' }
+}
+
+function Assert-RecoveryParametersExplicit {
+    foreach($name in @('RepoRoot','RuntimeHome','InstanceRoot','PrivateRoot','KeyFile','PasswordFile','PhpExe','ReportRoot','Port','ExpectedInstanceId','EditorialPrivateRoot','HistoricalRouterPath')) {
+        if (-not $script:InvocationBoundParameters.ContainsKey($name)) { throw "BLOCKED_RECOVERY_PARAMETER_REQUIRED_$name" }
+    }
+    if ([string]::IsNullOrWhiteSpace($ExpectedInstanceId)) { throw 'BLOCKED_RECOVERY_EXPECTED_INSTANCE_ID_REQUIRED' }
+}
 
 function Get-VerifiedProcess($Marker) {
     if (-not $Marker) { return $null }
@@ -243,19 +322,18 @@ function Get-VerifiedProcess($Marker) {
         $editorialMarker = Get-EditorialMarker
         if (-not $editorialMarker -or [string]$Marker.entry_mode -cne [string]$editorialMarker.entry_mode) { throw 'BLOCKED_PROCESS_EDITORIAL_MODE_MISMATCH' }
     }
-    $listeners = @(Get-NetTCPConnection -State Listen -LocalAddress '127.0.0.1' -LocalPort ([int]$Marker.port) -ErrorAction SilentlyContinue)
+    $listenerFilter = "LocalAddress = '127.0.0.1' AND LocalPort = $([int]$Marker.port) AND State = 2"
+    $listeners = @(Get-CimInstance -Namespace root/StandardCimv2 -ClassName MSFT_NetTCPConnection -Filter $listenerFilter -ErrorAction Stop -OperationTimeoutSec 8)
     if ($listeners.Count -ne 1 -or [int]$listeners[0].OwningProcess -ne [int]$Marker.pid) { throw 'BLOCKED_PROCESS_LISTENER_MISMATCH' }
     if ([string]$Marker.instanceId -ne [string]$script:InstanceId) { throw 'BLOCKED_PROCESS_INSTANCE_MISMATCH' }
     return $process
 }
 
 function Assert-NoOrphanC30Listener([int]$ListenerPort) {
-    $listeners = @(Get-NetTCPConnection -State Listen -LocalAddress '127.0.0.1' -LocalPort $ListenerPort -ErrorAction SilentlyContinue)
-    $router = Get-FullPath (Join-Path $PSScriptRoot 'picoradar-local-qa.php')
-    foreach ($listener in $listeners) {
-        $cim = Get-CimInstance Win32_Process -Filter "ProcessId=$([int]$listener.OwningProcess)" -ErrorAction SilentlyContinue
-        if ($cim -and [string]$cim.CommandLine -and [string]$cim.CommandLine.Contains($router)) { throw 'BLOCKED_UNVERIFIABLE_C30_LISTENER' }
-    }
+    $routers=Get-RecoveryRouterPaths
+    $probe=Get-RecoverySnapshot -ProcessId $null -Port $ListenerPort -RouterPaths $routers
+    if ($probe.SlotWriterPresent) { throw 'BLOCKED_UNVERIFIABLE_C30_LISTENER' }
+    if ($probe.PhpServerAmbiguous -or $probe.UnverifiableListener) { throw 'BLOCKED_UNVERIFIABLE_C30_LISTENER' }
 }
 
 function Get-C30Environment([string]$Key, [int]$UsePort, [bool]$IncludePassword = $false) {
@@ -348,8 +426,11 @@ function Assert-Roots {
 
 Assert-Roots
 $script:InstanceId = $null
-$instanceMarker = Get-InstanceMarker
-if ($instanceMarker) { $script:InstanceId = [string]$instanceMarker.id }
+$instanceMarker = $null
+if ($Action -ne 'RecoverStopped') {
+    $instanceMarker = Get-InstanceMarker
+    if ($instanceMarker) { $script:InstanceId = [string]$instanceMarker.id }
+}
 if ($EditorialQa -and $Action -ne 'Start') { throw 'BLOCKED_EDITORIAL_SWITCH_ONLY_VALID_FOR_START' }
 
 if ($Action -eq 'Init') {
@@ -427,6 +508,55 @@ if ($Action -eq 'Init') {
     exit 0
 }
 
+if ($Action -eq 'RecoverStopped') {
+    Assert-RecoveryParametersExplicit
+    if ($ExpectedInstanceId -cnotmatch '^[0-9a-fA-F-]{36}$') { throw 'BLOCKED_RECOVERY_EXPECTED_INSTANCE_ID_INVALID' }
+    $recoveryLock=New-OperationLock (Join-Path $InstanceRoot 'runtime\operation.lock')
+    try {
+        $instanceMarker=Get-InstanceMarker
+        if (-not $instanceMarker) { throw 'BLOCKED_INSTANCE_NOT_INITIALIZED' }
+        $script:InstanceId=[string]$instanceMarker.id
+        if ($script:InstanceId -cne $ExpectedInstanceId) { throw 'BLOCKED_RECOVERY_INSTANCE_ID_MISMATCH' }
+        $routers=Get-RecoveryRouterPaths;$processPath=Get-ProcessMarkerPath;$lastPath=Join-Path $InstanceRoot 'runtime\last-port.json'
+        $processData=Read-RecoveryMarker $processPath 4096 'PROCESS_MARKER';$lastData=Read-RecoveryMarker $lastPath 1024 'LAST_PORT_MARKER'
+        $targetPort=$null;$pidValue=$null;$markerValid=$true;$lastPortMatches=$true
+        if ($processData) {
+            $editorialEntry=$null;$rawMode=[string]$processData.Value.mode
+            if ($rawMode -ceq 'EDITORIAL_QA') {Assert-EditorialPrivateRoot;$editorialMarker=Get-EditorialMarker;if (-not $editorialMarker) {throw 'BLOCKED_EDITORIAL_MARKER_MISSING'};$editorialEntry=[string]$editorialMarker.entry_mode}
+            $processValidation=Test-PicoRadarRecoveryMarker -Marker $processData.Value -ExpectedInstanceId $script:InstanceId -PhpExe $PhpExe -EditorialEntryMode $editorialEntry
+            $markerValid=[bool]$processValidation.Valid
+            if (-not $markerValid) { throw ('BLOCKED_PROCESS_MARKER_' + [string]$processValidation.Reason) }
+            $pidValue=[int]$processValidation.Pid;$targetPort=[int]$processValidation.Port
+            if (-not $lastData) { throw 'BLOCKED_LAST_PORT_MARKER_MISSING' }
+            $lastId=[string]$lastData.Value.instance_id;$lastPort=0
+            $lastPortParsed=[int]::TryParse([string]$lastData.Value.port,[ref]$lastPort)
+            $lastPortMatches=$lastPortParsed -and $lastId -ceq $script:InstanceId -and $lastPort -eq $targetPort
+            if (-not $lastPortMatches) { throw 'BLOCKED_LAST_PORT_MARKER_MISMATCH' }
+        } elseif ($lastData) {
+            $lastId=[string]$lastData.Value.instance_id;$lastPort=0
+            if (-not [int]::TryParse([string]$lastData.Value.port,[ref]$lastPort) -or $lastPort -lt 1024 -or $lastPort -gt 65535 -or $lastId -cne $script:InstanceId) { throw 'BLOCKED_LAST_PORT_MARKER_INVALID' }
+            $targetPort=$lastPort
+        }
+        $first=Get-RecoverySnapshot -ProcessId $pidValue -Port $targetPort -RouterPaths $routers
+        Start-Sleep -Milliseconds 300
+        $second=Get-RecoverySnapshot -ProcessId $pidValue -Port $targetPort -RouterPaths $routers
+        if ($processData) {
+            $processAgain=Read-RecoveryMarker $processPath 4096 'PROCESS_MARKER';$lastAgain=Read-RecoveryMarker $lastPath 1024 'LAST_PORT_MARKER'
+            if (-not $processAgain -or $processAgain.Sha256 -cne $processData.Sha256) { throw 'BLOCKED_PROCESS_MARKER_CHANGED_DURING_PROBE' }
+            if (-not $lastAgain -or $lastAgain.Sha256 -cne $lastData.Sha256) { throw 'BLOCKED_LAST_PORT_MARKER_CHANGED_DURING_PROBE' }
+            $destination=Join-Path (Split-Path -Parent $processPath) ('process.stale-'+[guid]::NewGuid().ToString('N')+'.json')
+            $facts=@{MarkerValid=$markerValid;InstanceMatches=($script:InstanceId -ceq $ExpectedInstanceId);LastPortMatches=$lastPortMatches;GetProcessQuery='PASS';CimQuery='PASS';ListenerQuery='PASS';ProcessInventoryQuery='PASS';PidPresent=([bool]$first.PidPresent -or [bool]$second.PidPresent);ListenerPresent=([int]$first.ListenerCount -gt 0 -or [int]$second.ListenerCount -gt 0);SlotWriterPresent=([bool]$first.SlotWriterPresent -or [bool]$second.SlotWriterPresent);PhpServerAmbiguous=([bool]$first.PhpServerAmbiguous -or [bool]$second.PhpServerAmbiguous -or [bool]$first.UnverifiableListener -or [bool]$second.UnverifiableListener);DestinationExists=(Test-Path -LiteralPath $destination)}
+            $decision=Get-PicoRadarRecoveryDecision -Facts $facts
+            if ($decision.Action -ne 'ARCHIVE') { throw ('BLOCKED_RECOVERY_' + [string]$decision.Reason) }
+            $archive=Move-PicoRadarRecoveryMarker -SourcePath $processPath -DestinationPath $destination -ExpectedSha256 $processData.Sha256
+            [ordered]@{status='RECOVERED_STOPPED';instance_id=$script:InstanceId;pid=$pidValue;port=$targetPort;marker_archive=(Split-Path -Leaf $archive.DestinationPath);marker_sha256=$archive.Sha256;process_absent_twice=$true;listener_absent_twice=$true;historical_router_checked=($routers.Count -gt 1)}|ConvertTo-Json -Compress
+        } else {
+            if ($first.PidPresent -or $second.PidPresent -or $first.ListenerCount -gt 0 -or $second.ListenerCount -gt 0 -or $first.SlotWriterPresent -or $second.SlotWriterPresent -or $first.PhpServerAmbiguous -or $second.PhpServerAmbiguous -or $first.UnverifiableListener -or $second.UnverifiableListener) { throw 'BLOCKED_RECOVERY_NO_MARKER_BUT_PROCESS_OR_LISTENER_PRESENT' }
+            [ordered]@{status='RECOVERY_NOT_REQUIRED';instance_id=$script:InstanceId;process_marker_absent=$true;process_inventory_checked_twice=$true;historical_router_checked=($routers.Count -gt 1)}|ConvertTo-Json -Compress
+        }
+    } finally { $recoveryLock.Dispose() }
+    exit 0
+}
 if (-not $instanceMarker) { throw 'BLOCKED_INSTANCE_NOT_INITIALIZED' }
 $processPath = Get-ProcessMarkerPath
 
@@ -480,11 +610,15 @@ try {
         $mode = if ($editorialMarker) { 'EDITORIAL_QA' } else { 'C30_DEFAULT' }
         if (-not (Test-Path -LiteralPath $processPath -PathType Leaf)) {
             $lastPortPath = Join-Path $InstanceRoot 'runtime\last-port.json'
-            if (Test-Path -LiteralPath $lastPortPath -PathType Leaf) {
-                $lastPort = Get-Content -LiteralPath $lastPortPath -Raw | ConvertFrom-Json
-                Assert-NoOrphanC30Listener ([int]$lastPort.port)
+            $knownPort = $null
+            if (Test-Path -LiteralPath $lastPortPath) {
+                $lastPortData = Read-RecoveryMarker $lastPortPath 1024 'LAST_PORT_MARKER'
+                $lastPortValue = 0
+                if (-not [int]::TryParse([string]$lastPortData.Value.port,[ref]$lastPortValue) -or [string]$lastPortData.Value.instance_id -cne $script:InstanceId) { throw 'BLOCKED_LAST_PORT_MARKER_INVALID' }
+                $knownPort = $lastPortValue
             }
-            @{ status='STOPPED'; instance_id=$script:InstanceId; backend='sqlite'; scope='NON_PRODUCTION_SYNTHETIC'; mode=$mode; editorial_prepared=[bool]$editorialMarker } | ConvertTo-Json -Compress
+            Assert-NoActiveInstanceServer $knownPort
+            @{ status='STOPPED'; instance_id=$script:InstanceId; backend='sqlite'; scope='NON_PRODUCTION_SYNTHETIC'; mode=$mode; editorial_prepared=[bool]$editorialMarker; process_inventory_verified=$true } | ConvertTo-Json -Compress
             exit 0
         }
         $processMarker = Get-Content -LiteralPath $processPath -Raw | ConvertFrom-Json
@@ -513,7 +647,7 @@ try {
         $preflight = $check | ConvertFrom-Json
         if ($preflight.status -ne 'PASS') { throw 'BLOCKED_START_PREFLIGHT_NOT_PASS' }
         $selectedPort = $Port
-        while ($selectedPort -lt 65535 -and @(Get-NetTCPConnection -State Listen -LocalAddress '127.0.0.1' -LocalPort $selectedPort -ErrorAction SilentlyContinue).Count -gt 0) { $selectedPort++ }
+        while ($selectedPort -lt 65535 -and (Get-ListenerConnections $selectedPort).Count -gt 0) { $selectedPort++ }
         if ($selectedPort -ge 65535) { throw 'BLOCKED_NO_LOOPBACK_PORT' }
         $reportLogs = Join-Path $ReportRoot 'logs\A'
         [IO.Directory]::CreateDirectory($reportLogs) | Out-Null
@@ -545,17 +679,60 @@ try {
             foreach ($name in $envNames) { [Environment]::SetEnvironmentVariable($name,$old[$name],'Process') }
         }
         $ready = $false
-        for ($i = 0; $i -lt 30; $i++) {
-            Start-Sleep -Milliseconds 300
-            $listener = @(Get-NetTCPConnection -State Listen -LocalAddress '127.0.0.1' -LocalPort $selectedPort -ErrorAction SilentlyContinue)
-            if ($serverProcess.HasExited) { break }
-            if ($listener.Count -eq 1 -and [int]$listener[0].OwningProcess -eq $serverProcess.Id) {
-                try { $r = Invoke-WebRequest -Uri "http://127.0.0.1:$selectedPort/up" -TimeoutSec 3; if ([int]$r.StatusCode -eq 200) { $ready = $true; break } } catch { }
+        $readyFailure = 'NOT_ATTEMPTED'
+        $readyWatch = [Diagnostics.Stopwatch]::StartNew()
+        $readyBudget = [TimeSpan]::FromSeconds(45)
+        $httpHandler = [System.Net.Http.HttpClientHandler]::new()
+        $httpHandler.UseProxy = $false
+        $httpClient = [System.Net.Http.HttpClient]::new($httpHandler)
+        $httpClient.Timeout = [Threading.Timeout]::InfiniteTimeSpan
+        try {
+            while ($readyWatch.Elapsed -lt $readyBudget) {
+                if ($serverProcess.HasExited) { $readyFailure = 'SERVER_PROCESS_EXITED'; break }
+                try { $listener = Get-ListenerConnections $selectedPort }
+                catch { $readyFailure = 'LISTENER_QUERY_' + $_.Exception.GetType().Name; break }
+                if (@($listener | Where-Object { $_.LocalAddress -eq '127.0.0.1' -and [int]$_.OwningProcess -eq $serverProcess.Id }).Count -eq 1) {
+                    $remaining = $readyBudget - $readyWatch.Elapsed
+                    if ($remaining -le [TimeSpan]::Zero) { $readyFailure = 'TOTAL_DEADLINE'; break }
+                    $cancel = [Threading.CancellationTokenSource]::new($remaining)
+                    $response = $null
+                    try {
+                        $response = $httpClient.GetAsync("http://127.0.0.1:$selectedPort/up", $cancel.Token).GetAwaiter().GetResult()
+                        if ([int]$response.StatusCode -eq 200) { $ready = $true; break }
+                        $readyFailure = 'HTTP_STATUS_' + [int]$response.StatusCode
+                    } catch [System.OperationCanceledException] {
+                        $readyFailure = 'HTTP_DEADLINE'
+                    } catch [System.Net.Http.HttpRequestException] {
+                        $readyFailure = 'HTTP_' + $_.Exception.GetType().Name
+                    } finally {
+                        if ($response) { $response.Dispose() }
+                        $cancel.Dispose()
+                    }
+                } else {
+                    $readyFailure = 'LOOPBACK_LISTENER_NOT_OWNED'
+                }
+                $remainingMs = [int][Math]::Max(1, ($readyBudget - $readyWatch.Elapsed).TotalMilliseconds)
+                Start-Sleep -Milliseconds ([Math]::Min(250, $remainingMs))
             }
+        } finally {
+            $httpClient.Dispose()
+            $httpHandler.Dispose()
         }
         if (-not $ready) {
-            if (-not $serverProcess.HasExited) { Stop-Process -Id $serverProcess.Id -ErrorAction SilentlyContinue; $serverProcess.WaitForExit(5000) | Out-Null }
-            throw 'BLOCKED_SERVER_BIND_OR_HEALTHCHECK'
+            if (-not $serverProcess.HasExited) {
+                $currentProcess = Get-Process -Id $serverProcess.Id -ErrorAction Stop
+                $currentCim = Get-CimInstance Win32_Process -Filter "ProcessId=$($serverProcess.Id)" -ErrorAction Stop -OperationTimeoutSec 8
+                $expectedRouter = Get-FullPath (Join-Path $PSScriptRoot 'picoradar-local-qa.php')
+                if (-not $currentProcess.Path -or -not $currentProcess.Path.Equals((Get-FullPath $PhpExe), [StringComparison]::OrdinalIgnoreCase) -or
+                    $currentProcess.StartTime.ToUniversalTime().Ticks -ne $serverProcess.StartTime.ToUniversalTime().Ticks -or
+                    -not [string]$currentCim.CommandLine.Contains('-S 127.0.0.1:' + [string]$selectedPort) -or
+                    -not [string]$currentCim.CommandLine.Contains($expectedRouter)) { throw 'BLOCKED_SERVER_CLEANUP_IDENTITY' }
+                Stop-Process -Id $serverProcess.Id -ErrorAction Stop
+                $serverProcess.WaitForExit(5000) | Out-Null
+            }
+            $failureLog = [ordered]@{status='BLOCKED';reason='SERVER_BIND_OR_HEALTHCHECK';last_failure=$readyFailure;elapsed_ms=[int]$readyWatch.Elapsed.TotalMilliseconds;port=$selectedPort}
+            Write-RunLog ('C33_A_START_FAILURE_'+(Get-Date -Format 'yyyyMMdd_HHmmss_fff')+'.json') ($failureLog|ConvertTo-Json -Compress) | Out-Null
+            throw ('BLOCKED_SERVER_BIND_OR_HEALTHCHECK_' + $readyFailure)
         }
         $actual = Get-Process -Id $serverProcess.Id
         $cim = Get-CimInstance Win32_Process -Filter "ProcessId=$($serverProcess.Id)"
@@ -584,7 +761,16 @@ try {
     }
     if ($Action -eq 'Stop') {
         if (-not (Test-Path -LiteralPath $processPath -PathType Leaf)) {
-            @{ status='STOPPED'; instance_id=$script:InstanceId; evidence='NO_PROCESS_MARKER' } | ConvertTo-Json -Compress
+            $lastPortPath = Join-Path $InstanceRoot 'runtime\last-port.json'
+            $knownPort = $null
+            if (Test-Path -LiteralPath $lastPortPath) {
+                $lastPortData = Read-RecoveryMarker $lastPortPath 1024 'LAST_PORT_MARKER'
+                $lastPortValue = 0
+                if (-not [int]::TryParse([string]$lastPortData.Value.port,[ref]$lastPortValue) -or [string]$lastPortData.Value.instance_id -cne $script:InstanceId) { throw 'BLOCKED_LAST_PORT_MARKER_INVALID' }
+                $knownPort = $lastPortValue
+            }
+            Assert-NoActiveInstanceServer $knownPort
+            @{ status='STOPPED'; instance_id=$script:InstanceId; evidence='NO_PROCESS_MARKER_PROCESS_AND_LISTENER_CHECKED' } | ConvertTo-Json -Compress
             exit 0
         }
         $processMarker = Get-Content -LiteralPath $processPath -Raw | ConvertFrom-Json
@@ -592,7 +778,7 @@ try {
         Stop-Process -Id $process.Id
         $process.WaitForExit(10000) | Out-Null
         if (Get-Process -Id $process.Id -ErrorAction SilentlyContinue) { throw 'BLOCKED_PROCESS_DID_NOT_EXIT' }
-        $listenerAfter = @(Get-NetTCPConnection -State Listen -LocalAddress '127.0.0.1' -LocalPort ([int]$processMarker.port) -ErrorAction SilentlyContinue)
+        $listenerAfter = @(Get-CimInstance -Namespace root/StandardCimv2 -ClassName MSFT_NetTCPConnection -Filter "LocalPort = $([int]$processMarker.port) AND State = 2" -ErrorAction Stop -OperationTimeoutSec 8)
         if ($listenerAfter.Count -gt 0) { throw 'BLOCKED_LISTENER_REMAINS' }
         Remove-Item -LiteralPath $processPath
         @{ status='STOPPED'; instance_id=$script:InstanceId; pid=$process.Id; listener_closed=$true; mode=$(if ($processMarker.PSObject.Properties['mode']) { [string]$processMarker.mode } else { 'C30_DEFAULT' }) } | ConvertTo-Json -Compress
