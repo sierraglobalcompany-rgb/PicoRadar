@@ -1,5 +1,51 @@
 # PicoRadar — servidor local y respaldo QA C30
 
+## Registro C31 V2 — editor nacional y publicación local
+
+C31 añadió un modo editorial temporal para una instancia nueva, restaurada desde el backup C30 verificado. No reutilizó ni modificó la instancia fuente C30. El destino HTTP solo escuchó en `127.0.0.1`; su allowlist deja las rutas de lectura C30 y login, y habilita únicamente las mutaciones editoriales documentadas en el retorno C31. La autenticación, CSRF y Gates de Laravel permanecen activos.
+
+### Estado de la instancia C31
+
+- Candidato: `D:\codex\_build\PicoRadar-C31-V2\repo`, rama `codex/c31-v2`, base `4d4626c82a00d0f6ddfe1b9db8708e2b4eb1e9b8`.
+- Slot de QA: `D:\codex\_build\PicoRadar-C30-V2\runtime\instance-restored-c31-20261126`, ID `5c2624b6-c48e-4e0a-8956-c09d33285725`.
+- Datos aislados SQLite sintéticos. La geografía de prueba usa los códigos de ejemplo `99/99999`; la jurisdicción está deshabilitada y la cobertura se mantiene OFF/partial. No es un dato oficial ni habilita circulación.
+- QA finalizó con una publicación sintética schema2 (revisión 1), una versión validada publicada y una versión manual en borrador. El slot quedó detenido; el puerto 8892 está cerrado. No volver a ejecutar `PrepareEditorial`, `--run` ni `--resume-confirmed` en este slot: el estado ya no es el inicial y no es idempotente como flujo completo.
+- `D:\codex\_build\PicoRadar-C31-V2\private` contiene el credential file del Editor y material TLS local. No imprimir, copiar al checkout ni incluirlo en respaldos/ZIP. El certificado hoja generado no tiene EKU `serverAuth` y no se usó para levantar un relay.
+
+### Comprobar y cerrar el proceso
+
+Solo lectura y detención del proceso de esa instancia, con identidad PID/ID/puerto validada por el operador:
+
+```powershell
+$repo = 'D:\codex\_build\PicoRadar-C31-V2\repo'
+$qa = Join-Path $repo 'scripts\local\picoradar-local-qa.ps1'
+$common = @{
+    RepoRoot = $repo
+    RuntimeHome = 'D:\codex\_build\PicoRadar-C30-V2\runtime'
+    InstanceRoot = 'D:\codex\_build\PicoRadar-C30-V2\runtime\instance-restored-c31-20261126'
+    PrivateRoot = 'D:\codex\_build\PicoRadar-C30-V2\private'
+    KeyFile = 'D:\codex\_build\PicoRadar-C30-V2\private\instance-a.app-key'
+    PasswordFile = 'D:\codex\_build\PicoRadar-C30-V2\private\operator.qa.password'
+    EditorialPrivateRoot = 'D:\codex\_build\PicoRadar-C31-V2\private'
+    ExpectedInstanceId = '5c2624b6-c48e-4e0a-8956-c09d33285725'
+    PhpExe = 'C:\xampphp\php\php.exe'
+    ReportRoot = 'D:\codex\_REPORTES\PicoRadar\C31-V2-20261126'
+    Port = 8892
+}
+& $qa -Action Status @common
+& $qa -Action Stop @common
+```
+
+La detención exitosa quedó seguida por un nuevo `Status=STOPPED` y comprobación de listener ausente. El postflight se capturó con PDO SQLite `mode=ro` y `PRAGMA query_only=ON` en `C_POSTFLIGHT_SNAPSHOT.json` del retorno C31.
+
+### Gates y límites
+
+- `A_TOOL/A_SCOPE/A_ALLOWLIST/A_PREP/A_HTTP=PASS`; el POST sin CSRF respondió 419, el Editor recibió 403 al intentar aprobar y el POST fuera de allowlist respondió 404. No hubo cambio de estado con esas denegaciones.
+- `C_IMPORT_ANALYZE/C_CONFIRM_DRAFT/C_APPROVAL/C_PUBLISH/C_LIVE_BYTES/C_MANUAL_CREATE/C_MANUAL_UPDATE=PASS`. Manifest y payload servidos por Laravel coincidieron byte por byte y por SHA-256 con el almacenamiento activo. La modificación manual afectó solo al segundo borrador, no al release publicado.
+- `B_CLIENT_STATIC=PASS` (formato y análisis focal Dart). `B_TLS=BLOCKED_CERTIFICATE_PREFLIGHT`: EKU sin `serverAuth`; por tanto `B_UPSTREAM/B_SYNC/B_UNKNOWN=NOT_RUN`. No se desactivó la validación TLS y no hubo tercer intento de generación.
+- No se hizo APK/build/ADB, Mi A3, Hostinger, producción, cambios de motor/API/esquema/dependencias ni QA legal. `MAIN_BRIDGE=HOLD`, `LEGAL=NO_GO`, `RELEASE=NO_GO`.
+- El flujo detallado, los logs saneados y la decisión están en el ZIP único C31 V2 y en `codex/C31_V2_HANDOFF.md`. El snapshot SQLite no se comparte como archivo de base de datos.
+
 ## Alcance
 
 Este operador inicia PicoRadar Laravel local con fixture sintético y SQLite persistente, y respalda/restaura esa instancia. Es solo QA local: no certifica MariaDB, datos reales, publicación, OTA Laravel, producción ni lanzamiento. No ejecuta `migrate` ni `seed` al reabrir o restaurar.

@@ -1,5 +1,15 @@
 # PicoRadar: estado vigente
 
+## Registro de ejecución — C31 V2 (PARTIAL, QA local sintética)
+
+- Candidato aislado `D:\codex\_build\PicoRadar-C31-V2\repo`, rama `codex/c31-v2`, base `4d4626c82a00d0f6ddfe1b9db8708e2b4eb1e9b8`; commit funcional local `a030f6fcc0ca4915c1a25beb2ab7cfe90bf7d56f`. Destino remoto verificado en la base al inicio. `main=e9ef37511df3110ffb0fc006ef06be781df432ac`.
+- A PASS: operador editorial C31 explícito y allowlist única. La instancia restaurada nueva `5c2624b6-c48e-4e0a-8956-c09d33285725` usa SQLite sintética; 431 archivos rastreados de `server/` coinciden por SHA-256 con C30. Restricción HTTP verificada: sin CSRF 419, Editor sin permiso de aprobación 403 y POST fuera de allowlist 404; las tres solicitudes conservaron el estado.
+- C PASS: importación schema2, revisión, confirmación de borrador, validación/aprobación por actor distinto, publicación y bytes vivos del servidor local. Manifest 424 bytes SHA-256 `103bf15d43ee2d54ffd06a3b0a8685bfcd43f74f57c82162c8aa6454ed6fddc8`; payload 941 bytes SHA-256 `a2cd478f2204a51ae1d80a045d70c56a55c54b5cd66b64881590da379e6b620a`. El formulario manual creó y editó otro borrador OFF/partial sin mover versión ni manifest.
+- B PARTIAL: test Dart opt-in está formateado y `dart analyze` focal pasa. No se ejecutó OTA viva: el certificado nuevo no tiene EKU `serverAuth` (`EKU OIDs=none`), por lo que TLS se bloqueó antes de iniciar el relay. `B_UPSTREAM`, `B_SYNC` y `B_UNKNOWN=NOT_RUN`; no se desactivó la validación TLS ni se hizo un tercer intento de generación.
+- La instancia quedó detenida y el puerto 8892 cerrado. Estado final de SQLite consultado con `mode=ro` y `PRAGMA query_only=ON`: revisión 1, una publicación, un release, dos versiones sintéticas (la primera Validated y publicada; la segunda Draft), jurisdicción OFF/partial. El backup C30 privado conserva SHA-256 `C765EB04117DF3991EDB89C5DF17A9C007874889AC6D2DC7FAA3C1F0A13E95A5`.
+- Sin cambios en `server/`, `mobile/lib/`, dependencias, API, esquema, motor, normas o datos reales. Sin APK, ADB, Mi A3, Hostinger, producción, PR, merge o release. `MAIN_BRIDGE=HOLD`, `LEGAL=NO_GO`, `RELEASE=NO_GO`.
+- Handoff y operación: [C31_V2_HANDOFF.md](../codex/C31_V2_HANDOFF.md) y [PicoRadar_LOCAL_QA.md](operations/PicoRadar_LOCAL_QA.md). Evidencias sanitizadas y ZIP único: retorno C31 V2.
+
 ## Registro de ejecución — C30 V2 2026-11-26 (PARTIAL, sin release)
 
 - Trabajo aislado en `D:\codex\_build\PicoRadar-C30-V2\repo`, rama `codex/c30-v2`. Base remota y local al inicio `efc2f7c7b4633efe7d323fb00bfcbbc6c360688c`; `main=e9ef37511df3110ffb0fc006ef06be781df432ac`. El único delta de código es el operador local SQLite, la herramienta segura de respaldo/restauración y un test Dart opt-in HTTPS; no cambian motor, reglas, Laravel de producción, API, dependencias ni esquema.
