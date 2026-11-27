@@ -2,9 +2,16 @@
 
 App Android-first en Flutter y control plane Laravel. Funciona sin cuenta. Inicio · Garaje · **Apps** · Viaje · Conducir.
 
+## Continuidad vigente — C32 V2
+
+- Rama candidata autorizada: `feat/platform-integral-national-20261122`, base `71c61ca1a591fdbe571ec771e95c769969951547`.
+- `main` (`e9ef37511df3110ffb0fc006ef06be781df432ac`) es histórico y queda en HOLD. No hacer merge, publicación ni release desde C32.
+- Para el estado reciente, consultar [C29](codex/C29_V3_PHP_RUNTIME.md), [C30](codex/C30_V2_HANDOFF.md), [C31](codex/C31_V2_HANDOFF.md) y [C32](codex/C32_V2_HANDOFF.md). Las utilidades C32 están documentadas en [QA TLS y MariaDB](codex/qa/c32/README.md). `docs/CURRENT.md` conserva la secuencia de ejecución y los límites.
+- Las instrucciones históricas de recuperación que siguen debajo describen ese rescate. La rama remota de feature es la continuidad activa; C32 conserva su candidato local y su resultado en el handoff hasta completar el push autorizado.
+
 ## Retomar desde otro chat o equipo
 
-1. Clonar `https://github.com/sierraglobalcompany-rgb/PicoRadar.git` con acceso autorizado y seleccionar **`recovery/20261019-modern`**. El `main` histórico no representa el estado moderno.
+1. Clonar `https://github.com/sierraglobalcompany-rgb/PicoRadar.git` con acceso autorizado y seleccionar **`feat/platform-integral-national-20261122`**. El `main` histórico no representa el estado moderno.
 2. Leer `AGENTS.md`, `docs/CURRENT.md`, Baseline y Arquitectura en `docs/baseline/`, después el contrato del lote. UI: `docs/DESIGN_CONTRACT.md`; procedimientos: `docs/SOP.md`.
 3. Consultar `PicoRadar_RECOVERY_HANDOFF.md` para evidencias y NEXT, y `PicoRadar_FORENSE_10_PASADAS.md` para procedencia. Confirmar HEAD antes de trabajar.
 4. Reconstruir con los lockfiles. Secretos, claves de firma y datos privados se aprovisionan aparte; no son necesarios para las suites sintéticas.
@@ -14,7 +21,7 @@ Checkout canónico de esta máquina: `D:/Dev/PicoRadar`, directamente en exFAT. 
 En un equipo o destino nuevo, clonar directamente la rama moderna, sin pasar por main. No sobrescribir un checkout existente:
 
 ```powershell
-git -c checkout.workers=8 -c core.autocrlf=false -c core.longpaths=true clone --branch recovery/20261019-modern --single-branch https://github.com/sierraglobalcompany-rgb/PicoRadar.git D:/Dev/PicoRadar
+git -c checkout.workers=8 -c core.autocrlf=false -c core.longpaths=true clone --branch feat/platform-integral-national-20261122 --single-branch https://github.com/sierraglobalcompany-rgb/PicoRadar.git D:/Dev/PicoRadar
 Set-Location D:/Dev/PicoRadar
 git rev-parse HEAD
 ```

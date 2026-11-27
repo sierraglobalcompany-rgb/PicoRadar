@@ -1,5 +1,14 @@
 # PicoRadar: estado vigente
 
+## Registro de ejecución — C32 V2 (PARTIAL, QA local sintética)
+
+- Candidato integrador `D:\codex\_build\PicoRadar-C32-V2\integrator\repo`, rama local `codex/c32-v2`, base `71c61ca1a591fdbe571ec771e95c769969951547`. Commit de utilidades `956e001cdbd87d5db27fc774b7a636f26a1c9159`; el commit documental final está en `codex/C32_V2_HANDOFF.md` y en el retorno C32. Destino remoto autorizado: `feat/platform-integral-national-20261122`; `main=e9ef37511df3110ffb0fc006ef06be781df432ac` permanece HOLD.
+- A0 PASS: slot C31 exacto, fixture `2026-11-26` Bogotá, publicación sintética y hashes de manifest/payload preservados. Certificado C32 loopback generado y verificado con EKU `serverAuth`, SAN `127.0.0.1`, cadena, propósito y vigencia; no se instaló CA global.
+- A permanece PARTIAL: operador C31 respondió al preflight, pero el runner excedió su límite sin capturar los GET vivos ni resultados Flutter/Dart. El proceso se detuvo y el puerto 8892 está cerrado; el marcador del operador quedó obsoleto. No se limpió ni reconstruyó el marcador, no se repitió el slot y no se declaró OTA viva.
+- B PASS_SCOPED en MariaDB aislada 11.8.8: 26 migraciones; bootstrap geográfico 1 país, 33 departamentos, 1.104 municipios, 73 jurisdicciones, 82 mappings y 288 registros de matrícula (276 exactos + 12 alias), sin errores. Dashboard real: 1.104 municipios, 73 asociados, 1.031 no asociados, 5 jurisdicciones ON y 68 OFF administrativas. Dataset `restrictions` schema2 OFF, sin versión, releases, reglas ni publicaciones; `release.status=SIN RELEASE ACTUAL`. Reanudación de solo lectura y apagado normal verificados.
+- Cambios del lote: solo utilidades/documentación de QA en `codex/qa/c32/`; no cambió app móvil, API, reglas, normas, datos de producto, dependencias, esquema de aplicación ni configuración global.
+- Sin APK, ADB, teléfono, producción, Hostinger, publicación ni merge. `MAIN_BRIDGE=HOLD`, `LEGAL=NO_GO`, `RELEASE=NO_GO`. Evidencia íntegra y bloqueos en `codex/C32_V2_HANDOFF.md` y el ZIP único de retorno C32.
+
 ## Registro de ejecución — C31 V2 (PARTIAL, QA local sintética)
 
 - Candidato aislado `D:\codex\_build\PicoRadar-C31-V2\repo`, rama `codex/c31-v2`, base `4d4626c82a00d0f6ddfe1b9db8708e2b4eb1e9b8`; commit funcional local `a030f6fcc0ca4915c1a25beb2ab7cfe90bf7d56f`. Destino remoto verificado en la base al inicio. `main=e9ef37511df3110ffb0fc006ef06be781df432ac`.

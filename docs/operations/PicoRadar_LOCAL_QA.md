@@ -1,5 +1,13 @@
 # PicoRadar — servidor local y respaldo QA C30
 
+## Registro C32 V2 — OTA C31 pendiente y catálogo MariaDB aislado
+
+- Frente A reutilizó el slot sintético C31 solo después de validar identidad, fixture y hashes. El certificado efímero para `127.0.0.1` pasó EKU `serverAuth`, SAN IP, cadena/propósito y vigencia; no se instaló CA global. El operador arrancó, pero el runner se bloqueó antes de capturar los dos GET vivos y el test Dart. Se detuvo el proceso y se confirmó el puerto 8892 cerrado. El marcador C31 quedó obsoleto; no eliminar ni reconstruirlo ni repetir preparación/publicación en ese slot.
+- Frente B usó exclusivamente `picoradar_c32_qa_c4133ea4cb`, MariaDB 11.8.8 con datadir privado y bind `127.0.0.1:64595`. Las 26 migraciones y el bootstrap fueron de una sola ejecución. El catálogo quedó conciliado; `restrictions` se preparó schema2/OFF, sin versión, releases, reglas o publicaciones. El dashboard devolvió métricas nacionales y `SIN RELEASE ACTUAL`. La instancia fue reanudada una vez para lectura y detenida normalmente; el puerto quedó cerrado. La DB/credenciales permanecen en el root privado, no en el checkout ni el ZIP.
+- No es infraestructura productiva, certificación legal ni cobertura de reglas. No hay publicación vigente ni permiso de circulación derivado de estos conteos.
+- Para ejecutar los helpers aprobados, sus precondiciones y límites, ver [codex/qa/c32/README.md](../../codex/qa/c32/README.md). No correr `Migrate`, bootstrap o schema2 de nuevo contra esta instancia ya materializada; preservar la DB privada como evidencia local.
+- Estado final de C32: A PARTIAL, B PASS_SCOPED, `MAIN_BRIDGE=HOLD`, `LEGAL=NO_GO`, `RELEASE=NO_GO`. Detalle: [C32_V2_HANDOFF.md](../../codex/C32_V2_HANDOFF.md) y retorno único C32.
+
 ## Registro C31 V2 — editor nacional y publicación local
 
 C31 añadió un modo editorial temporal para una instancia nueva, restaurada desde el backup C30 verificado. No reutilizó ni modificó la instancia fuente C30. El destino HTTP solo escuchó en `127.0.0.1`; su allowlist deja las rutas de lectura C30 y login, y habilita únicamente las mutaciones editoriales documentadas en el retorno C31. La autenticación, CSRF y Gates de Laravel permanecen activos.
