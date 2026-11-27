@@ -12,8 +12,10 @@ use App\Enums\SponsorStatus;
 use App\Models\AppUser;
 use App\Models\Campaign;
 use App\Models\Dataset;
+use App\Models\DatasetSource;
 use App\Models\GeographicUnit;
 use App\Models\Jurisdiction;
+use App\Models\RestrictionPublication;
 use App\Models\RestrictionRuleVersion;
 use App\Models\Sponsor;
 use App\Models\User;
@@ -49,6 +51,379 @@ function c30Within(string $path, string $root): bool
     $root = strtolower(rtrim(str_replace('/', DIRECTORY_SEPARATOR, $root), DIRECTORY_SEPARATOR));
 
     return $path === $root || str_starts_with($path, $root.DIRECTORY_SEPARATOR);
+}
+
+function c30SafeRequestPath(string $path): bool
+{
+    return $path !== '' && ! str_contains($path, '%') && ! str_contains($path, '\\') && ! str_contains($path, "\0")
+        && ! str_contains($path, '//') && preg_match('~(?:^|/)\.{1,2}(?:/|$)~', $path) !== 1
+        && preg_match('~(^|/)\.[^/]*~', $path) !== 1;
+}
+
+function c31HasMethodOverrideKey(array $values): bool
+{
+    foreach (array_keys($values) as $key) {
+        if ($key === '_method' || (is_string($key) && str_starts_with($key, '_method['))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function c31IsEditorialFormContentType(string $contentType): bool
+{
+    return in_array(strtolower(trim(explode(';', $contentType, 2)[0])), [
+        'application/x-www-form-urlencoded', 'multipart/form-data',
+    ], true);
+}
+
+function c31HasOnlyPutFormOverride(array $post, array $query, array $server, string $contentType, string $rawBody): bool
+{
+    if (c31HasMethodOverrideKey($query) || array_key_exists('HTTP_X_HTTP_METHOD_OVERRIDE', $server)) {
+        return false;
+    }
+    if (! array_key_exists('_method', $post) || ! is_string($post['_method']) || $post['_method'] !== 'PUT') {
+        return false;
+    }
+    if (strtolower(trim(explode(';', $contentType, 2)[0])) !== 'application/x-www-form-urlencoded') {
+        return false;
+    }
+
+    $matches = 0;
+    $bodyMethod = null;
+    foreach (preg_split('/[&;]/', $rawBody) ?: [] as $pair) {
+        [$key, $value] = array_pad(explode('=', $pair, 2), 2, '');
+        $decodedKey = urldecode($key);
+        if ($decodedKey === '_method' || str_starts_with($decodedKey, '_method[')) {
+            $matches++;
+            if ($decodedKey === '_method') {
+                $bodyMethod = urldecode($value);
+            }
+        }
+    }
+
+    return $matches === 1 && $bodyMethod === 'PUT';
+}
+
+function c30RouteMethodAllowed(
+    string $method,
+    string $path,
+    bool $editorial,
+    array $post = [],
+    array $query = [],
+    array $server = [],
+    string $contentType = '',
+    string $rawBody = '',
+): bool {
+    $method = strtoupper($method);
+    if (! c30SafeRequestPath($path)) {
+        return false;
+    }
+    if ($method === 'GET' || $method === 'HEAD') {
+        return ! c31HasMethodOverrideKey($post) && ! c31HasMethodOverrideKey($query)
+            && ! array_key_exists('HTTP_X_HTTP_METHOD_OVERRIDE', $server);
+    }
+    if ($method !== 'POST') {
+        return false;
+    }
+
+    $hasOverride = c31HasMethodOverrideKey($post) || c31HasMethodOverrideKey($query)
+        || array_key_exists('HTTP_X_HTTP_METHOD_OVERRIDE', $server);
+    if ($path === '/login') {
+        return ! $hasOverride && (! $editorial || c31IsEditorialFormContentType($contentType));
+    }
+    if (! $editorial) {
+        return false;
+    }
+    if ($hasOverride) {
+        return preg_match('~^/admin/restrictions/[1-9][0-9]*$~D', $path) === 1
+            && c31HasOnlyPutFormOverride($post, $query, $server, $contentType, $rawBody);
+    }
+
+    $allowed = $path === '/logout'
+        || $path === '/admin/restrictions/imports'
+        || preg_match('~^/admin/restrictions/imports/[1-9][0-9]*/confirm$~D', $path) === 1
+        || preg_match('~^/admin/restrictions/[1-9][0-9]*/(?:validate|approve-material-change)$~D', $path) === 1
+        || $path === '/admin/restrictions/publish'
+        || $path === '/admin/restrictions';
+
+    return $allowed && c31IsEditorialFormContentType($contentType);
+}
+
+function c31EditorialMarker(string $runtime, string $instanceId): ?array
+{
+    if (getenv('PICORADAR_EDITORIAL_QA') !== '1') {
+        return null;
+    }
+    $instance = json_decode((string) @file_get_contents($runtime.DIRECTORY_SEPARATOR.'instance.json'), true);
+    $markerPath = $runtime.DIRECTORY_SEPARATOR.'runtime'.DIRECTORY_SEPARATOR.'editorial-qa.json';
+    if (is_link($markerPath)) {
+        return null;
+    }
+    $marker = json_decode((string) @file_get_contents($markerPath), true);
+    $expectedId = getenv('PICORADAR_EDITORIAL_EXPECTED_INSTANCE_ID') ?: '';
+    $entryMode = getenv('PICORADAR_EDITORIAL_ENTRY_MODE') ?: '';
+    if (! is_array($instance) || ! is_array($marker)
+        || ($instance['format'] ?? null) !== 'picoradar-local-qa/1'
+        || ($instance['backend'] ?? null) !== 'sqlite' || ($instance['state'] ?? null) !== 'initialized'
+        || ($instance['scope'] ?? null) !== 'NON_PRODUCTION_SYNTHETIC'
+        || ($instance['id'] ?? null) !== $instanceId || $expectedId === '' || $expectedId !== $instanceId
+        || ! in_array($entryMode, ['RESTORED', 'FRESH_ISOLATED'], true)
+        || ($marker['format'] ?? null) !== 'picoradar-editorial-qa/1'
+        || ($marker['scope'] ?? null) !== 'NON_PRODUCTION_SYNTHETIC'
+        || ($marker['prepared'] ?? null) !== true || ($marker['instance_id'] ?? null) !== $instanceId
+        || ($marker['entry_mode'] ?? null) !== $entryMode) {
+        return null;
+    }
+
+    return $marker;
+}
+
+function c31VerifyEditorialState(array $marker, string $instanceId, string $entryMode): array
+{
+    if (($marker['format'] ?? null) !== 'picoradar-editorial-qa/1'
+        || ($marker['scope'] ?? null) !== 'NON_PRODUCTION_SYNTHETIC'
+        || ($marker['prepared'] ?? null) !== true
+        || ($marker['instance_id'] ?? null) !== $instanceId
+        || ($marker['entry_mode'] ?? null) !== $entryMode) {
+        c30Fail('EDITORIAL_MARKER_MISMATCH');
+    }
+
+    $country = GeographicUnit::query()->where('key', 'c31-synthetic-country')->first();
+    $department = GeographicUnit::query()->where('key', 'c31-synthetic-department')->first();
+    $municipality = GeographicUnit::query()->where('key', 'c31-synthetic-municipality')->first();
+    $jurisdiction = Jurisdiction::query()->where('key', 'c31-synthetic-off')->first();
+    $dataset = Dataset::query()->where('key', 'restrictions')->first();
+    $editor = User::query()->where('email', 'editor-c31@picoradar.test')->first();
+    $superAdmin = User::query()->where('email', 'superadmin@picoradar.test')->first();
+    $source = DatasetSource::query()
+        ->where('dataset_id', $dataset?->id)
+        ->where('title', 'C31 synthetic source')
+        ->where('url', 'https://example.test/c31-synthetic-restrictions')
+        ->first();
+
+    $geographyMatches = $country !== null && $country->code === 'CO' && $country->level === GeographicUnitLevel::Country
+        && $country->parent_id === null && $country->name === 'C31 Synthetic Country'
+        && $country->normalized_name === 'c31 synthetic country' && $country->is_active
+        && $country->source_system === 'c31-qa-synthetic' && $country->source_version === '1'
+        && $department !== null && $department->code === '99' && $department->level === GeographicUnitLevel::Department
+        && (int) $department->parent_id === (int) $country->id && $department->name === 'C31 Synthetic Department'
+        && $department->normalized_name === 'c31 synthetic department' && $department->is_active
+        && $department->source_system === 'c31-qa-synthetic' && $department->source_version === '1'
+        && $municipality !== null && $municipality->code === '99999' && $municipality->level === GeographicUnitLevel::Municipality
+        && (int) $municipality->parent_id === (int) $department->id && $municipality->name === 'C31 Synthetic Municipality'
+        && $municipality->normalized_name === 'c31 synthetic municipality' && $municipality->is_active
+        && $municipality->source_system === 'c31-qa-synthetic' && $municipality->source_version === '1';
+    $jurisdictionMatches = $jurisdiction !== null && $jurisdiction->name === 'C31 Synthetic Jurisdiction OFF'
+        && $jurisdiction->kind === JurisdictionKind::City && (int) $jurisdiction->primary_geographic_unit_id === (int) $municipality?->id
+        && ! $jurisdiction->enabled && $jurisdiction->timezone === 'America/Bogota'
+        && $municipality !== null && $municipality->jurisdictions()->whereKey($jurisdiction->id)->exists();
+    $datasetMatches = $dataset !== null && $dataset->schema_version === 2 && $dataset->enabled
+        && $dataset->current_version === null && (int) $dataset->publication_revision === 0
+        && $dataset->releases()->count() === 0;
+    $sourceMatches = $source !== null && $source->authority === 'C31 synthetic authority' && $source->is_active
+        && (int) $source->dataset_id === (int) $dataset?->id
+        && $source->verified_at !== null && ! $source->verified_at->isFuture()
+        && DatasetSource::query()->where('dataset_id', $dataset?->id)->where('title', 'C31 synthetic source')
+            ->where('url', 'https://example.test/c31-synthetic-restrictions')->count() === 1;
+    $editorMatches = $editor !== null && $editor->role === OperatorRole::Editor && $editor->is_active
+        && Hash::check((string) (getenv('PICORADAR_EDITOR_PASSWORD') ?: ''), (string) $editor->password);
+    $superAdminMatches = $superAdmin !== null && $superAdmin->role === OperatorRole::SuperAdmin && $superAdmin->is_active;
+    $releaseCount = $dataset?->releases()->count() ?? 0;
+    $publicationCount = $dataset === null ? 0 : RestrictionPublication::query()
+        ->whereHas('datasetRelease', static fn ($query) => $query->where('dataset_id', $dataset->id))->count();
+    $ruleCount = $jurisdiction?->restrictionRuleVersions()->count() ?? 0;
+
+    if (! $geographyMatches || ! $jurisdictionMatches || ! $datasetMatches || ! $sourceMatches
+        || ! $editorMatches || ! $superAdminMatches || $publicationCount !== 0 || $ruleCount !== 0
+        || (int) ($marker['dataset_id'] ?? 0) !== (int) $dataset?->id
+        || (int) ($marker['country_id'] ?? 0) !== (int) $country?->id
+        || (int) ($marker['department_id'] ?? 0) !== (int) $department?->id
+        || (int) ($marker['jurisdiction_id'] ?? 0) !== (int) $jurisdiction?->id
+        || (int) ($marker['municipality_id'] ?? 0) !== (int) $municipality?->id
+        || (int) ($marker['editor_id'] ?? 0) !== (int) $editor?->id
+        || (int) ($marker['source_id'] ?? 0) !== (int) $source?->id) {
+        c30Fail('EDITORIAL_PREPARED_STATE_MISMATCH');
+    }
+
+    return [
+        'status' => 'PASS', 'prepared' => true, 'idempotent' => true,
+        'instance_id' => $instanceId, 'entry_mode' => $entryMode,
+        'dataset_id' => (int) $dataset->id, 'schema_version' => 2, 'dataset_enabled' => true,
+        'current_version' => null, 'publication_revision' => 0,
+        'country_code' => 'CO', 'department_code' => '99', 'municipality_code' => '99999',
+        'municipality_id' => (int) $municipality->id, 'jurisdiction_id' => (int) $jurisdiction->id,
+        'jurisdiction_enabled' => false, 'editor_id' => (int) $editor->id, 'source_id' => (int) $source->id,
+        'release_count' => $releaseCount, 'publication_count' => $publicationCount, 'rule_count' => $ruleCount,
+    ];
+}
+
+function c31PrepareEditorial(string $runtime, string $expectedId, string $password, string $entryMode): array
+{
+    $runtimeRoot = realpath($runtime);
+    $instancePath = $runtime.DIRECTORY_SEPARATOR.'instance.json';
+    $instance = json_decode((string) @file_get_contents($instancePath), true);
+    $instanceId = (string) (getenv('PICORADAR_INSTANCE_ID') ?: '');
+    if (! is_string($runtimeRoot) || is_link($runtime) || ! is_array($instance)
+        || ! preg_match('/^[0-9a-f]{8}-[0-9a-f-]{27}$/i', $expectedId)
+        || $expectedId === '' || $instanceId !== $expectedId || ($instance['id'] ?? null) !== $expectedId
+        || ($instance['format'] ?? null) !== 'picoradar-local-qa/1'
+        || ($instance['backend'] ?? null) !== 'sqlite' || ($instance['state'] ?? null) !== 'initialized'
+        || ($instance['scope'] ?? null) !== 'NON_PRODUCTION_SYNTHETIC'
+        || getenv('PICORADAR_EDITORIAL_QA') !== '0'
+        || ! in_array($entryMode, ['RESTORED', 'FRESH_ISOLATED'], true)
+        || strlen($password) < 32) {
+        c30Fail('EDITORIAL_IDENTITY_OR_INPUT_INVALID');
+    }
+
+    $markerPath = $runtimeRoot.DIRECTORY_SEPARATOR.'runtime'.DIRECTORY_SEPARATOR.'editorial-qa.json';
+    if (is_link($markerPath)) {
+        c30Fail('EDITORIAL_MARKER_REPARSE_POINT');
+    }
+    if (is_file($markerPath)) {
+        $marker = json_decode((string) file_get_contents($markerPath), true);
+        if (! is_array($marker)) {
+            c30Fail('EDITORIAL_MARKER_INVALID');
+        }
+
+        return c31VerifyEditorialState($marker, $expectedId, $entryMode);
+    }
+    if (file_exists($markerPath)) {
+        c30Fail('EDITORIAL_MARKER_PATH_INVALID');
+    }
+
+    if (! Schema::hasColumn('datasets', 'publication_revision')
+        || ! Schema::hasTable('users') || ! Schema::hasTable('datasets') || ! Schema::hasTable('sources')
+        || ! Schema::hasTable('geographic_units') || ! Schema::hasTable('jurisdictions')
+        || ! Schema::hasTable('jurisdiction_geographic_unit') || ! Schema::hasTable('dataset_releases')
+        || ! Schema::hasTable('restriction_rule_versions') || ! Schema::hasTable('restriction_publications')) {
+        c30Fail('EDITORIAL_REQUIRED_SCHEMA_MISSING');
+    }
+    $existingEditor = User::query()->where('email', 'editor-c31@picoradar.test')->exists();
+    $existingC31Geography = GeographicUnit::query()->whereIn('key', [
+        'c31-synthetic-country', 'c31-synthetic-department', 'c31-synthetic-municipality',
+    ])->orWhereIn('code', ['CO', '99', '99999'])->orWhereIn('normalized_name', [
+        'c31 synthetic country', 'c31 synthetic department', 'c31 synthetic municipality',
+    ])->exists();
+    $existingJurisdiction = Jurisdiction::query()->where('key', 'c31-synthetic-off')->exists();
+    $existingSource = DatasetSource::query()->where('title', 'C31 synthetic source')
+        ->orWhere('url', 'https://example.test/c31-synthetic-restrictions')->exists();
+    if ($existingEditor || $existingC31Geography || $existingJurisdiction || $existingSource) {
+        c30Fail('EDITORIAL_PARTIAL_STATE_WITHOUT_MARKER');
+    }
+
+    $superAdmin = User::query()->where('email', 'superadmin@picoradar.test')->first();
+    if ($superAdmin === null || $superAdmin->role !== OperatorRole::SuperAdmin || ! $superAdmin->is_active) {
+        c30Fail('EDITORIAL_SUPERADMIN_PRECONDITION');
+    }
+
+    $dataset = Dataset::query()->where('key', 'restrictions')->first();
+    if ($dataset !== null && ($dataset->schema_version !== 2 || $dataset->current_version !== null
+        || (int) $dataset->publication_revision !== 0 || $dataset->releases()->exists()
+        || RestrictionPublication::query()->whereHas('datasetRelease', static fn ($query) => $query->where('dataset_id', $dataset->id))->exists())) {
+        c30Fail('EDITORIAL_DATASET_NOT_EMPTY_SCHEMA2_OFF');
+    }
+
+    try {
+        $created = DB::transaction(static function () use ($password, $dataset): array {
+            if (GeographicUnit::query()->whereIn('key', [
+                'c31-synthetic-country', 'c31-synthetic-department', 'c31-synthetic-municipality',
+            ])->orWhereIn('code', ['CO', '99', '99999'])->orWhereIn('normalized_name', [
+                'c31 synthetic country', 'c31 synthetic department', 'c31 synthetic municipality',
+            ])->lockForUpdate()->exists()
+                || Jurisdiction::query()->where('key', 'c31-synthetic-off')->lockForUpdate()->exists()
+                || User::query()->where('email', 'editor-c31@picoradar.test')->lockForUpdate()->exists()
+                || DatasetSource::query()->where('title', 'C31 synthetic source')
+                    ->orWhere('url', 'https://example.test/c31-synthetic-restrictions')->lockForUpdate()->exists()) {
+                throw new RuntimeException('EDITORIAL_SYNTHETIC_IDENTITY_COLLISION');
+            }
+
+            $lockedDataset = Dataset::query()->where('key', 'restrictions')->lockForUpdate()->first();
+            if (($dataset?->id ?? null) !== ($lockedDataset?->id ?? null)
+                || ($lockedDataset !== null && ($lockedDataset->schema_version !== 2 || $lockedDataset->current_version !== null
+                    || (int) $lockedDataset->publication_revision !== 0 || $lockedDataset->releases()->exists()
+                    || RestrictionPublication::query()->whereHas('datasetRelease', static fn ($query) => $query->where('dataset_id', $lockedDataset->id))->exists()))) {
+                throw new RuntimeException('EDITORIAL_DATASET_STATE_CHANGED');
+            }
+
+            $country = GeographicUnit::query()->create([
+                'key' => 'c31-synthetic-country', 'level' => GeographicUnitLevel::Country, 'code' => 'CO',
+                'name' => 'C31 Synthetic Country', 'normalized_name' => 'c31 synthetic country',
+                'is_active' => true, 'source_system' => 'c31-qa-synthetic', 'source_version' => '1',
+            ]);
+            $department = GeographicUnit::query()->create([
+                'parent_id' => $country->id, 'key' => 'c31-synthetic-department',
+                'level' => GeographicUnitLevel::Department, 'code' => '99',
+                'name' => 'C31 Synthetic Department', 'normalized_name' => 'c31 synthetic department',
+                'is_active' => true, 'source_system' => 'c31-qa-synthetic', 'source_version' => '1',
+            ]);
+            $municipality = GeographicUnit::query()->create([
+                'parent_id' => $department->id, 'key' => 'c31-synthetic-municipality',
+                'level' => GeographicUnitLevel::Municipality, 'code' => '99999',
+                'name' => 'C31 Synthetic Municipality', 'normalized_name' => 'c31 synthetic municipality',
+                'is_active' => true, 'source_system' => 'c31-qa-synthetic', 'source_version' => '1',
+            ]);
+            $jurisdiction = Jurisdiction::query()->create([
+                'key' => 'c31-synthetic-off', 'name' => 'C31 Synthetic Jurisdiction OFF',
+                'kind' => JurisdictionKind::City, 'primary_geographic_unit_id' => $municipality->id,
+                'enabled' => false, 'timezone' => 'America/Bogota',
+            ]);
+            $municipality->jurisdictions()->attach($jurisdiction->id);
+
+            $currentDataset = $lockedDataset ?? Dataset::query()->create([
+                'key' => 'restrictions', 'title' => 'Pico y placa restrictions', 'schema_version' => 2,
+                'enabled' => true, 'current_version' => null, 'publication_revision' => 0,
+            ]);
+            if ($lockedDataset !== null && ! $lockedDataset->enabled) {
+                $lockedDataset->forceFill(['enabled' => true])->save();
+                $currentDataset = $lockedDataset->refresh();
+            }
+            $source = DatasetSource::query()->create([
+                'dataset_id' => $currentDataset->id, 'title' => 'C31 synthetic source',
+                'authority' => 'C31 synthetic authority', 'url' => 'https://example.test/c31-synthetic-restrictions',
+                'verified_at' => Carbon::now('America/Bogota')->subDay(), 'is_active' => true,
+                'notes' => 'Synthetic QA source; never fetch or treat as legal authority.',
+            ]);
+            $editor = User::query()->create([
+                'name' => 'C31 Synthetic Editor', 'email' => 'editor-c31@picoradar.test',
+                'password' => Hash::make($password), 'role' => OperatorRole::Editor, 'is_active' => true,
+            ]);
+
+            return [
+                'dataset_id' => (int) $currentDataset->id, 'country_id' => (int) $country->id,
+                'department_id' => (int) $department->id, 'municipality_id' => (int) $municipality->id,
+                'jurisdiction_id' => (int) $jurisdiction->id, 'editor_id' => (int) $editor->id,
+                'source_id' => (int) $source->id,
+            ];
+        }, 1);
+    } catch (Throwable $exception) {
+        c30Fail('EDITORIAL_TRANSACTION_'.$exception::class);
+    }
+
+    $marker = [
+        'format' => 'picoradar-editorial-qa/1', 'scope' => 'NON_PRODUCTION_SYNTHETIC',
+        'prepared' => true, 'instance_id' => $expectedId, 'entry_mode' => $entryMode,
+        'dataset_id' => $created['dataset_id'], 'country_id' => $created['country_id'],
+        'department_id' => $created['department_id'], 'municipality_id' => $created['municipality_id'],
+        'jurisdiction_id' => $created['jurisdiction_id'], 'editor_id' => $created['editor_id'],
+        'source_id' => $created['source_id'], 'created_at_utc' => Carbon::now('UTC')->toIso8601String(),
+    ];
+    $verified = c31VerifyEditorialState($marker, $expectedId, $entryMode);
+    $handle = @fopen($markerPath, 'x');
+    if (! is_resource($handle)) {
+        c30Fail('EDITORIAL_MARKER_CREATE_FAILED_AFTER_COMMIT');
+    }
+    try {
+        $json = json_encode($marker, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR).PHP_EOL;
+        if (fwrite($handle, $json) !== strlen($json) || ! fflush($handle)) {
+            c30Fail('EDITORIAL_MARKER_WRITE_FAILED_AFTER_COMMIT');
+        }
+    } finally {
+        fclose($handle);
+    }
+
+    return array_replace($verified, ['idempotent' => false]);
 }
 
 function c30Boot(string $server): \Illuminate\Foundation\Application
@@ -282,11 +657,14 @@ if (PHP_SAPI === 'cli-server' || $action === 'router') {
     $rawUri = $_SERVER['REQUEST_URI'] ?? '/';
     $path = parse_url($rawUri, PHP_URL_PATH);
     $path = is_string($path) ? $path : '';
-    $bad = $path === '' || str_contains($path, '%') || str_contains($path, '\\') || str_contains($path, "\0")
-        || str_contains($path, '//') || preg_match('~(?:^|/)\.{1,2}(?:/|$)~', $path) === 1
-        || preg_match('~(^|/)\.[^/]*~', $path) === 1;
     $notFound = static function (): never { http_response_code(404); header('Content-Type: text/plain; charset=utf-8'); echo 'Not found'; exit; };
-    if ($bad || (! in_array($method, ['GET', 'HEAD'], true) && ! ($method === 'POST' && $path === '/login'))) {
+    $editorial = c31EditorialMarker($runtime, (string) (getenv('PICORADAR_INSTANCE_ID') ?: '')) !== null;
+    $contentType = (string) ($_SERVER['CONTENT_TYPE'] ?? '');
+    $rawBody = '';
+    if ($method === 'POST' && preg_match('~^/admin/restrictions/[1-9][0-9]*$~D', $path) === 1 && array_key_exists('_method', $_POST)) {
+        $rawBody = (string) file_get_contents('php://input');
+    }
+    if (! c30RouteMethodAllowed($method, $path, $editorial, $_POST, $_GET, $_SERVER, $contentType, $rawBody)) {
         http_response_code(404);
         exit;
     }
@@ -319,11 +697,6 @@ if (PHP_SAPI === 'cli-server' || $action === 'router') {
         if ($method !== 'HEAD') { readfile($real); }
         exit;
     }
-    if ($method === 'POST' && $path !== '/login') {
-        http_response_code(405);
-        header('Allow: GET, HEAD');
-        exit;
-    }
     $public = realpath($server.DIRECTORY_SEPARATOR.'public');
     if (! is_string($public)) { $notFound(); }
     $_SERVER['DOCUMENT_ROOT'] = $public;
@@ -334,7 +707,28 @@ if (PHP_SAPI === 'cli-server' || $action === 'router') {
     exit;
 }
 
-if (! in_array($action, ['paths', 'scope', 'create-db', 'preflight', 'seed', 'counts'], true)) {
+if ($action === 'route-policy') {
+    $encoded = $argv[2] ?? '';
+    $decoded = base64_decode($encoded, true);
+    $request = is_string($decoded) ? json_decode($decoded, true) : null;
+    if (! is_array($request)) {
+        c30Fail('ROUTE_POLICY_INPUT_INVALID');
+    }
+    $allowed = c30RouteMethodAllowed(
+        (string) ($request['method'] ?? ''),
+        (string) ($request['path'] ?? ''),
+        ($request['editorial'] ?? false) === true,
+        is_array($request['post'] ?? null) ? $request['post'] : [],
+        is_array($request['query'] ?? null) ? $request['query'] : [],
+        is_array($request['server'] ?? null) ? $request['server'] : [],
+        (string) ($request['content_type'] ?? ''),
+        (string) ($request['raw_body'] ?? ''),
+    );
+    echo json_encode(['allowed' => $allowed], JSON_THROW_ON_ERROR).PHP_EOL;
+    exit;
+}
+
+if (! in_array($action, ['paths', 'scope', 'create-db', 'preflight', 'seed', 'counts', 'prepare-editorial'], true)) {
     c30Fail('UNKNOWN_ACTION');
 }
 
@@ -357,6 +751,22 @@ if ($action === 'create-db') {
     $sqlite = new SQLite3($database, SQLITE3_OPEN_READWRITE | SQLITE3_OPEN_CREATE);
     $sqlite->close();
     echo json_encode(['status' => 'PASS', 'database_file' => $database], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR).PHP_EOL;
+    exit;
+}
+
+if ($action === 'prepare-editorial') {
+    try {
+        c30Preflight($app, $server, $runtime);
+        $result = c31PrepareEditorial(
+            $runtime,
+            (string) (getenv('PICORADAR_EDITORIAL_EXPECTED_INSTANCE_ID') ?: ''),
+            (string) (getenv('PICORADAR_EDITOR_PASSWORD') ?: ''),
+            (string) (getenv('PICORADAR_EDITORIAL_ENTRY_MODE') ?: ''),
+        );
+        echo json_encode($result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR).PHP_EOL;
+    } catch (Throwable $exception) {
+        c30Fail('EDITORIAL_PREPARE_'.$exception::class);
+    }
     exit;
 }
 

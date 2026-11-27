@@ -1,21 +1,31 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('Init', 'Start', 'Stop', 'Status')][string]$Action,
+    [Parameter(Mandatory)][ValidateSet('Init', 'PrepareEditorial', 'Start', 'Stop', 'Status')][string]$Action,
     [string]$RepoRoot = (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)),
     [string]$RuntimeHome = 'D:\codex\_build\PicoRadar-C30-V2\runtime',
     [string]$InstanceRoot = 'D:\codex\_build\PicoRadar-C30-V2\runtime\instance-a',
     [string]$PrivateRoot = 'D:\codex\_build\PicoRadar-C30-V2\private',
     [string]$KeyFile = 'D:\codex\_build\PicoRadar-C30-V2\private\instance-a.app-key',
     [string]$PasswordFile = 'D:\codex\_build\PicoRadar-C30-V2\private\operator.qa.password',
+    [string]$EditorialPrivateRoot,
+    [string]$ExpectedInstanceId,
     [string]$PhpExe = 'C:\xampphp\php\php.exe',
     [string]$ReportRoot = 'D:\codex\_REPORTES\PicoRadar\C30-V2-20261126',
-    [ValidateRange(1024, 65535)][int]$Port = 8878
+    [ValidateRange(1024, 65535)][int]$Port = 8878,
+    [switch]$EditorialQa
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$script:InvocationBoundParameters = $PSBoundParameters
 
 function Get-FullPath([string]$Path) { [IO.Path]::GetFullPath($Path).TrimEnd('\') }
+
+function Assert-EditorialParametersExplicit {
+    foreach ($name in @('RepoRoot','RuntimeHome','InstanceRoot','PrivateRoot','KeyFile','PasswordFile','PhpExe','ReportRoot','Port','EditorialPrivateRoot','ExpectedInstanceId')) {
+        if (-not $script:InvocationBoundParameters.ContainsKey($name)) { throw "BLOCKED_EDITORIAL_PARAMETER_REQUIRED_$name" }
+    }
+}
 
 function Test-UnderRoot([string]$Path, [string]$Root) {
     $p = (Get-FullPath $Path).TrimEnd('\')
@@ -49,6 +59,25 @@ function Assert-PrivateAcl([string]$Path) {
     foreach ($sid in $expected) {
         if (-not ($rules | Where-Object { $_.IdentityReference.Value -eq $sid -and ($_.FileSystemRights -band [Security.AccessControl.FileSystemRights]::FullControl) -eq [Security.AccessControl.FileSystemRights]::FullControl })) {
             throw 'BLOCKED_PRIVATE_ACL_INCOMPLETE'
+        }
+    }
+}
+
+function Assert-PrivateFileAcl([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw 'BLOCKED_PRIVATE_FILE_MISSING' }
+    $item = Get-Item -LiteralPath $Path -Force
+    if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'BLOCKED_PRIVATE_FILE_REPARSE_POINT' }
+    $acl = Get-Acl -LiteralPath $Path
+    $expected = @([Security.Principal.WindowsIdentity]::GetCurrent().User.Value, 'S-1-5-18', 'S-1-5-32-544')
+    $rules = $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])
+    foreach ($rule in $rules) {
+        if ($rule.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow -or $rule.IdentityReference.Value -notin $expected) {
+            throw 'BLOCKED_PRIVATE_FILE_ACL_PRINCIPAL'
+        }
+    }
+    foreach ($sid in $expected) {
+        if (-not ($rules | Where-Object { $_.IdentityReference.Value -eq $sid -and ($_.FileSystemRights -band [Security.AccessControl.FileSystemRights]::FullControl) -eq [Security.AccessControl.FileSystemRights]::FullControl })) {
+            throw 'BLOCKED_PRIVATE_FILE_ACL_INCOMPLETE'
         }
     }
 }
@@ -99,6 +128,97 @@ function Get-InstanceMarker {
     return $marker
 }
 
+function Get-EditorialEntryMode {
+    $name = [IO.Path]::GetFileName($InstanceRoot)
+    if ($name -cmatch '^instance-restored-c31-[A-Za-z0-9][A-Za-z0-9_-]{0,63}$') { return 'RESTORED' }
+    $runtimeParentName = [IO.Path]::GetFileName([IO.Path]::GetDirectoryName($RuntimeHome))
+    if ($name -ceq 'instance-a' -and $runtimeParentName -cmatch '^PicoRadar-C31-V2(?:-[A-Za-z0-9_-]+)?$') { return 'FRESH_ISOLATED' }
+    throw 'BLOCKED_EDITORIAL_INSTANCE_ROOT_NOT_C31_SLOT'
+}
+
+function Assert-EditorialPrivateRoot {
+    if ([string]::IsNullOrWhiteSpace($EditorialPrivateRoot)) { throw 'BLOCKED_EDITORIAL_PRIVATE_ROOT_REQUIRED' }
+    $script:EditorialPrivateRoot = Get-FullPath $EditorialPrivateRoot
+    Assert-NoReparseAncestors $script:EditorialPrivateRoot
+    Assert-PrivateAcl $script:EditorialPrivateRoot
+    foreach ($root in @($PrivateRoot, $RuntimeHome, $InstanceRoot, $RepoRoot)) {
+        if ((Test-UnderRoot $script:EditorialPrivateRoot $root) -or (Test-UnderRoot $root $script:EditorialPrivateRoot)) {
+            throw 'BLOCKED_EDITORIAL_PRIVATE_ROOT_NOT_SEPARATE'
+        }
+    }
+}
+
+function Get-EditorialCredentialPaths {
+    if (-not $script:EditorialPrivateRoot) { throw 'BLOCKED_EDITORIAL_PRIVATE_ROOT_REQUIRED' }
+    return Join-Path $script:EditorialPrivateRoot 'editor-c31.qa.credential.json'
+}
+
+function Assert-EditorialCredential {
+    param([Parameter(Mandatory)][string]$ForInstanceId, [switch]$Create)
+    $path = Get-EditorialCredentialPaths
+    if (Test-Path -LiteralPath $path) {
+        $item = Get-Item -LiteralPath $path -Force
+        if ($item.PSIsContainer -or (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) { throw 'BLOCKED_EDITORIAL_CREDENTIAL_FILE_TYPE' }
+    }
+    if (-not (Test-Path -LiteralPath $path) -and $Create) {
+        $password = Get-RandomText 36 $true
+        $credential = [ordered]@{
+            format='picoradar-editorial-credential/1'; scope='NON_PRODUCTION_SYNTHETIC'
+            instance_id=$ForInstanceId; password=$password
+        }
+        New-ExclusiveText $path (($credential | ConvertTo-Json -Compress) + "`n")
+        Assert-PrivateFileAcl $path
+        return $password
+    }
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw 'BLOCKED_EDITORIAL_CREDENTIAL_MISSING' }
+    Assert-PrivateFileAcl $path
+    $credential = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+    if ($credential.format -ne 'picoradar-editorial-credential/1' -or
+        $credential.scope -ne 'NON_PRODUCTION_SYNTHETIC' -or
+        [string]$credential.instance_id -cne $ForInstanceId -or
+        [string]$credential.password -notmatch '^[A-Za-z0-9_-]{48}$') {
+        throw 'BLOCKED_EDITORIAL_CREDENTIAL_INSTANCE_MISMATCH'
+    }
+    return [string]$credential.password
+}
+
+function Get-EditorialMarker {
+    $path = Join-Path $InstanceRoot 'runtime\editorial-qa.json'
+    if (-not (Test-Path -LiteralPath $path)) { return $null }
+    $item = Get-Item -LiteralPath $path -Force
+    if ($item.PSIsContainer -or (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) { throw 'BLOCKED_EDITORIAL_MARKER_FILE_TYPE' }
+    $marker = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+    if ($marker.format -ne 'picoradar-editorial-qa/1' -or $marker.scope -ne 'NON_PRODUCTION_SYNTHETIC' -or
+        $marker.prepared -ne $true -or [string]$marker.instance_id -cne $script:InstanceId -or
+        [string]$marker.entry_mode -cne (Get-EditorialEntryMode)) {
+        throw 'BLOCKED_EDITORIAL_MARKER_MISMATCH'
+    }
+    return $marker
+}
+
+function Assert-EditorialTarget {
+    if ([string]::IsNullOrWhiteSpace($ExpectedInstanceId) -or $ExpectedInstanceId -cne $script:InstanceId) {
+        throw 'BLOCKED_EDITORIAL_EXPECTED_INSTANCE_ID_MISMATCH'
+    }
+    $entryMode = Get-EditorialEntryMode
+    if (-not $instanceMarker -or $instanceMarker.scope -ne 'NON_PRODUCTION_SYNTHETIC') { throw 'BLOCKED_EDITORIAL_INSTANCE_SCOPE' }
+    Assert-EditorialPrivateRoot
+    $credential = Assert-EditorialCredential -ForInstanceId $script:InstanceId
+    $marker = Get-EditorialMarker
+    if ($marker -and [string]$marker.entry_mode -cne $entryMode) { throw 'BLOCKED_EDITORIAL_ENTRY_MODE_MISMATCH' }
+    return @{ EntryMode = $entryMode; Password = $credential; Marker = $marker }
+}
+
+function Assert-EditorialStopped([string]$ProcessPath) {
+    if (Test-Path -LiteralPath $ProcessPath) { throw 'BLOCKED_EDITORIAL_INSTANCE_NOT_STOPPED' }
+    $lastPortPath = Join-Path $InstanceRoot 'runtime\last-port.json'
+    if (Test-Path -LiteralPath $lastPortPath -PathType Leaf) {
+        $lastPort = Get-Content -LiteralPath $lastPortPath -Raw | ConvertFrom-Json
+        if ([string]$lastPort.instance_id -cne $script:InstanceId) { throw 'BLOCKED_EDITORIAL_LAST_PORT_INSTANCE_MISMATCH' }
+        Assert-NoOrphanC30Listener ([int]$lastPort.port)
+    }
+}
+
 function Get-ProcessMarkerPath { Join-Path $InstanceRoot 'runtime\process.json' }
 
 function Get-VerifiedProcess($Marker) {
@@ -116,6 +236,13 @@ function Get-VerifiedProcess($Marker) {
     if (-not $command.Contains('-S 127.0.0.1:' + [string]$Marker.port) -or -not $command.Contains($router)) { throw 'BLOCKED_PROCESS_COMMAND_MISMATCH' }
     $commandHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.UTF8Encoding]::new($false).GetBytes($command)))
     if ($commandHash -ne [string]$Marker.commandline_sha256) { throw 'BLOCKED_PROCESS_COMMAND_HASH_MISMATCH' }
+    $modeProperty = $Marker.PSObject.Properties['mode']
+    $mode = if ($modeProperty) { [string]$modeProperty.Value } else { 'C30_DEFAULT' }
+    if ($mode -notin @('C30_DEFAULT','EDITORIAL_QA')) { throw 'BLOCKED_PROCESS_MODE_INVALID' }
+    if ($mode -eq 'EDITORIAL_QA') {
+        $editorialMarker = Get-EditorialMarker
+        if (-not $editorialMarker -or [string]$Marker.entry_mode -cne [string]$editorialMarker.entry_mode) { throw 'BLOCKED_PROCESS_EDITORIAL_MODE_MISMATCH' }
+    }
     $listeners = @(Get-NetTCPConnection -State Listen -LocalAddress '127.0.0.1' -LocalPort ([int]$Marker.port) -ErrorAction SilentlyContinue)
     if ($listeners.Count -ne 1 -or [int]$listeners[0].OwningProcess -ne [int]$Marker.pid) { throw 'BLOCKED_PROCESS_LISTENER_MISMATCH' }
     if ([string]$Marker.instanceId -ne [string]$script:InstanceId) { throw 'BLOCKED_PROCESS_INSTANCE_MISMATCH' }
@@ -148,6 +275,7 @@ function Get-C30Environment([string]$Key, [int]$UsePort, [bool]$IncludePassword 
         FILESYSTEM_DISK='local'; DATASET_DRAFT_DISK='local'; DATASET_PUBLISHED_DISK='public'; DATASET_PUBLIC_BASE_URL='/storage'
         CAMPAIGN_PUBLIC_CATALOG_ENABLED='false'; PICORADAR_ACCOUNT_EMAIL_ENABLED='false'; PICORADAR_MARKETING_SEND_ENABLED='false'
         PICORADAR_PUBLIC_CATALOG_ENABLED='false'; PICORADAR_QA_LOCAL='1'
+        PICORADAR_EDITORIAL_QA='0'; PICORADAR_EDITORIAL_EXPECTED_INSTANCE_ID=''; PICORADAR_EDITORIAL_ENTRY_MODE=''
     }
     if ($IncludePassword) { $values.PICORADAR_OPERATOR_PASSWORD = [IO.File]::ReadAllText($PasswordFile).Trim() }
     return $values
@@ -155,7 +283,7 @@ function Get-C30Environment([string]$Key, [int]$UsePort, [bool]$IncludePassword 
 
 function Invoke-C30Php([string[]]$PhpArguments, [hashtable]$Values) {
     $names = @((Get-ChildItem Env: | Where-Object Name -Match '^(APP_|DB_|MAIL_|REDIS_|SESSION_|CACHE_|QUEUE_|FILESYSTEM_|DATASET_|CAMPAIGN_|PICORADAR_)|^(DATABASE_URL)$' | Select-Object -ExpandProperty Name))
-    $names += @('APP_ENV','APP_DEBUG','APP_KEY','APP_NAME','APP_URL','APP_CONFIG_CACHE','APP_ROUTES_CACHE','APP_EVENTS_CACHE','APP_PACKAGES_CACHE','APP_SERVICES_CACHE','VIEW_COMPILED_PATH','LARAVEL_STORAGE_PATH','PICORADAR_PUBLIC_PATH','PICORADAR_INSTANCE_ROOT','PICORADAR_INSTANCE_ID','PICORADAR_OPERATOR_PASSWORD','DB_CONNECTION','DB_URL','DATABASE_URL','DB_DATABASE','DB_FOREIGN_KEYS','SESSION_DRIVER','CACHE_STORE','QUEUE_CONNECTION','MAIL_MAILER','LOG_CHANNEL','LOG_LEVEL','FILESYSTEM_DISK','DATASET_DRAFT_DISK','DATASET_PUBLISHED_DISK','DATASET_PUBLIC_BASE_URL','CAMPAIGN_PUBLIC_CATALOG_ENABLED','PICORADAR_ACCOUNT_EMAIL_ENABLED','PICORADAR_MARKETING_SEND_ENABLED','PICORADAR_PUBLIC_CATALOG_ENABLED','PICORADAR_QA_LOCAL')
+    $names += @('APP_ENV','APP_DEBUG','APP_KEY','APP_NAME','APP_URL','APP_CONFIG_CACHE','APP_ROUTES_CACHE','APP_EVENTS_CACHE','APP_PACKAGES_CACHE','APP_SERVICES_CACHE','VIEW_COMPILED_PATH','LARAVEL_STORAGE_PATH','PICORADAR_PUBLIC_PATH','PICORADAR_INSTANCE_ROOT','PICORADAR_INSTANCE_ID','PICORADAR_OPERATOR_PASSWORD','PICORADAR_EDITOR_PASSWORD','PICORADAR_EDITORIAL_QA','PICORADAR_EDITORIAL_EXPECTED_INSTANCE_ID','PICORADAR_EDITORIAL_ENTRY_MODE','DB_CONNECTION','DB_URL','DATABASE_URL','DB_DATABASE','DB_FOREIGN_KEYS','SESSION_DRIVER','CACHE_STORE','QUEUE_CONNECTION','MAIL_MAILER','LOG_CHANNEL','LOG_LEVEL','FILESYSTEM_DISK','DATASET_DRAFT_DISK','DATASET_PUBLISHED_DISK','DATASET_PUBLIC_BASE_URL','CAMPAIGN_PUBLIC_CATALOG_ENABLED','PICORADAR_ACCOUNT_EMAIL_ENABLED','PICORADAR_MARKETING_SEND_ENABLED','PICORADAR_PUBLIC_CATALOG_ENABLED','PICORADAR_QA_LOCAL')
     $names = @($names | Sort-Object -Unique)
     $old = @{}
     foreach ($name in $names) { $old[$name] = [Environment]::GetEnvironmentVariable($name, 'Process'); [Environment]::SetEnvironmentVariable($name, $null, 'Process') }
@@ -222,6 +350,7 @@ Assert-Roots
 $script:InstanceId = $null
 $instanceMarker = Get-InstanceMarker
 if ($instanceMarker) { $script:InstanceId = [string]$instanceMarker.id }
+if ($EditorialQa -and $Action -ne 'Start') { throw 'BLOCKED_EDITORIAL_SWITCH_ONLY_VALID_FOR_START' }
 
 if ($Action -eq 'Init') {
     if ($instanceMarker) { throw 'BLOCKED_INIT_ALREADY_COMPLETE' }
@@ -300,29 +429,82 @@ if ($Action -eq 'Init') {
 
 if (-not $instanceMarker) { throw 'BLOCKED_INSTANCE_NOT_INITIALIZED' }
 $processPath = Get-ProcessMarkerPath
+
+if ($Action -eq 'PrepareEditorial') {
+    Assert-EditorialParametersExplicit
+    if (-not $ExpectedInstanceId -or $ExpectedInstanceId -cne $script:InstanceId) { throw 'BLOCKED_EDITORIAL_EXPECTED_INSTANCE_ID_MISMATCH' }
+    $entryMode = Get-EditorialEntryMode
+    Assert-EditorialPrivateRoot
+    $lock = New-OperationLock (Join-Path $InstanceRoot 'runtime\operation.lock')
+    try {
+        Assert-EditorialStopped $processPath
+        $key = [IO.File]::ReadAllText($KeyFile).Trim()
+        if ($key -notmatch '^base64:[A-Za-z0-9+/]{43}=$') { throw 'BLOCKED_KEYFILE_INVALID' }
+        $values = Get-C30Environment $key $Port
+        $preflight = Invoke-C30Php @('..\scripts\local\picoradar-local-qa.php','preflight') $values | ConvertFrom-Json
+        if ($preflight.status -ne 'PASS') { throw 'BLOCKED_EDITORIAL_PREFLIGHT_NOT_PASS' }
+        if ([int]$preflight.evidence.config.campaign_catalog -ne 0 -or
+            $preflight.evidence.config.environment -ne 'local' -or
+            $preflight.evidence.config.debug -ne $false -or
+            $preflight.evidence.config.database -ne 'sqlite') { throw 'BLOCKED_EDITORIAL_PREFLIGHT_CONFIG' }
+
+        $editorPassword = Assert-EditorialCredential -ForInstanceId $script:InstanceId -Create
+        $values.PICORADAR_EDITORIAL_EXPECTED_INSTANCE_ID = $script:InstanceId
+        $values.PICORADAR_EDITORIAL_ENTRY_MODE = $entryMode
+        $values.PICORADAR_EDITOR_PASSWORD = $editorPassword
+        $resultText = Invoke-C30Php @('..\scripts\local\picoradar-local-qa.php','prepare-editorial') $values
+        $result = $resultText | ConvertFrom-Json
+        if ($result.status -ne 'PASS' -or $result.prepared -ne $true -or
+            [string]$result.instance_id -cne $script:InstanceId -or
+            [string]$result.entry_mode -cne $entryMode) { throw 'BLOCKED_EDITORIAL_PREPARATION_RESULT_INVALID' }
+        $marker = Get-EditorialMarker
+        if (-not $marker) { throw 'BLOCKED_EDITORIAL_MARKER_NOT_WRITTEN' }
+        $runId = Get-Date -Format 'yyyyMMdd_HHmmss_fff'
+        Write-RunLog "C31_A_EDITORIAL_PREP_$runId.json" ($result | ConvertTo-Json -Depth 6) | Out-Null
+        [ordered]@{
+            status='PASS'; prepared=$true; idempotent=[bool]$result.idempotent
+            instance_id=$script:InstanceId; entry_mode=$entryMode; dataset_id=$result.dataset_id
+            country_code=$result.country_code; department_code=$result.department_code; municipality_code=$result.municipality_code
+            municipality_id=$result.municipality_id; jurisdiction_id=$result.jurisdiction_id; jurisdiction_enabled=$result.jurisdiction_enabled
+            editor_id=$result.editor_id; source_id=$result.source_id; release_count=$result.release_count
+            publication_count=$result.publication_count; rule_count=$result.rule_count
+        } | ConvertTo-Json -Depth 6
+    } finally { $lock.Dispose() }
+    exit 0
+}
+
 $operationLock = New-OperationLock (Join-Path $InstanceRoot 'runtime\operation.lock')
 try {
     if ($Action -eq 'Status') {
+        $editorialMarker = Get-EditorialMarker
+        $mode = if ($editorialMarker) { 'EDITORIAL_QA' } else { 'C30_DEFAULT' }
         if (-not (Test-Path -LiteralPath $processPath -PathType Leaf)) {
             $lastPortPath = Join-Path $InstanceRoot 'runtime\last-port.json'
             if (Test-Path -LiteralPath $lastPortPath -PathType Leaf) {
                 $lastPort = Get-Content -LiteralPath $lastPortPath -Raw | ConvertFrom-Json
                 Assert-NoOrphanC30Listener ([int]$lastPort.port)
             }
-            @{ status='STOPPED'; instance_id=$script:InstanceId; backend='sqlite'; scope='NON_PRODUCTION_SYNTHETIC' } | ConvertTo-Json -Compress
+            @{ status='STOPPED'; instance_id=$script:InstanceId; backend='sqlite'; scope='NON_PRODUCTION_SYNTHETIC'; mode=$mode; editorial_prepared=[bool]$editorialMarker } | ConvertTo-Json -Compress
             exit 0
         }
         $processMarker = Get-Content -LiteralPath $processPath -Raw | ConvertFrom-Json
         $process = Get-VerifiedProcess $processMarker
-        @{ status='RUNNING'; instance_id=$script:InstanceId; pid=$process.Id; port=[int]$processMarker.port; start_time_utc=$process.StartTime.ToUniversalTime().ToString('o') } | ConvertTo-Json -Compress
+        $processMode = if ($processMarker.PSObject.Properties['mode']) { [string]$processMarker.mode } else { 'C30_DEFAULT' }
+        @{ status='RUNNING'; instance_id=$script:InstanceId; pid=$process.Id; port=[int]$processMarker.port; start_time_utc=$process.StartTime.ToUniversalTime().ToString('o'); mode=$processMode; editorial_prepared=[bool]$editorialMarker } | ConvertTo-Json -Compress
         exit 0
     }
     if ($Action -eq 'Start') {
+        if ($EditorialQa) { Assert-EditorialParametersExplicit }
         if (Test-Path -LiteralPath $processPath) { throw 'BLOCKED_PROCESS_MARKER_ALREADY_EXISTS' }
         $lastPortPath = Join-Path $InstanceRoot 'runtime\last-port.json'
         if (Test-Path -LiteralPath $lastPortPath -PathType Leaf) {
             $lastPort = Get-Content -LiteralPath $lastPortPath -Raw | ConvertFrom-Json
             Assert-NoOrphanC30Listener ([int]$lastPort.port)
+        }
+        $editorialContext = $null
+        if ($EditorialQa) {
+            $editorialContext = Assert-EditorialTarget
+            if (-not $editorialContext.Marker) { throw 'BLOCKED_EDITORIAL_PREPARATION_REQUIRED' }
         }
         $key = [IO.File]::ReadAllText($KeyFile).Trim()
         if ($key -notmatch '^base64:[A-Za-z0-9+/]{43}=$') { throw 'BLOCKED_KEYFILE_INVALID' }
@@ -340,6 +522,11 @@ try {
         $stderr = Join-Path $reportLogs ('C30_A_PHP_SERVER_' + $selectedPort + '_' + $logId + '.err.log')
         if ((Test-Path $stdout) -or (Test-Path $stderr)) { throw 'BLOCKED_SERVER_LOG_EXISTS' }
         $values = Get-C30Environment $key $selectedPort
+        if ($EditorialQa) {
+            $values.PICORADAR_EDITORIAL_QA = '1'
+            $values.PICORADAR_EDITORIAL_EXPECTED_INSTANCE_ID = $script:InstanceId
+            $values.PICORADAR_EDITORIAL_ENTRY_MODE = $editorialContext.EntryMode
+        }
         $old = @{}
         $envNames = @((Get-ChildItem Env: | Where-Object Name -Match '^(APP_|DB_|MAIL_|REDIS_|SESSION_|CACHE_|QUEUE_|FILESYSTEM_|DATASET_|CAMPAIGN_|PICORADAR_)|^(DATABASE_URL)$' | Select-Object -ExpandProperty Name))
         $envNames += @($values.Keys)
@@ -376,7 +563,9 @@ try {
             format='picoradar-local-process/1'; instanceId=$script:InstanceId; pid=$serverProcess.Id
             startTimeUtc=$actual.StartTime.ToUniversalTime().ToString('o'); executable=(Get-FullPath $actual.Path)
             port=$selectedPort; commandline_sha256=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.UTF8Encoding]::new($false).GetBytes([string]$cim.CommandLine)))
+            mode=$(if ($EditorialQa) { 'EDITORIAL_QA' } else { 'C30_DEFAULT' })
         }
+        if ($EditorialQa) { $processMarker.entry_mode = $editorialContext.EntryMode }
         try {
             if (Test-Path -LiteralPath $lastPortPath -PathType Leaf) {
                 $oldPortMarker = Get-Content -LiteralPath $lastPortPath -Raw | ConvertFrom-Json
@@ -390,7 +579,7 @@ try {
             if (-not $serverProcess.HasExited) { Stop-Process -Id $serverProcess.Id -ErrorAction SilentlyContinue; $serverProcess.WaitForExit(5000) | Out-Null }
             throw
         }
-        @{ status='RUNNING'; instance_id=$script:InstanceId; pid=$serverProcess.Id; port=$selectedPort; start_time_utc=$processMarker.startTimeUtc; health='/up:200' } | ConvertTo-Json -Compress
+        @{ status='RUNNING'; instance_id=$script:InstanceId; pid=$serverProcess.Id; port=$selectedPort; start_time_utc=$processMarker.startTimeUtc; health='/up:200'; mode=$processMarker.mode; editorial_prepared=[bool]$EditorialQa } | ConvertTo-Json -Compress
         exit 0
     }
     if ($Action -eq 'Stop') {
@@ -406,7 +595,7 @@ try {
         $listenerAfter = @(Get-NetTCPConnection -State Listen -LocalAddress '127.0.0.1' -LocalPort ([int]$processMarker.port) -ErrorAction SilentlyContinue)
         if ($listenerAfter.Count -gt 0) { throw 'BLOCKED_LISTENER_REMAINS' }
         Remove-Item -LiteralPath $processPath
-        @{ status='STOPPED'; instance_id=$script:InstanceId; pid=$process.Id; listener_closed=$true } | ConvertTo-Json -Compress
+        @{ status='STOPPED'; instance_id=$script:InstanceId; pid=$process.Id; listener_closed=$true; mode=$(if ($processMarker.PSObject.Properties['mode']) { [string]$processMarker.mode } else { 'C30_DEFAULT' }) } | ConvertTo-Json -Compress
         exit 0
     }
 } finally { $operationLock.Dispose() }
