@@ -58,7 +58,7 @@ function Get-Status($meta) {
     }
     $listeners = @(Get-NetTCPConnection -State Listen -LocalPort ([int]$meta.port) -ErrorAction SilentlyContinue)
     if ($listeners.Count -eq 0 -or @($listeners | Where-Object { $_.LocalAddress -ne '127.0.0.1' -or $_.OwningProcess -ne [int]$meta.pid }).Count -gt 0) { throw 'BLOCKED_LISTENER_IDENTITY_OR_BIND' }
-    $query = Invoke-MariaClient @("--defaults-extra-file=$($meta.appOptions)",'--protocol=TCP','--batch','--skip-column-names',"--execute=SELECT DATABASE(),@@port,@@datadir,VERSION(),CURRENT_USER();")
+    $query = Invoke-MariaClient @("--defaults-file=$($meta.appOptions)",'--protocol=TCP','--batch','--skip-column-names',"--execute=SELECT DATABASE(),@@port,@@datadir,VERSION(),CURRENT_USER();")
     $fields = (($query -join "`n").Trim() -split "`t")
     $actualData = ([string]$fields[2]).Replace('/','\').Replace('\\','\').TrimEnd('\')
     $expectedData = ([string]$meta.datadir).Replace('/','\').Replace('\\','\').TrimEnd('\')
@@ -95,15 +95,23 @@ switch ($Action) {
         if (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue) { throw 'BLOCKED_TCP_DURING_INIT' }
         $bootstrapArgs = @('--no-defaults',"--basedir=$mariaPath","--datadir=$dataDir","--port=$Port",'--skip-networking','--named-pipe',"--socket=$pipeName",'--skip-name-resolve','--console',"--log-error=$(Join-Path $logDir 'bootstrap.error.log')")
         $bootstrap = Start-Process -FilePath $serverExe -ArgumentList $bootstrapArgs -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $logDir 'bootstrap.out.log') -RedirectStandardError (Join-Path $logDir 'bootstrap.err.log')
-        $pipeClientArgs = @('--no-defaults','--protocol=PIPE','--pipe',"--socket=$pipeName",'--user=root','--batch','--skip-column-names')
+        $pipeClientArgs = @('--no-defaults','--protocol=PIPE','--pipe',"--socket=$pipeName",'--user=root','--batch','--skip-column-names','--connect-timeout=2')
         $rootHosts = @()
-        for ($attempt = 0; $attempt -lt 80; $attempt++) {
+        $probeSql = "SELECT Host FROM mysql.user WHERE User='root' ORDER BY Host;"
+        $bootstrapClock = [Diagnostics.Stopwatch]::StartNew()
+        while ($bootstrapClock.Elapsed.TotalSeconds -lt 20) {
+            $b = Get-CimInstance Win32_Process -Filter "ProcessId=$($bootstrap.Id)" -ErrorAction Stop
+            if (-not $b) { throw 'BLOCKED_BOOTSTRAP_PROCESS_EXITED' }
+            try {
+                $probeRows = @(Invoke-MariaClient $pipeClientArgs $probeSql)
+                $rootHosts = @($probeRows | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ -ne '' })
+                if ($rootHosts.Count -gt 0) { break }
+            } catch {
+                $rootHosts = @()
+            }
             Start-Sleep -Milliseconds 250
-            $b = Get-CimInstance Win32_Process -Filter "ProcessId=$($bootstrap.Id)" -ErrorAction SilentlyContinue
-            if (-not $b) { break }
-        [void](Invoke-MariaClient $pipeClientArgs $ddl)
         }
-        $rootHosts = @($rootHosts | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ -ne '' })
+        if ($rootHosts.Count -eq 0) { throw 'BLOCKED_LOCAL_BOOTSTRAP_PIPE' }
         if ($rootHosts.Count -eq 0) { throw 'BLOCKED_LOCAL_BOOTSTRAP_PIPE' }
         $computerHost = [string]$env:COMPUTERNAME
         $allowedHosts = @('localhost','127.0.0.1','::1',$computerHost)
@@ -125,7 +133,7 @@ switch ($Action) {
         $sqlParts += 'FLUSH PRIVILEGES;'
         $ddl = $sqlParts -join "`n"
         [void](Invoke-MariaClient $pipeClientArgs $ddl)
-        $rootPipeArgs = @("--defaults-extra-file=$rootOptions",'--protocol=PIPE',"--socket=$pipeName",'--batch','--skip-column-names',"--execute=SHUTDOWN;")
+        $rootPipeArgs = @("--defaults-file=$rootOptions",'--protocol=PIPE',"--socket=$pipeName",'--batch','--skip-column-names',"--execute=SHUTDOWN;")
         [void](Invoke-MariaClient $rootPipeArgs)
         $shutdownDeadline = (Get-Date).AddSeconds(15)
         do { $alive = Get-CimInstance Win32_Process -Filter "ProcessId=$($bootstrap.Id)" -ErrorAction SilentlyContinue; if (-not $alive) { break }; Start-Sleep -Milliseconds 250 } while ((Get-Date) -lt $shutdownDeadline)
@@ -252,7 +260,7 @@ switch ($Action) {
             [IO.File]::WriteAllText((Join-Path $instanceDir 'artisan-migrate.log'),(($migrateOutput | ForEach-Object { $_.ToString() }) -join "`n"),[Text.UTF8Encoding]::new($false))
             $migrationCount = 0
             if ($migrateExit -eq 0) {
-                $countOutput = Invoke-MariaClient @("--defaults-extra-file=$($meta.appOptions)",'--protocol=TCP','--batch','--skip-column-names','--execute=SELECT COUNT(*) FROM migrations;')
+                $countOutput = Invoke-MariaClient @("--defaults-file=$($meta.appOptions)",'--protocol=TCP','--batch','--skip-column-names','--execute=SELECT COUNT(*) FROM migrations;')
                 $migrationCount = [int](($countOutput -join '').Trim())
             }
             [IO.File]::WriteAllText($resultPath,([ordered]@{ completedUtc=[DateTime]::UtcNow.ToString('o'); exitCode=$migrateExit; migrationCount=$migrationCount; database=$meta.database; port=$meta.port } | ConvertTo-Json -Depth 4),[Text.UTF8Encoding]::new($false))
@@ -267,7 +275,7 @@ switch ($Action) {
         $meta = Get-Instance
         $status = Get-Status $meta
         if ($status.stopped) { Write-Output 'DB_STOP=ALREADY_STOPPED'; break }
-        $stopArgs = @("--defaults-extra-file=$($meta.rootOptions)",'--protocol=PIPE',"--socket=$($meta.pipeName)",'--batch','--skip-column-names','--execute=SHUTDOWN;')
+        $stopArgs = @("--defaults-file=$($meta.rootOptions)",'--protocol=PIPE',"--socket=$($meta.pipeName)",'--batch','--skip-column-names','--execute=SHUTDOWN;')
         [void](Invoke-MariaClient $stopArgs)
         $deadline = (Get-Date).AddSeconds(20)
         do { $alive = Get-CimInstance Win32_Process -Filter "ProcessId=$($meta.pid)" -ErrorAction SilentlyContinue; if (-not $alive) { break }; Start-Sleep -Milliseconds 250 } while ((Get-Date) -lt $deadline)
