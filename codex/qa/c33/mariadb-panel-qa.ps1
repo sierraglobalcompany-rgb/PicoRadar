@@ -203,7 +203,16 @@ function Get-RawHttpStatus([int]$ListenPort,[string]$Path) {
 }
 
 function Start-Panel {
-    if(Test-Path -LiteralPath $markerPath){throw 'BLOCKED_PANEL_INSTANCE_ALREADY_EXISTS'}
+    if(Test-Path -LiteralPath $markerPath){
+        $previous=Get-PanelMeta
+        if($previous.state -ne 'STOPPED'){throw 'BLOCKED_PANEL_INSTANCE_ALREADY_EXISTS'}
+        $previousProcess=Get-CimInstance Win32_Process -Filter "ProcessId=$([int]$previous.pid)" -ErrorAction SilentlyContinue
+        $previousListeners=@(Get-NetTCPConnection -State Listen -LocalPort ([int]$previous.port) -ErrorAction SilentlyContinue)
+        if($previousProcess -or $previousListeners.Count -gt 0){throw 'BLOCKED_STOPPED_PANEL_HAS_LIVE_PROCESS_OR_LISTENER'}
+        $historyMarker=Join-Path $panelRoot ("panel-instance-"+[string]$previous.runId+".stopped.json")
+        if(Test-Path -LiteralPath $historyMarker){throw 'BLOCKED_PANEL_HISTORY_MARKER_EXISTS'}
+        Move-Item -LiteralPath $markerPath -Destination $historyMarker
+    }
     if($Port -lt 1024 -or $Port -eq 3306 -or @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue).Count -gt 0){throw 'BLOCKED_PANEL_PORT_UNAVAILABLE'}
     Assert-NoReparse $routerPath
     if(-not(Test-Path -LiteralPath $phpExe -PathType Leaf) -or -not(Test-Path -LiteralPath $dbHelper -PathType Leaf)){throw 'BLOCKED_PANEL_TOOLING_MISSING'}
